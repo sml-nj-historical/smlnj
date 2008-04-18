@@ -7,7 +7,7 @@
 functor AMD64SVID (
     structure T : MLTREE
     val frameAlign : int 
-  ) : C_CALL =
+  ) (*: C_CALL*) =
   struct
 
     structure T = T
@@ -76,7 +76,7 @@ functor AMD64SVID (
 	val gprParams = [rdi, rsi, rdx, rcx, r8, r9]
 	val fprParams = [xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7]
 	val maxAlign = 16
-	(* parameter-passing conventions *)
+	(* parameter passing conventions *)
         fun call () = let
 	    val cStack = S.freshCounter ()
 	    val cInt = S.freshCounter ()
@@ -103,7 +103,7 @@ functor AMD64SVID (
 	    end (* call *)	    
 	val gprRets = [rax, rdx]
 	val fprRets = [xmm0, xmm1]
-	(* value-returning conventions *)
+	(* return conventions *)
 	fun return () = let
 	    val (cFloat, ssFloat) = S.useRegs fprRets
 	    val (cInt, ssGpr) = S.useRegs gprRets
@@ -134,9 +134,6 @@ functor AMD64SVID (
 	    end
       end (* SVIDConventions *)
 
-(* FIXME! *)
-    fun containsUnalignedFields cTy = false
-
     fun szOfCTy cTy = #sz (CSizes.sizeOfTy cTy)
     fun sum ls = List.foldl (op +) 0 ls
 
@@ -159,12 +156,6 @@ functor AMD64SVID (
 	     of [] => [eightByte1]
 	      | cTys => [eightByte1, #1(firstEightByte(cTys, []))]
         end
-
-    (* eliminate unions and structs *)
-    fun flattenCTy cTy = (case cTy
-        of (CTy.C_STRUCT cTys |
-	    CTy.C_UNION cTys ) => List.concat (List.map flattenCTy cTys)
-	 | cTy => [cTy])
 
     fun combineKinds (k1, k2) = if (k1 = k2)
 	then k1
@@ -191,20 +182,26 @@ functor AMD64SVID (
 	    combineKinds(k1, k2)
 	end
 
+    fun containsUnalignedFields cTy = (case cTy
+        of (CTy.C_STRUCT cTys | CTy.C_UNION cTys) => 
+	   List.all (fn cTy => #sz (CSizes.sizeOfTy cTy) mod 8 = 0) cTys
+	 | _ => false)
+
     (* classify a C type into its location kinds (aggregates might be passed in registers) *)
     fun kindsOfCTy (CTy.C_float | CTy.C_double | CTy.C_long_double) = [K_FPR]
-      | kindsOfCTy (cTy as (CTy.C_STRUCT cTys | CTy.C_UNION cTys)) = let
+      | kindsOfCTy (cTy as CTy.C_STRUCT cTys) = let
 	val {sz, align} = CSizes.sizeOfTy cTy
-	val flatCTy = flattenCTy cTy
+	val flatCTy = CTypes.flattenCTy cTy
         in
 	    if (sz > 2*8 orelse containsUnalignedFields cTy)
-	       then [K_MEM]
+	       then List.tabulate (sz div 8, fn _ => K_MEM)
                else let
 		  val eightBytes = eightBytes flatCTy
 		  in
 		       List.map kindOfEightByte eightBytes
 		  end
         end
+      | kindsOfCTy (cTy as CTy.C_UNION cTys) = raise Fail "todo"
       | kindsOfCTy (CTy.C_ARRAY (ty, len)) = raise Fail "todo"
       | kindsOfCTy _ = [K_GPR]
 
@@ -215,6 +212,13 @@ functor AMD64SVID (
            (sz * 8, kindOfCTy cty, align)
         end
 
+    fun cTyToLocs cTy = let
+	val {sz, align} = CSizes.sizeOfTy cTy
+	val ks = kindsOfCTy cTy
+        in
+	    List.map (fn k => (sz * 8, k, align)) ks
+        end
+(*
     (* convert a C type to a location for staged allocation *)
     fun cTyToLocs cTy = let
 	val ks = kindsOfCTy cTy
@@ -223,17 +227,18 @@ functor AMD64SVID (
 	   case (cTy, ks)
 	    of ( cTy, [k] ) => [(sz*8, k, align)]
 	     (* cleave the type into two eightbytes *)
-	     | ( (CTy.C_STRUCT _ | CTy.C_UNION _), [k1, k2] ) => [(8*8, k1, 8), ((sz-8)*8, k2, 8)]
-	     | _ => raise Fail "invalid C type"
+	     | (CTy.C_STRUCT _, [k1, k2]) => [(8*8, k1, 8), ((sz-8)*8, k2, 8)]
+	     | (CTy.C_STRUCT _, _) => raise Fail "todo"
+	     | _ => raise Fail "todo"
 	end
+*)
 
     (* converts location information to an argument location in C *)
     fun saInfoToCLoc _ (w, S.REG (_, r), K_GPR) = C_GPR (w, r)
       | saInfoToCLoc _ (w, S.REG (_, r), K_FPR) = C_FPR (w, r)
-      | saInfoToCLoc argOffset (w, S.BLOCK_OFFSET offB, K_GPR) = C_STK (w, T.I.fromInt (wordTy, offB+argOffset))
-      | saInfoToCLoc argOffset (w, S.BLOCK_OFFSET offB, K_FPR) = C_STK (w, T.I.fromInt (wordTy, offB+argOffset))
+      | saInfoToCLoc argOffset (w, S.BLOCK_OFFSET offB, (K_GPR | K_FPR | K_MEM)) = 
+	C_STK (w, T.I.fromInt (wordTy, offB+argOffset))
       | saInfoToCLoc argOffset (w, S.NARROW (loc, w', k), _) = saInfoToCLoc argOffset (w', loc, k)
-      | saInfoToCLoc _ (w, _, K_MEM) = raise Fail "kmem"
       | saInfoToCLoc _ _ = raise Fail "impossible"
 
     fun layout {conv, retTy, paramTys} = let
@@ -242,11 +247,17 @@ functor AMD64SVID (
 	fun returnSALocsToCLocs () = saInfoToCLoc 0 (#2 (rStep (rS0, cTyToLoc retTy)))
 	val (resLoc, structRetLoc, argOffset) = (case retTy
 	     of CTy.C_void => (NONE, NONE, 0)
-	      | ( CTy.C_UNION tys | CTy.C_STRUCT tys ) => let
+	      | CTy.C_STRUCT tys => let
 		val {sz, align} = CSizes.sizeOfStruct tys
 		in
 		  (SOME (returnSALocsToCLocs ()), SOME {szb=sz, align=align}, 8)
 		end
+	      | CTy.C_UNION tys => let
+		val {sz, align} = CSizes.sizeOfUnion tys
+		in
+		  (SOME (returnSALocsToCLocs ()), SOME {szb=sz, align=align}, 8)
+		end
+	      | CTy.C_ARRAY (ty, len) => raise Fail "todo"
 	      | _ => (SOME (returnSALocsToCLocs ()), NONE, 0)
 	     (* end case *))
 	(* convert parameter locations for staged allocation to parameter locations for C *)
@@ -284,51 +295,77 @@ functor AMD64SVID (
 	    [T.FCOPY (mty, [r], [tmp]), T.FMV (mty, tmp, e)]
         end
 
-    fun copyLoc (arg, [loc], (stms, gprs, fprs)) = (case (arg, loc)
+    (* generate MLRISC statements for copying a C argument to a parameter / return location *)
+    fun copyLoc arg (i, loc, (stms, gprs, fprs)) = (case (arg, loc)
          of (ARG (e as T.REG _), C_STK (mty, offset)) =>
 	    (T.STORE (wordTy, offSp offset, e, stack) :: stms, gprs, fprs)
+	  | (ARG (T.LOAD (ty, e, rgn)), C_GPR (mty1, r1)) =>
+	    (copyToReg(mty1, r1, T.LOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, gprs, fprs)
+	  | (ARG (T.LOAD (ty, e, rgn)), C_STK (mty, offset)) => let
+	    val tmp = C.newReg ()
+	    in
+		(T.STORE (wordTy, offSp offset, T.REG (wordTy, tmp), stack) :: 
+		 T.MV (wordTy, tmp, T.LOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) :: stms, gprs, fprs)
+	    end
 	  | (ARG e, C_STK (mty, offset)) => let
 	     val tmp = C.newReg ()
 	     in
-		(T.STORE (mty, offSp offset, T.REG (mty, tmp), stack) ::T.MV (mty, tmp, e) :: stms, gprs, fprs)
+		(T.STORE (wordTy, offSp offset, T.REG (wordTy, tmp), stack) ::T.MV (wordTy, tmp, e) :: stms, gprs, fprs)
 	      end
 	  | (ARG e, C_GPR (mty, r)) => (copyToReg(mty, r, e) @ stms, r :: gprs, fprs)
 	  | (FARG (e as T.FREG _), C_STK (mty, offset)) =>
 	    (T.FSTORE (mty, offSp offset, e, stack) :: stms, gprs, fprs)
+	  | (ARG (T.LOAD (ty, e, rgn)), C_FPR (mty1, r1)) =>
+	    (copyToFReg(mty1, r1, T.FLOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, gprs, fprs)
+	  | (FARG (T.FLOAD (ty, e, rgn)), C_STK (mty, offset)) => let
+	    val tmp = C.newFreg ()
+	    in
+		(T.FSTORE (wordTy, offSp offset, T.FREG (wordTy, tmp), stack) :: 
+		 T.FMV (wordTy, tmp, T.FLOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) :: stms, gprs, fprs)
+	    end
 	  | (FARG e, C_STK (mty, offset)) => let
 	    val tmp = C.newFreg ()
 	    in
-		(T.FSTORE (mty, offSp offset, T.FREG (mty, tmp), stack) :: T.FMV (mty, tmp, e) :: stms, gprs, fprs)
+		(T.FSTORE (wordTy, offSp offset, T.FREG (wordTy, tmp), stack) :: T.FMV (wordTy, tmp, e) :: stms, gprs, fprs)
 	    end
 	  | (FARG e, C_FPR (mty, r)) => (copyToFReg(mty, r, e) @ stms, gprs, (mty, r) :: fprs)
 	  | _ => raise Fail "invalid arg / location combination"
          (* end case *))
+
+    fun copyLocs (arg, locs, (stms, gprs, fprs)) = 
+	ListPair.foldl (copyLoc arg) (stms, gprs, fprs) (List.tabulate(List.length locs, fn i => i), locs)
+(*
       | copyLoc (arg, [loc1, loc2], (stms, gprs, fprs)) = (case (arg, loc1, loc2)
          of (ARG (T.LOAD (ty, e, rgn)), C_GPR (mty1, r1), C_GPR (mty2, r2)) =>
 	    (List.concat [ copyToReg(mty1, r1, T.LOAD (ty, e, rgn)),
-			   copyToReg(mty2, r2, T.LOAD (ty, T.MULS(wordTy, e, li 8), rgn)),
+			   copyToReg(mty2, r2, T.LOAD (ty, T.ADD(wordTy, e, li 8), rgn)),
 			   stms], 
 	     gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_FPR (mty1, r1), C_FPR (mty2, r2)) =>
 	    (List.concat [ copyToFReg(mty1, r1, T.FLOAD (ty, e, rgn)),
-			   copyToFReg(mty2, r2, T.FLOAD (ty, T.MULS(wordTy, e, li 8), rgn)),
+			   copyToFReg(mty2, r2, T.FLOAD (ty, T.ADD(wordTy, e, li 8), rgn)),
 			   stms], 
 	     gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_GPR (mty1, r1), C_FPR (mty2, r2)) =>
 	    (List.concat [ copyToReg(mty1, r1, T.LOAD (ty, e, rgn)),
-			   copyToFReg(mty2, r2, T.FLOAD (ty, T.MULS(wordTy, e, li 8), rgn)),
+			   copyToFReg(mty2, r2, T.FLOAD (ty, T.ADD(wordTy, e, li 8), rgn)),
 			   stms], 
 	     gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_FPR (mty1, r1), C_GPR (mty2, r2)) =>
 	    (List.concat [ copyToFReg(mty1, r1, T.FLOAD (ty, e, rgn)),
-			   copyToReg(mty2, r2, T.LOAD (ty, T.MULS(wordTy, e, li 8), rgn)),
+			   copyToReg(mty2, r2, T.LOAD (ty, T.ADD(wordTy, e, li 8), rgn)),
 			   stms], 
 	     gprs, fprs)
 	  | _ => raise Fail "invalid arg / location combination"
          (* end case *))
+*)
 
     (* copy C arguments into parameter locations *)
-    fun copyArgs (args, argLocs) = ListPair.foldl copyLoc ([], [], []) (args, argLocs)
+    fun copyArgs (args, argLocs) = let
+	val (stms, gprs, fprs) = ListPair.foldl copyLocs ([], [], []) (args, argLocs)
+        in
+	    (List.rev stms, gprs, fprs)
+        end
 
     (* copy the return value into the result location *)
     fun returnVals resLoc = (case resLoc
@@ -383,10 +420,11 @@ functor AMD64SVID (
       val ty8 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_STRUCT[CTy.C_float,CTy.C_unsigned CTy.I_int],CTy.C_float,CTy.C_float]]
       val ty9 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float]]
       val ty10 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_float,CTy.C_float, CTy.C_STRUCT[CTy.C_float,CTy.C_unsigned CTy.I_int]]]
+      val ty11 = CTy.C_STRUCT [CTy.C_PTR, CTy.C_float, CTy.C_float, CTy.C_float]
 
       fun ebTest () = let	
 	fun test (ty, len) =
-	    if List.length (eightBytes (flattenCTy ty)) <> len
+	    if List.length (eightBytes (CTypes.flattenCTy ty)) <> len
 	       then raise Fail "failed test"
 	       else ()
         in
@@ -395,8 +433,8 @@ functor AMD64SVID (
 
       fun kindOfEB () = let
 	  fun test (eb, k) = (kindOfEightByte eb = k) orelse raise Fail "failed test"
-	  fun eb1 ty = hd (eightBytes (flattenCTy ty))
-	  fun eb2 ty = hd(tl (eightBytes (flattenCTy ty)))
+	  fun eb1 ty = hd (eightBytes (CTypes.flattenCTy ty))
+	  fun eb2 ty = hd(tl (eightBytes (CTypes.flattenCTy ty)))
           in
 	      List.all test [(eb1 ty1, K_GPR), (eb1 ty2, K_GPR), (eb2 ty3, K_GPR),
 			     (eb1 ty5, K_FPR), (eb1 ty6, K_FPR), (eb2 ty6, K_FPR),
@@ -415,14 +453,20 @@ functor AMD64SVID (
 	  val tests = [(ty2, [K_GPR]), (ty1, [K_GPR]), (ty3, [K_GPR, K_GPR]), (ty4, [K_GPR, K_GPR]), 
 		       (ty5, [K_FPR]), (ty6, [K_FPR, K_FPR]),
 		       (ty7, [K_FPR, K_FPR]), (ty8, [K_GPR, K_FPR]),
-		       (ty9, [K_MEM]), (ty10, [K_FPR, K_GPR])
+		       (ty9, [K_MEM]), (ty10, [K_FPR, K_GPR]),
+		       (ty11, [K_MEM])
 				       ]
 	  val (ts, anss) = ListPair.unzip tests
           in
 	     ListPair.all test (List.map cTyToLocs ts, anss) orelse raise Fail "failed test"
           end
 
-      fun paramTyEx () = layout {conv="ccall", retTy=CTy.C_void, paramTys=[ty5]}
+      val proto1 = {conv="ccall", retTy=CTy.C_void, paramTys=[ty11]}
+      fun paramTyEx () = layout proto1
+      fun argEx () = genCall {name=T.LOAD(32, li 1024, mem), proto=proto1, paramAlloc=fn _ => false, 
+			      structRet=fn _ => raise Fail "", 
+			      saveRestoreDedicated=fn _ => raise Fail "", 
+			      callComment=NONE, args=[ARG (T.LOAD(32, li 0, mem))]}
 
     end
 

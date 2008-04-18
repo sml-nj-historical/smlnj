@@ -75,12 +75,18 @@ structure Main =
 	   | FLOAT of real
 	   | DOUBLE of real
 	   | POINTER of int
+	   | STRUCT of c_argument list
+
+    fun flattenArg cArg = (case cArg
+        of STRUCT args => List.concat (List.map flattenArg args)
+	 | cArg => [cArg])
 
     fun cArgToString (cArg) = (case cArg
         of INT i => Int.toString i
 	 | FLOAT f => Real.toString f^"f"
 	 | DOUBLE f => Real.toString f
 	 | POINTER p => "(void*)0x"^Int.fmt StringCvt.HEX p
+	 | STRUCT args => "{"^String.concatWith ", " (List.map cArgToString args)^"}"
         (* end case *))
 
     fun tyToFormatString (ty) = (case ty
@@ -89,6 +95,16 @@ structure Main =
 	 | CTy.C_float => "%f"
 	 | CTy.C_double => "%f"
 	 | CTy.C_PTR => "%p"
+	 | CTy.C_STRUCT cTys => String.concatWith " " (List.map tyToFormatString cTys)
+        (* end case *))
+
+    fun cTyToName cTy = (case cTy
+        of CTy.C_unsigned _ => "u"
+	 | CTy.C_signed _ => "i"
+	 | CTy.C_float => "f"
+	 | CTy.C_double => "d"
+	 | CTy.C_PTR => "vs"
+	 | CTy.C_STRUCT cTys => "s"^String.concat (List.map cTyToName cTys)
         (* end case *))
 
     fun cTyToString (ty) = (case ty
@@ -98,7 +114,39 @@ structure Main =
 	 | CTy.C_double => "double"
 	 | CTy.C_PTR => "void*"
 	 | CTy.C_void => "void"
+	 | CTy.C_STRUCT cTys => "struct "^cTyToName ty
         (* end case *))
+
+    val i = ref 0
+    fun freshName () = (
+	i := (!i) + 1;
+	"x"^Int.toString (!i))
+
+    fun cTyDecl' cTy = (case cTy
+         of CTy.C_STRUCT cTys => cTyToString cTy^"{ "^(String.concatWith " " (List.map cTyDecl' cTys))^"}"^freshName()^";"
+	 | cTy => cTyToString cTy^" "^freshName()^";"
+        (* end case *))
+		       
+    fun cTyDecl cTy = let
+	val td = cTyDecl' cTy
+        in 
+	    i := 0;
+	    td
+        end
+
+    fun cTyNames' prefix (cTy) = (case cTy
+         of CTy.C_STRUCT cTys => List.concat (List.map (cTyNames' (prefix^"."^freshName())) cTys)
+	 | cTy => [prefix^"."^freshName()]
+        (* end case *))
+		       
+    fun cTyNames prefix cTy = let
+	val td = (case cTy
+            of CTy.C_STRUCT cTys => List.concat (List.map (cTyNames' prefix) cTys)
+	     | cTy => [prefix])
+        in 
+	    i := 0;
+	    td
+        end
 
     fun cTyToParam (ty, (i, params, vars)) = let
         val var = " a"^Int.toString i
@@ -121,6 +169,7 @@ structure Main =
     fun targetFun (targetName, proto as {conv, retTy, paramTys}, retVal) = let
         val (_, params, vars) = List.foldl cTyToParam (0, [], []) paramTys
 	val (params, vars) = (List.rev params, List.rev vars)
+	val vars = List.concat (ListPair.map (fn (prefix, ty) => cTyNames prefix ty) (vars, paramTys))
 	in 
            cTyToString retTy ^ " " ^ targetName ^ "(" ^ (String.concatWith ", " params) ^ ")" ^
 	      "{" ^
@@ -176,6 +225,7 @@ structure Main =
     fun genGlue (target, mlriscGlue, proto, args, retVal) = String.concatWith "\n" [
           cIncludes,
   	  "#define MAX_SZ "^Int.toString(maxArgSz),
+	  String.concatWith "\n" (List.map cTyDecl (#paramTys proto)),
 	  genMLRISCGlueHdr(mlriscGlue, proto),
 	  targetFun(target, proto, retVal),
 	  genCGlueCode(mlriscGlue, proto, args)
@@ -184,6 +234,8 @@ structure Main =
     fun genCMain () = "int main () { glueCode(); return 0; }"
 
     fun genSanityCheck (proto, args, retVal) = let
+	val args = List.concat (List.map flattenArg args)
+	val args = List.map cArgToString args
 	val retPrintf = (case retVal
              of [] => ""
 	      | [retVal] => genPrintf(genFormatString [tyToFormatString (#retTy proto)], [cArgToString retVal])
@@ -194,33 +246,43 @@ structure Main =
         end
 
     fun offset arr0 i = T.ADD(wordTy, arr0, li(i*maxArgSzB))
+
     fun genGlueArg arr0 (ty, (i, args)) = (i+1, 
 	(case ty
           of CTy.C_signed CTy.I_int => CCalls.ARG (T.LOAD(32, offset arr0 i, ()))
 	   | CTy.C_unsigned CTy.I_int => CCalls.ARG (T.LOAD(32, offset arr0 i, ()))
 	   | CTy.C_PTR => CCalls.ARG (T.LOAD(wordTy, offset arr0 i, ()))
+	   | CTy.C_STRUCT _ => CCalls.ARG (T.LOAD(wordTy, offset arr0 i, ()))
 	   | CTy.C_float => CCalls.FARG (T.FLOAD(32, offset arr0 i, ()))
 	   | CTy.C_double => CCalls.FARG (T.FLOAD(64, offset arr0 i, ()))
         (* end case *)) :: args)
 
     val rand = Random.rand (0, 255)
+
     fun genRandArg (ty) = (case ty
         of CTy.C_float => FLOAT (Random.randReal(rand))
 	 | CTy.C_double => DOUBLE(Random.randReal(rand))
 	 | CTy.C_unsigned _ => INT (Random.randNat(rand))
 	 | CTy.C_signed _ => INT (Random.randNat(rand))
 	 | CTy.C_PTR => POINTER(Random.randNat(rand))
+	 | CTy.C_STRUCT cTys => STRUCT(List.map genRandArg cTys)
         (* end case *))
 
     fun output (strm, s) = TextIO.output(strm, s^"\n")
 
+    val pty1 = [CTy.C_double, CTy.C_unsigned CTy.I_int, CTy.C_PTR, CTy.C_double, 
+		CTy.C_float, CTy.C_PTR, CTy.C_float, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR,
+		CTy.C_signed CTy.I_int, 
+		CTy.C_double, CTy.C_double, CTy.C_double, CTy.C_double, CTy.C_double, 
+		CTy.C_double, CTy.C_double]
+    val pty2 = [CTy.C_STRUCT [CTy.C_float]]
+    val pty3 = [CTy.C_STRUCT [CTy.C_float,CTy.C_float]]
+    val pty3 = [CTy.C_STRUCT [CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float]]
+    val pty4 = [CTy.C_STRUCT [CTy.C_PTR,CTy.C_float,CTy.C_float,CTy.C_float]]
+
     fun main _ = let
 	val retTy = CTy.C_double
-	val paramTys = [CTy.C_double, CTy.C_unsigned CTy.I_int, CTy.C_PTR, CTy.C_double, 
-		   CTy.C_float, CTy.C_PTR, CTy.C_float, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR,
-		   CTy.C_signed CTy.I_int, 
-		   CTy.C_double, CTy.C_double, CTy.C_double, CTy.C_double, CTy.C_double, 
-		   CTy.C_double, CTy.C_double]
+	val paramTys = pty4
 
 	val cArgs = List.map genRandArg paramTys
 	val retVal = if retTy <> CTy.C_void then [genRandArg retTy] else []
@@ -236,7 +298,7 @@ structure Main =
 
 	(* output C code for santity check *)
 	val cOutStrm = TextIO.openOut "sanity.c"
-	val cCode = genSanityCheck(proto, List.map cArgToString cArgs, retVal)
+	val cCode = genSanityCheck(proto, cArgs, retVal)
 	val _ = output(cOutStrm, cCode)
 	val _ = TextIO.closeOut cOutStrm
 
@@ -246,7 +308,7 @@ structure Main =
 	val _ = output(cMainOutStrm, cMain)
 	val _ = TextIO.closeOut cMainOutStrm
 		    
-	(* output MLRISC code*)
+	(* output MLRISC code *)
 	val tmpReg = C.newReg()
 	val tmpR = T.REG(wordTy, tmpReg)
 	val (_, glueArgs) = List.foldl (genGlueArg tmpR) (0, []) paramTys

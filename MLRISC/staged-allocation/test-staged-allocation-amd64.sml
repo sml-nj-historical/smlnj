@@ -200,7 +200,8 @@ structure IntRA =
         end
     fun spillInit _ = ()
     fun spillLoc {info=frame, an, cell, id=loc} = 
-        {opnd = AMD64Instr.Immed 0, kind = SPILL_LOC}
+raise Fail ""
+(*        {opnd = AMD64Instr.Immed 0, kind = SPILL_LOC}*)
     val phases = [SPILL_PROPAGATION, SPILL_COLORING]
   end (* IntRA *)
 
@@ -209,7 +210,7 @@ structure FloatRA =
     val avail = C.Regs CellsBasis.FP {from=0, to=15, step=1}
     val dedicated = []
     fun spillInit _ = ()
-    fun spillLoc (info, ans, id) = AMD64Instr.Immed 0
+    fun spillLoc (info, ans, id) = raise Fail ""
     val phases = [SPILL_PROPAGATION, SPILL_COLORING]
   end (* FloatRA *)
 

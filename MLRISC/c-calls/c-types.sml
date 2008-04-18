@@ -40,4 +40,11 @@ structure CTypes =
 	paramTys : c_type list
       }
 
+    (* eliminate unions and structs *)
+    fun flattenCTy cTy = (case cTy
+        of (C_STRUCT cTys |
+	    C_UNION cTys ) => List.concat (List.map flattenCTy cTys)
+	 | cTy => [cTy])
+
+
   end
