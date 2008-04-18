@@ -2,6 +2,10 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2008-04-18]
+	First commit of JSON Library.  Printing works, but parsing still needs
+	to be implemented.
+
 [2008-03-18]
 	Committed a major overhaul of the RegExp library.  There is now a new
 	engine that implements Ken Thompson's RE matching algorithm.  The result
