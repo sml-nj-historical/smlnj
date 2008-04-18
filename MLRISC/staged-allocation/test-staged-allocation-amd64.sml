@@ -38,22 +38,22 @@ structure AMD64PseudoOps  =
 end (* AMD64PseudoOps *)
 *)
 
-
+(*
 functor AMD64PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = AMD64GasPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
+*)
 
-(*
 functor AMD64PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = AMD64DarwinPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-*)
+
 
 structure AMD64PseudoOps = AMD64PseudoOpsFn(
             structure T = AMD64MLTree

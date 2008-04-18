@@ -300,12 +300,12 @@ functor AMD64SVID (
          of (ARG (e as T.REG _), C_STK (mty, offset)) =>
 	    (T.STORE (wordTy, offSp offset, e, stack) :: stms, gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_GPR (mty1, r1)) =>
-	    (copyToReg(mty1, r1, T.LOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, gprs, fprs)
+	    (copyToReg(mty1, r1, T.LOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, r1 :: gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_STK (mty, offset)) => let
 	    val tmp = C.newReg ()
 	    in
-		(T.STORE (wordTy, offSp offset, T.REG (wordTy, tmp), stack) :: 
-		 T.MV (wordTy, tmp, T.LOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) :: stms, gprs, fprs)
+		(T.STORE (ty, offSp offset, T.REG (ty, tmp), stack) :: 
+		 T.MV (ty, tmp, T.LOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) :: stms, gprs, fprs)
 	    end
 	  | (ARG e, C_STK (mty, offset)) => let
 	     val tmp = C.newReg ()
@@ -316,7 +316,7 @@ functor AMD64SVID (
 	  | (FARG (e as T.FREG _), C_STK (mty, offset)) =>
 	    (T.FSTORE (mty, offSp offset, e, stack) :: stms, gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_FPR (mty1, r1)) =>
-	    (copyToFReg(mty1, r1, T.FLOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, gprs, fprs)
+	    (copyToFReg(mty1, r1, T.FLOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, gprs, (mty1, r1) :: fprs)
 	  | (FARG (T.FLOAD (ty, e, rgn)), C_STK (mty, offset)) => let
 	    val tmp = C.newFreg ()
 	    in
@@ -334,31 +334,6 @@ functor AMD64SVID (
 
     fun copyLocs (arg, locs, (stms, gprs, fprs)) = 
 	ListPair.foldl (copyLoc arg) (stms, gprs, fprs) (List.tabulate(List.length locs, fn i => i), locs)
-(*
-      | copyLoc (arg, [loc1, loc2], (stms, gprs, fprs)) = (case (arg, loc1, loc2)
-         of (ARG (T.LOAD (ty, e, rgn)), C_GPR (mty1, r1), C_GPR (mty2, r2)) =>
-	    (List.concat [ copyToReg(mty1, r1, T.LOAD (ty, e, rgn)),
-			   copyToReg(mty2, r2, T.LOAD (ty, T.ADD(wordTy, e, li 8), rgn)),
-			   stms], 
-	     gprs, fprs)
-	  | (ARG (T.LOAD (ty, e, rgn)), C_FPR (mty1, r1), C_FPR (mty2, r2)) =>
-	    (List.concat [ copyToFReg(mty1, r1, T.FLOAD (ty, e, rgn)),
-			   copyToFReg(mty2, r2, T.FLOAD (ty, T.ADD(wordTy, e, li 8), rgn)),
-			   stms], 
-	     gprs, fprs)
-	  | (ARG (T.LOAD (ty, e, rgn)), C_GPR (mty1, r1), C_FPR (mty2, r2)) =>
-	    (List.concat [ copyToReg(mty1, r1, T.LOAD (ty, e, rgn)),
-			   copyToFReg(mty2, r2, T.FLOAD (ty, T.ADD(wordTy, e, li 8), rgn)),
-			   stms], 
-	     gprs, fprs)
-	  | (ARG (T.LOAD (ty, e, rgn)), C_FPR (mty1, r1), C_GPR (mty2, r2)) =>
-	    (List.concat [ copyToFReg(mty1, r1, T.FLOAD (ty, e, rgn)),
-			   copyToReg(mty2, r2, T.LOAD (ty, T.ADD(wordTy, e, li 8), rgn)),
-			   stms], 
-	     gprs, fprs)
-	  | _ => raise Fail "invalid arg / location combination"
-         (* end case *))
-*)
 
     (* copy C arguments into parameter locations *)
     fun copyArgs (args, argLocs) = let

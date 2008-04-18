@@ -5,7 +5,7 @@
  * parameters in order.
  *
  * The example code below passes arguments x and y to the MLRISC-generated C call. The output
- * of glue.c and sanity.c should be identical.
+ * of main.c and sanity.c should be identical.
 
  /* glue.c */
  #define MAX_SZ 16
@@ -32,6 +32,7 @@
       printf("%d", tmp);
  }
 
+ /* main.c */
  int main () 
  {
      glueCode();
@@ -41,7 +42,10 @@
  /* sanity.c */
  int main ()
  {
-     printf("%d %f %d", 23423, 1024.013f, 23432);
+     int x = 23432;
+     float y = 1024.013f;
+     int tmp = target(x, y);
+     printf ("%d", tmp);
      return 0;
  }
 
@@ -148,11 +152,15 @@ structure Main =
 	    td
         end
 
-    fun cTyToParam (ty, (i, params, vars)) = let
-        val var = " a"^Int.toString i
-        in 
-           (i+1, (cTyToString(ty)^var) :: params, var :: vars)
-        end
+    fun genParamName (i) = " a"^Int.toString i
+
+    fun genParamNames (tys) = List.rev(#2 (List.foldl (fn (ty, (i, params)) => (i+1, genParamName(i) :: params)) (0, []) tys))
+
+    fun genParam (ty, name) = cTyToString ty^name
+
+    fun genParams (paramTys, vars) = List.map genParam (ListPair.zip (paramTys, vars))
+
+    fun genTargetPrintfArgs (vars, paramTys) = List.concat (ListPair.map (fn (prefix, ty) => cTyNames prefix ty) (vars, paramTys))
 
     fun genPrintf (formatString, args) =
 	"printf("^formatString^","^(String.concatWith ", " args)^");"
@@ -161,45 +169,41 @@ structure Main =
 	"\"" ^ String.concatWith " " elts ^ "\\n\""
 
     (* construct a format string printing the parameters of a proto *)
-    fun protoToFormatString {conv, retTy, paramTys} = genFormatString (List.map tyToFormatString paramTys)
+    fun protoToFormatString ({conv, retTy, paramTys}, args) = genFormatString (ListPair.map (fn (arg, ty) => arg^"="^tyToFormatString ty^"\\n") (args, paramTys))
 
-    fun protoToPrintf (proto, args) = genPrintf(protoToFormatString(proto), args)	
+    fun protoToPrintf (proto, args) = genPrintf(protoToFormatString(proto, args), args)	
 
     (* generate a dummy target function that prints its parameters *)
     fun targetFun (targetName, proto as {conv, retTy, paramTys}, retVal) = let
-        val (_, params, vars) = List.foldl cTyToParam (0, [], []) paramTys
-	val (params, vars) = (List.rev params, List.rev vars)
-	val vars = List.concat (ListPair.map (fn (prefix, ty) => cTyNames prefix ty) (vars, paramTys))
+	val vars = genParamNames paramTys
+	val params = genParams(paramTys, vars)
+	val printfArgs = genTargetPrintfArgs(vars, paramTys)
 	in 
            cTyToString retTy ^ " " ^ targetName ^ "(" ^ (String.concatWith ", " params) ^ ")" ^
 	      "{" ^
-	          protoToPrintf(proto, vars) ^
+	          protoToPrintf(proto, printfArgs) ^
 	          "return "^(String.concat (List.map cArgToString retVal))^";"^
               "}"
         end
 
-    fun genMLRISCGlueHdr (mlriscGlue, proto as {conv, retTy, paramTys}) = let
-        val (_, params, vars) = List.foldl cTyToParam (0, [], []) paramTys
-	val (params, vars) = (List.rev params, List.rev vars)
-	in 
-           cTyToString retTy ^ " " ^ mlriscGlue ^ "(void* arr0);"
-        end
+    fun genMLRISCGlueHdr (mlriscGlue, proto as {conv, retTy, paramTys}) = 
+        cTyToString retTy ^ " " ^ mlriscGlue ^ "(void* arr0);"
 
-    (* generate C code that initializes an argument *) 
-    fun genArg ((ty, arg), (i, assignStms)) = 
-	(i+1, 
+    fun genAssignArg (ty, var, arg) = cTyToString(ty)^" "^var^" = "^cArgToString(arg)^";"
+
+    (* generate C code that initializes an argument in arr0 *) 
+    fun genInitArr0 (ty, arg) = 
 	 String.concatWith "\t" [
          "{",
-              cTyToString(ty)^" tmp = "^cArgToString(arg)^";",
+              genAssignArg(ty, "tmp", arg),
 	      "memcpy(arr, &tmp, sizeof("^cTyToString(ty)^"));",
 	      "arr += MAX_SZ;",
          "}\n"
          ]
-	 :: assignStms)
 
     (* generate C code that calls the MLRISC-generated function *)
     fun genCGlueCode (mlriscGlue, proto as {conv, retTy, paramTys}, args) = let
-	val (_, stms) = List.foldl genArg (0, []) (ListPair.zip (paramTys, args))
+	val stms = List.rev (ListPair.map genInitArr0 (paramTys, args))
 	val glueCall = if retTy <> CTy.C_void
                           then cTyToString retTy ^ " " ^retValVar^" = " ^ mlriscGlue^"(arr0);\n\t"^
 			       genPrintf(genFormatString([tyToFormatString retTy]), [retValVar])
@@ -216,45 +220,75 @@ structure Main =
             ]
         end
 
+    fun zip3 (ls1, ls2, ls3) = let
+	fun f ([], _, _, xs) = List.rev xs
+	  | f (x1 ::xs1, x2::xs2, x3::xs3, xs) = f(xs1, xs2, xs3, (x1, x2, x3) :: xs)
+        in
+	   f(ls1, ls2, ls3, [])
+        end
+
+    (* generate C code that calls the MLRISC-generated function *)
+    fun genTestCode (proto as {conv, retTy, paramTys}, args) = let
+	val paramNames = genParamNames paramTys
+	val stms = List.map genAssignArg (zip3(paramTys, paramNames, args))
+	val callTarget = "target("^String.concatWith ", " paramNames^");"
+	val glueCall = if retTy <> CTy.C_void
+                          then cTyToString retTy ^ " " ^retValVar^" = " ^ callTarget^"\n\t"^
+			       genPrintf(genFormatString([tyToFormatString retTy]), [retValVar])
+		          else callTarget
+        in
+	   String.concatWith "\n\t" [
+             "void testCode(){",
+                String.concatWith "\t " (List.rev stms),
+	        glueCall,
+	      "}"
+            ]
+        end
+
     val cIncludes = String.concatWith "\n" [
         "#include <stdio.h>",
         "#include <stdlib.h>",
         "#include <string.h>\n"
     ]
 
+    fun isStruct (CTy.C_STRUCT _) = true
+      | isStruct _ = false
+
+    fun maxSzOfProto ({conv, paramTys, retTy}) = let
+	fun szOfTy ty = #sz (CSizes.sizeOfTy ty)
+        in
+	    List.foldl Int.max 0 (List.map szOfTy (retTy ::paramTys))
+	end
+
     fun genGlue (target, mlriscGlue, proto, args, retVal) = String.concatWith "\n" [
           cIncludes,
-  	  "#define MAX_SZ "^Int.toString(maxArgSz),
-	  String.concatWith "\n" (List.map cTyDecl (#paramTys proto)),
+  	  "#define MAX_SZ "^Int.toString((maxSzOfProto proto) div 8),
+	  (* tyep declarations for structs *)
+	  String.concatWith "\n" (List.map cTyDecl (List.filter isStruct (#paramTys proto))),
+	  (* C prototype for the MLRISC assembly stub *)
 	  genMLRISCGlueHdr(mlriscGlue, proto),
+	  (* target function *)
 	  targetFun(target, proto, retVal),
-	  genCGlueCode(mlriscGlue, proto, args)
+	  (* C glue code for calling into the MLRISC assembly stub *)
+	  genCGlueCode(mlriscGlue, proto, args),
+	  (* C test code that directly calls the target function *)
+	  genTestCode(proto, args)
         ]
 
     fun genCMain () = "int main () { glueCode(); return 0; }"
 
-    fun genSanityCheck (proto, args, retVal) = let
-	val args = List.concat (List.map flattenArg args)
-	val args = List.map cArgToString args
-	val retPrintf = (case retVal
-             of [] => ""
-	      | [retVal] => genPrintf(genFormatString [tyToFormatString (#retTy proto)], [cArgToString retVal])
-            (* end case *))
-        in
-	    cIncludes^
-            "int main () { "^protoToPrintf(proto, args)^retPrintf^" return 0; }"
-        end
+    fun genSanityCheck (proto, args, retVal) = "int main () { testCode(); return 0; }"
 
-    fun offset arr0 i = T.ADD(wordTy, arr0, li(i*maxArgSzB))
+    fun offset maxSz arr0 i = T.ADD(wordTy, arr0, li(i*maxSz))
 
-    fun genGlueArg arr0 (ty, (i, args)) = (i+1, 
+    fun genGlueArg maxSz arr0 (ty, (i, args)) = (i+1, 
 	(case ty
-          of CTy.C_signed CTy.I_int => CCalls.ARG (T.LOAD(32, offset arr0 i, ()))
-	   | CTy.C_unsigned CTy.I_int => CCalls.ARG (T.LOAD(32, offset arr0 i, ()))
-	   | CTy.C_PTR => CCalls.ARG (T.LOAD(wordTy, offset arr0 i, ()))
-	   | CTy.C_STRUCT _ => CCalls.ARG (T.LOAD(wordTy, offset arr0 i, ()))
-	   | CTy.C_float => CCalls.FARG (T.FLOAD(32, offset arr0 i, ()))
-	   | CTy.C_double => CCalls.FARG (T.FLOAD(64, offset arr0 i, ()))
+          of CTy.C_signed CTy.I_int => CCalls.ARG (T.LOAD(32, offset maxSz arr0 i, ()))
+	   | CTy.C_unsigned CTy.I_int => CCalls.ARG (T.LOAD(32, offset maxSz arr0 i, ()))
+	   | CTy.C_PTR => CCalls.ARG (T.LOAD(wordTy, offset maxSz arr0 i, ()))
+	   | CTy.C_STRUCT _ => CCalls.ARG (T.LOAD(wordTy, offset maxSz arr0 i, ()))
+	   | CTy.C_float => CCalls.FARG (T.FLOAD(32, offset maxSz arr0 i, ()))
+	   | CTy.C_double => CCalls.FARG (T.FLOAD(64, offset maxSz arr0 i, ()))
         (* end case *)) :: args)
 
     val rand = Random.rand (0, 255)
@@ -279,10 +313,12 @@ structure Main =
     val pty3 = [CTy.C_STRUCT [CTy.C_float,CTy.C_float]]
     val pty3 = [CTy.C_STRUCT [CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float]]
     val pty4 = [CTy.C_STRUCT [CTy.C_PTR,CTy.C_float,CTy.C_float,CTy.C_float]]
+    val pty5 = [CTy.C_double, CTy.C_unsigned CTy.I_int, CTy.C_PTR]
+    val pty6 = [CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR]
 
     fun main _ = let
 	val retTy = CTy.C_double
-	val paramTys = pty4
+	val paramTys = pty1
 
 	val cArgs = List.map genRandArg paramTys
 	val retVal = if retTy <> CTy.C_void then [genRandArg retTy] else []
@@ -311,7 +347,7 @@ structure Main =
 	(* output MLRISC code *)
 	val tmpReg = C.newReg()
 	val tmpR = T.REG(wordTy, tmpReg)
-	val (_, glueArgs) = List.foldl (genGlueArg tmpR) (0, []) paramTys
+	val (_, glueArgs) = List.foldl (genGlueArg (maxSzOfProto proto) tmpR) (0, []) paramTys
 	val asmOutStrm = TextIO.openOut "mlrisc.s"
 	fun doit () = Test.dumpOutput(Test.codegen(mlriscGlue, target, proto, [T.MV(wordTy, tmpReg, param0)], List.rev glueArgs))
 	val _ = AsmStream.withStream asmOutStrm doit ()

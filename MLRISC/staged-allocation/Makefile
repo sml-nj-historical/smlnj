@@ -3,7 +3,8 @@ build-amd64:
 	sml @SMLcmdname=test-main @SMLload=test-main
 	gcc -g -m64 -c mlrisc.s
 	gcc -g  -m64 -c glue.c
-	gcc -g  -m64 sanity.c -o sanity
+	gcc -g  -m64 -c sanity.c
+	gcc -g  -m64 mlrisc.o glue.o sanity.o -o sanity
 	gcc -g  -m64 -c main.c
 	gcc -g  -m64 mlrisc.o glue.o main.o -o main
 	./main > main.out
