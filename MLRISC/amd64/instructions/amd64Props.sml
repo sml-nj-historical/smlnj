@@ -71,12 +71,12 @@ functor AMD64Props (
     fun branchTargets(I.ANNOTATION{i,...}) = branchTargets i
       | branchTargets(I.INSTR i) =  (case i
         of I.JMP(_, []) => [ESCAPES]
-	 | I.JMP(_, labs) => map LABELLED labs
+	 | I.JMP(_, labs) => List.map LABELLED labs
 	 | I.RET _ => [ESCAPES]
 	 | I.JCC{opnd=I.ImmedLabel(T.LABEL(lab)), ...} => 
 	     [FALLTHROUGH, LABELLED lab]
-	 | I.CALL{cutsTo, ...} => FALLTHROUGH :: map LABELLED cutsTo
-	 | I.CALLQ{cutsTo, ...} => FALLTHROUGH :: map LABELLED cutsTo
+	 | I.CALL{cutsTo, ...} => FALLTHROUGH :: List.map LABELLED cutsTo
+	 | I.CALLQ{cutsTo, ...} => FALLTHROUGH :: List.map LABELLED cutsTo
 	 | I.INTO => [ESCAPES]
 	 |  _ => error "branchTargets")
       | branchTargets _ = error "branchTargets"

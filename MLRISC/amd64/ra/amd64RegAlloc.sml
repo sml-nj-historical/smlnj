@@ -104,15 +104,13 @@ functor AMD64RegAlloc (
 
     fun removeDeadCode(cfg as Graph.GRAPH graph) = let
         val blocks = #nodes graph ()
-        val find = IntHashTable.find deadRegs
-        fun isDead r = 
-            case find (CB.cellId r) of
-               SOME _ => true
-            |  NONE   => false
-        fun isAffected i = getOpt (IntHashTable.find affectedBlocks i, false)
+        fun isDead r = Option.isSome (IntHashTable.find deadRegs (CB.cellId r))
+        fun isAffected i = Option.getOpt (IntHashTable.find affectedBlocks i, false)
         fun isDeadInstr(I.ANNOTATION{i, ...}) = isDeadInstr i 
           | isDeadInstr(I.INSTR(I.MOVE{dst=I.Direct (_,rd), ...})) = isDead rd
+          | isDeadInstr(I.INSTR(I.FMOVE{dst=I.FDirect rd, ...})) = isDead rd
           | isDeadInstr(I.COPY{k=CB.GP, dst=[rd], ...}) = isDead rd
+          | isDeadInstr(I.COPY{k=CB.FP, dst=[rd], ...}) = isDead rd
           | isDeadInstr _ = false
         fun scan [] = ()
           | scan((blknum, CFG.BLOCK{insns, ...})::rest) =
@@ -121,7 +119,7 @@ functor AMD64RegAlloc (
                  insns := elim(!insns, [])
                 ) else ();
              scan rest)
-       and elim([], code) = rev code
+       and elim([], code) = List.rev code
          | elim(i::instrs, code) = 
           if isDeadInstr i then 
              ((* deadcode := !deadcode + 1; *) elim(instrs, code))
@@ -150,7 +148,9 @@ functor AMD64RegAlloc (
                     structure Spill = Spill
                    )
                  )
-                (fun cellkind CB.GP = true | cellkind _ = false
+                (fun cellkind CB.GP = true
+		   | cellkind CB.FP = true
+		   | cellkind _ = false 
                  val deadRegs = deadRegs
                  val affectedBlocks = affectedBlocks
                  val spillInit = spillInit
@@ -170,19 +170,18 @@ functor AMD64RegAlloc (
     val reloadInstr = SpillInstr.reload CB.GP
 
     val name = "AMD64RegAlloc"
-    val amd64CfgDebugFlg = 
-         MLRiscControl.mkFlag ("amd64-cfg-debug", "amd64 CFG debug mode")
+    val amd64CfgDebugFlg = MLRiscControl.mkFlag ("amd64-cfg-debug", "amd64 CFG debug mode")
 
-    val nGPRegs = length Int.avail + length Int.dedicated
-    val nFPRegs = length Float.avail + length Float.dedicated
+    val nGPRegs = List.length Int.avail + List.length Int.dedicated
+    val nFPRegs = List.length Float.avail + List.length Float.dedicated
 
     structure GPR = GetReg
         (val nRegs = nGPRegs
-         val available = map CB.registerId Int.avail
+         val available = List.map CB.registerId Int.avail
          val first = CB.registerId (I.C.GPReg 0))
     structure FPR = GetReg
         (val nRegs = nFPRegs
-         val available = map CB.registerId Float.avail
+         val available = List.map CB.registerId Float.avail
          val first = CB.registerId (I.C.FPReg 0))
 
     local
@@ -192,8 +191,8 @@ functor AMD64RegAlloc (
         | set (dedicated, r :: rs) = (
           Array.update (dedicated, r, true);
           set (dedicated, rs))
-      val _ = set (dedicatedR, map CB.registerId Int.dedicated)
-      val _ = set (dedicatedF, map CB.registerId Float.dedicated)
+      val _ = set (dedicatedR, List.map CB.registerId Int.dedicated)
+      val _ = set (dedicatedF, List.map CB.registerId Float.dedicated)
       fun isDedicated dedicated r = 
           r < Array.length dedicated andalso Array.sub (dedicated, r)
     in
@@ -319,7 +318,7 @@ functor AMD64RegAlloc (
         reloadDst = reloadReg s,
         renameSrc = renameR,
         copyInstr = copyInstrR,
-        K         = length Int.avail,
+        K         = List.length Int.avail,
         getreg    = GPR.getreg,
         cellkind  = CB.GP,
         dedicated = isDedicatedR,
@@ -329,7 +328,7 @@ functor AMD64RegAlloc (
 	} : RA.raClient
 
     fun getFregLoc (s, an, RA.FRAME loc) = Float.spillLoc (s, an, loc)
-      | getFregLoc (s, an, RA.MEM_REG r) = I.FDirect r
+      | getFregLoc (s, an, RA.MEM_REG r) = raise Fail "mem regs unsupported"
 
     fun spillF s {annotations=an, kill, reg, spillLoc, instr} = let
         (* preserve annotation on instruction *)
@@ -414,7 +413,7 @@ functor AMD64RegAlloc (
         reloadDst = reloadFreg s,
         renameSrc = renameF,
         copyInstr = copyInstrF,
-        K         = length Float.avail,
+        K         = List.length Float.avail,
         getreg    = FPR.getreg,
         cellkind  = CB.FP,
         dedicated = isDedicatedF,

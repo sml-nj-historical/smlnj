@@ -315,10 +315,12 @@ structure Main =
     val pty4 = [CTy.C_STRUCT [CTy.C_PTR,CTy.C_float,CTy.C_float,CTy.C_float]]
     val pty5 = [CTy.C_double, CTy.C_unsigned CTy.I_int, CTy.C_PTR]
     val pty6 = [CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR]
+    val pty7 = [CTy.C_float]
+    val pty8 = [CTy.C_PTR]
 
     fun main _ = let
 	val retTy = CTy.C_double
-	val paramTys = pty1
+	val paramTys = pty7
 
 	val cArgs = List.map genRandArg paramTys
 	val retVal = if retTy <> CTy.C_void then [genRandArg retTy] else []

@@ -194,7 +194,7 @@ functor AMD64SVID (
 	val flatCTy = CTypes.flattenCTy cTy
         in
 	    if (sz > 2*8 orelse containsUnalignedFields cTy)
-	       then List.tabulate (sz div 8, fn _ => K_MEM)
+	       then List.tabulate (sz div 8, fn _ => K_MEM)       (* K_MEM ^ (number of eightbytes of the type) *)
                else let
 		  val eightBytes = eightBytes flatCTy
 		  in
@@ -218,20 +218,6 @@ functor AMD64SVID (
         in
 	    List.map (fn k => (sz * 8, k, align)) ks
         end
-(*
-    (* convert a C type to a location for staged allocation *)
-    fun cTyToLocs cTy = let
-	val ks = kindsOfCTy cTy
-	val {sz, align} = CSizes.sizeOfTy cTy
-	in
-	   case (cTy, ks)
-	    of ( cTy, [k] ) => [(sz*8, k, align)]
-	     (* cleave the type into two eightbytes *)
-	     | (CTy.C_STRUCT _, [k1, k2]) => [(8*8, k1, 8), ((sz-8)*8, k2, 8)]
-	     | (CTy.C_STRUCT _, _) => raise Fail "todo"
-	     | _ => raise Fail "todo"
-	end
-*)
 
     (* converts location information to an argument location in C *)
     fun saInfoToCLoc _ (w, S.REG (_, r), K_GPR) = C_GPR (w, r)
@@ -292,15 +278,18 @@ functor AMD64SVID (
     fun copyToFReg (mty, r, e) = let
 	val tmp = C.newFreg ()
         in
-	    [T.FCOPY (mty, [r], [tmp]), T.FMV (mty, tmp, e)]
+	    [T.FCOPY (mty, [r], [tmp]), T.FMV (mty, tmp, e)] 
+(*	    [T.FMV (mty, r, T.FREG(mty, tmp)), T.FMV (mty, tmp, e)] *)
+(*	    [T.FMV (mty, r, e)]*)
         end
 
     (* generate MLRISC statements for copying a C argument to a parameter / return location *)
     fun copyLoc arg (i, loc, (stms, gprs, fprs)) = (case (arg, loc)
+          (* GPR arguments *)
          of (ARG (e as T.REG _), C_STK (mty, offset)) =>
 	    (T.STORE (wordTy, offSp offset, e, stack) :: stms, gprs, fprs)
-	  | (ARG (T.LOAD (ty, e, rgn)), C_GPR (mty1, r1)) =>
-	    (copyToReg(mty1, r1, T.LOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, r1 :: gprs, fprs)
+	  | (ARG (T.LOAD (ty, e, rgn)), C_GPR (mty, r)) =>
+	    (copyToReg(mty, r, T.LOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, r :: gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_STK (mty, offset)) => let
 	    val tmp = C.newReg ()
 	    in
@@ -313,10 +302,11 @@ functor AMD64SVID (
 		(T.STORE (wordTy, offSp offset, T.REG (wordTy, tmp), stack) ::T.MV (wordTy, tmp, e) :: stms, gprs, fprs)
 	      end
 	  | (ARG e, C_GPR (mty, r)) => (copyToReg(mty, r, e) @ stms, r :: gprs, fprs)
+          (* floating-point arguments *)
 	  | (FARG (e as T.FREG _), C_STK (mty, offset)) =>
 	    (T.FSTORE (mty, offSp offset, e, stack) :: stms, gprs, fprs)
-	  | (ARG (T.LOAD (ty, e, rgn)), C_FPR (mty1, r1)) =>
-	    (copyToFReg(mty1, r1, T.FLOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, gprs, (mty1, r1) :: fprs)
+	  | (ARG (T.LOAD (ty, e, rgn)), C_FPR (mty, r)) =>
+	    (copyToFReg(mty, r, T.FLOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, gprs, (mty, r) :: fprs)
 	  | (FARG (T.FLOAD (ty, e, rgn)), C_STK (mty, offset)) => let
 	    val tmp = C.newFreg ()
 	    in
@@ -332,12 +322,12 @@ functor AMD64SVID (
 	  | _ => raise Fail "invalid arg / location combination"
          (* end case *))
 
-    fun copyLocs (arg, locs, (stms, gprs, fprs)) = 
+    fun copyArgLocs (arg, locs, (stms, gprs, fprs)) = 
 	ListPair.foldl (copyLoc arg) (stms, gprs, fprs) (List.tabulate(List.length locs, fn i => i), locs)
 
     (* copy C arguments into parameter locations *)
     fun copyArgs (args, argLocs) = let
-	val (stms, gprs, fprs) = ListPair.foldl copyLocs ([], [], []) (args, argLocs)
+	val (stms, gprs, fprs) = ListPair.foldl copyArgLocs ([], [], []) (args, argLocs)
         in
 	    (List.rev stms, gprs, fprs)
         end

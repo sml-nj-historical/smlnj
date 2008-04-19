@@ -893,8 +893,9 @@ functor AMD64Gen (
 	and fcopy (fty, ds, rs, an) = let
 	    fun mvInstr {dst, src} = 
 	    	[I.fmove {fmvOp=O.fmovOp fty, dst=dst, src=src}]
-	    val stms = Shuffle.shuffle {mvInstr=mvInstr, ea=fpr}
-	    	          {dst=ds, src=rs, tmp=NONE}
+	    (* eliminate unnecessary copies *)
+	    val (ds, rs) = ListPair.unzip (List.filter (not o CB.sameColor) (ListPair.zip (ds, rs)))
+	    val stms = Shuffle.shuffle {mvInstr=mvInstr, ea=fpr} {dst=ds, src=rs, tmp=NONE}
 	    in
 	      emits stms
 	    end 
@@ -977,9 +978,7 @@ functor AMD64Gen (
 
 	and fexpr (fty, d, e, an) = ( (*floatingPointUsed := true;*)
 	     case e
-	      of T.FREG (_, r) => if CB.sameColor (r, d)
-	      			    then ()
-	      			    else fcopy (fty, [d], [r], an)
+	      of T.FREG (_, r) => fcopy (fty, [d], [r], an)
 	       (* binary operators *)
 	       | T.FADD (_, a, b) => fbinop (fty, O.faddOp fty, a, b, d, an)
 	       | T.FSUB (_, a, b) => fbinop (fty, O.fsubOp fty, a, b, d, an)
