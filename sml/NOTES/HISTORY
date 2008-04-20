@@ -15,6 +15,13 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/20/04
+Description:
+
+Implemented timer-based profiling on Windows, with behavior as close
+to the *nix ITIMER-based profiling as possible.
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
 Date: 2008/07/04
 Description:
 

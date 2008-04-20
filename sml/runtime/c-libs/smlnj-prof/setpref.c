@@ -20,17 +20,19 @@ extern void DisableProfSignals (void);
  */
 ml_val_t _ml_Prof_setpref (ml_state_t *msp, ml_val_t arg)
 {
-#ifdef OPSYS_UNIX
+#if defined(OPSYS_UNIX) || defined(OPSYS_WIN32)
     bool_t	enabled = (ProfCntArray != ML_unit);
-    int		i;
+    int	 i;
 
     if (arg != OPTION_NONE) {
 	ProfCntArray = OPTION_get(arg);
 	if (! enabled) {
 	  /* add ProfCntArray to the C roots */
 	    CRoots[NumCRoots++] = &ProfCntArray;
+#ifdef OPSYS_UNIX
 	  /* enable profiling signals */
 	    EnableProfSignals ();
+#endif
 	}
     }
     else if (enabled) {
@@ -41,8 +43,10 @@ ml_val_t _ml_Prof_setpref (ml_state_t *msp, ml_val_t arg)
 		break;
 	    }
 	}
+#ifdef OPSYS_UNIX
       /* disable profiling signals */
 	DisableProfSignals ();
+#endif
 	ProfCntArray = ML_unit;
     }
 
