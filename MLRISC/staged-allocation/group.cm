@@ -27,6 +27,7 @@ Group
   functor PseudoOps
   functor InstructionStream
   functor AMD64Instr
+  functor AMD64SpillInstr
   functor AMD64Shuffle
   functor MLTreeHash
   functor AMD64AsmEmitter
@@ -36,7 +37,11 @@ Group
   functor MLTreeUtils
   functor AMD64DarwinPseudoOps
   functor AMD64GasPseudoOps
-
+  functor RISC_RA
+  functor RASpill
+  
+  structure RACore
+  structure ChaitinSpillHeur
   structure CTypes  
   structure AMD64Cells
   structure DirectedGraph

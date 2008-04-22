@@ -38,22 +38,22 @@ structure AMD64PseudoOps  =
 end (* AMD64PseudoOps *)
 *)
 
-(*
+
 functor AMD64PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = AMD64GasPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-*)
 
+(*
 functor AMD64PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = AMD64DarwinPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-
+*)
 
 structure AMD64PseudoOps = AMD64PseudoOpsFn(
             structure T = AMD64MLTree
@@ -237,3 +237,51 @@ structure AMD64Expand = CFGExpandCopies (
 structure CCalls = AMD64SVID (
            structure T = AMD64MLTree
            val frameAlign = 16)
+
+
+structure RA2 = 
+    RISC_RA
+    (structure I = AMD64Instr
+     structure Asm = AMD64Asm
+     structure CFG = AMD64CFG
+     structure InsnProps = AMD64InsnProps
+     structure Rewrite = 
+       struct
+         structure I = AMD64Instr
+	 fun rewriteDef _ = raise Fail ""
+	 fun rewriteUse _ = raise Fail ""
+	 fun frewriteDef _ = raise Fail ""
+	 fun frewriteUse _ = raise Fail ""
+       end
+     structure SpillInstr = AMD64SpillInstr (
+               structure I = I
+               structure Props = AMD64InsnProps
+	       val floats16ByteAligned = true)
+     structure SpillHeur = ChaitinSpillHeur
+     structure Spill = RASpill (structure InsnProps = AMD64InsnProps
+                                structure Asm = AMD64Asm)
+     
+     datatype spillOperandKind = SPILL_LOC | CONST_VAL
+     type spill_info = unit
+     fun beforeRA _ = raise Fail ""
+
+     val architecture = "amd64"
+     fun pure _ = true
+
+     structure Int =
+	struct
+	  val avail = []
+	  val dedicated = []
+	  fun spillLoc _ = raise Fail ""
+	  val mode = RACore.NO_OPTIMIZATION
+	end
+     structure Float =
+	struct
+	  val avail = []
+	  val dedicated = []
+	  fun spillLoc _ = raise Fail ""
+	  val mode = RACore.NO_OPTIMIZATION
+	end
+
+    )
+			   

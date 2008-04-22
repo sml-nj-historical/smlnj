@@ -24,11 +24,32 @@ structure TestStagedAllocation =
 	           proto=proto,
 	           args=args}
 
+	fun wordLit i = T.LI (T.I.fromInt (wordTy, i))
+
+	fun mv () = let
+	    val r = C.newReg()
+	    in
+	        [T.MV(wordTy, r, T.LOAD(wordTy, T.REG(wordTy, C.rsp), ())),
+		 T.MV(wordTy, C.rax, T.REG(wordTy, r))
+		]
+	    end
+
+	val fr = C.FPReg 10
+
+	fun fmv () = let
+	    val r = C.newFreg()
+	    in
+	        [T.FMV(32, r, T.FLOAD(32, T.REG(wordTy, C.rsp), ())),
+		 T.FMV(32, fr, T.FREG(32, r))
+		]
+	    end
+
 	val stms = List.concat [
 		   [T.EXT(AMD64InstrExt.PUSHQ(T.REG(64, C.rbp))),
-		    T.COPY (wordTy, [C.rbp], [C.rsp])],
+		    T.COPY (wordTy, [C.rbp], [C.rsp])],		   
 		   initStms,
-		   callseq,
+		   callseq, 
+(*		    mv(), *)
 		   [T.EXT(AMD64InstrExt.LEAVE)],
 		   [T.RET []]]
 
@@ -49,7 +70,7 @@ structure TestStagedAllocation =
 	    pseudoOp (PseudoOpsBasisTyp.EXPORT [functionName]);    
             entryLabel functionName; (* define the entry label *)
             List.app emit stms; (* emit all the statements *)
-            exitBlock result;
+            exitBlock (T.FPR (T.FREG (32, fr)) :: T.GPR (T.REG (32, C.rax)) :: result);
             endCluster [])
 	val cfg = doit ()
 	val cfg = AMD64RA.run cfg
