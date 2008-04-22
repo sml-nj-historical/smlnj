@@ -33,7 +33,7 @@ help:
 
 classic:
 	for f in $(IDL_FILES) ; do \
-	  $(ML_IDL) -t classic-c $(ML_IDL_FLAGS) $$f; \
+	  $(ML_IDL) -t classic $(ML_IDL_FLAGS) $$f; \
 	done
 
 new-rt:
@@ -49,5 +49,5 @@ sml:
 install:
 
 clean:
-	rm -rf *.h *.c *.hxx *.cxx
+	rm -rf *.h *.c *.hxx *.cxx *.sml *.cm
 
