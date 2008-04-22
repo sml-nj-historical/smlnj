@@ -10,7 +10,7 @@ structure JSONTokens =
   struct
 
     datatype token
-      = EOF	(* end-of-file *)
+      = EOF		(* end-of-file *)
       | LB | RB		(* "[" "]" *)
       | LCB | RCB	(* "{" "}" *)
       | COMMA		(* "," *)
