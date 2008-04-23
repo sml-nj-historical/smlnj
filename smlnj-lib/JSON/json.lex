@@ -14,13 +14,17 @@
   fun eof () = T.EOF
   fun int s = T.INT(valOf(IntInf.fromString s))
   fun float s = T.FLOAT(valOf(LargeReal.fromString s))
-)
+(* support for incremental construction of strings *)
+  val sbuf : string list ref = ref []
+  fun addStr s = sbuf := s :: !sbuf
+  fun finishString () = (String.concat(List.rev(!sbuf)) before sbuf := [])
+);
 
 %let digit1_9 = [1-9];
 %let digit = [0-9];
 %let digits = {digit}+;
 %let int = "-"?({digit} | {digit1_9}{digits}+);
-%let frac = "."{num};
+%let frac = "."{digits};
 %let exp = [eE][+-]?{digits};
 %let xdigit = {digit}|[a-fA-F];
 
@@ -56,4 +60,4 @@
 <S>[^\\"]+		=> ( addStr yytext; continue() );
 <S>"\""			=> ( YYBEGIN INITIAL; finishString() );
 
-"/*"^(.*"*/".*)"*/"	=> ( skip() );
+"/*"~(.*"*/".*)"*/"	=> ( skip() );
