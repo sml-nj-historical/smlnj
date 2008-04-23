@@ -17,6 +17,13 @@
 (* support for incremental construction of strings *)
   val sbuf : string list ref = ref []
   fun addStr s = sbuf := s :: !sbuf
+  fun addUChr lit = let
+      (* trim the "\u" prefix *)
+	val digits = Substring.triml 2 (Substring.full lit)
+	val SOME(w, _) = Word.scan StringCvt.HEX Substring.getc digits
+	in
+	  addStr(UTF8.encode w)
+	end
   fun finishString () = (String.concat(List.rev(!sbuf)) before sbuf := [])
 );
 

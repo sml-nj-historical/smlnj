@@ -19,10 +19,12 @@ is
 
   $/basis.cm
   $/smlnj-lib.cm
+  $/ml-lpt-lib.cm
 
+  json.lex : ml-ulex
+  json.sml
   json-parser.sml
   json-printer.sml
   json-stream-parser.sml
   json-stream-printer.sml
   json-tokens.sml
-  json.sml
