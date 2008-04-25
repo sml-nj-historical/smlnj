@@ -416,7 +416,8 @@ let val (tcKindChk, _, teKindChk) = tcteKindCheckGen()
     and ltyChk' kenv lty =
          ltyIChk kenv (lt_out lty)
          handle x => 
-           (with_pp (fn ppstrm => (PPLty.ppLty (!pd) ppstrm lty;
+           (with_pp (fn ppstrm => (PP.string ppstrm "Lty: ";
+				   PPLty.ppLty (!pd) ppstrm lty;
                                    PP.newline ppstrm));
             raise x)
  in ltyChk'

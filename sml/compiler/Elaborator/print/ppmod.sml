@@ -569,7 +569,7 @@ and ppStrEntity ppstrm (e,env,depth) =
     end
 
 and ppFctEntity ppstrm (e, env, depth) =
-    let val {stamp,paramEnts,closure,properties,rpath,stub} = e
+    let val {stamp,paramRlzn,bodyRlzn,closure,properties,rpath,stub} = e
 	val {openHVBox,openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
     in if depth <= 1 
 	then pps "<functor entity>"
@@ -583,9 +583,13 @@ and ppFctEntity ppstrm (e, env, depth) =
 		pps "stamp: ";
 		pps (Stamps.toShortString stamp);
 		newline();
-		pps "paramEnts: ";
+		pps "paramRlzn: ";
 		break{nsp=1,offset=2};
-		ppEntityEnv ppstrm (paramEnts,env,depth-1);
+		ppStrEntity ppstrm (paramRlzn,env,depth-1);
+		newline();
+		pps "bodyRlzn: ";
+		break{nsp=1,offset=2};
+		ppStrEntity ppstrm (bodyRlzn,env,depth-1);
 		newline();
 		pps "closure:";
 		break{nsp=1,offset=2};
@@ -888,14 +892,14 @@ and ppFctExp ppstrm (fctExp,depth) =
 	     pps ppstrm "bod:"; ppStrExp ppstrm (body, depth-1);
 	    closeBox ppstrm;
 	   closeBox ppstrm)    
-       | M.LAMBDA {param, paramEnts, body} =>
+       | M.LAMBDA {param, paramRlzn, body} =>
 	  (openHVBox ppstrm (PP.Rel 0);
 	    pps ppstrm "FE.L:"; break ppstrm {nsp=1,offset=1};
 	    openHVBox ppstrm (PP.Rel 0);
 	     pps ppstrm "par:"; ppEntVar ppstrm param;
 	     break ppstrm {nsp=1,offset=0};
 	     pps ppstrm "parents:"; 
-	     ppEntityEnv ppstrm (paramEnts, SE.empty, depth-1);
+	     ppStrEntity ppstrm (paramRlzn, SE.empty, depth-1);
 	     break ppstrm {nsp=1,offset=0};
 	     pps ppstrm "bod:"; ppStrExp ppstrm (body, depth-1);
 	    closeBox ppstrm;

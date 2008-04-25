@@ -1509,7 +1509,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 		      | FinalTyc r =>
 			  (TYCent(instToTyc(r,entEnv)),failuresSoFar)
 
-		      | FinalFct{sign as FSIG{paramvar,paramsig,...},
+		      | FinalFct{sign as FSIG{paramvar,paramsig,bodysig,...},
 				 def, epath, path} =>
 			 (case !def
 			   of SOME(FCT { rlzn, ... }) => FCTent rlzn
@@ -1519,19 +1519,30 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			      let val stamp = mkStamp()
 				  val (bodyExp) =
 				      newFctBody(sign, epath, path, entEnv)
-				  val ({entities=paramEnts,...}, _, _, _) =
+				  val (paramRlzn, _, _, _) =
 				      instGeneric{sign=paramsig, entEnv=entEnv, 
 	                                          rpath=path, 
 						  region=SourceMap.nullRegion,
 	                                          instKind=INST_PARAM
 							       DebIndex.top, 
-							       compInfo=compInfo}
+					          compInfo=compInfo}
+				  val nenv = EE.mark(mkStamp, 
+						     EE.bind(paramvar, 
+							     STRent paramRlzn,
+							     entEnv))
+				  val (bodyRlzn : strEntity,_,_,_) = 
+				      instGeneric{sign=bodysig, entEnv=nenv,
+						  rpath=path,
+						  region=SourceMap.nullRegion,
+						  instKind=INST_FMBD,
+					          compInfo=compInfo}
 				  val cl = CLOSURE{param=paramvar,
 						   body=bodyExp,
 						   env=entEnv}
 			      in FCTent {stamp = stamp,
 					 rpath=path,
-					 paramEnts = paramEnts,
+					 paramRlzn = paramRlzn,
+					 bodyRlzn = bodyRlzn,
 					 closure=cl,
 					 properties = PropList.newHolder (),
 					 stub=NONE}

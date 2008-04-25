@@ -193,10 +193,11 @@ and evalFct (fctExp, depth, epc, entEnv,
 
         | CONSTfct fctEntity => (fctEntity, entEnv)
 
-        | LAMBDA{param, paramEnts, body} => 
+        | LAMBDA{param, paramRlzn, body} => 
             let val clos = CLOSURE{param=param, body=body, env=entEnv}
 	     in ({stamp = mkStamp (),
-		  paramEnts = paramEnts,
+		  paramRlzn = paramRlzn,
+		  bodyRlzn = bogusStrEntity,
 		  closure=clos,
 		  properties = PropList.newHolder (),
 		  (*lambdaty=ref NONE,*)
@@ -208,10 +209,19 @@ and evalFct (fctExp, depth, epc, entEnv,
         | LAMBDA_TP{param, body, sign as FSIG{paramsig, bodysig, ...}} =>
             let val clos = CLOSURE{param=param, body=body, env=entEnv} 
                 val rpath' = IP.IPATH [paramSym]
-                val {entities=paramEntenv,...} =
+                val paramRlzn as {entities=paramEntenv,...} =
                     Instantiate.instParam{sign=paramsig, entEnv=entEnv, 
 					  rpath=rpath', tdepth=depth,
 					  region=S.nullRegion, compInfo=compInfo}
+		val {rlzn=bodyRlzn,...} = 
+		    Instantiate.instFmBody{sign=bodysig, 
+					   entEnv=EE.bind(param,
+							  STRent paramRlzn,
+							  entEnv),
+					   rpath=rpath', 
+					   region=S.nullRegion, 
+					   compInfo=compInfo}
+					   
 		(* val tps = 
                   let val entEnv' = 
                         EE.mark(mkStamp, EE.bind(param, STRent paramEnt, 
@@ -226,7 +236,8 @@ and evalFct (fctExp, depth, epc, entEnv,
                   end *)
 
              in ({stamp = mkStamp(),
-		  paramEnts = paramEntenv,
+		  paramRlzn = paramRlzn,
+		  bodyRlzn = bodyRlzn,
 		  closure=clos,
 		  properties = PropList.newHolder (),
 		  (* lambdaty=ref NONE, *)

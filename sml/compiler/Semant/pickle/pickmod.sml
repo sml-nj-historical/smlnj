@@ -1194,8 +1194,8 @@ in
 	    val op $ = PU.$ FE
 	    fun fe (M.VARfct s) = "o" $ [entPath s]
 	      | fe (M.CONSTfct e) = "p" $ [fctEntity e]
-	      | fe (M.LAMBDA { param, paramEnts, body }) =
-		"q" $ [entVar param, fctParamEnts paramEnts, strExp body]
+	      | fe (M.LAMBDA { param, paramRlzn, body }) =
+		"q" $ [entVar param, strEntity paramRlzn, strExp body]
 	      | fe (M.LAMBDA_TP { param, body, sign }) =
 		"r" $ [entVar param, strExp body, fctSig sign]
 	      | fe (M.LETfct (e, f)) = "s" $ [entityDec e, fctExp f]
@@ -1252,11 +1252,12 @@ in
 
 	and shStrEntity id = share (STRs id) strEntity
 
-        and fctEntity { stamp = s, paramEnts = e,
+        and fctEntity { stamp = s, paramRlzn = e, bodyRlzn = b,
 			closure, properties, (* tycpath,*) rpath, stub } =
 	    let val op $ = PU.$ FEN
 	    in
-		"f" $ ([stamp s, fctParamEnts e, fctClosure closure, 
+		"f" $ ([stamp s, strEntity e, strEntity b, 
+			fctClosure closure, 
 			ipath rpath]
 		       @ libPid (stub: M.stubinfo option, #owner)) 
 	    end

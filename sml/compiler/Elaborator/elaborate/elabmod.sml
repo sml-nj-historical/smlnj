@@ -1104,13 +1104,16 @@ case fctexp
 
           val _ = debugmsg "--elabFct[BaseFct]: body constrained"
 
-	  val paramEntenv = #entities paramRlzn
-          val fctExp = M.LAMBDA{param=paramEntVar,paramEnts= paramEntenv,
+	  
+          val fctExp = M.LAMBDA{param=paramEntVar,paramRlzn= paramRlzn,
 				body=bodyExp'}
 
           val resFct = 
-            let val bodySig' = case bodyStr' of STR { sign, ... } => sign
-		                              | _ => ERRORsig
+            let val (bodySig',bodyRlzn) = 
+		    case bodyStr' 
+		     of STR { sign, rlzn=bodyRlzn, ... } => 
+			(sign, bodyRlzn)
+		      | _ => (ERRORsig, bogusStrEntity)
 
                 val fctSig = 
                   M.FSIG{kind=NONE, paramsig=paramSig, 
@@ -1118,7 +1121,8 @@ case fctexp
                          paramsym=paramNameOp}
 
                 val rlzn = { stamp = mkStamp(),
-			     paramEnts = paramEntenv,
+			     paramRlzn = paramRlzn,
+			     bodyRlzn = bodyRlzn,
 			     closure=M.CLOSURE{param=paramEntVar,
 					       body=bodyExp',
 					       env=entEnv},

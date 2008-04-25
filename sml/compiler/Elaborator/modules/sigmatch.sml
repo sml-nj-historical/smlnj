@@ -1201,6 +1201,10 @@ val {resDec=resDec2, resStr=resStr2, resExp=resExp2} =
       INS.getTycPaths{sign=sign, rlzn=rlzn, entEnv=fsigBodySigEnv, 
                       compInfo=compInfo}
     | _ => [] *)
+val bodyRlzn = 
+    case resStr2
+     of M.STR { rlzn, ...} => rlzn
+      | _ => bogusStrEntity
 
 (*** the resulting coerced functor ***)
 val resFct =
@@ -1210,7 +1214,8 @@ val resFct =
       (* val tps = T.TP_FCT(paramTps, resTps) *)
 
       val resRlzn = {stamp = #stamp fctRlzn, (*** DAVE ? ***)
-		     paramEnts = #entities fsigParEnt,
+		     paramRlzn = fsigParEnt,
+		     bodyRlzn = bodyRlzn,
 		     closure = resClosure, rpath=rpath,
 		     (* tycpath=SOME tps, *)
 		     properties = PropList.newHolder (),

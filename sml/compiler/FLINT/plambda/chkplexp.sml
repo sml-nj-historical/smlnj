@@ -4,8 +4,6 @@
 signature CHKPLEXP = 
 sig 
 
-exception ChkPlexp (* PLambda type check error *)
-
 val checkLtyTop : PLambda.lexp * int -> bool
 val checkLty : PLambda.lexp * PLambdaType.ltyEnv * int -> bool
 val newlam_ref : PLambda.lexp ref
@@ -24,8 +22,6 @@ local
   structure DI = DebIndex
   open PLambda 
 in
-
-exception ChkPlexp (* PLambda type check error *)
 
 val debugging = ref true
 
@@ -48,7 +44,7 @@ val clickerror = fn () => (anyerror := true)
  *                         BASIC UTILITY FUNCTIONS                          *
  ****************************************************************************)
 fun debugmsg msg =
-    if false (* !debugging *)
+    if !debugging 
     then (say "[ChkPlexp]: "; say msg; say "\n")
     else ()
 
@@ -252,7 +248,8 @@ fun check (kenv, venv, d) =
   let fun ltyChkMsg msg lexp kenv lty = 
 	  ltyChk kenv lty 
 	  handle LKC.KindChk kndchkmsg =>
-		 (say ("*** Kind check failure during \
+		 (clickerror ();
+		  say ("*** Kind check failure during \
 		       \ PLambda type check: ");
 		  say (msg);
 		  say ("***\n Term: ");
@@ -260,7 +257,7 @@ fun check (kenv, venv, d) =
 		  say ("\n Kind check error: ");
 		  say kndchkmsg;
 		  say ("\n");
-		  raise ChkPlexp)
+		  bug "fatal kind error in ltyChk")
       fun loop le =
 	  let fun ltyChkMsgLexp msg kenv lty = 
 		    ltyChkMsg msg le kenv lty 

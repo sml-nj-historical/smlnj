@@ -98,6 +98,19 @@ fun tpsKnd (TP.TP_VAR{kind,...}) = kind
 		LT.tkc_fun(map kindToTKind paramks, kindToTKind bodyknd)
 	in kindToTKind kind
 	end *)
+  | tpsKnd (TP.TP_FCT(argtps, bodytps)) = 
+      LT.tkc_fun(map tpsKnd argtps, LT.tkc_seq (map tpsKnd bodytps))
+  | tpsKnd (TP.TP_SEL(TP.TP_APP(TP.TP_VAR{kind,...}, paramtps), i)) =
+      let val (_, result) = LT.tkd_fun kind
+	  val seq = LT.tkd_seq result
+	  val _ = debugmsg ("--tpsKnd fct result list length "^
+			    Int.toString (length seq)^" selecting "^
+			    Int.toString i) 
+	  val knd = List.nth(seq, i) 
+	      handle General.Subscript => bug "Unexpected functor result length"
+					    
+      in knd
+      end
   | tpsKnd _ = bug "unexpected tycpath parameters in tpsKnd"
 
 fun genTT(ftmap : TypesTP.tycpath FlexTycMap.map) = 
@@ -111,7 +124,7 @@ fun tpsTyc d tp =
 				DI.dp_print tdepth^" "
 			   ^Int.toString num^" current depth "^DI.dp_print cur)
 	    in
-		if finaldepth <= 0 then bug "Invalid depth calculation"
+		if finaldepth < 0 then bug "Invalid depth calculation"
 		else LT.tcc_var(finaldepth, num)
 	    end
         | h (TP.TP_TYC tc, cur) = tycTyc(TP.tycStripTP tc, cur)
@@ -224,13 +237,14 @@ and tycTyc(tc : Types.tycon, d) =
               end
               <<<*)
         (* | h (TP.FLEXTYC tp, _) = tpsTyc d tp *)
-        | h (stmp,FORMAL, n) = (* LT.tcc_fn([LT.tkc_int n], LT.tcc_seq []) *)
+        | h (stmp,FORMAL, n) = 
 	  (case FTM.find(!ftmap, stmp)
 	    of NONE => (debugmsg ("--tycTyc unable to find "^
 				  Stamps.toString stmp);
-			bug "unexpected FORMAL kind in tycTyc-h")
-	     | SOME tp => tpsTyc d tp)
-	  (* raise FND_FORMAL *)
+			bug ("unexpected FORMAL kind in tycTyc-h "^
+			     Stamps.toShortString stmp))
+	     | SOME tp => (debugmsg ("--tycTyc found "^Stamps.toShortString stmp);
+			   tpsTyc d tp))
         | h (_,TEMP, _) = bug "unexpected TEMP kind in tycTyc-h"
 
       and g (tycon as GENtyc {stamp, arity, kind, ...}) =
@@ -455,16 +469,16 @@ and fctRlznLty (sign, rlzn, depth, compInfo) =
     case (sign, ModulePropLists.fctEntityLty rlzn, rlzn) of
 	(sign, SOME (lt, od), _) => LT.lt_adj(lt, od, depth)
       | (fs as FSIG{paramsig, bodysig, ...}, _,
-         {closure as CLOSURE{env,...}, paramEnts, ...}) =>
+         {closure as CLOSURE{env,...}, paramRlzn, bodyRlzn=bodyRlzn', ...}) =>
         let val _ = debugmsg ">>fctRlznLty[instParam]"
-	    val argRlzn = 
-                INS.instParam {sign=paramsig, entEnv=env, tdepth=depth, 
+	    val argRlzn = paramRlzn 
+                (* INS.instParam {sign=paramsig, entEnv=env, tdepth=depth, 
                                rpath=InvPath.IPATH[], compInfo=compInfo,
-                               region=SourceMap.nullRegion}
+                               region=SourceMap.nullRegion}   *)
             val nd = DI.next depth
             (* val ks = map tpsKnd tycpaths *)
-	    val (tps, ftmap1) = (RepTycProps.getTk(fs, paramEnts, 
-					 #entities argRlzn, depth))
+	    val (tps, ftmap1) = (RepTycProps.getTk(fs, paramRlzn, 
+					 argRlzn, depth))
 	    val _ = ftmap := FTM.unionWith (fn(tp1,tp2)=> tp1) (!ftmap, ftmap1)
 	    val _ = debugmsg ">>tpsKnd"
 	    val ks = map tpsKnd tps
@@ -475,8 +489,32 @@ and fctRlznLty (sign, rlzn, depth, compInfo) =
             val bodyRlzn = 
                 EV.evalApp(rlzn, argRlzn, nd, EPC.initContext,
                            IP.empty, compInfo)
+	    val _ = if !debugging
+		    then (debugmsg "==================";
+			  withInternals(fn () =>
+                           debugPrint("argRlzn: ",
+                                 (fn pps => fn ee => 
+                                  PPModules.ppEntity pps (ee,SE.empty,100)),
+                                  (STRent argRlzn)));
+			  withInternals(fn () =>
+                           debugPrint("evalApp: ",
+                                 (fn pps => fn ee => 
+                                  PPModules.ppEntity pps (ee,SE.empty,100)),
+                                  (STRent bodyRlzn)));
+			  withInternals(fn () =>
+                           debugPrint("paramRlzn: ",
+                                 (fn pps => fn ee => 
+                                  PPModules.ppEntity pps (ee,SE.empty,100)),
+                                  (STRent paramRlzn)));
+			  withInternals(fn () =>
+                           debugPrint("bodyRlzn: ",
+                                 (fn pps => fn ee => 
+                                  PPModules.ppEntity pps (ee,SE.empty,100)),
+                                  (STRent bodyRlzn')));
+			  debugmsg "====================")
+		    else ()
 	    val _ = debugmsg ">>strRlznLty"
-            val bodyLty = strRlznLty(bodysig, bodyRlzn, nd, compInfo)
+            val bodyLty = strRlznLty(bodysig, bodyRlzn', nd, compInfo)
 	    val _ = debugmsg "<<strRlznLty"
             val lt = LT.ltc_poly(ks, [LT.ltc_fct([paramLty],[bodyLty])])
         in

@@ -1069,10 +1069,10 @@ structure UnpickMod : UNPICKMOD = struct
 	      | fe #"p" = & M.CONSTfct (fctEntity' ())
 	      | fe #"q" =
 		let val p = entVar ()
-		    val (e, etr) = fctParamEnts' ()
+		    val (e, etr) = strEntity' ()
 		    val (b, btr) = strExp' ()
 		in
-		    (M.LAMBDA { param = p, paramEnts = e, body = b }, btr)
+		    (M.LAMBDA { param = p, paramRlzn = e, body = b }, btr)
 		end
 	      | fe #"r" =
 		let val p = entVar ()
@@ -1207,11 +1207,13 @@ structure UnpickMod : UNPICKMOD = struct
 	and fctEntity' () = let
 	    fun f #"f" =
 		let val s = stamp ()
-		    val (e, etr) = fctParamEnts'()
+		    val (e, etr) = strEntity'()
+		    val (b, btr) = strEntity'()
 		    val (c, ctr) = fctClosure' ()
 		in
 		    ({ stamp = s,
-		       paramEnts = e,
+		       paramRlzn = e,
+		       bodyRlzn = b,
 		       closure = c,
 		       rpath = ipath (),
 		       properties = PropList.newHolder (),
@@ -1221,7 +1223,7 @@ structure UnpickMod : UNPICKMOD = struct
 					     else globalPid (),
 				     tree = ctr,
 				     lib = lib } },
-		     ctr)
+		     branch [etr,btr,ctr])
 		end
 	      | f _ = raise Format
 	in

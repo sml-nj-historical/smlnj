@@ -16,7 +16,7 @@ signature REPTYCPROPS =
 sig
    val procDec : Absyn.dec * DebIndex.index 
 		 -> (AbsynTP.dec * TypesTP.tycpath FlexTycMap.map)
-   val getTk : Modules.fctSig * EntityEnv.entityEnv * EntityEnv.entityEnv 
+   val getTk : Modules.fctSig * Modules.strEntity * Modules.strEntity 
 	       * DebIndex.depth 
 	       -> (TypesTP.tycpath list * TypesTP.tycpath FlexTycMap.map)
    
@@ -66,7 +66,9 @@ in
 
       fun insertMap(m, x, obj) = 
 	  (debugmsg ("--insertMap "^Stamps.toShortString x); 
-	   FTM.insert(m, x, obj))
+	   (case FTM.find(m, x) 
+	     of SOME _ => m
+	      | NONE => (FTM.insert(m, x, obj))))
 
       local
 	  structure ED = ElabDebug
@@ -255,7 +257,9 @@ in
 				    | _ => proc s)
 			    | TP.DEFtyc _ => loop(rest,env, renv, stmpseen)
 			    | _ => bug "repEPs 0")
-		      | _ => bug "repEPs 1"
+		      | M.STRent _ => bug "repEPs 1"
+		      | M.ERRORent => (* in MLRISC/ra/risc-ra.sml this actually happens *)
+			loop(rest,env,renv, stmpseen)
 		   handle EE.Unbound => bug ("repEPs Unbound"^
 					     EP.entPathToString ep)
 		end
@@ -268,50 +272,88 @@ in
 	   when TP information is eliminated from Elaborator *)
 	val buildKind = LT.tkc_int
     in
-      (* kinds : entenv * ep list * fctsig list -> kind list 
+      (* kinds : entenv * entenv * fctsig -> kind
 	 Computes the functor kind based on that functor's
 	 functor signature and the current entity env. *) 
-        fun kinds(eenv, 
+      fun kinds(paramEnts, bodyEnts, 
 		  M.FSIG{paramsig=M.SIG{elements=pelems,...},
 			 bodysig=M.SIG{elements=belems,...},...}) = 
 	    let val _ = debugmsg ">>kinds\n";
 	        val _ = debugmsg "--kinds[FCTent]\n"
 		val _ = if !debugging 
 			then (print "--kinds eenv\n";
-			      ppEntities eenv;
+			      ppEntities paramEnts;
 			      print "\n===\n")
 			else ()
-		val peps = repEPs(entpaths pelems, eenv)
+		val peps = repEPs(entpaths pelems, paramEnts)
 		val _ = debugmsg "--kinds peps computed\n"
 		val pfsigs = fsigInElems pelems
 		val _ = debugmsg "--kinds pfsigs computed\n"
+
+	        (* [TODO] This can be a problem. belems can refer to 
+		   formal functor body for curried functor,
+		   but formal body signature has not been
+		   instantiated with the actual argument realization. *)
+		val beps = repEPs(entpaths belems, bodyEnts)
+		val bfsigs = fsigInElems belems
 		(* What is the correct eenv to look up belem entpaths?
 		 *)
-		fun loop ([], _) = []
-		  | loop (ep::eps, pfsigs) = 
+		fun loop ([], _, eenv) = []
+		  | loop (ep::eps, pfsigs, eenv) = 
 		    (case EE.lookEP(eenv, ep)
 			  handle EE.Unbound => 
 				 bug ("kinds Unbound "^
 				      EP.entPathToString ep)
 		      of M.TYCent(TP.GENtyc{kind=TP.DATATYPE _, ...}) =>
-			 loop(eps, pfsigs)
+			 loop(eps, pfsigs, eenv)
 		       | M.TYCent(TP.GENtyc{kind, arity, ...}) =>
 			 (* Use this when PK eliminated from front-end:
 	                    (LT.tkc_int arity)::loop(eps, pfsigs) *)
-			 (buildKind arity)::loop(eps, pfsigs)
-		       | M.FCTent{paramEnts, 
+			 (buildKind arity)::loop(eps, pfsigs, eenv)
+		       | M.FCTent{paramRlzn, 
 				  closure=M.CLOSURE{env, ...}, 
 				  ...} =>
 			 (case pfsigs 
 			   of [] => bug "kinds.1"
 			    | pfsig::rest => 
-			      kinds(eenv, pfsig)::loop(eps, rest))
+			      kinds(paramEnts, bodyEnts, pfsig)::
+			      loop(eps, rest, eenv))
 		       | _ => bug "kinds.0")
 	    in (* Use this when PK eliminated from front-end:
 	          LT.tkc_fun(loop(peps,pfsigs), LT.tkc_seq []) *)
-		LT.tkc_fun(loop(peps,pfsigs), LT.tkc_seq [])
+		LT.tkc_fun(loop(peps,pfsigs,paramEnts), 
+			   LT.tkc_seq (loop(beps,bfsigs, bodyEnts)))
 	    end 
 	  | kinds _ = bug "kinds.2" (* fun kinds *)
+
+
+	fun formalBody(ftmap0, bodyEnts, argTps, M.SIG{elements, ...}, 
+		       fctvar) =
+	    let val eps = entpaths(elements)
+		fun loop(ftmap, [], i, tps) = (ftmap, rev tps)
+		  | loop(ftmap, ep::eps, i, tps) = 
+		    (case EE.lookEP(bodyEnts, ep)
+			  handle EE.Unbound => 
+				 bug ("formal body element unbound "^
+				      EP.entPathToString ep)
+		      of M.TYCent(TP.GENtyc{kind=TP.DATATYPE _, ...}) =>
+			 loop(ftmap, eps, i, tps) 
+		       | M.TYCent(TP.GENtyc{stamp, kind, arity, ...}) =>
+			 let val T.TP_VAR{kind, ...} = fctvar
+			     val tp = T.TP_SEL(T.TP_APP(fctvar, argTps), i)
+			     val _ = debugmsg ("--formalBody "^
+					       Stamps.toShortString stamp^
+					       " is index "^
+					       Int.toString i)
+			 in case FTM.find(ftmap, stamp)
+			     of SOME _ => loop(ftmap, eps, i, tps)
+			      | NONE => loop(insertMap(ftmap, stamp, tp),
+				 eps, i+1, tp::tps)
+			 end
+		       | _ => loop(ftmap, eps, i, tps))
+	    in loop(ftmap0, eps, 0, [])
+	    end
+	  | formalBody _ = bug "Unexpected signature in formalBody"
 
         (* There are two kinds of tycpath computations, one for 
          * functor parameters and the other for functor parameter
@@ -326,15 +368,24 @@ in
        (* This is the important computation for generating TC_VAR 
 	   variable references to functor parameters. 
 
-	  entityEnv * entPath list * fctSig list -> FTM.map * tycpath list 
+	  FTM.map * M.strEntity * M.strEntity * M.sigrec * DI.depth
+	  -> FTM.map * tycpath list 
 	   *)  
-	fun epsToFlexTycMap(ftmap0, entenv, eps, fsigs, d) =
-	    let 
-		val _ = debugmsg ("--epsToFlexTycMap eps "^
-				  Int.toString (length eps))
+	(* The goal here, simply put, is to get the primary components
+	   in rlzn where a component is primary if it is a representative
+	   picked by instantiate in freerlzn. *)
+	fun primaryCompInStruct(ftmap0, freerlzn : M.strEntity, 
+			    rlzn: M.strEntity, sign : M.sigrec, d) =
+	    let
+		val fsigs = fsigInElems(#elements sign)
+		val entenv = #entities rlzn
+		val eps = repEPs(entpaths(#elements sign), #entities freerlzn) 
+		val _ = debugmsg ("--primaryCompInStruct eps "^
+				  Int.toString (length eps)^
+				  " d="^DI.dp_print d)
 		fun loop(ftmap, tps, entenv, [], i, _) = (ftmap, rev tps)
 		  | loop(ftmap, tps, entenv, ep::rest, i, fs) =
-		    (debugmsg ("-epsToFlexTycMap loop "^Int.toString i); 
+		    (debugmsg ("-primaryCompInStruct loop "^Int.toString i); 
 		     let val ev : Stamps.stamp = hd (rev ep)
 		     in 
 		     case EE.lookEP(entenv, ep)
@@ -356,8 +407,10 @@ in
 			      | TP.GENtyc{kind=TP.FORMAL, arity, stamp, ...} => 
 				(case FTM.find(ftmap0, stamp)
 				  of SOME tp' => (tp', stamp)
-				   | NONE => (T.TP_VAR{tdepth=d,num=i,
-					 kind=buildKind arity}, stamp))
+				   | NONE => 
+				     (debugmsg ("--eps VAR depth "^DI.dp_print d);
+				      (T.TP_VAR{tdepth=d,num=i,
+					 kind=buildKind arity}, stamp)))
 			      | _ => 
 				(T.TP_TYC(T.NoTP tyc), s1))
 			    in 
@@ -366,7 +419,7 @@ in
 			    end
 		      
 		       | M.TYCent(TP.GENtyc{kind, arity, stamp, ...}) =>
-			 let val _ = debugmsg "--epsToFlexTycMap[TYCent GENtyc]"
+			 let val _ = debugmsg "--primaryCompInStruct[TYCent GENtyc]"
 			     val kind = buildKind arity
 	                     (* Check if stamp is previously defined. 
 			      * If so, then this must be a variable occurrence
@@ -376,60 +429,109 @@ in
 			      * current occurrence site depth. *)
 			     val tp' = 
 				 (case FTM.find(ftmap0, stamp)
-				   of SOME tp' => tp'
+				   of SOME tp' => 
+				      (debugmsg ("--primaryCompInStruct[TYCent GENtyc] found stmp "^Stamps.toShortString stamp); 
+				       tp')
 				    | NONE => 
-				      T.TP_VAR {tdepth=d,num=i, kind=kind})
+				      (debugmsg ("--primaryCompInStruct[TYCent GENtyc] generating "^Stamps.toShortString stamp^" depth="^DI.dp_print d); 
+				       T.TP_VAR {tdepth=d,num=i, kind=kind}))
 			       (* val _ = checkTycPath(tp, tp') *)
 			   in 
 			     loop(insertMap(ftmap, stamp, tp'),
 				  tp'::tps, entenv, rest, i+1, fs)
 			   end
 		       | M.TYCent tyc => 
-			    (debugmsg "--epsToFlexTycMap[TYCent]";
+			    (debugmsg "--primaryCompInStruct[TYCent]";
 			     (let val tp = T.TP_TYC(T.NoTP tyc)
 			      in loop(insertMap(ftmap, ev, tp),
 				      tp::tps, entenv, rest, i+1, fs)
 		              end))
-			    (* [TODO] What to do about GENtyc FORMAL? *) 
-		       | M.FCTent {(* tycpath=SOME tp,*) paramEnts, ...} => 
-			   (debugmsg "--epsToFlexTycMap[FCTent SOME]";
+		       | M.FCTent {stamp, paramRlzn, bodyRlzn, 
+				   closure=M.CLOSURE{env=closenv,...},...} => 
+			   (debugmsg "--primaryCompInStruct[FCTent SOME]";
 			    (case fs
-			      of [] => bug "epsToFlexTycMap.1"
-			       | f::srest => 
-				 let val _ = 
+			      of [] => bug "primaryCompInStruct.1"
+			       | (f as M.FSIG{bodysig=bsig as M.SIG bsr,
+					      paramsig=M.SIG psr, ...})::srest => 
+				 let 
+				     val paramEnts = #entities paramRlzn
+				     val bodyEnts = #entities bodyRlzn
+				     val _ = 
 					 if !debugging then 
 					     (print "\n===FCTent paramEnts===\n";
 					      ppEntities paramEnts;
+					      print "\n===FCTent bodyEnts===\n";
+					      ppEntities bodyEnts;
 					      print "\n===FCTent eenv===\n";
 					      ppEntities entenv;
+					      print "\n===FCTent closenv===\n";
+					      ppEntities closenv;
 					      print "\n--kinds[FCTent] Funsig\n";
 					      ppFunsig f; print "\n")
 					 else ()
-						
-				     val kind = kinds(paramEnts, f)   
+
+				     val argRepEPs = 
+					 repEPs(entpaths(#elements psr),
+						#entities paramRlzn)
+				     val (ftmap1, argtps) = 
+					 primaryCompInStruct(ftmap,
+							     paramRlzn,
+							     paramRlzn,
+							     psr,
+							     DI.next d)
+
+                                     (* [TODO] Replace free instantiation
+				        components with actual argument 
+					realization components. *)
+				     val knds = kinds(paramEnts, 
+						      #entities bodyRlzn,
+						      f)   
 				     val _ = debugmsg "<<kinds done\n"
-				     val var = {tdepth=d, num=i, kind=kind}
-				     val tp' = T.TP_VAR var 
+
+				     (* Can't do normal flextyc tycpath 
+				        construction here because actual 
+					argument is not yet available.
+					Must traverse bodyRlzn in signature
+					order and add TP_SEL(TC_APP(tv,args),i)
+					for each FORMAL GENtyc *)
+				     val _ = debugmsg ("pri[FCT]TP_VAR depth "^
+						       DI.dp_print d)
+				     val (ftmap2,bodytps) = 
+					 formalBody(ftmap1, #entities bodyRlzn,
+						    argtps, bsig, 
+						    T.TP_VAR{tdepth=d, 
+							     num=i,
+							     kind=knds
+							     })
+				     val tp' = T.TP_FCT(argtps, bodytps)
 				(* val _ = checkTycPath(tp, tp') *)
 				 in 
-				    loop(insertMap(ftmap, ev, tp'),
-					 tp'::tps, entenv, rest, i, srest)
-				 end)) (* FIXME *)
-		       | _ => bug "epsToFlexTycMap 0"
+				    loop(ftmap2,
+					 tp'::tps, entenv, rest, i+1, srest)
+				 end
+			       | _ => bug "unexpected errorFSIG")) 
+		       | _ => bug "primaryCompInStruct 0"
 		     end (* loop *) )
-		    handle EE.Unbound => bug "epsToFlexTycMap Unbound"
+		    handle EE.Unbound => bug "primaryCompInStruct Unbound"
 		in loop(FTM.empty, [], entenv, eps, 0, fsigs)
-	    end (* fun epsToFlexTycMap *)
+	    end (* fun primaryCompInStruct *)
 
-	fun getTk(M.FSIG{paramsig=M.SIG ps, ...}, dummyEnts, argEnts, 
+        (* Get the primary components in a realization R0 but replacing any 
+	   occurrences of entities in a realization R1 with the 
+	   corresponding entities in a realization R2. *) 
+	(* fun primariesWithParamRepl(ftmap0, bodyRlzn : M.strEntity,
+				   freeRlzn : M.strEntity, 
+				   argRlzn : M.strEntity,
+				   sign : M.sigrec, d) =
+	    let *)
+		
+
+	fun getTk(M.FSIG{paramsig=M.SIG ps, ...}, dummyRlzn, argRlzn, 
 		  d) =
 	    let 
 		val _ = debugmsg ">>getTk"
-		val alleps = entpaths(#elements ps)
-		val fsigs = fsigInElems(#elements ps)
-		val eps = repEPs(alleps, dummyEnts)
 		val (ftmap, argtycs') = 
-		    epsToFlexTycMap(FTM.empty, argEnts, eps, fsigs, d)
+		    primaryCompInStruct(FTM.empty, dummyRlzn, argRlzn, ps, d)
 		val _ = debugmsg "<<getTk"
 	    in (argtycs', ftmap)
 	    end (* getTk *)
@@ -452,14 +554,16 @@ in
 	   | M.CONSTRAINstr{boundvar,raw,coercion} =>
 	     M.CONSTRAINstr{boundvar=boundvar,raw=raw,
 			    coercion=procCloSE coercion}
-	   | M.FORMstr _ => bug "unexpected FORMstr in procCloSE")
+	   | M.FORMstr(M.FSIG _) => se 
+	   | M.FORMstr(M.ERRORfsig) => bug "unexpected FORMstr in procCloSE")
+
     and procCloFE(fe) =
 	(debugmsg "--procCloFE";
 	 case fe
 	  of M.VARfct _ => fe
 	   | M.CONSTfct _ => fe
-	   | M.LAMBDA{body,param,paramEnts} => 
-	     M.LAMBDA{param=param, body=procCloSE body, paramEnts=paramEnts}
+	   | M.LAMBDA{body,param,paramRlzn} => 
+	     M.LAMBDA{param=param, body=procCloSE body, paramRlzn=paramRlzn}
 	   | M.LETfct(entDec, fexp) => M.LETfct(entDec, procCloFE fexp)
 	   | M.LAMBDA_TP _ => bug "procCloFE bug LAMBDA_TP")
 
@@ -477,13 +581,15 @@ in
 		  of (APPstr{oper=oper 
 			      as M.FCT{sign=fctsign 
 					as M.FSIG {paramsig=fsparsig 
-							as M.SIG fsr,...},
+							as M.SIG fsr,
+						   bodysig as M.SIG bfsr, ...},
 				       rlzn=fctRlzn,access,prim},
 			     arg=arg
 				as M.STR{sign=argsig 
 				            as M.SIG{elements,...},
 			rlzn=argRlzn as {entities,...},...}, ...}) => 
-		     let val {paramEnts=dummyEnts, 
+		     let val {paramRlzn=dummyRlzn,
+			      bodyRlzn, 
 			      closure=M.CLOSURE{body,param=fclparam,
 						env=fclenv},
 			      stamp=fstmp,
@@ -491,31 +597,43 @@ in
 			      rpath=frp,
 			      stub=fstub} = 
 			     fctRlzn 
+			 val dummyEnts = #entities dummyRlzn
 			 val _ = debugmsg "--strBinds APPstr"
 			 val _ = if !debugging then 
-				     (debugmsg "===fsparsig===";
+				     (debugmsg "===fsparsig===\n";
 				     ppSig fsparsig;
-				     debugmsg "===dummyEnts===";
+				     debugmsg "===dummyEnts===\n";
 				     ppEntities dummyEnts;
-				     debugmsg "===argsig===";
+				     debugmsg "===argsig===\n";
 				     ppSig argsig;
-				     debugmsg "===argEnts===";
-				     ppEntities entities) 
+				     debugmsg "===argEnts===\n";
+				     ppEntities entities;
+				     debugmsg "===bodyRlzn===\n";
+				     ppEnt (M.STRent bodyRlzn)) 
 				 else () 
-			 val alleps = entpaths(#elements fsr)
-			 val fsigs = fsigInElems(#elements fsr)
-			 val eps = repEPs(alleps, dummyEnts)
-			 (* val argtycs' = 
-			     getTPsforEPs(entities, eps, fsigs,d) *)
+			 val _ = debugmsg "--procStrexp[APPstr] param/arg"
 			 val (ftmap', argtycs') = 
-			     epsToFlexTycMap(ftmap, entities, eps, fsigs,d)
+			     primaryCompInStruct(ftmap, dummyRlzn, argRlzn, 
+						 fsr, d)
+
+			 val _ = debugmsg "--procStrexp[APPstr] body"
+
+		         (* [TODO] This is where the bodyRlzn's references
+			    to the free instantiation should be replaced
+			    by references to the argRlzn. 
+			  *)
+			 val(ftmap2, _) = 
+			    primaryCompInStruct(ftmap', bodyRlzn, bodyRlzn, 
+						bfsr, d) 
+			 val _ = debugmsg "--procStrexp[APPstr] body done"
 			 val body' = procCloSE(body)
 			 val fcl' = 
 			     M.CLOSURE{param=fclparam,
 				       env=fclenv,
 				       body=body'}
 			 val fctRlzn' = 
-			     {paramEnts=dummyEnts,
+			     {paramRlzn=dummyRlzn,
+			      bodyRlzn=bodyRlzn,
 			      stamp=fstmp,
 			      properties=fprops,
 			      rpath=frp,
@@ -549,7 +667,7 @@ in
 		     (* val _ = if length argtycs <> length argtycs'
 				then bug "strBinds: bad argtycs computation"
 				else ()	 *)
-		     in (se', unionMaps[ftmap, ftmap'])
+		     in (se', unionMaps[ftmap, ftmap2])
 		     end 
 		   | APPstr {oper=M.FCT _, arg=M.STRSIG _, ...} => 
 		     bug "strBinds: Unimplemented"
@@ -572,11 +690,14 @@ in
 	      | fctBinds(ftmap,
 			 (b as FCTB{fct=fct 
 				as M.FCT{sign=M.FSIG{paramsig=paramsig'
-			as M.SIG fsr,paramvar,...},
-			rlzn={paramEnts,...}, ...}, def, name})::rest, d) =
-		let val _ = debugmsg "--fctBinds"
-		    fun mkFctexp(ftmap, fe, d : DI.depth) =
-			(case fe 
+			as M.SIG fsr,paramvar,bodysig,...},
+			rlzn={paramRlzn,bodyRlzn,...}, ...}, def, name})::rest,
+			 d) =
+		let val _ = debugmsg ("--fctBinds d="^DI.dp_print d)
+		    val paramEnts = #entities paramRlzn
+		    fun mkFctexp(ftmap, fe) =
+			(debugmsg ("--mkFctexp");
+			 (case fe 
 			  of VARfct f => 
 			     (AT.VARfct f, ftmap)
 			   | FCTfct{param=param 
@@ -590,7 +711,6 @@ in
 			     (debugmsg (">>fctBinds:mkFctexp[FCTfct] name "^
 					S.name name); 
 			      let 
-				  val alleps = entpaths (#elements fsr)
 				  val _ = if !debugging 
 					  then (print "--fctBinds[FCTfct] paramsig'\n"; 
 						ppSig paramsig';
@@ -601,29 +721,31 @@ in
 						print "\n--fctBinds[FCTfct] rlznEntities\n";
 						ppEntities entities) 
 					  else ()
-				  val fsigs = fsigInElems(#elements fsr)  
-				  val eps = repEPs(alleps, entities)
-				  (*val argtycs' = getTPsforEPs(entities, eps,fsigs,d)  *)
-				  val (ftmap1, argtycs') = 
-				      epsToFlexTycMap(ftmap, entities,eps,fsigs,d)
+
+				  val (ftmap1, argtycs') =
+				      primaryCompInStruct(ftmap, rlzn, rlzn, 
+							  fsr, d)
+				  (* What is the difference between sr 
+				     and fsr? *)
 				  val (def',ftmap2) = 
 				      procStrexp (unionMaps [ftmap, ftmap1], 
 						  def, DI.next d)
+ 
 			      in (AT.FCTfct{param=param, def=def',
 					   argtycs=argtycs'},
 			          ftmap2)
 			      end)
 			   | MARKfct(fe',region) => 
-			     let val (fe'',ftmap1) = mkFctexp(ftmap, fe', d)
+			     let val (fe'',ftmap1) = mkFctexp(ftmap, fe')
 			     in (AT.MARKfct(fe'',region), ftmap1)
 			     end
 			   | LETfct(dec', fe') => 
 			     let val (dec'',ftmap1) = procDec'(ftmap, dec',d)
-				 val (fe', ftmap2) = mkFctexp (ftmap1, fe', d)
+				 val (fe', ftmap2) = mkFctexp (ftmap1, fe')
 			     in (AT.LETfct(dec'', fe'), ftmap2)
 			     end
-			   | _ => bug "mkFctexp 0")
-		    val (def', ftmap1) = mkFctexp(ftmap, def, d)
+			   | _ => bug "mkFctexp 0"))
+		    val (def', ftmap1) = mkFctexp(ftmap, def)
 		    val (binds,ftmap2) =  fctBinds(ftmap1, rest, d)
 		in (AT.FCTB{name=name, fct=fct, def=def'} :: binds, 
 		    ftmap2)
@@ -651,13 +773,13 @@ in
 	    (case dec 
 	      of SEQdec(decs) =>
 		 let val (decs',ftmap1) = 
-			 foldr (fn(dec', (decs, ftmap')) => 
+			 foldl (fn(dec', (decs, ftmap')) => 
 				  let val (dec'', ftmap'') = 
 					  procDec'(ftmap', dec',d)
 				  in (dec''::decs, ftmap'')
 				  end) ([], ftmap) decs 
 		 in
-		     (AT.SEQdec(decs'), ftmap1) 
+		     (AT.SEQdec(rev decs'), ftmap1) 
 		 end
 	       | LOCALdec(dec1, dec2) => 
 		 let val (dec1',ftmap1) = procDec'(ftmap, dec1,d)

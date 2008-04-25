@@ -1151,7 +1151,7 @@ fun mkStr (s as M.STR { access, prim, ... }, d) =
     mkAccInfo(access, fn () => strLty(s, d, compInfo), NONE)
   | mkStr _ = bug "unexpected structures in mkStr"
 
-fun mkFct (f as M.FCT { access, prim, rlzn={paramEnts, ...}, ...}, d) =
+fun mkFct (f as M.FCT { access, prim, ...}, d) =
     mkAccInfo(access, 
 	      fn () => fctLty(f, d, compInfo),
 	      NONE) 

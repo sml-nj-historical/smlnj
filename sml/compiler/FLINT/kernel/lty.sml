@@ -574,7 +574,7 @@ fun teLookup(tenv : tycEnv, i: int) : teBinder option =
         of SOME(binder, tenv') =>
              if i > 1 then teLookup(tenv',i-1)
              else if i = 1 then SOME binder
-             else bug "index 0 in tycEnvLookup"
+             else bug ("index "^Int.toString i ^" in tycEnvLookup")
          | NONE => NONE)
 
 fun teLength (tenv: tycEnv) : int =
