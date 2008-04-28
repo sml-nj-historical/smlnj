@@ -286,43 +286,50 @@ in
 			      print "\n===\n")
 			else ()
 		val peps = repEPs(entpaths pelems, paramEnts)
-		val _ = debugmsg "--kinds peps computed\n"
+		val _ = debugmsg "--kinds peps computed"
 		val pfsigs = fsigInElems pelems
-		val _ = debugmsg "--kinds pfsigs computed\n"
+		val _ = debugmsg "--kinds pfsigs computed"
 
 	        (* [TODO] This can be a problem. belems can refer to 
 		   formal functor body for curried functor,
 		   but formal body signature has not been
 		   instantiated with the actual argument realization. *)
 		val beps = repEPs(entpaths belems, bodyEnts)
+		val _ = debugmsg "--kinds beps computed\n"
 		val bfsigs = fsigInElems belems
+		val _ = debugmsg "--kinds bfsigs computed\n"
 		(* What is the correct eenv to look up belem entpaths?
 		 *)
 		fun loop ([], _, eenv) = []
-		  | loop (ep::eps, pfsigs, eenv) = 
+		  | loop (ep::eps, fsigs, eenv) = 
 		    (case EE.lookEP(eenv, ep)
 			  handle EE.Unbound => 
 				 bug ("kinds Unbound "^
 				      EP.entPathToString ep)
 		      of M.TYCent(TP.GENtyc{kind=TP.DATATYPE _, ...}) =>
-			 loop(eps, pfsigs, eenv)
+			 loop(eps, fsigs, eenv)
 		       | M.TYCent(TP.GENtyc{kind, arity, ...}) =>
 			 (* Use this when PK eliminated from front-end:
 	                    (LT.tkc_int arity)::loop(eps, pfsigs) *)
-			 (buildKind arity)::loop(eps, pfsigs, eenv)
-		       | M.FCTent{paramRlzn, 
+			 (buildKind arity)::loop(eps, fsigs, eenv)
+		       | M.FCTent{paramRlzn, bodyRlzn, 
 				  closure=M.CLOSURE{env, ...}, 
 				  ...} =>
-			 (case pfsigs 
+			 (case fsigs 
 			   of [] => bug "kinds.1"
-			    | pfsig::rest => 
-			      kinds(paramEnts, bodyEnts, pfsig)::
+			    | fsig::rest => 
+			      kinds(#entities paramRlzn, 
+				    #entities bodyRlzn, fsig)::
 			      loop(eps, rest, eenv))
 		       | _ => bug "kinds.0")
+
+		val paramtk = loop(peps,pfsigs,paramEnts)
+		val _ = debugmsg "--kinds paramtk computed"
+		val bodytk = loop(beps,bfsigs, bodyEnts)
+		val _ = debugmsg "--kinds bodytk computed"
 	    in (* Use this when PK eliminated from front-end:
 	          LT.tkc_fun(loop(peps,pfsigs), LT.tkc_seq []) *)
-		LT.tkc_fun(loop(peps,pfsigs,paramEnts), 
-			   LT.tkc_seq (loop(beps,bfsigs, bodyEnts)))
+		LT.tkc_fun(paramtk, LT.tkc_seq bodytk)
 	    end 
 	  | kinds _ = bug "kinds.2" (* fun kinds *)
 
@@ -451,7 +458,7 @@ in
 			   (debugmsg "--primaryCompInStruct[FCTent SOME]";
 			    (case fs
 			      of [] => bug "primaryCompInStruct.1"
-			       | (f as M.FSIG{bodysig=bsig as M.SIG bsr,
+			       | (fsig as M.FSIG{bodysig=bsig as M.SIG bsr,
 					      paramsig=M.SIG psr, ...})::srest => 
 				 let 
 				     val paramEnts = #entities paramRlzn
@@ -467,7 +474,7 @@ in
 					      print "\n===FCTent closenv===\n";
 					      ppEntities closenv;
 					      print "\n--kinds[FCTent] Funsig\n";
-					      ppFunsig f; print "\n")
+					      ppFunsig fsig; print "\n")
 					 else ()
 
 				     val argRepEPs = 
@@ -485,7 +492,7 @@ in
 					realization components. *)
 				     val knds = kinds(paramEnts, 
 						      #entities bodyRlzn,
-						      f)   
+						      fsig)   
 				     val _ = debugmsg "<<kinds done\n"
 
 				     (* Can't do normal flextyc tycpath 
@@ -600,13 +607,13 @@ in
 			 val dummyEnts = #entities dummyRlzn
 			 val _ = debugmsg "--strBinds APPstr"
 			 val _ = if !debugging then 
-				     (debugmsg "===fsparsig===\n";
+				     (debugmsg "===fsparsig===";
 				     ppSig fsparsig;
-				     debugmsg "===dummyEnts===\n";
+				     debugmsg "\n===dummyEnts===";
 				     ppEntities dummyEnts;
 				     debugmsg "===argsig===\n";
 				     ppSig argsig;
-				     debugmsg "===argEnts===\n";
+				     debugmsg "\n===argEnts===";
 				     ppEntities entities;
 				     debugmsg "===bodyRlzn===\n";
 				     ppEnt (M.STRent bodyRlzn)) 
