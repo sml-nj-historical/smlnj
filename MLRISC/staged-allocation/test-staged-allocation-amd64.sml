@@ -248,8 +248,113 @@ structure RA2 =
      structure Rewrite = 
        struct
          structure I = AMD64Instr
-	 fun rewriteDef _ = raise Fail ""
-	 fun rewriteUse _ = raise Fail ""
+	 structure C=I.C
+	 structure CB = CellsBasis
+	 fun error msg = MLRiscErrorMsg.error("X86Rewrite", msg)
+			 
+	 fun operand (rs,rt) opnd =
+	     (case opnd
+	       of I.Direct (sz, r) => if CB.sameColor(r,rs) then I.Direct (sz, rt) else opnd
+		| I.Displace{base, disp, mem} => 
+		  if CB.sameColor(base,rs) then I.Displace{base=rt, disp=disp, mem=mem} 
+		  else opnd
+		| I.Indexed{base as SOME b, index, scale, disp, mem} => let
+		      val base'= if CB.sameColor(b,rs) then SOME rt else base
+		      val index'=if CB.sameColor(index,rs) then rt else index
+		  in I.Indexed{base=base', index=index', scale=scale, disp=disp, mem=mem}
+		  end
+		| I.Indexed{base, index, scale, disp, mem=mem}  => 
+		  if CB.sameColor(index,rs) then 
+		      I.Indexed{base=base, index=rt, scale=scale, disp=disp, mem=mem}
+		  else opnd
+		| _ => opnd
+              (*end case*))
+	     
+
+	 fun rewriteDef (instr, rs, rt) = let
+	     fun operand(opnd as I.Direct (sz, r)) = 
+		 if CB.sameColor(r,rs) then I.Direct (sz, rt) else opnd
+	       | operand _ = error "operand: not I.Direct"
+	     fun replace r = if CB.sameColor(r,rs) then rt else r
+	     fun rewriteX86Def(instr) =
+		 (case instr 
+		   of I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => 
+		      I.CALL{opnd=opnd, cutsTo=cutsTo, 
+			     return=CB.CellSet.map {from=rs,to=rt} return, pops=pops,
+			     defs=CB.CellSet.map {from=rs,to=rt} defs, uses=uses, mem=mem}
+		    | I.MOVE{mvOp, src, dst} => I.MOVE{mvOp=mvOp, src=src, dst=operand dst}
+		    | I.LEAL{r32, addr} => I.LEAL{r32=replace r32, addr=addr}
+		    | I.LEAQ{r64, addr} => I.LEAQ{r64=replace r64, addr=addr}
+		    | I.BINARY{binOp, src, dst} => 
+		      I.BINARY{binOp=binOp, src=src, dst=operand dst}
+		    | I.SHIFT{shiftOp, src, dst, count} => 
+		      I.SHIFT{shiftOp=shiftOp, src=src, count=count, dst=operand dst}
+		    | I.UNARY{unOp, opnd} => I.UNARY{unOp=unOp, opnd=operand opnd}
+		    | I.SET{cond, opnd} => I.SET{cond=cond, opnd=operand opnd}
+		    | _ => instr
+	        (* end case *))
+
+	     fun f (I.ANNOTATION{a,i}) =
+		 I.ANNOTATION{i=rewriteDef(i,rs,rt),
+			      a=(case a of
+				     CB.DEF_USE{cellkind=CB.GP,defs,uses} =>
+			             CB.DEF_USE{cellkind=CB.GP,uses=uses,
+				 		defs=map replace defs}
+				   | _ => a)}
+	       | f (I.INSTR i) = I.INSTR(rewriteX86Def(i))
+	       | f (I.COPY{k as CB.GP, sz, dst, src, tmp}) =
+		 I.COPY{k=k, sz=sz, dst=map replace dst, src=src, tmp=tmp}
+	 in 
+	     f(instr)
+	 end
+
+
+	 fun rewriteUse (instr, rs, rt) = let
+	     val operand = operand (rs, rt)
+	     fun replace r = if CB.sameColor(r,rs) then rt else r
+	     fun rewrite instr = (case instr
+                 of I.JMP(opnd, labs) => I.JMP(operand opnd, labs)
+		  | I.JCC{cond, opnd} => I.JCC{cond=cond, opnd = operand opnd}
+		  | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => 
+		    I.CALL{opnd=operand opnd, defs=defs, return=return,
+			   uses=CB.CellSet.map {from=rs,to=rt} uses, cutsTo=cutsTo,
+			   mem=mem, pops=pops}
+		  | I.MOVE{mvOp, src, dst as I.Direct _} => 
+		    I.MOVE{mvOp=mvOp, src=operand src, dst=dst}
+		  | I.MOVE{mvOp, src, dst} => 
+		    I.MOVE{mvOp=mvOp, src=operand src, dst=operand dst}
+		  | I.LEAL{r32, addr} => I.LEAL{r32=r32, addr=operand addr}
+		  | I.LEAQ{r64, addr} => I.LEAQ{r64=r64, addr=operand addr}
+		  | I.CMPL{lsrc, rsrc} => I.CMPL{lsrc=operand lsrc, rsrc=operand rsrc}
+		  | I.CMPW{lsrc, rsrc} => I.CMPW{lsrc=operand lsrc, rsrc=operand rsrc}
+		  | I.CMPB{lsrc, rsrc} => I.CMPB{lsrc=operand lsrc, rsrc=operand rsrc}
+		  | I.TESTL{lsrc, rsrc} => I.TESTL{lsrc=operand lsrc, rsrc=operand rsrc}
+		  | I.TESTW{lsrc, rsrc} => I.TESTW{lsrc=operand lsrc, rsrc=operand rsrc}
+		  | I.TESTB{lsrc, rsrc} => I.TESTB{lsrc=operand lsrc, rsrc=operand rsrc}
+		  | I.BITOP{bitOp, lsrc, rsrc} => 
+		    I.BITOP{bitOp=bitOp, lsrc=operand lsrc, rsrc=operand rsrc}
+		  | I.BINARY{binOp, src, dst} => 
+		    I.BINARY{binOp=binOp, src=operand src, dst=operand dst}
+		  | I.SHIFT{shiftOp, src, dst, count} => 
+		    I.SHIFT{shiftOp=shiftOp, src=operand src, dst=operand dst, 
+			    count=operand src}
+                (* end case *))
+
+             fun f(I.ANNOTATION{a,i}) = 
+		 I.ANNOTATION{i=rewriteUse(i, rs, rt),
+			      a = case a of
+				      CB.DEF_USE{cellkind=CB.GP,defs,uses} =>
+				      CB.DEF_USE{cellkind=CB.GP,uses=map replace uses,
+						 defs=defs}
+				    | _ => a}
+	       | f(I.INSTR i) = I.INSTR(rewrite(i))
+	       | f(I.COPY{k as CB.GP, sz, dst, src, tmp}) = 
+		 I.COPY{k=k, sz=sz, dst=dst, src=List.map replace src, tmp=tmp}
+	 in 
+	     f (instr:I.instruction)
+	 end
+
+      
 	 fun frewriteDef _ = raise Fail ""
 	 fun frewriteUse _ = raise Fail ""
        end
@@ -263,24 +368,24 @@ structure RA2 =
      
      datatype spillOperandKind = SPILL_LOC | CONST_VAL
      type spill_info = unit
-     fun beforeRA _ = raise Fail ""
+     fun beforeRA _ = ()
 
      val architecture = "amd64"
      fun pure _ = true
 
      structure Int =
 	struct
-	  val avail = []
-	  val dedicated = []
+	  val avail = C.Regs CellsBasis.GP {from=0, to=15, step=1}
+	  val dedicated = [C.rsp, C.rbp]
 	  fun spillLoc _ = raise Fail ""
 	  val mode = RACore.NO_OPTIMIZATION
 	end
      structure Float =
 	struct
-	  val avail = []
+	  val avail = C.Regs CellsBasis.FP {from=0, to=15, step=1}
 	  val dedicated = []
 	  fun spillLoc _ = raise Fail ""
-	  val mode = RACore.NO_OPTIMIZATION
+	  val mode = Word.orb (RACore.HAS_PARALLEL_COPIES, RACore.DEAD_COPY_ELIM)
 	end
 
     )
