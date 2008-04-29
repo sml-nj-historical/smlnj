@@ -6,7 +6,7 @@ Library
 	signature C_CALL
 
 	functor StagedAllocationFn
-
+        functor CCallFn
 is
 
 	$/basis.cm
@@ -18,6 +18,7 @@ is
 	$/MLTREE.cm
 
 	../staged-allocation/c-call-sig.sml
+        ../staged-allocation/c-call-fn.sml
 	../staged-allocation/call-conv-sig.sml
 	../staged-allocation/staged-allocation-sig.sml
 	../staged-allocation/staged-allocation-fn.sml

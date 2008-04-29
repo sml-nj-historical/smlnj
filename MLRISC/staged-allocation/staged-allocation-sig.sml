@@ -10,7 +10,7 @@
  * Terminology for staged allocation (see the paper for more details):
  *   counter - stores of current the number of bits allocated to the call
  *   location - a mechanism for passing a parameter, e.g., machine registers, stack locations, etc.
- *   slot - a parameter
+ *   slot - corresponds to a parameter
  *   alignment - alignment in bits for a location
  *   width - width in bits for a location
  *   stage - one rule for specifying calling conventions
@@ -78,18 +78,26 @@ signature STAGED_ALLOCATION =
      * a location for passing the argument. 
      *)
     type stepper_fn = (str * slot) -> (str * location_info)
+
     (* Create a counter. *)
     val freshCounter : unit -> counter
+
     (* helper function that creates a counter c, and returns the sequence:
      * [BITCOUNTER c, REGS_BY_BITS (c, regs)] (this function is taken from 
      * the paper). 
      *)
     val useRegs : reg list -> (counter * stage)
+
     (* find the value stored at a counter. *)
     val find : (str * counter) -> int
+
     (* initialize a list of counters for a calling convention. *)
     val init : counter list -> str
+
     (* take a calling convention, and return a stepper function for it. *)
     val mkStep : stage list -> stepper_fn
+
+    (* perform staged allocation over a list of slots *)
+    val doStagedAllocation : (str * stepper_fn * slot list) -> (str * location_info list)
 
   end (* STAGED_ALLOCATION *)

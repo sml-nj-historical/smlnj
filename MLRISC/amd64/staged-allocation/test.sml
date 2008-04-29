@@ -1,3 +1,49 @@
+(*
+ * Client defined extensions.  None for now.
+ * You'll need this only if you need to extend the set of MLTREE operators
+ *)
+structure UserExtension =
+struct
+
+   type ('s,'r,'f,'c) sx = ('s,'r,'f,'c) AMD64InstrExt.sext
+   type ('s,'r,'f,'c) rx = unit
+   type ('s,'r,'f,'c) fx = unit
+   type ('s,'r,'f,'c) ccx = unit
+
+end
+
+(*
+ * This module controls how we handle user extensions.  Since we don't
+ * have any yet.  This is just a bunch of dummy routines.
+ *)
+functor UserMLTreeExtComp
+	    (    structure I : AMD64INSTR where T.Extension = UserExtension
+    structure TS : MLTREE_STREAM where T = I.T
+    structure CFG : CONTROL_FLOW_GRAPH where I = I and P = TS.S.P
+   ) : MLTREE_EXTENSION_COMP =
+struct
+    structure T = TS.T
+    structure TS = TS
+    structure I = I
+    structure CFG = CFG
+    structure C = I.C
+
+    structure CompInstrExt = AMD64CompInstrExt (
+      structure I = I
+      structure TS = TS
+      structure CFG = CFG)
+
+    type reducer =
+	  (I.instruction,C.cellset,I.operand,I.addressing_mode,CFG.cfg) TS.reducer
+
+    val compileSext = CompInstrExt.compileSext
+
+    fun compileRext _ = raise Fail "AMD64CompExtFn.compileRext"
+    fun compileFext _ = raise Fail "AMD64CompExtFn.compileFext"
+    fun compileCCext _ = raise Fail "AMD64CompExtFn.compileCCext"
+
+end
+
 val floats16ByteAligned = true
 
 structure AMD64MLTree =
@@ -390,3 +436,85 @@ structure RA2 =
 
     )
 			   
+structure RA = RA2
+structure Cells = AMD64Instr.C
+structure T = AMD64MLTree
+structure CFG = AMD64CFG
+structure FlowGraph = AMD64FlowGraph
+
+structure TestStagedAllocation =
+  struct
+ 
+    val wordTy = 64
+   
+    fun codegen (functionName, target, proto, initStms, args) = let 
+        val _ = Label.reset()
+
+	val [functionName, target] = List.map Label.global [functionName, target]
+
+        val insnStrm = FlowGraph.build()
+	(* construct the C call *)
+	val {result, callseq} = CCalls.genCall {
+	           name=T.LABEL target,
+	           paramAlloc=fn _ => false,
+	           structRet=fn _ => T.REG (64, Cells.rax),
+	           saveRestoreDedicated=fn _ => {save=[], restore=[]},
+	           callComment=NONE,
+	           proto=proto,
+	           args=args}
+
+	fun wordLit i = T.LI (T.I.fromInt (wordTy, i))
+
+	val stms = List.concat [
+		   [T.EXT(AMD64InstrExt.PUSHQ(T.REG(64, Cells.rbp))),
+		    T.COPY (wordTy, [Cells.rbp], [Cells.rsp])],		   
+		   initStms,
+		   callseq, 
+		   [T.EXT(AMD64InstrExt.LEAVE)],
+		   [T.RET []]]
+
+        val stream as AMD64Stream.STREAM
+           { beginCluster,  (* start a cluster *)
+             endCluster,    (* end a cluster *)
+             emit,          (* emit MLTREE stm *)
+             defineLabel,   (* define a local label *)
+             entryLabel,    (* define an external entry *)
+             exitBlock,     (* mark the end of a procedure *)
+             pseudoOp,      (* emit a pseudo op *)
+             annotation,    (* add an annotation *)
+             ... } =
+             AMD64.selectInstructions insnStrm
+	fun doit () = (
+	    beginCluster 0;      (* start a new cluster *)
+            pseudoOp PseudoOpsBasisTyp.TEXT;		  
+	    pseudoOp (PseudoOpsBasisTyp.EXPORT [functionName]);    
+            entryLabel functionName; (* define the entry label *)
+            List.app emit stms; (* emit all the statements *)
+            exitBlock result;
+            endCluster [])
+	val cfg = doit ()
+	val cfg = RA.run cfg
+	val cfg = AMD64Expand.run cfg
+        in  
+         (cfg, stream)        (* end the cluster *)
+       end (* codegen *)
+
+    fun dumpOutput (cfg, stream) = let
+	val (cfg as Graph.GRAPH graph, blocks) = 
+		AMD64BlockPlacement.blockPlacement cfg
+	val CFG.INFO{annotations=an, data, decls, ...} = #graph_info graph
+	in
+	  AMD64Emit.asmEmit (cfg, blocks)
+	end (* dumpOutput *)
+
+  end
+
+
+    (* machine-specific data *)
+    val wordTy = 64
+    val wordSzB = wordTy div 8
+    val param0 = T.REG(wordTy, Cells.rdi)
+
+    (* maximum argument size in machine words *)
+    val maxArgSz = 16
+    val maxArgSzB = maxArgSz * wordSzB

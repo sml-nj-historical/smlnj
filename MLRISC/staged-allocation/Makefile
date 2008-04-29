@@ -1,5 +1,18 @@
 build-amd64:
-	ml-build sources.cm Main.main test-main
+	ml-build ../amd64/staged-allocation/sources.cm Main.main test-main
+	sml @SMLcmdname=test-main @SMLload=test-main
+	gcc -g -m64 -c mlrisc.s
+	gcc -g  -m64 -c glue.c
+	gcc -g  -m64 -c sanity.c
+	gcc -g  -m64 mlrisc.o glue.o sanity.o -o sanity
+	gcc -g  -m64 -c main.c
+	gcc -g  -m64 mlrisc.o glue.o main.o -o main
+	./main > main.out
+	./sanity > sanity.out
+	diff -Naur main.out sanity.out
+
+build-x86:
+	ml-build ../x86/staged-allocation/sources.cm Main.main test-main
 	sml @SMLcmdname=test-main @SMLload=test-main
 	gcc -g -m64 -c mlrisc.s
 	gcc -g  -m64 -c glue.c

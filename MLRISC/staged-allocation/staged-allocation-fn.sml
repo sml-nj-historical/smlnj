@@ -212,4 +212,18 @@ functor StagedAllocationFn (
 	 | _ => raise StagedAlloc
       (* end case *))
 
+  (* perform staged allocation over a list of slots *)
+  fun doStagedAllocation (str, stepper, slots) = let
+      fun f (loc, (str, saLocs)) = let
+          val (str', saLoc) = stepper(str, loc)
+          in
+	     (str', saLoc :: saLocs)
+          end
+      (* staged allocation converts abstract locations to machine locations *)
+      val (str', saLocs) = List.foldl f (str, []) slots
+      in
+	 (str', List.rev saLocs)
+      end
+
+
 end (* StagedAllocationFn *)

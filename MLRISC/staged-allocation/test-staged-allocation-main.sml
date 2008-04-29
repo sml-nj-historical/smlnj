@@ -58,18 +58,8 @@ structure Main =
   struct
 
     structure CTy = CTypes
-    structure C = TestStagedAllocation.C
-    structure T = TestStagedAllocation.T
-    structure CFG = TestStagedAllocation.CFG
     structure Test = TestStagedAllocation
 
-    (* machine-specific data *)
-    val wordTy = 64
-    val wordSzB = wordTy div 8
-    val param0 = T.REG(wordTy, C.rdi)
-    (* maximum argument size in machine words *)
-    val maxArgSz = 16
-    val maxArgSzB = maxArgSz * wordSzB
     val retValVar = "retVal"
 
     fun li i = T.LI (T.I.fromInt (wordTy, i))
@@ -347,7 +337,7 @@ structure Main =
 	val _ = TextIO.closeOut cMainOutStrm
 		    
 	(* output MLRISC code *)
-	val tmpReg = C.newReg()
+	val tmpReg = Cells.newReg()
 	val tmpR = T.REG(wordTy, tmpReg)
 	val (_, glueArgs) = List.foldl (genGlueArg (maxSzOfProto proto) tmpR) (0, []) paramTys
 	val asmOutStrm = TextIO.openOut "mlrisc.s"

@@ -15,9 +15,9 @@ is
 
   $/basis.cm
   $/smlnj-lib.cm
-  wrapper.cm
 
-  test-staged-allocation-types.sml
-  test-staged-allocation-amd64.sml
-  test-staged-allocation.sml
-  test-staged-allocation-main.sml
+  wrapper.cm
+  ../../staged-allocation/test-staged-allocation-types.sml
+  ../../staged-allocation/test-staged-allocation-main.sml
+
+  test.sml
