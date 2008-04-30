@@ -19,8 +19,8 @@
 
 (* Specify the language that we wish to call. *)
 signature TARGET_LANG = sig
-    type location_kind     (* kind of location for passing arguments, e.g., general-purpose register, 
-			    * floating-point register, memory, etc. *)
+    type location_kind     (* kind of location for passing arguments, e.g., general-purpose 
+			    * registers, floating-point registers, memory, etc. *)
 end (* TARGET_LANG *)
 
 signature STAGED_ALLOCATION = 
@@ -39,37 +39,35 @@ signature STAGED_ALLOCATION =
     (* locations consist of machine registers, offsets in to overflow blocks, combinations of
      * locations, and narrowed locations.
      *)
-    datatype location =
-	     REG of reg
-	   | BLOCK_OFFSET of int
-	   | COMBINE of (location * location)  
-	   | NARROW of (location * width * TL.location_kind) 
+    datatype location 
+      = REG of reg
+      | BLOCK_OFFSET of int
+      | COMBINE of (location * location)  
+      | NARROW of (location * width * TL.location_kind) 
 		       
     (* metadata assocated with a location *)
     type location_info = (width * location * TL.location_kind)
 			 
     (* language for specifying calling conventions *)
-    datatype stage =
-	     OVERFLOW of { 
-	         counter : counter,
-		 blockDirection : block_direction,
-		 maxAlign : int 
-             }
-	   | WIDEN of (width -> width)
-	   (* choose the first stage whose corresponding predicate is true. *)
-	   | CHOICE of ( (slot -> bool) * stage) list
-	   (* the first n arguments go into the first n registers *)
-	   | REGS_BY_ARGS of (counter * reg list)
-	   | ARGCOUNTER of counter
-	   (* the first n bits arguments go into the first n bits of registers *)
-	   | REGS_BY_BITS of (counter * reg list)
-	   | BITCOUNTER of counter
-	   (* sequence of stages *)
-	   | SEQ of stage list
-	   (* specifies an alignment (this rule applies even for registers) *)
-	   | PAD of counter
-	   (* specifies an alignment *)
-	   | ALIGN_TO of (width -> width)
+    datatype stage 
+      = OVERFLOW of {                                (* overflow block (usually corresponds to a runtime stack) *)
+	     counter : counter,
+	     blockDirection : block_direction,
+	     maxAlign : int 
+        }
+      | WIDEN of (width -> width)      
+      | CHOICE of ( (slot -> bool) * stage) list     (* choose the first stage whose corresponding 
+						      * predicate is true. *)
+      | REGS_BY_ARGS of (counter * reg list)         (* the first n arguments go into the first n
+						      * registers *)
+      | ARGCOUNTER of counter
+      | REGS_BY_BITS of (counter * reg list)         (* the first n bits arguments go into the first 
+						      * n bits of registers *)
+      | BITCOUNTER of counter                        
+      | SEQ of stage list                            (* sequence of stages *)
+      | PAD of counter                               (* specifies an alignment (this rule applies even 
+						      * for registers) *)      
+      | ALIGN_TO of (width -> width)                 (* specifies an alignment *)
 
     (* indicates that the call-generation process has encountered an error *)
     exception StagedAlloc

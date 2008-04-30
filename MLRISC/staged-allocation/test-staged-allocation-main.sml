@@ -66,6 +66,8 @@ structure Main =
 
     datatype c_argument =
 	     INT of int
+	   | SHORT of int
+	   | CHAR of int
 	   | FLOAT of real
 	   | DOUBLE of real
 	   | POINTER of int
@@ -77,6 +79,8 @@ structure Main =
 
     fun cArgToString (cArg) = (case cArg
         of INT i => Int.toString i
+	 | SHORT i => Int.toString i
+	 | CHAR c => Int.toString c
 	 | FLOAT f => Real.toString f^"f"
 	 | DOUBLE f => Real.toString f
 	 | POINTER p => "(void*)0x"^Int.fmt StringCvt.HEX p
@@ -84,7 +88,9 @@ structure Main =
         (* end case *))
 
     fun tyToFormatString (ty) = (case ty
-        of CTy.C_unsigned _ => "%u"
+        of CTy.C_signed CTy.I_char => "%c"
+	 | CTy.C_unsigned CTy.I_char => "%c"
+	 | CTy.C_unsigned _ => "%u"
 	 | CTy.C_signed _ => "%d"
 	 | CTy.C_float => "%f"
 	 | CTy.C_double => "%f"
@@ -93,8 +99,12 @@ structure Main =
         (* end case *))
 
     fun cTyToName cTy = (case cTy
-        of CTy.C_unsigned _ => "u"
-	 | CTy.C_signed _ => "i"
+        of CTy.C_unsigned CTy.I_int => "u"
+	 | CTy.C_signed CTy.I_int => "i"
+	 | CTy.C_signed CTy.I_char => "c"
+	 | CTy.C_unsigned CTy.I_char => "c"
+	 | CTy.C_signed CTy.I_short => "i"
+	 | CTy.C_unsigned CTy.I_short => "u"
 	 | CTy.C_float => "f"
 	 | CTy.C_double => "d"
 	 | CTy.C_PTR => "vs"
@@ -102,8 +112,12 @@ structure Main =
         (* end case *))
 
     fun cTyToString (ty) = (case ty
-        of CTy.C_unsigned _ => "unsigned int"
-	 | CTy.C_signed _ => "int"
+        of CTy.C_unsigned CTy.I_int => "unsigned int"
+	 | CTy.C_signed CTy.I_int => "int"
+	 | CTy.C_unsigned CTy.I_char => "char"
+	 | CTy.C_signed CTy.I_char => "char"
+	 | CTy.C_signed CTy.I_short => "short"
+	 | CTy.C_unsigned CTy.I_short => "short"
 	 | CTy.C_float => "float"
 	 | CTy.C_double => "double"
 	 | CTy.C_PTR => "void*"
@@ -142,31 +156,45 @@ structure Main =
 	    td
         end
 
-    fun genParamName (i) = " a"^Int.toString i
+    fun genParamName i = 
+	" a"^Int.toString i
 
-    fun genParamNames (tys) = List.rev(#2 (List.foldl (fn (ty, (i, params)) => (i+1, genParamName(i) :: params)) (0, []) tys))
+  (* generate parameter names for a list of types *)
+    fun genParamNames tys = 
+	List.rev(#2 (List.foldl (fn (ty, (i, params)) => (i+1, genParamName(i) :: params)) (0, []) tys))
 
-    fun genParam (ty, name) = cTyToString ty^name
+  (* generate formal parameters for a list of types and variables *)
+    fun genFormals (paramTys, vars) = let
+        fun f (ty, name) = cTyToString ty^name
+        in
+           List.map f (ListPair.zip (paramTys, vars))
+        end
 
-    fun genParams (paramTys, vars) = List.map genParam (ListPair.zip (paramTys, vars))
-
-    fun genTargetPrintfArgs (vars, paramTys) = List.concat (ListPair.map (fn (prefix, ty) => cTyNames prefix ty) (vars, paramTys))
+    fun genTargetPrintfArgs (vars, paramTys) = let
+	fun f (prefix, ty) = cTyNames prefix ty
+        in
+	   List.concat (ListPair.map f (vars, paramTys))
+        end
 
     fun genPrintf (formatString, args) =
-	"printf("^formatString^","^(String.concatWith ", " args)^");"
+	"printf("^String.concatWith "," (formatString :: args)^");"
 
     fun genFormatString (elts) =
 	"\"" ^ String.concatWith " " elts ^ "\\n\""
 
-    (* construct a format string printing the parameters of a proto *)
-    fun protoToFormatString ({conv, retTy, paramTys}, args) = genFormatString (ListPair.map (fn (arg, ty) => arg^"="^tyToFormatString ty^"\\n") (args, paramTys))
+  (* construct a format string printing the parameters of a proto *)
+    fun protoToFormatString ({conv, retTy, paramTys}, args) = let
+        fun formatVar (arg, ty) = arg^"="^tyToFormatString ty^"\\n"
+        in
+	   genFormatString (ListPair.map formatVar (args, paramTys))
+        end
 
     fun protoToPrintf (proto, args) = genPrintf(protoToFormatString(proto, args), args)	
 
     (* generate a dummy target function that prints its parameters *)
     fun targetFun (targetName, proto as {conv, retTy, paramTys}, retVal) = let
 	val vars = genParamNames paramTys
-	val params = genParams(paramTys, vars)
+	val params = genFormals(paramTys, vars)
 	val printfArgs = genTargetPrintfArgs(vars, paramTys)
 	in 
            cTyToString retTy ^ " " ^ targetName ^ "(" ^ (String.concatWith ", " params) ^ ")" ^
@@ -245,14 +273,14 @@ structure Main =
       | isStruct _ = false
 
     fun maxSzOfProto ({conv, paramTys, retTy}) = let
-	fun szOfTy ty = #sz (CSizes.sizeOfTy ty)
+	fun szOfTy ty = if ty = CTy.C_void then 0 else #sz (CSizes.sizeOfTy ty)
         in
 	    List.foldl Int.max 0 (List.map szOfTy (retTy ::paramTys))
 	end
 
     fun genGlue (target, mlriscGlue, proto, args, retVal) = String.concatWith "\n" [
           cIncludes,
-  	  "#define MAX_SZ "^Int.toString((maxSzOfProto proto) div 8),
+  	  "#define MAX_SZ "^Int.toString(Int.max(1,(maxSzOfProto proto) div wordSzB)),
 	  (* tyep declarations for structs *)
 	  String.concatWith "\n" (List.map cTyDecl (List.filter isStruct (#paramTys proto))),
 	  (* C prototype for the MLRISC assembly stub *)
@@ -275,6 +303,8 @@ structure Main =
 	(case ty
           of CTy.C_signed CTy.I_int => CCalls.ARG (T.LOAD(32, offset maxSz arr0 i, ()))
 	   | CTy.C_unsigned CTy.I_int => CCalls.ARG (T.LOAD(32, offset maxSz arr0 i, ()))
+	   | CTy.C_unsigned CTy.I_char => CCalls.ARG (T.LOAD(8, offset maxSz arr0 i, ()))
+	   | CTy.C_signed CTy.I_char => CCalls.ARG (T.LOAD(8, offset maxSz arr0 i, ()))
 	   | CTy.C_PTR => CCalls.ARG (T.LOAD(wordTy, offset maxSz arr0 i, ()))
 	   | CTy.C_STRUCT _ => CCalls.ARG (T.LOAD(wordTy, offset maxSz arr0 i, ()))
 	   | CTy.C_float => CCalls.FARG (T.FLOAD(32, offset maxSz arr0 i, ()))
@@ -283,11 +313,12 @@ structure Main =
 
     val rand = Random.rand (0, 255)
 
-    fun genRandArg (ty) = (case ty
+    fun genRandArg ty = (case ty
         of CTy.C_float => FLOAT (Random.randReal(rand))
 	 | CTy.C_double => DOUBLE(Random.randReal(rand))
-	 | CTy.C_unsigned _ => INT (Random.randNat(rand))
-	 | CTy.C_signed _ => INT (Random.randNat(rand))
+	 | CTy.C_unsigned CTy.I_int => INT (Random.randNat(rand))
+	 | CTy.C_signed CTy.I_int => INT (Random.randNat(rand))
+	 | CTy.C_signed CTy.I_char => CHAR (Random.randNat rand mod 255)
 	 | CTy.C_PTR => POINTER(Random.randNat(rand))
 	 | CTy.C_STRUCT cTys => STRUCT(List.map genRandArg cTys)
         (* end case *))
@@ -307,10 +338,13 @@ structure Main =
     val pty6 = [CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR]
     val pty7 = [CTy.C_float]
     val pty8 = [CTy.C_PTR]
+    val pty9 = [CTy.C_signed CTy.I_int]
+    val pty10 = [CTy.C_signed CTy.I_int, CTy.C_signed CTy.I_int]
+    val pty11 = [CTy.C_signed CTy.I_int, CTy.C_signed CTy.I_char, CTy.C_float]
 
     fun main _ = let
-	val retTy = CTy.C_double
-	val paramTys = pty7
+	val retTy = CTy.C_signed CTy.I_int
+	val paramTys = pty11
 
 	val cArgs = List.map genRandArg paramTys
 	val retVal = if retTy <> CTy.C_void then [genRandArg retTy] else []

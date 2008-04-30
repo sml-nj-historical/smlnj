@@ -2,7 +2,6 @@ Library
 
 	signature TARGET_LANG
 	signature STAGED_ALLOCATION
-	signature CALL_CONV
 	signature C_CALL
 
 	functor StagedAllocationFn
@@ -19,6 +18,5 @@ is
 
 	../staged-allocation/c-call-sig.sml
         ../staged-allocation/c-call-fn.sml
-	../staged-allocation/call-conv-sig.sml
 	../staged-allocation/staged-allocation-sig.sml
 	../staged-allocation/staged-allocation-fn.sml

@@ -1,6 +1,45 @@
 (* ia32-svid-fn.sml
  *
- * C calling conventions using staged allocation.
+ *
+ * C function calls for the IA32 using the System V ABI
+ *
+ * Register conventions:
+ *
+ *    %eax	return value		(caller save)
+ *    %ebx	global offset for PIC	(callee save)
+ *    %ecx	scratch			(caller save)
+ *    %edx	extra return/scratch	(caller save)
+ *    %ebp	optional frame pointer	(callee save)
+ *    %esp	stack pointer		(callee save)
+ *    %esi	locals			(callee save)
+ *    %edi	locals			(callee save)
+ *
+ *    %st(0)	top of FP stack; FP return value
+ *    %st(1..7)	FP stack; must be empty on entry and return
+ *
+ * Calling convention:
+ *
+ *    Return result:
+ *	+ Integer and pointer results are returned in %eax.  Small
+ *	  integer results are not promoted.
+ *	+ 64-bit integers (long long) returned in %eax/%edx
+ *	+ Floating point results are returned in %st(0) (all types).
+ *	+ Struct results are returned in space provided by the caller.
+ *	  The address of this space is passed to the callee as an
+ *	  implicit 0th argument, and on return %eax contains this
+ *	  address.  The called function is responsible for removing
+ *	  this argument from the stack using a "ret $4" instruction.
+ *	  NOTE: the MacOS X ABI returns small structs in %eax/%edx.
+ *
+ *    Function arguments:
+ *	+ Arguments are pushed on the stack right to left.
+ *	+ Integral and pointer arguments take one word on the stack.
+ *	+ float arguments take one word on the stack.
+ *	+ double arguments take two words on the stack.  The i386 ABI does
+ *	  not require double word alignment for these arguments.
+ *	+ long double arguments take three words on the stack.
+ *	+ struct arguments are padded out to word length.
+ *
  *)
 
 functor IA32SVIDFn (
@@ -28,7 +67,6 @@ functor IA32SVIDFn (
     datatype location_kind
       = K_GPR                   (* pass in general purpose registers *)
       | K_FPR                   (* pass in floating-point registers *)
-      | K_MEM                   (* pass in memory *)
 
   (* staged allocation *)
     structure SA = StagedAllocationFn (
@@ -39,7 +77,7 @@ functor IA32SVIDFn (
 		      end
 		    val memSize = 8)
 
-  (* staged-allocation specification for the calling conventions *)
+  (* calling conventions in the Staged Allocation language *)
     structure CCs =
       struct
 
@@ -59,18 +97,10 @@ functor IA32SVIDFn (
        *)
 	val fpStk = List.tabulate(8, fn i => fpr (C.ST i))
 
-
       (* conventions for calling a C function *)
-        val alignB = 8
+        val alignB = 4
 	val cStack = SA.freshCounter()
-	val callStages = if (abi = "Mac OS X")
-            then [
-	      SA.ALIGN_TO (fn ty => Int.max(ty, 16*32)),           (* align the stack to multiples of 16 bytes *)
-	      SA.SEQ[
-	        SA.WIDEN (fn ty => Int.max(32, ty)),
-		SA.OVERFLOW {counter=cStack, blockDirection=SA.UP, maxAlign=alignB}
-	    ]
-          ] else (* abi <> "Mac OS X" *) [
+	val callStages = [
 	      SA.SEQ[
 	        SA.WIDEN (fn ty => Int.max(32, ty)),
 	        SA.OVERFLOW {counter=cStack, blockDirection=SA.UP, maxAlign=alignB}
@@ -107,15 +137,21 @@ functor IA32SVIDFn (
     datatype c_arg = datatype CCall.c_arg
 
     (* classify a C type into its location kind (assuming that aggregates cannot be passed in registers) *)
-    fun kindOfCTy (CTy.C_float | CTy.C_double | CTy.C_long_double) = K_FPR
-      | kindOfCTy (cTy as (CTy.C_STRUCT _ | CTy.C_UNION _ | CTy.C_ARRAY _)) = raise Fail "impossible"
-      | kindOfCTy _ = K_GPR
+    fun kindOfCTy (CTy.C_float | 
+		   CTy.C_double | 
+		   CTy.C_long_double) = 
+	K_FPR
+      | kindOfCTy (CTy.C_unsigned _ |
+		   CTy.C_signed _ |
+		   CTy.C_PTR | 		   
+		   CTy.C_ARRAY _) = 
+	K_GPR
 
-    (* convert a C type to locations for staged allocation *)
+    (* convert a C type to slots for staged allocation *)
     fun cTyToSlots cTy = let
 	val {sz, align} = IA32CSizes.sizeOfTy cTy
-	(* flatten the C type and compute the locations *)
-	val locs = List.map (fn cTy => (sz * 8, kindOfCTy cTy, align))
+	(* compute argument slots for the flattened C type *)
+	val slots = List.map (fn cTy => (sz * 8, kindOfCTy cTy, align))
 			    (CTy.flattenCTy cTy)
         in
 	  case (cTy, abi)
@@ -125,13 +161,13 @@ functor IA32SVIDFn (
                  then [(8, K_GPR, align)]
               else if (sz <= 8)
                  then [(8, K_GPR, align), (8, K_GPR, align)]
-              else locs
+              else slots
 	    | ( (CTy.C_unsigned CTy.I_long_long |
 		 CTy.C_signed CTy.I_long_long   ),
 		_ ) => 
 	      (* 64-bit integers are returned in GPRs *)
 	      [(8, K_GPR, align), (8, K_GPR, align)]
-	    | _ => locs
+	    | _ => slots
         end
 
   (* convert a finalized staged-allocation location into a C location *)
@@ -140,11 +176,13 @@ functor IA32SVIDFn (
       | saToCLoc (ty, SA.BLOCK_OFFSET offB, _) = CCall.C_STK(ty, T.I.fromInt (32, offB))
       | saToCLoc (ty, SA.NARROW(loc, ty', k), _) = saToCLoc (ty, loc, k) 
 
+    val frameAlign = 8
+
     fun layout {conv, retTy, paramTys} = let
 
 	(* compute locations for return results *)
-	val (resLocs, argOffset, str) = (case retTy
-            of CTy.C_void => ([], 0, CCs.str0)
+	val (resLocs, structRetLoc, str) = (case retTy
+            of CTy.C_void => ([], NONE, CCs.str0)
 	     | retTy => let
 	       val {sz, align} = IA32CSizes.sizeOfTy retTy
   	       (* compute the locations for return values using staged allocation *)
@@ -152,9 +190,8 @@ functor IA32SVIDFn (
 	       (* finalize locations for the return type *)
 	       val (str, locs) = SA.doStagedAllocation(CCs.str0, returnStepper, cTyToSlots retTy)
 	       val nBytesAllocated = SA.find(str, CCs.cStack)
-	       val argOffset = if (nBytesAllocated > 8) then 4 else 0
 	       in
-		   (List.map saToCLoc locs, argOffset, str)
+		   (List.map saToCLoc locs, SOME {szb=sz, align=align}, str)
                end
             (* end case *))
 
@@ -168,10 +205,16 @@ functor IA32SVIDFn (
 	val (str, paramLocss) = List.foldl doParam (str, []) paramTys
 	val paramLocs = List.rev paramLocss
 
+	(* number of bytes allocated for the call *)
+	val cStkSzB = let
+             val n = SA.find(str, CCs.cStack)
+             in
+                if (abi = "Mac OS X")
+		   then IA32CSizes.alignAddr(n, 16)
+                   else n
+             end
 	in
-	   {argLocs=paramLocs,
-	    argMem={szb=argOffset, align=argOffset},
-	    resLocs=resLocs}
+	   {argLocs=paramLocs, argMem={szb=cStkSzB, align=4}, structRetLoc=structRetLoc, resLocs=resLocs}
         end (* layout *)
 
   (* List of registers defined by a C Call with the given return type; this list
@@ -209,7 +252,19 @@ functor IA32SVIDFn (
     fun genCall {
 	    name, proto, paramAlloc, structRet, saveRestoreDedicated, callComment, args
 	  } = let
-	  val {argLocs, argMem, resLocs} = layout proto
+	  val {argLocs, argMem, structRetLoc, resLocs} = layout proto
+
+	(* for functions that return a struct/union, pass the location as an
+	 * implicit first argument.  Because the callee removes this implicit
+	 * argument from the stack, we must also keep track of the size of the
+	 * explicit arguments.
+	 *)
+	  val (args, argLocs, explicitArgSzB) = (case structRetLoc
+		 of SOME pos =>
+		      (ARG(structRet pos)::args, [CCall.C_STK(wordTy, T.I.fromInt (wordTy, 0))]::argLocs, #szb argMem - 4)
+		  | NONE => (args, argLocs, #szb argMem)
+		(* end case *))
+
 	(* instruction to allocate space for arguments *)
 	  val argAlloc = if ((#szb argMem = 0) orelse paramAlloc argMem)
 		then []
@@ -227,8 +282,6 @@ functor IA32SVIDFn (
 			"unknown calling convention \"", String.toString conv, "\""
 		      ])
 		(* end case *))
-
-	  val explicitArgSzB = 0
 
 	(* code to pop the arguments from the stack *)
 	  val popArgs = if calleePops orelse (explicitArgSzB = 0)
@@ -281,7 +334,7 @@ functor IA32SVIDFn (
 		else callStm
 
 	(* assemble the call sequence *)
-	  val callSeq = argAlloc @ copyArgs @ save @ [callStm] @ restore @ popArgs @ copyResult
+	  val callSeq = argAlloc @ copyArgs @ save @ [callStm] @ restore(* @ popArgs*) @ copyResult
 
           in
    	    {callseq=callSeq, result=resultRegs}

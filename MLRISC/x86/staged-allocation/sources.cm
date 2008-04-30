@@ -17,7 +17,6 @@ is
   $/smlnj-lib.cm
 
   wrapper.cm
-  ../../staged-allocation/test-staged-allocation-types.sml
   ../../staged-allocation/test-staged-allocation-main.sml
 
   test.sml
