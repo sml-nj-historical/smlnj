@@ -142,52 +142,51 @@ fun isPrimPat (VARpat{info, ...}) = II.isPrimInfo(info)
   | isPrimPat _ = false
 *)
 
-(* patproc:
- *   "alpha convert" a pattern, replacing old variables by
- *   new ones, with new LVAR accesses.
- *   Returns the converted pattern, the list of old variables (VARpats)
- *   and the list of new variables (VALvars).
+(* aconvertPat:
+ *   "alpha convert" a pattern with respect to the lvar access values
+ *   of the pattern variables. Old variables are replaced by
+ *   new ones, with fresh LVAR accesses and new refs for the typ field.
+ *   Returns the converted pattern, the list of the original variable
+ *   patterns (VARpats) and the list of new variables (VALvars).
  * called only once, in elabVB in elabcore.sml *)
 
-fun patproc (pp, compInfo as {mkLvar=mkv, ...} : compInfo) =
-    let val oldnew : (Absyn.pat * var) list ref = ref nil
-
-	fun f (p as VARpat(VALvar{access=acc,prim,typ=ref typ',path})) =
-              let fun find ((VARpat(VALvar{access=acc',...}), x)::rest, v) = 
-		        (case (A.accLvar acc') (* DBM: can this return NONE? *)
-                          of SOME w => if v=w then x else find(rest, v)
-			               (* DBM: can the true branch happen?
-					  ie. two variables with same lvar
-					  in a pattern? *)
-                           | _ => find(rest, v))
-                    | find (_::rest, v) = find(rest, v)
-		    | find (nil, v) = (* DBM: assert this rule always applies ? *)
-		        let val x = VALvar{access=A.dupAcc(v,mkv), prim=prim,
-                                           typ=ref typ', path=path}
-			 in oldnew := (p,x):: !oldnew; x
+fun aconvertPat (pat, {mkLvar=mkv, ...} : compInfo)
+    : Absyn.pat * Absyn.pat list * var list =
+    let val varmap : (Absyn.pat * var) list ref = ref nil
+            (* association list mapping old vars to new *)
+        (* ASSERT: any VARpat/VALvar will have an LVAR access. *)
+	fun mappat (oldpat as VARpat(VALvar{access=A.LVAR(oldlvar),
+                                            typ=ref typ',prim,path})) =
+              let fun find ((VARpat(VALvar{access=A.LVAR(lv),...}), newvar)::rest) =
+                        if lv=oldlvar then newvar else find rest
+			(* a variable could occur multiple times because
+                           repetition in OR patterns *)
+                    | find (_::rest) = bug "aconvertPat: bad varmap key"
+		    | find nil =
+		        let val newvar =
+                                VALvar{access=A.dupAcc(oldlvar,mkv), prim=prim,
+                                       typ=ref typ', path=path}
+			 in varmap := (oldpat,newvar)::(!varmap); newvar
 			end
-
-	       in (case A.accLvar(acc)
-                    of SOME v => VARpat(find(!oldnew, v))
-                     | _ => bug "unexpected access in patproc")
+	       in VARpat(find(!varmap))
 	      end
-	  | f (RECORDpat{fields,flex,typ}) =
-		RECORDpat{fields=map (fn(l,p)=>(l,f p)) fields,
+	  | mappat (VARpat _) = bug "aconvertPat: bad variable"
+	  | mappat (RECORDpat{fields,flex,typ}) =
+		RECORDpat{fields=map (fn(l,p)=>(l,mappat p)) fields,
                           flex=flex, typ=typ}
-	  | f (VECTORpat(pats,t)) = VECTORpat(map f pats, t)
-	  | f (APPpat(d,c,p)) = APPpat(d,c,f p)
-	  | f (ORpat(a,b)) = ORpat(f a, f b)
-	  | f (CONSTRAINTpat(p,t)) = CONSTRAINTpat(f p, t)
-	  | f (LAYEREDpat(p,q)) = LAYEREDpat(f p, f q)
-	  | f p = p
+	  | mappat (VECTORpat(pats,t)) = VECTORpat(map mappat pats, t)
+	  | mappat (APPpat(d,c,p)) = APPpat(d,c,mappat p)
+	  | mappat (ORpat(a,b)) = ORpat(mappat a, mappat b)
+	  | mappat (CONSTRAINTpat(p,t)) = CONSTRAINTpat(mappat p, t)
+	  | mappat (LAYEREDpat(p,q)) = LAYEREDpat(mappat p, mappat q)
+	  | mappat p = p
 
-        val np = f pp
+        val newpat = mappat pat
 
-        fun h((a,b)::r, x, y) = h(r, a::x, b::y)
-          | h([], x, y) = (np, x, y)
+        val (oldvarpats,newvars) = ListPair.unzip (!varmap)
 
-     in h (!oldnew, [], [])
-    end
+     in (newpat,oldvarpats,newvars)
+    end (* aconvertPat *)
 
 (* sort the labels in a record the order is redefined to take the usual 
    ordering on numbers expressed by strings (tuples) *)
