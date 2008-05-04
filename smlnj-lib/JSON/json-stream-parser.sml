@@ -17,7 +17,8 @@ structure JSONStreamParser : sig
 	objectKey : 'ctx * string -> 'ctx,
 	endObject : 'ctx -> 'ctx,
 	startArray : 'ctx -> 'ctx,
-	endArray : 'ctx -> 'ctx
+	endArray : 'ctx -> 'ctx,
+	error : 'ctx * string -> 'ctx
       }
 
     val parser : 'ctx callbacks -> (TextIO.instream * 'ctx) -> unit
@@ -38,69 +39,80 @@ structure JSONStreamParser : sig
 	objectKey : 'ctx * string -> 'ctx,
 	endObject : 'ctx -> 'ctx,
 	startArray : 'ctx -> 'ctx,
-	endArray : 'ctx -> 'ctx
+	endArray : 'ctx -> 'ctx,
+	error : 'ctx * string -> 'ctx
       }
 
-    fun parser cb (inStrm, ctx) = let
-	  val lexer = Lex.lex srcMap
-	  fun parseValue (strm, ctx) = let
+    fun error (cb : 'a callbacks, ctx, msg) = (
+	  #error cb (ctx, msg);
+	  raise Fail "error")
+
+    fun parser (cb : 'a callbacks) (inStrm, ctx) = let
+	  val lexer = Lex.lex (AntlrStreamPos.mkSourcemap ())
+	  fun parseValue (strm : Lex.strm, ctx) = let
 		val (tok, pos, strm) = lexer strm
 		in
 		  case tok
-		   of T.LB => parseArray strm
-		    | T.LCB => parseObject strm
+		   of T.LB => parseArray (strm, ctx)
+		    | T.LCB => parseObject (strm, ctx)
 		    | T.KW_null => (strm, #null cb ctx)
 		    | T.KW_true => (strm, #boolean cb (ctx, true))
 		    | T.KW_false => (strm, #boolean cb (ctx, false))
 		    | T.INT n => (strm, #integer cb (ctx, n))
 		    | T.FLOAT f => (strm, #float cb (ctx, f))
 		    | T.STRING s => (strm, #string cb (ctx, s))
-		    | _ => (* error *)
+		    | _ => error (cb, ctx, "error parsing value")
 		  (* end case *)
 		end
-	  and parseArray (strm, ctx) = let
-		fun loop (strm, ctx) = let
-		      val (strm, ctx) = parseValue (strm, ctx)
-		    (* expect either a "," or a "]" *)
-		      val (tok, pos, strm) = lexer strm
+	  and parseArray (strm : Lex.strm, ctx) = (case lexer strm
+		 of (T.RB, _, strm) => (strm, #endArray cb (#startArray cb ctx))
+		  | _ => let
+		      fun loop (strm, ctx) = let
+			    val (strm, ctx) = parseValue (strm, ctx)
+			  (* expect either a "," or a "]" *)
+			    val (tok, pos, strm) = lexer strm
+			    in
+			      case tok
+			       of T.RB => (strm, ctx)
+				| T.COMMA => loop (strm, ctx)
+				| _ => error (cb, ctx, "error parsing array")
+			      (* end case *)
+			    end
+		      val ctx = #startArray cb ctx
+		      val (strm, ctx) = loop (strm, #startArray cb ctx)
 		      in
-			case tok
-			 of T.RB => (strm, ctx)
-			  | T.COMMA => loop (strm, ctx)
-			  | _ => (* error *)
+			(strm, #endArray cb ctx)
+		      end
+		(* end case *))
+	  and parseObject (strm : Lex.strm, ctx) = let
+		fun parseField (strm, ctx) = (case lexer strm
+		       of (T.STRING s, pos, strm) => let
+			    val ctx = #objectKey cb (ctx, s)
+			    in
+			      case lexer strm
+			       of (T.COLON, _, strm) => parseValue (strm, ctx)
+				| _ => error (cb, ctx, "error parsing field")
+			      (* end case *)
+			    end
+			| _ => (strm, ctx)
+		      (* end case *))
+		fun loop (strm, ctx) = let
+		      val (strm, ctx) = parseField (strm, ctx)
+		      in
+			(* expect either "," or "}" *)
+			case lexer strm
+			 of (T.RCB, pos, strm) => (strm, ctx)
+			  | (T.COMMA, pos, strm) => loop (strm, ctx)
+			  | _ => error (cb, ctx, "error parsing object")
 			(* end case *)
 		      end
-		val (strm, ctx) = loop (strm, #startArray cb ctx)
-		in
-		  (strm, #endArray ctx)
-		end
-	  and parseObject (strm, ctx) = let
-		fun loop (strm, ctx) = let
-(* expect STRING COLON value ("," or "}") *)
-		      val (tok, pos, strm) = lexer strm
-		      in
-			case tok
-			 of T.EOF =>
-			  | T.LB =>
-			  | T.RB =>
-			  | T.LCB =>
-			  | T.RCB =>
-			  | T.COMMA =>
-			  | T.COLON =>
-			  | T.KW_null =>
-			  | T.KW_true =>
-			  | T.KW_false =>
-			  | T.INT n =>
-			  | T.FLOAT f =>
-			  | T.STRING s =>
-			(* end case *)
-		      end
+		val ctx = #startObject cb ctx
 		val (strm, ctx) = loop (strm, #startObject cb ctx)
 		in
-		  (strm, #endObject ctx)
+		  (strm, #endObject cb ctx)
 		end
 	  in
-	    parseValue (Lex.streamifyInstream inStrm, ctx)
+	    ignore (parseValue (Lex.streamifyInstream inStrm, ctx))
 	  end
 
   end
