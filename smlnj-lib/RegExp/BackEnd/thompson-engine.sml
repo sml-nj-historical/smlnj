@@ -232,6 +232,9 @@ structure ThompsonEngine : REGEXP_ENGINE =
 	  end
 
 	fun find re getc stream = let
+(* FIXME: we need to reset isFirst on a newline; we also need to add an isLast
+ * flag to scan to support the EOL assertion.
+ *)
 	      fun loop (isFirst, s) = (case (scan (re, getc, isFirst, s))
 		     of NONE => (case (getc s)
 			   of SOME(_, s') => loop (false, s')
