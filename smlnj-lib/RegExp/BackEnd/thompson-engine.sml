@@ -19,21 +19,23 @@ structure ThompsonEngine : REGEXP_ENGINE =
     type 'a match = {pos : 'a, len : int} MatchTree.match_tree
 
   (* intermediate representation of states *)
-    datatype state'
-      = CHR' of (int * char * state' ref)
-      | CSET' of (int * CSet.set * state' ref)
-      | NCSET' of (int * CSet.set * state' ref)
-      | SPLIT' of (int * state' ref * state' ref)
+    datatype state_kind
+      = CHR' of (char * state' ref)
+      | CSET' of (CSet.set * state' ref)
+      | NCSET' of (CSet.set * state' ref)
+      | SPLIT' of (state' ref * state' ref)
+      | BOL' of state' ref			(* assert beginning of line *)
+      | EOL' of state' ref			(* assert end of line *)
       | FINAL'
+
+    withtype state' = {id : int, kind : state_kind}
 
     type frag = {start : state', out : state' ref list}
 
   (* return the ID of a state *)
-    fun idOf (CHR'(id, _, _)) = id
-      | idOf (CSET'(id, _, _)) = id
-      | idOf (NCSET'(id, _, _)) = id
-      | idOf (SPLIT'(id, _, _)) = id
-      | idOf (FINAL') = 0
+    fun idOf {id, kind} = id
+
+    val final = {id = 0, kind = FINAL'}
 
   (* interpreter representation of states *)
     datatype state
@@ -41,33 +43,41 @@ structure ThompsonEngine : REGEXP_ENGINE =
       | CSET of (CSet.set * int)
       | NCSET of (CSet.set * int)
       | SPLIT of (int * int)
+      | BOL of int			(* assert beginning of line *)
+      | EOL of int			(* assert end of line *)
       | FINAL
 
-    fun cvtState (CHR'(id, c, out)) = CHR(c, idOf(!out))
-      | cvtState (CSET'(id, cset, out)) = CSET(cset, idOf(!out))
-      | cvtState (NCSET'(id, cset, out)) = NCSET(cset, idOf(!out))
-      | cvtState (SPLIT'(id, out1, out2)) = SPLIT(idOf(!out1), idOf(!out2))
-      | cvtState (FINAL') = FINAL
+    fun cvtState {id, kind} = (case kind
+	   of CHR'(c, out) => CHR(c, idOf(!out))
+	    | CSET'(cset, out) => CSET(cset, idOf(!out))
+	    | NCSET'(cset, out) => NCSET(cset, idOf(!out))
+	    | SPLIT'(out1, out2) => SPLIT(idOf(!out1), idOf(!out2))
+	    | BOL' out => BOL(idOf(!out))
+	    | EOL' out => EOL(idOf(!out))
+	    | FINAL' => FINAL
+	  (* end case *))
 
     datatype regexp = RE of {start : int, states : state vector}
 
     fun compile re = let
 	(* the list of states; state 0 is always the accepting state *)
 	  val nStates = ref 1
-	  val states = ref [FINAL']
+	  val states = ref [final]
 	(* create new states *)
-	  fun new mk = let
+	  fun new kind = let
 		val id = !nStates
-		val s = mk id
+		val s = {id = id, kind = kind}
 		in
 		  states := s :: !states;
 		  nStates := id+1;
 		  s
 		end
-	  fun newChr (c, out) = new (fn id => CHR'(id, c, out))
-	  fun newCset (cset, out) = new (fn id => CSET'(id, cset, out))
-	  fun newNcset (cset, out) = new (fn id => NCSET'(id, cset, out))
-	  fun newSplit (out1, out2) = new (fn id => SPLIT'(id, out1, out2))
+	  fun newChr (c, out) = new (CHR'(c, out))
+	  fun newCset (cset, out) = new (CSET'(cset, out))
+	  fun newNcset (cset, out) = new (NCSET'(cset, out))
+	  fun newSplit (out1, out2) = new (SPLIT'(out1, out2))
+	  fun newBOL out = new (BOL' out)
+	  fun newEOL out = new (EOL' out)
 	(* update the outputs of a fragment *)
 	  fun setOuts (f : frag, s : state') = List.app (fn r => r := s) (#out f)
 	(* compile an RE *)
@@ -97,27 +107,31 @@ structure ThompsonEngine : REGEXP_ENGINE =
 		  | RE.Star re => closure re
 		  | RE.Plus re => posClosure re
 		  | RE.MatchSet cset => let
-		      val out = ref FINAL'
+		      val out = ref final
 		      in
 			{start = newCset(cset, out), out = [out]}
 		      end
 		  | RE.NonmatchSet cset => let
-		      val out = ref FINAL'
+		      val out = ref final
 		      in
 			{start = newNcset(cset, out), out = [out]}
 		      end
 		  | RE.Char c => let
-		      val out = ref FINAL'
+		      val out = ref final
 		      in
 			{start = newChr(c, out), out = [out]}
 		      end
-		  | RE.Begin => raise Fail "Begin"
+		  | RE.Begin => let
+		      val out = ref final
+		      in
+			{start = newBOL out, out = [out]}
+		      end
 		  | RE.End => raise Fail "End"
 		(* end case *))
 	(* compile re? *)
 	  and option re = let
 		val f = reComp re
-		val out = ref FINAL'
+		val out = ref final
 		val s = newSplit(ref(#start f), out)
 		in
 		  {start = s, out = out :: #out f}
@@ -125,7 +139,7 @@ structure ThompsonEngine : REGEXP_ENGINE =
         (* compile re* *)
 	  and closure re = let
 		val f = reComp re
-		val out = ref FINAL'
+		val out = ref final
 		val s = newSplit(ref(#start f), out)
 		in
 		  setOuts (f, s);
@@ -134,7 +148,7 @@ structure ThompsonEngine : REGEXP_ENGINE =
         (* compile re+ *)
 	  and posClosure re = let
 		val f = reComp re
-		val out = ref FINAL'
+		val out = ref final
 		val s = newSplit(ref(#start f), out)
 		in
 		  setOuts (f, s);
@@ -142,7 +156,7 @@ structure ThompsonEngine : REGEXP_ENGINE =
 		end
 	(* generate the intermediate state representation *)
 	  val frag = reComp re
-	  val _ = setOuts (frag, FINAL')
+	  val _ = setOuts (frag, final)
 	(* convert the states to the final representation; note that we reverse the list
 	 * so that the states are now in increasing order.
 	 *)
@@ -190,6 +204,10 @@ structure ThompsonEngine : REGEXP_ENGINE =
 				    | NCSET(cset, out) => if CSet.member(cset, c)
 					then nextStates
 					else addState (stamp', nextStates, out)
+				    | BOL out => if isFirst
+					then addState (stamp', nextStates, out)
+					else nextStates
+				    | EOL out => raise Fail "end-of-line not supported yet"
 				    | _ => nextStates
 				  (* end case *))
 			    val nextNfaState = test (nfaState, [])
