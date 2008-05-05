@@ -83,6 +83,7 @@ structure ThompsonEngine : REGEXP_ENGINE =
 	(* compile an RE *)
 	  fun reComp re = (case re
 		 of RE.Group re => reComp re
+		  | RE.Alt[] => raise Fail "empty alternative"
 		  | RE.Alt[re] => reComp re
 		  | RE.Alt(re::rest) =>  let
 		      val f1 = reComp re
@@ -91,6 +92,7 @@ structure ThompsonEngine : REGEXP_ENGINE =
 		      in
 			{start = s, out = #out f1 @ #out f2}
 		      end
+		  | RE.Concat[] => raise Fail "empty concatenation"
 		  | RE.Concat[re] => reComp re
 		  | RE.Concat(re::rest) => let
 		      val f1 = reComp re
