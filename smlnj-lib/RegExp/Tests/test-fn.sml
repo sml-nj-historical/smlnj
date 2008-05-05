@@ -32,6 +32,7 @@ functor TestFn (
 	  test ("01", "[0-9]+", "abc123xyz");
 	  test ("02", "^[0-9]+", "abc123def\n987xyz");
 	  test ("03", "[0-9]+$", "abc123def\n987xyz456");
+	  test ("04", "[0-9]+$", "987xyz456\nabc123");
 	  print "** tests done\n")
 
   end
