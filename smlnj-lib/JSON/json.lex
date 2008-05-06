@@ -4,6 +4,11 @@
  * All rights reserved.
  *
  * Lexer for JSON files.
+ *
+ * TODO:
+ *	EOF rules for strings
+ *	newlines in strings
+ *	error messages for unknown characters
  *)
 
 %name JSONLexer;
@@ -24,7 +29,7 @@
 	in
 	  addStr(UTF8.encode w)
 	end
-  fun finishString () = (String.concat(List.rev(!sbuf)) before sbuf := [])
+  fun finishString () = (T.STRING(String.concat(List.rev(!sbuf))) before sbuf := [])
 );
 
 %let digit1_9 = [1-9];
@@ -37,34 +42,37 @@
 
 %states S;
 
-[ \t\n\r]+		=> (skip() );
+<INITIAL>[\ \t\n\r]+		=> ( skip() );
 
-"{"			=> ( T.LCB );
-"}"			=> ( T.RCB );
-"["			=> ( T.LB );
-"]"			=> ( T.RB );
-","			=> ( T.COMMA );
-":"			=> ( T.COLON );
-"null"			=> ( T.KW_null );
-"true"			=> ( T.KW_true );
-"false"			=> ( T.KW_false );
+<INITIAL>"{"			=> ( T.LCB );
+<INITIAL>"}"			=> ( T.RCB );
+<INITIAL>"["			=> ( T.LB );
+<INITIAL>"]"			=> ( T.RB );
+<INITIAL>","			=> ( T.COMMA );
+<INITIAL>":"			=> ( T.COLON );
+<INITIAL>"null"			=> ( T.KW_null );
+<INITIAL>"true"			=> ( T.KW_true );
+<INITIAL>"false"		=> ( T.KW_false );
 
-{int}			=> ( T.INT(valOf(IntInf.fromString yytext)) );
+<INITIAL>{int}			=> ( T.INT(valOf(IntInf.fromString yytext)) );
 
-{int}{frac}		=> ( float yytext );
-{int}{exp}		=> ( float yytext );
-{int}{frac}{exp}	=> ( float yytext );
+<INITIAL>{int}{frac}		=> ( float yytext );
+<INITIAL>{int}{exp}		=> ( float yytext );
+<INITIAL>{int}{frac}{exp}	=> ( float yytext );
 
-"\""			=> ( YYBEGIN S; continue() );
-<S>"\\\""		=> ( addStr "\\"; continue() );
-<S>"\\/"		=> ( addStr "/"; continue() );
-<S>"\\b"		=> ( addStr "\b"; continue() );
-<S>"\\f"		=> ( addStr "\f"; continue() );
-<S>"\\n"		=> ( addStr "\n"; continue() );
-<S>"\\r"		=> ( addStr "\r"; continue() );
-<S>"\\t"		=> ( addStr "\t"; continue() );
-<S>"\\u"{xdigit}{4}	=> ( addUChr yytext; continue() );
-<S>[^\\"]+		=> ( addStr yytext; continue() );
-<S>"\""			=> ( YYBEGIN INITIAL; finishString() );
+<INITIAL>"\""			=> ( YYBEGIN S; continue() );
+<S>"\\\""			=> ( addStr "\\"; continue() );
+<S>"\\/"			=> ( addStr "/"; continue() );
+<S>"\\b"			=> ( addStr "\b"; continue() );
+<S>"\\f"			=> ( addStr "\f"; continue() );
+<S>"\\n"			=> ( addStr "\n"; continue() );
+<S>"\\r"			=> ( addStr "\r"; continue() );
+<S>"\\t"			=> ( addStr "\t"; continue() );
+<S>"\\u"{xdigit}{4}		=> ( addUChr yytext; continue() );
+<S>[^\\"]+			=> ( addStr yytext; continue() );
+<S>"\""				=> ( YYBEGIN INITIAL; finishString() );
 
-"/*"~(.*"*/".*)"*/"	=> ( skip() );
+<INITIAL>"/*"(~(.*"*/".*))"*/"	=> ( skip() );
+
+(* FIXME: add some error reporting *)
+<INITIAL>.			=> ( skip() );

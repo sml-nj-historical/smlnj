@@ -8,6 +8,8 @@ structure JSONParser : sig
 
     val parse : TextIO.instream -> JSON.value
 
+    val parseFile : string -> JSON.value
+
   end = struct
 
     structure Lex = JSONLexer
@@ -16,8 +18,10 @@ structure JSONParser : sig
 
     fun error msg = raise Fail msg
 
-    fun parse inStrm = let
-	  val lexer = Lex.lex (AntlrStreamPos.mkSourcemap ())
+    fun parse' (srcMap, inStrm) = let
+	  val lexer = Lex.lex srcMap
+val lexer = fn strm => let val (tok, pos, strm) = lexer strm in
+print(T.toString tok ^ "\n"); (tok, pos, strm) end
 	  fun parseValue (strm : Lex.strm) = let
 		val (tok, pos, strm) = lexer strm
 		in
@@ -80,6 +84,16 @@ structure JSONParser : sig
 		end
 	  in
 	    #2 (parseValue (Lex.streamifyInstream inStrm))
+	  end
+
+    fun parse inStrm = parse' (AntlrStreamPos.mkSourcemap (), inStrm)
+
+    fun parseFile fileName = let
+	  val inStrm = TextIO.openIn fileName
+	  val v = parse' (AntlrStreamPos.mkSourcemap' fileName, inStrm)
+	  in
+	    TextIO.closeIn inStrm;
+	    v
 	  end
 
   end
