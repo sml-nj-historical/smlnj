@@ -240,10 +240,10 @@ and tycTyc(tc : Types.tycon, d) =
         | h (stmp,FORMAL, n) = 
 	  (case FTM.find(!ftmap, stmp)
 	    of NONE => (debugmsg ("--tycTyc unable to find "^
-				  Stamps.toString stmp);
-			bug ("unexpected FORMAL kind in tycTyc-h "^
-			     Stamps.toShortString stmp))
-	     | SOME tp => (debugmsg ("--tycTyc found "^Stamps.toShortString stmp);
+				  Stamps.toShortString stmp);
+			bug ("unexpected FORMAL kind in tycTyc-h"))
+	     | SOME tp => (debugmsg ("--tycTyc found "^
+				     Stamps.toShortString stmp);
 			   tpsTyc d tp))
         | h (_,TEMP, _) = bug "unexpected TEMP kind in tycTyc-h"
 
