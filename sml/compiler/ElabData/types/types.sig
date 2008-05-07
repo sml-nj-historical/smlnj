@@ -81,6 +81,7 @@ and ty
   | IBOUND of int
   | CONty of tycon * ty list
   | POLYty of {sign: polysign, tyfun: tyfun}
+  | MARKty of ty * SourceMap.region
   | WILDCARDty
   | UNDEFty
 
