@@ -67,7 +67,10 @@ fun elabType(ast:Ast.ty,env:SE.staticEnv,error,region:region)
 	   let val (lts1,lvt1) = elabTypeList(ts,env,error,region)
 	    in (BT.tupleTy lts1,lvt1)
 	   end
-       | MarkTy (ty,region) => elabType(ty,env,error,region)
+       | MarkTy (ty,region) =>
+	   let val (tyc,lvt) = elabType(ty,env,error,region)
+	   in (MARKty(tyc,region),lvt)
+	   end
 
 and elabTLabel(labs,env,error,region:region) =
     foldr 
@@ -320,6 +323,7 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 	       | POLYty{sign,tyfun=TYFUN{arity,body}} =>
 		   POLYty{sign=sign,
 			  tyfun=TYFUN{arity=arity,body=transType body}}
+	       | MARKty(tyc, region) => transType tyc
 	       | t => t
 
 	(* elaborate the definition of a datatype *)

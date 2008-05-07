@@ -948,6 +948,7 @@ in
 	      | ty (T.POLYty { sign, tyfun = T.TYFUN { arity, body } }) =
 		"d" $ [list bool sign, int arity, ty body]
 	      | ty T.UNDEFty = "e" $ []
+	      | ty (T.MARKty(ty1, region1)) = ty ty1
 	      | ty _ = bug "unexpected type in pickmod-ty"
 	in
 	    ty arg

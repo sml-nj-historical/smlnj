@@ -115,6 +115,12 @@ fun checkFlex (): unit =
     end
 			
 
+fun findRegion ty =
+    case ty of
+        MARKty (t as MARKty(_, _), _) => findRegion t
+      | MARKty (_, pos) => SOME pos
+      | _ => NONE
+
 fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
     (unifyTy(ty1,ty2); true) handle Unify(mode) =>
       (err region COMPLAIN (message(m,mode))
@@ -125,6 +131,10 @@ fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
 	      val spaces = "                                   "
 	      val pad1= substring(spaces,0,Int.max(0,len2-len1))
 	      val pad2= substring(spaces,0,Int.max(0,len2-len1))
+              val () = case (findRegion ty1, findRegion ty2) of
+                         (SOME t, _) => PP.string ppstrm "found mark"
+                       | (_, SOME t) => PP.string ppstrm "found mark"
+                       | _ => PP.string ppstrm "no mark"
 	      val m = if m="" then name1 ^ " and " ^ name2 ^ " don't agree"
 		      else m
 	  in if name1="" then ()
@@ -270,6 +280,10 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 	      | (VARty(ref(LITERAL _)) | VARty(ref(SCHEME _))) => ty
 	      | CONty(tyc,args) => CONty(tyc, map gen args) (*shareMap*)
 	      | WILDCARDty => WILDCARDty
+	      | MARKty(ty, region) =>
+	      	let val () = ppTypeDebug (">> Markty", ty)
+		in gen ty
+		end
 	      | _ => bug "generalizeTy -- bad arg"
 
 	val _ = ppTypeDebug (">>gen: before: ",!typ)
@@ -336,14 +350,14 @@ fun patType(pat: pat, depth, region) : pat * ty =
     case pat
       of WILDpat => (pat,mkMETAtyBounded depth)
        | VARpat(VALvar{typ as ref UNDEFty,...}) => 
-	      (typ := mkMETAtyBounded depth; (pat,!typ))
+	      (typ := mkMETAtyBounded depth; (pat,MARKty(!typ, region)))
 			             (* multiple occurrence due to or-pat *)
-       | VARpat(VALvar{typ, ...}) => (pat, !typ) 
-       | INTpat (_,ty) => (oll_push ty; (pat,ty))
-       | WORDpat (_,ty) => (oll_push ty; (pat,ty))
-       | REALpat _ => (pat,realTy)
-       | STRINGpat _ => (pat,stringTy)
-       | CHARpat _ => (pat,charTy)
+       | VARpat(VALvar{typ, ...}) => (pat, MARKty(!typ, region)) 
+       | INTpat (_,ty) => (oll_push ty; (pat,MARKty(ty, region)))
+       | WORDpat (_,ty) => (oll_push ty; (pat,MARKty(ty, region)))
+       | REALpat _ => (pat,MARKty(realTy, region))
+       | STRINGpat _ => (pat,MARKty(stringTy, region))
+       | CHARpat _ => (pat,MARKty(charTy, region))
        | RECORDpat{fields,flex,typ} =>
 	   (* fields assumed already sorted by label *)
 	   let fun g(lab,pat') = 
@@ -358,14 +372,15 @@ fun patType(pat: pat, depth, region) : pat * ty =
 		     in registerFlex(tv,region);
                         typ := ty; (npat,ty)
 		    end
-	       else (npat,recordTy(labtys))
+	       else (npat,MARKty(recordTy(labtys), region))
 	   end
        | VECTORpat(pats,_) => 
           (let val (npats,ntys) = 
                      mapUnZip (fn pat => patType(pat,depth,region)) pats
                val nty =
 	       foldr (fn (a,b) => (unifyTy(a,b); b)) (mkMETAtyBounded depth) ntys
-            in (VECTORpat(npats,nty), CONty(vectorTycon,[nty]))
+            in (VECTORpat(npats,nty),
+	    	MARKty(CONty(vectorTycon,[nty]), region))
            end handle Unify(mode) => (
 	     err region COMPLAIN 
 		 (message("vector pattern type failure",mode)) nullErrorBody;
@@ -377,7 +392,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
 	     unifyErr{ty1=ty1,ty2=ty2,name1="expected",name2="found",
 		      message="or-patterns don't agree",region=region,
 		      kind=ppPat,kindname="pattern",phrase=pat};
-	     (ORpat(p1, p2), ty1)
+	     (ORpat(p1, p2), MARKty(ty1, region))
 	   end
        | CONpat(dcon as DATACON{typ,...},_) => 
            let val (ty, insts) = instantiatePoly typ
@@ -387,7 +402,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
                val nty = mkMETAtyBounded depth
                val _ = unifyTy(nty, ty) 
             in (** (CONpat(dcon,insts),ty) *)
-	       (CONpat(dcon, insts), ty)
+	       (CONpat(dcon, insts), MARKty(ty, region))
            end
        | APPpat(dcon as DATACON{typ,rep,...},_,arg) =>
 	   let val (argpat,argty) = patType(arg,depth,region)
@@ -396,7 +411,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
                                    | _ => (typ,dcon)
                val (ty2,insts) = instantiatePoly ty1
                val npat = APPpat(ndcon,insts,argpat)
-            in (npat,applyType(ty2,argty))
+            in (npat,MARKty(applyType(ty2,argty), region))
 	       handle Unify(mode) =>
 		(err region COMPLAIN
                   (message("constructor and argument don't agree in pattern",mode))
@@ -416,20 +431,21 @@ fun patType(pat: pat, depth, region) : pat * ty =
 	    in if unifyErr{ty1=patTy,name1="pattern",ty2=ty,name2="constraint",
 			message="pattern and constraint don't agree",
 			region=region,kind=ppPat,kindname="pattern",phrase=pat}
-		then (CONSTRAINTpat(npat,ty),ty)
+		then (CONSTRAINTpat(npat,MARKty(ty, region)),
+					(MARKty(ty, region)))
 		else (pat,WILDCARDty)
 	   end
        | LAYEREDpat(vpat as VARpat(VALvar{typ,...}),pat') =>
            let val (npat,patTy) = patType(pat',depth,region)
                val _ = (typ := patTy)
-            in (LAYEREDpat(vpat,npat),patTy)
+            in (LAYEREDpat(vpat,npat),MARKty(patTy, region))
            end
        | LAYEREDpat(cpat as CONSTRAINTpat(VARpat(VALvar{typ,...}),ty),pat') =>
 	   let val (npat,patTy) = patType(pat',depth,region)
 	    in if unifyErr{ty1=patTy,name1="pattern",ty2=ty,name2="constraint",
 			   message="pattern and constraint don't agree",
 			   region=region,kind=ppPat,kindname="pattern",phrase=pat}
-		   then (typ := ty; (LAYEREDpat(cpat,npat),ty))
+		   then (typ := ty; (LAYEREDpat(cpat,npat),MARKty(ty, region)))
 		  else (pat,WILDCARDty)
 	   end
        | p => bug "patType -- unexpected pattern"
@@ -446,27 +462,27 @@ let fun boolUnifyErr { ty, name, message } =
 	in
 	    if boolUnifyErr { ty = t1, name = "operand", message = m }
 	    andalso boolUnifyErr { ty = t2, name = "operand", message = m }
-	    then (con (e1', e2'), boolTy)
+	    then (con (e1', e2'), MARKty(boolTy, region))
 	    else (exp, WILDCARDty)
 	end
 in
      case exp
       of VARexp(r as ref(VALvar{typ, ...}), _) =>
 	   let val (ty, insts) = instantiatePoly(!typ)
-	    in (VARexp(r, insts), ty)
+	    in (VARexp(r, insts), MARKty(ty, region))
 	   end
        | VARexp(refvar as ref(OVLDvar _),_) =>
  	   (exp, ol_push (refvar, err region))
        | VARexp(r as ref ERRORvar, _) => (exp, WILDCARDty)
        | CONexp(dcon as DATACON{typ,...},_) => 
            let val (ty,insts) = instantiatePoly typ
-            in (CONexp(dcon, insts), ty)
+            in (CONexp(dcon, insts), MARKty(ty, region))
            end
-       | INTexp (_,ty) => (oll_push ty; (exp,ty))
-       | WORDexp (_,ty) => (oll_push ty; (exp,ty))
-       | REALexp _ => (exp,realTy)
-       | STRINGexp _ => (exp,stringTy)
-       | CHARexp _ => (exp,charTy)
+       | INTexp (_,ty) => (oll_push ty; (exp, MARKty(ty, region)))
+       | WORDexp (_,ty) => (oll_push ty; (exp,MARKty(ty, region)))
+       | REALexp _ => (exp,MARKty(realTy, region))
+       | STRINGexp _ => (exp,MARKty(stringTy, region))
+       | CHARexp _ => (exp,MARKty(charTy, region))
        | RECORDexp fields =>
            let fun h(l as LABEL{name,...},exp') = 
                     let val (nexp,nty) = expType(exp',occ,tdepth,region)
@@ -475,7 +491,7 @@ in
                fun extract(LABEL{name,...},t) = (name,t)
                val (fields',tfields) = mapUnZip h fields
                val rty = map extract (sortFields tfields)
-            in (RECORDexp fields',recordTy(rty))
+            in (RECORDexp fields',MARKty(recordTy(rty), region))
            end
        | SELECTexp (l, e) =>
            let val (nexp, nty) = expType(e, occ, tdepth, region)
@@ -484,7 +500,7 @@ in
                val tv = mkTyvar(mkFLEX(labtys,infinity))
                val pt = VARty tv
                val _ = registerFlex(tv,region)
-            in (unifyTy(pt,nty); (SELECTexp(l, nexp), res))
+            in (unifyTy(pt,nty); (SELECTexp(l, nexp), MARKty(res, region)))
                handle Unify(mode) =>
                  (err region COMPLAIN
                   (message("selecting a non-existing field from a record",mode))
@@ -504,7 +520,8 @@ in
        | VECTORexp(exps,_) =>
           (let val (exps',nty) = mapUnZip (fn e => expType(e,occ,tdepth,region)) exps
                val vty = foldr (fn (a,b) => (unifyTy(a,b); b)) (mkMETAty()) nty
-            in (VECTORexp(exps',vty), CONty(vectorTycon,[vty]))
+            in (VECTORexp(exps',vty),
+	    	MARKty(CONty(vectorTycon,[vty]), region))
            end handle Unify(mode) =>
 	   (err region COMPLAIN
 	     (message("vector expression type failure",mode))
@@ -521,13 +538,13 @@ in
                       in (e'::el',ety)
                      end
                val (exps',expty) = scan exps
-            in (SEQexp exps',expty)
+            in (SEQexp exps',MARKty(expty, region))
 	   end
        | APPexp(rator, rand) =>
 	   let val (rator',ratorTy) = expType(rator,occ,tdepth,region)
 	       val (rand',randTy) = expType(rand,occ,tdepth,region)
                val exp' = APPexp(rator',rand')
-	    in (exp',applyType(ratorTy,randTy))
+	    in (exp',applyType(ratorTy,MARKty(randTy, region)))
 	       handle Unify(mode) => 
 	       let val ratorTy = prune ratorTy
 		   val reducedRatorTy = headReduceType ratorTy
@@ -564,14 +581,15 @@ in
 			message="expression doesn't match constraint",
 			region=region,kind=ppExp,kindname="expression",
 			phrase=exp}
-		then (CONSTRAINTexp(e',ty),ty)
+		then (CONSTRAINTexp(e',MARKty(ty, region)),
+			MARKty(ty, region))
 		else (exp,WILDCARDty)
 	   end
        | HANDLEexp(e, (rules, _)) =>
 	   let val (e',ety) = expType(e,occ,tdepth,region)
 	       and (rules',rty,hty) = matchType (rules, occ, region)
                val exp' = HANDLEexp(e', (rules', rty))
-	    in (unifyTy(hty, exnTy --> ety); (exp',ety))
+	    in (unifyTy(hty, exnTy --> ety); (exp',MARKty(ety, region)))
 	       handle Unify(mode) =>
 		 (if unifyErr{ty1=domain(prune hty), name1="handler domain",
 			     ty2=exnTy, name2="",
@@ -592,18 +610,18 @@ in
 	    in unifyErr{ty1=ety, name1="raised", ty2=exnTy, name2="",
 			message="argument of raise is not an exception",
 			region=region,kind=ppExp,kindname="expression",phrase=exp};
-	       (RAISEexp(e',newty),newty)
+	       (RAISEexp(e',newty),MARKty(newty, region))
 	   end
        | LETexp(d,e) => 
            let val d' = decType0(d,LetDef(occ),tdepth,region)
                val (e',ety) = expType(e,occ,tdepth,region)
-            in (LETexp(d',e'),ety)
+            in (LETexp(d',e'),MARKty(ety, region))
            end
        | CASEexp(e,rules,isMatch) =>
 	   let val (e',ety) = expType(e,occ,tdepth,region)
 	       val (rules',_,rty) = matchType(rules,occ,region)
                val exp' = CASEexp(e',rules', isMatch)
-	    in (exp',applyType(rty,ety))
+	    in (exp',MARKty(applyType(rty,ety), region))
 	       handle Unify(mode) => 
 	       (if isMatch then
 		    unifyErr{ty1=domain rty, name1="rule domain",
@@ -642,7 +660,7 @@ in
 	       then
 		   (IFexp { test = test', thenCase = thenCase',
 			    elseCase = elseCase' },
-		    tct)
+		    MARKty(tct, region))
 	       else
 		   (exp, WILDCARDty)
 	   end
@@ -657,17 +675,17 @@ in
 	       if boolUnifyErr { ty = tty, name = "test expression",
 				 message = "test expression in while is not of type bool" }
 	       then
-		   (WHILEexp { test = test', expr = expr' }, unitTy)
+		   (WHILEexp { test = test', expr = expr' }, MARKty(unitTy, region))
 	       else
 		   (exp, WILDCARDty)
 	   end
        | FNexp(rules,_) => 
            let val (rules',ty,rty) = matchType(rules,occ,region)
-            in (FNexp(rules',ty),rty)
+            in (FNexp(rules',ty),MARKty(rty, region))
            end
        | MARKexp(e,region) => 
            let val (e',et) = expType(e,occ,tdepth,region)
-            in (MARKexp(e',region),et)
+            in (MARKexp(e',region),MARKty(et, region))
            end
        | _ => bug "exptype -- bad expression"
 end

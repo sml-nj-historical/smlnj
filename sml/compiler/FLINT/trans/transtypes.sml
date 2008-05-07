@@ -279,6 +279,7 @@ and toTyc d t =
 			 (* [KM] IBOUNDs are encountered when toTyc
                           * is called on the body of a POLYty in 
                           * toLty (see below). *)
+	| g (MARKty (t, _)) = g t
         | g (POLYty _) = bug "unexpected poly-type in toTyc"
         | g (UNDEFty) = bug "unexpected undef-type in toTyc"
         | g (WILDCARDty) = bug "unexpected wildcard-type in toTyc"      
