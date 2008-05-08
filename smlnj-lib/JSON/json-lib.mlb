@@ -1,0 +1,44 @@
+(* json-lib.mlb
+ *
+ * COPYRIGHT (c) 2008 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * An MLB file for the JSON library, so that it can be used by MLton programs.
+ *
+ * TODO:
+ *	This is not complete, since MLton does not have the ml-lpt-lib yet.
+ *)
+
+local
+
+  $(SML_LIB)/basis/basis.mlb
+  $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+
+  ann
+    "nonexhaustiveMatch warn" "redundantMatch warn"
+    "sequenceNonUnit ignore"
+    "warnUnused false" "forceUsed"
+  in
+
+    json.lex.sml
+    json.sml
+    json-parser.sml
+    json-printer.sml
+    json-stream-parser.sml
+    json-stream-printer.sml
+    json-tokens.sml
+
+  end
+
+in
+
+(* DOM-style API (tree based) *)
+  structure JSON
+  structure JSONParser
+  structure JSONPrinter
+
+(* SAX-style API (event based) *)
+  structure JSONStreamParser
+  structure JSONStreamPrinter
+
+end
