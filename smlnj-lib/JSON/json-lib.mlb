@@ -13,6 +13,9 @@ local
 
   $(SML_LIB)/basis/basis.mlb
   $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+(* I don't know what the path to this library will be
+  ??/ml-lpt-lib/ml-lpt-lib.mlb
+*)
 
   ann
     "nonexhaustiveMatch warn" "redundantMatch warn"
@@ -20,13 +23,13 @@ local
     "warnUnused false" "forceUsed"
   in
 
+    json-tokens.sml
     json.lex.sml
     json.sml
-    json-parser.sml
-    json-printer.sml
     json-stream-parser.sml
+    json-parser.sml
     json-stream-printer.sml
-    json-tokens.sml
+    json-printer.sml
 
   end
 
