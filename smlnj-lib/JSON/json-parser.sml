@@ -20,8 +20,6 @@ structure JSONParser : sig
 
     fun parse' (srcMap, inStrm) = let
 	  val lexer = Lex.lex srcMap
-val lexer = fn strm => let val (tok, pos, strm) = lexer strm in
-print(T.toString tok ^ "\n"); (tok, pos, strm) end
 	  fun parseValue (strm : Lex.strm) = let
 		val (tok, pos, strm) = lexer strm
 		in
