@@ -1,0 +1,637 @@
+Primop2 Notes
+
+Primop2 Branch Info
+===================
+
+The development branch name is:
+
+  primop-branch-2
+
+The tag for the root of primop-branch-2 is:
+
+  dbm-20060615-base-primop-branch-2
+
+
+======================================================================
+The Program
+
+Our goal is to clean-up and simplify the code of the SML/NJ Front End
+(everything before the translate phase), and as far as possible turn it
+into a self-contained SML front end "library" that could be used outside
+the SML/NJ compiler. There are several related subgoals:
+
+1. A major part of this effort aims to remove dependencies on FLINT
+constructs and interfaces from the front end. This requires that we
+understand what the FLINT-related values and computations are used for
+so that we can reproduce that functionality in the translate phase,
+ultimately producing the same FLINT intermediate language.
+
+2. We want to avoid transformations of the abstract syntax before type
+checking, since these transformations reduce the faithfulness of the
+abstract syntax to the original source and lead to less useful and less
+accurate type error messages. Abstract syntax transformations/normalizations
+that have presumably been introduced to be helpful for FLINT should be
+be moved into the translate phase.  All we need to do is make sure
+that the abstract syntax captures and retains all static information that
+the translate phase will need to produce the correct plambda code.
+
+3. We want to simplify the FLINT code (and ultimately the object code)
+by eliminating the real array => realarray representation
+optimization.  We need to understand what parts of the translation is
+specifically supporting this optimization, so that those parts can be
+simplified.
+
+
+======================================================================
+Questions:
+
+1. Where have wordTycon and wordTy gone?
+In primop, they were defined in ElabData/types/core-basictypes.sml.
+Now they are in Elaborator/types/basictypes.s??
+
+1.1. What is the reason for the split of basic type building between
+core-basictypes (in ElabData/types) and basictypes (in
+Elaborator/types)?
+
+2. What is the purpose of the ty lists in VARexp and CONexp
+constructors of exp in ElabData/syntax/absyn.s??
+Should be able to replace list of metavariables by (instantiated)
+variable type. Or, since in most cases this is not relevant (it's
+represented by [] currently), it should be a type option.  This type
+would the the instantiated "variable type", i.e. based on a generic
+instantiation of the typ field of the VALvar, etc. [We could just use
+UNDEFty as the default, unneeded value instead of NONE, but using 
+ty option is cleaner and more explicit about what is going on.]
+
+Files affected:
+ ElabData/syntax/absyn.s??  [done - except for option]
+ Elaborator/types/typecheck.sml [done - except for option]
+ Elaborator/modules/sigmatch.sml [?]
+ FLINT/trans/translate.sml [?]
+
+3. Question in comment on generalizePat in Elaborator/types/typecheck.sml.
+
+4. Why do CONpats (see CONpat case of patType in typecheck.sml) need
+the "insts" value? Similarly for CONexps. What do they have to do with
+primops? Where is this information used?  Is this related to the
+special role of ref?
+
+5. Catalogue of primops:
+We need a complete catalog of all primops, with their initial types (primop
+generic type), and the modules and types where they are ultimately defined
+in the Basis modules.
+
+6. Numbered primops:
+Perhaps in the front end, primops can be respresented by a simple number
+(defined in the basic primop module). The mapping between primop numbers
+and their generic types could be implemented as a table or finite map.
+Generic primops that are used at different types could be split into a set
+of primop numbers, one for each final (variable) type. FLINT would be 
+responsible for recognizing that several primop numbers represent the same
+generic underlying primop.  Then the primop numbers could be mapped to their
+exact (variable) type in the InLine module. One problem here is that some
+type constructors appearing in variable types are not defined (yet) in
+the PrimTypes module -- presumably we could fix this by adding them as
+additional primite types. Examples are probably array and vector tycons.
+notes
+
+7. InlInfo datatype ii/selectors and utility functions
+Why is the module ElabData/Basics/II (which defines the datatype ii
+and selectors) separate from module Semant/Basics/InlInfo (which
+defines utility functions and on the datatype ii)? 
+
+Functions in InlInfo appear to be used only in the TopLevel profiling 
+hooks. The remaining use is in the ElabData/types/TypesUtil.isValue
+function. Unfortunately, there is some funny business going on in that
+the functions in InlInfo require the PrimOp module which is not
+available in ElabData/types/TypesUtil.
+
+We've merged these into a single module InlInfo. This depends on PrimOp.
+This caused the sigmatch functor to be moved to Semant/modules.
+
+
+8. Dynamic access and inline info.  Are these mutually exclusive (i.e.
+something has a dynamic value accessed via the access info, or it is
+a primop accessed via the inline info), or to they both work in parallel
+(i.e. a primop also has a function closure representation stored in
+a slot in the dynamic vector for its home structure)?
+
+9. Structure/substructure primop IDs and signature slot information
+are split among the structure and signature representations
+respectively. Are substructure primop IDs (and other substructure
+components such as realization, access, signature) available directly
+in the static environment?
+
+No. Although the root structure strrec's are entered into the static
+environment, all substructure information can only be found within the
+strrec of the root structure. 
+ 
+
+======================================================================
+Old Primop Notes (from old primop branch, mostly obsolete)
+
+These notes are my attempt to figure out what appears to be a very kludgy
+treatement of how primops interact with the type checker.  I want to define
+what the basic problem is, understand what the current code is doing to deal
+with the problem, and then either eliminate the problem or find a more elegant
+solution.
+
+1. PrimOp dependency in type checker
+
+The isValue function in TypesUtil needs to check for the CAST primop, which
+it does using InlInfo.pureInfo (badly named function).  Thus
+
+	TypeCheck --> TypesUtil --> InlInfo --> PrimOp
+
+Before, this was factored out by making TypeCheck into a functor TypeCheckFn
+which was then applied (in Semant/types/typecheck.sml) to InlInfo.pureInfo.
+
+The other dependency on ii2ty is eliminated by having VARexp carry the
+whole instantiated type rather than the list of generic meta-type-variables
+(with their instantiations).
+
+
+2. Role of boundtvs
+
+"boundtvs" is a field of the VB (variable binding) record, containing
+a list of tyvars.
+
+Where is boundtvs set?
+
+Most VB constructions throughout the front end (e.g. all in ElabCore)
+set boundtvs to [] or pass a value of boundtvs through
+(Elaborator/elaborate/elabutil.sml).  There are 3 places where it is
+potentially set to a non-nil list:
+
+(1) TypeCheck/decType0 (Elaborator/types/typecheck.sml).
+In the VALdec case, variable bindings are constructed where boundtvs
+is the set of meta tyvars that are generalized by generalizePat
+applied to the pattern.
+
+[From the way generalizePat is written, there can be only one variable
+in the pattern whose type is polymorphic (i.e. has tyvars generalized).]
+
+
+(2) SigMatch/matchElems (Elaborator/modules/sigmatch.sml).
+In the cases for VALspec/VALspec, and VALspec/CONspec. Here the value for
+boundtvs (btvs) is computed by SigMatch/matchTypes, which in turn calls
+SigMatch/eqvTnspTy after checking that the spec type and actual type are
+compatible.
+
+eqvTnspTy (mnemonic for what?) creates a generic instantiation of the
+actual type (actInst, with generic meta-tyvars actInstTvs), a separate
+generic instantiation (specInst, specInstTvs) of the specty type,
+which may be less polymorphic than actualty, and then unifies actInst
+and specInst.  This unification may cause tyvars in actInstTvs to be
+instantiated.  Then specInstTvs is transformed by TU.tyvarType to
+produce the second result, boundTvs.
+
+TU.tyvarType turns type expressions that represent meta type variables
+into the tyvars that they contain, stripping off VARtys and following
+instantiations.  Note that instantiatePoly returns a list of type
+_expressions_ (VARty's) as its second result.
+
+    fun eqvTnspTy (specty: ty, actualty: ty) : (ty * tyvar list) = 
+      let val actualty = TU.prune actualty
+	  val (actInst, actInstTvs) = TU.instantiatePoly actualty
+	  val (specInst, specInstTvs) = TU.instantiatePoly specty
+	  val _ = ((Unify.unifyTy(actInst, specInst))
+		   handle _ => bug "unexpected types in eqvTnspTy")
+	  val boundTvs = map TU.tyvarType specInstTvs
+       in (actInst, boundTvs)
+      end
+
+The unification will cause some tyvars in actInstTvs to be
+instantiated to non-type-variable type terms (subterms of specInst),
+where specty is more specific than actualty). Where corresponding
+subterms are both type variables, the specty tyvar (a member of
+specInstTvs) will be instantiated to the corresponding actualty type
+variable (a member of actInstTvs) because of the right-to-left
+instantiation bias in Unify/unifyTyvars [Elaborator/types/unify.sml].
+
+So the resultant type term actInst may contain (uninstantiated) tyvars
+in specInstTvs as well as some (uninstantiated) tyvars in actInstTvs.
+For the latter tyvars, the matching tyvar in specInstTvs will have
+been instantiated to it.  So the specInstTvs will contain all the
+tyvars occuring in actInst, some of which will be uninstantiated,
+while others will be instantiated to tyvars in actInstTvs.  Applying
+TU.tyvarType will strip off the instantiations, so that the resulting
+boundtvs will contain a mixture of the tyvars from actInstTvs and
+specInstTvs.
+
+Example:
+
+actualty  = 'a * 'b -> 'b -> 'a
+specty    = 'c list * 'c -> 'c -> 'c list
+actInst   = 'X * 'Y -> 'Y -> 'X
+actInstTvs = ['X, 'Y]
+specInst  = 'Z list * 'Z -> 'Z -> 'Z list
+specInstTvs = ['Z]
+-------------------
+after unification:
+-------------------
+actInst   = {{'Y/'Z} list/'X} * 'Y -> {{'Y/'Z} list/'X}
+boundtvs  = [tyvar('Y)]
+
+where {ty/'X} represents the meta type variable 'X instantiated
+to type ty.
+
+If unifyTyvars had a left-to-right instantiation bias instead of a
+right-to-left bias, the unification would instantiate all the tyvars
+in actInstTvs and none of the tyvars in specInstTvs, so the resultant
+type actInst will be equivalent to specInst -- note that in this
+special case unification will not have to adjust any type variable
+attributes, since all depths will be infinity and the consistency of
+equality properties will already have been guaranteed by the previous
+call of TU.compareTypes in matchTypes.
+
+In this case, eqvTnspTy could just return specInst and specInstTvs
+without bothering to perform the useless unification.  It is not clear
+why this would not suffice anyway, i.e. eqvTnspTy could simply be
+replaced by TU.instantiatePoly applied to specty, with tyvarType then
+mapped over the resulting specInstTvs. The simplified version of
+eqvTnspTy would be
+
+    fun eqvTnspTy (specty: ty) : (ty * tyvar list) = 
+      let val (specInst, specInstTvs) = TU.instantiatePoly specty
+       in (specInst, map TU.tyvarType specInstTvs)
+      end
+
+and the actualty argument would not be needed.
+
+Maybe the interaction is more complicated if, for instance, specty
+contains type abbreviations that are not used in the corresponding
+places in actualty?  Unification would then cause these type
+abbreviations to be expanded. But how could this matter?
+
+
+(3) SigMatch/packElems in the VALspec case.
+Here the value btvs for boundtvs is calculated by SigMatch/absEqvTy.
+absEqvTy is similar to eqvTnspTy, in that it generically instantiations
+the actual and spec types and then unifies them.
+
+fun absEqvTy (specty: ty, actualty: ty) : (ty * tyvar list * ty * bool) =
+  let val actualty = TU.prune actualty
+      val specty = TU.prune specty
+      val (actInst, actInstTvs) = TU.instantiatePoly actualty
+      val (specInst, specInstTvs) = TU.instantiatePoly specty
+      val _ = ListPair.app Unify.unifyTy (actInstTvs, specInstTvs)
+
+      val res = (Unify.unifyTy(actInst, specInst); true) handle _ => false
+      (* ???? what is this doing? *)
+
+      val boundTvs = map TU.tyvarType actInstTvs
+      (* should I use specInstTvs here instead, why actInstTvs ? *)
+
+   in (actInst, boundtvs, specInst, res)
+  end
+
+This function is defined in a very obscure way, and returns both the
+instantiated actualTy (actInst) and instantiated specTy (specInst),
+after attempting to unify them.  But first, _some_ of the type
+variables of actInstTvs and specInstTvs are identified by the
+ListPair.app unifyTy line (note that these two lists may have
+different lengths, and it is not clear why identifying initial
+segments of these two lists of type variables makes sense.
+
+If the unification is successful, then actInst and specInst are
+essentially the same type.  If the unification fails, then we have two
+inequivalent, but partially unified type expressions.  What is going
+on here?
+
+
+3. VARexp type checking hack for primops.
+
+Here is the code for the VARexp case in expType (Elaborator/types/typecheck.sml):
+
+     case exp
+      of VARexp(r as ref(VALvar{typ, info, ...}), _) =>
+	 (case ii2ty info of
+	      SOME st =>
+              let val (sty, insts) = instantiatePoly(st)
+		  val (nty, _) = instantiatePoly(!typ)
+              in
+		  unifyTy(sty, nty) handle _ => ();  (* ??? *)
+		  (VARexp(r, insts), sty)
+              end
+	    | NONE =>
+	      let val (ty, insts) = instantiatePoly(!typ)
+	      in (VARexp(r, insts), ty)
+	      end)
+
+This uses ii2ty (passed as a parameter to the TypeCheckingFn, but uniquely
+defined to be InstantiateParam.ii2ty in Semant/types/typecheck.sml) to extract 
+a type from the info field, if possible (i.e. when the VALvar is associated
+with a primop).
+
+The reason for this use of unification seems to be that there are some primops
+(e.g. length) that are used for several different operations (therefore
+different VALvars), and the VALvar types are speciallized instances of a
+more polymorphic type associtated with the primop (in the info field).
+
+
+What is the ultimate consumer of the boundtv field?
+
+
+Relevant Files and Modules
+--------------------------
+Primitive Types
+
+  CorePrimTycNum (ElabData/basics/core-ptnum.sml)
+      core prim-type numbers (essentially the same as Elaborator/basics/ptnum.sml
+      except only language-standard types are included) 
+      see: Elaborator/basics/ptnum.sml
+      defs: CORE_PRIM_TYC_NUM, CorePrimTycNum
+
+  PrimTycNum (Elaborator/basics/ptnum.sml)
+      prim type numbers, augmenting ElabData/basics/core-ptnum.sml with
+      implementation dependent types
+      see: ElabData/basics/core-ptnum.sml
+      defs: PRIM_TYC_NUM, PrimTycNum: PRIM_TYC_NUM
+
+  CoreBasicTypes (ElabData/types/core-basictypes.sml)
+      building the primitive types and associated values (containing only
+      implementation independent, language-standard basic types?)
+      see: Elaborator/types/basictypes.sml
+      defs: CoreBasicTypes
+
+  BasicTypes     (Elaborator/types/basictypes.sig,sml)
+      define basic (built-in) types; most are just defined in terms of
+      types from CoreBasicTypes [MOVE to ElabData?]
+      see: ElabData/types/core-basictypes.sml
+      defs: BasicTypes
+
+  PrimEnv: PRIM_ENV (Semant/statenv/prim.sml)
+      define static env primEnv, containing module bindings for 
+      primitive types (PrimTypes), primops (InLine), and unrolled
+      lists (UnrolledList)
+      defs: PRIM_ENV, PrimEnv: PRIM_ENV  
+
+
+Primops
+
+  PrimOp  (FLINT/kernel/primop.sml)
+      the types (primop, etc.) used to represent primops and their
+      attributes. There are no type specs in these primop representations.
+      PrimOp imports CTypes, which are defined in MLRISC! (MLRISC/c-calls/ctype.sml)
+
+  PrimEnv (Semant/statenv/prim.sml)
+      builds InLine structure, containing bindings to primops
+      this is where all primops are actually created and initially bound
+      to identifiers. They will be rebound later in InLineT (below), and
+      then again in the Basis module definitions. What role does the 
+      intermediate InLineT play?
+
+      Matthias revised this to assign accurate (final?) types to the
+      primop variables. Do these change in InLineT or in the Basis modules?
+
+  InLineT  (../system/smlnj/init/built-in.sml)
+
+
+Inline Info
+
+  II  (ElabData/basics/ii.sml)
+      FLINT related information for inlining (why is this in elaborator?)
+      datatype ii used for "inline info".  Actual atomic inline info 
+      represented here by type exn (a hack to delay referencing the actual
+      inline info representation defined in
+      defs: II
+
+  InlInfo  (Semant/basics/inlinfo.sig,sml)
+    inlinfo.sig/sml
+      functions for creating and examining inlining info, using an exception
+      E to package primop-type pairs into the II.ii datatype.
+      defs: INL_INFO, InlInfo: INL_INFO
+
+  [II has been folded into InlInfo, and the code of InlInfo has been 
+   simplified, eliminating the exn hack. Interface function names have
+   bin changed (e.g. pureInfo => isPrimCast). ii2ty has been added with
+   new name primopTy (moved from InstantiateParam).]
+
+
+Semant
+
+  ElabData and Elaborate CM groups cannot refernce FLINT and MLRISC stuff,
+  which are part of the Core group.  Therefore places where the front end
+  depend on FLINT (e.g. PrimOp, PLambdaType (in InstantiateParam)) have to
+  be in Semant, which is part of Core group.
+
+  This means that many of the elaboration modules are functorized, ultimately
+  on PrimOp related values (former TypeCheckFn) or on PLambdaType stuff
+  (InstantiateFn in Elaborate requires parameter InstantiateParam from Semant).
+
+
+======================================================================
+
+Example for VARexp typing:
+
+	val x = Array.length
+
+let
+
+   v = the VALvar for Array.length.
+   st = ii2ty v.info = 'a -> int  (the generic primop type)
+   sty = X -> int  (generic instantiation of st, X a fresh type metavariable)
+   insts = [X]
+
+   v.typ = 'a array -> int
+   nty = Y array -> int  (generic inst. of v.typ, Y a fresh type metavar)
+
+   unify (sty, nty) ==>  X |-> Y array
+ 
+   After type generalization of the val binding:
+   boundtvs = [Y]  (in VB)
+   insts = [X]     (in VARexp)
+
+These last don't agree (different metavariables), so in mkVBS in
+Translate (FLINT/trans/translate.sml), the first VB case will take the
+else branch and apply mkPE.
+
+It appears that the boundtvs is used in mkPE (Translate) to provide type
+parameters to primop invocations.  [Why boundtvs and not insts?]
+
+
+======================================================================
+
+[FLINT] Questions:
+
+The primop-branch-2 code contains a number of questions in comments
+marked by the string "[KM ???]".  You can find them by grepping the
+source for that string.
+
+The following questions are in more or less random order, added as
+they came up in our reading of the code.  Most but not all relate to
+the interaction of FLINT and the front end, or to FLINT internals.
+
+
+1. What is the relevance of the comment in system/smlnj/init/dummy.sml
+to the code in that file?
+
+
+2. What is the meaning of the comment after the PrimTypes
+(re)declaration at the top of system/smlnj/init/built-in.sml?
+
+
+3. The Single Generalization Conjecture (SGC): Each type metavariable
+that is not instantiated is generalized at a single variable binding.
+Consequence: the metavariable can be updated with a deBruijn index for
+the corresponding generalized polymorphic variable.  [The code for
+mkPE in translate.sml seems to imply this is not the case.]
+
+If the SGC is true, then the "restore" function in Translate.mkPE is
+unnecessary, as the metavariables in question will only be used once.
+
+The SGC has been tested experimentally by removing the call of restore
+in mkPE, and bootstrapping the compiler.  The runtime check in mkPE 
+that tests for previously used generalized metavariables was not
+triggered.
+
+
+4. More on Single Generalization Conjecture
+
+Here is an expression containing two mutually recursive functions that
+have the same return type, which will be polymorphic.  It seems likely
+that the return type will be represented by the same type metavariable
+in both parts of the mutually recursive definition, and that this
+metavariable is generalized twice, once for the type of f and once for
+g.  This needs to be verified by a careful look at the type checking
+process though.
+
+let fun f () = g ()
+    and g () = f ()
+in ()
+end;
+
+Another variant would that would show the types of f and g would be:
+
+fun h () =
+let fun f () = g ()
+    and g () = f ()
+in (f,g)
+end;
+
+val h = fn : unit -> (unit -> 'a) * (unit -> 'b)
+
+Here it is clear that f and g have independent polymorphic types,
+indicating two independent generalizations.
+
+
+5. Two lexp types in FLINT
+There are two types named lexp: PLambda.lexp (in FLINT/plambda/plambda.sml)
+and FLINT.lexp (in FLINT/flint/flint.sml).  The two lexp's have quite different
+definitions. What are the roles of these two lexp types?
+
+
+6. mkAccInfo in Translate (FLINT/trans/translate.sml) ignores the
+second argument (formerly info, now prim).  Why is this?  Doesn't this
+mean that primops get lost?
+
+
+7. What is the point of PACKexp?  In mkExp in Translate (FLINT/trans/translate.sml)
+it is just stripped off.
+
+
+8. Complex abstract syntax for a simple structure declaration.
+
+A simple declaration like
+
+   structure X = struct val x = Array.length end
+
+generates a surprising complex abstract syntax representation, looking
+something like (using some shorthand notations) ...
+
+   STRB{name = "X",
+	str = bindStr,
+	def = LETstr (
+		STRdec [
+		  STRB{name = "<tempStr>",
+		       str = resStr
+		       def = LETstr (
+			       VB{pat = vv_x, exp = VARexp(vv_len)), ...}
+			       STRstr([VALbind(vv_x)])}],
+		VARstr(resStr)
+	      )
+       }
+
+where resStr is the structure record returned for the rhs strexp by
+elabStr, and bindStr is the same as resStr except the dacc field is
+replaced by a new lvar, vv_x is the VALvar for the bound variable x,
+and vv_len is the VALvar for Array.length.
+
+This strips down to a skeleton like:
+
+    let lv_b =             (* lv_b = lvar for bindStr *)
+        let lv_r = ...     (* lv_r = lvar for resStr *)
+         in let <component var decls>
+	     in [component vars]
+        in lv_r
+
+What is the purpose of the outer layer of let binding, and the shift
+in lvars from lv_r to lv_b?
+
+
+9. In Absyn, why do CONexp's also have a tyvar list parameter (like VARexp?).
+Is this only relevant to a few special constructors (maybe ref?), or is it
+also used for ordinary user defined constructors?  Similarly for CONpat.
+
+----------------------------------------------------------------------
+
+10. In ltykernel.sml (lty.sml), the datatype rflag only has one variant,
+and therefore doesn't seem to convey any useful information.  Was this 
+introduced to make some useful distinction in the future, but this
+distinction was never used or implemented?  Can we get rid of this
+useless flag?
+
+11. In ltyextern.sml, the subkinding relation is actually an equality
+relation because there are both rules:
+
+BOX <: MONO
+MONO <: BOX
+
+Is there is reason why we are not just using equality for now? Do we 
+really need a subkinding relation?  Or was this complication introduced
+in anticipation of some more refined analysis that never got implemented?
+
+12. The kind checker in LtyExternal (tkChkGen) is incomplete, in that
+it does not and cannot properly check closures (Env terms). When kind
+checking an Env(tyc,i,j,tenv) expr, we must type check the tenv as well
+as the body, and we need to extract kind environment info from the tenv
+to use when type checking the body. This means we need to add kind
+specifications to each binder in tenv, so we can translate tenv into
+(a prefix of) a kind environment. We have modified tycEnv to include
+the kind specifications at each binding level, and we have modified the
+kind checker to do a complete check of Env tycs.  The kind checker is
+now defined in kernel/lty.sml (structure Lty) and re-exported from
+LtyExtern.
+
+13. In translate.sml, mkVar is calling mkAccInfo, which just drops the
+ prim!!!
+
+  fun mkVar (v as V.VALvar{access, prim, typ, path}, d) = 
+	mkAccInfo(access, prim, fn () => toLty d (!typ), getNameOp path)
+    | mkVar _ = bug "unexpected vars in mkVar"
+
+
+
+
+======================================================================
+Invariants for tyc and lty equivalence (and type normalization)
+
+* TC_IND tycs will never have normal flag true, similarly for LT_IND ltys
+and LT_TYC(TC_IND _) ltys.  Conversely, if the normal flag is true, the
+body should not be an IND form.
+
+* tycs returned by tc_lzrd, tc_whnm, and tc_norm with not be of the TC_IND form.
+Similarly, ltys returned by lt_lzrd, lt_whnm, and lt_norm will not be of the
+LT_IND or LT_TYC(TC_IND _) forms.
+
+* AUX_REG(true_,_) is computed only by the hashing constructors (*_injX),
+which detect normal forms when calling tc_mk and lt_mk to compute the
+aux value for a type term being hashed.
+
+* upd_tyc and upd_lty only operate on non-normal first args
+(AUX_REG(false,_,_) or NO_AUX), and their result (the updated
+first argument), retain this property of not having a true normal flag.
+
+* tc_eq and lt_eq (pointer equality for tycs and ltys) will only be applied
+to arguments with normalization flag set true.
