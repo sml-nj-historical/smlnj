@@ -19,7 +19,11 @@ sig
    val getTk : Modules.fctSig * Modules.strEntity * Modules.strEntity 
 	       * DebIndex.depth 
 	       -> (TypesTP.tycpath list * TypesTP.tycpath FlexTycMap.map)
-   
+   val primaryCompInStruct : TypesTP.tycpath FlexTycMap.map * Modules.strEntity
+			     * Modules.strEntity * Modules.Signature 
+			     * DebIndex.depth 
+			     -> TypesTP.tycpath FlexTycMap.map 
+				* TypesTP.tycpath list
 end
 
 structure RepTycProps : REPTYCPROPS =
@@ -114,7 +118,7 @@ in
       end
 
       end (* local open PPModules *)
-
+ (*
       fun eqTycon(T.NoTP tc, T.NoTP tc') = TU.equalTycon(tc,tc')
 	| eqTycon _ = raise Fail "Unimplemented"
 
@@ -170,6 +174,7 @@ in
 	      List.app ppTP tps; print "\nNew:";
 	      List.app ppTP tps'; print "\n\n";
 	      false)
+  *)
 
     (* Processing *)	
     (* entpaths gets all the entspaths from a list of elements 
@@ -391,13 +396,13 @@ in
 	
 		val eps = entpaths(elements)
 		val _ = debugmsg ("--formalBody eps "^Int.toString (length eps))
-		fun loop(ftmap, [], i, tps) = (ftmap, rev tps)
-		  | loop(ftmap, ent::rest, i, tps) = 
-		    (case ent
+		fun loop(ftmap, eenv, [], i, tps) = (ftmap, rev tps)
+		  | loop(ftmap, eenv, ep::rest, i, tps) = 
+		    (case EE.lookEP(eenv, ep)
 		      of M.TYCent(TP.GENtyc{kind=TP.DATATYPE _, stamp, ...}) =>
 			 let val _ = debugmsg ("--formalBody DATATYPE "^
 					       Stamps.toShortString stamp)
-			 in loop(ftmap, rest, i, tps) 
+			 in loop(ftmap, eenv, rest, i, tps) 
 			 end
 		       | M.TYCent(TP.GENtyc{stamp, kind, arity, ...}) =>
 			 let val tp = T.TP_SEL(T.TP_APP(fctvar, argTps), i)
@@ -406,27 +411,29 @@ in
 					       " is index "^
 					       Int.toString i)
 			 in case FTM.find(ftmap, stamp)
-			     of SOME _ => loop(ftmap, rest, i, tps)
+			     of SOME _ => loop(ftmap, eenv, rest, i, tps)
 			      | NONE => loop(insertMap(ftmap, stamp, tp),
+					     eenv,
 				 rest, i+1, tp::tps)
 			 end
 		       | M.TYCent _ => 
 			 (debugmsg "--formalBody other TYCent GEN";
-			  loop(ftmap, rest, i, tps))
+			  loop(ftmap, eenv, rest, i, tps))
 		       | M.FCTent _ =>
 			 (debugmsg "--formalBody FCTent";
-			  loop(ftmap, rest, i, tps))
-		       | M.STRent{entities,...} =>
+			  loop(ftmap, eenv, rest, i, tps))
+		       (* | M.STRent{entities,...} =>
 			 (debugmsg "--formalBody STRent";
-			  loop(ftmap, 
+			  loop(ftmap, eenv,  
 			       (#2 (ListPair.unzip (EE.toList entities)))@rest,
-			       i, tps))
+			       i, tps)) *)
 		       | _ => (debugmsg "--formalBody other ent";
-			       loop(ftmap, rest, i, tps)))
-		val bodyentsflat = #2 (ListPair.unzip (EE.toList bodyEnts))
-		val _ = debugmsg ("--formalBody bodyents "^
-				  Int.toString(length bodyentsflat))
-		val (ftmap1, tps) = loop(ftmap0, bodyentsflat, 0, [])
+			       loop(ftmap, eenv, rest, i, tps)))
+		(* val bodyentsflat = #2 (ListPair.unzip (EE.toList bodyEnts)) *)
+		    val (ftmap1, tps) = loop(ftmap0, bodyEnts, beps, 0, [])
+		(* val _ = debugmsg ("--formalBody bodyents "^
+				  Int.toString(length bodyentsflat))*)
+		(* val (ftmap1, tps) = loop(ftmap0, bodyentsflat, 0, []) *)
 	    in (ftmap1, tps)
 	    end
 	  | formalBody _ = bug "Unexpected signature in formalBody"
@@ -448,7 +455,7 @@ in
 	   in rlzn where a component is primary if it is a representative
 	   picked by instantiate in freerlzn. *)
 	fun primaryCompInStruct(ftmap0, freerlzn : M.strEntity, 
-			    rlzn: M.strEntity, sign : M.sigrec, d) =
+			    rlzn: M.strEntity, M.SIG (sign : M.sigrec), d) =
 	    let
 		val fsigs = fsigInElems(#elements sign)
 		val _  = debugmsg ("--pri num of fsigs "^Int.toString (length fsigs))
@@ -456,21 +463,17 @@ in
 		val eps = repEPs(entpaths(#elements sign), #entities freerlzn) 
 		val eps' = 
 		    let 
-			(*val initial = map (fn v => [v]) 
-					  (#1 (ListPair.unzip 
-						   (EE.toList 
-							(#entities freerlzn)))) *)
-			fun flatten(M.STRent{stamp,entities,...}::rest) =
+			fun flatten((stamp, M.STRent{entities,...})::rest) =
 			    (map (fn ep => stamp::ep) 
-				(flatten(#2 (ListPair.unzip (EE.toList entities))))) @ flatten(rest)
-			  | flatten(M.TYCent(TP.GENtyc{stamp,...})::rest) =
+				(flatten(EE.toList entities))) @ flatten(rest)
+			  | flatten((stamp, M.TYCent(TP.GENtyc _))::rest) =
 			    [stamp]::flatten(rest)
-			  | flatten(M.FCTent{stamp,...}::rest) =
+			  | flatten((stamp, (M.FCTent _))::rest) =
 			    [stamp]::flatten(rest)
 			  | flatten(_::rest) =
 			    flatten(rest)
 			  | flatten [] = []
-		    in flatten (#2 (ListPair.unzip (EE.toList (#entities freerlzn))))
+		    in flatten (EE.toList (#entities freerlzn))
 		    end 
 		val _ = (debugmsg "---pri selected eps";
 			 if !debugging 
@@ -482,6 +485,7 @@ in
 			 then (app (fn x => print ((EP.entPathToString x)^";"))
 			          eps'; print "\n")
 			 else ())
+		(* val eps = eps' *)
 		
 		val _ = debugmsg ("--primaryCompInStruct eps "^
 				  Int.toString (length eps)^
@@ -553,10 +557,11 @@ in
 		       | M.FCTent {stamp, paramRlzn, bodyRlzn, 
 				   closure=M.CLOSURE{env=closenv,...},...} => 
 			   (debugmsg "--primaryCompInStruct[FCTent SOME]";
-			    (case fs
+			    ( case fs
 			      of [] => bug "primaryCompInStruct.1"
 			       | (fsig as M.FSIG{bodysig=bsig as M.SIG bsr,
-					      paramsig=M.SIG psr, ...})::srest => 
+					      paramsig=paramsig as M.SIG psr, 
+					      ...})::srest => 
 				 let 
 				     (* If FCTent is a result from a partially
 				        applied functor, then the given bsr
@@ -578,21 +583,28 @@ in
 					      ppEntities entenv; *)
 					      print "\n===FCTent closenv===\n";
 					      ppEntities closenv;
-					      print "\n--kinds[FCTent] Funsig\n";
-					      ppFunsig fsig; 
+					      print "\n--kinds[FCTent] Funsig\n"
+					      (* ; ppFunsig fsig; 
 					      (* print "\n===FCTent sign===\n";
-					      ppSig (M.SIG sign); *)print "\n"
+					      ppSig (M.SIG sign); *)print "\n"*)
 					      )
 					 else ()
 
 				     val argRepEPs = 
 					 repEPs(entpaths(#elements psr),
 						#entities paramRlzn)
+				     (* val psr = {stamp = Stamps.special "bogusSig",
+	 name=NONE, closed=true, fctflag=false,
+	 elements=[],
+	 properties = PropList.newHolder (),
+	 (* boundeps=ref NONE, lambdaty=ref NONE *)
+	 typsharing=[], strsharing=[],
+	 stub = NONE} *)
 				     val (ftmap1, argtps) = 
 					 primaryCompInStruct(ftmap,
 							     paramRlzn,
 							     paramRlzn,
-							     psr,
+							     paramsig,
 							     DI.next d)
 
 				    
@@ -612,6 +624,13 @@ in
 					for each FORMAL GENtyc *)
 				     val _ = debugmsg ("pri[FCT]TP_VAR depth "^
 						       DI.dp_print d)
+				     (* val fsig = 
+					 M.FSIG{kind=NONE,
+						paramsig=M.SIG psr,
+						paramvar=Stamps.special "bogusP",
+						paramsym=NONE,
+						bodysig=M.SIG psr}
+				     val bsig = M.SIG psr *)
 				     val (ftmap2,bodytps) = 
 					 formalBody(ftmap1, #entities bodyRlzn,
 						    argtps, bsig, 
@@ -627,12 +646,13 @@ in
 				    loop(ftmap2,
 					 tp'::tps, entenv, rest, i+1, srest)
 				 end
-			       | _ => bug "unexpected errorFSIG")) 
+			        | _ => bug "unexpected errorFSIG")) 
 		       | _ => bug "primaryCompInStruct 0"
 		     end (* loop *) )
 		    handle EE.Unbound => bug "primaryCompInStruct Unbound"
 		in loop(FTM.empty, [], entenv, eps, 0, fsigs)
 	    end (* fun primaryCompInStruct *)
+	  | primaryCompInStruct _ = bug "Unexpected error signature"
 
         (* Get the primary components in a realization R0 but replacing any 
 	   occurrences of entities in a realization R1 with the 
@@ -644,12 +664,14 @@ in
 	    let *)
 		
 
-	fun getTk(M.FSIG{paramsig=M.SIG ps, ...}, dummyRlzn, argRlzn, 
+	fun getTk(M.FSIG{paramsig=paramsig as M.SIG ps, ...}, dummyRlzn, 
+		  argRlzn, 
 		  d) =
 	    let 
 		val _ = debugmsg ">>getTk"
 		val (ftmap, argtycs') = 
-		    primaryCompInStruct(FTM.empty, dummyRlzn, argRlzn, ps, d)
+		    primaryCompInStruct(FTM.empty, dummyRlzn, argRlzn, 
+					paramsig, d)
 		val _ = debugmsg "<<getTk"
 	    in (argtycs', ftmap)
 	    end (* getTk *)
@@ -734,7 +756,7 @@ in
 			 val _ = debugmsg "--procStrexp[APPstr] param/arg"
 			 val (ftmap', argtycs') = 
 			     primaryCompInStruct(ftmap, dummyRlzn, argRlzn, 
-						 fsr, d)
+						 fsparsig, d)
 
 			 val _ = debugmsg "--procStrexp[APPstr] body"
 
@@ -744,7 +766,7 @@ in
 			  *)
 			 val(ftmap2, _) = 
 			    primaryCompInStruct(ftmap', bodyRlzn, bodyRlzn, 
-						bfsr, d) 
+						bodysig, d) 
 			 val _ = debugmsg "--procStrexp[APPstr] body done"
 			 val body' = procCloSE(body)
 			 val fcl' = 
@@ -844,7 +866,7 @@ in
 
 				  val (ftmap1, argtycs') =
 				      primaryCompInStruct(ftmap, rlzn, rlzn, 
-							  fsr, d)
+							  paramsig', d)
 				  (* What is the difference between sr 
 				     and fsr? *)
 				  val (def',ftmap2) = 

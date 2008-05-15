@@ -45,11 +45,12 @@ local structure B  = Bindings
 					val compare = IntInf.compare)
 
       open Absyn PLambda 
-      open AbsynTP (* TODO: Should just qualify pats or split out,
+      (* open AbsynTP (* TODO: Should just qualify pats or split out,
 		      counting on correct shadowing is fragile
-		      and dangerous. *)
+		      and dangerous. *) *)
 in 
 
+type flexmap = TypesTP.tycpath FlexTycMap.map 
 (****************************************************************************
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *
  ****************************************************************************)
@@ -145,7 +146,8 @@ val mkv = LambdaVar.mkLvar
 fun mkvN NONE = mkv()
   | mkvN (SOME s) = LambdaVar.namedLvar s
 *)
-val (rootdec', ftmap) = RepTycProps.procDec(rootdec, DebIndex.top)
+(* val (rootdec', ftmap) = RepTycProps.procDec(rootdec, DebIndex.top) *)
+val ftmap = FlexTycMap.empty
 
 val mkvN = #mkLvar compInfo
 fun mkv () = mkvN NONE
@@ -1045,7 +1047,7 @@ fun mkVar (v as V.VALvar{access, prim, typ, path}, d) =
  * type parameters of instantiation of the intrinsic primop type relative
  * to the variable occurrence type *)
 fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
-      let val occurenceTy = instPoly(!typ, ts)
+      let val occurrenceTy = instPoly(!typ, ts)
               (* compute the occurrence type of the variable *)
 	  val (primop,intrinsicType) =
               case (PrimOpMap.primopMap p, PrimOpTypeMap.primopTypeMap p)
@@ -1054,7 +1056,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
 	  val _ = debugmsg ">>mkVE: before matchInstTypes"
 	  val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
-              case (TU.matchInstTypes(true, d, occurenceTy, intrinsicType)
+              case (TU.matchInstTypes(true, d, occurrenceTy, intrinsicType)
                       : (TP.tyvar list * TP.tyvar list) option )
                 of SOME(_, tvs) => 
 		   (if !debugging then
@@ -1079,14 +1081,14 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
                            PPVal.ppVar ppstrm e;
                            PP.newline ppstrm;
                            PP.string ppstrm "occtypes: ";
-                           PPType.ppType env ppstrm occurenceTy;
+                           PPType.ppType env ppstrm occurrenceTy;
                            PP.newline ppstrm;
                            PP.string ppstrm "intrinsicType: ";
                            PPType.ppType env ppstrm intrinsicType;
                            PP.newline ppstrm;
                            PP.string ppstrm "instpoly occ: ";
                            PPType.ppType env ppstrm
-                             (#1 (TU.instantiatePoly occurenceTy));
+                             (#1 (TU.instantiatePoly occurrenceTy));
                            PP.newline ppstrm;
                            PP.string ppstrm "instpoly intrinsicType: ";
                            PPType.ppType env ppstrm
@@ -1310,32 +1312,54 @@ and mkEBs (ebs, d) =
  *    val mkFctbs  : Absyn.fctb list * depth -> PLambda.lexp -> PLambda.lexp *
  *                                                                         *
  ***************************************************************************)
-and mkStrexp (se, d) = 
+and mkStrexp (ftmap0, se, d) = 
   let val _ = debugmsg ">>mkStrexp"
-      fun g (VARstr s) = mkStr(s, d)
-        | g (STRstr bs) = SRECORD (map (mkBnd d) bs)
-        | g (APPstr {oper, arg, argtycs}) = 
+      fun g(strexp : Absyn.strexp) : (flexmap * PLambda.lexp) =
+	(case strexp 
+	  of (APPstr {oper, arg}) =>
               let val e1 = mkFct(oper, d) 
+                  (* [RepTycProps] *)
+		  val (ftmap1, argtycs) = 
+		      (case (oper, arg)
+			of (M.FCT{sign=M.FSIG{paramsig, ...}, 
+				rlzn=fctRlzn, ...}, 
+			    M.STR{rlzn, ...}) =>
+			   RepTycProps.primaryCompInStruct(ftmap0, 
+							  #paramRlzn fctRlzn,
+							  #paramRlzn fctRlzn,
+							  paramsig, d)
+			 | _ => bug "Unexpected APPstr")
                   val tycs = map (tpsTyc d) argtycs 
                   val e2 = mkStr(arg, d)
-               in APP(TAPP(e1, tycs), e2)
+               in (ftmap1, APP(TAPP(e1, tycs), e2))
               end
-        | g (LETstr (dec, b)) = mkDec (dec, d) (g b)
-        | g (MARKstr (b, reg)) = withRegion reg g b
-      val le = g se
+	   | (MARKstr (b, reg)) => withRegion reg g b
+	   | (LETstr (dec, b)) => mkDec (dec, d) (g b)
+	   | _ => let 
+		      val le = 
+			  (case strexp
+			    of (VARstr s) => mkStr(s, d)
+			     | (STRstr bs) => SRECORD (map (mkBnd d) bs)
+			     )
+		  in (ftmap0, le)
+		  end)
+
+      val (ftmap, le) = g se
       val _ = debugmsg "<<mkStrexp"
    in 
-      le
+      (ftmap, le)
   end
 
-and mkFctexp (fe, d) = 
+and mkFctexp (ftmap0, fe, d) = 
   let fun getFctKnds(M.SIG{elements,...}) =
 	let (* Tyc Kinds precede all Functor Kinds, 
 	       so they are computed separately *)
 	    fun getFct((_,spec)::rest) =
 		(case spec
 		   of M.FCTspec{entVar, sign=M.FSIG{paramsig,bodysig,...}, ...} => 
-		      LT.tkc_fun(getFctKnds paramsig,LT.tkc_seq (getFctKnds bodysig))::getFct(rest)
+		      LT.tkc_fun(getFctKnds paramsig,
+				 LT.tkc_seq 
+				     (getFctKnds bodysig))::getFct(rest)
 		    | _ => getFct rest)
 	      | getFct([]) = []
 	    fun getTyc((_,spec)::rest) =
@@ -1359,11 +1383,17 @@ and mkFctexp (fe, d) =
 	in (getTyc elements)@(getFct elements)
 	end 
 	| getFctKnds(_) = bug "getFctKnds 2"
-      fun g (VARfct f) = mkFct(f, d)
-        | g (FCTfct {param as M.STR { sign, access, ... }, argtycs, def }) =
+      fun g (VARfct f) = (ftmap0, mkFct(f, d))
+        | g (FCTfct {param as M.STR { sign, access, rlzn, ... }, def }) =
 	  (case access of
 	       DA.LVAR v =>
-               let val knds = map tpsKnd argtycs
+               let 
+		   (* [RepTycProps] *)
+		   val (ftmap1, argtycs) = 
+		       RepTycProps.primaryCompInStruct(ftmap, rlzn, 
+						       rlzn, sign, d)
+		   
+		   val knds = map tpsKnd argtycs
 		     (* Old way of obtaining kinds from INST *)
 		   (* val knds = getFctKnds sign *) (* Computing kinds directly *)
 		   (*val _ = print ("tpsKnd: "^Int.toString (length knds)^"\n")
@@ -1376,12 +1406,13 @@ and mkFctexp (fe, d) =
 				with_pp (fn s => PPModules.ppStructure s (param, StaticEnv.empty, 100)))
 			   else ()
                    val nd = DI.next d  (* reflecting type abstraction *)
-                   val body = mkStrexp (def, nd)
+                   val (ftmap1, body) = mkStrexp (ftmap0, def, nd)
                    val hdr = buildHdr v
                (* binding of all v's components *)
                in
-		   TFN(knds, FN(v, strLty(param, nd, compInfo), 
-				hdr body))
+		   (ftmap1, 
+		    TFN(knds, FN(v, strLty(param, nd, compInfo), 
+				hdr body)))
 		   (* [FIXME]strLty's param has a signature with GENtyc formals.
 		    * transtypes will not know how to deal with this. 
 		    * The free instantiation of this functor's parameter 
@@ -1395,29 +1426,30 @@ and mkFctexp (fe, d) =
         | g _ = bug "unexpected functor expressions in mkFctexp"
 
    in g fe
-  end
+  end (* mkFctexp *)
 
-and mkStrbs (sbs, d) =
+and mkStrbs (ftmap0, sbs, d) =
   let fun g (STRB{str=M.STR { access, ... }, def, ... }, b) =
 	  (case access of
 	       DA.LVAR v =>
                let val hdr = buildHdr v 
                (* binding of all v's components *)
+		   val (ftmap1, def') = mkStrexp(ftmap0, def, d)
                in
-		   LET(v, mkStrexp(def, d), hdr b)
+		   (ftmap1, LET(v, def', hdr b))
                end
 	     | _ => bug "mkStrbs: unexpected access")
         | g _ = bug "unexpected structure bindings in mkStrbs"
   in fold g sbs
   end
 
-and mkFctbs (fbs, d) = 
+and mkFctbs (ftmap0, fbs, d) = 
   let fun g (FCTB{fct=M.FCT { access, ... }, def, ... }, b) =
 	  (case access of
 	       DA.LVAR v =>
                let val hdr = buildHdr v
                in
-		   LET(v, mkFctexp(def, d), hdr b)
+		   LET(v, mkFctexp(ftmap0, def, d), hdr b)
                end
 	     | _ => bug "mkFctbs: unexpected access")
         | g _ = bug "unexpected functor bindings in mkStrbs"
@@ -1432,7 +1464,8 @@ and mkFctbs (fbs, d) =
  *    val mkDec : A.dec * DI.depth -> PLambda.lexp -> PLambda.lexp         *
  *                                                                         *
  ***************************************************************************)
-and mkDec (dec, d) = 
+and mkDec (dec : Absyn.dec, d : DI.depth) 
+    : (flexmap * PLambda.lexp) -> (flexmap * PLambda.lexp) = 
   let fun g (VALdec vbs) = mkVBs(vbs, d)
         | g (VALRECdec rvbs) = mkRVBs(rvbs, d)
         | g (ABSTYPEdec{body,...}) = g body
@@ -1629,7 +1662,7 @@ and transIntInf d s =
 		(Absyn.LABEL { number = i-1, name = Tuples.numlabel i }, e)
 		:: build (i+1, es)
 	in
-	    AbsynTP.RECORDexp (build (1, l))
+	    RECORDexp (build (1, l))
 	end
 
 	fun build [] = CONexp (BT.nilDcon, [ref (TP.INSTANTIATED BT.wordTy)])
@@ -1637,7 +1670,7 @@ and transIntInf d s =
 		val i = Word.toIntX d
 	    in
 		APPexp (consexp, 
-			(TUPLEexp [AbsynTP.WORDexp (IntInf.fromInt i, BT.wordTy),
+			(TUPLEexp [WORDexp (IntInf.fromInt i, BT.wordTy),
 				   build ds]))
 	    end
 	fun small w =
@@ -1719,7 +1752,7 @@ val exportLexp = SRECORD (map VAR exportLvars)
 
 val _ = debugmsg ">>mkDec"
 (** translating the ML absyn into the PLambda expression *)
-val body = mkDec (rootdec', DI.top) exportLexp
+val body = mkDec (rootdec, DI.top) exportLexp
 val _ = debugmsg "<<mkDec"
 val _ = if CompInfo.anyErrors compInfo 
 	then raise EM.Error 

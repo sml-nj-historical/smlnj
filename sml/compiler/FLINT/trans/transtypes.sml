@@ -107,7 +107,7 @@ fun tpsKnd (TP.TP_VAR{kind,...}) = kind
 			    Int.toString (length seq)^" selecting "^
 			    Int.toString i) 
 	  val knd = List.nth(seq, i) 
-	      handle General.Subscript => bug "Unexpected functor result length"
+	      handle General.Subscript => bug ("Unexpected functor result length, selecting "^Int.toString i^" in length "^Int.toString(length seq)^" seq")
 					    
       in knd
       end
