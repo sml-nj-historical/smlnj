@@ -74,7 +74,7 @@ and dec
   | ABSTYPEdec of {abstycs: tycon list, withtycs: tycon list, body: dec}
   | EXCEPTIONdec of eb list
   | STRdec of strb list
-  | ABSdec of strb list      (* should be merged with STRdec in the future *)
+  (* | ABSdec of strb list *) (* should be merged with STRdec in the future *)
   | FCTdec of fctb list
   | SIGdec of Signature list
   | FSIGdec of fctSig list

@@ -869,7 +869,7 @@ and decType0(decl,occ,tdepth,region) : dec =
        * of debugger or profiler. 
        *)
        | STRdec strbs => STRdec(map (strbType(occ,tdepth,region)) strbs)
-       | ABSdec strbs => ABSdec(map (strbType(occ,tdepth,region)) strbs)
+       (* | ABSdec strbs => ABSdec(map (strbType(occ,tdepth,region)) strbs) *)
        | FCTdec fctbs => FCTdec(map (fctbType(occ,tdepth,region)) fctbs)
        | _ => decl
 

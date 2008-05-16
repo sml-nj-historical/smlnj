@@ -285,7 +285,7 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 			     body = i_dec loc body }
 	  | i_dec loc (A.EXCEPTIONdec l) = A.EXCEPTIONdec (map (i_eb loc) l)
 	  | i_dec loc (A.STRdec l) = A.STRdec (map (i_strb loc) l)
-	  | i_dec loc (A.ABSdec l) = A.ABSdec (map (i_strb loc) l)
+	  (* | i_dec loc (A.ABSdec l) = A.ABSdec (map (i_strb loc) l)*)
 	  | i_dec loc (A.FCTdec l) = A.FCTdec (map (i_fctb loc) l)
 	  | i_dec loc (A.LOCALdec (d, d')) =
 	      A.LOCALdec (i_dec loc d, i_dec loc d')

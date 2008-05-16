@@ -617,7 +617,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	      ppvlist ppstrm ("structure ","and ", f, sbs);
 	      closeBox ()
 	  end
-        | ppDec'(ABSdec sbs,d) = let
+        (* | ppDec'(ABSdec sbs,d) = let
 	      fun f ppstrm (STRB{name, str=M.STR { access, ... }, def}) =
 		  (ppSym ppstrm name;
 		   ppAccess ppstrm access;
@@ -629,7 +629,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	      openHVBox 0;
 	      ppvlist ppstrm ("abstraction ","and ", f, sbs);
 	      closeBox ()
-	  end
+	  end *)
         | ppDec'(FCTdec fbs,d) = let
 	      fun f ppstrm (FCTB{name=fname, fct=M.FCT { access, ... }, def}) =
                   (ppSym ppstrm fname;

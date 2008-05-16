@@ -940,10 +940,10 @@ in
 		 let val (strbs', ftmap1) = strBinds(ftmap, strbs)
 		 in (AT.STRdec(strbs'), ftmap1)
 		 end
-	       | ABSdec strbs => 
+(*	       | ABSdec strbs => 
 		 let val (strbs', ftmap1) = strBinds(ftmap,strbs)
 		 in (AT.ABSdec(strbs'), ftmap1)
-		 end
+		 end *)
 	       | OPENdec x => (AT.OPENdec x, ftmap) (* May have module dec *)
 	       | SIGdec bs => (AT.SIGdec bs, ftmap)
 	       | FSIGdec bs => (AT.FSIGdec bs, ftmap)

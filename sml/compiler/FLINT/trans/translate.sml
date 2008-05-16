@@ -1334,12 +1334,13 @@ and mkStrexp (ftmap0, se, d) =
                in (ftmap1, APP(TAPP(e1, tycs), e2))
               end
 	   | (MARKstr (b, reg)) => withRegion reg g b
-	   | (LETstr (dec, b)) => mkDec (dec, d) (g b)
+	   | (LETstr (dec, b)) => mkDec (ftmap0, dec, d) (g b)
 	   | _ => let 
 		      val le = 
 			  (case strexp
 			    of (VARstr s) => mkStr(s, d)
 			     | (STRstr bs) => SRECORD (map (mkBnd d) bs)
+			     | _ => bug "strexp pattern failed"
 			     )
 		  in (ftmap0, le)
 		  end)
@@ -1350,7 +1351,7 @@ and mkStrexp (ftmap0, se, d) =
       (ftmap, le)
   end
 
-and mkFctexp (ftmap0, fe, d) = 
+and mkFctexp (ftmap0, fe, d) : flexmap * lexp = 
   let fun getFctKnds(M.SIG{elements,...}) =
 	let (* Tyc Kinds precede all Functor Kinds, 
 	       so they are computed separately *)
@@ -1421,22 +1422,22 @@ and mkFctexp (ftmap0, fe, d) =
 		    *)
                end
 	     | _ => bug "mkFctexp: unexpected access")
-        | g (LETfct (dec, b)) = mkDec (dec, d) (g b)
+        | g (LETfct (dec, b)) = mkDec (ftmap0, dec, d) (g b)
         | g (MARKfct (b, reg)) = withRegion reg g b
         | g _ = bug "unexpected functor expressions in mkFctexp"
 
    in g fe
   end (* mkFctexp *)
 
-and mkStrbs (ftmap0, sbs, d) =
-  let fun g (STRB{str=M.STR { access, ... }, def, ... }, b) =
+and mkStrbs (ftmap0, sbs, d) : flexmap * lexp -> flexmap * lexp =
+  let fun g (STRB{str=M.STR { access, ... }, def, ... }, (fm1, b)) =
 	  (case access of
 	       DA.LVAR v =>
                let val hdr = buildHdr v 
                (* binding of all v's components *)
-		   val (ftmap1, def') = mkStrexp(ftmap0, def, d)
+		   val (fm2, def') = mkStrexp(fm1, def, d)
                in
-		   (ftmap1, LET(v, def', hdr b))
+		   (fm2, LET(v, def', hdr b))
                end
 	     | _ => bug "mkStrbs: unexpected access")
         | g _ = bug "unexpected structure bindings in mkStrbs"
@@ -1444,12 +1445,13 @@ and mkStrbs (ftmap0, sbs, d) =
   end
 
 and mkFctbs (ftmap0, fbs, d) = 
-  let fun g (FCTB{fct=M.FCT { access, ... }, def, ... }, b) =
+  let fun g (FCTB{fct=M.FCT { access, ... }, def, ... }, (fm1, b)) =
 	  (case access of
 	       DA.LVAR v =>
                let val hdr = buildHdr v
+		   val (fm2, le) = mkFctexp(fm1, def, d)
                in
-		   LET(v, mkFctexp(ftmap0, def, d), hdr b)
+		   (fm2, LET(v, le, hdr b))
                end
 	     | _ => bug "mkFctbs: unexpected access")
         | g _ = bug "unexpected functor bindings in mkStrbs"
@@ -1464,15 +1466,16 @@ and mkFctbs (ftmap0, fbs, d) =
  *    val mkDec : A.dec * DI.depth -> PLambda.lexp -> PLambda.lexp         *
  *                                                                         *
  ***************************************************************************)
-and mkDec (dec : Absyn.dec, d : DI.depth) 
+and mkDec (fm0 : flexmap, dec : Absyn.dec, d : DI.depth) 
     : (flexmap * PLambda.lexp) -> (flexmap * PLambda.lexp) = 
-  let fun g (VALdec vbs) = mkVBs(vbs, d)
-        | g (VALRECdec rvbs) = mkRVBs(rvbs, d)
+  let fun g (VALdec vbs) : (flexmap * PLambda.lexp) -> (flexmap * PLambda.lexp) 
+	= (fn (_, x) => (fm0, mkVBs(vbs, d) x))
+        | g (VALRECdec rvbs) = (fn (_, x) => (fm0, mkRVBs(rvbs, d) x))
         | g (ABSTYPEdec{body,...}) = g body
-        | g (EXCEPTIONdec ebs) = mkEBs(ebs, d)
-        | g (STRdec sbs) = mkStrbs(sbs, d)
-        | g (ABSdec sbs) = mkStrbs(sbs, d)
-        | g (FCTdec fbs) = mkFctbs(fbs, d)
+        | g (EXCEPTIONdec ebs) = (fn (_, x) => (fm0, mkEBs(ebs, d) x))
+        | g (STRdec sbs) = mkStrbs(fm0, sbs, d)
+(*         | g (ABSdec sbs) = mkStrbs(sbs, d) *)
+        | g (FCTdec fbs) = mkFctbs(fm0, fbs, d)
         | g (LOCALdec(ld, vd)) = (g ld) o (g vd)
         | g (SEQdec ds) =  foldr (op o) ident (map g ds)
         | g (MARKdec(x, reg)) = 
@@ -1637,8 +1640,10 @@ and mkExp (exp, d) =
 		FIX ([fv], [lt_u_u], [body], APP (VAR fv, unitLexp))
 	    end
 
-        | g (LETexp (dc, e)) = mkDec (dc, d) (g e)
-
+        | g (LETexp (dc, e)) = #2 (mkDec (FlexTycMap.empty, dc, d) 
+				     (FlexTycMap.empty, (g e)))
+			       (* [RepTycProp] New primary types can't 
+				  be introduced here or occur here.*)
         | g e = 
              EM.impossibleWithBody "untranslateable expression"
               (fn ppstrm => (PP.string ppstrm " expression: "(* ;
@@ -1752,7 +1757,8 @@ val exportLexp = SRECORD (map VAR exportLvars)
 
 val _ = debugmsg ">>mkDec"
 (** translating the ML absyn into the PLambda expression *)
-val body = mkDec (rootdec, DI.top) exportLexp
+val (fm, body) = mkDec (FlexTycMap.empty, rootdec, DI.top) 
+		 (FlexTycMap.empty, exportLexp)
 val _ = debugmsg "<<mkDec"
 val _ = if CompInfo.anyErrors compInfo 
 	then raise EM.Error 

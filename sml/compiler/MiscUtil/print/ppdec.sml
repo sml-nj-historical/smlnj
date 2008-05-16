@@ -348,7 +348,7 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 		    ppDec0 body)
 	       | EXCEPTIONdec ebs => app ppEb ebs
 	       | STRdec strbs => app (ppStrb false) strbs
-	       | ABSdec strbs => app (ppStrb true) strbs
+	       (* | ABSdec strbs => app (ppStrb true) strbs*)
 	       | FCTdec fctbs => app ppFctb fctbs
 	       | SIGdec sigbs => app ppSigb sigbs
 	       | FSIGdec fsigbs => app ppFsigb fsigbs
