@@ -501,6 +501,7 @@ in
 				  raise EntityEnv.Unbound)
 		      of M.TYCent(tyc as TP.GENtyc{kind=TP.DATATYPE _, stamp,...}) =>
 			   let val tp = T.TP_TYC(T.NoTP tyc)
+			       (* val _ = debugmsg "TYCent DATATYPE" *)
 			   in (loop(insertMap(ftmap, stamp, tp), 
 				    tp::tps, entenv, rest, i+1, fs))
 			   end

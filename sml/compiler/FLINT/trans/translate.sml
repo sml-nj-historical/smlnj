@@ -55,7 +55,7 @@ type flexmap = TypesTP.tycpath FlexTycMap.map
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *
  ****************************************************************************)
 
-val debugging = FLINT_Control.trdebugging
+val debugging = (* FLINT_Control.trdebugging *) ref true
 fun bug msg = EM.impossible("Translate: " ^ msg)
 val say = Control.Print.say
 fun warn s = say ("*** WARNING: " ^ s ^ "\n")
@@ -1326,7 +1326,7 @@ and mkStrexp (ftmap0, se, d) =
 			    M.STR{rlzn, ...}) =>
 			   RepTycProps.primaryCompInStruct(ftmap0, 
 							  #paramRlzn fctRlzn,
-							  #paramRlzn fctRlzn,
+							  rlzn,
 							  paramsig, d)
 			 | _ => bug "Unexpected APPstr")
                   val tycs = map (tpsTyc d) argtycs 
@@ -1352,7 +1352,7 @@ and mkStrexp (ftmap0, se, d) =
   end
 
 and mkFctexp (ftmap0, fe, d) : flexmap * lexp = 
-  let fun getFctKnds(M.SIG{elements,...}) =
+  let (* fun getFctKnds(M.SIG{elements,...}) =
 	let (* Tyc Kinds precede all Functor Kinds, 
 	       so they are computed separately *)
 	    fun getFct((_,spec)::rest) =
@@ -1383,7 +1383,7 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
 	       | getTyc([]) = []
 	in (getTyc elements)@(getFct elements)
 	end 
-	| getFctKnds(_) = bug "getFctKnds 2"
+	| getFctKnds(_) = bug "getFctKnds 2" *)
       fun g (VARfct f) = (ftmap0, mkFct(f, d))
         | g (FCTfct {param as M.STR { sign, access, rlzn, ... }, def }) =
 	  (case access of
@@ -1469,8 +1469,10 @@ and mkFctbs (ftmap0, fbs, d) =
 and mkDec (fm0 : flexmap, dec : Absyn.dec, d : DI.depth) 
     : (flexmap * PLambda.lexp) -> (flexmap * PLambda.lexp) = 
   let fun g (VALdec vbs) : (flexmap * PLambda.lexp) -> (flexmap * PLambda.lexp) 
-	= (fn (_, x) => (fm0, mkVBs(vbs, d) x))
-        | g (VALRECdec rvbs) = (fn (_, x) => (fm0, mkRVBs(rvbs, d) x))
+	= (fn (_, x) => (fm0, (debugmsg "--mkDec[VALdec]"; mkVBs(vbs, d) x)))
+        | g (VALRECdec rvbs) = 
+	    (fn (_, x) => (debugmsg "--mkDec[VALRECdec]"; 
+			   (fm0, mkRVBs(rvbs, d) x)))
         | g (ABSTYPEdec{body,...}) = g body
         | g (EXCEPTIONdec ebs) = (fn (_, x) => (fm0, mkEBs(ebs, d) x))
         | g (STRdec sbs) = mkStrbs(fm0, sbs, d)
