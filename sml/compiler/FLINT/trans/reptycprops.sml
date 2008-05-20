@@ -458,10 +458,12 @@ in
 			    rlzn: M.strEntity, M.SIG (sign : M.sigrec), d) =
 	    let
 		val fsigs = fsigInElems(#elements sign)
-		val _  = debugmsg ("--pri num of fsigs "^Int.toString (length fsigs))
+		val _  = debugmsg ("--pri num of fsigs "^
+				   Int.toString (length fsigs)
+				   ^" depth "^DI.dp_print d)
 		val entenv = #entities rlzn
 		val eps = repEPs(entpaths(#elements sign), #entities freerlzn) 
-		val eps' = 
+		(* val eps' = 
 		    let 
 			fun flatten((stamp, M.STRent{entities,...})::rest) =
 			    (map (fn ep => stamp::ep) 
@@ -484,7 +486,7 @@ in
 			 if !debugging 
 			 then (app (fn x => print ((EP.entPathToString x)^";"))
 			          eps'; print "\n")
-			 else ())
+			 else ()) *)
 		(* val eps = eps' *)
 		
 		val _ = debugmsg ("--primaryCompInStruct eps "^
