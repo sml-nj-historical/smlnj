@@ -114,10 +114,10 @@ structure JSONStreamPrinter : sig
     fun endObject (p as P{ctx, ...}) = let
 	  fun prEnd ctx' = (
 		ctx := ctx';
-		nl p; indent(p, ~1); pr(p, "}"); decIndent (p, 2))
+		indent(p, ~1); pr(p, "}"); decIndent (p, 2))
 	  in
 	    case !ctx
-	     of OBJECT ctx' => prEnd ctx'
+	     of OBJECT ctx' => (nl p; prEnd ctx')
 	      | FIRST(OBJECT ctx') => prEnd ctx'
 	      | _ => raise Fail "endObject not in object context"
 	    (* end case *)
