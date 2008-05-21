@@ -768,18 +768,22 @@ let
         end 
 
     (****  VALUE DECLARATIONS ****)
+    (* elabVB : Ast.vb * tyvar list * staticEnv * region
+                ->  ... *)
     and elabVB (MarkVb(vb,region),etvs,env,_) =
-	let val (d, tvs, u) = elabVB(vb,etvs,env,region)
-	    val d' = cMARKdec (d, region)
-	in
-	    (d', tvs, u)
-	end
+          (* pass through MarkVb, updating region parameter *)
+          let val (d, tvs, u) = elabVB(vb,etvs,env,region)
+              val d' = cMARKdec (d, region)
+           in (d', tvs, u)
+          end
       | elabVB (Vb{pat,exp,lazyp},etvs,env,region) =
 	  let val (pat,pv) = elabPat(pat, env, region)
 	      val (exp,ev,updtExp) = elabExp(exp,env,region)
 	      val exp = if lazyp  (* LAZY *)
 		        then delayExp(forceExp exp)
 			else exp
+
+              (* tracking user (or "explicit") type variables *)
 	      val tvref = ref []
 	      fun updt tv: unit =
 		let fun a++b = union(a,b,error region)
@@ -822,7 +826,9 @@ let
                of (VARpat _ | CONSTRAINTpat(VARpat _,_)) => (* variable pattern *)
                    (VALdec([VB{exp=exp, tyvars=tvref, pat=pat, boundtvs=[]}]),
                     [pat], updt) 
-                | _ => (* Nonvariable pattern *)
+                | _ => (* Nonvariable pattern binding will be "normalized"
+                        * into a more complex declaration using only
+                        * simple variable valbinds. See DEVNOTE/valbind.txt. *)
 		   let val (newpat,oldvars,newvars) = aconvertPat(pat, compInfo)
 		         (* this is the only call of aconvertPat *)
                        val newVarExps = map (fn v => VARexp(ref v,[])) newvars 
@@ -836,25 +842,25 @@ let
                               in (VALdec [nvb], [], updt)
                              end
                          | _ => 
-                             let val nv = newVALvar internalSym
-                                 val nvpat = VARpat(nv)
-                                 val nvexp = VARexp(ref nv, [])
+                             let val newVar = newVALvar internalSym
+                                 val newVarPat = VARpat(newVar)
+                                 val newVarExp = VARexp(ref newVar, [])
 
-                                 val nvdec = 
-                                    VALdec([VB{exp=newexp, tyvars=tvref, 
-                                               pat=nvpat, boundtvs=[]}])
+                                 val newVarDec = 
+                                     VALdec([VB{exp=newexp, tyvars=tvref, 
+                                                pat=newVarPat, boundtvs=[]}])
 
-                                 fun h([], _, d) =  
-                                        LOCALdec(nvdec, SEQdec(rev d))
-                                   | h(vp::r, i, d) = 
-                                        let val nvb = VB{exp=TPSELexp(nvexp,i),
-                                                         pat=vp, boundtvs=[],
-                                                         tyvars=ref[]}
+                                 fun buildDec([], _, d) =  
+                                     LOCALdec(newVarDec, SEQdec(rev d))
+                                   | buildDec(vp::r, i, d) = 
+                                     let val nvb = VB{exp=TPSELexp(newVarExp,i),
+                                                      pat=vp, boundtvs=[],
+                                                      tyvars=ref[]}
 
-                                         in h(r, i+1, VALdec([nvb])::d)
-                                        end
+                                      in buildDec(r, i+1, VALdec([nvb])::d)
+                                     end
 
-                              in (h(oldvars, 1, []), oldvars, updt)
+                              in (buildDec(oldvars, 1, []), oldvars, updt)
                              end
                    end
 	  end

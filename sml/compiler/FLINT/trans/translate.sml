@@ -416,8 +416,7 @@ fun fillPat(pat, d) =
             RECORDpat{fields = map (fn (lab, p) => (lab, fill p)) fields,
                       typ = typ, flex = false}
         | fill (pat as RECORDpat {fields, flex=true, typ}) =
-            let exception DontBother
-                val fields' = map (fn (l,p) => (l, fill p)) fields
+            let val fields' = map (fn (l,p) => (l, fill p)) fields
 
                 fun find (t as TP.CONty(TP.RECORDtyc labels, _)) = 
                              (typ := t; labels)
@@ -433,7 +432,6 @@ fun fillPat(pat, d) =
              in RECORDpat{fields = merge(fields', 
                                          find(TU.headReduceType (!typ))),
                           flex = false, typ = typ}
-                handle DontBother => WILDpat
             end
         | fill (VECTORpat(pats,ty)) = VECTORpat(map fill pats, ty)
         | fill (ORpat(p1, p2)) = ORpat(fill p1, fill p2)
@@ -1226,20 +1224,11 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
       end
 
 and mkVBs (vbs, d) =
-  let fun mkVB (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
-                   exp as VARexp _, boundtvs=btvs, ...},
-                body: lexp) = 
-            (* We uniformly call mkPE in the case of simple variable bindings,
-             * No special case for primops, or for the case wher btvs = ptvs
-             * [dbm: 5/1/07] *)
-           LET(v, mkPE(exp, d, btvs), body)
-
-        | mkVB (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
-                   exp, boundtvs=btvs, ...}, body) =
-            LET(v, mkPE(exp, d, btvs), body)
-
-        | mkVB (VB{pat=CONSTRAINTpat(VARpat(V.VALvar{access=DA.LVAR v, ...}),_),
-                   exp, boundtvs=btvs, ...}, body) =
+  let fun mkVB (VB{pat=(VARpat(V.VALvar{access=DA.LVAR v, ...}) |
+                        CONSTRAINTpat(VARpat(V.VALvar{access=DA.LVAR v, ...}),_)),
+                   exp, boundtvs=btvs, ...},
+                body) =
+            (* simple variable pattern: No special case for primops [dbm: 5/1/07] *)
             LET(v, mkPE(exp, d, btvs), body)
 
         | mkVB (VB{pat, exp, boundtvs=btvs, ...}, body) =

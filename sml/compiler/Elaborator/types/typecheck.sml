@@ -725,12 +725,16 @@ and decType0(decl,occ,tdepth,region) : dec =
 	        let val (pat',pty) = patType(pat,infinity,region)
 		    val (exp',ety) = expType(exp,occ,DI.next tdepth,region)
                     val generalize = TypesUtil.isValue exp (* orelse isVarTy ety *)
-		 in unifyErr{ty1=pty,ty2=ety, name1="pattern", name2="expression",
+		    val _ = unifyErr{ty1=pty,ty2=ety, name1="pattern", name2="expression",
 			     message="pattern and expression in val dec don't agree",
 			     region=region,kind=ppVB,kindname="declaration",
 			     phrase=vb};
-                   VB{pat=pat',exp=exp',tyvars=tv,
+                   val vb = VB{pat=pat',exp=exp',tyvars=tv,
                       boundtvs=generalizePat(pat,tyvars,occ,tdepth,generalize,region)}
+in 
+                   debugPrint ("VB: ", ppVB, (vb,100));
+                   debugmsg ("generalize: "^Bool.toString generalize);
+vb
                 end
 	       val _ = debugmsg ">>decType0: VALdec"
 	    in VALdec(map vbType vbs)
