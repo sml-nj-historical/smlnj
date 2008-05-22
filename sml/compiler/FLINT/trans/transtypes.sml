@@ -490,8 +490,8 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
                                region=SourceMap.nullRegion}   *)
             val nd = DI.next depth
             (* val ks = map tpsKnd tycpaths *)
-	    val (tps, ftmap1) = (RepTycProps.getTk(fs, paramRlzn, 
-					 argRlzn, depth))
+	    val (tps, ftmap1) = RepTycProps.getTk(fs, paramRlzn, 
+					 argRlzn, depth)
 	    val fm = FTM.unionWith (fn(tp1,tp2)=> tp1) (fm, ftmap1)
 	    val _ = debugmsg ">>tpsKnd"
 	    val ks = map tpsKnd tps
