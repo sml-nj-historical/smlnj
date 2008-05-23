@@ -515,7 +515,7 @@ in
 			     of TP.GENtyc{kind=TP.DATATYPE _,stamp,...} =>
 				(T.TP_TYC(T.NoTP tyc), stamp)
 			      | TP.GENtyc{kind=TP.FORMAL, arity, stamp, ...} => 
-				(case FTM.find(ftmap0, stamp)
+				(case FTM.find(ftmap, stamp)
 				  of SOME tp' => (tp', stamp)
 				   | NONE => 
 				     (debugmsg ("--eps VAR depth "^DI.dp_print d);
@@ -539,7 +539,7 @@ in
 			      * (i.e., in the ftmap0 tycpath) instead of the 
 			      * current occurrence site depth. *)
 			     val tp' = 
-				 (case FTM.find(ftmap0, stamp)
+				 (case FTM.find(ftmap, stamp)
 				   of SOME tp' => 
 				      (debugmsg ("--primaryCompInStruct[TYCent GENtyc] found stmp "^Stamps.toShortString stamp); 
 				       tp')
@@ -653,7 +653,7 @@ in
 		       | _ => bug "primaryCompInStruct 0"
 		     end (* loop *) )
 		    handle EE.Unbound => bug "primaryCompInStruct Unbound"
-		in loop(FTM.empty, [], entenv, eps, 0, fsigs)
+		in loop(ftmap0, [], entenv, eps, 0, fsigs)
 	    end (* fun primaryCompInStruct *)
 	  | primaryCompInStruct _ = bug "Unexpected error signature"
 

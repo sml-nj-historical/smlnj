@@ -1341,7 +1341,8 @@ and mkStrexp (ftmap0, se, d) =
               end
 	   | (MARKstr (b, reg)) => withRegion reg g (fm, b)
 	   | (LETstr (dec, b)) => 
-	     let val (fm1, dec') = mkDec (fm, dec, d) 
+	     let 
+		 val (fm1, dec') = mkDec (fm, dec, d) 
 		 val (fm2, b') = g (fm1, b)
 	     in (fm2, dec' b')
 	     end
@@ -1403,7 +1404,8 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
 	       DA.LVAR v =>
                let 
 		   val _ = debugmsg ("--mkFctexp[FCTfct] depth "^
-				     DI.dp_print d)
+				     DI.dp_print d^" fm "
+				     ^Int.toString(FTM.numItems fm))
 		   (* [RepTycProps] *)
 		   val (ftmap1, argtycs) = 
 		       RepTycProps.primaryCompInStruct(fm, rlzn, 
@@ -1425,11 +1427,15 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
 				print "\n")
 			   else ()
                    val nd = DI.next d  (* reflecting type abstraction *)
+		   val _ = debugmsg ("--mkFctexp[FCTfct] fm1 "
+				     ^Int.toString(FTM.numItems ftmap1))
                    val (ftmap2, body) = mkStrexp (ftmap1, def, nd)
                    val hdr = buildHdr v
 		   val _ = debugmsg "--mkFctexp[in strLty]"
 		   val lty = strLty(ftmap2, param, nd, compInfo)
 		   val _ = debugmsg "--mkFctexp[done strLty]"
+		   val _ = debugmsg ("--mkFctexp[FCTfct] fm2 "
+				     ^Int.toString(FTM.numItems ftmap2))
                (* binding of all v's components *)
                in
 		   (ftmap2, 
@@ -1456,7 +1462,8 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
   end (* mkFctexp *)
 
 and mkStrbsFlexmap (ftmap0, sbs, d) : flexmap =
-  let fun itr(STRB{str=M.STR {access, ...}, def, ...}, fm) = 
+  let val _ = debugmsg ">>mkStrbsFlexmap"
+      fun itr(STRB{str=M.STR {access, ...}, def, ...}, fm) = 
 	  (case access of
 	       DA.LVAR v => 
 	       let val hdr = buildHdr v
@@ -1465,7 +1472,9 @@ and mkStrbsFlexmap (ftmap0, sbs, d) : flexmap =
 	       end
 	     | _ => bug "mkStrbsFlexmap 1")
 	| itr _ = bug "mkStrbsFlexmap 2"
-  in fold itr sbs ftmap0
+      val res = fold itr sbs ftmap0
+      val _ = debugmsg "<<mkStrbsFlexmap"
+  in res
   end
  
 and mkStrbs (ftmap0, sbs, d) =
@@ -1488,15 +1497,20 @@ and mkStrbs (ftmap0, sbs, d) =
   end
 
 and mkFctbsFlexmap (fm0, fbs, d) =
-    let fun itr(FCTB{fct=M.FCT{access, ...}, def, ... }, fm) =
+    let val _ = debugmsg ">>mkFctbsFlexmap"
+	fun itr(FCTB{fct=M.FCT{access, ...}, def, ... }, fm) =
 	    (case access of 
 		 DA.LVAR v => 
 		 let val (fm2, le) = mkFctexp(fm, def, d)
+		     val _ = debugmsg ("--mkFctbsFlexmap fm2 size "
+				       ^Int.toString(FTM.numItems fm2))
 		 in fm2
 		 end
 	       | _ => bug "mkFctbsFlexmap 1")
 	  | itr _ = bug "mkFctbsFlex 2"
-    in fold itr fbs fm0
+	val res = fold itr fbs fm0
+	val _ = debugmsg "<<mkFctbsFlexmap"
+    in res
     end
 
 and mkFctbs (ftmap0, fbs, d) = 
@@ -1536,11 +1550,16 @@ and mkDec (fm0 : flexmap, dec : Absyn.dec, d : DI.depth)
 	   (* mkStrbs traverses sbs in the opposite order
 	      of mkStrbsFlexmap *)
 	  let val fm' = mkStrbsFlexmap(fm, sbs, d)
+	      val _ = debugmsg ("--mkDec[STRdec] fm' "
+				^Int.toString(FTM.numItems fm'))
 	  in (fm', mkStrbs(fm', sbs, d))
 	  end
 (*         | g (ABSdec sbs) = mkStrbs(sbs, d) *)
         | g (fm, FCTdec fbs) = 
 	  let val fm' = mkFctbsFlexmap(fm, fbs, d)
+	      val _ = debugmsg ("--mkDec[FCTdec] fm' "
+				^Int.toString(FTM.numItems fm'))
+
 	  in (fm', mkFctbs(fm', fbs, d))
 	  end
         | g (fm, LOCALdec(ld, vd)) = 
@@ -1550,13 +1569,16 @@ and mkDec (fm0 : flexmap, dec : Absyn.dec, d : DI.depth)
 	    end
         | g (fm, SEQdec ds) =  
 	    let 
-		fun loop([], fm1) = fm1
-		  | loop(d::ds, fm1) = 
-		    let val (fm2, _) = g (fm1, d)
-		    in loop(ds, fm2)
+		fun loop([], fm1, fs) = (fm1, foldr (op o) ident (rev fs))
+		  | loop(d::ds, fm1, fs) = 
+		    let val (fm2, f) = g (fm1, d)
+		    in loop(ds, fm2, f::fs)
 		    end
-		val fm1 = loop (ds, fm)
-	    in (fm1, foldr (op o) ident (map (fn d => #2 (g(fm1,d))) ds))
+		val (fm1, fs) = loop (ds, fm, [])
+		val _ = debugmsg ("--mkDec[SEQdec] fm1 "
+				  ^Int.toString(FTM.numItems fm1))
+	    in (* (fm1, foldr (op o) ident (map (fn d => #2 (g(fm1,d))) ds)) *)
+		(fm1, fs)
 	    end
         | g (fm, MARKdec(x, reg)) = 
               let val (fm1, f) = withRegion reg g (fm, x)
