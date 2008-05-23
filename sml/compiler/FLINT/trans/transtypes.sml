@@ -541,9 +541,11 @@ and strLty (fm : flexmap, str as STR { sign, rlzn, ... }, depth, compInfo) =
     (case ModulePropLists.strEntityLty rlzn of
 	 SOME (lt, od) => LT.lt_adj(lt, od, depth)
        | NONE =>
-         let val lt = strRlznLty(fm, sign, rlzn, depth, compInfo)
+         let val _ = debugmsg ">>strLty"
+	     val lt = strRlznLty(fm, sign, rlzn, depth, compInfo)
          in
 	     ModulePropLists.setStrEntityLty (rlzn, SOME(lt, depth));
+	     debugmsg "<<strLty";
 	     lt
          end)
   | strLty _ = bug "unexpected structure in strLty"
@@ -554,7 +556,7 @@ and fctLty (fm : flexmap, fct as FCT { sign, rlzn, ... }, depth, compInfo) =
 	 SOME (lt,od) => (debugmsg "--fctLty[proplist] "; 
 			  LT.lt_adj(lt, od, depth))
        | NONE =>
-         let val _ = debugmsg "--fctLty[computing]"
+         let val _ = debugmsg ">>fctLty[computing]"
 	     val lt = fctRlznLty(fm, sign, rlzn, depth, compInfo) 
 	 in
 	     ModulePropLists.setFctEntityLty (rlzn, SOME(lt,depth));

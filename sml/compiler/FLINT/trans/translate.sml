@@ -1421,16 +1421,19 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
 				print "\n";
 				with_pp (fn s => 
 					    PPModules.ppStructure s 
-								  (param, StaticEnv.empty, 100)))
+								  (param, StaticEnv.empty, 100));
+				print "\n")
 			   else ()
                    val nd = DI.next d  (* reflecting type abstraction *)
                    val (ftmap2, body) = mkStrexp (ftmap1, def, nd)
                    val hdr = buildHdr v
+		   val _ = debugmsg "--mkFctexp[in strLty]"
+		   val lty = strLty(ftmap2, param, nd, compInfo)
+		   val _ = debugmsg "--mkFctexp[done strLty]"
                (* binding of all v's components *)
                in
 		   (ftmap2, 
-		    TFN(knds, FN(v, strLty(ftmap2, param, nd, compInfo), 
-				hdr body)))
+		    TFN(knds, FN(v, lty, hdr body)))
 		   (* [FIXME]strLty's param has a signature with GENtyc formals.
 		    * transtypes will not know how to deal with this. 
 		    * The free instantiation of this functor's parameter 
@@ -1440,8 +1443,10 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
                end
 	     | _ => bug "mkFctexp: unexpected access")
         | (LETfct (dec, b)) =>
-	  let val (fm1, dec') = mkDec (fm, dec, d) 
+	  let val _ = debugmsg ">>mkFctexp[LETfct]"
+	      val (fm1, dec') = mkDec (fm, dec, d) 
 	      val (fm2, b') = g (fm1, b)
+	      val _ = debugmsg "<<mkFctexp[LETfct]"
 	  in (fm2, dec' b')
 	  end
         | (MARKfct (b, reg)) => withRegion reg g (fm, b)
@@ -1450,13 +1455,26 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
    in g (ftmap0, fe)
   end (* mkFctexp *)
 
-and mkStrbs (ftmap0, sbs, d) : flexmap * (lexp -> lexp) =
+and mkStrbsFlexmap (ftmap0, sbs, d) : flexmap =
+  let fun itr(STRB{str=M.STR {access, ...}, def, ...}, fm) = 
+	  (case access of
+	       DA.LVAR v => 
+	       let val hdr = buildHdr v
+		   val (fm1, _) = mkStrexp(fm, def, d)
+	       in fm1
+	       end
+	     | _ => bug "mkStrbsFlexmap 1")
+	| itr _ = bug "mkStrbsFlexmap 2"
+  in fold itr sbs ftmap0
+  end
+ 
+and mkStrbs (ftmap0, sbs, d) =
   let fun g (STRB{str=M.STR { access, ... }, def, ... }, b) =
 	  (case access of
 	       DA.LVAR v =>
                let val hdr = buildHdr v 
                (* binding of all v's components *)
-		   val (fm2, def') = mkStrexp(ftmap0, def, d)
+		   val (_, def') = mkStrexp(ftmap0, def, d)
 		   (* val _ = debugmsg("--mkStrbs fm1 "
 				    ^Int.toString(FTM.numItems fm1)
 				    ^" to fm2 "^Int.toString(FTM.numItems fm2))
@@ -1466,29 +1484,29 @@ and mkStrbs (ftmap0, sbs, d) : flexmap * (lexp -> lexp) =
                end
 	     | _ => bug "mkStrbs: unexpected access")
         | g _ = bug "unexpected structure bindings in mkStrbs"
-      fun loop([], fm) b = (fm, b) 
-	| loop(sb::sbs, fm) b = 
-	    (case sb
-	      of STRB{str=M.STR {access, ...}, def, ...} =>
-		 (case access of
-		      DA.LVAR v =>
-		      let val hdr = buildHdr v
-			  val (fm2, def') = mkStrexp(fm, def, d)
-		      in loop(sbs, fm2) (LET(v, def', hdr b))
-		      end
-		    | _ => bug "mkStrbs: unexpected access")
-	       | _ => bug "unexpected structure bindings in mkStrbs")
-  in (* fold g sbs*) loop(rev sbs, ftmap0) 
+  in fold g sbs
   end
 
+and mkFctbsFlexmap (fm0, fbs, d) =
+    let fun itr(FCTB{fct=M.FCT{access, ...}, def, ... }, fm) =
+	    (case access of 
+		 DA.LVAR v => 
+		 let val (fm2, le) = mkFctexp(fm, def, d)
+		 in fm2
+		 end
+	       | _ => bug "mkFctbsFlexmap 1")
+	  | itr _ = bug "mkFctbsFlex 2"
+    in fold itr fbs fm0
+    end
+
 and mkFctbs (ftmap0, fbs, d) = 
-  let fun g (FCTB{fct=M.FCT { access, ... }, def, ... }, (fm1, b)) =
+  let fun g (FCTB{fct=M.FCT { access, ... }, def, ... }, b) =
 	  (case access of
 	       DA.LVAR v =>
                let val hdr = buildHdr v
-		   val (fm2, le) = mkFctexp(fm1, def, d)
+		   val (_, le) = mkFctexp(ftmap0, def, d)
                in
-		   (fm2, LET(v, le, hdr b))
+		   LET(v, le, hdr b)
                end
 	     | _ => bug "mkFctbs: unexpected access")
         | g _ = bug "unexpected functor bindings in mkStrbs"
@@ -1514,27 +1532,36 @@ and mkDec (fm0 : flexmap, dec : Absyn.dec, d : DI.depth)
         | g (fm, ABSTYPEdec{body,...}) = g (fm, body)
         | g (fm, EXCEPTIONdec ebs) = 
 	    (fm, mkEBs(fm, ebs, d))
-        | g (fm, STRdec sbs) = mkStrbs(fm, sbs, d)
+        | g (fm, STRdec sbs) = 
+	   (* mkStrbs traverses sbs in the opposite order
+	      of mkStrbsFlexmap *)
+	  let val fm' = mkStrbsFlexmap(fm, sbs, d)
+	  in (fm', mkStrbs(fm', sbs, d))
+	  end
 (*         | g (ABSdec sbs) = mkStrbs(sbs, d) *)
-        | g (fm, FCTdec fbs) = mkFctbs(fm, fbs, d)
+        | g (fm, FCTdec fbs) = 
+	  let val fm' = mkFctbsFlexmap(fm, fbs, d)
+	  in (fm', mkFctbs(fm', fbs, d))
+	  end
         | g (fm, LOCALdec(ld, vd)) = 
 	    let val (fm1, ld') = g (fm, ld)
 		val (fm2, vd') = g (fm, vd)
 	    in (fm2, ld' o vd')
 	    end
         | g (fm, SEQdec ds) =  
-	    let fun loop([], (fm1, ds')) = (fm1, ds')
-		  | loop(d::ds, (fm1, ds')) = 
-		    let val (fm2, d') = g (fm1, d)
-		    in loop(ds, (fm2, d' o ds'))
+	    let 
+		fun loop([], fm1) = fm1
+		  | loop(d::ds, fm1) = 
+		    let val (fm2, _) = g (fm1, d)
+		    in loop(ds, fm2)
 		    end
-	    in loop (ds, (fm, ident))
+		val fm1 = loop (ds, fm)
+	    in (fm1, foldr (op o) ident (map (fn d => #2 (g(fm1,d))) ds))
 	    end
-		    (* (fm1 foldr (op o) ident (map g ds)*)
         | g (fm, MARKdec(x, reg)) = 
               let val (fm1, f) = withRegion reg g (fm, x)
-               in withRegion reg f
-              end
+               in (fm1, withRegion reg f)
+              end 
         | g (fm, OPENdec xs) = 
               let (* special hack to make the import tree simpler *)
                   fun mkos (_, s as M.STR { access = acc, ... }) =
