@@ -326,6 +326,9 @@ structure AMD64Expand = CFGExpandCopies (
     structure CFG=AMD64CFG
     structure Shuffle = AMD64Shuffle)
 
+structure CCalls2 = AMD64SVIDFn (
+		    structure T = AMD64MLTree)
+
 structure CCalls = AMD64SVID (
            structure T = AMD64MLTree
            val frameAlign = 16)

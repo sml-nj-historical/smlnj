@@ -137,15 +137,8 @@ functor IA32SVIDFn (
     datatype c_arg = datatype CCall.c_arg
 
     (* classify a C type into its location kind (assuming that aggregates cannot be passed in registers) *)
-    fun kindOfCTy (CTy.C_float | 
-		   CTy.C_double | 
-		   CTy.C_long_double) = 
-	K_FPR
-      | kindOfCTy (CTy.C_unsigned _ |
-		   CTy.C_signed _ |
-		   CTy.C_PTR | 		   
-		   CTy.C_ARRAY _) = 
-	K_GPR
+    fun kindOfCTy (CTy.C_float | CTy.C_double | CTy.C_long_double) = K_FPR
+      | kindOfCTy (CTy.C_unsigned _ | CTy.C_signed _ | CTy.C_PTR | CTy.C_ARRAY _) = K_GPR
 
     (* convert a C type to slots for staged allocation *)
     fun cTyToSlots cTy = let

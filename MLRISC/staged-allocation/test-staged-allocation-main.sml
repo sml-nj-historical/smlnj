@@ -62,7 +62,12 @@ structure Main =
 
     val retValVar = "retVal"
 
-    fun li i = T.LI (T.I.fromInt (wordTy, i))
+    fun zip3 (ls1, ls2, ls3) = let
+	fun f ([], _, _, xs) = List.rev xs
+	  | f (x1 ::xs1, x2::xs2, x3::xs3, xs) = f(xs1, xs2, xs3, (x1, x2, x3) :: xs)
+        in
+	   f(ls1, ls2, ls3, [])
+        end
 
     datatype c_argument =
 	     INT of int
@@ -182,12 +187,11 @@ structure Main =
     fun genFormatString (elts) =
 	"\"" ^ String.concatWith " " elts ^ "\\n\""
 
+    fun fmtVar (arg, ty) = arg^"="^tyToFormatString ty^"\\n"
+
   (* construct a format string printing the parameters of a proto *)
-    fun protoToFormatString ({conv, retTy, paramTys}, args) = let
-        fun formatVar (arg, ty) = arg^"="^tyToFormatString ty^"\\n"
-        in
-	   genFormatString (ListPair.map formatVar (args, paramTys))
-        end
+    fun protoToFormatString ({conv, retTy, paramTys}, args) = 
+	   genFormatString (ListPair.map fmtVar (args, paramTys))
 
     fun protoToPrintf (proto, args) = genPrintf(protoToFormatString(proto, args), args)	
 
@@ -238,13 +242,6 @@ structure Main =
             ]
         end
 
-    fun zip3 (ls1, ls2, ls3) = let
-	fun f ([], _, _, xs) = List.rev xs
-	  | f (x1 ::xs1, x2::xs2, x3::xs3, xs) = f(xs1, xs2, xs3, (x1, x2, x3) :: xs)
-        in
-	   f(ls1, ls2, ls3, [])
-        end
-
     (* generate C code that calls the MLRISC-generated function *)
     fun genTestCode (proto as {conv, retTy, paramTys}, args) = let
 	val paramNames = genParamNames paramTys
@@ -272,11 +269,12 @@ structure Main =
     fun isStruct (CTy.C_STRUCT _) = true
       | isStruct _ = false
 
-    fun maxSzOfProto ({conv, paramTys, retTy}) = let
-	fun szOfTy ty = if ty = CTy.C_void then 0 else #sz (CSizes.sizeOfTy ty)
-        in
-	    List.foldl Int.max 0 (List.map szOfTy (retTy ::paramTys))
-	end
+  (* number of bytes to represent ty *)
+    fun szOfTy ty = if ty = CTy.C_void then 0 else #sz (CSizes.sizeOfTy ty)
+
+  (* returns the maximum size type for a C prototype *)
+    fun maxSzOfProto ({conv, paramTys, retTy}) = 
+           List.foldl Int.max 0 (List.map szOfTy (retTy :: paramTys))
 
     fun genGlue (target, mlriscGlue, proto, args, retVal) = String.concatWith "\n" [
           cIncludes,
@@ -297,18 +295,19 @@ structure Main =
 
     fun genSanityCheck (proto, args, retVal) = "int main () { testCode(); return 0; }"
 
-    fun offset maxSz arr0 i = T.ADD(wordTy, arr0, li(i*maxSz))
+    fun offset szB arr0 i = T.ADD(wordTy, arr0, T.LI (T.I.fromInt (wordTy, i*szB)))
 
-    fun genGlueArg maxSz arr0 (ty, (i, args)) = (i+1, 
+  (* generate the ith argument to the MLRISC code *)
+    fun genGlueArg szB arr0 (ty, (i, args)) = (i+1, 
 	(case ty
-          of CTy.C_signed CTy.I_int => CCalls.ARG (T.LOAD(32, offset maxSz arr0 i, ()))
-	   | CTy.C_unsigned CTy.I_int => CCalls.ARG (T.LOAD(32, offset maxSz arr0 i, ()))
-	   | CTy.C_unsigned CTy.I_char => CCalls.ARG (T.LOAD(8, offset maxSz arr0 i, ()))
-	   | CTy.C_signed CTy.I_char => CCalls.ARG (T.LOAD(8, offset maxSz arr0 i, ()))
-	   | CTy.C_PTR => CCalls.ARG (T.LOAD(wordTy, offset maxSz arr0 i, ()))
-	   | CTy.C_STRUCT _ => CCalls.ARG (T.LOAD(wordTy, offset maxSz arr0 i, ()))
-	   | CTy.C_float => CCalls.FARG (T.FLOAD(32, offset maxSz arr0 i, ()))
-	   | CTy.C_double => CCalls.FARG (T.FLOAD(64, offset maxSz arr0 i, ()))
+          of CTy.C_signed CTy.I_int => CCalls.ARG (T.LOAD(32, offset szB arr0 i, ()))
+	   | CTy.C_unsigned CTy.I_int => CCalls.ARG (T.LOAD(32, offset szB arr0 i, ()))
+	   | CTy.C_unsigned CTy.I_char => CCalls.ARG (T.LOAD(8, offset szB arr0 i, ()))
+	   | CTy.C_signed CTy.I_char => CCalls.ARG (T.LOAD(8, offset szB arr0 i, ()))
+	   | CTy.C_PTR => CCalls.ARG (T.LOAD(wordTy, offset szB arr0 i, ()))
+	   | CTy.C_STRUCT _ => CCalls.ARG (T.LOAD(wordTy, offset szB arr0 i, ()))
+	   | CTy.C_float => CCalls.FARG (T.FLOAD(32, offset szB arr0 i, ()))
+	   | CTy.C_double => CCalls.FARG (T.FLOAD(64, offset szB arr0 i, ()))
         (* end case *)) :: args)
 
     val rand = Random.rand (0, 255)
@@ -344,7 +343,7 @@ structure Main =
 
     fun main _ = let
 	val retTy = CTy.C_signed CTy.I_int
-	val paramTys = pty11
+	val paramTys = pty3
 
 	val cArgs = List.map genRandArg paramTys
 	val retVal = if retTy <> CTy.C_void then [genRandArg retTy] else []
@@ -373,7 +372,8 @@ structure Main =
 	(* output MLRISC code *)
 	val tmpReg = Cells.newReg()
 	val tmpR = T.REG(wordTy, tmpReg)
-	val (_, glueArgs) = List.foldl (genGlueArg (maxSzOfProto proto) tmpR) (0, []) paramTys
+	val szB = Int.max(wordSzB, maxSzOfProto proto)
+	val (_, glueArgs) = List.foldl (genGlueArg szB tmpR) (0, []) paramTys
 	val asmOutStrm = TextIO.openOut "mlrisc.s"
 	fun doit () = Test.dumpOutput(Test.codegen(mlriscGlue, target, proto, [T.MV(wordTy, tmpReg, param0)], List.rev glueArgs))
 	val _ = AsmStream.withStream asmOutStrm doit ()

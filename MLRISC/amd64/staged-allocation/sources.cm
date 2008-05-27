@@ -11,6 +11,7 @@ Library
   structure Label
   structure Main
   structure CCalls
+  structure CCalls2
 is
 
   $/basis.cm

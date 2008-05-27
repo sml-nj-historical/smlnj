@@ -13,6 +13,7 @@ Group
   signature MLTREE_UTILS
 
   functor AMD64SVID	
+  functor AMD64SVIDFn
   functor AMD64Gen
   functor CFGEmit
   functor BuildFlowgraph

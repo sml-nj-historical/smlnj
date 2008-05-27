@@ -35,6 +35,30 @@ sig
    val rbp : CellsBasis.cell
    val rsi : CellsBasis.cell
    val rdi : CellsBasis.cell
+   val r8 : CellsBasis.cell
+   val r9 : CellsBasis.cell
+   val r10 : CellsBasis.cell
+   val r11 : CellsBasis.cell
+   val r12 : CellsBasis.cell
+   val r13 : CellsBasis.cell
+   val r14 : CellsBasis.cell
+   val r15 : CellsBasis.cell
+   val xmm0 : CellsBasis.cell
+   val xmm1 : CellsBasis.cell
+   val xmm2 : CellsBasis.cell
+   val xmm3 : CellsBasis.cell
+   val xmm4 : CellsBasis.cell
+   val xmm5 : CellsBasis.cell
+   val xmm6 : CellsBasis.cell
+   val xmm7 : CellsBasis.cell
+   val xmm8 : CellsBasis.cell
+   val xmm9 : CellsBasis.cell
+   val xmm10 : CellsBasis.cell
+   val xmm11 : CellsBasis.cell
+   val xmm12 : CellsBasis.cell
+   val xmm13 : CellsBasis.cell
+   val xmm14 : CellsBasis.cell
+   val xmm15 : CellsBasis.cell
    val eflags : CellsBasis.cell
    val addGP : CellsBasis.cell * cellset -> cellset
    val addFP : CellsBasis.cell * cellset -> cellset
@@ -171,6 +195,30 @@ struct
    val rbp = RegGP 5
    val rsi = RegGP 6
    val rdi = RegGP 7
+   val r8 = RegGP 8
+   val r9 = RegGP 9
+   val r10 = RegGP 10
+   val r11 = RegGP 11
+   val r12 = RegGP 12
+   val r13 = RegGP 13
+   val r14 = RegGP 14
+   val r15 = RegGP 15
+   val xmm0 = RegFP 0
+   val xmm1 = RegFP 1
+   val xmm2 = RegFP 2
+   val xmm3 = RegFP 3
+   val xmm4 = RegFP 4
+   val xmm5 = RegFP 5
+   val xmm6 = RegFP 6
+   val xmm7 = RegFP 7
+   val xmm8 = RegFP 8
+   val xmm9 = RegFP 9
+   val xmm10 = RegFP 10
+   val xmm11 = RegFP 11
+   val xmm12 = RegFP 12
+   val xmm13 = RegFP 13
+   val xmm14 = RegFP 14
+   val xmm15 = RegFP 15
    val stackptrR = RegGP 4
    val asmTmpR = RegGP 0
    val fasmTmp = RegFP 0

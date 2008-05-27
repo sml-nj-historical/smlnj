@@ -22,6 +22,7 @@ Library
 	functor AMD64RegAlloc
 	functor AMD64SpillInstr
 	functor AMD64SVID
+	functor AMD64SVIDFn
 	functor AMD64Jumps
 is
 	$/basis.cm
@@ -58,6 +59,7 @@ is
 	(* C calls using staged allocation *)
 	../amd64/staged-allocation/c-sizes.sml
 	../amd64/staged-allocation/amd64-svid.sml
+	../amd64/staged-allocation/amd64-svid-fn.sml
 
 	(* backpatching *)
 	../amd64/backpatch/amd64Jumps.sml

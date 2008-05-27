@@ -17,9 +17,10 @@ functor AMD64SVID (
 
     val wordTy = 64
     val mem = T.Region.memory
+    fun lit i = T.LI (T.I.fromInt (wordTy, i))
     fun gpr r = T.GPR (T.REG (wordTy, r))
     fun fpr (ty, f) = T.FPR (T.FREG (ty, f))
-    fun li i = T.LI (T.I.fromInt (wordTy, i))
+    fun sum ls = List.foldl (op +) 0 ls
 
     (* general-purpose registers *)
     val [rax, rbx, rdi, rsi, rdx, rcx, r8, r9, r10, r11, r12, r13, r14, r15] = 
@@ -135,7 +136,6 @@ functor AMD64SVID (
       end (* SVIDConventions *)
 
     fun szOfCTy cTy = #sz (CSizes.sizeOfTy cTy)
-    fun sum ls = List.foldl (op +) 0 ls
 
     fun firstEightByte ([], eightByte) = (List.rev eightByte, [])
       | firstEightByte (cTy :: cTys, eightByte) = let
@@ -289,12 +289,12 @@ functor AMD64SVID (
          of (ARG (e as T.REG _), C_STK (mty, offset)) =>
 	    (T.STORE (wordTy, offSp offset, e, stack) :: stms, gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_GPR (mty, r)) =>
-	    (copyToReg(mty, r, T.LOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, r :: gprs, fprs)
+	    (copyToReg(mty, r, T.LOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) @ stms, r :: gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_STK (mty, offset)) => let
 	    val tmp = C.newReg ()
 	    in
 		(T.STORE (ty, offSp offset, T.REG (ty, tmp), stack) :: 
-		 T.MV (ty, tmp, T.LOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) :: stms, gprs, fprs)
+		 T.MV (ty, tmp, T.LOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) :: stms, gprs, fprs)
 	    end
 	  | (ARG e, C_STK (mty, offset)) => let
 	     val tmp = C.newReg ()
@@ -306,12 +306,12 @@ functor AMD64SVID (
 	  | (FARG (e as T.FREG _), C_STK (mty, offset)) =>
 	    (T.FSTORE (mty, offSp offset, e, stack) :: stms, gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_FPR (mty, r)) =>
-	    (copyToFReg(mty, r, T.FLOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, gprs, (mty, r) :: fprs)
+	    (copyToFReg(mty, r, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) @ stms, gprs, (mty, r) :: fprs)
 	  | (FARG (T.FLOAD (ty, e, rgn)), C_STK (mty, offset)) => let
 	    val tmp = C.newFreg ()
 	    in
 		(T.FSTORE (wordTy, offSp offset, T.FREG (wordTy, tmp), stack) :: 
-		 T.FMV (wordTy, tmp, T.FLOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) :: stms, gprs, fprs)
+		 T.FMV (wordTy, tmp, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) :: stms, gprs, fprs)
 	    end
 	  | (FARG e, C_STK (mty, offset)) => let
 	    val tmp = C.newFreg ()
@@ -415,11 +415,13 @@ functor AMD64SVID (
               in
 	         (List.length ks1 = List.length ks2) andalso (ListPair.all (op =) (ks1, ks2))
 	      end
-	  val tests = [(ty2, [K_GPR]), (ty1, [K_GPR]), (ty3, [K_GPR, K_GPR]), (ty4, [K_GPR, K_GPR]), 
+	  val tests = [
+(*	               (ty2, [K_GPR]), (ty1, [K_GPR]), (ty3, [K_GPR, K_GPR]), (ty4, [K_GPR, K_GPR]), 
 		       (ty5, [K_FPR]), (ty6, [K_FPR, K_FPR]),
 		       (ty7, [K_FPR, K_FPR]), (ty8, [K_GPR, K_FPR]),
 		       (ty9, [K_MEM]), (ty10, [K_FPR, K_GPR]),
-		       (ty11, [K_MEM])
+*)
+		       (ty11, [K_GPR, K_FPR, K_FPR, K_FPR])
 				       ]
 	  val (ts, anss) = ListPair.unzip tests
           in
@@ -428,10 +430,10 @@ functor AMD64SVID (
 
       val proto1 = {conv="ccall", retTy=CTy.C_void, paramTys=[ty11]}
       fun paramTyEx () = layout proto1
-      fun argEx () = genCall {name=T.LOAD(32, li 1024, mem), proto=proto1, paramAlloc=fn _ => false, 
+      fun argEx () = genCall {name=T.LOAD(32, lit 1024, mem), proto=proto1, paramAlloc=fn _ => false, 
 			      structRet=fn _ => raise Fail "", 
 			      saveRestoreDedicated=fn _ => raise Fail "", 
-			      callComment=NONE, args=[ARG (T.LOAD(32, li 0, mem))]}
+			      callComment=NONE, args=[ARG (T.LOAD(32, lit 0, mem))]}
 
     end
 
