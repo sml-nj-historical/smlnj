@@ -94,7 +94,10 @@ functor StagedAllocationFn (
     fun toMemSize sz = sz div memSize
 
     fun insStr (str, c, n) = Str.insert (str, c, n)
-    fun findStr (str, c) = valOf (Str.find (str, c))
+    fun findStr (str, c) = (case Str.find (str, c)
+          of SOME v => v
+	   | NONE => raise Fail "staged allocation: cannot find counter in store"
+          (* end case *))
     val find = findStr
 
     fun dropBits (0, rs) = rs

@@ -11,11 +11,12 @@ Library
   structure Label
   structure Main
   structure CCalls
-  structure CCalls2
+  structure Test
 is
 
   $/basis.cm
   $/smlnj-lib.cm
+  $smlnj-tdp/plugins.cm
 
   wrapper.cm
   ../../staged-allocation/test-staged-allocation-main.sml

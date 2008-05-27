@@ -341,9 +341,9 @@ structure Main =
     val pty10 = [CTy.C_signed CTy.I_int, CTy.C_signed CTy.I_int]
     val pty11 = [CTy.C_signed CTy.I_int, CTy.C_signed CTy.I_char, CTy.C_float]
 
-    fun main _ = let
+    fun main _ = BackTrace.monitor (fn () => let
 	val retTy = CTy.C_signed CTy.I_int
-	val paramTys = pty3
+	val paramTys = pty6
 
 	val cArgs = List.map genRandArg paramTys
 	val retVal = if retTy <> CTy.C_void then [genRandArg retTy] else []
@@ -368,7 +368,7 @@ structure Main =
 	val cMain = genCMain()
 	val _ = output(cMainOutStrm, cMain)
 	val _ = TextIO.closeOut cMainOutStrm
-		    
+
 	(* output MLRISC code *)
 	val tmpReg = Cells.newReg()
 	val tmpR = T.REG(wordTy, tmpReg)
@@ -380,7 +380,7 @@ structure Main =
 	val _ = TextIO.closeOut asmOutStrm
 	in          
 	  0
-        end
+        end)
 
 
   end

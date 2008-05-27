@@ -116,6 +116,7 @@ Library
 	functor MLTreeHash
 	functor MLTreeMult
 	functor MLTreeSize
+	functor MLTreeCheckTy
 	functor MLTreeStream
 	functor MemoryRA
 	functor NoDelaySlots
@@ -193,6 +194,7 @@ is
 	../mltree/mltree-hash.sml
 	../mltree/mltree-size.sig
 	../mltree/mltree-size.sml
+	../mltree/mltree-check-ty.sml
 	../mltree/mltree-stream.sig
 	../mltree/mltree-stream.sml
 	../mltree/mltree-mult.sig

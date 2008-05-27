@@ -24,6 +24,7 @@ functor AMD64SVIDFn (
     fun fpr (ty, f) = T.FPR (T.FREG (ty, f))
     fun sum ls = List.foldl (op +) 0 ls
     fun szBOfCTy cTy = #sz (CSizes.sizeOfTy cTy)
+    fun alignBOfCTy cTy = #align (CSizes.sizeOfTy cTy)
 
     fun toGpr r = (wordTy, r)
     fun toGprs gprs = List.map toGpr gprs
@@ -57,8 +58,8 @@ functor AMD64SVIDFn (
       (* conventions for returning arguments *)
 	val gprRets = toGprs [C.rax, C.rdx]
 	val fprRets = toFprs [C.xmm0, C.xmm1]
-	val (_, ssFloat) = SA.useRegs fprRets
-	val (_, ssGpr) = SA.useRegs gprRets
+	val (cRetFpr, ssFloat) = SA.useRegs fprRets
+	val (cRetGpr, ssGpr) = SA.useRegs gprRets
 	val cCallStk = SA.freshCounter ()
 	val returnStages = [
 	    SA.CHOICE [
@@ -80,7 +81,7 @@ functor AMD64SVIDFn (
 	val cCallGpr = SA.freshCounter ()
 	val cCallFpr = SA.freshCounter ()
       (* initial store *)
-	val str0 = SA.init [cCallStk, cCallGpr, cCallFpr]
+	val str0 = SA.init [cCallStk, cCallGpr, cCallFpr, cRetFpr, cRetGpr]
 
 	val callStages = [ 
 	      SA.CHOICE [
@@ -113,7 +114,8 @@ functor AMD64SVIDFn (
     datatype c_arg = datatype CCall.c_arg
 
   (* convert a list of C types to a list of eight bytes *)
-    fun eightBytesOfCTys ([], eb, ebs) = List.rev (List.map List.rev (eb :: ebs))
+    fun eightBytesOfCTys ([], [], ebs) = List.rev (List.map List.rev ebs)
+      | eightBytesOfCTys ([], eb, ebs) = List.rev (List.map List.rev (eb :: ebs))
       | eightBytesOfCTys (cTy :: cTys, eb, ebs) = let
 	    val szTy = szBOfCTy cTy
 	    val szEb = sum(List.map szBOfCTy eb)
@@ -130,8 +132,7 @@ functor AMD64SVIDFn (
 
   (* classify a C type into its location kind (assuming that aggregates cannot be passed in registers) *)
     fun kindOfCTy (CTy.C_float | CTy.C_double | CTy.C_long_double) = K_FPR
-      | kindOfCTy (CTy.C_ARRAY _) = K_MEM
-      | kindOfCTy (CTy.C_STRUCT _ | CTy.C_UNION _) = raise Fail "impossible"
+      | kindOfCTy (CTy.C_ARRAY _ | CTy.C_STRUCT _ | CTy.C_UNION _) = raise Fail "impossible"
       | kindOfCTy (CTy.C_unsigned _ | CTy.C_signed _ | CTy.C_PTR) = K_GPR
 
     fun combineKinds (k1, k2) = if (k1 = k2)
@@ -156,20 +157,15 @@ functor AMD64SVIDFn (
 	   end
 
     fun containsUnalignedFields cTy = (case cTy
-        of (CTy.C_STRUCT cTys | CTy.C_UNION cTys) => 
-	   List.all (fn cTy => #sz (CSizes.sizeOfTy cTy) mod 8 = 0) cTys
-	 | _ => false)
+        of (CTy.C_STRUCT cTys | CTy.C_UNION cTys) => List.exists containsUnalignedFields cTys
+	 | cTy => Int.max(8, szBOfCTy cTy) mod 8 <> 0
+        (* end case *))
 
-  (* classify a C type into its location kinds *)
-    fun kindsOfCTy (cTy as CTy.C_STRUCT cTys) = 
+    fun slotsOfCTy (cTy as (CTy.C_STRUCT _ | CTy.C_UNION _ | CTy.C_ARRAY _)) = 
 	   if (szBOfCTy cTy > 2*8 orelse containsUnalignedFields cTy)
-	      then List.tabulate (szBOfCTy cTy div 8, fn _ => K_MEM)
-	      else List.map kindOfEightByte (eightBytesOfCTy cTy)
-      | kindsOfCTy (cTy as CTy.C_UNION cTys) = raise Fail "todo"
-      | kindsOfCTy (cTy as CTy.C_ARRAY _) = raise Fail "todo"
-      | kindsOfCTy cTy = [kindOfCTy cTy]
-
-    fun slotsOfCTy cTy = List.map (fn k => (8*8, k, 8)) (kindsOfCTy cTy)
+	      then List.tabulate (szBOfCTy cTy div 8, fn _ => (8*8, K_MEM, 8))
+	      else List.map (fn eb => (8*8, kindOfEightByte eb, 8)) (eightBytesOfCTy cTy)
+      | slotsOfCTy cTy = [(8*szBOfCTy cTy, kindOfCTy cTy, alignBOfCTy cTy)]
 
     fun slotOfCTy cTy = (case slotsOfCTy cTy
 			  of [slot] => slot
@@ -180,7 +176,7 @@ functor AMD64SVIDFn (
     fun cLocOfStagedAlloc (w, SA.REG (_, r), K_GPR) = CCall.C_GPR (w, r)
       | cLocOfStagedAlloc (w, SA.REG (_, r), K_FPR) = CCall.C_FPR (w, r)
       | cLocOfStagedAlloc (w, SA.BLOCK_OFFSET offB, (K_GPR | K_FPR | K_MEM)) = 
-	CCall.C_STK (w, T.I.fromInt (wordTy, offB))
+  	   CCall.C_STK (w, T.I.fromInt (wordTy, offB))
       | cLocOfStagedAlloc (w, SA.NARROW (loc, w', k), _) = cLocOfStagedAlloc (w', loc, k)
       | cLocOfStagedAlloc _ = raise Fail "impossible"
 
@@ -257,55 +253,6 @@ functor AMD64SVIDFn (
 	val callSeq = argAlloc @ copyArgs @ [callStm] @ copyResult
         in
           {callseq=callSeq, result=resultRegs}
-        end (* genCall *)
-
-
-    (* unit testing code *)
-    structure Test = struct
-      val ty1 = CTy.C_STRUCT [CTy.C_STRUCT [CTy.C_unsigned CTy.I_char, CTy.C_unsigned CTy.I_int]]
-      val ty2 = CTy.C_STRUCT [CTy.C_signed CTy.I_short]
-      val ty3 = CTy.C_STRUCT [CTy.C_signed CTy.I_short, CTy.C_PTR]
-      val ty4 = CTy.C_STRUCT [CTy.C_PTR, CTy.C_PTR]
-      val ty4 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_unsigned CTy.I_int], CTy.C_PTR]
-      val ty5 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_float]]
-      val ty6 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float]]
-      val ty7 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_STRUCT[CTy.C_float,CTy.C_float],CTy.C_float,CTy.C_float]]
-      val ty8 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_STRUCT[CTy.C_float,CTy.C_unsigned CTy.I_int],CTy.C_float,CTy.C_float]]
-      val ty9 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float]]
-      val ty10 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_float,CTy.C_float, CTy.C_STRUCT[CTy.C_float,CTy.C_unsigned CTy.I_int]]]
-      val ty11 = CTy.C_STRUCT [CTy.C_PTR, CTy.C_float, CTy.C_float, CTy.C_float]
-
-      fun kindOfEB () = let
-	  fun test (eb, k) = (kindOfEightByte eb = k) orelse raise Fail "failed test"
-	  fun eb1 ty = hd (eightBytesOfCTy ty)
-	  fun eb2 ty = hd(tl (eightBytesOfCTy ty))
-          in
-	      List.all test [(eb1 ty1, K_GPR), (eb1 ty2, K_GPR), (eb2 ty3, K_GPR),
-			     (eb1 ty5, K_FPR), (eb1 ty6, K_FPR), (eb2 ty6, K_FPR),
-			     (eb1 ty7, K_FPR), (eb2 ty7, K_FPR),
-			     (eb1 ty8, K_GPR), (eb2 ty8, K_FPR)]
-	  end
-
-      fun li2k (_, k, _) = k
-
-      fun slots () = let
-	  fun test (lis : SA.slot list, ks2 : location_kind list) = let
-	      val ks1 = List.map li2k lis
-              in
-	         (List.length ks1 = List.length ks2) andalso (ListPair.all (op =) (ks1, ks2))
-	      end
-	  val tests = [
-(*	               (ty2, [K_GPR]), (ty1, [K_GPR]), (ty3, [K_GPR, K_GPR]), (ty4, [K_GPR, K_GPR]), 
-		       (ty5, [K_FPR]), (ty6, [K_FPR, K_FPR]),
-		       (ty7, [K_FPR, K_FPR]), (ty8, [K_GPR, K_FPR]),
-		       (ty9, [K_MEM]), (ty10, [K_FPR, K_GPR]),
-*)
-		       (ty11, [K_MEM, K_MEM, K_MEM])
-				       ]
-	  val (ts, anss) = ListPair.unzip tests
-          in
-	     ListPair.all test (List.map slotsOfCTy ts, anss) orelse raise Fail "failed test"
-          end
-    end
+        end
 
   end (* AMD64SVIDFn *)

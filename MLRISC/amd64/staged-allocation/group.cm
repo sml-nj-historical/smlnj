@@ -40,6 +40,7 @@ Group
   functor AMD64GasPseudoOps
   functor RISC_RA
   functor RASpill
+  functor MLTreeCheckTy
   
   structure RACore
   structure ChaitinSpillHeur

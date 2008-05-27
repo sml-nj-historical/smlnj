@@ -98,7 +98,7 @@ functor AMD64SVID (
 		     (* pass on the stack *)
 		     (fn (w, k, str) => k = K_MEM,
 		      S.OVERFLOW {counter=cStack, blockDirection=S.UP, maxAlign=maxAlign}) 
-		     ],
+		   ],
 		   S.OVERFLOW {counter=cStack, blockDirection=S.UP, maxAlign=maxAlign}
 		   ] )
 	    end (* call *)	    
@@ -111,7 +111,7 @@ functor AMD64SVID (
 	    in
 	      ( [cFloat, cInt],
 		[ S.CHOICE [
-	        (* return in general-purpose register *)
+	          (* return in general-purpose register *)
 	           (fn (w, k, str) => k = K_GPR,
 	            S.SEQ [S.WIDEN (fn w => Int.max (wordTy, w)), ssGpr]),
 		   (* return in floating-point register *)

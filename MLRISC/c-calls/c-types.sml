@@ -40,10 +40,11 @@ structure CTypes =
 	paramTys : c_type list
       }
 
-    (* eliminate unions and structs *)
+    (* eliminate aggregates in a C type *)
     fun flattenCTy cTy = (case cTy
         of (C_STRUCT cTys |
 	    C_UNION cTys ) => List.concat (List.map flattenCTy cTys)
+	 | C_ARRAY (cTy, n) => List.tabulate (n, fn _ => cTy)
 	 | cTy => [cTy])
 
 

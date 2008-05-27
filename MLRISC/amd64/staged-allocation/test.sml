@@ -130,22 +130,22 @@ structure AMD64PseudoOps  =
 end (* AMD64PseudoOps *)
 *)
 
-
+(*
 functor AMD64PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = AMD64GasPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
+*)
 
-(*
 functor AMD64PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = AMD64DarwinPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-*)
+
 
 structure AMD64PseudoOps = AMD64PseudoOpsFn(
             structure T = AMD64MLTree
@@ -326,13 +326,14 @@ structure AMD64Expand = CFGExpandCopies (
     structure CFG=AMD64CFG
     structure Shuffle = AMD64Shuffle)
 
-structure CCalls2 = AMD64SVIDFn (
+structure CCalls = AMD64SVIDFn (
 		    structure T = AMD64MLTree)
 
+(*
 structure CCalls = AMD64SVID (
            structure T = AMD64MLTree
            val frameAlign = 16)
-
+*)
 
 structure RA2 = 
     RISC_RA
@@ -490,6 +491,7 @@ structure Cells = AMD64Instr.C
 structure T = AMD64MLTree
 structure CFG = AMD64CFG
 structure FlowGraph = AMD64FlowGraph
+structure ChkTy = MLTreeCheckTy(structure T = T val intTy = 64)
 
 structure TestStagedAllocation =
   struct
@@ -521,7 +523,9 @@ structure TestStagedAllocation =
 		   callseq, 
 		   [T.EXT(AMD64InstrExt.LEAVE)],
 		   [T.RET []]]
-
+	val _ = List.all (fn stm => ChkTy.check stm 
+				    orelse raise Fail ("typechecking error: "^AMD64MTC.AMD64MLTreeUtils.stmToString stm))
+		stms
         val stream as AMD64Stream.STREAM
            { beginCluster,  (* start a cluster *)
              endCluster,    (* end a cluster *)
@@ -567,3 +571,58 @@ structure TestStagedAllocation =
     (* maximum argument size in machine words *)
     val maxArgSz = 16
     val maxArgSzB = maxArgSz * wordSzB
+
+(* unit testing code *)
+structure Test = 
+  struct
+
+    open CCalls
+
+    fun li2k (_, k, _) = k
+
+    val ty1 = CTy.C_STRUCT [CTy.C_STRUCT [CTy.C_unsigned CTy.I_char, CTy.C_unsigned CTy.I_int]]
+    val ty2 = CTy.C_STRUCT [CTy.C_signed CTy.I_short]
+    val ty3 = CTy.C_STRUCT [CTy.C_signed CTy.I_short, CTy.C_PTR]
+    val ty4 = CTy.C_STRUCT [CTy.C_PTR, CTy.C_PTR]
+    val ty4 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_unsigned CTy.I_int], CTy.C_PTR]
+    val ty5 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_float]]
+    val ty6 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float]]
+    val ty7 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_STRUCT[CTy.C_float,CTy.C_float],CTy.C_float,CTy.C_float]]
+    val ty8 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_STRUCT[CTy.C_float,CTy.C_unsigned CTy.I_int],CTy.C_float,CTy.C_float]]
+    val ty9 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float]]
+    val ty10 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_float,CTy.C_float, CTy.C_STRUCT[CTy.C_float,CTy.C_unsigned CTy.I_int]]]
+    val ty11 = CTy.C_STRUCT [CTy.C_PTR, CTy.C_float, CTy.C_float, CTy.C_float]
+	       
+    fun kindOfEB () = let
+	fun test (eb, k) = (kindOfEightByte eb = k) orelse raise Fail "failed test"
+	fun eb1 ty = hd (eightBytesOfCTy ty)
+	fun eb2 ty = hd(tl (eightBytesOfCTy ty))
+        in
+	   List.all test [(eb1 ty1, K_GPR), (eb1 ty2, K_GPR), (eb2 ty3, K_GPR),
+			  (eb1 ty5, K_FPR), (eb1 ty6, K_FPR), (eb2 ty6, K_FPR),
+			  (eb1 ty7, K_FPR), (eb2 ty7, K_FPR),
+			  (eb1 ty8, K_GPR), (eb2 ty8, K_FPR)]
+        end
+
+    fun slots () = let
+	fun test (lis : SA.slot list, ks2 : location_kind list) = let
+	    val ks1 = List.map li2k lis
+            in
+	        (List.length ks1 = List.length ks2) andalso (ListPair.all (op =) (ks1, ks2))
+	    end
+	    val tests = [
+	               (ty2, [K_GPR]), 
+		       (ty1, [K_GPR]), 
+		       (ty3, [K_GPR, K_GPR]), 
+		       (ty4, [K_GPR, K_GPR]), 
+		       (ty5, [K_FPR]), 
+		       (ty6, [K_FPR, K_FPR]),
+		       (ty7, [K_FPR, K_FPR]),
+		       (ty8, [K_GPR, K_FPR]),
+		       (ty11, [K_MEM, K_MEM, K_MEM])
+				       ]
+	    val (ts, anss) = ListPair.unzip tests
+            in
+	       ListPair.all test (List.map slotsOfCTy ts, anss) orelse raise Fail "failed test"
+            end
+  end
