@@ -37,7 +37,7 @@ functor CCallFn (
 
     val stack = T.Region.stack
 
-    fun li i = T.LI (T.I.fromInt (32, i))
+    fun lit i = T.LI (T.I.fromInt (32, i))
 
     (* generate MLRISC statements for copying a C argument to a parameter / return location *)
     fun copyLoc arg (i, loc, (stms, gprs, fprs)) = (case (arg, loc)
@@ -45,12 +45,12 @@ functor CCallFn (
          of (ARG (e as T.REG _), C_STK (mty, offset)) =>
 	    (T.STORE (wordTy, offSp offset, e, stack) :: stms, gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_GPR (mty, r)) =>
-	    (copyToReg(mty, r, T.LOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, r :: gprs, fprs)
+	    (copyToReg(mty, r, T.LOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) @ stms, r :: gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_STK (mty, offset)) => let
 	    val tmp = C.newReg ()
 	    in
 		(T.STORE (ty, offSp offset, T.REG (ty, tmp), stack) :: 
-		 T.MV (ty, tmp, T.LOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) :: stms, gprs, fprs)
+		 T.MV (ty, tmp, T.LOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) :: stms, gprs, fprs)
 	    end
 	  | (ARG e, C_STK (mty, offset)) => let
 	     val tmp = C.newReg ()
@@ -62,12 +62,12 @@ functor CCallFn (
 	  | (FARG (e as T.FREG _), C_STK (mty, offset)) =>
 	    (T.FSTORE (mty, offSp offset, e, stack) :: stms, gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_FPR (mty, r)) =>
-	    (copyToFReg(mty, r, T.FLOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) @ stms, gprs, (mty, r) :: fprs)
+	    (copyToFReg(mty, r, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) @ stms, gprs, (mty, r) :: fprs)
 	  | (FARG (T.FLOAD (ty, e, rgn)), C_STK (mty, offset)) => let
 	    val tmp = C.newFreg ()
 	    in
 		(T.FSTORE (wordTy, offSp offset, T.FREG (wordTy, tmp), stack) :: 
-		 T.FMV (wordTy, tmp, T.FLOAD (ty, T.ADD(wordTy, e, li (i*8)), rgn)) :: stms, gprs, fprs)
+		 T.FMV (wordTy, tmp, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) :: stms, gprs, fprs)
 	    end
 	  | (FARG e, C_STK (mty, offset)) => let
 	    val tmp = C.newFreg ()
