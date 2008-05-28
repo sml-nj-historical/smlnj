@@ -14,6 +14,7 @@ Group
 
   functor AMD64SVID	
   functor AMD64SVIDFn
+  functor AMD64VarargCCallFn
   functor AMD64Gen
   functor CFGEmit
   functor BuildFlowgraph

@@ -81,6 +81,7 @@ functor AMD64SVIDFn (
 	val cCallGpr = SA.freshCounter ()
 	val cCallFpr = SA.freshCounter ()
       (* initial store *)
+
 	val str0 = SA.init [cCallStk, cCallGpr, cCallFpr, cRetFpr, cRetGpr]
 
 	val callStages = [ 
@@ -104,12 +105,14 @@ functor AMD64SVIDFn (
 
       end  (* CCs *)
 
+    fun offSp 0 = CCs.spReg
+      | offSp offset = T.ADD (wordTy, CCs.spReg, T.LI offset)
+
     structure CCall = CCallFn (
 		        structure T = T
 			structure C = C
 			val wordTy = wordTy
-			fun offSp 0 = CCs.spReg
-			  | offSp offset = T.ADD (wordTy, CCs.spReg, T.LI offset))
+			val offSp = offSp)
 
     datatype c_arg = datatype CCall.c_arg
 

@@ -471,8 +471,10 @@ structure RA2 =
 
      structure Int =
 	struct
-	  val avail = C.Regs CellsBasis.GP {from=0, to=15, step=1}
+	  val allRegs = C.Regs CellsBasis.GP {from=0, to=15, step=1}
+	  val allRegsSet = List.foldl C.addReg C.empty allRegs
 	  val dedicated = [C.rsp, C.rbp]
+	  val avail = C.getReg (List.foldl C.rmvReg allRegsSet dedicated)
 	  fun spillLoc _ = raise Fail ""
 	  val mode = RACore.NO_OPTIMIZATION
 	end
@@ -492,41 +494,16 @@ structure T = AMD64MLTree
 structure CFG = AMD64CFG
 structure FlowGraph = AMD64FlowGraph
 structure ChkTy = MLTreeCheckTy(structure T = T val intTy = 64)
+structure Vararg = AMD64VarargCCallFn(structure T = T)
 
 structure TestStagedAllocation =
   struct
  
     val wordTy = 64
-   
-    fun codegen (functionName, target, proto, initStms, args) = let 
-        val _ = Label.reset()
 
-	val [functionName, target] = List.map Label.global [functionName, target]
-
-        val insnStrm = FlowGraph.build()
-	(* construct the C call *)
-	val {result, callseq} = CCalls.genCall {
-	           name=T.LABEL target,
-	           paramAlloc=fn _ => false,
-	           structRet=fn _ => T.REG (64, Cells.rax),
-	           saveRestoreDedicated=fn _ => {save=[], restore=[]},
-	           callComment=NONE,
-	           proto=proto,
-	           args=args}
-
-	fun wordLit i = T.LI (T.I.fromInt (wordTy, i))
-
-	val stms = List.concat [
-		   [T.EXT(AMD64InstrExt.PUSHQ(T.REG(64, Cells.rbp))),
-		    T.COPY (wordTy, [Cells.rbp], [Cells.rsp])],		   
-		   initStms,
-		   callseq, 
-		   [T.EXT(AMD64InstrExt.LEAVE)],
-		   [T.RET []]]
-	val _ = List.all (fn stm => ChkTy.check stm 
-				    orelse raise Fail ("typechecking error: "^AMD64MTC.AMD64MLTreeUtils.stmToString stm))
-		stms
-        val stream as AMD64Stream.STREAM
+    fun gen (functionName, stms, result) = let
+           val insnStrm = FlowGraph.build()
+	   val stream as AMD64Stream.STREAM
            { beginCluster,  (* start a cluster *)
              endCluster,    (* end a cluster *)
              emit,          (* emit MLTREE stm *)
@@ -550,7 +527,38 @@ structure TestStagedAllocation =
 	val cfg = AMD64Expand.run cfg
         in  
          (cfg, stream)        (* end the cluster *)
-       end (* codegen *)
+       end
+   
+    fun codegen (functionName, target, proto, initStms, args) = let 
+        val _ = Label.reset()
+
+	val [functionName, target] = List.map Label.global [functionName, target]
+
+	(* construct the C call *)
+	val {result, callseq} = CCalls.genCall {
+	           name=T.LABEL target,
+	           paramAlloc=fn _ => false,
+	           structRet=fn _ => T.REG (64, Cells.rax),
+	           saveRestoreDedicated=fn _ => {save=[], restore=[]},
+	           callComment=NONE,
+	           proto=proto,
+	           args=args}
+
+	fun wordLit i = T.LI (T.I.fromInt (wordTy, i))
+
+	val stms = List.concat [
+		   [T.EXT(AMD64InstrExt.PUSHQ(T.REG(64, Cells.rbp))),
+		    T.COPY (wordTy, [Cells.rbp], [Cells.rsp])],		   
+		   initStms,
+		   callseq, 
+		   [T.EXT(AMD64InstrExt.LEAVE)],
+		   [T.RET []]]
+	val _ = List.all (fn stm => ChkTy.check stm 
+				    orelse raise Fail ("typechecking error: "^AMD64MTC.AMD64MLTreeUtils.stmToString stm))
+		stms
+        in
+	   gen (functionName, stms, result)
+	end
 
     fun dumpOutput (cfg, stream) = let
 	val (cfg as Graph.GRAPH graph, blocks) = 
@@ -559,6 +567,32 @@ structure TestStagedAllocation =
 	in
 	  AMD64Emit.asmEmit (cfg, blocks)
 	end (* dumpOutput *)
+
+    fun lit i = T.LI (T.I.fromInt (wordTy, i))
+
+   fun testVarargs _ = let
+	   val lab = Label.global "varargs"
+	   val tmp = C.newReg()
+	   val tmpC = C.newReg()
+	   val preCallInstrs = [T.MV(wordTy, C.rax, lit (List.length CCalls.CCs.fprParams))]
+	   val stms =
+	       List.concat [
+		   [T.EXT(AMD64InstrExt.PUSHQ(T.REG(64, Cells.rbp))),
+		    T.COPY (wordTy, [Cells.rbp], [Cells.rsp])],		   
+		   [T.MV(wordTy, tmp, T.REG(wordTy, C.rsi))],
+		   [T.MV(wordTy, tmpC, T.REG(wordTy, C.rdi))],
+	           Vararg.genVarArgs (T.REG(wordTy, tmpC), tmp, preCallInstrs),
+		   [T.EXT(AMD64InstrExt.LEAVE)],
+		   [T.RET []]
+		   ]
+	          
+	   val asmOutStrm = TextIO.openOut "mlrisc.s"
+	   fun doit () = dumpOutput(gen(lab, stms, [T.GPR (T.REG (wordTy, C.rax))]))
+	   val _ = AsmStream.withStream asmOutStrm doit ()
+	   val _ = TextIO.closeOut asmOutStrm
+           in
+	      0
+	   end
 
   end
 
