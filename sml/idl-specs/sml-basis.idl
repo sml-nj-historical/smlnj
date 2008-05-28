@@ -10,7 +10,9 @@ sml_structure ("SMLBasis");
 sml_signature ("SML_BASIS");
 clib_name ("SMLBasis");
 
+/*
 cpp_quote("#include \"ml-timer.h\"");	/* for Time_t */
+*/
 
 
 /******************** Useful IDL types ********************/
@@ -40,7 +42,7 @@ typedef [sml_type ("int option")] sml_value ML_int_opt_t;
 /* typedef [sml_type("Unsafe.Object.object")] sml_value ML_iodesc_t; */
 typedef [sml_type("word")] sml_value ML_iodesc_t;
 typedef [sml_type("Unsafe.Object.object")] sml_value ML_directory_t;
-typedef [exclude] struct struct_time {
+typedef [sml_type("(int * int)")] struct struct_time {
   int seconds;
   int uSeconds;
 } Time_t;
@@ -174,12 +176,12 @@ void osSleep ([in, ref] Time_t *t);
 
 [sml_context] ML_directory_t openDir ([in] string path);
 [sml_context] ML_string_opt_t readDir ([in] ML_directory_t dir);
-[sml_context] ML_unit_t rewindDir ([in] ML_directory_t dir);
-[sml_context] ML_unit_t closeDir ([in] ML_directory_t dir);
-[sml_context] ML_unit_t chDir ([in] string path);
+[sml_context] void rewindDir ([in] ML_directory_t dir);
+[sml_context] void closeDir ([in] ML_directory_t dir);
+[sml_context] void chDir ([in] string path);
 [sml_context] ML_string_t getDir ();
-[sml_context] ML_unit_t mkDir ([in] string path);
-[sml_context] ML_unit_t rmDir ([in] string path);
+[sml_context] void mkDir ([in] string path);
+[sml_context] void rmDir ([in] string path);
 [sml_context] ML_bool_t isReg ([in] string path);
 [sml_context] ML_bool_t isDir ([in] string path);
 [sml_context] ML_bool_t isLink ([in] string path);
@@ -187,9 +189,9 @@ void osSleep ([in, ref] Time_t *t);
 [sml_context] ML_int32_t fileSize ([in] string path);
 /* NOTE: modTime returns the time in seconds! */
 [sml_context] ML_int32_t modTime ([in] string path);
-[sml_context] ML_unit_t setTime ([in] string path, [in, unique] Time_t *t);
-[sml_context] ML_unit_t removeFile ([in] string path);
-[sml_context] ML_unit_t renameFile ([in] string old, [in] string new);
+[sml_context] void setTime ([in] string path, [in, unique] Time_t *t);
+[sml_context] void removeFile ([in] string path);
+[sml_context] void renameFile ([in] string oldName, [in] string newName);
 const sml_int A_READ = 1;
 const sml_int A_WRITE = 2;
 const sml_int A_EXEC = 4;
