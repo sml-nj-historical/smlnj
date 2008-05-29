@@ -1522,8 +1522,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 				      instGeneric{sign=paramsig, entEnv=entEnv, 
 	                                          rpath=path, 
 						  region=SourceMap.nullRegion,
-	                                          instKind=INST_PARAM
-							       DebIndex.top, 
+	                                          instKind=INST_PARAM, 
 					          compInfo=compInfo}
 				  val nenv = EE.mark(mkStamp, 
 						     EE.bind(paramvar, 

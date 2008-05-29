@@ -4,7 +4,7 @@
 signature TYPECHECK = 
 sig
 
-  val decType : StaticEnv.staticEnv * Absyn.dec * int * bool
+  val decType : StaticEnv.staticEnv * Absyn.dec * bool
 		* ErrorMsg.errorFn * (unit -> bool) * SourceMap.region
                 -> Absyn.dec
     (* decType(senv,dec,toplev,err,region):
@@ -15,7 +15,7 @@ sig
      *)
   val debugging : bool ref
 
-end (* signature TYPECHECK *)
+end (* signature TYPECHECK *) 
 
 
 (* No longer functorized to factor out dependencies on FLINT (ii2ty, ii_ispure)
@@ -63,7 +63,7 @@ fun mkDummy0 () = BasicTypes.unitTy
 (*
  * decType : SE.staticEnv * A.dec * bool * EM.errorFn * region -> A.dec 
  *)
-fun decType(env,dec,toplev,err,anyErrors,region) = 
+fun decType(env,dec,toplev, err,anyErrors,region) = 
 let
 
 (* setup for recording and resolving overloaded variables and literals *)
@@ -704,7 +704,7 @@ and decType0(decl,occ,region) : dec =
       of VALdec vbs =>
 	   let fun vbType(vb as VB{pat, exp, tyvars=(tv as (ref tyvars)), boundtvs}) =
 	        let val (pat',pty) = patType(pat,infinity,region)
-		    val (exp',ety) = expType(exp,occ,DI.next region)
+		    val (exp',ety) = expType(exp,occ,region)
                     val generalize = TypesUtil.isValue exp (* orelse isVarTy ety *)
 		 in unifyErr{ty1=pty,ty2=ety, name1="pattern", name2="expression",
 			     message="pattern and expression in val dec don't agree",
@@ -874,7 +874,7 @@ and decType0(decl,occ,region) : dec =
 
 and fctbType (occ,region) (FCTB{fct,def,name}) =
       let fun fctexpType(FCTfct{param, def}) =
-  	        FCTfct{param=param, def=strexpType (occ,DI.next region) def}
+  	        FCTfct{param=param, def=strexpType (occ, region) def}
  	    | fctexpType(LETfct(dec,e)) =
 	        LETfct(decType0(dec,LetDef occ,region), fctexpType e)
 	    | fctexpType(MARKfct(f,region)) = MARKfct(fctexpType f,region)

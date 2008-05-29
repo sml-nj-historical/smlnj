@@ -5,7 +5,7 @@ signature EVALENTITY =
 sig 
 
   val evalApp : Modules.fctEntity * Modules.strEntity 
-                * DebIndex.depth * EntPathContext.context
+                * EntPathContext.context
                 * InvPath.path * ElabUtil.compInfo
                 -> Modules.strEntity 
 
@@ -105,7 +105,7 @@ fun evalTyc (entv, tycExp, entEnv, epc, rpath,
 	     EE.lookTycEP(entEnv,entPath))
         | _ => bug "unexpected tycExp in evalTyc"
 
-and evalStr(strExp, depth, epc, entsv, entEnv, rpath, 
+and evalStr(strExp, epc, entsv, entEnv, rpath, 
             compInfo as {mkStamp,...}: EU.compInfo) =
      (debugmsg ("[Inside EvalStr ......");
       case strExp
@@ -117,8 +117,8 @@ and evalStr(strExp, depth, epc, entsv, entEnv, rpath,
 
         | STRUCTURE {stamp, entDec} =>
             let val epc = EPC.enterOpen(epc, entsv)
-                val stp = evalStp(stamp, depth, epc, entEnv, compInfo) 
-                val env = evalDec(entDec, depth, epc, entEnv, rpath, compInfo)
+                val stp = evalStp(stamp,  epc, entEnv, compInfo) 
+                val env = evalDec(entDec,  epc, entEnv, rpath, compInfo)
 	    in
 		({stamp = stp, entities=env,
 		  properties = PropList.newHolder (),
@@ -129,20 +129,20 @@ and evalStr(strExp, depth, epc, entsv, entEnv, rpath,
 
         | APPLY (fctExp, strExp) =>
 	    let val (fctRlzn, entEnv1) = 
-                  evalFct(fctExp, depth, epc, entEnv, compInfo)
+                  evalFct(fctExp,  epc, entEnv, compInfo)
 	        val (argRlzn, entEnv2) = 
-                  evalStr(strExp, depth, epc, entsv, entEnv1, 
+                  evalStr(strExp,  epc, entsv, entEnv1, 
                           IP.empty, compInfo)
                 val epc = EPC.enterOpen(epc, entsv)
-             in (evalApp(fctRlzn, argRlzn, depth, epc, rpath, compInfo),
+             in (evalApp(fctRlzn, argRlzn, epc, rpath, compInfo),
                  entEnv2)
             end
 
         | LETstr (entDec, strExp) =>
-            let val entEnv1 = evalDec(entDec, depth, epc,
+            let val entEnv1 = evalDec(entDec,  epc,
                                       entEnv, rpath, compInfo)
                 val (strEnt, entEnv2) = 
-                  evalStr(strExp, depth, epc, entsv, entEnv1, 
+                  evalStr(strExp,  epc, entsv, entEnv1, 
                           rpath, compInfo)
 
  	     in (strEnt, entEnv2)
@@ -150,7 +150,7 @@ and evalStr(strExp, depth, epc, entsv, entEnv, rpath,
 
         | ABSstr (sign, strExp) => 
 	    let val (srcRlzn, entEnv1) = 
-                  evalStr(strExp, depth, epc, entsv, entEnv, rpath, compInfo)
+                  evalStr(strExp,  epc, entsv, entEnv, rpath, compInfo)
                 val {rlzn=rlzn, abstycs=abstycs, tyceps=tyceps} = 
                   Instantiate.instAbstr{sign=sign, entEnv=entEnv, srcRlzn=srcRlzn,
                               rpath=rpath, 
@@ -170,12 +170,12 @@ and evalStr(strExp, depth, epc, entsv, entEnv, rpath,
         | CONSTRAINstr {boundvar,raw,coercion} =>
             (* propagage the context rpath into the raw uncoerced structure *)
             let val (rawEnt, entEnv1) = 
-                  evalStr(raw, depth, epc, SOME boundvar,
+                  evalStr(raw,  epc, SOME boundvar,
                           entEnv, rpath, compInfo)
                 val entEnv2 = EE.bind(boundvar, STRent rawEnt, entEnv1)
             (*  val entEnv' = EE.bind(boundvar, STRent rawEnt, entEnv) *)
                 val (strEnt, entEnv3) = 
- 	          evalStr(coercion, depth, epc, entsv, 
+ 	          evalStr(coercion,  epc, entsv, 
                           entEnv2, IP.empty, compInfo)
                 
              in (strEnt, entEnv3)
@@ -184,7 +184,7 @@ and evalStr(strExp, depth, epc, entsv, entEnv, rpath,
         | FORMstr _ => bug "unexpected FORMstr in evalStr")
 
 
-and evalFct (fctExp, depth, epc, entEnv, 
+and evalFct (fctExp,  epc, entEnv, 
              compInfo as {mkStamp,...}: EU.compInfo) =
       case fctExp
        of VARfct entPath =>
@@ -247,16 +247,16 @@ and evalFct (fctExp, depth, epc, entEnv,
             end
 
         | LETfct (entDec, fctExp) =>
-            let val entEnv1 = evalDec(entDec, depth, epc,
+            let val entEnv1 = evalDec(entDec,  epc,
                                       entEnv, IP.empty, compInfo)
                 val (fctEnt, entEnv2) = 
-                  evalFct(fctExp, depth, epc, entEnv1, compInfo) 
+                  evalFct(fctExp,  epc, entEnv1, compInfo) 
              in (fctEnt, entEnv2)
             end
 
         | _ => bug "unexpected cases in evalFct"
 
-and evalApp(fctRlzn : Modules.fctEntity, argRlzn, depth, epc, rpath,
+and evalApp(fctRlzn : Modules.fctEntity, argRlzn, epc, rpath,
             compInfo as {mkStamp, ...} : EU.compInfo) = 
       let val {closure=CLOSURE{param, body, env}, ...} = fctRlzn
 	  val nenv = EE.mark(mkStamp, EE.bind(param, STRent argRlzn, env))
@@ -281,7 +281,7 @@ and evalApp(fctRlzn : Modules.fctEntity, argRlzn, depth, epc, rpath,
                end
             | _ => 
                let val (strEnt, deltaEE)
-                     = evalStr(body, depth, epc, NONE, nenv, rpath, compInfo)
+                     = evalStr(body,  epc, NONE, nenv, rpath, compInfo)
                    (* invariant: deltaEE should always be same as nenv
                       if the body of an functor is always a BaseStr. Notice 
                       functor body is constructed either in the source 
@@ -292,7 +292,7 @@ and evalApp(fctRlzn : Modules.fctEntity, argRlzn, depth, epc, rpath,
                end
       end
 
-and evalDec(dec, depth, epc, entEnv, rpath, 
+and evalDec(dec,  epc, entEnv, rpath, 
             compInfo as {mkStamp,...}: EU.compInfo) =
      (debugmsg ("[Inside EvalDec ......");
       case dec
@@ -308,19 +308,19 @@ and evalDec(dec, depth, epc, entEnv, rpath,
 		    then rpath
 		    else IP.extend(rpath,sym)
 		val (strEnt, entEnv1) =
-                  evalStr(strExp, depth, epc, SOME entVar,
+                  evalStr(strExp,  epc, SOME entVar,
                           entEnv, rpath', compInfo)
              in EE.bind(entVar, STRent strEnt, entEnv1)
             end
 
         | FCTdec (entVar, fctExp) => 
             let val (fctEnt, entEnv1) = 
-                  evalFct(fctExp, depth, epc, entEnv, compInfo)
+                  evalFct(fctExp, epc, entEnv, compInfo)
              in EE.bind(entVar, FCTent fctEnt, entEnv1)
             end          
         | SEQdec decs =>
             let fun h (dec, entEnv0) = 
-                  evalDec(dec, depth, epc, entEnv0, rpath, compInfo)
+                  evalDec(dec, epc, entEnv0, rpath, compInfo)
              in EE.mark(mkStamp, foldl h entEnv decs)
             end
         (* 
@@ -328,19 +328,19 @@ and evalDec(dec, depth, epc, entEnv, rpath,
          * are all distinct,it would not appear to cause any harm.
          *)
         | LOCALdec (localDec, bodyDec) => 
-            let val entEnv1 = evalDec(localDec, depth, epc,
+            let val entEnv1 = evalDec(localDec, epc,
                                       entEnv, IP.empty, compInfo)
-             in evalDec(bodyDec, depth, epc, entEnv1, rpath, compInfo)
+             in evalDec(bodyDec, epc, entEnv1, rpath, compInfo)
             end
 
         | _  => entEnv)
 
-and evalStp (stpExp, depth, epc, entEnv, 
+and evalStp (stpExp, epc, entEnv, 
              compInfo as {mkStamp,...}: EU.compInfo) =
       case stpExp
        of (* CONST stamp     => stamp
         | *) NEW             => mkStamp()
-        | GETSTAMP strExp => #stamp (#1 (evalStr(strExp, depth, epc, NONE,
+        | GETSTAMP strExp => #stamp (#1 (evalStr(strExp, epc, NONE,
 						 entEnv, IP.empty, compInfo)))
 
 (*

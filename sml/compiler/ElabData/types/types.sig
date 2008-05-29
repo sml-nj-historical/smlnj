@@ -43,7 +43,7 @@ and tvKind
     (* representing a type variable in the type scheme of an overloaded
      * operator. Must be eliminated by overloading resolution, cannot be
      * generalized *)
-  | LBOUND of {depth: int, index: int}
+  | LBOUND 
     (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
      * associated with polymorphic bindings (including val bindings and
      * functor parameter bindings). The depth is depth of type lambda bindings,

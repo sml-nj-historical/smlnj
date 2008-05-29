@@ -562,7 +562,7 @@ fun compareTypes (spec : ty, actual: ty): bool =
 exception WILDCARDmatch
 
 fun indexBoundTyvars ([]: tyvar list) : unit = ()
-  | indexBoundTyvars (tdepth, lboundtvs) =
+  | indexBoundTyvars (lboundtvs) =
     let fun setbtvs (i, []) = ()
           | setbtvs (i, (tv as ref (OPEN _))::rest) =
 	     (tv := LBOUND;

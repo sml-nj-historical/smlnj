@@ -179,7 +179,7 @@ fun adjustType (var,depth,eq,ty) =
 		      if eq andalso not(eqLitKind k)
 		      then raise Unify EQ
 		      else ()
-		  | LBOUND _ => bug "unify:adjustType:LBOUND")
+		  | LBOUND => bug "unify:adjustType:LBOUND")
 	  | iter eq (ty as CONty(DEFtyc{tyfun=TYFUN{body,...},...}, args)) =
 	      (app (iter eq) args; iter eq (TU.headReduceType ty))
 	      (* A headReduceType here may cause instTyvar to 
@@ -427,7 +427,7 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty) =
           | _ =>  raise Unify (UBV i))   (* could return the ty for error msg*)
 
   | instTyvar (ref(INSTANTIATED _),_) = bug "instTyvar: INSTANTIATED"
-  | instTyvar (ref(LBOUND _),_) = bug "instTyvar: LBOUND"
+  | instTyvar (ref(LBOUND),_) = bug "instTyvar: LBOUND"
 
 (*
  * merge_fields(extra1,extra2,fields1,fields2):

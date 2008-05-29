@@ -828,7 +828,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
                  (case constraint 
                    of Transparent x => (SOME (h x), true)
                     | Opaque x => (SOME (h x), false)
-                    | NoSig => bug "NoSig for ConstrainedStr in elabStr"
+                    | NoSig => bug "NoSig for ConstrainedStr in elabStr")
 
                 val (entsv, evOp) = 
                   case constraint 

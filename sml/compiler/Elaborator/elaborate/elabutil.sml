@@ -532,7 +532,6 @@ fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...},
  * approximate check of whether a declaration contains any functor
  * declarations. *)
 fun hasModules(StrDec _) = true
-  | hasModules(AbsDec _) = true
   | hasModules(FctDec _) = true
   | hasModules(LocalDec(dec_in,dec_out)) =
       hasModules dec_in orelse hasModules dec_out

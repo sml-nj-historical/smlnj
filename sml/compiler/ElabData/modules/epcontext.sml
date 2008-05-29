@@ -98,9 +98,12 @@ fun lookPath look (EMPTY, _) = NONE
 	 NONE => lookPath look (outer, id)
        | SOME rp => SOME (relative (EP.rep2ep rp, lookContext)))
 
-val lookTycEntPath : pathmap * MI.tycId -> EP.rEntPath = lookPath MI.uLookTyc
-val lookStrEntPath : pathmap * MI.strId -> EP.rEntPath = lookPath MI.uLookStr
-val lookFctEntPath : pathmap * MI.fctId -> EP.rEntPath = lookPath MI.uLookFct
+val lookTycEntPath : context * MI.tycId -> EP.entPath option = 
+      lookPath MI.uLookTyc
+val lookStrEntPath : context * MI.strId -> EP.entPath option = 
+      lookPath MI.uLookStr
+val lookFctEntPath : context * MI.fctId -> EP.entPath option = 
+      lookPath MI.uLookFct
 
 (* probe: (pathmap * 'a -> rEntPath option) -> bool *)
 (* probe(ctx,s) checks whether a statId is bound in the context *)
@@ -113,7 +116,7 @@ fun probe look (EMPTY, s) = false
 (* bindPath: (pathmap * 'a -> rEntPath option) * (pathmap * 'a * rEntPath -> bool)
              -> (context * 'a * entVar) -> unit *)
 fun bindEntVar (look, insert) (EMPTY, _, _) = ()  (* should this be an exception? *)
-  | bindPath (look, insert) (xx as LAYER { locals, bindContext, ... }, s, ev) =
+  | bindEntVar (look, insert) (xx as LAYER { locals, bindContext, ...}, s, ev) =
     if probe look (xx, s) then ()
     else (locals := insert (!locals, s, EP.repcons (ev, bindContext)))
 
@@ -124,7 +127,7 @@ val bindFctEntVar = bindEntVar (MI.uLookFct, MI.uInsertFct)
 (* bindLongPath: (pathmap * 'a -> rEntPath option) * (pathmap * 'a * rEntPath -> bool)
                  -> (context * 'a * entPath) -> unit *)
 fun bindEntPath (look, insert) (EMPTY, _, _) = ()
-  | bindLongPath (look, insert)
+  | bindEntPath (look, insert)
 		 (xx as LAYER { locals, bindContext, ... }, s, ep) =
     if probe look (xx, s) then ()
     else (locals := insert (!locals, s, EP.ep2rep (ep, bindContext)))
