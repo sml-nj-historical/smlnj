@@ -9,7 +9,7 @@ sig
        {sign     : Modules.Signature, 
         str      : Modules.Structure,
         strExp   : Modules.strExp,
-        evOp     : EntPath.entVar option,
+        entvar   : EntPath.entVar,
         entEnv   : Modules.entityEnv,
         rpath    : InvPath.path,
         statenv  : StaticEnv.staticEnv,
@@ -47,7 +47,7 @@ sig
         fctExp   : Modules.fctExp,
         argStr   : Modules.Structure, 
         argExp   : Modules.strExp,
-        evOp     : EntPath.entVar option,
+        entvar   : EntPath.entVar,
         epc      : EntPathContext.context,                                
         statenv  : StaticEnv.staticEnv,
 	rpath    : InvPath.path,
@@ -1097,7 +1097,7 @@ end
  *     {sign     : Modules.Signature,                                      *
  *      str      : Modules.Structure,                                      *
  *      strExp   : Modules.strExp,                                         *
- *      evOp     : EntPath.entVar,                                         * 
+ *      entvar   : EntPath.entVar,                                         * 
  *      entEnv   : Modules.entityEnv,                                      *
  *      rpath    : InvPath.path,                                           *
  *      statenv  : StaticEnv.staticEnv,                                    *
@@ -1107,19 +1107,18 @@ end
  *                                        resExp : Modules.strExp}         *
  *                                                                         *
  ***************************************************************************)
-and matchStr {sign, str, strExp, evOp, entEnv, rpath, statenv, region,
+and matchStr {sign, str, strExp, entvar, entEnv, rpath, statenv, region,
               compInfo=compInfo as {mkStamp,...}: EU.compInfo} =
 
   let val _ = debugmsg ">>matchStr"
 
-      val uncoerced = case evOp of SOME x => x | NONE => mkStamp()
       val (resDec, resStr, exp) = 
-        matchStr1 (sign, str, anonSym, entEnv, [uncoerced], rpath, 
+        matchStr1 (sign, str, anonSym, entEnv, [entvar], rpath, 
                    statenv, region, compInfo)
 
-      val resExp = M.CONSTRAINstr{boundvar=uncoerced, raw=strExp, coercion=exp}
-(*    val resExp = M.LETstr(M.STRdec(uncoerced, strExp), exp) *)
-(*    val resExp = M.APPLY(M.LAMBDA{param=uncoerced, body=exp}, strExp) *)
+      val resExp = M.CONSTRAINstr{boundvar=entvar, raw=strExp, coercion=exp}
+(*    val resExp = M.LETstr(M.STRdec(entvar, strExp), exp) *)
+(*    val resExp = M.APPLY(M.LAMBDA{param=entvar, body=exp}, strExp) *)
       val _ = debugmsg "<<matchStr"
 
    in {resDec=resDec, resStr=resStr, resExp=resExp}
@@ -1171,8 +1170,9 @@ val fsigParInst =
 val paramId = fsigParamVar (* mkStamp() *)
 val {resDec=resDec1, resStr=resStr1, resExp=resExp1} = 
   let val paramExp = M.VARstr [paramId]
+      val entvar = mkStamp()
    in applyFct{fct=fct, fctExp=srcFctExp, argStr=fsigParInst, 
-               argExp=paramExp, evOp=NONE,
+               argExp=paramExp, entvar=entvar,
                epc=EPC.initContext (* ? ZHONG *), statenv=statenv, 
                rpath = IP.empty, region=region, compInfo=compInfo}
   end
@@ -1181,7 +1181,8 @@ val {resDec=resDec1, resStr=resStr1, resExp=resExp1} =
 val fsigBodySigEnv = EE.bind(fsigParamVar, STRent fsigParEnt, entEnv)
 val {resDec=resDec2, resStr=resStr2, resExp=resExp2} = 
   let val rp = IP.IPATH[S.strSymbol "<FctResult>"]
-   in matchStr{sign=fsigBodySig, str=resStr1, strExp=resExp1, evOp=NONE,
+      val entvar = mkStamp()
+   in matchStr{sign=fsigBodySig, str=resStr1, strExp=resExp1, entvar=entvar,
                entEnv=fsigBodySigEnv, rpath=rp, 
                statenv=statenv, region=region, compInfo=compInfo}
   end
@@ -1527,7 +1528,7 @@ val paramStr =
 
 val {resDec=rdec1, resStr=bodyStr, resExp=_} =
   applyFct{fct=srcFct, fctExp=CONSTfct srcFctRlzn, argStr=paramStr, 
-           argExp=CONSTstr paramEnt, evOp=NONE,
+           argExp=CONSTstr paramEnt, entvar=mkStamp(),
            epc=EPC.initContext (* ? ZHONG *), statenv=statenv, 
            rpath=IP.empty, region=region, compInfo=compInfo}
 
@@ -1576,7 +1577,7 @@ end (* function packFct1 *)
  *      fctExp   : Modules.fctExp,                                         *
  *      argStr   : Modules.Structure,                                      *
  *      argExp   : Modules.strExp,                                         *
- *      evOp     : EntPath.entVar option,                                  *
+ *      entVar   : EntPath.entVar,
  *      epc      : EntPathContext.context,                                 *
  *      statenv  : StaticEnv.staticEnv,                                    *
  *      rpath    : InvPath.path,                                           *
@@ -1595,7 +1596,7 @@ end (* function packFct1 *)
  ***************************************************************************)
 and applyFct{fct as FCT {sign=FSIG{paramsig, bodysig, ...},
 			 rlzn = fctRlzn, ... },
-             fctExp, argStr, argExp, evOp, epc,
+             fctExp, argStr, argExp, entvar, epc,
              statenv, rpath, region,
              compInfo as {mkStamp, mkLvar=mkv, ...}} =
   let val {closure=CLOSURE {env=fctEntEnv, ... }, ... } = fctRlzn
@@ -1603,7 +1604,7 @@ and applyFct{fct as FCT {sign=FSIG{paramsig, bodysig, ...},
 
       (*** step #1: match the argument structure against paramSig ***)
       val {resDec=argDec1, resStr=argStr1, resExp=argExp1} =  
-        matchStr {sign=paramsig, str=argStr, strExp=argExp, evOp=evOp, 
+        matchStr {sign=paramsig, str=argStr, strExp=argExp, entvar=entvar, 
                   entEnv=fctEntEnv, rpath=IP.IPATH[] (* ?DAVE *), 
                   statenv=statenv, region=region, compInfo=compInfo}
 

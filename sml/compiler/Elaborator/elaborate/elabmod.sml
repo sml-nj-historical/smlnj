@@ -591,10 +591,10 @@ fun extractSig (env, epContext, context,
  * matching should be done transparently (true) or opaquely (false).        *
  *                                                                          *
  ****************************************************************************)
-fun constrStr(transp, sign, str, strDec, strExp, evOp, entEnv, rpath, 
+fun constrStr(transp, sign, str, strDec, strExp, entvar, entEnv, rpath, 
               env, region, compInfo) : A.dec * M.Structure * M.strExp = 
   let val {resDec=resDec1, resStr=resStr1, resExp=resExp1} = 
-        SigMatch.matchStr{sign=sign, str=str, strExp=strExp, evOp=evOp, 
+        SigMatch.matchStr{sign=sign, str=str, strExp=strExp, entvar=entvar, 
                     entEnv=entEnv, rpath=rpath, statenv=env, 
                     region=region, compInfo=compInfo}
 
@@ -635,9 +635,6 @@ let
 
 val sname =  case name of SOME n => S.name n
                         | NONE => "<anonymous>"
-
-val depth = (case context of EU.INFCT{depth=d,...} => d
-                           | _ => DI.top)
 
 val _ = debugmsg (">>elabStr: " ^ sname)
              
@@ -742,7 +739,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			   | NONE => CONSTfct fctEnt
 		    val {resDec, resStr, resExp} = 
 			SigMatch.applyFct{fct=fct, fctExp=fctExp, argStr=argStr, 
-				    argExp=argExp, evOp = SOME entv,
+				    argExp=argExp, entvar = entv,
 				    epc=EPC.enterOpen(epContext,entsv),
 				    statenv=env, rpath=rpath, region=region,
 				    compInfo=compInfo}
@@ -818,58 +815,35 @@ fun elab (BaseStr decl, env, entEnv, region) =
       end
 
   | elab (ConstrainedStr(strexp,constraint), env, entEnv, region) =
-      let val (entsv, evOp, csigOp, transp) = 
-            let fun h x = 
-                  ES.elabSig {sigexp=x, nameOp=NONE, env=env, 
-                              entEnv=entEnv, epContext=epContext,
-                              region=region, compInfo=compInfo}
-
-                val (csigOp, transp) =
+      let val (csig0, transp) =
                  (case constraint 
-                   of Transparent x => (SOME (h x), true)
-                    | Opaque x => (SOME (h x), false)
+                   of Transparent cSig => (cSig, true)
+                    | Opaque cSig => (cSig, false)
                     | NoSig => bug "NoSig for ConstrainedStr in elabStr")
 
-                val (entsv, evOp) = 
-                  case constraint 
-                   of NoSig => bug "NoSig for ConstrainedStr in elabStr"
-                    | _ => let val nentv = SOME(mkStamp())
-                            in (nentv, nentv)
-                           end
-             in (entsv, evOp, csigOp, transp)
-            end  
+          val entsv = mkStamp()
+
+	  val csig = ES.elabSig {sigexp=csig0, nameOp=NONE, env=env, 
+				 entEnv=entEnv, epContext=epContext,
+				 region=region, compInfo=compInfo}
 
           (** elaborating the structure body *)
           val (strAbsDec, str, exp, deltaEntEnv) = 
-            elabStr(strexp, NONE, env, entEnv, context,
-                    epContext, entsv, rpath, region, compInfo)
+              elabStr(strexp, NONE, env, entEnv, context,
+                      epContext, entsv, rpath, region, compInfo)
 
           val resDee = 
-            case constraint 
-             of NoSig => deltaEntEnv
-              | _ => 
-                 (case evOp
-                   of SOME tmpev =>
-                       let val strEnt =
-                             case str of M.STR { rlzn, ... } => rlzn
-                                       | _ => M.bogusStrEntity
-                        in (EE.bind(tmpev, M.STRent strEnt, deltaEntEnv))
-                       end
-                    | _ => bug "unexpected while elaborating constrained str")
+              let val strEnt =
+                      case str of M.STR { rlzn, ... } => rlzn
+                                | _ => M.bogusStrEntity
+              in (EE.bind(entsv, M.STRent strEnt, deltaEntEnv))
+              end
 
           (** elaborating the signature matching *)
           val (resDec, resStr, resExp) = 
-              case csigOp
-		of NONE => 
-		     (if transp then ()
-		      else (error region EM.COMPLAIN
-			    "missing signature in abstraction declaration"
-			    EM.nullErrorBody);
-		      (strAbsDec, str, exp))
-		 | SOME csig => 
-                      constrStr(transp, csig, str, strAbsDec, exp, 
-                                evOp, depth, entEnv, rpath,
-                                env, region, compInfo)
+              constrStr(transp, csig, str, strAbsDec, exp, 
+                        entsv, entEnv, rpath,
+                        env, region, compInfo)
 
        in (resDec, resStr, resExp, resDee)
       end
@@ -903,8 +877,6 @@ and elabFct
 
 let
 
-val depth = (case context of EU.INFCT{depth=d,...} => d
-                           | _ => DI.top)
 val _ = debugmsg (">>elabFct: " ^ (S.name name))
 
 in
@@ -982,15 +954,15 @@ case fctexp
 		     else BaseStr(StrDec[Strb{name=resultId, def=body,
 					      constraint=constraint}])
 	  val constraint = if curried then constraint else NoSig
-          val (flex, depth) =
+          val flex =
             case context
-             of EU.INFCT {flex=f,depth=d} => (f, d) 
+             of EU.INFCT {flex} => flex
               | _ => (*** Entering functor for first time ***) 
                  let val base = mkStamp() 
                      fun h s = (case Stamps.compare(base,s)
                                  of LESS => true
                                   | _ => false)
-                  in (h, DI.top)
+                  in h
                  end
           val paramName = case paramNameOp of NONE => paramId
                                             | SOME n => n
@@ -1050,22 +1022,27 @@ case fctexp
 
           (* must elaborate result signature before the body is elaborated
 	     so that epContext' is not changed *)
-          val (entsv, csigOp,csigTrans) =
-            let fun h x = ES.elabSig{sigexp=x, nameOp=NONE, env=env', 
-				     entEnv=entEnv', epContext=epContext', 
-				     region=region, compInfo=compInfo}
-             in case constraint
-		 of NoSig => (NONE, NONE, true)
-		  | Transparent x => (SOME (mkStamp()), SOME (h x), true) 
-		  | Opaque x => (SOME(mkStamp()), SOME (h x), false)
-            end
+	  val csigOp0 =
+	      case constraint
+	       of NoSig => NONE
+		| Transparent csig => SOME(csig, true) 
+		| Opaque csig => SOME(csig, false)
+
+	  val (entsv, csigOp) =
+	      case csigOp0
+		of NONE => (NONE, NONE)
+		 | SOME(csig0,transp) =>
+		   (SOME(mkStamp()),
+		    SOME(ES.elabSig{sigexp=csig0, nameOp=NONE, env=env', 
+				    entEnv=entEnv', epContext=epContext', 
+				    region=region, compInfo=compInfo},
+			 transp))
 
           val _ = debugmsg "--elabFct[BaseFct]: result signature elaborated"
 
           (* adjust the EU.context value; the depth refers to the number
              of enclosing functor abstractions. (ZHONG) *)
-          val depth' = DI.next depth
-          val context' = EU.INFCT{flex=flex, depth=depth'}
+          val context' = EU.INFCT{flex=flex}
 
           (* bodyDee was discarded here; however, it was not discarded when
              functor is applied. *)
@@ -1079,9 +1056,9 @@ case fctexp
           val (bodyAbsDec', bodyStr', bodyExp') = 
               case csigOp
                 of NONE => (bodyAbsDec, bodyStr, bodyExp)
-                 | SOME csig =>
+                 | SOME (csig,csigTrans) =>
 		   constrStr(csigTrans, csig, bodyStr, bodyAbsDec, bodyExp,
-			     entsv, depth', entEnv', IP.IPATH[], env', 
+			     entsv, entEnv', IP.IPATH[], env', 
 			     region, compInfo)
 
           val _ = debugmsg "--elabFct[BaseFct]: body constrained"
@@ -1167,8 +1144,6 @@ and elabStrbs(strbs: Ast.strb list,
             : A.dec * M.entityDec * SE.staticEnv * entityEnv =
 let
 
-val depth = (case context of EU.INFCT{depth=d, ...} => d
-                           | _ => DI.top)
 val _ = debugmsg ">>elabStrbs"
 
 fun loop([], decls, entDecls, env, entEnv) = 
@@ -1196,7 +1171,7 @@ fun loop([], decls, entDecls, env, entEnv) =
 
           (* entsv is the context for evaluating the right-handside 
              of a structure declaration *)
-          val (entsv, evOp, csigOp, transp) = 
+          val (entsv, csigOp, transp) = 
             let fun elabConstraint x = 
 		    let val csig = 
 			    ES.elabSig {sigexp=x, nameOp=NONE, env=env0, 
@@ -1217,13 +1192,11 @@ fun loop([], decls, entDecls, env, entEnv) =
                     | NoSig => (NONE, true))
 
                 (* the temporary anonymous structure *)
-                val (entsv, evOp) = 
+                val entsv = 
                   case csigOp
-                   of NONE => (entv, NONE)
-                    | _ => (let val nentv = mkStamp()
-                             in (nentv, SOME nentv)
-                            end)
-             in (entsv, evOp, csigOp, transp)
+                   of NONE => entv
+                    | _ => mkStamp()
+             in (entsv, csigOp, transp)
             end  
 
           (** elaborating the structure body *)
@@ -1266,7 +1239,7 @@ fun loop([], decls, entDecls, env, entEnv) =
 		     (strAbsDec, str, exp))
 		| SOME csig => 
                     constrStr(transp, csig, str, strAbsDec, exp, 
-                              evOp, depth, entEnv0, IP.IPATH[name], 
+                              entsv, entEnv0, IP.IPATH[name], 
                               StaticEnv.atop(env,env0), region, compInfo)
 
           val deltaEntEnv = 
