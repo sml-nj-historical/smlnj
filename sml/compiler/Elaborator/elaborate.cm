@@ -50,6 +50,10 @@ Group
 	structure PPModules
 	structure PPVal
 	structure PPAst
+
+	signature ENS_VAR
+	structure Ens_var
+
 is
 
 	basics/elabcontrol.sig
@@ -107,3 +111,6 @@ is
 	$smlnj/smlnj-lib/smlnj-lib.cm
 	$smlnj/smlnj-lib/controls-lib.cm
 	$smlnj/basis/basis.cm
+
+	elaborate/ens_var.sig
+	elaborate/ens_var.sml

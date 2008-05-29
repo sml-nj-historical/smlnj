@@ -328,10 +328,10 @@ apat	: apat'		({item=apat', region=(apat'left,apat'right),
 	| LPAREN pat RPAREN	({item=pat,
 				  region=(LPARENleft,RPARENright),
 				  fixity=NONE})
-	| id			(let val (v,f) = var'n'fix id
-				 in {item=VarPat [v], 
-				     region=(idleft,idright),
-				     fixity=SOME f} end)
+	| id			(let val (v,f) = var'n'fix id in 
+				     {item=MarkPat(VarPat [v], (idleft, idright)), 
+				      region=(idleft,idright),
+				      fixity=SOME f} end)
 	| LPAREN RPAREN		({item=unitPat,fixity=NONE,
 				  region=(LPARENleft,RPARENright)})
 	| LPAREN pat COMMA  pat_list RPAREN	
@@ -363,8 +363,15 @@ apat'	: OP ident		(VarPat [varSymbol ident])
 					(LBRACEleft,RBRACEright)) end)
 
 plabel	: selector EQUALOP pat	((selector,pat))
-	| ID			(labSymbol ID, VarPat [varSymbol ID])
-	| ID AS pat		(labSymbol ID, 
+	| ID			(* (labSymbol ID), (MarkPat(VarPat ([varSymbol ID], (IDleft, IDright))))*)
+	                        (
+				 let val v = VarPat [varSymbol ID] in
+				     let val v2 = MarkPat (v, (IDleft, IDright)) in
+					 (labSymbol ID, v2)
+				     end
+				 end
+				)
+	| ID AS pat		(labSymbol ID,
 				 LayeredPat{varPat=VarPat [varSymbol ID], 
 					    expPat=pat})
 	| ID COLON ty		(labSymbol ID,
@@ -440,9 +447,9 @@ clause	: apats constraint EQUALOP exp
 			exp=markexp(exp,expleft,expright)})
 
 
-tb	: tyvars ID EQUALOP ty	([MarkTb(
+tb	: tyvars ID EQUALOP ty	([ MarkTb ( MarkTb(
 				   Tb{tyvars=tyvars,tyc=tycSymbol ID,def=ty},
-				   (tyleft,tyright))])
+				   (tyleft,tyright)) , (IDleft, IDright)) ])
 	| tb AND tb		(tb1 @ tb2)
 
 tyvars	: TYVAR			([MarkTyv(Tyv(tyvSymbol TYVAR),

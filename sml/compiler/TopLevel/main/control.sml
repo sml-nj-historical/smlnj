@@ -222,6 +222,8 @@ struct
           end
   in
 
+    structure Ev : ENS_VAR = Ens_var
+
     structure Print : PRINTCONTROL = Control_Print
 
     structure ElabData : ELABDATA_CONTROL = ElabDataControl

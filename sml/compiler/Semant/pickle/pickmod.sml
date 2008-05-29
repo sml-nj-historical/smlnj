@@ -102,6 +102,8 @@ in
     structure M = Modules
     structure B = Bindings
 
+    structure EV = Ens_var
+
     (** NOTE: the CRC functions really ought to work on Word8Vector.vectors **)
     fun pickle2hash pickle =
 	PS.fromBytes
@@ -254,7 +256,7 @@ in
     fun mkAlphaConvert () = let
 	val m = ref IntMap.empty
 	val cnt = ref 0
-	fun cvt i =
+	fun cvt i = (
 	    case IntMap.find (!m, i) of
 		SOME i' => i'
 	      | NONE => let
@@ -264,6 +266,7 @@ in
 		    m := IntMap.insert (!m, i, i');
 		    i'
 		end
+	)
     in
 	cvt
     end
@@ -1273,7 +1276,7 @@ in
 	    case StaticEnv.look (senv, sym) of
 		B.VALbind (V.VALvar {access=a, prim=z, path=p, typ= ref t }) =>
 		(case a of
-		     A.LVAR k =>
+		     A.LVAR k => ( EV.modify a (newAccess i);
 		     (i+1,
 		      StaticEnv.bind (sym,
 				      B.VALbind (V.VALvar
@@ -1281,8 +1284,9 @@ in
 						       prim = z, path = p,
 						       typ = ref t}),
 				      env),
-		      k :: lvars)
-		   | _ => bug ("dontPickle 1: " ^ A.prAcc a))
+		      k :: lvars))
+		   | _ => bug ("dontPickle 1: " ^ A.prAcc a)
+		)
 	      | B.STRbind (M.STR { sign = s, rlzn = r, access = a, prim =z }) =>
 		(case a of
 		     A.LVAR k => 
@@ -1327,6 +1331,7 @@ in
 		end
 	      | binding => (i, StaticEnv.bind (sym, binding, env), lvars)
 	val (_,newenv,lvars) = foldl mapbinding (0, StaticEnv.empty, nil) syms
+	val _ = EV.apply_mod ()
 	val hasExports = not (List.null lvars)
     in
 	{ newenv = newenv, hash = hash,

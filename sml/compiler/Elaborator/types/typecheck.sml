@@ -35,7 +35,9 @@ local open Array List Types VarCon BasicTypes TypesUtil Unify Absyn
   structure EU = ElabUtil
   structure ED = ElabDebug
   structure PP = PrettyPrintNew
-	  
+
+  structure EM = ErrorMsg
+  structure EV = Ens_var
 in 
 
 (* debugging *)
@@ -329,16 +331,17 @@ fun generalizePat(pat: pat, userbound: tyvar list, occ: occ, tdepth,
 
 fun applyType(ratorTy: ty, randTy: ty) : ty =
   let val resultType = mkMETAty()
-   in unifyTy(ratorTy, (randTy --> resultType)); resultType
+   in 
+      unifyTy(ratorTy, (randTy --> resultType)); resultType
   end
 
 fun patType(pat: pat, depth, region) : pat * ty =
     case pat
       of WILDpat => (pat,mkMETAtyBounded depth)
-       | VARpat(VALvar{typ as ref UNDEFty,...}) => 
+       | VARpat(VALvar{typ as ref UNDEFty, access, ...}) => 
 	      (typ := mkMETAtyBounded depth; (pat,!typ))
 			             (* multiple occurrence due to or-pat *)
-       | VARpat(VALvar{typ, ...}) => (pat, !typ) 
+       | VARpat(VALvar{typ, ...}) => (pat, !typ)
        | INTpat (_,ty) => (oll_push ty; (pat,ty))
        | WORDpat (_,ty) => (oll_push ty; (pat,ty))
        | REALpat _ => (pat,realTy)
@@ -451,9 +454,11 @@ let fun boolUnifyErr { ty, name, message } =
 	end
 in
      case exp
-      of VARexp(r as ref(VALvar{typ, ...}), _) =>
+      of VARexp(r as ref(VALvar{typ, access, path, ...}), _) =>
 	   let val (ty, insts) = instantiatePoly(!typ)
-	    in (VARexp(r, insts), ty)
+	    in 
+	       EV.add_inst (ty, access);
+	       (VARexp(r, insts), ty)
 	   end
        | VARexp(refvar as ref(OVLDvar _),_) =>
  	   (exp, ol_push (refvar, err region))
@@ -527,7 +532,20 @@ in
 	   let val (rator',ratorTy) = expType(rator,occ,tdepth,region)
 	       val (rand',randTy) = expType(rand,occ,tdepth,region)
                val exp' = APPexp(rator',rand')
-	    in (exp',applyType(ratorTy,randTy))
+	       (*fun printer x y = (((PP.with_pp 
+				       (EM.defaultConsumer())
+				       (fn ppstrm =>
+					   (PP.string ppstrm x;
+					    PPType.resetPPType();
+					    PPType.ppType (StaticEnv.empty) ppstrm y)))
+				 handle _ => print "fail to print anything");
+ 				print "\n";
+				y
+			   )
+	       val _ = printer "operator :" ratorTy
+	       val _ = printer "operand :" randTy*)
+	    in 
+	       (exp',(*printer "app :" *)(applyType (ratorTy,randTy)))
 	       handle Unify(mode) => 
 	       let val ratorTy = prune ratorTy
 		   val reducedRatorTy = headReduceType ratorTy

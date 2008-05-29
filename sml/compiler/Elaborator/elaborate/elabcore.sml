@@ -46,6 +46,8 @@ local structure EM = ErrorMsg
 
       structure Tbl = SymbolHashTable
 
+      structure EV = Ens_var
+
       open Absyn Ast BasicTypes Access ElabUtil Types VarCon
    (*
       open BasicTypes Symbol Absyn Ast PrintUtil AstUtil BasicTypes TyvarSet
@@ -71,6 +73,18 @@ fun showDec(msg,dec,env) =
 		 dec)(* ) *)
 
 infix -->
+
+
+fun print_path [] = bug "elabcore:print_path"
+  | print_path (t::q) = (
+    let val S.SYMBOL (_,y) = t in print y end ;
+    List.app (fn x => let val S.SYMBOL (_,y) = x in print ("."^y) end) q
+);
+fun print_region (int1, int2) =  (print (Int.toString int1); print " "; print (Int.toString int2) );
+fun print_path_region path region s = (print_path path;  print " "; print_region region; print s);
+
+val _ = EV.clear ();
+
 
 (* tyvarset management *)
 type tyvUpdate = TS.tyvarset -> unit
@@ -299,10 +313,17 @@ let
 		 : Absyn.pat * TS.tyvarset =
       case pat
       of WildPat => (WILDpat, TS.empty)
-       | VarPat path => 
-	   (clean_pat (error region) 
-              (pat_id(SP.SPATH path, env, error region, compInfo)),
-	    TS.empty)
+       | VarPat path => (
+	 let val resultat = (clean_pat (error region) 
+			        (pat_id(SP.SPATH path, env, error region, compInfo)),
+			     TS.empty)
+	 in
+	     case resultat of
+		 ((VARpat(VALvar {typ, access, ...})), _) => EV.add_def access typ path region
+	       | _ => ();
+	     resultat
+	 end
+	 )
        | IntPat s => (INTpat(s,TU.mkLITERALty(T.INT,region)),TS.empty)
        | WordPat s => (WORDpat(s,TU.mkLITERALty(T.WORD,region)),TS.empty)
        | StringPat s => (STRINGpat s,TS.empty)
@@ -401,7 +422,8 @@ let
 	    in (foldOr(pat, pats), tyv)
 	   end
        | AppPat {constr, argument} =>
-	   let fun getVar (MarkPat(p,region),region') = getVar(p,region)
+	   let fun getVar (MarkPat(p,region),region') = 
+		   getVar(p,region)
 		 | getVar (VarPat path, region') = 
 		      let val dcb = pat_id (SP.SPATH path, env, 
                                             error region', compInfo)
@@ -417,41 +439,44 @@ let
        | ConstraintPat {pattern=pat,constraint=ty} =>
 	   let val (p1,tv1) = elabPat(pat, env, region)
 	       val (t2,tv2) = ET.elabType(ty,env,error,region)
-	    in (CONSTRAINTpat(p1,t2), union(tv1,tv2,error region))
+	    in
+	       Ens_var.add_type_use t2 region;
+	       (CONSTRAINTpat(p1,t2), union(tv1,tv2,error region))
 	   end
        | LayeredPat {varPat,expPat} =>
-	   let val (p1,tv1) = elabPat(varPat, env, region)
-	       val (p2,tv2) = elabPat(expPat, env, region)
-	    in (makeLAYEREDpat(p1,p2,error region),union(tv1,tv2,error region))
-	   end
+	 let val (p1,tv1) = elabPat(varPat, env, region)
+	     val (p2,tv2) = elabPat(expPat, env, region)
+	 in (makeLAYEREDpat(p1,p2,error region),union(tv1,tv2,error region))
+	 end
        | MarkPat (pat,region) =>
 	   let val (p,tv) = elabPat(pat, env, region)
-	    in (p,tv)
+	    in 
+	       (p,tv)
 	   end
-       | FlatAppPat pats => elabPat(patParse(pats,env,error), env, region) 
+       | FlatAppPat pats => elabPat(patParse(pats,env,error), env, region)
 
-    and elabPLabel (region:region) (env:SE.staticEnv) labs =
-	foldl
-	  (fn ((lb1,p1),(lps1,lvt1)) => 
-	      let val (p2,lvt2) = elabPat(p1, env, region)
-	      in ((lb1,p2) :: lps1, union(lvt2,lvt1,error region)) end)
-	  ([],TS.empty) labs
+    and elabPLabel (region:region) (env:SE.staticEnv) labs = 
+	foldl 
+	  (fn ((lb1,p1),(lps1,lvt1)) =>  
+	      let val (p2,lvt2) = elabPat(p1, env, region) 
+	      in ((lb1,p2) :: lps1, union(lvt2,lvt1,error region)) end) 
+	  ([],TS.empty) labs 
 
-    and elabPatList(ps, env:SE.staticEnv, region:region) =
-	foldr
-	  (fn (p1,(lps1,lvt1)) => 
-	      let val (p2,lvt2) = elabPat(p1, env, region)
-	      in (p2 :: lps1, union(lvt2,lvt1,error region)) end)
-	  ([],TS.empty) ps
+    and elabPatList(ps, env:SE.staticEnv, region:region) = 
+	foldr 
+	  (fn (p1,(lps1,lvt1)) =>  
+	      let val (p2,lvt2) = elabPat(p1, env, region) 
+	      in (p2 :: lps1, union(lvt2,lvt1,error region)) end) 
+	  ([],TS.empty) ps 
 
 
-    (**** EXPRESSIONS ****)
+    (**** EXPRESSIONS ****) 
 
-    val expParse = Precedence.parse
-		     {apply=fn(f,a) => AppExp{function=f,argument=a},
-		      pair=fn (a,b) => TupleExp[a,b]}
+    val expParse = Precedence.parse 
+		     {apply=fn(f,a) => AppExp{function=f,argument=a}, 
+		      pair=fn (a,b) => TupleExp[a,b]} 
 
-    fun elabExp(exp: Ast.exp, env: SE.staticEnv, region: region) 
+    fun elabExp(exp: Ast.exp, env: SE.staticEnv, region: region)  
 		: (Absyn.exp * TS.tyvarset * tyvUpdate) =
 	(case exp
 	  of VarExp path =>
@@ -512,7 +537,8 @@ let
 	   | ConstraintExp {expr=exp,constraint=ty} =>
 	       let val (e1,tv1,updt) = elabExp(exp,env,region)
 		   val (t2,tv2) = ET.elabType(ty,env,error,region)
-		in (CONSTRAINTexp(e1,t2), union(tv1,tv2,error region),updt)
+		in 
+		   (CONSTRAINTexp(e1,t2), union(tv1,tv2,error region),updt)
 	       end
 	   | HandleExp {expr,rules} =>
 	       let val (e1,tv1,updt1) = elabExp(expr,env,region)
@@ -571,10 +597,20 @@ let
 	       let val (rls,tyv,updt) = elabMatch(rules,env,region)
 		in (FNexp (completeMatch rls,UNDEFty),tyv,updt)
 	       end
-	   | MarkExp (exp,region) => 
+	   | MarkExp (exp,region) => (
+	       ( case exp of 
+		     (VarExp path) => (case LU.lookVal(env,SP.SPATH path,error region) of
+					   (VAL (VALvar {access, typ, ...})) => EV.add_use access region
+					 | (CON (DATACON {rep, ...})) => ()
+                                               (*(print (A.prRep rep); print "\n")*)
+					 | _ => ()
+				      )
+	           | _ => ()
+	       );
 	       let val (e,tyv,updt) = elabExp(exp,env,region)
-		in (cMARKexp(e,region), tyv, updt)
+	       in (cMARKexp(e,region), tyv, updt)
 	       end
+	     )
 	   | SelectorExp s => 
 	       (let val v = newVALvar s
 		 in FNexp(completeMatch
@@ -639,11 +675,11 @@ let
     and elabDec'(dec,env,rpath,region)
 		: (Absyn.dec * SE.staticEnv * TS.tyvarset * tyvUpdate) =
 	(case dec 
-	  of TypeDec tbs => 
-	      let val (dec', env') =
-		  ET.elabTYPEdec(tbs,env,(* EU.TOP,??? *) rpath,region,compInfo)
-	       in noTyvars(dec', env')
-	      end
+	  of TypeDec tbs =>
+	     let val (dec', env') =
+		ET.elabTYPEdec(tbs,env,(* EU.TOP,??? *) rpath,region,compInfo)
+	     in noTyvars(dec', env')
+	     end
 	   | DatatypeDec(x as {datatycs,withtycs}) => 
 	     (case datatycs
 		of (Db{rhs=(Constrs _), ...}) :: _ =>
@@ -712,9 +748,9 @@ let
 	       end
 	   | OvldDec dec  => elabOVERLOADdec(dec,env,rpath,region)
 	   | MarkDec(dec,region') =>
-	       let val (d,env,tv,updt)= elabDec'(dec,env,rpath,region')
-		in (cMARKdec(d,region'), env,tv,updt)
-	       end
+	     let val (d,env,tv,updt)= elabDec'(dec,env,rpath,region')
+	     in (cMARKdec(d,region'), env,tv,updt)
+	     end
 	   | StrDec _ => bug "strdec"
 	   | AbsDec _ => bug "absdec"
 	   | FctDec _ => bug "fctdec"
@@ -768,12 +804,13 @@ let
         end 
 
     (****  VALUE DECLARATIONS ****)
-    and elabVB (MarkVb(vb,region),etvs,env,_) =
+    and elabVB (MarkVb(vb,region),etvs,env,_) = (
 	let val (d, tvs, u) = elabVB(vb,etvs,env,region)
 	    val d' = cMARKdec (d, region)
 	in
 	    (d', tvs, u)
 	end
+    )
       | elabVB (Vb{pat,exp,lazyp},etvs,env,region) =
 	  let val (pat,pv) = elabPat(pat, env, region)
 	      val (exp,ev,updtExp) = elabExp(exp,env,region)
@@ -880,12 +917,13 @@ let
 	in (SEQdec ds, bindVARp (pats,error region), TS.empty, updt)
        end
 
-    and elabRVB(MarkRvb(rvb,region),env,_) =
+    and elabRVB(MarkRvb(rvb,region),env,_) = (
 	let val ({ match, ty, name }, tvs, u) = elabRVB(rvb,env,region)
 	    val match' = cMARKexp (match, region)
 	in
 	    ({ match = match', ty = ty, name = name }, tvs, u)
 	end
+    )
       | elabRVB(Rvb{var,fixity,exp,resultty,lazyp},env,region) =
          (case stripExpAst(exp,region)
 	    of (FnExp _,region')=>
@@ -1095,19 +1133,20 @@ let
 			    map ensureNonfix rest)
 		       | parse' [] = bug "parse':[]"
 
-		     fun parse({item=MarkPat(p,_),region,fixity}::rest) = 
-			   parse({item=p,region=region,fixity=fixity}::rest)
+		     fun parse({item=MarkPat(p,_),region,fixity}::rest) =
+			 parse({item=p,region=region,fixity=fixity}::rest)
 		       | parse (pats as [a as {region=ra,...},
 					 b as {item,fixity,region},c]) =
-			   (case getfix fixity
-			      of Fixity.NONfix => parse' pats
-			       | _ => (getname(item,region),
-				  [tuple_pat(ensureNonfix a, ensureNonfix c)]))
+			 (case getfix fixity
+			   of Fixity.NONfix => parse' pats
+			    | _ => (getname(item,region),
+				    [tuple_pat(ensureNonfix a, ensureNonfix c)]))
 		       | parse pats = parse' pats
 
-		     fun parseClause(Clause{pats,resultty,exp}) =
+		     fun parseClause (Clause{pats,resultty,exp}) =
 			 let val (funsym,argpats) = parse pats
-			  in {kind=STRICT,funsym=funsym,argpats=argpats,
+			 in 
+			     {kind=STRICT,funsym=funsym,argpats=argpats,
 			      resultty=resultty,exp=exp}
 			 end
 
@@ -1115,7 +1154,7 @@ let
                          case map parseClause clauses of
 			     [] => bug "elabcore:no clauses"
 			   | (l as ({funsym=var,...}::_)) => (l,var)
-
+							     
 		     val _ = if List.exists (fn {funsym,...} => 
 					not(S.eq(var,funsym))) clauses
 			     then  error fbregion EM.COMPLAIN 
@@ -1224,18 +1263,31 @@ let
 		 in tvref := TS.elements localtyvars;
 		    app (fn f => f downtyvars) updts
 		end
-	    fun makefb (v as VALvar{path=SymPath.SPATH[_],...},cs,r) =
-		  ({var=v,clauses=cs, tyvars=tvref,region=r})
+	    fun makefb (v as VALvar{path=SymPath.SPATH[symbol],...},cs,r) =
+		({var=v,clauses=cs, tyvars=tvref,region=r})
 	      | makefb _ = bug "makeFUNdec.makefb"
-	 in EU.checkUniq(error region, "duplicate function names in fun dec",
-		      (map (fn (VALvar{path=SymPath.SPATH[x],...},_,_) => x
-			     | _ => bug "makeFUNdec:checkuniq")
-			   fbs1));
-	    (let val (ndec, nenv) = 
-                   FUNdec(completeMatch,map makefb fbs1,compInfo)
-              in showDec("elabFUNdec: ",ndec,nenv);
-		 (ndec, nenv, TS.empty, updt)
-             end)
+	in EU.checkUniq(error region, "duplicate function names in fun dec",
+			(map (fn (VALvar{path=SymPath.SPATH[x],...},_,_) => x
+			       | _ => bug "makeFUNdec:checkuniq")
+			     fbs1));
+	   (let val (ndec, nenv) = 
+                    FUNdec(completeMatch,map makefb fbs1,compInfo)
+		val (head::_) = fbs1 (*regarder si c'est bien vrai, et ce que ca fait avec des List.app par exemple*)
+            in 
+		case head of 
+		    (v as VALvar{path=SymPath.SPATH[symbol],...},cs,r) => 
+		        let val S.SYMBOL (_, y) = symbol 
+			    val (r1, _) = r
+			    val r2 = r1 + String.size y
+			in
+   		             case LU.lookValSym(nenv, symbol, error (r1, r2)) of
+				 (VAL (VALvar {access, typ, ...})) => EV.add_def access typ [symbol] (r1,r2)
+			       | _ => ()
+			end
+		  | _ => ();
+		showDec("elabFUNdec: ",ndec,nenv);
+		(ndec, nenv, TS.empty, updt)
+            end)
 	end
 
     and elabSEQdec(ds,env,rpath:IP.path,region) =

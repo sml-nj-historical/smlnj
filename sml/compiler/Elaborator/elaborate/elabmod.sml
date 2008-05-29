@@ -1602,7 +1602,8 @@ and elabDecl0
 
    | TypeDec tbs =>
        (*** ASSERT: the tycons declared are all DEFtycs ***)
-       (let val (dec, env) =
+       (let val (tbs, regions) = ListPair.unzip (List.map (fn x => case x of MarkTb y => y) tbs)
+	    val (dec, env) =
                 ET.elabTYPEdec(tbs,env0,rpath,region,compInfo)
             val tycs = case dec
 			 of A.TYPEdec z => z
@@ -1610,7 +1611,9 @@ and elabDecl0
             val (entEnv, entDec) = 
               bindNewTycs(context, epContext, mkStamp, [], tycs, rpath,
 			  error region)
-         in (dec, entDec, env, entEnv)
+        in 
+	    List.app (fn (x,y) => Ens_var.add_type x y) (ListPair.zip (tycs, regions));
+	    (dec, entDec, env, entEnv)
         end
         handle EE.Unbound =>
 	  (debugmsg("$elabDecl0: TypeDec");
@@ -1636,6 +1639,8 @@ and elabDecl0
                                 datatycs, withtycs, rpath, error region)
 		  val resDec = 
                     A.DATATYPEdec{datatycs=datatycs,withtycs=withtycs}
+
+		  val _ = List.app (fn x => Ens_var.add_type x region) datatycs
 	       in (resDec, entDec, env, entEnv)
 	      end
 

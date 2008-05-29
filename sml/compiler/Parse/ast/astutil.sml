@@ -27,6 +27,7 @@ fun checkFix (i, err) =
 (* layered patterns *)
 
 fun lay3 ((x as VarPat _), y, _) = LayeredPat{varPat=x,expPat=y}
+  | lay3 ((x as MarkPat ((VarPat _), _)), y, _) = LayeredPat{varPat=x,expPat=y}
   | lay3 (ConstraintPat{pattern,constraint}, y, err) = 
 	 (err COMPLAIN "illegal (multiple?) type constraints in AS pattern" 
 		       nullErrorBody;

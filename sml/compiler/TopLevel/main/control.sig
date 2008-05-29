@@ -106,6 +106,9 @@ end (* signature CGCONTROL *)
 (* main Control structure *)
 signature CONTROL = 
 sig
+
+  structure Ev : ENS_VAR
+
   structure Print : PRINTCONTROL
   structure ElabData : ELABDATA_CONTROL
   structure Elab : ELAB_CONTROL

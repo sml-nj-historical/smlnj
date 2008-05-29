@@ -14,6 +14,8 @@ local open Environment
       structure PC = SMLofNJ.Internals.ProfControl
       structure ED = ElabDebug
 
+      structure EV = Ens_var
+		     
       open PP
 in 
 
@@ -90,6 +92,7 @@ fun evalLoop source = let
                                checkErr=checkErrors,
                                splitting=splitting,
 			       guid = () }
+
                 (** returning absyn and exportLvars here is a bad idea,
                     they hold on things unnecessarily; this must be 
                     fixed in the long run. (ZHONG)
@@ -146,7 +149,7 @@ fun evalLoop source = let
 		fun ppAbsynDebug (msg,dec) =
 		    let fun ppAbsynDec ppstrm d = 
                             PPAbsyn.ppDec (statenv,NONE) ppstrm (d,!printDepth)
-                     in debugPrint (Control.printAbsyn) (msg, ppAbsynDec, dec)
+                    in debugPrint (Control.printAbsyn) (msg, ppAbsynDec, dec)
                     end
 
 		(* we install the new local env first before we go about
@@ -182,6 +185,8 @@ fun evalLoop source = let
 		val e1 = E.mkenv { static = ste1,
 				   symbolic = E.symbolicPart e0,
 				   dynamic = E.dynamicPart e0 }
+		val _ = EV.maj (E.staticPart e1)
+
             in
 		(* testing code to print ast *)
 		ppAstDebug("AST::",ast);
