@@ -58,8 +58,8 @@ functor MLTreeCheckTy
      | checkRexp (T.SX(toTy,fromTy,e)) = (checkRexps(fromTy, [e]); toTy)
      | checkRexp (T.ZX(toTy,fromTy,e)) = (checkRexps(fromTy, [e]); toTy)
      | checkRexp (T.CVTF2I(ty,_,_,_)) = ty
-     | checkRexp (T.COND(ty,_,_,_)) = ty
-     | checkRexp (T.LOAD(ty,_,_)) = ty
+     | checkRexp (T.COND(ty,cce,e1,e2)) = (checkCCexp cce; checkRexps(ty, [e1, e2]))
+     | checkRexp (T.LOAD(ty,ea,_)) = (checkRexps(intTy, [ea]); ty)
      | checkRexp (T.PRED(e,_)) = checkRexp e
      | checkRexp (T.LET(_,e)) = checkRexp e
      | checkRexp (T.REXT(ty,_)) = ty
@@ -71,48 +71,56 @@ functor MLTreeCheckTy
      | checkRexp (T.BITSLICE(ty,_,_)) = ty
      | checkRexp (T.???) = intTy
 
-   fun checkFexp (T.FREG(ty,_)) = ty
-     | checkFexp (T.FLOAD(ty,_,_)) = ty
-     | checkFexp (T.FADD(ty,_,_)) = ty
-     | checkFexp (T.FSUB(ty,_,_)) = ty
-     | checkFexp (T.FMUL(ty,_,_)) = ty
-     | checkFexp (T.FDIV(ty,_,_)) = ty
-     | checkFexp (T.FABS(ty,_)) = ty
-     | checkFexp (T.FNEG(ty,_)) = ty
-     | checkFexp (T.FSQRT(ty,_)) = ty
-     | checkFexp (T.FCOND(ty,_,_,_)) = ty
+   and checkFexps (ty, es) = let
+          val tys = List.map (fn e => SOME (checkFexp e) handle AmbiguousType => NONE) es
+          in
+             chkTys(ty, tys)
+          end
+
+   and checkFexp (T.FREG(ty,_)) = raise AmbiguousType
+     | checkFexp (T.FLOAD(ty,ea,_)) = (checkRexps(intTy, [ea]); ty)
+     | checkFexp (T.FADD(ty,e1,e2)) = checkFexps(ty, [e1, e2])
+     | checkFexp (T.FSUB(ty,e1,e2)) = checkFexps(ty, [e1, e2])
+     | checkFexp (T.FMUL(ty,e1,e2)) = checkFexps(ty, [e1, e2])
+     | checkFexp (T.FDIV(ty,e1,e2)) = checkFexps(ty, [e1, e2])
+     | checkFexp (T.FABS(ty,e)) = checkFexps(ty, [e])
+     | checkFexp (T.FNEG(ty,e)) = checkFexps(ty, [e])
+     | checkFexp (T.FSQRT(ty,e)) = checkFexps(ty, [e])
+     | checkFexp (T.FCOND(ty,ce,e1,e2)) = (checkCCexp ce; checkFexps(ty, [e1, e2]))
      | checkFexp (T.CVTI2F(ty,_,_)) = ty
      | checkFexp (T.CVTF2F(ty,_,_)) = ty
-     | checkFexp (T.FCOPYSIGN(ty,_,_)) = ty
+     | checkFexp (T.FCOPYSIGN(ty,e1,e2)) = checkFexps(ty, [e1, e2])
      | checkFexp (T.FPRED(e,_)) = checkFexp e
      | checkFexp (T.FEXT(ty,_)) = ty
      | checkFexp (T.FMARK(e,_)) = checkFexp e
 
   (* don't care about ambiguous types *)
-   fun checkRexpB (ty, e) = checkRexp e = ty handle AmbiguousType => true
+   and checkRexpB (ty, e) = checkRexp e = ty handle AmbiguousType => true
 
-   fun checkCCexp cce = (case cce
-          of T.NOT cce => checkCCexp cce
+   and checkCCexp cce = checkCCexpB cce orelse raise TypeError
+
+   and checkCCexpB cce = (case cce
+          of T.NOT cce => checkCCexpB cce
 	   | ( T.AND (cce1, cce2) | T.OR (cce1, cce2) | T.XOR (cce1, cce2) | T.EQV (cce1, cce2) ) =>
-	     checkCCexp cce1 andalso checkCCexp cce2
+	     checkCCexpB cce1 andalso checkCCexpB cce2
 	   | T.CMP (ty, _, e1, e2) => ty = checkRexp e1 andalso ty = checkRexp e2
 	   | T.FCMP (fty, _, e1, e2) => fty = checkFexp e1 andalso fty = checkFexp e2
-	   | T.CCMARK (cce, _) => checkCCexp cce
+	   | T.CCMARK (cce, _) => checkCCexpB cce
 	   | T.CCEXT (ty, ccext) => true
           (* end case *))
 
     fun check stm = (case stm
 	   of T.MV (ty, d, e) => checkRexpB (ty, e)
-	    | T.CCMV (dst, cce) => checkCCexp cce
+	    | T.CCMV (dst, cce) => checkCCexpB cce
 	    | T.FMV (fty, dst, e) => checkFexp e = fty
 	    | T.COPY _ => true
 	    | T.FCOPY _ => true
 	    | T.JMP (e, _) => checkRexpB (intTy, e)
-	    | T.BCC (cce, _) => checkCCexp cce
+	    | T.BCC (cce, _) => checkCCexpB cce
 	    | T.CALL {funct, ...} => checkRexpB (intTy, funct)
 	    | T.FLOW_TO (stm, _) => check stm
 	    | T.RET _ => true
-	    | T.IF (cce, stm1, stm2) => checkCCexp cce andalso check stm1 andalso check stm2
+	    | T.IF (cce, stm1, stm2) => checkCCexpB cce andalso check stm1 andalso check stm2
 	    | T.STORE (ty, e1, e2, _) => checkRexpB (intTy, e1) andalso checkRexpB(intTy, e2)
 	    | T.FSTORE (fty, e1, e2, _) => checkRexpB (intTy, e1) andalso fty = checkFexp e2
 	    | T.REGION (stm, _) => check stm
