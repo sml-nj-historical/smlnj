@@ -570,6 +570,7 @@ structure TestStagedAllocation =
 
     fun lit i = T.LI (T.I.fromInt (wordTy, i))
 
+(*
    fun testVarargs _ = let
 	   val lab = Label.global "varargs"
 	   val tmp = C.newReg()
@@ -593,7 +594,7 @@ structure TestStagedAllocation =
            in
 	      0
 	   end
-
+*)
   end
 
 
@@ -605,7 +606,7 @@ structure TestStagedAllocation =
     (* maximum argument size in machine words *)
     val maxArgSz = 16
     val maxArgSzB = maxArgSz * wordSzB
-
+(*
 (* unit testing code *)
 structure Test = 
   struct
@@ -660,3 +661,6 @@ structure Test =
 	       ListPair.all test (List.map slotsOfCTy ts, anss) orelse raise Fail "failed test"
             end
   end
+*)
+
+structure Test = struct end

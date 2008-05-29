@@ -25,8 +25,8 @@ signature C_CALL = sig
 	    argMem : {szb : int, align : int},	(* memory requirements for stack-allocated *)
 						(* arguments; this value can be passed to *)
 						(* the paramAlloc callback. *)
-	    resLoc : arg_location option,	(* result location; NONE for void functions *)
-	    structRetLoc : {szb : int, align : int} option
+	    resLocs : arg_location list,	(* result location; NONE for void functions *)
+	    structRetLoc : {sz : int, align : int} option
 	  }
 
   (* translate a C function call with the given argument list into

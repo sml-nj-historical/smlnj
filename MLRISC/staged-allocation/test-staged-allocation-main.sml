@@ -334,16 +334,17 @@ structure Main =
     val pty3 = [CTy.C_STRUCT [CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float]]
     val pty4 = [CTy.C_STRUCT [CTy.C_PTR,CTy.C_float,CTy.C_float,CTy.C_float]]
     val pty5 = [CTy.C_double, CTy.C_unsigned CTy.I_int, CTy.C_PTR]
-    val pty6 = [CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR]
+    val pty6 = [CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR]
     val pty7 = [CTy.C_float]
     val pty8 = [CTy.C_PTR]
     val pty9 = [CTy.C_signed CTy.I_int]
     val pty10 = [CTy.C_signed CTy.I_int, CTy.C_signed CTy.I_int]
     val pty11 = [CTy.C_signed CTy.I_int, CTy.C_signed CTy.I_char, CTy.C_float]
+    val pty12 = [CTy.C_STRUCT [CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR]]
 
     fun main _ = BackTrace.monitor (fn () => let
 	val retTy = CTy.C_signed CTy.I_int
-	val paramTys = pty6
+	val paramTys = pty12
 
 	val cArgs = List.map genRandArg paramTys
 	val retVal = if retTy <> CTy.C_void then [genRandArg retTy] else []

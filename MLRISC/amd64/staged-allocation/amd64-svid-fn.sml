@@ -31,7 +31,6 @@ functor AMD64SVIDFn (
     fun toFpr r = (64, r)
     fun toFprs fprs = List.map toFpr fprs 
 
-
     datatype location_kind
       = K_GPR                (* general-purpose registers *)
       | K_FPR                (* floating-point registers *)
@@ -53,6 +52,7 @@ functor AMD64SVIDFn (
 	val calleeSaveFRegs = []
 	val spReg = T.REG (wordTy, C.rsp)
 
+	val frameAlignB = 16
 	val maxAlign = 16
 
       (* conventions for returning arguments *)
@@ -105,6 +105,9 @@ functor AMD64SVIDFn (
 
       end  (* CCs *)
 
+    val calleeSaveRegs : CB.cell list = List.map (fn (_, r) => r) CCs.calleeSaveRegs
+    val calleeSaveFRegs :CB.cell list = List.map (fn (_, r) => r) CCs.calleeSaveFRegs
+
     fun offSp 0 = CCs.spReg
       | offSp offset = T.ADD (wordTy, CCs.spReg, T.LI offset)
 
@@ -115,6 +118,7 @@ functor AMD64SVIDFn (
 			val offSp = offSp)
 
     datatype c_arg = datatype CCall.c_arg
+    datatype arg_location = datatype CCall.arg_location
 
   (* convert a list of C types to a list of eight bytes *)
     fun eightBytesOfCTys ([], [], ebs) = List.rev (List.map List.rev ebs)
@@ -213,9 +217,10 @@ functor AMD64SVIDFn (
 	   val (resLocs, structRetLoc, str) = layoutReturn retTy
 	   val (paramLocss, str) = layoutCall(str, paramTys)
 	 (* number of bytes allocated for the call *)
-	   val cStkSzB = SA.find(str, CCs.cCallStk)
+	   val frameSzB = SA.find(str, CCs.cCallStk)
+	   val argMem = {szb=CSizes.alignAddr(frameSzB, CCs.frameAlignB), align=CCs.frameAlignB}
            in
-	      {argLocs=paramLocss, argMem={szB=cStkSzB, align=8}, structRetLoc=structRetLoc, resLocs=resLocs}
+	      {argLocs=paramLocss, argMem=argMem, structRetLoc=structRetLoc, resLocs=resLocs}
 	   end
 
   (* copy the return value into the result location *)
@@ -237,10 +242,10 @@ functor AMD64SVIDFn (
 
     fun genCall {name, proto, paramAlloc, structRet, saveRestoreDedicated, callComment, args} = let
 	val {argLocs, argMem, resLocs, structRetLoc} = layout(proto)
-	val argAlloc = if ((#szB argMem = 0) orelse paramAlloc argMem)
+	val argAlloc = if ((#szb argMem = 0) orelse paramAlloc argMem)
 			then []
 			else [T.MV (wordTy, C.rsp, T.SUB (wordTy, CCs.spReg, 
-			      T.LI (T.I.fromInt (wordTy, #szB argMem))))]
+			      T.LI (T.I.fromInt (wordTy, #szb argMem))))]
 	val (copyArgs, gprUses, fprUses) = CCall.copyArgs(args, argLocs)
        (* the defined registers of the call depend on the calling convention *)
  	val defs = (case #conv proto
