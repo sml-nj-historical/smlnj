@@ -19,6 +19,7 @@ datatype tycpath (* (instantiated) functor type parameter path *)
   | TP_FCT of tycpath list * tycpath list
   | TP_APP of tycpath * tycpath list
   | TP_SEL of tycpath * int
+
 and tycon
   = GENtycTP of {stamp : ST.stamp,
 	       arity : int,
@@ -27,6 +28,7 @@ and tycon
 	       path : IP.path,
 	       stub : T.stubinfo option}
   | NoTP of T.tycon
+
 and tyckind
   = PRIMITIVE of int
   | DATATYPE of 

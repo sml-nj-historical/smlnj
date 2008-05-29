@@ -365,7 +365,7 @@ fun relativizeTyc epContext : T.tycon -> T.tycon * bool =
 	    val tyc_id = MI.tycId' tyc
 	in
 	    (* debugmsg ("mapTyc: "^ModuleId.idToString tyc_id); *)
-	    case EPC.lookTycPath(epContext,tyc_id)
+	    case EPC.lookTycEntPath(epContext,tyc_id)
 	     of NONE => (debugmsg "tyc not mapped 1"; (tyc,false))
 	      | SOME entPath =>
 		let val tyc' = T.PATHtyc{arity=TU.tyconArity tyc,

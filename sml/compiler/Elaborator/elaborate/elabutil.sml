@@ -40,9 +40,7 @@ val internalSym = SpecialSymbols.internalVarId
 datatype context
   = TOP      (* at top level -- not inside any module, rigid *)
   | INSTR    (* inside a rigid structure, i.e. not inside any functor body *)
-
-  | INFCT of {flex: Stamps.stamp -> bool,  depth: DebIndex.depth}
-             (* within functor body *)
+  | INFCT of {flex: Stamps.stamp -> bool} (* within functor body *)
   | INSIG    (* within a signature body *)
 
 type compInfo = Absyn.dec CompInfo.compInfo

@@ -79,7 +79,7 @@ fun lookStrDef(env,spath,epContext,err) =
 	     (case str
 		of M.ERRORstr => strDef
 	         | M.STR { sign, ... } =>
-		    (case EPC.lookStrPath(epContext,MU.strId str) 
+		    (case EPC.lookStrEntPath(epContext,MU.strId str) 
 		       of NONE => strDef
 			| SOME entPath => VARstrDef(sign,entPath))
 		 | M.STRSIG _ => bug "lookStrDef")
@@ -632,7 +632,7 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
 
       fun isFree (T.PATHtyc _) = true
         | isFree tc =
-            (case EPC.lookTycPath(epContext, MU.tycId tc)
+            (case EPC.lookTycEntPath(epContext, MU.tycId tc)
               of SOME _ => true 
                | _ => false)
 
@@ -681,8 +681,8 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
 						path=path, stamp=s}
 				  
 				   val _ =
-				       EPC.bindTycPath(epContext,
-						       MU.tycId ndt, ev)
+				       EPC.bindTycEntVar(epContext,
+						         MU.tycId ndt, ev)
                                in (ev, arity, ndt)
                                end
 			     | _ => bug "unexpected case in newdtyc (1)")
@@ -699,7 +699,7 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
                     val nwt = 
 			T.DEFtyc{stamp=stamp,strict=strict,path=path,
 				 tyfun=T.TYFUN{arity=arity, body=vizty body}}
-                    val _ = EPC.bindTycPath(epContext, MU.tycId nwt, ev)
+                    val _ = EPC.bindTycEntVar(epContext, MU.tycId nwt, ev)
 		in (ev, arity, nwt)
 		end
 	      | newwt _ = bug "newwt"

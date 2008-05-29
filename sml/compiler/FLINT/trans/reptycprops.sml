@@ -45,10 +45,10 @@ local
       structure V = VarCon
       structure FTM = FlexTycMap
 
-	(* A map from entity TYC or FCT stamps to the first corresponding EP  *)
+      (* A map from entity TYC or FCT stamps to the first corresponding EP *)
       structure EPMap = RedBlackMapFn (type ord_key = Stamps.stamp
 				       val compare = Stamps.compare)
-      (* A StampSet ADT to track of unique stamps (embedded in different
+      (* A StampSet ADT to keep track of unique stamps (embedded in different
 	 structures) we have seen *)
       structure StampSet = RedBlackSetFn (type ord_key = Stamps.stamp
 					  val compare = Stamps.compare)
@@ -64,8 +64,9 @@ in
       val printStrFct = ref true
 
       (* Support functions *)
-      fun debugmsg(m) = if !debugging then print ("RepTycProps: "^m^"\n")
-			else ()
+      fun debugmsg(m) = 
+          if !debugging then print ("RepTycProps: "^m^"\n") else ()
+
       fun bug msg = ErrorMsg.impossible("RepTycProps: " ^ msg)
 
       fun insertMap(m, x, obj) = 
@@ -74,19 +75,19 @@ in
 	     of SOME _ => m
 	      | NONE => (FTM.insert(m, x, obj))))
 
+      (* prettyprinting functions for debugging *)
       local
 	  structure ED = ElabDebug
+	  structure PM = PPModules 
 	  fun with_pp f = PP.with_default_pp f
       in 
-      fun ppTP tp = print "<tycpath>"
+        fun ppTP tp = print "<tycpath>"
 	(* ED.withInternals( 
 		fn() => with_pp (
 		fn ppstrm => (print "\n"; 
 			      PPType.ppTycPath SE.empty ppstrm tp; 
 			      print "\n"))) *)
-      local 
-	  structure PM = PPModules 
-      in
+
         (* s denotes ppstrm *) 
 
         fun ppSig sign =
@@ -115,9 +116,8 @@ in
 	ED.withInternals 
 	    (fn () => with_pp (fn s => (PM.ppFunsig s (fctsig, SE.empty, 20); 
 					print "\n")))
-      end
 
-      end (* local open PPModules *)
+      end (* local ElabDebug, PPModules *)
  (*
       fun eqTycon(T.NoTP tc, T.NoTP tc') = TU.equalTycon(tc,tc')
 	| eqTycon _ = raise Fail "Unimplemented"
@@ -140,7 +140,7 @@ in
 			   (print "\n===eqTycPath TP_VAR unequal===\n";
 			    printTPVar v1; print "\n"; printTPVar v2)
 		       else (); 
-	   false
+	               false
 		    end)
         | eqTycPath(T.TP_TYC tyc, T.TP_TYC tyc') = 
             (debugmsg "--eqTycPath Tycon"; eqTycon(tyc, tyc')) 

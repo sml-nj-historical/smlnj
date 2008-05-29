@@ -105,7 +105,7 @@ exception NoCore
 
 (** instPoly : ty * ty list -> ty 
  * instPoly(t,ts): the type t is instantiated with parameters ts.
- * Checked innvariant: ts <> nil <==>  t is polymophic (a POLYty) (DBM) *)
+ * Checked invariant: ts <> nil <==>  t is polymophic (a POLYty) (DBM) *)
 fun instPoly(ty: TP.ty, tys : TP.ty list) : TP.ty =
     case tys
       of nil =>  (* no instantiation parameters *)

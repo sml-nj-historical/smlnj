@@ -63,7 +63,7 @@ fun evalTyc (entv, tycExp, entEnv, epc, rpath,
                    val nstamps = Vector.map (fn _ => mkStamp()) stamps
                    val nst = Vector.sub(nstamps,0)
                    val nfreetycs = map viztyc freetycs
-                   val _ = EPC.bindTycPath (epc, nst, entv)
+                   val _ = EPC.bindTycEntVar (epc, nst, entv)
                in
 		   T.GENtyc{stamp=nst, arity=arity, eq=eq,
                             kind=T.DATATYPE{index=0, stamps=nstamps,
@@ -79,7 +79,7 @@ fun evalTyc (entv, tycExp, entEnv, epc, rpath,
 			   (#stamps dt, #freetycs dt, #family dt)
 			 | _ => bug "unexpected case in evalTyc-FMGENtyc (2)"
                    val nst = Vector.sub(nstamps,i)
-                   val _ = EPC.bindTycPath (epc, nst, entv)
+                   val _ = EPC.bindTycEntVar (epc, nst, entv)
                in
 		   T.GENtyc{stamp=nst, arity=arity,
                             kind=T.DATATYPE{index=i, stamps=nstamps,
@@ -93,7 +93,7 @@ fun evalTyc (entv, tycExp, entEnv, epc, rpath,
         | FORMtyc (T.DEFtyc{stamp,tyfun=T.TYFUN{arity, body},strict,path}) =>
           let val nst = mkStamp()
 	      (* tycId=stamp (this should perhaps be more abstract some day) *)
-	      val _ = EPC.bindTycPath (epc, nst, entv)
+	      val _ = EPC.bindTycEntVar (epc, nst, entv)
 	  in
 	      T.DEFtyc{stamp = nst,
 		       tyfun=T.TYFUN{arity=arity, 
@@ -161,7 +161,7 @@ and evalStr(strExp, depth, epc, entsv, entEnv, rpath,
                  *)
                 val epc = EPC.enterOpen(epc, entsv)
                 fun h (T.GENtyc gt, ep) =
-		    EPC.bindTycLongPath (epc, MI.tycId gt, ep)
+		    EPC.bindTycEntPath (epc, MI.tycId gt, ep)
                   | h _ = ()
                 val _ = ListPair.app h (abstycs, tyceps)
 	     in (rlzn, entEnv1)
@@ -211,7 +211,7 @@ and evalFct (fctExp, depth, epc, entEnv,
                 val rpath' = IP.IPATH [paramSym]
                 val paramRlzn as {entities=paramEntenv,...} =
                     Instantiate.instParam{sign=paramsig, entEnv=entEnv, 
-					  rpath=rpath', tdepth=depth,
+					  rpath=rpath',
 					  region=S.nullRegion, compInfo=compInfo}
 		val {rlzn=bodyRlzn,...} = 
 		    Instantiate.instFmBody{sign=bodysig, 
@@ -274,7 +274,7 @@ and evalApp(fctRlzn : Modules.fctEntity, argRlzn, depth, epc, rpath,
                                    compInfo=compInfo}
 
                    fun h (T.GENtyc gt, ep) = 
-                       EPC.bindTycLongPath (epc, MI.tycId gt, ep)
+                       EPC.bindTycEntPath (epc, MI.tycId gt, ep)
                      | h _ = ()
                    val _ = ListPair.app h (abstycs, tyceps)
                 in rlzn

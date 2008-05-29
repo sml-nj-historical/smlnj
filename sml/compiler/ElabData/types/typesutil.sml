@@ -561,13 +561,13 @@ fun compareTypes (spec : ty, actual: ty): bool =
 
 exception WILDCARDmatch
 
-fun indexBoundTyvars (tdepth : int, []: tyvar list) : unit = ()
+fun indexBoundTyvars ([]: tyvar list) : unit = ()
   | indexBoundTyvars (tdepth, lboundtvs) =
     let fun setbtvs (i, []) = ()
           | setbtvs (i, (tv as ref (OPEN _))::rest) =
-	     (tv := LBOUND{depth=tdepth,index=i};
+	     (tv := LBOUND;
 	      setbtvs (i+1, rest))
-          | setbtvs (i, (tv as ref (LBOUND _))::res) =
+          | setbtvs (i, (tv as ref (LBOUND))::res) =
              bug ("unexpected tyvar LBOUND in indexBoundTyvars")
           | setbtvs _ = bug "unexpected tyvar INSTANTIATED in mkPE"
      in setbtvs(0, lboundtvs)
@@ -589,7 +589,7 @@ fun indexBoundTyvars (tdepth : int, []: tyvar list) : unit = ()
  * type of a primop variable with the intrinsic type of the primop to obtain
  * the instantiation parameters for the primop relative to its intrinsic type.
  *)
-fun matchInstTypes(doExpandAbstract,tdepth,specTy,actualTy) =
+fun matchInstTypes(doExpandAbstract,specTy,actualTy) =
     let	fun debugmsg' msg = debugmsg ("matchInstTypes: " ^ msg)
 	fun expandAbstract(GENtyc {kind=ABSTRACT tyc', ...}) = 
 	    expandAbstract tyc'
@@ -625,7 +625,7 @@ fun matchInstTypes(doExpandAbstract,tdepth,specTy,actualTy) =
 	  (* GK: Does this make sense? matchInstTypes should not apply
 		 as is if all the metavariables have been translated 
 	         into LBOUNDs *)
-	  | match'(ty1, ty2 as VARty(tv' as (ref(LBOUND _)))) = 
+	  | match'(ty1, ty2 as VARty(tv' as (ref(LBOUND)))) = 
               if equalType(ty1,ty2) then ()
               else (debugmsg' "matchInstTypes: matching and LBOUND tyvar";
                     raise CompareTypes)
@@ -655,7 +655,7 @@ fun matchInstTypes(doExpandAbstract,tdepth,specTy,actualTy) =
         and match(ty1,ty2) = match'(headReduceType ty1, headReduceType ty2)
         val (actinst, actParamTvs) = instantiatePoly actualTy
         val (specinst, specGenericTvs) = instantiatePoly specTy
-        val _ = indexBoundTyvars(tdepth,specGenericTvs)
+        val _ = indexBoundTyvars(specGenericTvs)
 	val _ = debugmsg' "Instantiated both\n"
     in match(specinst, actinst);
        debugmsg' "matched\n";

@@ -143,7 +143,6 @@ sig
 							  (* abstract type *)
 	  | ExceptionDec of eb list			(* exception *)
 	  | StrDec of strb list				(* structure *)
-	  | AbsDec of strb list				(* abstract struct *)
 	  | FctDec of fctb list				(* functor *)
 	  | SigDec of sigb list				(* signature *)
 	  | FsigDec of fsigb list				(* funsig *)

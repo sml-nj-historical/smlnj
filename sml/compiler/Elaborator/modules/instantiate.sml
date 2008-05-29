@@ -38,7 +38,6 @@ sig
   val instParam : 
          {sign     : Modules.Signature,
           entEnv   : Modules.entityEnv,
-          tdepth   : DebIndex.depth,	(* # of enclosing fct abstractions? *)
           rpath    : InvPath.path,
           region   : SourceMap.region,
           compInfo : ElabUtil.compInfo} -> Modules.strEntity
@@ -147,7 +146,7 @@ fun signName (SIG { name, ... }) = getOpt (Option.map S.name name, "Anonymous")
 datatype instKind 
   = INST_ABSTR of M.strEntity     (* ??? *)
   | INST_FMBD                     (* result sig of a functor sig *)
-  | INST_PARAM of DebIndex.depth  (* functor parameter sig *)
+  | INST_PARAM                    (* functor parameter sig *)
 
 (* datatype stampInfo 
  * encodes an instruction about how to get a stamp for a new entity
@@ -960,7 +959,7 @@ exception INCONSISTENT_EQ
 (*************************************************************************
  * buildTycClass: int * slot * entityEnv * instKind * rpath * (unit->stamp)
  *                * EM.complainer
- *                -> (tycon * (entPath * tkind) list) option
+ *                -> (tycon * entPath) option
  *
  * This function deals with exploration of type nodes in the instance
  * graph.  It is similar to the buildStrClass function above, but it is
@@ -1000,7 +999,7 @@ fun buildTycClass (cnt, this_slot, instKind, rpath, mkStamp, err) =
         case instKind
          of INST_ABSTR {entities,...} =>
 	    (fn ep => T.ABSTRACT(EE.lookTycEP (entities, ep)))
-          | INST_PARAM tdepth => 
+          | INST_PARAM => 
               (fn _ => T.FORMAL)
           | INST_FMBD => (fn _ => T.FORMAL)
  
@@ -1384,7 +1383,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 		     | INST_FMBD =>
 		       (fn (sign, _, _, _) => M.FORMstr sign)
 
-		     | INST_PARAM tdepth => 
+		     | INST_PARAM => 
 		       (fn (sign, ep, rp, nenv) => 
 			  M.FORMstr sign))
 
@@ -1727,9 +1726,9 @@ fun instAbstr{sign, entEnv, srcRlzn, rpath, region, compInfo} =
   end
 
 (*** instantiation of the functor parameter signatures ***)
-fun instParam{sign, entEnv, tdepth, rpath, region, compInfo} =
+fun instParam{sign, entEnv, rpath, region, compInfo} =
   let val (rlzn, _, _, _) 
-        = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_PARAM tdepth,
+        = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_PARAM,
                       rpath=rpath, region=region, compInfo=compInfo}
    in rlzn
   end

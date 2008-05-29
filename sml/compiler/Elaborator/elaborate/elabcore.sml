@@ -716,7 +716,6 @@ let
 		in (cMARKdec(d,region'), env,tv,updt)
 	       end
 	   | StrDec _ => bug "strdec"
-	   | AbsDec _ => bug "absdec"
 	   | FctDec _ => bug "fctdec"
 	   | SigDec _ => bug "sigdec"
 	   | FsigDec _ => bug "fsigdec")

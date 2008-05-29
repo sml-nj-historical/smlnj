@@ -1,0 +1,59 @@
+Types:
+
+ModuleId:  (ElabData/modules/moduleid.sml)
+static identifiers (collectively called statIds)
+
+tycId
+  stamp
+sigId
+  stamp
+strId
+  { sign: stamp, rlzn: stamp }
+fctId
+  { paramsig: stamp, bodysig: stamp, rlzn: stamp }
+envId
+  stamp
+tmap -- maps from identifiers to static representations of corresponding entity
+  { m_tyc: T.gtrec StampM.map,
+    m_sig: M.sigrec StampM.map,
+    m_str: M.strEntity StrM.map,
+    m_fct: M.fctEntity FctM.map, 
+    m_env: M.envrec StampM.map }
+'a umap -- generic maps from static identifiers
+
+
+EntPath (ElabData/modules/entpath.sml)
+    entVar   -- entity variable 
+      stamp
+    entPath  -- entity path
+      entVar list
+    rEntPath -- reverse entity path
+      entVar list (reverse order)
+
+EntPathContext: (ElabData/modules/epcontext.sml)
+    pathmap -- mapping from statids to reverse entpaths
+      EP.rEntPath MI.umap
+    epContext -- "environment" for mapping statids to relative entity paths
+	datatype context
+	  = EMPTY
+	  | LAYER of {locals: pathmap ref, 
+			    lookContext: EP.entPath,
+			    bindContext: EP.rEntPath,
+			    outer: context}
+
+epContexts maintain a mapping from statids to reverse entity paths.
+It maintains a local pathmap for each closed structure scope (where closed
+means a functor body that won't have any references from outside the scope).
+It also maintains an entity path (lookContext) telling the entity path to the
+current structure node, and a memoized reverse version of that path in bindContext.
+
+To relativize an entity path to the current structure scope, we remove the longest
+common prefix of the path and the current lookContext path.
+
+Question: When is NONE passed to enterOpen? (entsv param of elabStr)
+  1. if elaborating the body of a functor with no result signature contraint
+
+
+ElabStr
+  Why could we have a ConstrainedStr(strexp,constraint) where constraint is NoSig?
+

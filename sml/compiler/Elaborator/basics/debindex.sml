@@ -23,8 +23,9 @@ in
 
 fun bug s = EM.impossible ("DebIndex: " ^ s)
 
-type depth = int
-type index = int
+type depth = int  (* depth of type abstractions *)
+type index = int  (* position within the sequence of type variables bound by
+                     an abstraction *)
 
 val top = 0
 
