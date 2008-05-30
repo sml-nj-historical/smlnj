@@ -192,7 +192,7 @@ functor AMD64SVIDFn (
 		       val (str, locs) = SA.doStagedAllocation(CCs.str0, returnStepper, slotsOfCTy retTy)
 		       val {sz, align} = CSizes.sizeOfTy retTy
 		       in
-		           (List.map cLocOfStagedAlloc locs, SOME {szb=szb, align=align}, str)
+		           (List.map cLocOfStagedAlloc locs, SOME {szb=sz, align=align}, str)
 		       end
             end
 
