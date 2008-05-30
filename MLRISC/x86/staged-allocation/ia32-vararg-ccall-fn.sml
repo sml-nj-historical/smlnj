@@ -20,7 +20,7 @@ functor IA32VarargCCallFn (
     structure C = X86Cells
     structure CB = CellsBasis
     structure CTy = CTypes
-    structure SVID = IA32SVIDFn(
+    structure CCall = IA32SVIDFn(
                        structure T = T
 		       val abi = abi
 		       val ix = ix
@@ -28,14 +28,23 @@ functor IA32VarargCCallFn (
 		     )
     structure VarargCCall = VarargCCallFn(
 			      structure T = T
-			      structure CCall = SVID
+			      structure CCall = CCall
 			      val gprParams = []
 			      val fprParams = []
-			      val spReg = SVID.spReg
+			      val spReg = CCall.spReg
 			      val wordTy = 64
 			      val newReg = C.newReg
 			    )
-    structure SA = SVID.SA
 
+    val wordTy = 64
+    fun lit i = T.LI (T.I.fromInt (wordTy, i))
+
+    fun callWithArgs (cFun, args) = let
+	   val triplets = VarargCCall.encodeArgs args
+	   in
+	      raise Fail "jump to the interpreter"
+	   end
+
+    fun genVarargs (cFun, args) = VarargCCall.genVarargs(cFun, args)
 
   end

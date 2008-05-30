@@ -1,4 +1,5 @@
-signature C_CALL = sig
+signature C_CALL = 
+  sig
 
     structure T : MLTREE
 
@@ -106,4 +107,4 @@ signature C_CALL = sig
     val callerSaveRegs : T.reg list	(* C caller-save registers *)
     val callerSaveFRegs : T.reg list	(* C caller-save floating-point registers *)
 
-end (* C_CALL *)
+  end (* C_CALL *)

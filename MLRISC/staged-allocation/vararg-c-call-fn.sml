@@ -15,7 +15,7 @@ functor VarargCCallFn (
     val spReg : T.rexp
     val wordTy : T.ty
     val newReg : 'a -> CellsBasis.cell
-  ) = struct
+  )  = struct
 
     structure T = T
     structure CB = CellsBasis
@@ -23,12 +23,6 @@ functor VarargCCallFn (
 
     datatype argument = I of int | R of real | B of bool | S of string
 
-    fun argToCTy (I _) = CTy.C_signed CTy.I_int
-      | argToCTy (R _) = CTy.C_double
-      | argToCTy (B _) = CTy.C_signed CTy.I_int
-      | argToCTy (S _) = CTy.C_PTR
-
-    val wordSzB = wordTy div 8
     val mem = T.Region.memory
     val stack = T.Region.stack
 
@@ -39,16 +33,18 @@ functor VarargCCallFn (
     val GPR = 0
     val FPR = 1
     val STK = 2
+    val FSTK = 3
 
     val intTy = wordTy
+    val maxArgSzB = 8
 
   (* offsets into the triplet *)
     val argOff = 0
     val kindOff = 1
     val locOff = 2
 
-    fun offTrip (arg, off) = T.LOAD(wordTy, T.ADD(wordTy, arg, lit (off*wordSzB)), mem)
-    fun offTripF (arg, off) = T.FLOAD(64, T.ADD(wordTy, arg, lit (off*wordSzB)), mem)
+    fun offTrip (arg, off) = T.LOAD(wordTy, T.ADD(wordTy, arg, lit (off*maxArgSzB)), mem)
+    fun offTripF (arg, off) = T.FLOAD(64, T.ADD(wordTy, arg, lit (off*maxArgSzB)), mem)
 
     val regToInt = CB.physicalRegisterNum
     fun labelOfReg (k, r) = Label.global ("put"^k^Int.toString (regToInt r))
@@ -56,12 +52,20 @@ functor VarargCCallFn (
     val interpLab = Label.global "interp"
     fun chooseRegsLab k = Label.global ("chooseRegs"^k)
     val chooseStkLab = Label.global "chooseStk"
+    val chooseFStkLab = Label.global "chooseFStk"
     val chooseKindsLab = Label.global "chooseKinds"
 
   (* store the argument at the stack offset *)
     fun genStoreStk arg = [
 	   T.DEFINE chooseStkLab,
 	   T.STORE(wordTy, T.ADD (wordTy, spReg, offTrip(arg, locOff)), offTrip(arg, argOff), mem),
+	   T.JMP (T.LABEL interpLab, [])
+        ]
+
+  (* store the argument at the stack offset *)
+    fun genStoreFStk arg = [
+	   T.DEFINE chooseFStkLab,
+	   T.FSTORE(64, T.ADD (wordTy, spReg, offTrip(arg, locOff)), offTripF(arg, argOff), mem),
 	   T.JMP (T.LABEL interpLab, [])
         ]
 
@@ -98,7 +102,8 @@ functor VarargCCallFn (
 	   T.DEFINE chooseKindsLab,
 	   T.BCC(T.CMP(wordTy, T.EQ, offTrip(arg, kindOff), lit GPR), chooseRegsLab "gpr"),
 	   T.BCC(T.CMP(wordTy, T.EQ, offTrip(arg, kindOff), lit FPR), chooseRegsLab "fpr"),
-	   T.BCC(T.CMP(wordTy, T.EQ, offTrip(arg, kindOff), lit STK), chooseStkLab)
+	   T.BCC(T.CMP(wordTy, T.EQ, offTrip(arg, kindOff), lit STK), chooseStkLab),
+	   T.BCC(T.CMP(wordTy, T.EQ, offTrip(arg, kindOff), lit FSTK), chooseFStkLab)
         ]
 
     val NIL = 0
@@ -140,6 +145,7 @@ functor VarargCCallFn (
 	   val loadGprs = List.concat (List.map (genPutGpr arg) gprParams)
 	   val loadFprs = List.concat (List.map (genPutFpr arg) fprParams)
 	   val storeStk = genStoreStk arg
+	   val storeFStk = genStoreFStk arg
            in
 	      List.concat [
 	         interpInstrs,
@@ -149,9 +155,39 @@ functor VarargCCallFn (
 		 loadGprs,
 		 loadFprs,
 		 storeStk,
+		 storeFStk,
 		 genCallC cFun
 	      ]
 	   end
 
+    val regToInt = CB.physicalRegisterNum
+
+    fun argToCTy (I _) = CTy.C_signed CTy.I_int
+      | argToCTy (R _) = CTy.C_double
+      | argToCTy (B _) = CTy.C_signed CTy.I_int
+      | argToCTy (S _) = CTy.C_PTR
+
+  (* runtime friendly representation of the C location *)
+    fun encodeCLoc (CCall.C_GPR (ty, r)) = (GPR, regToInt r)
+      | encodeCLoc (CCall.C_FPR (ty, r)) = (FPR, regToInt r)
+      | encodeCLoc (CCall.C_STK (ty, off)) = (STK, T.I.toInt (wordTy, off))
+      | encodeCLoc (CCall.C_FSTK (ty, off)) = (FSTK, T.I.toInt (wordTy, off))
+
+  (* takes a vararg and a location and returns the vararg triplet *)
+    fun varArgTriplet (arg, loc) = let
+	   val (k, l) = encodeCLoc loc
+           in
+	     (arg, k, l)
+	   end
+
+   (* package the arguments with their locations *)
+    fun encodeArgs args = let
+	    val argTys = List.map argToCTy args
+	    val {argLocs, ...} = CCall.layout {conv="c-call", retTy=CTy.C_void, paramTys=argTys}
+	  (* expect single locations, as we do not pass aggregates to vararg functions *)
+	    val argLocs = List.map List.hd argLocs
+            in
+  	        ListPair.mapEq varArgTriplet (args, List.rev argLocs)
+	    end
 
   end (* AMD64VarargCCallFn *)
