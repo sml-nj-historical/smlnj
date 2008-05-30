@@ -822,7 +822,9 @@ let
                           | PrimOpId.NonPrim => pat)
 		  | _ => pat
 
-	   in case pat
+	   in (VALdec([VB{exp=exp, tyvars=tvref, pat=pat, boundtvs=[]}]), updt) 
+(* old version
+             case pat
                of (VARpat _ | CONSTRAINTpat(VARpat _,_)) => (* variable pattern *)
                    (VALdec([VB{exp=exp, tyvars=tvref, pat=pat, boundtvs=[]}]),
                     [pat], updt) 
@@ -863,6 +865,7 @@ let
                               in (buildDec(oldvars, 1, []), oldvars, updt)
                              end
                    end
+*)
 	  end
 
     and elabVALdec(vb,etvs,env,rpath,region) =

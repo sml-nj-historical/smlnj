@@ -240,6 +240,7 @@ fun completeMatch'' rule [r as RULE(pat,MARKexp(_,(_,right)))] =
   | completeMatch'' rule (a::r) = a :: completeMatch'' rule r
   | completeMatch'' _ _ = bug "completeMatch''"
 
+(* used in handleExp *)
 fun completeMatch' (RULE(p,e)) =
     completeMatch'' (fn marker => RULE(p,marker e))
 

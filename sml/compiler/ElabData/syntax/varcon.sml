@@ -9,14 +9,13 @@ local structure A  = Access
       structure T  = Types
       structure S  = Symbol
       structure SP = SymPath
-
-
 in
 
 datatype var
   = VALvar of 		              (* ordinary variables *)
       {path : SP.path,
        typ : T.ty ref,
+       btvs : T.tyvar list ref,
        access : A.access,
        prim : PrimOpId.primId}
   | OVLDvar of       	      	      (* overloaded identifier *)

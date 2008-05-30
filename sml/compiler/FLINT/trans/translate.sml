@@ -1232,6 +1232,38 @@ and mkVBs (vbs, d) =
             LET(v, mkPE(exp, d, btvs), body)
 
         | mkVB (VB{pat, exp, boundtvs=btvs, ...}, body) =
+		   let val (newpat,oldvars,newvars) = aconvertPat(pat, compInfo)
+		         (* this is the only call of aconvertPat *)
+                       val newVarExps = map (fn v => VARexp(ref v,[])) newvars 
+		       val r = RULE(newpat, TUPLEexp(newVarExps))
+                       val newexp = CASEexp(exp, completeBind[r], false)
+
+                    in case oldvars
+                        of [] => (* implies btvs = [] *) (* OK *)
+                              LET(mkLvar(), mkExp(newexp, d), body)
+                         | _ => 
+                             let val newVar = newVALvar internalSym
+                                 val newVarPat = VARpat(newVar)
+                                 val newVarExp = VARexp(ref newVar, [])
+
+                                 val newVarDec = 
+                                     VALdec([VB{exp=newexp, tyvars=tvref, 
+                                                pat=newVarPat, boundtvs=[]}])
+
+                                 fun buildDec([], _, d) =  
+                                     LOCALdec(newVarDec, SEQdec(rev d))
+                                   | buildDec(vp::r, i, d) = 
+                                     let val nvb = VB{exp=TPSELexp(newVarExp,i),
+                                                      pat=vp, boundtvs=[],
+                                                      tyvars=ref[]}
+
+                                      in buildDec(r, i+1, VALdec([nvb])::d)
+                                     end
+
+                              in (buildDec(oldvars, 1, []), oldvars, updt)
+                             end
+                   end
+
             let val ee = mkPE(exp, d, btvs)
                 val rules = [(fillPat(pat, d), body), (WILDpat, unitLexp)]
                 val rootv = mkv()

@@ -157,8 +157,10 @@ val _ = ppDecDebug(">>decType: dec = ",dec)
 
 fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 		 occ:occ, generalize: bool, region) : tyvar list =
-    let val _ = debugmsg ("generalizeTy: "^SymPath.toString path)
+    let val _ = debugmsg (">>>generalizeTy: "^SymPath.toString path)
 	val _ = debugmsg ("userbound: ")
+        val _ = debugmsg ("generalize: "^Bool.toString generalize)
+        val _ = debugmsg ("occ: "^Int.toString(lamdepth occ)^", "^Bool.toString(toplevel occ))
 	val _ = List.app ppTyvarDebug userbound
 
 	val failure = ref false
@@ -241,7 +243,7 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 					   else ();
 					   (* reset depth to prevent later
 					      incorrect generalization inside
-					      a lambda expression.  See typechecking
+					      a lambda expression. See typechecking
 					      test 5.sml *)
 					   tv := OPEN{depth = lamdepth occ,
 						      eq = eq, kind = kind};
@@ -731,10 +733,10 @@ and decType0(decl,occ,tdepth,region) : dec =
 			     phrase=vb};
                    val vb = VB{pat=pat',exp=exp',tyvars=tv,
                       boundtvs=generalizePat(pat,tyvars,occ,tdepth,generalize,region)}
-in 
+		in 
                    debugPrint ("VB: ", ppVB, (vb,100));
                    debugmsg ("generalize: "^Bool.toString generalize);
-vb
+		   vb
                 end
 	       val _ = debugmsg ">>decType0: VALdec"
 	    in VALdec(map vbType vbs)
