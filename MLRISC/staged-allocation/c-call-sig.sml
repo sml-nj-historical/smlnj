@@ -11,6 +11,12 @@ signature C_CALL = sig
       | FARG of T.fexp
 	  (* fexp specifies floating-point argument *)
 
+    (* kinds of locations for passing C arguments *)
+    datatype location_kinds
+      = K_GPR                (* general-purpose registers *)
+      | K_FPR                (* floating-point registers *)
+      | K_MEM                (* memory locations *)
+
     (* An arg_location specifies the location of arguments/parameters
      * for a C call.  Offsets are given with respect to the low end 
      * of the parameter area. *)
@@ -26,7 +32,7 @@ signature C_CALL = sig
 						(* arguments; this value can be passed to *)
 						(* the paramAlloc callback. *)
 	    resLocs : arg_location list,	(* result location; NONE for void functions *)
-	    structRetLoc : {sz : int, align : int} option
+	    structRetLoc : {szb : int, align : int} option
 	  }
 
   (* translate a C function call with the given argument list into
@@ -96,5 +102,8 @@ signature C_CALL = sig
    *)
     val calleeSaveRegs : T.reg list	(* C callee-save registers *)
     val calleeSaveFRegs : T.reg list	(* C callee-save floating-point registers *)
+
+    val callerSaveRegs : T.reg list	(* C caller-save registers *)
+    val callerSaveFRegs : T.reg list	(* C caller-save floating-point registers *)
 
 end (* C_CALL *)

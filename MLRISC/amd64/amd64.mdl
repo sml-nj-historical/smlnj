@@ -107,7 +107,7 @@ architecture AMD64 =
        *  B+DISP	 == Displace{base=B, disp=DISP}
        *  I*SCALE+DISP   == Indexed{base=NONE,index=I,scale=SCALE,disp=D}
        *  B+I*SCALE+DISP == Indexed{base=SOME B,index=I,scale=SCALE,disp=DISP}
-       * Note1: The index register cannot be EBP.
+       * Note1: The index register cannot be rbp.
        *        The disp field must be one of Immed, ImmedLabel,  or Const.
        *)
 

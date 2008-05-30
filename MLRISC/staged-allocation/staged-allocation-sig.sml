@@ -17,36 +17,29 @@
  *
  *)
 
-(* Specify the language that we wish to call. *)
-signature TARGET_LANG = sig
-    type location_kind     (* kind of location for passing arguments, e.g., general-purpose 
-			    * registers, floating-point registers, memory, etc. *)
-end (* TARGET_LANG *)
-
 signature STAGED_ALLOCATION = 
   sig
 
-    structure T : MLTREE
-    structure TL : TARGET_LANG
-
+    type location_kinds                                (* gprs, fprs, stack locations, etc. *)
     type width = int                                   (* bit width *)
     type counter                                       (* abstract counter for a convention *)
     type str                                           (* counter -> "bit offset" *)
     datatype block_direction = UP | DOWN               (* direction in which the overflow block grows *)
-    type slot = (width * TL.location_kind * int)       (* the last field is the alignment *)
-    type reg = (width * T.reg)
+    type slot = (width * location_kinds * int)         (* the last field is the alignment *)
+    type reg
+    type reg_info = (width * reg)
 
     (* locations consist of machine registers, offsets in to overflow blocks, combinations of
      * locations, and narrowed locations.
      *)
     datatype location 
-      = REG of reg
+      = REG of reg_info
       | BLOCK_OFFSET of int
       | COMBINE of (location * location)  
-      | NARROW of (location * width * TL.location_kind) 
+      | NARROW of (location * width * location_kinds) 
 		       
     (* metadata assocated with a location *)
-    type location_info = (width * location * TL.location_kind)
+    type location_info = (width * location * location_kinds)
 			 
     (* language for specifying calling conventions *)
     datatype stage 
@@ -58,10 +51,10 @@ signature STAGED_ALLOCATION =
       | WIDEN of (width -> width)      
       | CHOICE of ( (slot -> bool) * stage) list     (* choose the first stage whose corresponding 
 						      * predicate is true. *)
-      | REGS_BY_ARGS of (counter * reg list)         (* the first n arguments go into the first n
+      | REGS_BY_ARGS of (counter * reg_info list)    (* the first n arguments go into the first n
 						      * registers *)
       | ARGCOUNTER of counter
-      | REGS_BY_BITS of (counter * reg list)         (* the first n bits arguments go into the first 
+      | REGS_BY_BITS of (counter * reg_info list)    (* the first n bits arguments go into the first 
 						      * n bits of registers *)
       | BITCOUNTER of counter                        
       | SEQ of stage list                            (* sequence of stages *)
@@ -84,7 +77,7 @@ signature STAGED_ALLOCATION =
      * [BITCOUNTER c, REGS_BY_BITS (c, regs)] (this function is taken from 
      * the paper). 
      *)
-    val useRegs : reg list -> (counter * stage)
+    val useRegs : reg_info list -> (counter * stage)
 
     (* find the value stored at a counter. *)
     val find : (str * counter) -> int

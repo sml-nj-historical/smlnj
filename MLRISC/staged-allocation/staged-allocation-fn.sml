@@ -9,23 +9,21 @@
  *)
 
 functor StagedAllocationFn (
-    structure T : MLTREE
-    structure TargetLang : TARGET_LANG
-    (* number of bits addressable in the target machine *)
+    type reg
+    type location_kinds
+    (* number of bytes addressable in the target machine *)
     val memSize : int
-  ) :> STAGED_ALLOCATION 
-	   where TL = TargetLang = 
-  struct
+  ) :> STAGED_ALLOCATION where type location_kinds = location_kinds
+                         where type reg = reg
+  = struct
 
-    structure T = T
-    structure TL = TargetLang
-
+    type location_kinds = location_kinds
     type width = int
-    type reg = (width * T.reg)
-    type location_kind = TL.location_kind
+    type reg = reg
+    type reg_info = (width * reg)
     type counter = int
     datatype block_direction = UP | DOWN
-    type slot = (width * location_kind * int)
+    type slot = (width * location_kinds * int)
 
     exception StagedAlloc
 	      
@@ -36,12 +34,12 @@ functor StagedAllocationFn (
      * locations, and narrowed locations.
      *)
     datatype location 
-      = REG of reg
+      = REG of reg_info
       | BLOCK_OFFSET of int
       | COMBINE of (location * location)  
-      | NARROW of (location * width * TL.location_kind) 
+      | NARROW of (location * width * location_kinds) 
 
-    type location_info = (width * location * location_kind)
+    type location_info = (width * location * location_kinds)
 
     (* language for specifying calling conventions *)
     datatype stage 
@@ -53,10 +51,10 @@ functor StagedAllocationFn (
       | WIDEN of (width -> width)      
       | CHOICE of ( (slot -> bool) * stage) list     (* choose the first stage whose corresponding 
 						      * predicate is true. *)
-      | REGS_BY_ARGS of (counter * reg list)         (* the first n arguments go into the first n
+      | REGS_BY_ARGS of (counter * reg_info list)    (* the first n arguments go into the first n
 						      * registers *)
       | ARGCOUNTER of counter
-      | REGS_BY_BITS of (counter * reg list)         (* the first n bits arguments go into the first 
+      | REGS_BY_BITS of (counter * reg_info list)    (* the first n bits arguments go into the first 
 						      * n bits of registers *)
       | BITCOUNTER of counter                        
       | SEQ of stage list                            (* sequence of stages *)

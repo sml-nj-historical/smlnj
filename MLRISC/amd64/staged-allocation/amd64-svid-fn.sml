@@ -25,32 +25,37 @@ functor AMD64SVIDFn (
     fun sum ls = List.foldl (op +) 0 ls
     fun szBOfCTy cTy = #sz (CSizes.sizeOfTy cTy)
     fun alignBOfCTy cTy = #align (CSizes.sizeOfTy cTy)
+    val spReg = T.REG (wordTy, C.rsp)
+    fun offSp 0 = spReg
+      | offSp offset = T.ADD (wordTy, spReg, T.LI offset)
 
-    fun toGpr r = (wordTy, r)
-    fun toGprs gprs = List.map toGpr gprs
-    fun toFpr r = (64, r)
-    fun toFprs fprs = List.map toFpr fprs 
+    structure CCall = CCallFn (
+		        structure T = T
+			structure C = C
+			val wordTy = wordTy
+			val offSp = offSp)
 
-    datatype location_kind
-      = K_GPR                (* general-purpose registers *)
-      | K_FPR                (* floating-point registers *)
-      | K_MEM                (* memory locations *)
+    datatype c_arg = datatype CCall.c_arg
+    datatype arg_location = datatype CCall.arg_location
+    datatype location_kinds = datatype CCall.location_kinds
 
     structure SA = StagedAllocationFn (
-                         structure T = T
-			 structure TargetLang = struct
-                           datatype location_kind = datatype location_kind
-                         end
+                         type reg = T.reg
+                         datatype location_kinds = datatype location_kinds
 			 val memSize = 8 (* bytes *))
 
     structure CCs =
       struct
-      
+
+        fun toGpr r = (wordTy, r)
+	fun toGprs gprs = List.map toGpr gprs
+	fun toFpr r = (64, r)
+	fun toFprs fprs = List.map toFpr fprs 
+
 	val calleeSaveRegs = toGprs [C.rbx, C.r12, C.r13, C.r14, C.r15]
 	val callerSaveRegs = toGprs [C.rax, C.rcx, C.rdx, C.rsi, C.rdi, C.r8, C.r9, C.r10, C.r11]
 	val callerSaveFRegs = toFprs (C.Regs CB.FP {from=0, to=15, step=1})
 	val calleeSaveFRegs = []
-	val spReg = T.REG (wordTy, C.rsp)
 
 	val frameAlignB = 16
 	val maxAlign = 16
@@ -107,18 +112,8 @@ functor AMD64SVIDFn (
 
     val calleeSaveRegs : CB.cell list = List.map (fn (_, r) => r) CCs.calleeSaveRegs
     val calleeSaveFRegs :CB.cell list = List.map (fn (_, r) => r) CCs.calleeSaveFRegs
-
-    fun offSp 0 = CCs.spReg
-      | offSp offset = T.ADD (wordTy, CCs.spReg, T.LI offset)
-
-    structure CCall = CCallFn (
-		        structure T = T
-			structure C = C
-			val wordTy = wordTy
-			val offSp = offSp)
-
-    datatype c_arg = datatype CCall.c_arg
-    datatype arg_location = datatype CCall.arg_location
+    val callerSaveRegs : CB.cell list = List.map (fn (_, r) => r) CCs.callerSaveRegs
+    val callerSaveFRegs :CB.cell list = List.map (fn (_, r) => r) CCs.callerSaveFRegs
 
   (* convert a list of C types to a list of eight bytes *)
     fun eightBytesOfCTys ([], [], ebs) = List.rev (List.map List.rev ebs)
@@ -195,8 +190,9 @@ functor AMD64SVIDFn (
   	        of CTy.C_void => ([], NONE, CCs.str0)
 		 | retTy => let
 		       val (str, locs) = SA.doStagedAllocation(CCs.str0, returnStepper, slotsOfCTy retTy)
+		       val {sz, align} = CSizes.sizeOfTy retTy
 		       in
-		           (List.map cLocOfStagedAlloc locs, SOME (CSizes.sizeOfTy retTy), str)
+		           (List.map cLocOfStagedAlloc locs, SOME {szb=szb, align=align}, str)
 		       end
             end
 
@@ -244,7 +240,7 @@ functor AMD64SVIDFn (
 	val {argLocs, argMem, resLocs, structRetLoc} = layout(proto)
 	val argAlloc = if ((#szb argMem = 0) orelse paramAlloc argMem)
 			then []
-			else [T.MV (wordTy, C.rsp, T.SUB (wordTy, CCs.spReg, 
+			else [T.MV (wordTy, C.rsp, T.SUB (wordTy, spReg, 
 			      T.LI (T.I.fromInt (wordTy, #szb argMem))))]
 	val (copyArgs, gprUses, fprUses) = CCall.copyArgs(args, argLocs)
        (* the defined registers of the call depend on the calling convention *)

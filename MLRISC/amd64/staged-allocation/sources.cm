@@ -7,7 +7,7 @@
  *)
 
 Library
-  structure TestStagedAllocation
+  structure TestSA
   structure Label
   structure Main
   structure CCalls

@@ -58,7 +58,7 @@ structure Main =
   struct
 
     structure CTy = CTypes
-    structure Test = TestStagedAllocation
+    structure Test = TestSA
 
     val retValVar = "retVal"
 

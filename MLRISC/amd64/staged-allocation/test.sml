@@ -496,7 +496,7 @@ structure FlowGraph = AMD64FlowGraph
 structure ChkTy = MLTreeCheckTy(structure T = T val intTy = 64)
 structure Vararg = AMD64VarargCCallFn(structure T = T)
 
-structure TestStagedAllocation =
+structure TestSA =
   struct
  
     val wordTy = 64
@@ -570,19 +570,17 @@ structure TestStagedAllocation =
 
     fun lit i = T.LI (T.I.fromInt (wordTy, i))
 
-(*
-   fun testVarargs _ = let
+   fun vararg _ = let
 	   val lab = Label.global "varargs"
 	   val tmp = C.newReg()
 	   val tmpC = C.newReg()
-	   val preCallInstrs = [T.MV(wordTy, C.rax, lit (List.length CCalls.CCs.fprParams))]
 	   val stms =
 	       List.concat [
 		   [T.EXT(AMD64InstrExt.PUSHQ(T.REG(64, Cells.rbp))),
 		    T.COPY (wordTy, [Cells.rbp], [Cells.rsp])],		   
 		   [T.MV(wordTy, tmp, T.REG(wordTy, C.rsi))],
 		   [T.MV(wordTy, tmpC, T.REG(wordTy, C.rdi))],
-	           Vararg.genVarArgs (T.REG(wordTy, tmpC), tmp, preCallInstrs),
+	           Vararg.genVarargs (T.REG(wordTy, tmpC), tmp),
 		   [T.EXT(AMD64InstrExt.LEAVE)],
 		   [T.RET []]
 		   ]
@@ -594,7 +592,6 @@ structure TestStagedAllocation =
            in
 	      0
 	   end
-*)
   end
 
 

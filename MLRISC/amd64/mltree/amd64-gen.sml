@@ -109,8 +109,6 @@ functor AMD64Gen (
 	  end handle _ => (i, NONE)
       end
 
-    fun immedLabel lab = I.ImmedLabel(T.LABEL lab)
-
     (* translate MLTREE condition codes to amd64 condition codes *)
     fun cond T.LT = I.LT | cond T.LTU = I.B
       | cond T.LE = I.LE | cond T.LEU = I.BE
@@ -352,6 +350,16 @@ functor AMD64Gen (
 
         and address (ea, mem) = address' 64 (ea, mem)
 
+      (* load the label into a temp register. this operation is necessary, since most instructions
+       * can only handle 32-bit immediates *)
+	and loadLabel src = let 
+            val tmp = newReg ()
+	    val tmpR = I.Direct (64, tmp)
+	    in 
+		emitInstr (move64 (src, tmpR));
+		tmpR
+	    end
+
         (* reduce an expression into an operand *)
         and operand ty (T.LI i) = if (fitsIn32Bits i)
             then I.Immed (toInt32 i) 
@@ -364,11 +372,13 @@ functor AMD64Gen (
 		   move (ty, I.Immed64 (Int64.fromLarge i'), dst);
 		   dst
                end
-          | operand _ (x as (T.CONST _ | T.LABEL _)) = I.ImmedLabel x
-          | operand _ (T.LABEXP le) = I.ImmedLabel le
+          | operand _ (x as (T.CONST _ | T.LABEL _)) = loadLabel (I.ImmedLabel x)
+          | operand _ (T.LABEXP le) = loadLabel (I.ImmedLabel le)
           | operand _ (T.REG(ty,r)) = gpr (ty, r)
           | operand _ (T.LOAD(ty,ea,mem)) = address (ea, mem)
           | operand ty t = I.Direct(ty, genExpr t)
+
+	and immedLabel lab = I.ImmedLabel(T.LABEL lab)
 
 	(* ensure that the operand is either an immed or register *)
 	and immedOrReg(ty, opnd as I.Displace _) = moveToReg (ty, opnd)
@@ -376,8 +386,8 @@ functor AMD64Gen (
 	  | immedOrReg(ty, opnd as I.LabelEA _)  = moveToReg (ty, opnd)
 	  | immedOrReg (ty, opnd)  = opnd
 
-	and regOrMem (ty, opnd) = 
-            if isImmediate opnd then moveToReg (ty, opnd) else opnd
+	and regOrMem (ty, opnd as (I.Immed _ | I.ImmedLabel _)) = moveToReg (ty, opnd)
+	  | regOrMem (ty, opnd) = opnd
 
 	and getExpr (exp as T.REG(_, rd)) = rd
           | getExpr exp = genExpr exp
@@ -390,7 +400,7 @@ functor AMD64Gen (
 	    end
 	
 	and isImmediate(I.Immed _) = true
-	  | isImmediate(I.ImmedLabel _) = true
+(*	  | isImmediate(I.ImmedLabel _) = true *)
 	  | isImmediate _ = false
 
         and genExpr' e = let

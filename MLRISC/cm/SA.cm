@@ -1,11 +1,11 @@
 Library
 
-	signature TARGET_LANG
 	signature STAGED_ALLOCATION
 	signature C_CALL
 
 	functor StagedAllocationFn
         functor CCallFn
+	functor VarargCCallFn
 is
 
 	$/basis.cm
@@ -18,5 +18,6 @@ is
 
 	../staged-allocation/c-call-sig.sml
         ../staged-allocation/c-call-fn.sml
+	../staged-allocation/vararg-c-call-fn.sml
 	../staged-allocation/staged-allocation-sig.sml
 	../staged-allocation/staged-allocation-fn.sml

@@ -14,6 +14,12 @@ functor CCallFn (
       | FARG of T.fexp
 	  (* fexp specifies floating-point argument *)
 
+    (* kinds of locations for passing C arguments *)
+    datatype location_kinds
+      = K_GPR                (* general-purpose registers *)
+      | K_FPR                (* floating-point registers *)
+      | K_MEM                (* memory locations *)
+
     (* An arg_location specifies the location of arguments/parameters
      * for a C call.  Offsets are given with respect to the low end 
      * of the parameter area. *)

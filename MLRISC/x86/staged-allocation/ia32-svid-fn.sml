@@ -62,35 +62,44 @@ functor IA32SVIDFn (
     val wordTy = 32
     fun gpr r = T.GPR(T.REG(32, r))
     fun fpr f = T.FPR(T.FREG(80, f))
+    val spReg = T.REG (32, C.esp)
 
-  (* kinds of locations for staged allocation *)
-    datatype location_kind
-      = K_GPR                   (* pass in general purpose registers *)
-      | K_FPR                   (* pass in floating-point registers *)
+    structure CCall = CCallFn(
+             structure T = T
+	     structure C = C
+	     val wordTy = wordTy
+	     fun offSp 0 = spReg
+	       | offSp offset = T.ADD (32, spReg, T.LI offset))
+		
+    datatype c_arg = datatype CCall.c_arg
+    datatype arg_location = datatype CCall.arg_location
+    datatype location_kinds = datatype CCall.location_kinds
 
-  (* staged allocation *)
     structure SA = StagedAllocationFn (
-                    structure T = T
-		    structure TargetLang =
-		      struct
-		        datatype location_kind = datatype location_kind
-		      end
+                    type reg = T.reg
+		    datatype location_kinds = datatype location_kinds
 		    val memSize = 8)
+
+    val calleeSaveRegs = [C.eax, C.ecx, C.edx]
+    val callerSaveRegs = [C.ebx, C.esi, C.edi]
+    val calleeSaveFRegs = []
+    val callerSaveFRegs = []
 
   (* calling conventions in the Staged Allocation language *)
     structure CCs =
       struct
 
       (* register conventions *)
-        val callerSaveRegs = List.map gpr [C.eax, C.ecx, C.edx]
-	val calleeSaveRegs = List.map gpr [C.ebx, C.esi, C.edi]
-	val spReg = T.REG (32, C.esp)
+        val callerSaveRegs = List.map gpr calleeSaveRegs
+	val calleeSaveRegs = List.map gpr calleeSaveRegs
+	val calleeSaveFRegs = []
+	val callerSaveFRegs = []
+
       (* the C calling convention requires that the FP stack be empty on function
        * entry.  We add the fpStk list to the defs when the fast_floating_point flag
        * is set.
        *)
 	val st0 = C.ST 0
-	val calleeSaveFRegs = []
       (* the C calling convention requires that the FP stack be empty on function
        * entry.  We add the fpStk list to the defs when the fast_floating_point flag
        * is set.
@@ -125,16 +134,7 @@ functor IA32SVIDFn (
 	(* initial store *)
 	val str0 = SA.init [cInt, cFloat, cStack]
 
-      end (* CallingConventions *)
-
-    structure CCall = CCallFn(
-             structure T = T
-	     structure C = C
-	     val wordTy = wordTy
-	     fun offSp 0 = CCs.spReg
-	       | offSp offset = T.ADD (32, CCs.spReg, T.LI offset))
-		       
-    datatype c_arg = datatype CCall.c_arg
+      end (* CCs *)
 
     (* classify a C type into its location kind (assuming that aggregates cannot be passed in registers) *)
     fun kindOfCTy (CTy.C_float | CTy.C_double | CTy.C_long_double) = K_FPR
@@ -261,7 +261,7 @@ functor IA32SVIDFn (
 	(* instruction to allocate space for arguments *)
 	  val argAlloc = if ((#szb argMem = 0) orelse paramAlloc argMem)
 		then []
-		else [T.MV(wordTy, C.esp, T.SUB(wordTy, CCs.spReg, T.LI(IntInf.fromInt(#szb argMem))))]
+		else [T.MV(wordTy, C.esp, T.SUB(wordTy, spReg, T.LI(IntInf.fromInt(#szb argMem))))]
 	  val (copyArgs, gprUses, fprUses) = CCall.copyArgs(args, argLocs)
 
 	(* the SVID specifies that the caller pops arguments, but the callee
@@ -279,7 +279,7 @@ functor IA32SVIDFn (
 	(* code to pop the arguments from the stack *)
 	  val popArgs = if calleePops orelse (explicitArgSzB = 0)
 		then []
-		else [T.MV(wordTy, C.esp, T.ADD(wordTy, CCs.spReg, T.LI(IntInf.fromInt explicitArgSzB)))]
+		else [T.MV(wordTy, C.esp, T.ADD(wordTy, spReg, T.LI(IntInf.fromInt explicitArgSzB)))]
 
 	(* code to copy the result into fresh pseudo registers *)
 	  val (resultRegs, copyResult) = (case resLocs

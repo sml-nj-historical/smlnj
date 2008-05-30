@@ -30,6 +30,7 @@ Library
 
         (* staged allocation *)
 	functor IA32SVIDFn
+  	functor IA32VarargCCallFn
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -82,6 +83,7 @@ is
 	(* C calls using staged allocation *)
 	../x86/staged-allocation/c-sizes.sml
 	../x86/staged-allocation/ia32-svid-fn.sml
+	../x86/staged-allocation/ia32-vararg-ccall-fn.sml
 
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION < 11042
 	../x86/mltree/orig-x86-fp.sml

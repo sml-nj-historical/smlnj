@@ -341,8 +341,13 @@ structure CCalls = IA32SVIDFn (
     structure T = X86MLTree
     structure CFG = X86CFG
     structure FlowGraph = X86FlowGraph
+    structure Vararg = IA32VarargCCallFn(
+                       structure T = X86MLTree
+                       fun ix x = x
+		       val fast_floating_point = ref true
+		       val abi = "")
 
-structure TestStagedAllocation =
+structure TestSA =
   struct
  
     val wordTy = 64
