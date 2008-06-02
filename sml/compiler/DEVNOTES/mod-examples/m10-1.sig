@@ -1,0 +1,1 @@
+signature BSIG = sig type u end
