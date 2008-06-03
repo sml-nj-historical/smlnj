@@ -41,9 +41,8 @@ functor AMD64SVID (
     datatype location_kind = K_GPR | K_FPR | K_MEM
     structure S = StagedAllocationFn (
 				  structure T = T
-				  structure TargetLang = struct
-                                        datatype location_kind = datatype location_kind
-                                      end
+				  type reg = T.reg
+                                  datatype location_kinds = datatype location_kind
 				  val memSize = 8
 				 )
 

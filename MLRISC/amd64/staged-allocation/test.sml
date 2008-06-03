@@ -328,11 +328,11 @@ structure AMD64Expand = CFGExpandCopies (
 structure CCalls = AMD64SVIDFn (
 		    structure T = AMD64MLTree)
 
-(*
-structure CCalls = AMD64SVID (
+
+structure OldCCalls = AMD64SVID (
            structure T = AMD64MLTree
            val frameAlign = 16)
-*)
+
 
 structure RA2 = 
     RISC_RA
