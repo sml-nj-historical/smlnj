@@ -20,7 +20,7 @@ functor AMD64VarargCCallFn (
     structure VarargCCall = VarargCCallFn(
 			      structure T = T
 			      structure CCall = CCall
-			      val gprParams = List.map #2 CCall.CCs.gprParams
+			      val gprParams = List.map #2 ((64, C.rax) :: CCall.CCs.gprParams)
 			      val fprParams = List.map #2 CCall.CCs.fprParams
 			      val gprTys = [32, 64]
 			      val fprTys = [32, 64]
@@ -45,11 +45,12 @@ functor AMD64VarargCCallFn (
            in
 	       (lab,
 		List.concat [
+                 (* the abi specifies that rax contains the number of floating-point arguments *)
 	           [T.MV(wordTy, C.rax, lit (List.length CCall.CCs.fprParams))],
 		   [push (T.REG(64, C.rbp)),
 		    T.COPY (wordTy, [C.rbp], [C.rsp])],		   
-		   [T.MV(wordTy, cFun, T.REG(wordTy, C.rsi))],    (* arg0 *)
-		   [T.MV(wordTy, args, T.REG(wordTy, C.rdi))],   (* arg1 *)
+		   [T.MV(wordTy, cFun, T.REG(wordTy, C.rdi))],    (* arg0 *)
+		   [T.MV(wordTy, args, T.REG(wordTy, C.rsi))],    (* arg1 *)
 	           VarargCCall.genVarargs(T.REG(wordTy, cFun), args),
 		   [leave],
 		   [T.RET []]

@@ -29,6 +29,8 @@ functor VarargCCallFn (
 
     datatype argument = I of int | R of real | B of bool | S of string
 
+    fun concatMap f xs = List.concat (List.map f xs)
+
     val mem = T.Region.memory
     val stack = T.Region.stack
     val wordSzB = wordTy div 8
@@ -36,6 +38,7 @@ functor VarargCCallFn (
     fun lit i = T.LI (T.I.fromInt (wordTy, i))
     fun gpr r = T.GPR (T.REG (wordTy, r))
     fun fpr (ty, f) = T.FPR (T.FREG (ty, f))
+    val regToInt = CB.physicalRegisterNum
 
   (* encodings for the kinds of argument locations *)
     val GPR = 0
@@ -57,33 +60,41 @@ functor VarargCCallFn (
 
     fun newLabel s = Label.label s ()
 
-    val regToInt = CB.physicalRegisterNum
-    fun labelOfReg (k, r) = newLabel ("put"^k^Int.toString (regToInt r))
-    val labelOfStk = newLabel "stk"
-    val interpLab = newLabel "interp"
+    fun labelOfReg (k, ty, r) = 
+	    Label.global (k^Int.toString ty^"."^Int.toString (regToInt r)^".reg")
 
-    val storeAtTyLabs = List.map (fn ty => (ty, newLabel ("storeAtTy"^Int.toString ty))) gprTys
-    val resolveTysLab = newLabel "resolveTys"
-
-    val resolveGprsAtTyLab = List.map (fn ty => (ty, newLabel ("resolveGprs"^Int.toString ty))) gprTys
-    val resolveFprsAtTyLab = List.map (fn ty => (ty, newLabel ("resolveFprs"^Int.toString ty))) fprTys
-    fun resolveRegsAtTyLab (ty, k) = let
+    local
+      fun atTyLab (k, tys) = List.map (fn ty => (ty, newLabel (k^Int.toString ty^"."))) tys
+      val gprLabs = atTyLab ("resolveGprs", gprTys)
+      val fprLabs = atTyLab ("resolveFprs", fprTys)
+      val stkLabs = atTyLab ("resolveStk", gprTys)
+      val fstkLabs = atTyLab ("resolveFstk", fprTys)
+    in
+    fun resolveAtKindAndTyLab (k, ty) = let
 	   val labs = (case k
-			of "gpr" => resolveGprsAtTyLab
-			 | "fpr" => resolveFprsAtTyLab
+			of "gpr" => gprLabs
+			 | "fpr" => fprLabs
+			 | "stk" => stkLabs
+			 | "fstk" => fstkLabs
 		      (* end case *))
 	   val SOME (_, lab) = List.find (fn (ty', _) => ty = ty') labs
            in
 	      lab
            end
+    end
 
-    val resolveGprsLab = newLabel "resolveGprs"
-    val resolveFprsLab = newLabel "resolveFprs"
-    fun resolveRegsLab "gpr" = resolveGprsLab
-      | resolveRegsLab "fpr" = resolveFprsLab
+    local
+      fun atKindLab k = (k, newLabel ("resolveTys."^k))
+      val labs = List.map atKindLab ["gpr", "fpr", "stk", "fstk"]
+    in
+    fun resolveTysLab k = let
+	    val SOME (_, lab) = List.find (fn (k', _) => k' = k) labs
+            in
+	        lab
+	    end
+    end
 
-    val resolveStkLab = newLabel "resolveStk"
-    val resolveFStkLab = newLabel "resolveFStk"
+    val interpLab = newLabel "interp"
     val resolveKindsLab = newLabel "resolveKinds"
     val gotoCLab = newLabel "gotoC"
 
@@ -91,65 +102,88 @@ functor VarargCCallFn (
     fun storeStk (arg, ty) = 
 	    T.STORE(ty, T.ADD (wordTy, spReg, offZippedArg(wordTy, arg, locOff)), offZippedArg(ty, arg, argOff), mem)
 
-  (* store the argument at the stack offset *)
-    fun genStoreStk arg ty = [
-	   T.DEFINE resolveStkLab,
+    fun genStoreStkAtTy arg ty = [
+	   T.DEFINE (resolveAtKindAndTyLab ("stk", ty)),
 	   storeStk(arg, ty),
 	   T.JMP (T.LABEL interpLab, [])
         ]
+
+  (* store the argument at the stack offset *)
+    fun genStoreStk arg tys = concatMap (genStoreStkAtTy arg) tys
 
   (* store a fpr argument on the stack *)
     fun storeFStk (arg, ty) =
 	    T.FSTORE(ty, T.ADD (wordTy, spReg, offZippedArg(wordTy, arg, locOff)), offZippedArgF(ty, arg, argOff), mem)
 
   (* store the argument at the stack offset *)
-    fun genStoreFStk arg ty = [
-	   T.DEFINE resolveFStkLab,
+    fun genStoreFStkAtTy arg ty = [
+	   T.DEFINE (resolveAtKindAndTyLab ("fstk", ty)),
 	   storeFStk (arg, ty),
 	   T.JMP (T.LABEL interpLab, [])
         ]
 
+  (* store the argument at the stack offset *)
+    fun genStoreFStk arg tys = concatMap (genStoreFStkAtTy arg) tys
+
   (* place the argument into the parameter register and jump back to the interpreter *)
     fun genPutGpr arg ty r = [
-	   T.DEFINE (labelOfReg ("gpr", r)),
+	   T.DEFINE (labelOfReg ("gpr", ty, r)),
 	   T.MV (ty, r, offZippedArg (ty, arg, argOff)), 
 	   T.JMP (T.LABEL interpLab, [])
         ]
 
   (* place the argument into the parameter register and jump back to the interpreter *)
     fun genPutFpr arg ty r = [
-	   T.DEFINE (labelOfReg ("fpr", r)),
+	   T.DEFINE (labelOfReg ("fpr", ty, r)),
 	   T.FMV (ty, r, offZippedArgF (ty, arg, argOff)),
 	   T.JMP (T.LABEL interpLab, [])
         ]
 
   (* resolve the function for loading the register *)
-    fun genResolveReg arg k (r, instrs) = let
+    fun genResolveReg arg k ty (r, instrs) = let
 	   val cmp = T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, locOff), lit (regToInt r))
            in
-	      T.BCC(cmp, labelOfReg (k, r)) :: instrs
+	      T.BCC(cmp, labelOfReg (k, ty, r)) :: instrs
 	   end
 
   (* check the type of the argument *)
-    fun checkTy arg (ty, resolveTyLab) = 
-	    T.BCC(T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, tyOff), lit ty), resolveTyLab)
+    fun checkTy arg k ty = 
+	    T.BCC(T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, tyOff), lit ty), resolveAtKindAndTyLab(k, ty))
+
+  (* resolve the type of the argument at a given kind *)
+    fun genResolveTysAtKind arg (k, tys) = 
+	 T.DEFINE (resolveTysLab k) :: List.map (checkTy arg k) tys
 
   (* resolve the type of the argument *)
     fun genResolveTys arg = 
-	 T.DEFINE resolveTysLab :: List.map (checkTy arg) storeAtTyLabs
+	    concatMap (genResolveTysAtKind arg) [("gpr", gprTys), ("fpr", fprTys), ("stk", gprTys), ("fstk", fprTys)]
+
+  (* resolve registers at a fixed type *)
+    fun genResolveRegsOfTy arg k ty regs = 
+	    T.DEFINE (resolveAtKindAndTyLab (k, ty)) :: 
+	    List.rev (T.JMP(T.LABEL interpLab, []) :: List.foldl (genResolveReg arg k ty) [] regs)
 
   (* resolve registers for loading function arguments *)
-    fun genResolveRegs arg k regs = 
-	    T.DEFINE (resolveRegsLab k) :: 
-	    List.rev (T.JMP(T.LABEL interpLab, []) :: List.foldl (genResolveReg arg k) [] regs)
+    fun genResolveRegs arg k tys regs = let
+	    val resolves = List.map (genResolveRegsOfTy arg k) tys
+            in
+	       concatMap (fn f => f regs) resolves
+	    end
 
-  (* resolve the kind of argument *)
-    fun genResolveKinds arg = [
-	   T.DEFINE resolveKindsLab,
-	   T.BCC(T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, kindOff), lit GPR), resolveRegsLab "gpr"),
-	   T.BCC(T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, kindOff), lit FPR), resolveRegsLab "fpr"),
-	   T.BCC(T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, kindOff), lit STK), resolveStkLab),
-	   T.BCC(T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, kindOff), lit FSTK), resolveFStkLab)
+  (* resolve an argument to a kind of location *)
+    fun resolveKind arg (kEncoding, k) = 
+	    T.BCC(T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, kindOff), lit kEncoding), resolveTysLab k)
+
+  (* resolve the argument to one of the location kinds *)
+    fun genResolveKinds arg = 
+	   T.DEFINE resolveKindsLab ::
+	   List.map (resolveKind arg) [(GPR, "gpr"), (FPR, "fpr"), (STK, "stk"), (FSTK, "fstk")]
+
+    fun resolveArgLocs arg = List.concat [
+           genResolveRegs arg "gpr" gprTys gprParams,
+	   genResolveRegs arg "fpr" fprTys fprParams,
+	   genStoreStk arg gprTys,
+	   genStoreFStk arg fprTys
         ]
 
   (* end of the argument list *)
@@ -180,31 +214,33 @@ functor VarargCCallFn (
 	   T.JMP (T.LABEL resolveKindsLab, [])		
         ]
 
+    fun genPutGprs arg = let
+	    val putGprs = List.map (genPutGpr arg) gprTys
+            in
+	       concatMap (fn f => concatMap f gprParams) putGprs
+	    end
+
+    fun genPutFprs arg = let
+	    val putfprs = List.map (genPutFpr arg) fprTys
+            in
+	       concatMap (fn f => concatMap f fprParams) putfprs
+	    end
+
   (* generate instructions for making a varargs call *)
     fun genVarargs (cFun, args) = let           
-	   val argReg = newReg ()
-	   val arg = T.REG(wordTy, argReg)
-	   val resolveGprs = genResolveRegs arg "gpr" gprParams
-	   val resolveFprs = genResolveRegs arg "fpr" fprParams
-(* FIXME *)
-	   val loadGprs = List.concat (List.map (genPutGpr arg wordTy) gprParams)
-	   val loadFprs = List.concat (List.map (genPutFpr arg 64) fprParams)
-           in
+	    val argReg = newReg ()
+	    val arg = T.REG(wordTy, argReg)
+            in
 	      List.concat [
 	         genInterp(args, argReg),
-		 genResolveKinds arg, 		 
-		 loadGprs,
-		 loadFprs, 
-		 resolveGprs,
-		 resolveFprs,
-(* FIXME *)
-		 genStoreStk arg wordTy,
-		 genStoreFStk arg 64,
+		 genResolveKinds arg,
+		 resolveArgLocs arg,
+		 genResolveTys arg,
+		 genPutGprs arg,
+		 genPutFprs arg,
 		 genCallC cFun
 	      ]
-	   end
-
-    val regToInt = CB.physicalRegisterNum
+	    end
 
     fun argToCTy (I _) = CTy.C_signed CTy.I_int
       | argToCTy (R _) = CTy.C_double

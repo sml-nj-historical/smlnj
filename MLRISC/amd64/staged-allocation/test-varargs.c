@@ -4,16 +4,17 @@
 
 #define NEW(ty)   (ty*)malloc(sizeof(ty))
 
-extern void varargs (void* fun, void* args);
+extern void varargs (void* fun, void* args, int);
 
 typedef struct {
   void* val;
   void* kind;
   void* loc;
-}  triplet_t;
+  void* ty;
+}  zipped_arg_t;
 
 typedef struct varargs_s {
-  triplet_t* hd;
+  zipped_arg_t* hd;
   struct varargs_s* tl;
 } varargs_t;
 
@@ -31,34 +32,45 @@ void Say (const char *fmt, ...)
 
 }
 
+#define N_ARGS 3
+#define GPR 0
+#define FPR 1
+#define STK 2
+#define FSTK 3
+
 int main () 
 {
-  varargs_t* args = NEW(varargs_t);
-  varargs_t* args2 = NEW(varargs_t);
-  varargs_t* args3 = NEW(varargs_t);
-
-  args->hd = NEW(triplet_t);
-  args->hd->val = (void*)"arg1=%d arg2=%f\n";
-  args->hd->kind = (void*)0;  /* gpr */
-  args->hd->loc = (void*)7;   /* rdi */
-  args->tl = args2;
+  varargs_t* args[N_ARGS];
   
-  args2->hd = NEW(triplet_t);
-  args2->hd->val = (void*)1024;
-  args2->hd->kind = (void*)0;  /* gpr */
-  args2->hd->loc = (void*)6;   /* rdi */
-  args2->tl = args3;
+  for(int i = 0 ; i < N_ARGS; i++)
+    args[i] = NEW(varargs_t);
+
+  args[N_ARGS-1]->tl = 0;
+  for (int i = N_ARGS-2; i >= 0; i--)
+    args[i]->tl = args[i+1];
+
+  args[0]->hd = NEW(zipped_arg_t);
+  args[0]->hd->val = (void*)"%f %X\n";
+  args[0]->hd->kind = (void*)GPR;
+  args[0]->hd->loc = (void*)7;   
+  args[0]->hd->ty = (void*)64;   
 
   double f = 3.14;
   void** x = (void*)&f;
 
-  args3->hd = NEW(triplet_t);
-  args3->hd->val = *x;
-  args3->hd->kind = (void*)1;  /* fpr */
-  args3->hd->loc = (void*)0;   /* xmm0 */
-  args3->tl = 0;  
+  args[1]->hd = NEW(zipped_arg_t);
+  args[1]->hd->val = *x;
+  args[1]->hd->kind = (void*)FPR;
+  args[1]->hd->loc = (void*)0;
+  args[1]->hd->ty = (void*)64;   
 
-  varargs(Say, args);
+  args[2]->hd = NEW(zipped_arg_t);
+  args[2]->hd->val = (void*)0xdeadbeef;
+  args[2]->hd->kind = (void*)GPR;
+  args[2]->hd->loc = (void*)6;
+  args[2]->hd->ty = (void*)32;   
+
+  varargs(Say, args[0], N_ARGS*sizeof(void*));
 
   return 0;
 }
