@@ -1,3 +1,5 @@
+val fast_floating_point = ref true
+
 (*
  * User defined constant type.  Dummy for now.
  * In practice, you'll want to use this type to implement constants with
@@ -88,9 +90,9 @@ struct
 
     val compileSext = CompInstrExt.compileSext
 
-    fun compileRext _ = raise Fail "AMD64CompExtFn.compileRext"
-    fun compileFext _ = raise Fail "AMD64CompExtFn.compileFext"
-    fun compileCCext _ = raise Fail "AMD64CompExtFn.compileCCext"
+    fun compileRext _ = raise Fail "CompExtFn.compileRext"
+    fun compileFext _ = raise Fail "CompExtFn.compileFext"
+    fun compileCCext _ = raise Fail "CompExtFn.compileCCext"
 
 end
 
@@ -109,21 +111,21 @@ structure X86GasPseudoOps =
    X86GasPseudoOps(structure T=X86MLTree
 		   structure MLTreeEval=X86MLTreeEval)
 
+(*
 functor X86PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = X86GasPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
+*)
 
-(*
 functor X86PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = X86DarwinPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-*)
 
 structure X86PseudoOps = X86PseudoOpsFn(
             structure T = X86MLTree
@@ -187,7 +189,6 @@ structure X86CFG = ControlFlowGraph (
 	    structure InsnProps = X86InsnProps
 	    structure Asm = X86Asm)
 
-(*structure X86Stream = InstructionStream(X86PseudoOps)*)
 structure X86MLTStream = MLTreeStream (
 		      structure T = X86MLTree
 		      structure S = X86Stream)
@@ -242,7 +243,7 @@ structure X86 = X86 (
            val arch = ref Pentium (* Lowest common denominator *)
 
 		  fun cvti2f _ = raise Fail ""
-		  val fast_floating_point = ref true
+		  val fast_floating_point = fast_floating_point
 		  )
 
 structure X86Emit = CFGEmit (
@@ -321,7 +322,7 @@ structure X86RA = X86RA (
          fun beforeRA (Graph.GRAPH graph) = ()
          datatype spillOperandKind = datatype spill_operand_kind
 	 datatype raPhase = datatype ra_phase
-	 val fast_floating_point = ref true
+	 val fast_floating_point = fast_floating_point
          structure Int = IntRA
          structure Float = FloatRA)
 
@@ -333,7 +334,7 @@ structure X86Expand = CFGExpandCopies (
 structure CCalls = IA32SVIDFn (
            structure T = X86MLTree
            fun ix x = x
-	   val fast_floating_point = ref true
+	   val fast_floating_point = fast_floating_point
            val abi = "")
 
 
@@ -344,40 +345,19 @@ structure CCalls = IA32SVIDFn (
     structure Vararg = IA32VarargCCallFn(
                        structure T = X86MLTree
                        fun ix x = x
-		       val fast_floating_point = ref true
-		       val abi = "")
+		       val fast_floating_point = fast_floating_point
+		       val abi = ""
+		       fun push e = T.EXT(X86InstrExt.PUSHL e)
+		       val leave = T.EXT X86InstrExt.LEAVE
+		       )
 
 structure TestSA =
   struct
  
-    val wordTy = 64
-   
-    fun codegen (functionName, target, proto, initStms, args) = let 
-        val _ = Label.reset()
+    val wordTy = 32
 
-	val [functionName, target] = List.map Label.global [functionName, target]
-
+    fun gen (functionName, stms, result) = let
         val insnStrm = FlowGraph.build()
-	(* construct the C call *)
-	val {result, callseq} = CCalls.genCall {
-	           name=T.LABEL target,
-	           paramAlloc=fn _ => false,
-	           structRet=fn _ => T.REG (64, Cells.eax),
-	           saveRestoreDedicated=fn _ => {save=[], restore=[]},
-	           callComment=NONE,
-	           proto=proto,
-	           args=args}
-
-	fun wordLit i = T.LI (T.I.fromInt (wordTy, i))
-
-	val stms = List.concat [
-		   [T.EXT(X86InstrExt.PUSHL(T.REG(64, Cells.ebp))),
-		    T.COPY (wordTy, [Cells.ebp], [Cells.esp])],		   
-		   initStms,
-		   callseq, 
-		   [T.EXT(X86InstrExt.LEAVE)],
-		   [T.RET []]]
-
         val stream as X86Stream.STREAM
            { beginCluster,  (* start a cluster *)
              endCluster,    (* end a cluster *)
@@ -389,7 +369,7 @@ structure TestSA =
              annotation,    (* add an annotation *)
              ... } =
              X86.selectInstructions insnStrm
-	fun doit () = (
+   	fun doit () = (
 	    beginCluster 0;      (* start a new cluster *)
             pseudoOp PseudoOpsBasisTyp.TEXT;		  
 	    pseudoOp (PseudoOpsBasisTyp.EXPORT [functionName]);    
@@ -400,9 +380,37 @@ structure TestSA =
 	val cfg = doit ()
 	val cfg = X86RA.run cfg
 	val cfg = X86Expand.run cfg
+       in
+	(cfg, stream)
+       end (* gen *)
+
+    fun codegen (functionName, target, proto, initStms, args) = let 
+	val [functionName, target] = List.map Label.global [functionName, target]
+
+	(* construct the C call *)
+	val {result, callseq} = CCalls.genCall {
+	           name=T.LABEL target,
+	           paramAlloc=fn _ => false,
+	           structRet=fn _ => T.REG (32, Cells.eax),
+	           saveRestoreDedicated=fn _ => {save=[], restore=[]},
+	           callComment=NONE,
+	           proto=proto,
+	           args=args}
+
+	fun wordLit i = T.LI (T.I.fromInt (wordTy, i))
+
+	val stms = List.concat [
+		   [T.EXT(X86InstrExt.PUSHL(T.REG(32, Cells.ebp))),
+		    T.COPY (wordTy, [Cells.ebp], [Cells.esp])],		   
+		   initStms,
+		   callseq, 
+		   [T.EXT(X86InstrExt.LEAVE)],
+		   [T.RET []]]
+
+
         in  
-         (cfg, stream)        (* end the cluster *)
-       end (* codegen *)
+           gen(functionName, stms, result)
+        end (* codegen *)
 
     fun dumpOutput (cfg, stream) = let
 	val (cfg as Graph.GRAPH graph, blocks) = 
@@ -411,6 +419,17 @@ structure TestSA =
 	in
 	  X86Emit.asmEmit (cfg, blocks)
 	end (* dumpOutput *)
+
+   fun vararg _ = let
+           val _ = Label.reset()
+	   val (lab, stms) = Vararg.genVarargs()	          
+	   val asmOutStrm = TextIO.openOut "mlrisc.s"
+	   fun doit () = dumpOutput(gen(lab, stms, [T.GPR (T.REG (wordTy, C.eax))]))
+	   val _ = AsmStream.withStream asmOutStrm doit ()
+	   val _ = TextIO.closeOut asmOutStrm
+           in
+	      0
+	   end
 
   end
 

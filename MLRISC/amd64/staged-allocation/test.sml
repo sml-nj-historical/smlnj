@@ -493,7 +493,11 @@ structure T = AMD64MLTree
 structure CFG = AMD64CFG
 structure FlowGraph = AMD64FlowGraph
 structure ChkTy = MLTreeCheckTy(structure T = T val intTy = 64)
-structure Vararg = AMD64VarargCCallFn(structure T = T)
+structure Vararg = AMD64VarargCCallFn(
+                       structure T = T
+		       fun push e = T.EXT(AMD64InstrExt.PUSHQ e)
+		       val leave = T.EXT(AMD64InstrExt.LEAVE)
+		   )
 
 structure TestSA =
   struct
@@ -570,22 +574,10 @@ structure TestSA =
     fun lit i = T.LI (T.I.fromInt (wordTy, i))
 
    fun vararg _ = let
-	   val lab = Label.global "varargs"
-	   val tmp = C.newReg()
-	   val tmpC = C.newReg()
-	   val stms =
-	       List.concat [
-		   [T.EXT(AMD64InstrExt.PUSHQ(T.REG(64, Cells.rbp))),
-		    T.COPY (wordTy, [Cells.rbp], [Cells.rsp])],		   
-		   [T.MV(wordTy, tmp, T.REG(wordTy, C.rsi))],
-		   [T.MV(wordTy, tmpC, T.REG(wordTy, C.rdi))],
-	           Vararg.genVarargs (T.REG(wordTy, tmpC), tmp),
-		   [T.EXT(AMD64InstrExt.LEAVE)],
-		   [T.RET []]
-		   ]
-	          
+           val _ = Label.reset()
+	   val (lab, varargStms) = Vararg.genVarargs()	          
 	   val asmOutStrm = TextIO.openOut "mlrisc.s"
-	   fun doit () = dumpOutput(gen(lab, stms, [T.GPR (T.REG (wordTy, C.rax))]))
+	   fun doit () = dumpOutput(gen(lab, varargStms, [T.GPR (T.REG (wordTy, C.rax))]))
 	   val _ = AsmStream.withStream asmOutStrm doit ()
 	   val _ = TextIO.closeOut asmOutStrm
            in
