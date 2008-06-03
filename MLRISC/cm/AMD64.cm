@@ -21,7 +21,7 @@ Library
 	functor AMD64Opcodes
 	functor AMD64RegAlloc
 	functor AMD64SpillInstr
-	functor AMD64SVID
+(*	functor AMD64SVID*)
 	functor AMD64SVIDFn
 	functor AMD64VarargCCallFn
 	functor AMD64Jumps
@@ -59,7 +59,7 @@ is
 
 	(* C calls using staged allocation *)
 	../amd64/staged-allocation/c-sizes.sml
-	../amd64/staged-allocation/amd64-svid.sml
+(*	../amd64/staged-allocation/amd64-svid.sml*)
 	../amd64/staged-allocation/amd64-svid-fn.sml
 	../amd64/staged-allocation/amd64-vararg-ccall-fn.sml
 
