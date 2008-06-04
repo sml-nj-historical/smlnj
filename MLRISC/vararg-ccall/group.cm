@@ -66,15 +66,13 @@ is
   $/controls-lib.cm
   $/pp-lib.cm
 
-  ../../cm/Control.cm
-  ../../cm/Lib.cm
-  ../../cm/MLRISC.cm
-  ../../cm/Graphs.cm
-  ../../cm/MLTREE.cm
-  ../../cm/RA.cm
-  ../../cm/SA.cm
-  ../../cm/Visual.cm
-  ../../cm/Peephole.cm
-  ../../cm/IA32.cm
-(*  ../../cm/IA32-Peephole.cm*)
-
+  ../cm/Control.cm
+  ../cm/Lib.cm
+  ../cm/MLRISC.cm
+  ../cm/Graphs.cm
+  ../cm/MLTREE.cm
+  ../cm/RA.cm
+  ../cm/SA.cm
+  ../cm/Visual.cm
+  ../cm/Peephole.cm
+  ../cm/IA32.cm

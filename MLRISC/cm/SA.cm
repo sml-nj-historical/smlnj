@@ -6,6 +6,7 @@ Library
 	functor StagedAllocationFn
         functor CCallFn
 	functor VarargCCallFn
+        structure VarargCCallConstants
 is
 
 	$/basis.cm
@@ -15,12 +16,10 @@ is
 	$/Lib.cm
 	$/Graphs.cm
 	$/MLTREE.cm
-(*	$smlnj/init/init.cmi : cm
-	$c/internals/c-int.cm
-*)
 
 	../staged-allocation/c-call-sig.sml
         ../staged-allocation/c-call-fn.sml
+	../vararg-ccall/vararg-ccall-constants.sml
 	../staged-allocation/vararg-c-call-fn.sml
 	../staged-allocation/staged-allocation-sig.sml
 	../staged-allocation/staged-allocation-fn.sml

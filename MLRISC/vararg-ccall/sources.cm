@@ -1,0 +1,24 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Defines public interface to code generator
+ *)
+
+Library
+  structure VarArgs
+  structure IA32VarargCCall
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  $smlnj-tdp/plugins.cm
+  $c/c.cm
+  $smlnj/init/init.cmi : cm
+  $c/internals/c-int.cm
+
+  wrapper.cm
+  varargs.sml
+  vararg-ccall.sml
+  ia32-vararg-ccall.sml

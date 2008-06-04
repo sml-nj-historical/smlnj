@@ -7,14 +7,15 @@
 extern void varargs (void* fun, void* args, int);
 
 typedef struct {
-  void* val;
-  void* kind;
-  void* loc;
-  void* ty;
+  long long val;
+  long long kind;
+  long long loc;
+  long long ty;
 }  zipped_arg_t;
 
 typedef struct varargs_s {
   zipped_arg_t* hd;
+  int pad;
   struct varargs_s* tl;
 } varargs_t;
 
@@ -35,10 +36,11 @@ void Say (const char *fmt, ...)
 #define N_ARGS 2
 #define STK 2
 #define FSTK 3
+#define OFF(i) (i*4)
 
 int alignb (int n) {
   n += 2;
-  n *= sizeof(void*);
+  n *= sizeof(long long*);
   n += 16-(n%16);
   return n-(2*sizeof(void*));
 }
@@ -55,21 +57,18 @@ int main ()
     args[i]->tl = args[i+1];
 
   args[0]->hd = NEW(zipped_arg_t);
-  args[0]->hd->val = (void*)"arg1=%f\n";
-  args[0]->hd->kind = (void*)STK;
-  args[0]->hd->loc = (void*)(0*4);   
-
-  float f = 3.14f;
-  void** x = (void*)&f;
-  printf("%f\n",*(float*)x);
+  args[0]->hd->val = (long long)"arg1=%d\n";
+  args[0]->hd->kind = (long long)STK;
+  args[0]->hd->loc = (long long)OFF(0);
+  args[0]->hd->ty = (long long)32;
 
   args[1]->hd = NEW(zipped_arg_t);
-  args[1]->hd->val = *x;
-  args[1]->hd->kind = (void*)FSTK;
-  args[1]->hd->loc = (void*)(1*4);
-  args[1]->hd->ty = (void*)32;
+  args[1]->hd->val = (long long)69;
+  args[1]->hd->kind = (long long)STK;
+  args[1]->hd->loc = (long long)OFF(1);
+  args[1]->hd->ty = (long long)32;
 
-  varargs(Say, args[0], alignb(N_ARGS));
+  varargs(Say, args[0], 16);
 
   return 0;
 }

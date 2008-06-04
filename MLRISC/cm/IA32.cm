@@ -42,11 +42,6 @@ is
 	$/Graphs.cm
 	$/MLTREE.cm
 	$/SA.cm
-(*
-	$c/c.cm
-	$smlnj/init/init.cmi : cm
-	$c/internals/c-int.cm
-*)
 
 #else
 	basis.cm

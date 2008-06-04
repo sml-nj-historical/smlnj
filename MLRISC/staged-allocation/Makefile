@@ -16,12 +16,12 @@ build-amd64:
 build-x86:
 	ml-build $(ML_BUILD_FLAGS) ../x86/staged-allocation/sources.cm Main.main test-main
 	sml @SMLcmdname=test-main @SMLload=test-main
-	gcc -g  -c mlrisc.s
-	gcc -g   -c glue.c
-	gcc -g   -c sanity.c
-	gcc -g   mlrisc.o glue.o sanity.o -o sanity
-	gcc -g   -c main.c
-	gcc -g   mlrisc.o glue.o main.o -o main
+	gcc -m32 -g  -c mlrisc.s
+	gcc -m32 -g   -c glue.c
+	gcc -m32 -g   -c sanity.c
+	gcc -m32 -g   mlrisc.o glue.o sanity.o -o sanity
+	gcc -m32 -g   -c main.c
+	gcc -m32 -g   mlrisc.o glue.o main.o -o main
 	./main > main.out
 	./sanity > sanity.out
 	diff -Naur main.out sanity.out

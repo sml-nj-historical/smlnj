@@ -25,32 +25,18 @@ functor VarargCCallFn (
 
     structure T = T
     structure CB = CellsBasis
-    structure CTy = CTypes
-
-    datatype argument = I of int | R of real | B of bool | S of string
+    structure Consts = VarargCCallConstants
 
     fun concatMap f xs = List.concat (List.map f xs)
 
     val mem = T.Region.memory
     val stack = T.Region.stack
-    val defaultWidthB = 8
+    val defaultWidthB = Consts.defaultWidthB
 
     fun lit i = T.LI (T.I.fromInt (wordTy, i))
     fun gpr r = T.GPR (T.REG (wordTy, r))
     fun fpr (ty, f) = T.FPR (T.FREG (ty, f))
     val regToInt = CB.physicalRegisterNum
-
-  (* encodings for the kinds of argument locations *)
-    val GPR = 0
-    val FPR = 1
-    val STK = 2
-    val FSTK = 3
-
-  (* offsets into the zipped argument *)
-    val argOff = 0
-    val kindOff = 1
-    val locOff = 2
-    val tyOff = 3
 
   (* load a value from the zipped argument *)
     fun offZippedArg (ty, arg, off) = T.LOAD(ty, T.ADD(wordTy, arg, lit (off*defaultWidthB)), mem)
@@ -100,7 +86,7 @@ functor VarargCCallFn (
 
   (* store a gpr argument on the stack *)
     fun storeStk (arg, ty) = 
-	    T.STORE(ty, T.ADD (wordTy, spReg, offZippedArg(wordTy, arg, locOff)), offZippedArg(ty, arg, argOff), mem)
+	    T.STORE(ty, T.ADD (wordTy, spReg, offZippedArg(wordTy, arg, Consts.locOff)), offZippedArg(ty, arg, Consts.argOff), mem)
 
     fun genStoreStkAtTy arg ty = [
 	   T.DEFINE (resolveAtKindAndTyLab ("stk", ty)),
@@ -113,7 +99,7 @@ functor VarargCCallFn (
 
   (* store a fpr argument on the stack *)
     fun storeFStk (arg, ty) =
-	    T.FSTORE(ty, T.ADD (wordTy, spReg, offZippedArg(wordTy, arg, locOff)), offZippedArgF(ty, arg, argOff), mem)
+	    T.FSTORE(ty, T.ADD (wordTy, spReg, offZippedArg(wordTy, arg, Consts.locOff)), offZippedArgF(ty, arg, Consts.argOff), mem)
 
   (* store the argument at the stack offset *)
     fun genStoreFStkAtTy arg ty = [
@@ -128,27 +114,27 @@ functor VarargCCallFn (
   (* place the argument into the parameter register and jump back to the interpreter *)
     fun genPutGpr arg ty r = [
 	   T.DEFINE (labelOfReg ("gpr", ty, r)),
-	   T.MV (ty, r, offZippedArg (ty, arg, argOff)), 
+	   T.MV (ty, r, offZippedArg (ty, arg, Consts.argOff)), 
 	   T.JMP (T.LABEL interpLab, [])
         ]
 
   (* place the argument into the parameter register and jump back to the interpreter *)
     fun genPutFpr arg ty r = [
 	   T.DEFINE (labelOfReg ("fpr", ty, r)),
-	   T.FMV (ty, r, offZippedArgF (ty, arg, argOff)),
+	   T.FMV (ty, r, offZippedArgF (ty, arg, Consts.argOff)),
 	   T.JMP (T.LABEL interpLab, [])
         ]
 
   (* resolve the function for loading the register *)
     fun genResolveReg arg k ty (r, instrs) = let
-	   val cmp = T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, locOff), lit (regToInt r))
+	   val cmp = T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, Consts.locOff), lit (regToInt r))
            in
 	      T.BCC(cmp, labelOfReg (k, ty, r)) :: instrs
 	   end
 
   (* check the type of the argument *)
     fun checkTy arg k ty = 
-	    T.BCC(T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, tyOff), lit ty), resolveAtKindAndTyLab(k, ty))
+	    T.BCC(T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, Consts.tyOff), lit ty), resolveAtKindAndTyLab(k, ty))
 
   (* resolve the type of the argument at a given kind *)
     fun genResolveTysAtKind arg (k, tys) = 
@@ -172,12 +158,12 @@ functor VarargCCallFn (
 
   (* resolve an argument to a kind of location *)
     fun resolveKind arg (kEncoding, k) = 
-	    T.BCC(T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, kindOff), lit kEncoding), resolveTysLab k)
+	    T.BCC(T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, Consts.kindOff), lit kEncoding), resolveTysLab k)
 
   (* resolve the argument to one of the location kinds *)
     fun genResolveKinds arg = 
 	   T.DEFINE resolveKindsLab ::
-	   List.map (resolveKind arg) [(GPR, "gpr"), (FPR, "fpr"), (STK, "stk"), (FSTK, "fstk")]
+	   List.map (resolveKind arg) [(Consts.GPR, "gpr"), (Consts.FPR, "fpr"), (Consts.STK, "stk"), (Consts.FSTK, "fstk")]
 
     fun resolveArgLocs arg = List.concat [
            genResolveRegs arg "gpr" gprTys gprParams,
@@ -186,14 +172,11 @@ functor VarargCCallFn (
 	   genStoreFStk arg fprTys
         ]
 
-  (* argument list encoding *)
-    val NIL = 0
-    val HD = 0
-    val TL = 1
-
   (* load a value from the argument *)
-    fun offArgs args 0 = T.LOAD (wordTy, T.REG(wordTy, args), mem)
-      | offArgs args off = T.LOAD (wordTy, T.ADD (wordTy, T.REG(wordTy, args), lit(off*defaultWidthB)), mem)
+    fun offArgs args 0 = 
+	    T.LOAD (wordTy, T.REG(wordTy, args), mem)
+      | offArgs args off = 
+	    T.LOAD (wordTy, T.ADD (wordTy, T.REG(wordTy, args), lit(off*defaultWidthB)), mem)
 
   (* call the varargs C function *)
     fun genCallC cFun = let
@@ -210,18 +193,20 @@ functor VarargCCallFn (
     fun genInterp (args, argReg) = [
 	   T.DEFINE interpLab,
 	 (* loop through the args *)
-	   T.BCC (T.CMP(wordTy, T.EQ, T.REG (wordTy, args), lit NIL), gotoCLab),
-	   T.MV (wordTy, argReg, offArgs args HD),
-	   T.MV(wordTy, args, offArgs args TL),
+	   T.BCC (T.CMP(wordTy, T.EQ, T.REG (wordTy, args), lit Consts.NIL), gotoCLab),
+	   T.MV (wordTy, argReg, offArgs args Consts.HD),
+	   T.MV(wordTy, args, offArgs args Consts.TL),
 	   T.JMP (T.LABEL resolveKindsLab, [])		
         ]
 
+  (* generate all possible general-purpose register loads *)
     fun genPutGprs arg = let
 	    val putGprs = List.map (genPutGpr arg) gprTys
             in
 	       concatMap (fn f => concatMap f gprParams) putGprs
 	    end
 
+  (* generate all possible floating-point register loads *)
     fun genPutFprs arg = let
 	    val putfprs = List.map (genPutFpr arg) fprTys
             in
@@ -244,123 +229,4 @@ functor VarargCCallFn (
 	      ]
 	    end
 
-    fun argToCTy (I _) = CTy.C_signed CTy.I_int
-      | argToCTy (R _) = CTy.C_double
-      | argToCTy (B _) = CTy.C_signed CTy.I_int
-      | argToCTy (S _) = CTy.C_PTR
-
-  (* runtime friendly representation of the C location *)
-    fun encodeCLoc (CCall.C_GPR (ty, r)) = (GPR, regToInt r, ty)
-      | encodeCLoc (CCall.C_FPR (ty, r)) = (FPR, regToInt r, ty)
-      | encodeCLoc (CCall.C_STK (ty, off)) = (STK, T.I.toInt (wordTy, off), ty)
-      | encodeCLoc (CCall.C_FSTK (ty, off)) = (FSTK, T.I.toInt (wordTy, off), ty)
-
-  (* takes a vararg and a location and returns the vararg triplet *)
-    fun varArg (arg, loc) = let
-	   val (k, l, ty) = encodeCLoc loc
-           in
-	     (arg, k, l, ty)
-	   end
-
-  (* package the arguments with their locations *)
-    fun encodeArgs args = let
-	    val argTys = List.map argToCTy args
-	    val {argLocs, argMem, ...} = CCall.layout {conv="c-call", retTy=CTy.C_void, paramTys=argTys}
-	  (* expect single locations, as we do not pass aggregates to vararg functions *)
-	    val argLocs = List.map List.hd argLocs
-            in
-  	        (ListPair.mapEq varArg (args, List.rev argLocs), argMem)
-	    end
-
-(*
-    structure DL = DynLinkage
-
-    fun main's s = DL.lib_symbol (DL.main_lib, s)
-    val malloc_h = main's "malloc"
-    val free_h = main's "free"
-
-    exception OutOfMemory
-
-    fun sys_malloc (n : Word32.word) =
-	let val w_p = RawMemInlineT.rawccall :
-		      Word32.word * Word32.word * (unit * word -> string) list
-		      -> Word32.word
-	    val a = w_p (DL.addr malloc_h, n, [])
-	in if a = 0w0 then raise OutOfMemory else a
-	end
-
-    fun sys_free (a : Word32.word) =
-	let val p_u = RawMemInlineT.rawccall :
-		      Word32.word * Word32.word * (unit * string -> unit) list
-		      -> unit
-	in p_u (DL.addr free_h, a, [])
-	end
-
-    fun alloc bytes = sys_malloc (Word32.toLargeWord bytes)
-    fun free a = sys_free a
-
-    type addr = Word32.word
-    infix ++ 
-    fun (a: addr) ++ i = a + Word32.fromInt i
-
-    fun set' (p, w) = RawMemInlineT.w32s (p, w)
-    fun nxt' p = p ++ 1
-
-    fun cpML' { from, to } = let
-	val n = String.size from
-	fun loop (i, p) =
-	    if i >= n then set' (p, 0w0)
-	    else (set' (p, Word32.fromInt (Char.ord
-					       (String.sub (from, i))));
-		  loop (i+1, nxt' p))
-    in
-	loop (0, to)
-    end
-
-    fun dupML' s = let
-	    val z = alloc (Word32.fromInt (String.size s + 1))
-	in
-	    cpML' { from = s, to = z };
-	    z
-	end
-
-    fun encodeArg (I i) = Word32.fromInt i
-      | encodeArg (S s) = dupML' s
-      | encodeArg (R r) = raise Fail "todo"
-
-    val defaultWidthB = Word32.fromInt defaultWidthB
-    val argOffB = Word32.fromInt argOff * defaultWidthB
-    val kindOffB = Word32.fromInt kindOff * defaultWidthB
-    val locOffB = Word32.fromInt locOff * defaultWidthB
-    val tyOffB = Word32.fromInt tyOff * defaultWidthB
-
-    fun set (p, off, v) = set'(p+off, v)
-
-    fun encodeZippedArg (arg, k, l, ty) = let
-	  (* 4 elements x 8 bytes per element *)
-	    val x = alloc (0w4 * defaultWidthB)
-	    val _ = set(x, argOffB, encodeArg arg)
-	    val _ = set(x, kindOffB, Word32.fromInt k)
-	    val _ = set(x, locOffB, Word32.fromInt l)
-	    val _ = set(x, tyOffB, Word32.fromInt ty)
-	    in
-	       x
-	    end
-
-    val hdOffB = Word32.fromInt HD * defaultWidthB
-    val tlOffB = Word32.fromInt TL * defaultWidthB
-
-    fun encodeZippedArgList args = let
-	    fun loop [] = Word32.fromInt NIL
-	      | loop (za :: zas) = let
-		    val l = alloc(0w2 * defaultWidthB)
-		    in
-		        set(l, hdOffB, za);
-			set(l, tlOffB, loop(zas));
-			l
-		    end
-	    in
-	        loop (List.map encodeZippedArg args)
-	    end
-*)				   
   end (* VarargCCallFn *)

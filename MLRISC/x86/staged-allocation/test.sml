@@ -63,7 +63,6 @@ struct
 
 end
 
-
 (*
  * This module controls how we handle user extensions.  Since we don't
  * have any yet.  This is just a bunch of dummy routines.
@@ -111,21 +110,22 @@ structure X86GasPseudoOps =
    X86GasPseudoOps(structure T=X86MLTree
 		   structure MLTreeEval=X86MLTreeEval)
 
-(*
+
 functor X86PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = X86GasPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-*)
 
+(*
 functor X86PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = X86DarwinPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
+*)
 
 structure X86PseudoOps = X86PseudoOpsFn(
             structure T = X86MLTree
