@@ -33,7 +33,7 @@ functor VarargCCallFn (
 
     val mem = T.Region.memory
     val stack = T.Region.stack
-    val wordSzB = wordTy div 8
+    val defaultWidthB = 8
 
     fun lit i = T.LI (T.I.fromInt (wordTy, i))
     fun gpr r = T.GPR (T.REG (wordTy, r))
@@ -53,10 +53,10 @@ functor VarargCCallFn (
     val tyOff = 3
 
   (* load a value from the zipped argument *)
-    fun offZippedArg (ty, arg, off) = T.LOAD(ty, T.ADD(wordTy, arg, lit (off*wordSzB)), mem)
+    fun offZippedArg (ty, arg, off) = T.LOAD(ty, T.ADD(wordTy, arg, lit (off*defaultWidthB)), mem)
 
   (* load a floating-point value from the zipped argument *)
-    fun offZippedArgF (ty, arg, off) = T.FLOAD(ty, T.ADD(wordTy, arg, lit (off*wordSzB)), mem)
+    fun offZippedArgF (ty, arg, off) = T.FLOAD(ty, T.ADD(wordTy, arg, lit (off*defaultWidthB)), mem)
 
     fun newLabel s = Label.label s ()
 
@@ -186,12 +186,14 @@ functor VarargCCallFn (
 	   genStoreFStk arg fprTys
         ]
 
-  (* end of the argument list *)
+  (* argument list encoding *)
     val NIL = 0
+    val HD = 0
+    val TL = 1
 
   (* load a value from the argument *)
     fun offArgs args 0 = T.LOAD (wordTy, T.REG(wordTy, args), mem)
-      | offArgs args off = T.LOAD (wordTy, T.ADD (wordTy, T.REG(wordTy, args), lit(off*wordSzB)), mem)
+      | offArgs args off = T.LOAD (wordTy, T.ADD (wordTy, T.REG(wordTy, args), lit(off*defaultWidthB)), mem)
 
   (* call the varargs C function *)
     fun genCallC cFun = let
@@ -209,8 +211,8 @@ functor VarargCCallFn (
 	   T.DEFINE interpLab,
 	 (* loop through the args *)
 	   T.BCC (T.CMP(wordTy, T.EQ, T.REG (wordTy, args), lit NIL), gotoCLab),
-	   T.MV (wordTy, argReg, offArgs args 0),
-	   T.MV(wordTy, args, offArgs args 1),
+	   T.MV (wordTy, argReg, offArgs args HD),
+	   T.MV(wordTy, args, offArgs args TL),
 	   T.JMP (T.LABEL resolveKindsLab, [])		
         ]
 
@@ -260,7 +262,7 @@ functor VarargCCallFn (
 	     (arg, k, l, ty)
 	   end
 
-   (* package the arguments with their locations *)
+  (* package the arguments with their locations *)
     fun encodeArgs args = let
 	    val argTys = List.map argToCTy args
 	    val {argLocs, argMem, ...} = CCall.layout {conv="c-call", retTy=CTy.C_void, paramTys=argTys}
@@ -270,4 +272,95 @@ functor VarargCCallFn (
   	        (ListPair.mapEq varArg (args, List.rev argLocs), argMem)
 	    end
 
+(*
+    structure DL = DynLinkage
+
+    fun main's s = DL.lib_symbol (DL.main_lib, s)
+    val malloc_h = main's "malloc"
+    val free_h = main's "free"
+
+    exception OutOfMemory
+
+    fun sys_malloc (n : Word32.word) =
+	let val w_p = RawMemInlineT.rawccall :
+		      Word32.word * Word32.word * (unit * word -> string) list
+		      -> Word32.word
+	    val a = w_p (DL.addr malloc_h, n, [])
+	in if a = 0w0 then raise OutOfMemory else a
+	end
+
+    fun sys_free (a : Word32.word) =
+	let val p_u = RawMemInlineT.rawccall :
+		      Word32.word * Word32.word * (unit * string -> unit) list
+		      -> unit
+	in p_u (DL.addr free_h, a, [])
+	end
+
+    fun alloc bytes = sys_malloc (Word32.toLargeWord bytes)
+    fun free a = sys_free a
+
+    type addr = Word32.word
+    infix ++ 
+    fun (a: addr) ++ i = a + Word32.fromInt i
+
+    fun set' (p, w) = RawMemInlineT.w32s (p, w)
+    fun nxt' p = p ++ 1
+
+    fun cpML' { from, to } = let
+	val n = String.size from
+	fun loop (i, p) =
+	    if i >= n then set' (p, 0w0)
+	    else (set' (p, Word32.fromInt (Char.ord
+					       (String.sub (from, i))));
+		  loop (i+1, nxt' p))
+    in
+	loop (0, to)
+    end
+
+    fun dupML' s = let
+	    val z = alloc (Word32.fromInt (String.size s + 1))
+	in
+	    cpML' { from = s, to = z };
+	    z
+	end
+
+    fun encodeArg (I i) = Word32.fromInt i
+      | encodeArg (S s) = dupML' s
+      | encodeArg (R r) = raise Fail "todo"
+
+    val defaultWidthB = Word32.fromInt defaultWidthB
+    val argOffB = Word32.fromInt argOff * defaultWidthB
+    val kindOffB = Word32.fromInt kindOff * defaultWidthB
+    val locOffB = Word32.fromInt locOff * defaultWidthB
+    val tyOffB = Word32.fromInt tyOff * defaultWidthB
+
+    fun set (p, off, v) = set'(p+off, v)
+
+    fun encodeZippedArg (arg, k, l, ty) = let
+	  (* 4 elements x 8 bytes per element *)
+	    val x = alloc (0w4 * defaultWidthB)
+	    val _ = set(x, argOffB, encodeArg arg)
+	    val _ = set(x, kindOffB, Word32.fromInt k)
+	    val _ = set(x, locOffB, Word32.fromInt l)
+	    val _ = set(x, tyOffB, Word32.fromInt ty)
+	    in
+	       x
+	    end
+
+    val hdOffB = Word32.fromInt HD * defaultWidthB
+    val tlOffB = Word32.fromInt TL * defaultWidthB
+
+    fun encodeZippedArgList args = let
+	    fun loop [] = Word32.fromInt NIL
+	      | loop (za :: zas) = let
+		    val l = alloc(0w2 * defaultWidthB)
+		    in
+		        set(l, hdOffB, za);
+			set(l, tlOffB, loop(zas));
+			l
+		    end
+	    in
+	        loop (List.map encodeZippedArg args)
+	    end
+*)				   
   end (* VarargCCallFn *)

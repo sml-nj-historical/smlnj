@@ -56,6 +56,40 @@ functor IA32VarargCCallFn (
   (* get the ith argument in the calling sequence *)
     fun getArg i = T.LOAD(wordTy, T.ADD(wordTy, T.REG(wordTy, C.ebp), lit (4*i+8)), T.Region.memory)
 
+(*
+    fun libh s = let
+	
+	val sh = DynLinkage.lib_symbol (DynLinkage.main_lib, s)
+    in
+	fn () => let val addr = DynLinkage.addr sh in print(Word32.toString addr^"\n"); addr end
+    end
+
+	fun va () = let
+	    val varargAddr = (libh "rand")()
+	in 
+	    RawMemInlineT.rawccall (varargAddr, (), [])
+	end
+
+structure DL = DynLinkage
+
+    fun main's s = let
+	val lh = DynLinkage.open_lib
+			 { name = "./vararg.so", global = true, lazy = true }
+    in 
+	DL.lib_symbol (lh, s)
+    end
+    val malloc_h = main's "vararg"
+
+    fun test () =
+	let val w_p = RawMemInlineT.rawccall :
+		      Word32.word * Word32.word * (unit * word -> string) list
+		      -> Word32.word
+	    val a = w_p (DL.addr malloc_h, 0w0, [])
+	in 
+	    print (Word32.toString a^"\n")
+	end
+*)
+
     fun genVarargs () = let
   	   val lab = Label.global "varargs"
 	   val args = C.newReg()

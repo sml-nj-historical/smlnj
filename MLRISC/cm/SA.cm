@@ -15,6 +15,9 @@ is
 	$/Lib.cm
 	$/Graphs.cm
 	$/MLTREE.cm
+(*	$smlnj/init/init.cmi : cm
+	$c/internals/c-int.cm
+*)
 
 	../staged-allocation/c-call-sig.sml
         ../staged-allocation/c-call-fn.sml
