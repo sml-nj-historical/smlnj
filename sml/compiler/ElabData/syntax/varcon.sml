@@ -34,6 +34,7 @@ fun mkVALvar (id, acc) =
       VALvar{path = SP.SPATH [id], 
              typ = ref T.UNDEFty,
              access = acc,
+	     btvs = ref [],
              prim = PrimOpId.NonPrim}
 
 val bogusCON = T.DATACON{name=S.varSymbol "bogus",

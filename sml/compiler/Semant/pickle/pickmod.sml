@@ -972,7 +972,7 @@ in
           | strPrimElem(POI.StrE s) = "b" $ [list strPrimElem s]
 
 	val op $ = PU.$ VAR
-	fun var (V.VALvar { access = a, prim, path, typ = ref t }) =
+	fun var (V.VALvar { access = a, prim, path, typ = ref t, ...}) =
 	    "1" $ [access a, primId prim, spath path, ty t]
 	  | var (V.OVLDvar { name, options = ref p,
 			     scheme = T.TYFUN { arity, body } }) =
@@ -1272,7 +1272,8 @@ in
 	fun newAccess i = A.PATH (A.EXTERN hash, i)
 	fun mapbinding (sym, (i, env, lvars)) =
 	    case StaticEnv.look (senv, sym) of
-		B.VALbind (V.VALvar {access=a, prim=z, path=p, typ= ref t }) =>
+		B.VALbind (V.VALvar {access=a, prim=z,
+				     path=p, typ= ref t, btvs}) =>
 		(case a of
 		     A.LVAR k =>
 		     (i+1,
@@ -1280,7 +1281,8 @@ in
 				      B.VALbind (V.VALvar
 						     { access = newAccess i,
 						       prim = z, path = p,
-						       typ = ref t}),
+						       typ = ref t,
+						       btvs = btvs}),
 				      env),
 		      k :: lvars)
 		   | _ => bug ("dontPickle 1: " ^ A.prAcc a))

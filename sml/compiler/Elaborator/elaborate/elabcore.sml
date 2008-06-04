@@ -357,11 +357,12 @@ let
 		       fun doPat(insFn: (S.symbol*access*ty ref)
                                           ->access*ty ref) =
 			   let fun doPat' (VARpat(VALvar{access, prim, path, 
-                                                         typ})) =
+                                                         btvs, typ})) =
 				     let val (access,typ) = 
 					 insFn(SymPath.first path,access,typ)
 				      in VARpat(VALvar{access=access, 
                                                        path=path,prim=prim,
+						       btvs = btvs,
 						       typ=typ})
 				     end
 				 | doPat' (RECORDpat{fields, flex, typ}) =
@@ -808,21 +809,22 @@ let
                       (case prim
                          of PrimOpId.Prim _ => 
 		            (case pat
-			      of CONSTRAINTpat(VARpat(VALvar{path,typ,
+			      of CONSTRAINTpat(VARpat(VALvar{path,typ,btvs,
                                                              access,...}), ty) =>
 			         CONSTRAINTpat(
                                    VARpat(
                                      VALvar{path=path, typ=typ, access=access,
-                                            prim=prim}),
+                                            btvs = btvs, prim=prim}),
                                    ty)
-			       | VARpat(VALvar{path, typ, access, ...}) =>
-			         VARpat(VALvar{path=path, typ=typ, access=access,
+			       | VARpat(VALvar{path, typ, btvs, access, ...}) =>
+			         VARpat(VALvar{path=path, typ=typ,
+				 	       btvs = btvs, access=access,
                                                prim=prim})
 			       | _ => pat)
                           | PrimOpId.NonPrim => pat)
 		  | _ => pat
 
-	   in (VALdec([VB{exp=exp, tyvars=tvref, pat=pat, boundtvs=[]}]), updt) 
+	   in (VALdec([VB{exp=exp, tyvars=tvref, pat=pat, boundtvs=[]}]), [pat], updt) 
 (* old version
              case pat
                of (VARpat _ | CONSTRAINTpat(VARpat _,_)) => (* variable pattern *)

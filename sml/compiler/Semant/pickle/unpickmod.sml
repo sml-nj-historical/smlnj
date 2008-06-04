@@ -727,7 +727,7 @@ structure UnpickMod : UNPICKMOD = struct
 		    val p = spath ()
 		    val (t, tr) = ty' ()
 		in
-		    (V.VALvar { access = a, prim = i, path = p, typ = ref t },
+		    (V.VALvar { access = a, prim = i, path = p, typ = ref t, btvs = ref [] },
 		     tr)
 		end
 	      | v #"2" =

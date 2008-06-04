@@ -156,7 +156,7 @@ fun aconvertPat (pat, {mkLvar=mkv, ...} : compInfo)
             (* association list mapping old vars to new *)
         (* ASSERT: any VARpat/VALvar will have an LVAR access. *)
 	fun mappat (oldpat as VARpat(VALvar{access=A.LVAR(oldlvar),
-                                            typ=ref typ',prim,path})) =
+                                            typ=ref typ',prim,btvs,path})) =
               let fun find ((VARpat(VALvar{access=A.LVAR(lv),...}), newvar)::rest) =
                         if lv=oldlvar then newvar else find rest
 			(* a variable could occur multiple times because
@@ -165,7 +165,7 @@ fun aconvertPat (pat, {mkLvar=mkv, ...} : compInfo)
 		    | find nil =
 		        let val newvar =
                                 VALvar{access=A.dupAcc(oldlvar,mkv), prim=prim,
-                                       typ=ref typ', path=path}
+                                       typ=ref typ', path=path, btvs = btvs}
 			 in varmap := (oldpat,newvar)::(!varmap); newvar
 			end
 	       in VARpat(find(!varmap))

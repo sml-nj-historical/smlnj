@@ -1018,7 +1018,7 @@ end
  *                                                                         *
  ***************************************************************************)
 (* [KM???] mkVar is calling mkAccInfo, which just drops the prim!!! *)
-fun mkVar (v as V.VALvar{access, prim, typ, path}, d) = 
+fun mkVar (v as V.VALvar{access, prim, btvs, typ, path}, d) = 
       mkAccInfo(access, fn () => toLty d (!typ), getNameOp path)
   | mkVar _ = bug "unexpected vars in mkVar"
 
