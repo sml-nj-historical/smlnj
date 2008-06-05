@@ -19,17 +19,18 @@ BASIS_IMP_DIR=../system/Basis/Implementation
 OLD_RUNTIME_DIR=../runtime
 NEW_RUNTIME_DIR=../../rt
 
-IDL_FILES=	sml-basis.idl \
-		smlnj-runtime.idl
+IDL_FILES=		sml-basis.idl \
+			smlnj-runtime.idl
 
-CXX_FILES =	sml-basis-lib.cxx \
-		sml-basis-lib.hxx \
-		sml-basis.cxx \
-		sml-basis.hxx \
-		smlnj-runtime-lib.cxx \
-		smlnj-runtime-lib.hxx \
-		smlnj-runtime.hxx \
-		smlnj-runtime.cxx
+BASIS_CXX_FILES =	sml-basis-lib.cxx \
+			sml-basis-lib.hxx \
+			sml-basis.cxx \
+			sml-basis.hxx
+
+RT_CXX_FILES =		smlnj-runtime-lib.cxx \
+			smlnj-runtime-lib.hxx \
+			smlnj-runtime.hxx \
+			smlnj-runtime.cxx
 
 SML_FILES =	sml-basis-sig.sml \
 		sml-basis.sml \
@@ -61,7 +62,8 @@ sml:
 	done
 
 install:
-	cp -p $(CXX_FILES) $(NEW_RUNTIME_DIR)/src/smlnj-rt/basis/glue
+	cp -p $(BASIS_CXX_FILES) $(NEW_RUNTIME_DIR)/src/smlnj-rt/basis/glue
+	cp -p $(RT_CXX_FILES) $(NEW_RUNTIME_DIR)/src/smlnj-rt/runtime/glue
 
 clean:
 	rm -rf *.h *.c *.hxx *.cxx *.sml *.cm
