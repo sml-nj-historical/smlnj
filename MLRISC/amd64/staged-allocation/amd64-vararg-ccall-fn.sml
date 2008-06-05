@@ -33,7 +33,6 @@ functor AMD64VarargCCallFn (
     fun lit i = T.LI (T.I.fromInt (wordTy, i))
 
     fun callWithArgs (cFun, args) = let
-	   val triplets = VarargCCall.encodeArgs args
 	   in
 	      raise Fail "jump to the interpreter"
 	   end
@@ -42,6 +41,7 @@ functor AMD64VarargCCallFn (
 	   val lab = Label.global "varargs"
 	   val args = C.newReg()
 	   val cFun = C.newReg()
+	   val endOfArgs = raise Fail "todo"
            in
 	       (lab,
 		List.concat [
@@ -51,7 +51,7 @@ functor AMD64VarargCCallFn (
 		    T.COPY (wordTy, [C.rbp], [C.rsp])],		   
 		   [T.MV(wordTy, cFun, T.REG(wordTy, C.rdi))],    (* arg0 *)
 		   [T.MV(wordTy, args, T.REG(wordTy, C.rsi))],    (* arg1 *)
-	           VarargCCall.genVarargs(T.REG(wordTy, cFun), args),
+	           VarargCCall.genVarargs(T.REG(wordTy, cFun), args, endOfArgs),
 		   [leave],
 		   [T.RET []]
 		   ])
