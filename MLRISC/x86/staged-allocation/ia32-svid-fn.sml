@@ -80,8 +80,8 @@ functor IA32SVIDFn (
 		    datatype location_kinds = datatype location_kinds
 		    val memSize = 8)
 
-    val calleeSaveRegs = [C.eax, C.ecx, C.edx]
-    val callerSaveRegs = [C.ebx, C.esi, C.edi]
+    val calleeSaveRegs = [C.ebx, C.esi, C.edi]
+    val callerSaveRegs = [C.eax, C.ecx, C.edx]
     val calleeSaveFRegs = []
     val callerSaveFRegs = []
 

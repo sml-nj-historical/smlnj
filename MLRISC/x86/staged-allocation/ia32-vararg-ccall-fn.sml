@@ -55,6 +55,7 @@ functor IA32VarargCCallFn (
            in
 	      (lab,
 	       List.concat [
+	           [T.LIVE CCall.CCs.calleeSaveRegs],
 		   [push (T.REG(wordTy, C.ebp)),
 		    T.COPY (wordTy, [C.ebp], [C.esp])],
 		   [T.MV(wordTy, cFun, getArg 0)],
@@ -63,6 +64,7 @@ functor IA32VarargCCallFn (
 		   [T.MV(wordTy, C.esp, T.SUB(wordTy, T.REG(wordTy, C.esp), getArg 2))],
 	           VarargCCall.genVarargs (T.REG(wordTy, cFun), args),
 		   [leave],
+	           [T.LIVE CCall.CCs.calleeSaveRegs],
 		   [T.RET []]
 		   ])
 	   end	    

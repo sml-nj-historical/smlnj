@@ -33,7 +33,7 @@ void Say (const char *fmt, ...)
 
 }
 
-#define N_ARGS 2
+#define N_ARGS 1
 #define STK 2
 #define FSTK 3
 #define OFF(i) (i*4)
@@ -61,14 +61,15 @@ int main ()
   args[0]->hd->kind = (long long)STK;
   args[0]->hd->loc = (long long)OFF(0);
   args[0]->hd->ty = (long long)32;
-
+  /*
   args[1]->hd = NEW(zipped_arg_t);
   args[1]->hd->val = (long long)69;
   args[1]->hd->kind = (long long)STK;
   args[1]->hd->loc = (long long)OFF(1);
   args[1]->hd->ty = (long long)32;
+  */
 
-  varargs(Say, args[0], 16);
+  varargs(Say, args[0], alignb(N_ARGS));
 
   return 0;
 }

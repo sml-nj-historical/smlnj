@@ -101,10 +101,9 @@ structure VarargCCall =
 	    DL.lib_symbol (lh, s)
         end
 
-    val vararg_h = vararg's "varargs"
-
   (* call the vararg interpreter *)
     fun vararg (cFun, zippedArgs, stkArgSzB) = let
+	    val vararg_h = vararg's "vararg_wrapper"
 	    val callInterp = RawMemInlineT.rawccall :
 		      Word32.word * (Word32.word * Word32.word * Word32.word) * 
 		      (unit * Word32.word * Word32.word * Word32.word -> Word32.word) list

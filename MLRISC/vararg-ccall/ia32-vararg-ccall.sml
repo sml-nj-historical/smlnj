@@ -83,13 +83,20 @@ structure IA32VarargCCall =
   	        (ListPair.mapEq varArg (args, List.rev argLocs), argMem)
 	    end
 
-    fun callWithArgs (cFun, args) = let
-	   val (zippedArgs, stkArgSzB) = zipArgs args
-         (* the extra two words are for the return pointer and the frame pointer *)
-	   val stkAllocSzB = #szb stkArgSzB + 2*4
+  (* align the frame to 16 bytes *)
+    fun darwinStkSzB stkArgSzB = let
+	   val retAndFrameSzB = 2*4
+	   val stkAllocSzB = stkArgSzB + retAndFrameSzB
 	   val stkAllocSzB = IA32CSizes.alignAddr(stkAllocSzB, 16)
+	   val stkAllocSzB = stkAllocSzB - retAndFrameSzB
+           in
+	       stkAllocSzB
+	   end
+
+    fun callWithArgs (cFun, args) = let
+	   val (zippedArgs, {szb, ...}) = zipArgs args
 	   in
-	      VarargCCall.vararg(cFun, zippedArgs, stkAllocSzB)
+	      VarargCCall.vararg(cFun, zippedArgs, darwinStkSzB szb)
 	   end
 
   end
