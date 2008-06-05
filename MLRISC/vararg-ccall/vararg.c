@@ -31,3 +31,4 @@ int vararg_wrapper (void* cFun, struct varargs_s* args, int stkSz)
   int x = varargs(cFun, args, stkSz);
   return 0;
 }
+

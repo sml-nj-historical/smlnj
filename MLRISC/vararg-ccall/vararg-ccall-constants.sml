@@ -16,9 +16,7 @@ structure VarargCCallConstants =
     val locOff = 2
     val tyOff = 3
 
-  (* argument list encoding *)
-    val NIL = 0
-    val HD = 0
-    val TL = 1
+  (* number of bytes for a zipped argument *)
+    val zippedArgSzB = 4 * 8
 
   end

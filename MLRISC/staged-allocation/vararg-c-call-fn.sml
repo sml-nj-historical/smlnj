@@ -172,12 +172,6 @@ functor VarargCCallFn (
 	   genStoreFStk arg fprTys
         ]
 
-  (* load a value from the argument *)
-    fun offArgs args 0 = 
-	    T.LOAD (wordTy, T.REG(wordTy, args), mem)
-      | offArgs args off = 
-	    T.LOAD (wordTy, T.ADD (wordTy, T.REG(wordTy, args), lit(off*defaultWidthB)), mem)
-
   (* call the varargs C function *)
     fun genCallC cFun = let
 	   val defs = List.map gpr CCall.callerSaveRegs @ List.map (fn r => fpr(64, r)) CCall.callerSaveFRegs
@@ -190,14 +184,12 @@ functor VarargCCallFn (
 	   end
 
   (* interpreter for varargs *)
-    fun genInterp (args, argReg) = [
-	   T.DEFINE interpLab,
-	 (* loop through the args *)
-	   T.BCC (T.CMP(wordTy, T.EQ, T.REG (wordTy, args), lit Consts.NIL), gotoCLab),
-	   T.MV (wordTy, argReg, offArgs args Consts.HD),
-	   T.MV(wordTy, args, offArgs args Consts.TL),
-	   T.JMP (T.LABEL resolveKindsLab, [])		
-        ]
+    fun genInterp (args, argsReg, endOfArgs) = [
+            T.DEFINE interpLab,
+	  (* loop through the args *)
+	    T.MV (wordTy, argsReg, T.ADD (wordTy, args, lit Consts.zippedArgSzB)),
+	    T.BCC (T.CMP(wordTy, T.GE, args, endOfArgs), gotoCLab)
+          ]
 
   (* generate all possible general-purpose register loads *)
     fun genPutGprs arg = let
@@ -214,12 +206,11 @@ functor VarargCCallFn (
 	    end
 
   (* generate instructions for making a varargs call *)
-    fun genVarargs (cFun, args) = let           
-	    val argReg = newReg ()
-	    val arg = T.REG(wordTy, argReg)
+    fun genVarargs (cFun, argsReg, endOfArgs) = let           
+	    val arg = T.REG (wordTy, argsReg)
             in
 	      List.concat [
-	         genInterp(args, argReg),
+	         genInterp(arg, argsReg, endOfArgs),
 		 genResolveKinds arg,
 		 resolveArgLocs arg,
 		 genResolveTys arg,

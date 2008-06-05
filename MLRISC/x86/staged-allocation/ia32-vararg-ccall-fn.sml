@@ -52,6 +52,9 @@ functor IA32VarargCCallFn (
   	   val lab = Label.global "varargs"
 	   val args = C.newReg()
 	   val cFun = C.newReg()
+        (* we align the frame to a 16-bytes to support Mac OS. *)
+	   val frameSzB = 1024*4-2*4
+	   val endOfArgs = raise Fail "todo"
            in
 	      (lab,
 	       List.concat [
@@ -61,8 +64,8 @@ functor IA32VarargCCallFn (
 		   [T.MV(wordTy, cFun, getArg 0)],
 		   [T.MV(wordTy, args, getArg 1)],
 		 (* allocate stack space for the arguments *)
-		   [T.MV(wordTy, C.esp, T.SUB(wordTy, T.REG(wordTy, C.esp), getArg 2))],
-	           VarargCCall.genVarargs (T.REG(wordTy, cFun), args),
+		   [T.MV(wordTy, C.esp, T.SUB(wordTy, T.REG(wordTy, C.esp), lit frameSzB))],
+	           VarargCCall.genVarargs (T.REG(wordTy, cFun), args, endOfArgs),
 		   [leave],
 	           [T.LIVE CCall.CCs.calleeSaveRegs],
 		   [T.RET []]

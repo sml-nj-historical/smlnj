@@ -110,21 +110,22 @@ structure X86GasPseudoOps =
    X86GasPseudoOps(structure T=X86MLTree
 		   structure MLTreeEval=X86MLTreeEval)
 
-(*
+
 functor X86PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = X86GasPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-*)
 
+(*
 functor X86PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = X86DarwinPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
+*)
 
 
 structure X86PseudoOps = X86PseudoOpsFn(
@@ -278,6 +279,7 @@ datatype ra_phase = SPILL_PROPAGATION
   infix upto 
 
 structure CB = CellsBasis
+structure I = X86Instr
 
 structure IntRA = 
   struct
@@ -291,9 +293,16 @@ structure IntRA =
         end
     fun spillInit _ = ()
     val memRegs = C.Regs CB.GP {from=8,to=31,step=1}
-    fun spillLoc {info=frame, an, cell, id=loc} = 
-raise Fail ""
-(*        {opnd = X86Instr.Immed 0, kind = SPILL_LOC}*)
+    fun spillLoc {info=frame, an, cell, id=loc} = let
+	    val spillLoc = ~(loc*4)
+	    val opnd = I.Displace {
+		  base = C.ebp,
+		  disp = I.Immed (Int32.fromInt spillLoc),
+		  mem = ()
+		}
+            in
+              {opnd = opnd, kind = SPILL_LOC}
+            end
     val phases = [SPILL_PROPAGATION, SPILL_COLORING]
   end (* IntRA *)
 
