@@ -255,10 +255,14 @@ and toTyc d t =
         | h (LBOUND{depth,index,...}) =
              LT.tcc_var(DI.calc(d, depth), index)
         | h (UBOUND _) = LT.tcc_void
-            (* dbm: should this have been converted to a TV_MARK before
-             * being passed to toTyc? 
-	     * gk: Doesn't seem to experimentally *)
+            (* dbm: a user-bound type variable that didn't get generalized;
+               treat the same as an uninstantiated unification variable. 
+	       E.g. val x = ([]: 'a list; 1) *)
         | h (OPEN _) = LT.tcc_void
+            (* dbm: a unification variable that was neither instantiated nor
+	       generalized.  E.g. val x = ([],1); -- the unification variable
+               introduced by the generic instantiation of the type of [] is
+               neither instantiated nor generalized. *)
         | h _ = bug "toTyc:h" (* LITERAL and SCHEME should not occur *)
 
       and g (VARty tv) = (* h(!tv) *) lookTv tv

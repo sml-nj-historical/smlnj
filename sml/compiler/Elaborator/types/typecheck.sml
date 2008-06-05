@@ -155,7 +155,7 @@ fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
 val _ = debugmsg (">>decType: toplev = " ^ Bool.toString toplev)
 val _ = ppDecDebug(">>decType: dec = ",dec)
 
-fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
+fun generalizeTy(VALvar{typ,path,btvs,...}, userbound: tyvar list,
 		 occ:occ, generalize: bool, region) : tyvar list =
     let val _ = debugmsg (">>>generalizeTy: "^SymPath.toString path)
 	val _ = debugmsg ("userbound: ")
@@ -316,6 +316,7 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
                    POLYty{sign = rev(!sign),
 		          tyfun = TYFUN{arity=(!index),body=ty}}
                else ty);
+	btvs := generalizedTyvars;
 	generalizedTyvars  (* return the tyvars that were generalized *)
     end
 
