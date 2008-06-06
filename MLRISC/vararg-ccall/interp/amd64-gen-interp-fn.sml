@@ -40,9 +40,13 @@ functor AMD64GenInterpFn (
 
     fun genVarargs () = let
 	   val lab = Label.global "varargs"
-	   val args = C.newReg()
-	   val cFun = C.newReg()
-	   val endOfArgs = raise Fail "todo"
+         (* arg0 *)
+	   val cFun = T.REG(wordTy, C.rdi)
+	   val argsReg = C.newReg()
+         (* arg1 *)
+	   val args = T.REG(wordTy, C.rsi)
+         (* arg2 *)
+	   val endOfArgs = T.REG(wordTy, C.rdx)
            in
 	       (lab,
 		List.concat [
@@ -50,9 +54,8 @@ functor AMD64GenInterpFn (
 	           [T.MV(wordTy, C.rax, lit (List.length CCall.CCs.fprParams))],
 		   [push (T.REG(64, C.rbp)),
 		    T.COPY (wordTy, [C.rbp], [C.rsp])],		   
-		   [T.MV(wordTy, cFun, T.REG(wordTy, C.rdi))],    (* arg0 *)
-		   [T.MV(wordTy, args, T.REG(wordTy, C.rsi))],    (* arg1 *)
-	           GenInterp.genVarargs(T.REG(wordTy, cFun), args, endOfArgs),
+		   [T.MV(wordTy, argsReg, args)],
+	           GenInterp.genVarargs(cFun, argsReg, endOfArgs),
 		   [leave],
 		   [T.RET []]
 		   ])

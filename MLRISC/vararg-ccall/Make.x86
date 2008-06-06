@@ -1,0 +1,16 @@
+# Build a shared object for the interpreter.
+
+X86_C_FLAGS=-m32 -g3 -march=i686
+AMD64_C_FLAGS=-m32 -g3
+
+build-x86-linux: interp/vararg-interp-x86.s
+	gcc -shared $(X86_C_FLAGS) interp/vararg-interp-x86.s -o vararg
+
+build-x86-darwin: interp/vararg-interp-x86.s
+	gcc -dynlib $(X86_C_FLAGS) interp/vararg-interp-x86.s -o vararg
+
+build-amd64-linux: interp/vararg-interp-amd64.s
+	gcc -shared $(AMD64_C_FLAGS) interp/vararg-interp-amd64.s -o vararg
+
+build-amd64-darwin: interp/vararg-interp-amd64.s
+	gcc -dynlib $(AMD64_C_FLAGS) interp/vararg-interp-amd64.s -o vararg

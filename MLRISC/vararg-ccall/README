@@ -1,0 +1,13 @@
+This library implements varargs C calls. Try it out for yourself by following the
+steps below. We currently only support x86.
+
+make -f Make.x86 build-x86-linux   # for linux
+make -f Make.x86 build-x86-darwin  # for darwin
+
+sml
+- CM.make "sources.cm";
+- VarArgs.call VarArgs.printf (VarArgs.str o VarArgs.int);
+val it = fn : string -> int -> unit
+- it "i=%d\n" 999;
+i=999
+- 
