@@ -110,22 +110,21 @@ structure X86GasPseudoOps =
    X86GasPseudoOps(structure T=X86MLTree
 		   structure MLTreeEval=X86MLTreeEval)
 
-(*
 functor X86PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = X86GasPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-*)
 
+(*
 functor X86PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = X86DarwinPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-
+*)
 structure X86PseudoOps = X86PseudoOpsFn(
             structure T = X86MLTree
             structure MLTreeEval = X86MLTreeEval)
@@ -349,7 +348,7 @@ structure CCalls = IA32SVIDFn (
     structure T = X86MLTree
     structure CFG = X86CFG
     structure FlowGraph = X86FlowGraph
-    structure Vararg = IA32VarargCCallFn(
+    structure VarargGen = IA32GenInterpFn(
                        structure T = X86MLTree
                        fun ix x = x
 		       val fast_floating_point = fast_floating_point
@@ -429,7 +428,7 @@ structure TestSA =
 
    fun vararg _ = let
            val _ = Label.reset()
-	   val (lab, stms) = Vararg.genVarargs()	          
+	   val (lab, stms) = VarargGen.genVarargs()	          
 	   val asmOutStrm = TextIO.openOut "mlrisc.s"
 	   fun doit () = dumpOutput(gen(lab, stms, [T.GPR (T.REG (wordTy, C.eax))]))
 	   val _ = AsmStream.withStream asmOutStrm doit ()

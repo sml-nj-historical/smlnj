@@ -10,6 +10,9 @@ Library
   structure VarArgs
   structure VarargCCall
   structure IA32VarargCCall
+
+  functor IA32GenInterpFn
+  functor AMD64GenInterpFn
 is
 
   $/basis.cm
@@ -21,5 +24,10 @@ is
 
   wrapper.cm
   varargs.sml
-  vararg-ccall.sml
-  ia32-vararg-ccall.sml
+  call/vararg-ccall.sml
+  call/ia32-vararg-ccall.sml
+
+  interp/gen-interp-fn.sml
+  interp/vararg-ccall-constants.sml
+  interp/ia32-gen-interp-fn.sml
+  interp/amd64-gen-interp-fn.sml

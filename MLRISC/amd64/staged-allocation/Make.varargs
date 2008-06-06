@@ -1,4 +1,0 @@
-build:
-	gcc -g3 -c -m64 -std=gnu99 mlrisc.s
-	gcc -g3 -c -m64 -std=gnu99 test-varargs.c
-	gcc -g3 -m64 -std=gnu99 -o test-varargs mlrisc.o test-varargs.o

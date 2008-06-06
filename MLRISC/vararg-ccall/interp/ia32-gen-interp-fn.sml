@@ -6,7 +6,7 @@
  * Mike Rainey (mrainey@cs.uchicago.edu)
  *)
 
-functor IA32VarargCCallFn (
+functor IA32GenInterpFn (
     structure T : MLTREE
     val abi : string
     val ix : (T.stm,T.rexp,T.fexp,T.ccexp) X86InstrExt.sext -> T.sext
@@ -30,9 +30,10 @@ functor IA32VarargCCallFn (
 		       val ix = ix
 		       val fast_floating_point = fast_floating_point
 		     )
-    structure VarargCCall = VarargCCallFn(
+    structure GenInterp = GenInterpFn(
 			      structure T = T
-			      structure CCall = CCall
+			      val callerSaveRegs = CCall.callerSaveRegs
+			      val callerSaveFRegs = CCall.callerSaveFRegs
 			      val gprParams = []
 			      val fprParams = []
 			      val gprTys = [32]
@@ -48,6 +49,7 @@ functor IA32VarargCCallFn (
     fun getArg i = 
 	    T.LOAD(wordTy, T.ADD(wordTy, T.REG(wordTy, C.ebp), lit (4*i+8)), T.Region.memory)
 
+  (* generate the x86 vararg interpreter *)
     fun genVarargs () = let
   	   val lab = Label.global "varargs"
 	   val argsReg = C.newReg()
@@ -58,15 +60,16 @@ functor IA32VarargCCallFn (
            in
 	      (lab,
 	       List.concat [
-	           [T.LIVE CCall.CCs.calleeSaveRegs],
-		   [push (T.REG(wordTy, C.ebp)),
-		    T.COPY (wordTy, [C.ebp], [C.esp])],
+	         (* preserve callee-save registers *)
+	           [T.LIVE CCall.calleeSaveRegs'],
+		   [push (T.REG(wordTy, C.ebp))],
+		   [T.COPY (wordTy, [C.ebp], [C.esp])],
 		   [T.MV(wordTy, argsReg, getArg 1)],
 		 (* allocate stack space for the arguments *)
 		   [T.MV(wordTy, C.esp, T.SUB(wordTy, T.REG(wordTy, C.esp), lit frameSzB))],
-	           VarargCCall.genVarargs (cFun, argsReg, endOfArgs),
+	           GenInterp.genVarargs (cFun, argsReg, endOfArgs),
 		   [leave],
-	           [T.LIVE CCall.CCs.calleeSaveRegs],
+	           [T.LIVE CCall.calleeSaveRegs'],
 		   [T.RET []]
 		   ])
 	   end	    

@@ -11,6 +11,7 @@ Group
   signature CONTROL_FLOW_GRAPH
   signature MLTREE_EXTENSION_COMP
   signature MLTREE_UTILS
+  signature C_CALL
 
   functor X86
   functor CFGEmit
@@ -40,12 +41,11 @@ Group
   functor RASpill
   functor StagedAllocationFn
   functor IA32SVIDFn
-  functor IA32VarargCCallFn
+  functor AMD64SVIDFn
   
   structure RACore
   structure ChaitinSpillHeur
   structure CTypes  
-  structure X86Cells
   structure DirectedGraph
   structure CellsBasis
   structure ChowHennessySpillHeur
@@ -53,10 +53,11 @@ Group
   structure MLRiscErrorMsg
   structure PseudoOpsBasisTyp
   structure AsmStream	
-  structure X86InstrExt
   structure Label
   structure IA32CSizes
-  structure VarargCCallConstants
+  structure X86Cells
+  structure X86InstrExt
+  structure AMD64Cells
 
 is
 
@@ -76,3 +77,4 @@ is
   ../cm/Visual.cm
   ../cm/Peephole.cm
   ../cm/IA32.cm
+  ../cm/AMD64.cm

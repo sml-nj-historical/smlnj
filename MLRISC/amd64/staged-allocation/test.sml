@@ -493,7 +493,7 @@ structure T = AMD64MLTree
 structure CFG = AMD64CFG
 structure FlowGraph = AMD64FlowGraph
 structure ChkTy = MLTreeCheckTy(structure T = T val intTy = 64)
-structure Vararg = AMD64VarargCCallFn(
+structure VarargGen = AMD64GenInterpFn(
                        structure T = T
 		       fun push e = T.EXT(AMD64InstrExt.PUSHQ e)
 		       val leave = T.EXT(AMD64InstrExt.LEAVE)
@@ -575,7 +575,7 @@ structure TestSA =
 
    fun vararg _ = let
            val _ = Label.reset()
-	   val (lab, varargStms) = Vararg.genVarargs()	          
+	   val (lab, varargStms) = VarargGen.genVarargs()	          
 	   val asmOutStrm = TextIO.openOut "mlrisc.s"
 	   fun doit () = dumpOutput(gen(lab, varargStms, [T.GPR (T.REG (wordTy, C.rax))]))
 	   val _ = AsmStream.withStream asmOutStrm doit ()

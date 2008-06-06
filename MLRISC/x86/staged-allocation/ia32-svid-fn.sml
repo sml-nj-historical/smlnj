@@ -1,47 +1,3 @@
-(* ia32-svid-fn.sml
- *
- *
- * C function calls for the IA32 using the System V ABI
- *
- * Register conventions:
- *
- *    %eax	return value		(caller save)
- *    %ebx	global offset for PIC	(callee save)
- *    %ecx	scratch			(caller save)
- *    %edx	extra return/scratch	(caller save)
- *    %ebp	optional frame pointer	(callee save)
- *    %esp	stack pointer		(callee save)
- *    %esi	locals			(callee save)
- *    %edi	locals			(callee save)
- *
- *    %st(0)	top of FP stack; FP return value
- *    %st(1..7)	FP stack; must be empty on entry and return
- *
- * Calling convention:
- *
- *    Return result:
- *	+ Integer and pointer results are returned in %eax.  Small
- *	  integer results are not promoted.
- *	+ 64-bit integers (long long) returned in %eax/%edx
- *	+ Floating point results are returned in %st(0) (all types).
- *	+ Struct results are returned in space provided by the caller.
- *	  The address of this space is passed to the callee as an
- *	  implicit 0th argument, and on return %eax contains this
- *	  address.  The called function is responsible for removing
- *	  this argument from the stack using a "ret $4" instruction.
- *	  NOTE: the MacOS X ABI returns small structs in %eax/%edx.
- *
- *    Function arguments:
- *	+ Arguments are pushed on the stack right to left.
- *	+ Integral and pointer arguments take one word on the stack.
- *	+ float arguments take one word on the stack.
- *	+ double arguments take two words on the stack.  The i386 ABI does
- *	  not require double word alignment for these arguments.
- *	+ long double arguments take three words on the stack.
- *	+ struct arguments are padded out to word length.
- *
- *)
-
 functor IA32SVIDFn (
     structure T : MLTREE
     val abi : string
@@ -64,6 +20,14 @@ functor IA32SVIDFn (
     fun fpr f = T.FPR(T.FREG(80, f))
     val spReg = T.REG (32, C.esp)
 
+    (* the C calling convention requires that the FP stack be empty on function
+     * entry.  We add the fpStk list to the defs when the fast_floating_point flag
+     * is set.
+     *)
+    val st0 = C.ST 0
+
+    datatype location_kinds = datatype CLocationKinds.location_kinds
+
     structure CCall = CCallFn(
              structure T = T
 	     structure C = C
@@ -73,68 +37,24 @@ functor IA32SVIDFn (
 		
     datatype c_arg = datatype CCall.c_arg
     datatype arg_location = datatype CCall.arg_location
-    datatype location_kinds = datatype CCall.location_kinds
 
     structure SA = StagedAllocationFn (
                     type reg = T.reg
 		    datatype location_kinds = datatype location_kinds
 		    val memSize = 8)
 
+    structure CCs = IA32CConventionsFn (
+		      type reg = T.reg
+		      val eax = C.eax
+		      val edx = C.edx
+		      val st0 = st0
+		      structure SA = SA
+		    )
+
     val calleeSaveRegs = [C.ebx, C.esi, C.edi]
     val callerSaveRegs = [C.eax, C.ecx, C.edx]
     val calleeSaveFRegs = []
     val callerSaveFRegs = []
-
-  (* calling conventions in the Staged Allocation language *)
-    structure CCs =
-      struct
-
-      (* register conventions *)
-        val callerSaveRegs = List.map gpr calleeSaveRegs
-	val calleeSaveRegs = List.map gpr calleeSaveRegs
-	val calleeSaveFRegs = []
-	val callerSaveFRegs = []
-
-      (* the C calling convention requires that the FP stack be empty on function
-       * entry.  We add the fpStk list to the defs when the fast_floating_point flag
-       * is set.
-       *)
-	val st0 = C.ST 0
-      (* the C calling convention requires that the FP stack be empty on function
-       * entry.  We add the fpStk list to the defs when the fast_floating_point flag
-       * is set.
-       *)
-	val fpStk = List.tabulate(8, fn i => fpr (C.ST i))
-
-      (* conventions for calling a C function *)
-        val alignB = 16
-	val cStack = SA.freshCounter()
-	val callStages = [
-	      SA.SEQ[
-	        SA.WIDEN (fn ty => Int.max(32, ty)),
-	        SA.OVERFLOW {counter=cStack, blockDirection=SA.UP, maxAlign=alignB}
-	    ]
-	  ]
-
-      (* conventions for returning from a C call *)
-	val (cInt, retInGpr) = SA.useRegs [(32, C.eax), (32, C.edx)]
-	val (cFloat, retInFpr) = SA.useRegs [(80, st0)]
-	val returnStages = [
-	      SA.CHOICE [
-	        (* return in general-purpose register *)
-	        (fn (ty, k, str) => k = K_GPR,
-		 SA.SEQ [SA.WIDEN (fn ty => Int.max(ty, 32)),
-			 retInGpr]),
-		(* return in floating-point register *)
-		(fn (ty, k, str) => k = K_FPR,
-		 SA.SEQ [SA.WIDEN (fn ty => 80), retInFpr])
-	      ]
-	    ]
-	    
-	(* initial store *)
-	val str0 = SA.init [cInt, cFloat, cStack]
-
-      end (* CCs *)
 
     (* classify a C type into its location kind (assuming that aggregates cannot be passed in registers) *)
     fun kindOfCTy (CTy.C_float | CTy.C_double | CTy.C_long_double) = K_FPR
@@ -148,8 +68,8 @@ functor IA32SVIDFn (
 			    (CTy.flattenCTy cTy)
         in
 	  case (cTy, abi)
-           of (CTy.C_STRUCT _, "Mac OS X") => 
-	      (* on Mac OS X, structs <= 8 bytes are returned in GPRs *)
+           of (CTy.C_STRUCT _, "Darwin") => 
+	      (* for Darwin, structs <= 8 bytes are returned in GPRs *)
 	      if (sz <= 4)
                  then [(8, K_GPR, align)]
               else if (sz <= 8)
@@ -170,10 +90,26 @@ functor IA32SVIDFn (
       | saToCLoc (ty, SA.BLOCK_OFFSET offB, K_FPR) = CCall.C_FSTK(ty, T.I.fromInt (32, offB))
       | saToCLoc (ty, SA.NARROW(loc, ty', _), k) = saToCLoc (ty, loc, k) 
 
-    val frameAlign = 8
 
+  (* returns the stack location for storing a given parameter slot *)
+    fun layoutParam paramStepper (paramSlot, (str, paramLocss)) = let
+	    val (str', paramLocs) = SA.doStagedAllocation(str, paramStepper, paramSlot)
+	    in
+	       (str', paramLocs :: paramLocss)
+            end
+  
+  (* compute the stack locations for passing parameters *)
+    fun layoutParams (str, paramTys) = let
+	    val paramStepper = SA.mkStep CCs.callStages
+	    val paramSlots = List.map cTyToSlots paramTys
+	    val (str, paramLocs) = List.foldl (layoutParam paramStepper) (str, []) paramSlots
+	    val paramCLocs = List.map (List.map saToCLoc) paramLocs
+	    in
+	       (str, List.rev paramCLocs)
+            end
+
+  (* compute the parameter passing and return for a given C call *)
     fun layout {conv, retTy, paramTys} = let
-
 	(* compute locations for return results *)
 	val (resLocs, structRetLoc, str) = (case retTy
             of CTy.C_void => ([], NONE, CCs.str0)
@@ -189,15 +125,7 @@ functor IA32SVIDFn (
                end
             (* end case *))
 
-        (* compute locations for passing arguments *)
-	val paramStepper = SA.mkStep CCs.callStages
-	fun doParam (paramTy, (str, paramLocss)) = let
-	    val (str', paramLocs) = SA.doStagedAllocation(str, paramStepper, cTyToSlots paramTy)
-	    in
-	       (str', (List.map saToCLoc paramLocs) :: paramLocss)
-            end
-	val (str, paramLocs) = List.foldl doParam (str, []) paramTys
-	val paramLocs = List.rev paramLocs
+	val (str, paramLocs) = layoutParams (str, paramTys)
 
 	(* number of bytes allocated for the call *)
 	val cStkSzB = let
@@ -211,12 +139,24 @@ functor IA32SVIDFn (
 	   {argLocs=paramLocs, argMem={szb=cStkSzB, align=4}, structRetLoc=structRetLoc, resLocs=resLocs}
         end (* layout *)
 
+    val callerSaveRegs' = List.map gpr calleeSaveRegs
+    val calleeSaveRegs' = List.map gpr calleeSaveRegs
+    val calleeSaveFRegs' = []
+    val callerSaveFRegs' = []
+
+    (* the C calling convention requires that the FP stack be empty on function
+     * entry.  We add the fpStk list to the defs when the fast_floating_point flag
+     * is set.
+     *)
+    val fpStk = List.tabulate(8, fn i => fpr (C.ST i))
+
+
   (* List of registers defined by a C Call with the given return type; this list
    * is the result registers plus the caller-save registers.
    *)
     fun definedRegs resTy = if !fast_floating_point
 	  then let
-	    val defs = CCs.callerSaveRegs @ CCs.fpStk
+	    val defs = callerSaveRegs' @ fpStk
 	    in
 	      case resTy
 	       of (CTy.C_unsigned(CTy.I_long_long)) => gpr C.edx :: defs
@@ -225,12 +165,12 @@ functor IA32SVIDFn (
 	      (* end case *)
 	    end
 	  else (case resTy
-	     of (CTy.C_float) => fpr CCs.st0 :: CCs.callerSaveRegs
-	      | (CTy.C_double) => fpr CCs.st0 :: CCs.callerSaveRegs
-	      | (CTy.C_long_double) => fpr (CCs.st0) :: CCs.callerSaveRegs
-	      | (CTy.C_unsigned(CTy.I_long_long)) => gpr C.edx :: CCs.callerSaveRegs
-	      | (CTy.C_signed(CTy.I_long_long)) => gpr C.edx :: CCs.callerSaveRegs
-	      | _ => CCs.callerSaveRegs
+	     of (CTy.C_float) => fpr st0 :: callerSaveRegs'
+	      | (CTy.C_double) => fpr st0 :: callerSaveRegs'
+	      | (CTy.C_long_double) => fpr st0 :: callerSaveRegs'
+	      | (CTy.C_unsigned(CTy.I_long_long)) => gpr C.edx :: callerSaveRegs'
+	      | (CTy.C_signed(CTy.I_long_long)) => gpr C.edx :: callerSaveRegs'
+	      | _ => callerSaveRegs'
 	    (* end case *))
 
     fun fstp (32, f) = T.EXT(ix(IX.FSTPS(f)))
@@ -264,6 +204,7 @@ functor IA32SVIDFn (
 	        then []
                 else if abi = "Darwin"	
 		      then let
+		       (* align the frame on a 16-byte boundary *)
 			val szb = IA32CSizes.alignAddr(#szb argMem + 2*4, 16)-2*4
 		        in
 			  [T.MV(wordTy, C.esp, T.SUB(wordTy, spReg, T.LI(IntInf.fromInt szb)))]

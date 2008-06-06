@@ -3,10 +3,10 @@ Library
 	signature STAGED_ALLOCATION
 	signature C_CALL
 
+    	structure CLocationKinds
+
 	functor StagedAllocationFn
         functor CCallFn
-	functor VarargCCallFn
-        structure VarargCCallConstants
 is
 
 	$/basis.cm
@@ -19,7 +19,6 @@ is
 
 	../staged-allocation/c-call-sig.sml
         ../staged-allocation/c-call-fn.sml
-	../vararg-ccall/vararg-ccall-constants.sml
-	../staged-allocation/vararg-c-call-fn.sml
+        ../staged-allocation/c-location-kinds.sml
 	../staged-allocation/staged-allocation-sig.sml
 	../staged-allocation/staged-allocation-fn.sml

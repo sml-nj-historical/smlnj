@@ -7,9 +7,10 @@
  * Mike Rainey (mrainey@cs.uchicago.edu)
  *)
 
-functor VarargCCallFn (
+functor GenInterpFn (
     structure T : MLTREE
-    structure CCall : C_CALL where T = T
+    val callerSaveRegs : T.reg list
+    val callerSaveFRegs : T.reg list
   (* registers for passing parameters *)
     val gprParams : T.reg list
     val fprParams : T.reg list
@@ -126,6 +127,20 @@ functor VarargCCallFn (
 	   T.JMP (T.LABEL interpLab, [])
         ]
 
+  (* generate all possible general-purpose register loads *)
+    fun genPutGprs arg = let
+	    val putGprs = List.map (genPutGpr arg) gprTys
+            in
+	       concatMap (fn f => concatMap f gprParams) putGprs
+	    end
+
+  (* generate all possible floating-point register loads *)
+    fun genPutFprs arg = let
+	    val putfprs = List.map (genPutFpr arg) fprTys
+            in
+	       concatMap (fn f => concatMap f fprParams) putfprs
+	    end
+
   (* resolve the function for loading the register *)
     fun genResolveReg arg k ty (r, instrs) = let
 	   val cmp = T.CMP(wordTy, T.EQ, offZippedArg(wordTy, arg, Consts.locOff), lit (regToInt r))
@@ -175,7 +190,7 @@ functor VarargCCallFn (
 
   (* call the varargs C function *)
     fun genCallC cFun = let
-	   val defs = List.map gpr CCall.callerSaveRegs @ List.map (fn r => fpr(64, r)) CCall.callerSaveFRegs
+	   val defs = List.map gpr callerSaveRegs @ List.map (fn r => fpr(64, r)) callerSaveFRegs
 	   val uses = List.map gpr gprParams @ List.map (fn r => fpr(64, r)) fprParams
 	   in
 	      [
@@ -192,20 +207,6 @@ functor VarargCCallFn (
 	    T.DEFINE interpLab0,
 	    T.BCC (T.CMP(wordTy, T.GE, args, endOfArgs), gotoCLab)
           ]
-
-  (* generate all possible general-purpose register loads *)
-    fun genPutGprs arg = let
-	    val putGprs = List.map (genPutGpr arg) gprTys
-            in
-	       concatMap (fn f => concatMap f gprParams) putGprs
-	    end
-
-  (* generate all possible floating-point register loads *)
-    fun genPutFprs arg = let
-	    val putfprs = List.map (genPutFpr arg) fprTys
-            in
-	       concatMap (fn f => concatMap f fprParams) putfprs
-	    end
 
   (* generate instructions for making a varargs call *)
     fun genVarargs (cFun, argsReg, endOfArgs) = let           

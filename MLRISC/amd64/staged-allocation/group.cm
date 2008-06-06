@@ -13,7 +13,7 @@ Group
   signature MLTREE_UTILS
 
   functor AMD64SVIDFn
-  functor AMD64VarargCCallFn
+  functor AMD64GenInterpFn
   functor AMD64Gen
   functor CFGEmit
   functor BuildFlowgraph
@@ -76,4 +76,5 @@ is
   ../../cm/Peephole.cm
   ../../cm/AMD64.cm
   ../../cm/AMD64-Peephole.cm
+  ../../vararg-ccall/sources.cm
 

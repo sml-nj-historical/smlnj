@@ -6,7 +6,7 @@
  * Mike Rainey (mrainey@cs.uchicago.edu)
  *)
 
-functor AMD64VarargCCallFn (
+functor AMD64GenInterpFn (
     structure T : MLTREE
     val push : T.rexp -> T.stm
     val leave : T.stm
@@ -17,9 +17,10 @@ functor AMD64VarargCCallFn (
     structure CB = CellsBasis
     structure CTy = CTypes
     structure CCall = AMD64SVIDFn(structure T = T)
-    structure VarargCCall = VarargCCallFn(
+    structure GenInterp = GenInterpFn(
 			      structure T = T
-			      structure CCall = CCall
+			      val callerSaveRegs = CCall.callerSaveRegs
+			      val callerSaveFRegs = CCall.callerSaveFRegs
 			      val gprParams = List.map #2 ((64, C.rax) :: CCall.CCs.gprParams)
 			      val fprParams = List.map #2 CCall.CCs.fprParams
 			      val gprTys = [32, 64]
@@ -51,7 +52,7 @@ functor AMD64VarargCCallFn (
 		    T.COPY (wordTy, [C.rbp], [C.rsp])],		   
 		   [T.MV(wordTy, cFun, T.REG(wordTy, C.rdi))],    (* arg0 *)
 		   [T.MV(wordTy, args, T.REG(wordTy, C.rsi))],    (* arg1 *)
-	           VarargCCall.genVarargs(T.REG(wordTy, cFun), args, endOfArgs),
+	           GenInterp.genVarargs(T.REG(wordTy, cFun), args, endOfArgs),
 		   [leave],
 		   [T.RET []]
 		   ])

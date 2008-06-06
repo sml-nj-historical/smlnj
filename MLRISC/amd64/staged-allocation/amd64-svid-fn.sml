@@ -196,17 +196,27 @@ functor AMD64SVIDFn (
 		       end
             end
 
+  (* given a parameter slot, return the C location to place the slot *)
+    fun layoutParam stepFn (paramSlot, (str, paramLocss)) = let
+	    val (str', paramLocs) = SA.doStagedAllocation(str, stepFn, paramSlot)
+            in
+	      (str', paramLocs :: paramLocss)
+            end
+
+  (* given some parameter slots, return C locations to place the slots *)
+    fun layoutParams (stepFn, str, paramSlots) = let
+	    val (str, paramLocss) = List.foldl (layoutParam stepFn) (str, []) paramSlots
+	    val paramCLocss = List.map (List.map cLocOfStagedAlloc) paramLocss 
+            in
+	       (List.rev paramCLocss, str)
+	    end
+
   (* given a store and some parameters, return the C locations for those parameters *)
     fun layoutCall (str, paramTys) = let
+	   val paramSlots = List.map slotsOfCTy paramTys
 	   val callStepper = SA.mkStep CCs.callStages
-	   fun doParam (paramTy, (str, paramLocss)) = let
-	          val (str', paramLocs) = SA.doStagedAllocation(str, callStepper, slotsOfCTy paramTy)
-	          in
-	             (str', List.map cLocOfStagedAlloc paramLocs :: paramLocss)
-	          end
-	   val (str, paramLocss) = List.foldl doParam (str, []) paramTys
            in
-	      (List.rev paramLocss, str)
+	      layoutParams (callStepper, str, paramSlots)
            end
 
     fun layout {conv, retTy, paramTys} = let
