@@ -151,13 +151,13 @@ fun isPrimPat (VARpat{info, ...}) = II.isPrimInfo(info)
  * called only once, in elabVB in elabcore.sml *)
 
 fun aconvertPat (pat, {mkLvar=mkv, ...} : compInfo)
-    : Absyn.pat * Absyn.pat list * var list =
-    let val varmap : (Absyn.pat * var) list ref = ref nil
+    : Absyn.pat * var list * var list =
+    let val varmap : (var * var) list ref = ref nil
             (* association list mapping old vars to new *)
         (* ASSERT: any VARpat/VALvar will have an LVAR access. *)
-	fun mappat (oldpat as VARpat(VALvar{access=A.LVAR(oldlvar),
+	fun mappat (VARpat(oldvar as VALvar{access=A.LVAR(oldlvar),
                                             typ=ref typ',prim,btvs,path})) =
-              let fun find ((VARpat(VALvar{access=A.LVAR(lv),...}), newvar)::rest) =
+              let fun find ((VALvar{access=A.LVAR(lv),...}, newvar)::rest) =
                         if lv=oldlvar then newvar else find rest
 			(* a variable could occur multiple times because
                            repetition in OR patterns *)
@@ -166,7 +166,7 @@ fun aconvertPat (pat, {mkLvar=mkv, ...} : compInfo)
 		        let val newvar =
                                 VALvar{access=A.dupAcc(oldlvar,mkv), prim=prim,
                                        typ=ref typ', path=path, btvs = btvs}
-			 in varmap := (oldpat,newvar)::(!varmap); newvar
+			 in varmap := (oldvar,newvar)::(!varmap); newvar
 			end
 	       in VARpat(find(!varmap))
 	      end
@@ -183,9 +183,9 @@ fun aconvertPat (pat, {mkLvar=mkv, ...} : compInfo)
 
         val newpat = mappat pat
 
-        val (oldvarpats,newvars) = ListPair.unzip (!varmap)
+        val (oldvars,newvars) = ListPair.unzip (!varmap)
 
-     in (newpat,oldvarpats,newvars)
+     in (newpat,oldvars,newvars)
     end (* aconvertPat *)
 
 (* sort the labels in a record the order is redefined to take the usual 

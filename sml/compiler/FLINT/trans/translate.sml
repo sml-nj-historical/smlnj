@@ -1231,46 +1231,39 @@ and mkVBs (vbs, d) =
             (* simple variable pattern: No special case for primops [dbm: 5/1/07] *)
             LET(v, mkPE(exp, d, btvs), body)
 
-        | mkVB (VB{pat, exp, boundtvs=btvs, ...}, body) =
-		   let val (newpat,oldvars,newvars) = aconvertPat(pat, compInfo)
-		         (* this is the only call of aconvertPat *)
-                       val newVarExps = map (fn v => VARexp(ref v,[])) newvars 
-		       val r = RULE(newpat, TUPLEexp(newVarExps))
-                       val newexp = CASEexp(exp, completeBind[r], false)
+        | mkVB (VB{pat, exp, boundtvs, ...}, body) =
+	    let val (newpat,oldvars,newvars) = ElabUtil.aconvertPat(pat, compInfo)
+		  (* this is the only call of aconvertPat *)
+		val newVarExps = map (fn v => VARexp(ref v,[])) newvars 
+		val r = RULE(newpat, EU.TUPLEexp(newVarExps))
+		val newexp = CASEexp(exp, EU.completeMatch(env,"Bind")[r], false)
 
-                    in case oldvars
-                        of [] => (* implies btvs = [] *) (* OK *)
-                              LET(mkLvar(), mkExp(newexp, d), body)
-                         | _ => 
-                             let val newVar = newVALvar internalSym
-                                 val newVarPat = VARpat(newVar)
-                                 val newVarExp = VARexp(ref newVar, [])
+	     in case oldvars
+		 of [] => (* implies boundtvs = [] *) (* OK *)
+		       LET(mkv(), mkExp(newexp, d), body)
+		  | _ => 
+		      let val newVar = mkv() (* local variable *)
+			  fun buildDec([], i, body) = body
+			    | buildDec(vp::r, i, body) = 
+			      let val V.VALvar{access=DA.LVAR(lv),btvs=lbtvs,...} = vp
+				  val indices = List.tabulate((length(!lbtvs)),(fn x => x))
+				  val m = ListPair.zip(!lbtvs,indices)
+				  fun lookup tv [] = NONE
+				    | lookup tv ((tv',k)::r) = if tv = tv' then SOME k
+							       else lookup tv r
+				  val targs = map (fn tv => case lookup tv m
+							  of NONE => LT.tcc_void
+							   | SOME k => LT.tcc_var(0,k))
+						  boundtvs
+				  val defn = TFN(LT.tkc_arg(length(!lbtvs)),
+						 SELECT(i,TAPP(VAR(newVar),targs)))
+			       in buildDec(r,i+1,LET(lv, defn, body))
+			      end
 
-                                 val newVarDec = 
-                                     VALdec([VB{exp=newexp, tyvars=tvref, 
-                                                pat=newVarPat, boundtvs=[]}])
-
-                                 fun buildDec([], _, d) =  
-                                     LOCALdec(newVarDec, SEQdec(rev d))
-                                   | buildDec(vp::r, i, d) = 
-                                     let val nvb = VB{exp=TPSELexp(newVarExp,i),
-                                                      pat=vp, boundtvs=[],
-                                                      tyvars=ref[]}
-
-                                      in buildDec(r, i+1, VALdec([nvb])::d)
-                                     end
-
-                              in (buildDec(oldvars, 1, []), oldvars, updt)
-                             end
-                   end
-
-            let val ee = mkPE(exp, d, btvs)
-                val rules = [(fillPat(pat, d), body), (WILDpat, unitLexp)]
-                val rootv = mkv()
-                fun finish x = LET(rootv, ee, x)
-             in MC.bindCompile(env, rules, finish, rootv, toTcLt d, complain,
-			       genintinfswitch)
-            end
+		       in LET(newVar,mkPE(newexp,d,boundtvs),
+			      buildDec(oldvars, 0, body))
+		      end
+	    end
 
    in fold mkVB vbs
   end (* mkVBs *)

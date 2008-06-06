@@ -329,19 +329,19 @@ fun generalizeTy(VALvar{typ,path,btvs,...}, userbound: tyvar list,
 fun generalizePat(pat: pat, userbound: tyvar list, occ: occ, tdepth,
                   generalize: bool, region) =
     let val tvs : tyvar list ref = ref []
+	fun union ([],tvs) = tvs
+	  | union (tv::rest,tvs) = if List.exists (fn tv' => (tv = tv')) tvs then union(rest,tvs)
+				   else tv :: (union(rest,tvs))
         fun gen(VARpat v) = 
-	      (let val x = generalizeTy(v,userbound,occ,generalize,region)
-                   val _ = case (x, !tvs) 
-                            of (_::_, _::_) => bug "generalizePat 1234"
-                             | _ => ()
-                in tvs := (x@(!tvs))
-               end)
+	      tvs := union(generalizeTy(v,userbound,occ,generalize,region), !tvs)
 	  | gen(RECORDpat{fields,...}) = app (gen o #2) fields
 	  | gen(APPpat(_,_,arg)) = gen arg
 	  | gen(CONSTRAINTpat(pat,_)) = gen pat
 	  | gen(LAYEREDpat(varPat,pat)) = (gen varPat; gen pat)
 	  | gen _ = ()
-     in gen pat; indexBoundTyvars(tdepth,!tvs); !tvs
+     in gen pat;
+        (* indexBoundTyvars(tdepth,!tvs); *)
+	!tvs
     end
 
 fun applyType(ratorTy: ty, randTy: ty) : ty =
