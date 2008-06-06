@@ -1,34 +1,29 @@
 #include <stdio.h>
 
-struct vararg_s {
-  union arg_u {
+struct zipped_arg_s {
+  union val_u {
     int i;
     double d;
     char* s;
-  } arg;
+  } val;
   long long kind;
   long long loc;
   long long ty;
 };
 
-struct varargs_s {
-  struct vararg_s* hd;
-  void* p;
-  struct varargs_s* tl;
-};
+extern void varargs (void* cFun, struct zipped_arg_s* args, struct zipped_arg_s* argsEnd);
 
-extern int varargs (void* cFun, struct varargs_s* args, int stkSz);
-
-int vararg_wrapper (void* cFun, struct varargs_s* args, int stkSz)
+void vararg_wrapper (void* cFun, struct zipped_arg_s* args, struct zipped_arg_s* argsEnd)
 {
-  printf ("vararg cFun=%p args=%p, stkSz=%d\n", cFun, varargs, stkSz);
-  struct varargs_s* tmp_args = args;
-  while (tmp_args) {
-    struct vararg_s* hd = tmp_args->hd;
-    printf ("arg=%s kind=%d loc=%d ty=%d\n", hd->arg.s, (int)hd->kind, (int)hd->loc, (int)hd->ty);
-    tmp_args = tmp_args->tl;
-  }
-  int x = varargs(cFun, args, stkSz);
-  return 0;
+  printf ("vararg cFun=%p args=%p, end=%p\n", cFun, args, argsEnd);
+  struct zipped_arg_s* tmp_args = args;
+
+  for(tmp_args = args; tmp_args < argsEnd; tmp_args++)
+    if ((int)tmp_args->ty == 32)
+      printf ("arg=%d kind=%d loc=%d ty=%d\n", tmp_args->val.i, (int)tmp_args->kind, (int)tmp_args->loc, (int)tmp_args->ty);
+    else 
+      printf ("arg=%f kind=%d loc=%d ty=%d\n", tmp_args->val.d, (int)tmp_args->kind, (int)tmp_args->loc, (int)tmp_args->ty);
+
+  varargs(cFun, args, argsEnd);
 }
 

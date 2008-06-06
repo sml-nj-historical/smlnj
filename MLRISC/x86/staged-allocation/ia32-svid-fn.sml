@@ -107,7 +107,7 @@ functor IA32SVIDFn (
 	val fpStk = List.tabulate(8, fn i => fpr (C.ST i))
 
       (* conventions for calling a C function *)
-        val alignB = 4
+        val alignB = 16
 	val cStack = SA.freshCounter()
 	val callStages = [
 	      SA.SEQ[
@@ -166,8 +166,9 @@ functor IA32SVIDFn (
   (* convert a finalized staged-allocation location into a C location *)
     fun saToCLoc (ty, SA.REG(_, r), K_GPR) = CCall.C_GPR(ty, r)
       | saToCLoc (ty, SA.REG(_, r), K_FPR) = CCall.C_FPR(ty, r)
-      | saToCLoc (ty, SA.BLOCK_OFFSET offB, _) = CCall.C_STK(ty, T.I.fromInt (32, offB))
-      | saToCLoc (ty, SA.NARROW(loc, ty', k), _) = saToCLoc (ty, loc, k) 
+      | saToCLoc (ty, SA.BLOCK_OFFSET offB, K_GPR) = CCall.C_STK(ty, T.I.fromInt (32, offB))
+      | saToCLoc (ty, SA.BLOCK_OFFSET offB, K_FPR) = CCall.C_FSTK(ty, T.I.fromInt (32, offB))
+      | saToCLoc (ty, SA.NARROW(loc, ty', _), k) = saToCLoc (ty, loc, k) 
 
     val frameAlign = 8
 
@@ -195,8 +196,8 @@ functor IA32SVIDFn (
 	    in
 	       (str', (List.map saToCLoc paramLocs) :: paramLocss)
             end
-	val (str, paramLocss) = List.foldl doParam (str, []) paramTys
-	val paramLocs = List.rev paramLocss
+	val (str, paramLocs) = List.foldl doParam (str, []) paramTys
+	val paramLocs = List.rev paramLocs
 
 	(* number of bytes allocated for the call *)
 	val cStkSzB = let
@@ -254,13 +255,19 @@ functor IA32SVIDFn (
 	 *)
 	  val (args, argLocs, explicitArgSzB) = (case structRetLoc
 		 of SOME pos =>
-		      (ARG(structRet pos)::args, [CCall.C_STK(wordTy, T.I.fromInt (wordTy, 0))]::argLocs, #szb argMem - 4)
+		      (ARG(structRet pos)::args, [CCall.C_STK(wordTy, T.I.fromInt (wordTy, 0))]::argLocs, #szb argMem)
 		  | NONE => (args, argLocs, #szb argMem)
 		(* end case *))
 
 	(* instruction to allocate space for arguments *)
 	  val argAlloc = if ((#szb argMem = 0) orelse paramAlloc argMem)
-		then []
+	        then []
+                else if abi = "Darwin"	
+		      then let
+			val szb = IA32CSizes.alignAddr(#szb argMem + 2*4, 16)-2*4
+		        in
+			  [T.MV(wordTy, C.esp, T.SUB(wordTy, spReg, T.LI(IntInf.fromInt szb)))]
+			end
 		else [T.MV(wordTy, C.esp, T.SUB(wordTy, spReg, T.LI(IntInf.fromInt(#szb argMem))))]
 	  val (copyArgs, gprUses, fprUses) = CCall.copyArgs(args, argLocs)
 
@@ -327,7 +334,7 @@ functor IA32SVIDFn (
 		else callStm
 
 	(* assemble the call sequence *)
-	  val callSeq = argAlloc @ copyArgs @ save @ [callStm] @ restore(* @ popArgs*) @ copyResult
+	  val callSeq = argAlloc @ copyArgs @ save @ [callStm] @ restore @ popArgs @ copyResult
 
           in
    	    {callseq=callSeq, result=resultRegs}

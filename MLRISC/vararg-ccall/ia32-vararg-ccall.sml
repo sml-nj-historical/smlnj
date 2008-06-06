@@ -47,7 +47,6 @@ structure IA32VarargCCall =
 
     structure CTy = CTypes
     structure Consts = VarargCCallConstants
-    structure V = VarArgs
     structure CB = CellsBasis
     structure T = X86MLTree
 
@@ -55,10 +54,10 @@ structure IA32VarargCCall =
 
     val regToInt = CB.physicalRegisterNum
 
-    fun argToCTy (V.I _) = CTy.C_signed CTy.I_int
-      | argToCTy (V.R _) = CTy.C_double
-      | argToCTy (V.B _) = CTy.C_signed CTy.I_int
-      | argToCTy (V.S _) = CTy.C_PTR
+    fun argToCTy (VarargCCall.I _) = CTy.C_signed CTy.I_int
+      | argToCTy (VarargCCall.R _) = CTy.C_double
+      | argToCTy (VarargCCall.B _) = CTy.C_signed CTy.I_int
+      | argToCTy (VarargCCall.S _) = CTy.C_PTR
 
   (* runtime friendly representation of the C location *)
     fun encodeCLoc (CCall.C_GPR (ty, r)) = (Consts.GPR, regToInt r, ty)
@@ -73,6 +72,11 @@ structure IA32VarargCCall =
 	     (arg, k, l, ty)
 	   end
 
+    fun argToStr (CTy.C_double) = "doub"
+      | argToStr CTy.C_PTR = "ptr"
+      | argToStr _ = "int"
+
+
   (* package the arguments with their locations *)
     fun zipArgs args = let
 	    val argTys = List.map argToCTy args
@@ -80,24 +84,10 @@ structure IA32VarargCCall =
 	  (* expect single locations, as we do not pass aggregates to vararg functions *)
 	    val argLocs = List.map List.hd argLocs
             in
-  	        (ListPair.mapEq varArg (args, List.rev argLocs), argMem)
+  	        ListPair.mapEq varArg (args, argLocs)
 	    end
 
-  (* align the frame to 16 bytes *)
-    fun darwinStkSzB stkArgSzB = let
-	   val retAndFrameSzB = 2*4
-	   val stkAllocSzB = stkArgSzB + retAndFrameSzB
-	   val stkAllocSzB = IA32CSizes.alignAddr(stkAllocSzB, 16)
-	   val stkAllocSzB = stkAllocSzB - retAndFrameSzB
-           in
-	       stkAllocSzB
-	   end
-
-    fun callWithArgs (cFun, args) = let
-	   val (zippedArgs, {szb, ...}) = zipArgs args
-	   in
-	      VarargCCall.vararg(cFun, zippedArgs, darwinStkSzB szb)
-	   end
+    fun callWithArgs (cFun, args) = VarargCCall.vararg(cFun, zipArgs args)
 
   end
 

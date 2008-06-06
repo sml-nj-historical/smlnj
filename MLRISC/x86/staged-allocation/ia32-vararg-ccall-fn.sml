@@ -50,22 +50,21 @@ functor IA32VarargCCallFn (
 
     fun genVarargs () = let
   	   val lab = Label.global "varargs"
-	   val args = C.newReg()
-	   val cFun = C.newReg()
+	   val argsReg = C.newReg()
         (* we align the frame to a 16-bytes to support Mac OS. *)
 	   val frameSzB = 1024*4-2*4
-	   val endOfArgs = raise Fail "todo"
+	   val cFun = getArg 0
+	   val endOfArgs = getArg 2
            in
 	      (lab,
 	       List.concat [
 	           [T.LIVE CCall.CCs.calleeSaveRegs],
 		   [push (T.REG(wordTy, C.ebp)),
 		    T.COPY (wordTy, [C.ebp], [C.esp])],
-		   [T.MV(wordTy, cFun, getArg 0)],
-		   [T.MV(wordTy, args, getArg 1)],
+		   [T.MV(wordTy, argsReg, getArg 1)],
 		 (* allocate stack space for the arguments *)
 		   [T.MV(wordTy, C.esp, T.SUB(wordTy, T.REG(wordTy, C.esp), lit frameSzB))],
-	           VarargCCall.genVarargs (T.REG(wordTy, cFun), args, endOfArgs),
+	           VarargCCall.genVarargs (cFun, argsReg, endOfArgs),
 		   [leave],
 	           [T.LIVE CCall.CCs.calleeSaveRegs],
 		   [T.RET []]

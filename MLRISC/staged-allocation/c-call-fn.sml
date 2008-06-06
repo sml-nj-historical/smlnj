@@ -69,16 +69,16 @@ functor CCallFn (
 	    (T.FSTORE (mty, offSp offset, e, stack) :: stms, gprs, fprs)
 	  | (ARG (T.LOAD (ty, e, rgn)), C_FPR (mty, r)) =>
 	    (copyToFReg(mty, r, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) @ stms, gprs, (mty, r) :: fprs)
-	  | (FARG (T.FLOAD (ty, e, rgn)), C_STK (mty, offset)) => let
+	  | (FARG (T.FLOAD (ty, e, rgn)), C_FSTK (mty, offset)) => let
 	    val tmp = C.newFreg ()
 	    in
-		(T.FSTORE (wordTy, offSp offset, T.FREG (wordTy, tmp), stack) :: 
-		 T.FMV (wordTy, tmp, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) :: stms, gprs, fprs)
+		(T.FSTORE (mty, offSp offset, T.FREG (mty, tmp), stack) :: 
+		 T.FMV (mty, tmp, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) :: stms, gprs, fprs)
 	    end
-	  | (FARG e, C_STK (mty, offset)) => let
+	  | (FARG e, C_FSTK (mty, offset)) => let
 	    val tmp = C.newFreg ()
 	    in
-		(T.FSTORE (wordTy, offSp offset, T.FREG (wordTy, tmp), stack) :: T.FMV (wordTy, tmp, e) :: stms, gprs, fprs)
+		(T.FSTORE (mty, offSp offset, T.FREG (mty, tmp), stack) :: T.FMV (mty, tmp, e) :: stms, gprs, fprs)
 	    end
 	  | (FARG e, C_FPR (mty, r)) => (copyToFReg(mty, r, e) @ stms, gprs, (mty, r) :: fprs)
 	  | _ => raise Fail "invalid arg / location combination"

@@ -8,6 +8,7 @@
 
 Library
   structure VarArgs
+  structure VarargCCall
   structure IA32VarargCCall
 is
 

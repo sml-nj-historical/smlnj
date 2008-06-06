@@ -110,23 +110,21 @@ structure X86GasPseudoOps =
    X86GasPseudoOps(structure T=X86MLTree
 		   structure MLTreeEval=X86MLTreeEval)
 
-
+(*
 functor X86PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = X86GasPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
+*)
 
-(*
 functor X86PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = X86DarwinPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-*)
-
 
 structure X86PseudoOps = X86PseudoOpsFn(
             structure T = X86MLTree
@@ -344,7 +342,7 @@ structure CCalls = IA32SVIDFn (
            structure T = X86MLTree
            fun ix x = x
 	   val fast_floating_point = fast_floating_point
-           val abi = "")
+           val abi = "Darwin")
 
 
     structure C = X86Instr.C
@@ -355,7 +353,7 @@ structure CCalls = IA32SVIDFn (
                        structure T = X86MLTree
                        fun ix x = x
 		       val fast_floating_point = fast_floating_point
-		       val abi = ""
+		       val abi = "Darwin"
 		       fun push e = T.EXT(X86InstrExt.PUSHL e)
 		       val leave = T.EXT X86InstrExt.LEAVE
 		       )

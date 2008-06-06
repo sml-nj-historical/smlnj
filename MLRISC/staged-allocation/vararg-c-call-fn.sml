@@ -80,6 +80,7 @@ functor VarargCCallFn (
 	    end
     end
 
+    val interpLab0 = newLabel "interp0"
     val interpLab = newLabel "interp"
     val resolveKindsLab = newLabel "resolveKinds"
     val gotoCLab = newLabel "gotoC"
@@ -188,6 +189,7 @@ functor VarargCCallFn (
             T.DEFINE interpLab,
 	  (* loop through the args *)
 	    T.MV (wordTy, argsReg, T.ADD (wordTy, args, lit Consts.zippedArgSzB)),
+	    T.DEFINE interpLab0,
 	    T.BCC (T.CMP(wordTy, T.GE, args, endOfArgs), gotoCLab)
           ]
 
@@ -210,6 +212,7 @@ functor VarargCCallFn (
 	    val arg = T.REG (wordTy, argsReg)
             in
 	      List.concat [
+	         [T.JMP (T.LABEL interpLab0, [])],
 	         genInterp(arg, argsReg, endOfArgs),
 		 genResolveKinds arg,
 		 resolveArgLocs arg,

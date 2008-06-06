@@ -2,8 +2,9 @@ structure VarargCCall =
   struct
 
     structure DL = DynLinkage
-    structure V = VarArgs
     structure Consts = VarargCCallConstants
+
+    datatype argument = I of int | R of real | B of bool | S of string
 
     fun main's s = DL.lib_symbol (DL.main_lib, s)
     val malloc_h = main's "malloc"
@@ -54,44 +55,55 @@ structure VarargCCall =
 	    z
 	end
 
-    fun encodeArg (V.I i) = Word32.fromInt i
-      | encodeArg (V.S s) = dupML' s
-      | encodeArg (V.B b) = if b then 0w1 else 0w0
-      | encodeArg (V.R r) = raise Fail "todo"
-
+  (* default width of a field in a zipped argument *)
     val defaultWidthB = Word32.fromInt Consts.defaultWidthB
     val argOffB = Word32.fromInt Consts.argOff * defaultWidthB
     val kindOffB = Word32.fromInt Consts.kindOff * defaultWidthB
     val locOffB = Word32.fromInt Consts.locOff * defaultWidthB
     val tyOffB = Word32.fromInt Consts.tyOff * defaultWidthB
+    val zippedArgSzB = Word32.fromInt Consts.zippedArgSzB
 
     fun set (p, off, v) = set'(p+off, v)
 
-    fun encodeZippedArg (arg, k, l, ty) = let
-	  (* 4 elements x 8 bytes per element *)
-	    val x = alloc (0w4 * defaultWidthB)
-	    in
-	       set(x, argOffB, encodeArg arg);
-	       set(x, kindOffB, Word32.fromInt k);
-	       set(x, locOffB, Word32.fromInt l);
-	       set(x, tyOffB, Word32.fromInt ty);
-	       x
+  (* track strings allocated for the call *)
+    local
+	val allocatedStrs = ref ([] : Word32.word list)
+    in
+	fun freeStrs () = (
+	       List.app free (!allocatedStrs);
+	       allocatedStrs := [])
+	fun addStr s = allocatedStrs := s :: !allocatedStrs
+    end
+
+  (* encode the argument field *)
+    fun encodeArg (arrPtr, I i) = set(arrPtr, argOffB, Word32.fromInt i)
+      | encodeArg (arrPtr, S s) = let
+	    val strPtr = dupML' s
+	    in 
+	       addStr strPtr;
+	       set(arrPtr, argOffB, strPtr)
 	    end
+      | encodeArg (arrPtr, B b) = set(arrPtr, argOffB, if b then 0w1 else 0w0)
+      | encodeArg (arrPtr, R r) = RawMemInlineT.f64s (arrPtr+argOffB, r)
 
-    val hdOffB = Word32.fromInt Consts.HD * defaultWidthB
-    val tlOffB = Word32.fromInt Consts.TL * defaultWidthB
+  (* encode a zipped argument *)
+    fun encodeZippedArg ((arg, k, l, ty), arrPtr) = (
+	    encodeArg(arrPtr, arg);
+	    set(arrPtr, kindOffB, Word32.fromInt k);
+	    set(arrPtr, locOffB, Word32.fromInt l);
+	    set(arrPtr, tyOffB, Word32.fromInt ty);
+	  (* advance the pointer by one zipped argument *)
+	    arrPtr + zippedArgSzB
+        )
 
-    fun encodeZippedArgList args = let
-	    fun loop [] = Word32.fromInt Consts.NIL
-	      | loop (za :: zas) = let
-		    val l = alloc(0w2 * defaultWidthB)
-		    in
-		        set(l, hdOffB, za);
-			set(l, tlOffB, loop(zas));
-			l
-		    end
-	    in
-	        loop (List.map encodeZippedArg args)
+  (* encode an array of zipped arguments *)
+    fun encodeZippedArgs args = let
+	    val nArgs = List.length args
+	    val argsSzB = Word32.fromInt nArgs * zippedArgSzB
+	    val arrPtr = alloc argsSzB
+            in
+	        List.foldl encodeZippedArg arrPtr args;
+	        {startCArr=arrPtr, endCArr=argsSzB+arrPtr}
 	    end
 
     fun vararg's s = let
@@ -102,16 +114,20 @@ structure VarargCCall =
         end
 
   (* call the vararg interpreter *)
-    fun vararg (cFun, zippedArgs, stkArgSzB) = let
-	    val vararg_h = vararg's "varargs"
+    fun vararg (cFun, zippedArgs) = let
+	    val vararg_h = vararg's Consts.varargInterpreter
 	    val callInterp = RawMemInlineT.rawccall :
 		      Word32.word * (Word32.word * Word32.word * Word32.word) * 
 		      (unit * Word32.word * Word32.word * Word32.word -> Word32.word) list
 		      -> Word32.word
 	    val cFunAddr = DL.addr (vararg's cFun)
-	    val cArgs = encodeZippedArgList zippedArgs
+	    val {startCArr, endCArr} = encodeZippedArgs zippedArgs
+	 (* call the interpreter *)
+	    val x = callInterp (DL.addr vararg_h, (cFunAddr, startCArr, endCArr), [])
 	    in 
-	        callInterp (DL.addr vararg_h, (cFunAddr, cArgs, Word32.fromInt stkArgSzB), [])
+	        freeStrs();
+	        free startCArr;
+	        x
 	    end
 
   end

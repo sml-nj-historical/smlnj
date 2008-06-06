@@ -15,8 +15,6 @@ signature VAR_ARGS =
     type 'a valist
     type ('a, 'b) vararg = 'a valist -> ('b -> 'a) valist
 
-    datatype argument = I of int | R of real | B of bool | S of string
-
     val int : ('a, int) vararg
     val real : ('a, real) vararg
     val bool : ('a, bool) vararg
@@ -26,13 +24,15 @@ signature VAR_ARGS =
 
     val call : ('a vararg_fn) -> ('a valist -> 'b valist) -> 'b
 
+    val printf : unit vararg_fn
+
   end;
 
 structure VarArgs :> VAR_ARGS =
   struct
 
   (* an evaluation engine that serves as a target *)
-    datatype argument = I of int | R of real | B of bool | S of string
+    datatype argument = datatype VarargCCall.argument
 
     fun arg2str (I i) = Int.toString i
       | arg2str (R r) = Real.toString r
@@ -40,14 +40,13 @@ structure VarArgs :> VAR_ARGS =
       | arg2str (S s) = concat["\"", String.toString s, "\""]
 
     val stk = ref([] : argument list)
-    fun push arg = (
-	  print(concat["push(", arg2str arg, ")\n"]);
-	  stk := arg :: !stk)
-    fun callWithArgs f = let
+    fun push arg = stk := arg :: !stk
+    fun callWithArgs (cFun, x) = let
 	  val args = !stk
 	  in
 	    stk := [];
-	    f args
+	    IA32VarargCCall.callWithArgs (cFun, args);
+	    x
 	  end
 
     type 'a valist = ((unit -> unit) -> 'a)
@@ -63,6 +62,8 @@ structure VarArgs :> VAR_ARGS =
 
     fun call f spec = spec (fn k => (k(); callWithArgs f)) (fn () => ())
 
-    type 'a vararg_fn = argument list -> 'a
+    type 'a vararg_fn = string * 'a
+
+    val printf = ("printf", ())
 
   end
