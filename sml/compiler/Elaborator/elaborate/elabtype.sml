@@ -58,7 +58,7 @@ fun elabType(ast:Ast.ty,env:SE.staticEnv,error,region:region)
 		   else L.lookArTyc(env,SP.SPATH co,length ts,error region)
 	       val (lts1,lvt1) = elabTypeList(ts,env,error,region)
 	       val _ = case co1 of 
-			   (DEFtyc {tyfun=TYFUN{arity, body}, ...}) => Ens_var.add_type_use (CONty (co1,lts1)) region
+			   ((DEFtyc _)|(GENtyc _)) => Ens_var.add_type_use (CONty (co1,lts1)) region
 			 | _ => ()
 	    in (CONty (co1,lts1),lvt1)
 	   end

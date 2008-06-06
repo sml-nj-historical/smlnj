@@ -221,7 +221,8 @@ fun mkTyc (sym, sp, SIG {elements,...}, sInfo) =
                     (TU.tyconArity spec, entVar)
                 | TYCspec{entVar,info=InfTycSpec{arity,...}} => (arity,entVar)
                 | _ => bug "mkTyc: wrong spec case")
-     in case sInfo
+     in 
+	case sInfo
          of SIGINFO ep => 
             T.PATHtyc{arity=arity, entPath=rev(ev::ep),
 		      path=CVP.invertSPath sp}

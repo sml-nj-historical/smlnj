@@ -74,18 +74,6 @@ fun showDec(msg,dec,env) =
 
 infix -->
 
-
-fun print_path [] = bug "elabcore:print_path"
-  | print_path (t::q) = (
-    let val S.SYMBOL (_,y) = t in print y end ;
-    List.app (fn x => let val S.SYMBOL (_,y) = x in print ("."^y) end) q
-);
-fun print_region (int1, int2) =  (print (Int.toString int1); print " "; print (Int.toString int2) );
-fun print_path_region path region s = (print_path path;  print " "; print_region region; print s);
-
-val _ = EV.clear ();
-
-
 (* tyvarset management *)
 type tyvUpdate = TS.tyvarset -> unit
 val --- = TS.diffPure
@@ -319,7 +307,7 @@ let
 			     TS.empty)
 	 in
 	     case resultat of
-		 ((VARpat(VALvar {typ, access, ...})), _) => EV.add_def access typ path region
+		 (VARpat (v as VALvar {access, ...}), _) => EV.add_var_def v region
 	       | _ => ();
 	     resultat
 	 end
@@ -421,21 +409,27 @@ let
 		 | foldOr (p, p'::r) = ORpat(p, foldOr(p', r))
 	    in (foldOr(pat, pats), tyv)
 	   end
-       | AppPat {constr, argument} =>
+       | AppPat {constr, argument} => 
 	   let fun getVar (MarkPat(p,region),region') = 
-		   getVar(p,region)
-		 | getVar (VarPat path, region') = 
-		      let val dcb = pat_id (SP.SPATH path, env, 
-                                            error region', compInfo)
-			  val (p,tv) = elabPat(argument, env, region)
-		      in (makeAPPpat (error region) (dcb,p),tv) end
+		   getVar(p,region) 
+		 | getVar (VarPat path, region') =  
+		      let val dcb = pat_id (SP.SPATH path, env,  
+                                            error region', compInfo) 
+			  val (p,tv) = elabPat(argument, env, region) 
+		          val (S.SYMBOL (_, str)::_) = path
+		      in 
+			 case dcb of 
+			     CONpat (datacon, _) => EV.add_cons_use datacon region
+			   | _ => ();
+			 (makeAPPpat (error region) (dcb,p),tv)
+		      end 
 		 | getVar (_, region') = 
-		   (error region' EM.COMPLAIN 
-			 "non-constructor applied to argument in pattern"
-			 EM.nullErrorBody;
-		    (WILDpat,TS.empty))
+		   (error region' EM.COMPLAIN  
+			 "non-constructor applied to argument in pattern" 
+			 EM.nullErrorBody; 
+		    (WILDpat,TS.empty)) 
 	    in getVar(constr,region)
-	   end
+	   end 
        | ConstraintPat {pattern=pat,constraint=ty} =>
 	   let val (p1,tv1) = elabPat(pat, env, region)
 	       val (t2,tv2) = ET.elabType(ty,env,error,region)
@@ -598,18 +592,18 @@ let
 		in (FNexp (completeMatch rls,UNDEFty),tyv,updt)
 	       end
 	   | MarkExp (exp,region) => (
-	       ( case exp of 
-		     (VarExp path) => (case LU.lookVal(env,SP.SPATH path,error region) of
-					   (VAL (VALvar {access, typ, ...})) => EV.add_use access region
-					 | (CON (DATACON {rep, ...})) => ()
-                                               (*(print (A.prRep rep); print "\n")*)
-					 | _ => ()
-				      )
-	           | _ => ()
-	       );
-	       let val (e,tyv,updt) = elabExp(exp,env,region)
-	       in (cMARKexp(e,region), tyv, updt)
-	       end
+	     ( case exp of 
+		   (VarExp path) => (case LU.lookVal(env,SP.SPATH path,error region) of
+					 (VAL (VALvar {access, ...})) => (*(print (SymPath.toString(SP.SPATH path)^" "^Access.prAcc access^"\n"); *)EV.add_var_use access region(*)*)
+				       | (CON ( datacon as DATACON {name=S.SYMBOL(_, str), typ, rep, ...})) =>
+					 EV.add_cons_use datacon region
+				       | _ => ()
+				    )
+		 | _ => ()
+	     );
+	     let val (e,tyv,updt) = elabExp(exp,env,region)
+	     in (cMARKexp(e,region), tyv, updt)
+	     end
 	     )
 	   | SelectorExp s => 
 	       (let val v = newVALvar s
@@ -1279,9 +1273,10 @@ let
 		        let val S.SYMBOL (_, y) = symbol 
 			    val (r1, _) = r
 			    val r2 = r1 + String.size y
+			    val region = (r1, r2)
 			in
-   		             case LU.lookValSym(nenv, symbol, error (r1, r2)) of
-				 (VAL (VALvar {access, typ, ...})) => EV.add_def access typ [symbol] (r1,r2)
+   		             case LU.lookValSym(nenv, symbol, error region) of
+				 (VAL (v as VALvar _)) => EV.add_var_def v region
 			       | _ => ()
 			end
 		  | _ => ();

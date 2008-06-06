@@ -335,7 +335,8 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
  ***************************************************************************)
 fun extractSig (env, epContext, context, 
                 compInfo as {mkStamp,...} : EU.compInfo,
-	        absDecl) =
+	        absDecl,
+		dacc) =
   let fun getEpOp (lookfn, modId) =
         case context
           of EU.INFCT _ => lookfn (epContext, modId)
@@ -351,8 +352,11 @@ fun extractSig (env, epContext, context,
       fun transBind ((sym, binding), 
                      (elements, entEnv, entDecl, trans, slotCount, fctflag)) = 
         case binding
-         of B.VALbind(V.VALvar{typ,path,...}) =>
-              let val spec = VALspec{spec=relativize(!typ),
+         of B.VALbind(V.VALvar{typ,path,access, ...}) =>
+              let 
+		  (*val _ = print (SymPath.toString path ^ "\n")*)
+		  val _ = Ens_var.change_access access (DA.PATH (dacc, slotCount))
+		  val spec = VALspec{spec=relativize(!typ),
                                      slot=slotCount}
                   val elements' = addElems((sym, spec), elements)
                in (elements', entEnv, entDecl, binding::trans, 
@@ -378,7 +382,7 @@ fun extractSig (env, epContext, context,
                in (elements', entEnv, entDecl, trans', slotCount', fctflag)
               end
 
-          | B.STRbind(str as STR { sign, rlzn, ... }) =>
+          | B.STRbind(str as STR { sign, rlzn, access, ... }) =>
 	    let val epOp = getEpOp (EPC.lookStrPath, MU.strId str)  
                 val (ev, entEnv', entDecl') =
                     case epOp
@@ -406,6 +410,7 @@ fun extractSig (env, epContext, context,
                     (case sign 
                       of SIG sg => fctflag orelse #fctflag sg
                        | _ => fctflag)
+		  val _ = Ens_var.change_access access (DA.PATH (dacc, slotCount))
                in (elements', entEnv', entDecl', binding::trans, 
                    slotCount+1, fctflag')
               end
@@ -663,16 +668,17 @@ val _ = debugmsg (">>elabStr: " ^ sname)
  *)
 fun elab (BaseStr decl, env, entEnv, region) =
       let val _ = debugmsg ">>elab[BaseStr]"
-
           (* we enter the epcontext when we get into BaseStr *)
           val epContext'=EPC.enterOpen(epContext,entsv) 
           val (absDecl, entDecl, env', entEnv') = 
                  elabDecl0(decl, env, entEnv, inStr context, true, tdepth,
                            epContext', rpath, region, compInfo)
           val _ = debugmsg "--elab[BaseStr]: elabDecl0 done"
-   
+
+	  val dacc = DA.namedAcc(tempStrId, mkv)
+		     
           val (elements, entEnv'', entDecls, locations, fctflag) =
-                extractSig(env', epContext', context, compInfo, absDecl)
+                extractSig(env', epContext', context, compInfo, absDecl, dacc)
           val _ = debugmsg "--elab[BaseStr]: extractSig done"
 
           val (entEnvLocal, entDecLocal) =
@@ -685,7 +691,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
           val strExp = STRUCTURE{stamp=M.NEW, entDec=entDecLocal}
 
           val resStr = 
-            let val symbols = map #1 elements
+            let
                 val sign = 
                   M.SIG{stamp = mkStamp (),
 			name=NONE, closed=false, fctflag=fctflag,
@@ -703,11 +709,13 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		      (* lambdaty=ref NONE, *)
 		      rpath=rpath, stub = NONE}
 
-                val dacc = DA.namedAcc(tempStrId, mkv)
+                (*val dacc = DA.namedAcc(tempStrId, mkv) MOVED BEFORE*)
                 val prim = MU.strPrimElemInBinds locations
-
-            in M.STR {sign=sign, rlzn=strRlzn, access=dacc,
-		      prim=prim}
+		val str = M.STR {sign=sign, rlzn=strRlzn, access=dacc,
+				 prim=prim}
+            in 
+		(*Ens_var.add_str_def str (~1, ~1) dacc;*)
+		str
             end
           val _ = debugPrint("BaseStr after resStr  - symbols: ", ED.ppSymList,
                              ED.envSymbols env')
@@ -1179,7 +1187,6 @@ and elabStrbs(strbs: Ast.strb list,
               compInfo as {mkStamp,mkLvar=mkv,error,...}: EU.compInfo) 
             : A.dec * M.entityDec * SE.staticEnv * entityEnv =
 let
-
 val depth = (case context of EU.INFCT{depth=d, ...} => d
                            | _ => DI.top)
 val _ = debugmsg ">>elabStrbs"
@@ -1307,9 +1314,14 @@ fun loop([], decls, entDecls, env, entEnv) =
           val (bindStr, strEnt) = 
             case resStr
              of STR { rlzn, sign, access, prim } =>
-                (STR{rlzn = rlzn, sign = sign,
-		     access = DA.namedAcc(name, mkv),prim = prim},
-                 M.STRent rlzn)
+		let val access2 = DA.namedAcc(name, mkv)
+		    (*val _ = print ((Access.prAcc access)^"->"^(Access.prAcc access2)^"\n")*)
+		    val _ = Ens_var.change_access access access2
+		in
+                    (STR{rlzn = rlzn, sign = sign,
+			 access = access2,prim = prim},
+                     M.STRent rlzn)
+		end
               | _ => (resStr, M.STRent M.bogusStrEntity)
 
           val _ = showStr("--elabStrbs: bindStr: ",bindStr,env)
@@ -1378,8 +1390,8 @@ and elabDecl0
 
 (case decl
   of StrDec strbs =>
-       elabStrbs(strbs, true, env0, entEnv0, context, tdepth, epContext, 
-                 rpath, region, compInfo)
+     (elabStrbs(strbs, true, env0, entEnv0, context, tdepth, epContext, 
+		rpath, region, compInfo))
 
    | AbsDec strbs =>
        elabStrbs(strbs, false, env0, entEnv0, context, tdepth, epContext, 
@@ -1612,7 +1624,7 @@ and elabDecl0
               bindNewTycs(context, epContext, mkStamp, [], tycs, rpath,
 			  error region)
         in 
-	    List.app (fn (x,y) => Ens_var.add_type x y) (ListPair.zip (tycs, regions));
+	    List.app (fn (x,y) => Ens_var.add_type_def x y) (ListPair.zip (tycs, regions));
 	    (dec, entDec, env, entEnv)
         end
         handle EE.Unbound =>
@@ -1640,7 +1652,7 @@ and elabDecl0
 		  val resDec = 
                     A.DATATYPEdec{datatycs=datatycs,withtycs=withtycs}
 
-		  val _ = List.app (fn x => Ens_var.add_type x region) datatycs
+		  val _ = List.app (fn x => Ens_var.add_type_def x region) datatycs
 	       in (resDec, entDec, env, entEnv)
 	      end
 

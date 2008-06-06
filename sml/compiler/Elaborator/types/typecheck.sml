@@ -399,7 +399,8 @@ fun patType(pat: pat, depth, region) : pat * ty =
                                    | _ => (typ,dcon)
                val (ty2,insts) = instantiatePoly ty1
                val npat = APPpat(ndcon,insts,argpat)
-            in (npat,applyType(ty2,argty))
+            in Ens_var.add_cons_inst dcon ty2;
+	       (npat,applyType(ty2,argty))
 	       handle Unify(mode) =>
 		(err region COMPLAIN
                   (message("constructor and argument don't agree in pattern",mode))
@@ -457,7 +458,7 @@ in
       of VARexp(r as ref(VALvar{typ, access, path, ...}), _) =>
 	   let val (ty, insts) = instantiatePoly(!typ)
 	    in 
-	       EV.add_inst (ty, access);
+	       EV.add_var_inst (ty, access);
 	       (VARexp(r, insts), ty)
 	   end
        | VARexp(refvar as ref(OVLDvar _),_) =>
@@ -465,7 +466,18 @@ in
        | VARexp(r as ref ERRORvar, _) => (exp, WILDCARDty)
        | CONexp(dcon as DATACON{typ,...},_) => 
            let val (ty,insts) = instantiatePoly typ
-            in (CONexp(dcon, insts), ty)
+	       fun printer y = (((PrettyPrintNew.with_default_pp
+				      (fn ppstrm => (
+					  PPType.resetPPType();
+					  PPType.ppType env ppstrm y)))
+				 handle _ => print "fail to print anything")
+			       )
+            in 
+	       (*print "cons used ";
+	       printer ty;
+	       print "\n";*)
+	       Ens_var.add_cons_inst dcon ty;
+	       (CONexp(dcon, insts), ty)
            end
        | INTexp (_,ty) => (oll_push ty; (exp,ty))
        | WORDexp (_,ty) => (oll_push ty; (exp,ty))
