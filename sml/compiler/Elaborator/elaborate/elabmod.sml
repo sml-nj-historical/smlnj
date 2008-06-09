@@ -355,7 +355,8 @@ fun extractSig (env, epContext, context,
          of B.VALbind(V.VALvar{typ,path,access, ...}) =>
               let 
 		  (*val _ = print (SymPath.toString path ^ "\n")*)
-		  val _ = Ens_var.change_access access (DA.PATH (dacc, slotCount))
+		  (*val _ = Ens_var.change_access access (DA.PATH (dacc, slotCount))*)
+		  val _ = Ens_var.add_mapping dacc slotCount access
 		  val spec = VALspec{spec=relativize(!typ),
                                      slot=slotCount}
                   val elements' = addElems((sym, spec), elements)
@@ -410,7 +411,8 @@ fun extractSig (env, epContext, context,
                     (case sign 
                       of SIG sg => fctflag orelse #fctflag sg
                        | _ => fctflag)
-		  val _ = Ens_var.change_access access (DA.PATH (dacc, slotCount))
+		  (*val _ = Ens_var.change_access access (DA.PATH (dacc, slotCount))*)
+		  val _ = Ens_var.add_mapping dacc slotCount access
                in (elements', entEnv', entDecl', binding::trans, 
                    slotCount+1, fctflag')
               end
@@ -714,7 +716,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		val str = M.STR {sign=sign, rlzn=strRlzn, access=dacc,
 				 prim=prim}
             in 
-		(*Ens_var.add_str_def str (~1, ~1) dacc;*)
+		Ens_var.add_str_def str (~1, ~1) dacc;
 		str
             end
           val _ = debugPrint("BaseStr after resStr  - symbols: ", ED.ppSymList,
@@ -1316,11 +1318,11 @@ fun loop([], decls, entDecls, env, entEnv) =
              of STR { rlzn, sign, access, prim } =>
 		let val access2 = DA.namedAcc(name, mkv)
 		    (*val _ = print ((Access.prAcc access)^"->"^(Access.prAcc access2)^"\n")*)
-		    val _ = Ens_var.change_access access access2
+		    (*val _ = Ens_var.change_access access access2*)
+		    val str = STR{rlzn = rlzn, sign = sign, access = access2,prim = prim}
+		    val _ = Ens_var.add_str_bnd str access access2
 		in
-                    (STR{rlzn = rlzn, sign = sign,
-			 access = access2,prim = prim},
-                     M.STRent rlzn)
+		    (str, M.STRent rlzn)
 		end
               | _ => (resStr, M.STRent M.bogusStrEntity)
 

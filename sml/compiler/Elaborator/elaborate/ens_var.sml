@@ -23,104 +23,183 @@ in
    type env_ty = ty env;
    type cons = {cons : T.datacon, def: int * int, usage : (int * int) list ref, instance : T.ty list ref};
    type env_cons = cons env;
+   type str = {str : M.Structure, def: int * int, usage : (int * int) list ref, instance : T.ty list ref,
+	       map : (int * A.access) list ref}
+   type env_str = str env;
 
    (*the environment iself*)
    val ens_var = (ref []):env_var;       (*contains def and use of variables, and functions*)
    val ens_types = (ref []):env_ty;      (*contains type and datatype def and explicite use*)
    val ens_cons = (ref []):env_cons;     (*contains type constructors use*)
+   val ens_str = (ref []):env_str;
+   val temp_map = (ref []):(A.access * ((int * A.access) list ref)) list ref;
 
    val stat_env = ref (StaticEnv.empty);     (*used only for printing without `?.' everywhere*)
 
-   fun change_access old_access new_access = 
-       let
-	   fun incl (access as A.PATH (access2, _)) = access = old_access orelse incl access2
-	     | incl access = access = old_access
-			     
-	   fun incl2 (access as A.PATH (access2, slot)) = if access = old_access then 
-							      new_access 
-							  else 
-							      A.PATH (incl2 access2, slot)
-	     | incl2 access = new_access (*verifier que ca fait bien ce qu'il faut ici*)
 
-	   fun pred_1 {var = (VC.VALvar {access, ...}), ...} = incl access
-	     | pred_1 (_:var) = false
-	   val (to_be_changed, no_change) = List.partition pred_1 (!ens_var)
-	   fun modi {var = VC.VALvar {access, typ, prim, path}, def, usage, instance} =
-	       {var = VC.VALvar {access = incl2 access, typ = typ, prim = prim, path = path}, 
-		def = def, 
-		usage = usage,  
-		instance = instance 
-	       }
-	   val changed = List.map modi to_be_changed
+
+
+   (*****************************************************************************************************)
+   (***********************************part concerning structures****************************************)
+   (*****************************************************************************************************)
+
+   fun add_mapping str_access var_slot var_access = 
+       case List.find (fn x => #1 x = str_access) (!temp_map) of
+	   NONE => temp_map := (str_access, ref [(var_slot, var_access)]) :: (!temp_map)
+	 | SOME (_, l) => l := (var_slot, var_access) :: (!l);
+
+   fun add_str_def str region access = 
+       let 
+	   val struc = {str = str, def = region, usage = ref [], instance = ref [], map = ref []}
        in
-	   ens_var := changed @ no_change
-       end
-	   
+	   case List.find (fn x => #1 x = access) (!temp_map) of
+	       NONE => (print "No export?\n")
+	     | SOME (_ , l) => #map struc := (!l);
+	   ens_str := struc :: (!ens_str)
+       end;
+
+   (*on verra apres pour les signatures et ce qu'il faut probablement rajouter ici*)
+   fun add_str_bnd str old_access new_access = 
+       case List.find (fn {str = M.STR {access, ...}, ...} => access = old_access) (!ens_str) of
+	   NONE => print "Pas de binding\n"
+	 | SOME {map, ...} => ens_str := {str = str, def = (~1, ~1), usage = ref [], instance = ref [], map = map} :: (!ens_str);
+       
+   local
+       fun incl (access as A.PATH (access2, _)) old_access = access = old_access orelse incl access2 old_access
+ 	 | incl access old_access = access = old_access
+			 
+       fun incl2 (access as A.PATH (access2, slot)) old_access new_access = 
+	   if access = old_access then 
+	       new_access 
+	   else  
+	       A.PATH (incl2 access2 old_access new_access, slot) 
+	 | incl2 access _ new_access= new_access (*verifier que ca fait bien ce qu'il faut ici*)
+			  
+       fun pred_1 {var = (VC.VALvar {access, ...}), ...} old_access = incl access old_access
+	 | pred_1 (_:var) _ = false
+
+       fun pred_2 {str = M.STR {access, ...}, ...} old_access = incl access old_access
+	 | pred_2 (_:str) _ = false
+
+       fun change p ens old_access = List.partition (fn x => p x old_access) ens
+
+       fun modi {var = VC.VALvar {access, typ, prim, path}, def, usage, instance} old_access new_access=
+	   {var = VC.VALvar {access = incl2 access old_access new_access, typ = typ, prim = prim, path = path}, 
+	    def = def, 
+	    usage = usage,  
+	    instance = instance 
+	   }
+
+       fun modi2 {str = M.STR {access, sign, rlzn, prim}, def, usage, instance, map} old_access new_access = 
+	   {str = M.STR {access = incl2 access old_access new_access, sign = sign, rlzn = rlzn, prim = prim},
+	    def = def,
+	    usage = usage,
+	    instance = instance,
+	    map = map
+	   }
+
+       fun change_access_var old_access new_access =        
+	   let val (to_be_changed, no_change) = change pred_1 (!ens_var) old_access 
+	       val changed = List.map (fn x => modi x old_access new_access) to_be_changed
+	   in
+	       ens_var := changed @ no_change
+	   end
+
+       fun change_access_str old_access new_access = 
+	   let val (to_be_changed, no_change) = change pred_2 (!ens_str) old_access 
+	       val changed = List.map (fn x => modi2 x old_access new_access) to_be_changed
+	   in
+	       ens_str := changed @ no_change
+	   end
+   in
+       fun change_access old_access new_access = (
+	   change_access_var old_access new_access;
+	   change_access_str old_access new_access
+       )
+   end
+   
    (************************************************************************************************************)
    (*************************functions about variable bindings and uses in expressions**************************)
    (************************************************************************************************************)
-
+       
    (*modifications of the environment when variables are defined, or used in expressions*)
    fun add_var_def var region =
-       ens_var := {var=var, def=region, usage=ref [], instance = ref []} :: (!ens_var);
+       case var of
+	   (VC.VALvar {path = SymPath.SPATH [S.SYMBOL (_, "it")], ...}) => ()
+	 | _ => ens_var := {var=var, def=region, usage=ref [], instance = ref []} :: (!ens_var);
        
-   fun add_var_use access region = 
+   (*gives you the LVAR option corresponding to the access you're giving*)	   
+   fun findpath a = 
        let
-	   fun add_var (nil:var list) access region = ()
-	     | add_var ({var = VC.VALvar{access = access2, ...}, usage=l, ...}::q) access region = 
-                   if access=access2 then
-		       l := region :: (!l)
-		   else
-		       add_var q access region
-	     | add_var (t::q) access region = (print "Problem in Ens_var.add_var_use\n"; add_var q access region)
+	   
+	   (*fun pr l = 
+		 List.app (fn (x, _) => print (Int.toString x ^ ", ")) l;*)
+	   
+	   fun find_path (a as (A.LVAR _ | A.PATH (A.EXTERN _, _))) = 
+	       ( case List.find (fn {str = M.STR {access, ...}, ...} => access = a | _ => false) (!ens_str) of
+		     NONE => []
+		   | SOME ({map, ...}:str) => !map
+	       )
+	     | find_path (A.PATH (a, slot)) =
+	       ( case List.find (fn (x, _) => x = slot) (find_path a) of
+		     NONE => []
+		   | SOME (p as (_, a')) => ( case find_path a' of
+						  [] => [p]
+						| r => r
+					    )
+	       )
        in
-	   add_var (!ens_var) access region
-       end;
-
-   (*add an instantiated type to the list of types of the variable with the given access*)
-   fun add_var_inst (x:T.ty * A.access) = 
-       let 
-	   fun find (nil:var list) = ()
-	     | find ({var = VC.VALvar {access, ...}, instance, ...}::q) = 
-		if access = #2 x then 
-		    instance := (#1 x) :: (!instance)
-		else 
-		    find q
-	     | find (t::q) = (print "Problem in Ens_var.add_var_inst\n"; find q)
-       in
-	   find (!ens_var)
-       end;
-
-   (*keep in the environment ens_var only the variable that are accessible, ie, those who access contains an EXTERN*)
-   fun clear_intern () = (
+	   case a of
+	       (A.LVAR _ | A.PATH (A.EXTERN _, _)) => SOME a (*it won't work with module usages*)
+	     (*il suffit de faire un if qui regarde si c'est un module*)
+	     (*en meme temps, si c'est un module, on fait rien avec? foncteur!*)
+	     | _ => (
+ 	       case find_path a of
+		   [(_, acc)] => SOME acc
+		 | _ => NONE
+	       )
+       end
+       
+   fun add_var_use access region = 	   
        let
-	   fun is_extern (A.EXTERN _)  = true
-	     | is_extern (A.PATH (a, _)) = is_extern a
-	     | is_extern _ = false
-
-	   fun add l = 
+	   fun add_not_path l access =
 	       let 
-		   fun filt {var = VC.VALvar {access, ...}, ...} = is_extern access 
-		     | filt (_:var) = false
+		   fun valid {var = VC.VALvar{access = access2, ...}, ...} = access = access2
+		     | valid (_:var) = false
 	       in
-		   ens_var := (List.filter filt l)
+		   case List.find valid l of
+		       NONE => ()
+		     | SOME {usage = l, ...} => l := region :: (!l)
+	       end    
+	   in
+	   case findpath access of
+	       NONE => ()
+	     | SOME acc => add_not_path (!ens_var) acc
+       end
+       
+   (*add an instantiated type to the list of types of the variable with the given access*)
+   fun add_var_inst (ty:T.ty, acc:A.access) = 
+       let
+	   fun add_inst (x:T.ty * A.access) = 
+	       let 
+		   fun find (nil:var list) = ()
+		     | find ({var = VC.VALvar {access, ...}, instance, ...}::q) = 
+		       if access = #2 x then 
+			       instance := (#1 x) :: (!instance)
+		       else 
+			   find q
+		     | find (t::q) = (print "Problem in Ens_var.add_var_inst\n"; find q)
+	       in
+		   find (!ens_var)
 	       end
        in
-	   add (!ens_var)
+	   case findpath acc of
+	       NONE => ()
+	     | SOME access => add_inst (ty, access)
        end
-   );
-
-   (*initialization of the environment*)
-   fun clear () = ens_var := [];
+       
      
-   (*delete all the "it" that are declared in the interactive toplevel*)
-   fun clear_it () =
-       let fun filt {var = VC.VALvar {path, ...}, ...} = SymPath.toString path <> "it" 
-	     | filt (_:var) = true
-       in
-	   ens_var := List.filter filt (!ens_var)
-       end
-
+     
    (****************************************************************************************************************)
    (****************************functions about type declarations and explicit type uses****************************)
    (****************************************************************************************************************)
@@ -133,11 +212,11 @@ in
        let
 	   fun find (nil:ty list) = ()
 	     | find ({tycon=T.DEFtyc tycon, def, usage, instance}::q) = 
-       if Stamps.eq (#stamp tyc, #stamp tycon) then (
+	       if Stamps.eq (#stamp tyc, #stamp tycon) then (
 		   usage := region :: (!usage);
 		   instance := typ :: (!instance)
-	       ) else 
-		   find q
+		   ) else 
+	       find q
 	     | find (_::q) = find q
        in
 	   find (!ens_types)
@@ -149,8 +228,8 @@ in
 	       if Stamps.eq (#stamp tyc, #stamp tycon) andalso index = index2 then (
 		   usage := region :: (!usage);
 		   instance := typ :: (!instance)
-	       ) else 
-		   find q
+		   ) else 
+	       find q
 	     | find (_::q) = find q
        in
 	   find (!ens_types)
@@ -166,7 +245,7 @@ in
    (*give back the region where is defined the datatype that has the constructor symbol, or (-1, -1) if not present*)
    fun find_cons symbol = 
        let 
-	   fun find (nil:ty list) = (print "Ens_var : constructor undefined\n"; (~1, ~1))
+	   fun find (nil:ty list) = (*(print "Ens_var : constructor undefined\n";*) (~1, ~1)
 	     | find ({tycon = T.GENtyc{kind=T.DATATYPE {index, family={members, ...}, ...}, ...}, def, ...}::q) =
 	       let 
 		   val list_cons = #dcons (Vector.sub (members, index))
@@ -295,15 +374,30 @@ in
        fun print_cons () = 
 	   let 
 	       fun pr (x:cons) = 
-	       let val T.DATACON {typ, name = S.SYMBOL (_, str), ...} = #cons x in
-		   print (str ^ " " ^ rtoS (#def x) ^ " has type ");
-		   printer typ;
-		   print " and";
-		   print_instance (#usage x) (#instance x)
-	       end
+		   let val T.DATACON {typ, name = S.SYMBOL (_, str), ...} = #cons x in
+		       print (str ^ " " ^ rtoS (#def x) ^ " has type ");
+		       printer typ;
+		       print " and";
+		       print_instance (#usage x) (#instance x)
+		   end
 	   in
-	     List.app pr (!ens_cons)  
+	       List.app pr (!ens_cons)  
 	   end;
+	   
+       fun print_str () = 
+	   let 
+	       fun prr (a, b) = 
+		   "(" ^ Int.toString a ^ "," ^ A.prAcc b ^") "
+
+	       fun pr (x as {str = M.STR {access, ...}, ...} : str) = (
+		   print ("str ("^A.prAcc access^") : ");
+		   List.app (print o prr) (!(#map x));
+		   print "\n"
+	       )
+	   in
+	       List.app pr (!ens_str)
+	   end
+
    end;
 
 
@@ -314,49 +408,13 @@ in
    (*up to date local environment, for display purpose only (env is used only in the printer function)*)
    fun maj e = stat_env := e;
 
-   (*datatype link = Slot of int | Access of A.access;
-   datatype graph = Graph of (link * graph) list; (*for the moment, all the nodes are empty*)
-
-   val graph = ref (Graph []);
-   val current_state = graph;
-
-   fun add_access access = 
-       let 
-	   fun add_slot slot (Graph l) = 
-	       Graph ((Slot slot, Graph []) :: l)
-
-	   fun add_s (A.PATH (a, slot)) graph = 
-		      add_slot slot (add_s a graph)
-	     | add_s a (Graph l) = 
-	       Graph ((Access a, Graph []) :: l)
-       in
-	   current_state := add_s access (!current_state)
-       end
-
-   fun add_link new_access old_access =
-       let 
-	   fun find (A.PATH (a, slot)) (graph:graph) = (
-	       case find a graph of
-		   NONE => (NONE:graph option)
-		 | SOME (_, graph2) =>
-		   case List.find (fn x => Slot slot = #1 x) graph2 of
-		       NONE => (NONE:graph option)
-		     | SOME (_, graph3) => SOME graph3
-	   )
-	     | find access graph = 
-	       case List.find (fn x => Access access = #1 x) graph of
-		   NONE => (NONE:graph option)
-		 | SOME (_, graph2) => SOME graph2
-
-       in
-	   case find old_access (!current_state) of
-	       NONE => print (A.prAcc old_access ^ " not available\n")
-	     | SOME g => 
-	       let val ref (Graph l) = current_state in
-		   current_state := (Access new_access, g) :: l
-	       end
-       end*)
-	   
+   (*initialization of the environment*)
+   fun clear () = ( ens_var := [];
+		    ens_types := [];
+		    ens_cons := [];
+		    ens_str := [];
+		    temp_map := []
+		  )
 
 end (*local*)
 

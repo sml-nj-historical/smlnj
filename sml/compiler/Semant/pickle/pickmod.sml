@@ -1275,7 +1275,11 @@ in
 		B.VALbind (V.VALvar {access=a, prim=z, path=p, typ= ref t }) =>
 		(case a of
 		     A.LVAR k => ( 
-		     Ens_var.change_access a (newAccess i);
+		     (*print (SymPath.toString p ^ " " ^ Access.prAcc a^"->"^Access.prAcc (newAccess i) ^ "\n");*)
+		     if SymPath.toString p <> "it" then
+			 Ens_var.change_access a (newAccess i)
+		     else
+			 ();
 		     (i+1,
 		      StaticEnv.bind (sym,
 				      B.VALbind (V.VALvar
@@ -1290,6 +1294,7 @@ in
 	      | B.STRbind (M.STR { sign = s, rlzn = r, access = a, prim =z }) =>
 		(case a of
 		     A.LVAR k => (
+		     (*print (Access.prAcc a ^ "->" ^ Access.prAcc (newAccess i) ^"\n");*)
 		     Ens_var.change_access a (newAccess i);
 		     (i+1,
 		      StaticEnv.bind (sym,
@@ -1335,7 +1340,7 @@ in
 	val (_,newenv,lvars) = foldl mapbinding (0, StaticEnv.empty, nil) syms
 	(*val _ = Ens_var.apply_mod ()*)
 	val hasExports = not (List.null lvars)
-	val _ = Ens_var.clear_intern ()
+	(*val _ = Ens_var.clear_intern ()*)
     in
 	{ newenv = newenv, hash = hash,
 	  exportLvars = rev lvars, hasExports = hasExports }
