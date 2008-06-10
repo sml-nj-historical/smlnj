@@ -148,7 +148,7 @@ in
    fun add_var_def var region =
        case var of
 	   (VC.VALvar {path = SymPath.SPATH [S.SYMBOL (_, "it")], ...}) => ()
-	 | _ => ens_var := {var=var, def=region, usage=ref [], instance = ref []} :: (!ens_var);
+	 | _ => ens_var := VarSet.add(!ens_var, {var=var, def=region, usage=ref [], instance = ref []})
        
    (*gives you the LVAR option corresponding to the access you're giving*)	   
    fun findpath a = 
