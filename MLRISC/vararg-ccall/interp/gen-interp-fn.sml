@@ -22,7 +22,13 @@ functor GenInterpFn (
   (* default register width *)
     val wordTy : T.ty
     val newReg : 'a -> CellsBasis.cell
-  )  = struct
+  ) : sig
+
+    structure T : MLTREE
+  (* generate instructions for making a varargs call *)
+    val genVarargs : (T.rexp * T.reg * T.rexp) -> T.stm list
+
+  end = struct
 
     structure T = T
     structure CB = CellsBasis

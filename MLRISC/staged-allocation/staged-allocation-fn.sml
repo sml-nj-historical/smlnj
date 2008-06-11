@@ -10,20 +10,20 @@
 
 functor StagedAllocationFn (
     type reg
-    type location_kinds
+    type location_kind
     (* number of bytes addressable in the target machine *)
     val memSize : int
-  ) :> STAGED_ALLOCATION where type location_kinds = location_kinds
+  ) :> STAGED_ALLOCATION where type location_kind = location_kind
                          where type reg = reg
   = struct
 
-    type location_kinds = location_kinds
+    type location_kind = location_kind
     type width = int
     type reg = reg
     type reg_info = (width * reg)
     type counter = int
     datatype block_direction = UP | DOWN
-    type slot = (width * location_kinds * int)
+    type slot = (width * location_kind * int)
 
     exception StagedAlloc
 	      
@@ -37,9 +37,9 @@ functor StagedAllocationFn (
       = REG of reg_info
       | BLOCK_OFFSET of int
       | COMBINE of (location * location)  
-      | NARROW of (location * width * location_kinds) 
+      | NARROW of (location * width * location_kind) 
 
-    type location_info = (width * location * location_kinds)
+    type location_info = (width * location * location_kind)
 
     (* language for specifying calling conventions *)
     datatype stage 

@@ -54,7 +54,6 @@ structure VarArgs :> VAR_ARGS =
     type ('a, 'b) vararg = 'a valist -> ('b -> 'a) valist
 
   (* combinators *)
-
     fun int k k' i = k(fn () => (push(I i); k'()))
     fun real k k' r = k(fn () => (push(R r); k'()))
     fun bool k k' b = k(fn () => (push(B b); k'()))

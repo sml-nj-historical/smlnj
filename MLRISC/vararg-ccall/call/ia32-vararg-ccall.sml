@@ -80,7 +80,7 @@ structure IA32VarargCCall =
   (* package the arguments with their locations *)
     fun zipArgs args = let
 	    val argTys = List.map argToCTy args
-	    val {argLocs, argMem, ...} = CCall.layout {conv="c-call", retTy=CTy.C_void, paramTys=argTys}
+	    val {argLocs, ...} = CCall.layout {conv="c-call", retTy=CTy.C_void, paramTys=argTys}
 	  (* expect single locations, as we do not pass aggregates to vararg functions *)
 	    val argLocs = List.map List.hd argLocs
             in

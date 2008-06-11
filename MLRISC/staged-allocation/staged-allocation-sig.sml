@@ -20,12 +20,12 @@
 signature STAGED_ALLOCATION = 
   sig
 
-    type location_kinds                                (* gprs, fprs, stack locations, etc. *)
+    type location_kind                                (* gprs, fprs, stack locations, etc. *)
     type width = int                                   (* bit width *)
     type counter                                       (* abstract counter for a convention *)
     type str                                           (* counter -> "bit offset" *)
     datatype block_direction = UP | DOWN               (* direction in which the overflow block grows *)
-    type slot = (width * location_kinds * int)         (* the last field is the alignment *)
+    type slot = (width * location_kind * int)         (* the last field is the alignment *)
     type reg
     type reg_info = (width * reg)
 
@@ -36,10 +36,10 @@ signature STAGED_ALLOCATION =
       = REG of reg_info
       | BLOCK_OFFSET of int
       | COMBINE of (location * location)  
-      | NARROW of (location * width * location_kinds) 
+      | NARROW of (location * width * location_kind) 
 		       
     (* metadata assocated with a location *)
-    type location_info = (width * location * location_kinds)
+    type location_info = (width * location * location_kind)
 			 
     (* language for specifying calling conventions *)
     datatype stage 

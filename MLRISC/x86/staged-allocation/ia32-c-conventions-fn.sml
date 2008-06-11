@@ -49,7 +49,7 @@ functor IA32CConventionsFn (
     val st0 : reg
     structure SA : STAGED_ALLOCATION
            where type reg = reg
-           where type location_kinds = CLocationKinds.location_kinds
+           where type location_kind = CLocationKinds.location_kind
   ) = struct
 
   (* conventions for calling a C function *)

@@ -37,11 +37,12 @@ functor AMD64SVIDFn (
 
     datatype c_arg = datatype CCall.c_arg
     datatype arg_location = datatype CCall.arg_location
-    datatype location_kinds = datatype CCall.location_kinds
+
+    datatype location_kind = datatype CLocationKinds.location_kind
 
     structure SA = StagedAllocationFn (
                          type reg = T.reg
-                         datatype location_kinds = datatype location_kinds
+                         datatype location_kind = datatype location_kind
 			 val memSize = 8 (* bytes *))
 
     structure CCs =

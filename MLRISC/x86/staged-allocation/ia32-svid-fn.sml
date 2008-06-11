@@ -26,7 +26,7 @@ functor IA32SVIDFn (
      *)
     val st0 = C.ST 0
 
-    datatype location_kinds = datatype CLocationKinds.location_kinds
+    datatype location_kind = datatype CLocationKinds.location_kind
 
     structure CCall = CCallFn(
              structure T = T
@@ -40,7 +40,7 @@ functor IA32SVIDFn (
 
     structure SA = StagedAllocationFn (
                     type reg = T.reg
-		    datatype location_kinds = datatype location_kinds
+		    datatype location_kind = datatype location_kind
 		    val memSize = 8)
 
     structure CCs = IA32CConventionsFn (
