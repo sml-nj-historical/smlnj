@@ -1,6 +1,7 @@
 (* awk-syntax.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2008 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * This module implements the AWK syntax for regular expressions.  The
  * syntax is defined on pp. 28-30 of "The AWK Programming Language,"
@@ -52,7 +53,7 @@ structure AwkSyntax : REGEXP_PARSER =
 
     fun scan getc cs = let
 	  fun getc' cs = (case (getc cs)
-			      of NONE => raise Error
+			   of NONE => raise Error
 			    | (SOME arg) => arg)
 	  (* end case *)
 	  fun isOctDigit c = (#"0" <= c) andalso (c <= #"7")
@@ -113,7 +114,7 @@ structure AwkSyntax : REGEXP_PARSER =
 		    | (_, SOME(#"(", cs')) => continue(scanGrp cs')
 		    | (_, SOME(#".", cs')) => continue(dotMatch, cs')
 		    | (_, SOME(#"^", cs')) => continue(R.Begin, cs')
-		    | (_,SOME(#"$",cs')) => continue(R.End, cs')
+		    | (_, SOME(#"$",cs')) => continue(R.End, cs')
 		    | (_, SOME(#"[", cs')) => continue(scanClass cs')
 		    | (_, SOME(#"\\", cs')) => continue(scanEscape cs')
 		    | (_, SOME(c, cs')) => if (isMeta c)
