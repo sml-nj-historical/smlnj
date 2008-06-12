@@ -155,9 +155,9 @@ const sml_int SET_POS_END = 2;
 
 /******************** TextIO support ********************/
 
-ML_iodesc_t getStdIn ();
-ML_iodesc_t getStdOut ();
-ML_iodesc_t getStdErr ();
+[sml_context] ML_iodesc_t getStdIn ();
+[sml_context] ML_iodesc_t getStdOut ();
+[sml_context] ML_iodesc_t getStdErr ();
 
 /******************** OS support ********************/
 
