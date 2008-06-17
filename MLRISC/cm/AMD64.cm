@@ -58,6 +58,7 @@ is
 	(* C calls using staged allocation *)
 	../amd64/staged-allocation/c-sizes.sml
 	../amd64/staged-allocation/amd64-svid-fn.sml
+        ../amd64/staged-allocation/amd64-c-conventions-fn.sml
 
 	(* backpatching *)
 	../amd64/backpatch/amd64Jumps.sml

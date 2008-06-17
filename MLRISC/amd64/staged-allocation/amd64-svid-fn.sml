@@ -45,76 +45,41 @@ functor AMD64SVIDFn (
                          datatype location_kind = datatype location_kind
 			 val memSize = 8 (* bytes *))
 
-    structure CCs =
-      struct
+    structure CCs = AMD64CConventionsFn (
+		      structure SA = SA
+		      type reg = T.reg
+		      val rax = C.rax
+		      val rdi = C.rdi
+		      val rsi = C.rsi
+		      val rdx = C.rdx
+		      val rcx = C.rcx
+		      val r8 = C.r8
+		      val r9 = C.r9
+		      val xmm0 = C.xmm0
+		      val xmm1 = C.xmm1
+		      val xmm2 = C.xmm2
+		      val xmm3 = C.xmm3
+		      val xmm4 = C.xmm4
+		      val xmm5 = C.xmm5
+		      val xmm6 = C.xmm6
+		      val xmm7 = C.xmm7)
 
-        fun toGpr r = (wordTy, r)
-	fun toGprs gprs = List.map toGpr gprs
-	fun toFpr r = (64, r)
-	fun toFprs fprs = List.map toFpr fprs 
+    fun toGpr r = (wordTy, r)
+    fun toGprs gprs = List.map toGpr gprs
+    fun toFpr r = (64, r)
+    fun toFprs fprs = List.map toFpr fprs 
+		      
+    val calleeSaveRegs = toGprs [C.rbx, C.r12, C.r13, C.r14, C.r15]
+    val callerSaveRegs = toGprs [C.rax, C.rcx, C.rdx, C.rsi, C.rdi, C.r8, C.r9, C.r10, C.r11]
+    val callerSaveFRegs = toFprs (C.Regs CB.FP {from=0, to=15, step=1})
+    val calleeSaveFRegs = []
+			  
+    val frameAlignB = 16
 
-	val calleeSaveRegs = toGprs [C.rbx, C.r12, C.r13, C.r14, C.r15]
-	val callerSaveRegs = toGprs [C.rax, C.rcx, C.rdx, C.rsi, C.rdi, C.r8, C.r9, C.r10, C.r11]
-	val callerSaveFRegs = toFprs (C.Regs CB.FP {from=0, to=15, step=1})
-	val calleeSaveFRegs = []
-
-	val frameAlignB = 16
-	val maxAlign = 16
-
-      (* conventions for returning arguments *)
-	val gprRets = toGprs [C.rax, C.rdx]
-	val fprRets = toFprs [C.xmm0, C.xmm1]
-	val (cRetFpr, ssFloat) = SA.useRegs fprRets
-	val (cRetGpr, ssGpr) = SA.useRegs gprRets
-	val cCallStk = SA.freshCounter ()
-	val returnStages = [
-	    SA.CHOICE [
-	        (* return in general-purpose register *)
-	          (fn (w, k, str) => k = K_GPR,
-	           SA.SEQ [SA.WIDEN (fn w => Int.max (wordTy, w)), ssGpr]),
-		(* return in floating-point register *)
-		  (fn (w, k, str) => k = K_FPR,
-	           SA.SEQ [SA.WIDEN (fn w => Int.max (64, w)), ssFloat]),
-		(* return in a memory location *)
-		  (fn (w, k, str) => k = K_MEM,
-		 (* FIXME! *)
-		   SA.OVERFLOW {counter=cCallStk, blockDirection=SA.UP, maxAlign=maxAlign}) ]
-	     ]
-
-      (* conventions for passing arguments *)
-	val gprParams = toGprs [C.rdi, C.rsi, C.rdx, C.rcx, C.r8, C.r9]
-	val fprParams = toFprs [C.xmm0, C.xmm1, C.xmm2, C.xmm3, C.xmm4, C.xmm5, C.xmm6, C.xmm7]
-	val cCallGpr = SA.freshCounter ()
-	val cCallFpr = SA.freshCounter ()
-      (* initial store *)
-
-	val str0 = SA.init [cCallStk, cCallGpr, cCallFpr, cRetFpr, cRetGpr]
-
-	val callStages = [ 
-	      SA.CHOICE [
-	      (* pass in general-purpose register *)
-	      (fn (w, k, str) => k = K_GPR, SA.SEQ [
-					    SA.WIDEN (fn w => Int.max (wordTy, w)),
-					    SA.BITCOUNTER cCallGpr,
-					    SA.REGS_BY_BITS (cCallGpr, gprParams) ]),
-	      (* pass in floating point register *)
-	      (fn (w, k, str) => k = K_FPR, SA.SEQ [
-					    SA.WIDEN (fn w => Int.max (64, w)),
-					    SA.BITCOUNTER cCallFpr,
-					    SA.REGS_BY_BITS (cCallFpr, fprParams) ]),
-	      (* pass on the stack *)
-	      (fn (w, k, str) => k = K_MEM,
-	       SA.OVERFLOW {counter=cCallStk, blockDirection=SA.UP, maxAlign=maxAlign}) 
-	      ],
-	      SA.OVERFLOW {counter=cCallStk, blockDirection=SA.UP, maxAlign=maxAlign}
-	]
-
-      end  (* CCs *)
-
-    val calleeSaveRegs : CB.cell list = List.map (fn (_, r) => r) CCs.calleeSaveRegs
-    val calleeSaveFRegs :CB.cell list = List.map (fn (_, r) => r) CCs.calleeSaveFRegs
-    val callerSaveRegs : CB.cell list = List.map (fn (_, r) => r) CCs.callerSaveRegs
-    val callerSaveFRegs :CB.cell list = List.map (fn (_, r) => r) CCs.callerSaveFRegs
+    val calleeSaveRegs'  = List.map (fn (_, r) => r) calleeSaveRegs
+    val calleeSaveFRegs' = List.map (fn (_, r) => r) calleeSaveFRegs
+    val callerSaveRegs'  = List.map (fn (_, r) => r) callerSaveRegs
+    val callerSaveFRegs' = List.map (fn (_, r) => r) callerSaveFRegs
 
   (* convert a list of C types to a list of eight bytes *)
     fun eightBytesOfCTys ([], [], ebs) = List.rev (List.map List.rev ebs)
@@ -225,7 +190,7 @@ functor AMD64SVIDFn (
 	   val (paramLocss, str) = layoutCall(str, paramTys)
 	 (* number of bytes allocated for the call *)
 	   val frameSzB = SA.find(str, CCs.cCallStk)
-	   val argMem = {szb=CSizes.alignAddr(frameSzB, CCs.frameAlignB), align=CCs.frameAlignB}
+	   val argMem = {szb=CSizes.alignAddr(frameSzB, frameAlignB), align=frameAlignB}
            in
 	      {argLocs=paramLocss, argMem=argMem, structRetLoc=structRetLoc, resLocs=resLocs}
 	   end
@@ -256,7 +221,7 @@ functor AMD64SVIDFn (
 	val (copyArgs, gprUses, fprUses) = CCall.copyArgs(args, argLocs)
        (* the defined registers of the call depend on the calling convention *)
  	val defs = (case #conv proto
-            of "ccall" => List.map (gpr o #2) CCs.callerSaveRegs @ List.map fpr CCs.callerSaveFRegs
+            of "ccall" => List.map (gpr o #2) callerSaveRegs @ List.map fpr callerSaveFRegs
 	     | "ccall-bare" => []
 	     | conv => raise Fail (concat [
 			"unknown calling convention \"", String.toString conv, "\""

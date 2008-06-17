@@ -19,10 +19,10 @@ functor AMD64GenInterpFn (
     structure CCall = AMD64SVIDFn(structure T = T)
     structure GenInterp = GenInterpFn(
 			      structure T = T
-			      val callerSaveRegs = CCall.callerSaveRegs
-			      val callerSaveFRegs = CCall.callerSaveFRegs
-			      val gprParams = List.map #2 ((64, C.rax) :: CCall.CCs.gprParams)
-			      val fprParams = List.map #2 CCall.CCs.fprParams
+			      val callerSaveRegs = CCall.callerSaveRegs'
+			      val callerSaveFRegs = CCall.callerSaveFRegs'
+			      val gprParams = C.rax :: CCall.CCs.gprParamRegs
+			      val fprParams = CCall.CCs.fprParamRegs
 			      val gprTys = [32, 64]
 			      val fprTys = [32, 64]
 			      val spReg = CCall.spReg
@@ -51,7 +51,7 @@ functor AMD64GenInterpFn (
 	       (lab,
 		List.concat [
                  (* the abi specifies that rax contains the number of floating-point arguments *)
-	           [T.MV(wordTy, C.rax, lit (List.length CCall.CCs.fprParams))],
+	           [T.MV(wordTy, C.rax, lit (List.length CCall.CCs.fprParamRegs))],
 		   [push (T.REG(64, C.rbp)),
 		    T.COPY (wordTy, [C.rbp], [C.rsp])],		   
 		   [T.MV(wordTy, argsReg, args)],
