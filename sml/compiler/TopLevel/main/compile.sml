@@ -35,9 +35,10 @@ struct
 
     (** take ast, do semantic checks,
      ** and output the new env, absyn and pickles *)
-    fun elaborate {ast, statenv=senv, compInfo=cinfo, guid} = let
+    fun elaborate {ast, statenv=senv, compInfo=cinfo, guid,
+		   extRefInfo : Symbol.symbol -> string option } = let
 
-	val (absyn, nenv) = ElabTop.elabTop(ast, senv, cinfo)
+	val (absyn, nenv) = ElabTop.elabTop(ast, senv, cinfo, extRefInfo)
 	val (absyn, nenv) = 
             if CompInfo.anyErrors cinfo then
 		(Absyn.SEQdec nil, StaticEnv.empty)
@@ -142,11 +143,11 @@ struct
      *************************************************************************)
     (** compiling the ast into the binary code = elab + translate + codegen *)
     fun compile {source, ast, statenv, symenv, compInfo=cinfo,
-		 checkErr=check, splitting, guid } = 
+		 checkErr=check, splitting, guid, extRefInfo } = 
 	let val {absyn, newstatenv, exportLvars, exportPid,
 		 staticPid, pickle } =
 		elaborate {ast=ast, statenv=statenv, compInfo=cinfo,
-			   guid = guid}
+			   guid = guid, extRefInfo = extRefInfo }
 		before (check "elaborate")
 
 	    val absyn = instrument {source=source, senv = statenv,

@@ -252,6 +252,30 @@ in
 						(#inlinfo, "inlinable")]))
 		end
 
+		(* produce file name for external reference: *)
+		fun eri sy =
+		    let fun nameOf (DG.SNODE { smlinfo, ... }) =
+			    SrcPath.osstring' (SmlInfo.sourcepath smlinfo)
+			fun isFrom (DG.SNODE { smlinfo = si, ... }) =
+			    case SmlInfo.exports gp si of
+				NONE => false
+			      | SOME s => SymbolSet.member (s, sy)
+			fun findgi [] = NONE
+			  | findgi ((NONE, DG.SB_SNODE sn) :: rest) =
+			      if isFrom sn then SOME (nameOf sn)
+			      else findgi rest
+			  | findgi ((SOME f, DG.SB_SNODE sn) :: rest) =
+			      if SymbolSet.member (f, sy) andalso isFrom sn then
+				  SOME (nameOf sn)
+			      else findgi rest
+			  | findgi (_ :: rest) = findgi rest
+			fun findli [] = findgi gi
+			  | findli (sn :: rest) =
+			      if isFrom sn then SOME (nameOf sn)
+			      else findli rest
+		    in findli li
+		    end
+
 		fun loaded _ = Say.vsay ["[loading ", descr, "]\n"]
 		fun received s =
 		    (Say.vsay ["[receiving ", descr, "]\n"];
@@ -339,7 +363,8 @@ in
 						statenv = stat, symenv = sym,
 						compInfo = cinfo, checkErr = check,
 						splitting = splitting,
-						guid = guid }
+						guid = guid,
+					        extRefInfo = eri }
 				val { hash = lambdaPid, pickle = lambdaP } =
 				    PickMod.pickleFLINT inlineExp
 				val lambdaP = case inlineExp of

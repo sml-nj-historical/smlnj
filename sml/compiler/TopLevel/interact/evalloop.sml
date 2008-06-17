@@ -91,7 +91,8 @@ fun evalLoop source = let
 			       compInfo=cinfo, 
                                checkErr=checkErrors,
                                splitting=splitting,
-			       guid = () }
+			       guid = (),
+			       extRefInfo = fn _ => NONE }
 
                 (** returning absyn and exportLvars here is a bad idea,
                     they hold on things unnecessarily; this must be 

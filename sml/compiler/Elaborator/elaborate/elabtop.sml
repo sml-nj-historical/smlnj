@@ -3,7 +3,8 @@
 
 signature ELABTOP =
 sig
-  val elabTop: Ast.dec * StaticEnv.staticEnv * ElabUtil.compInfo
+  val elabTop: Ast.dec * StaticEnv.staticEnv * ElabUtil.compInfo *
+	       (Symbol.symbol -> string option)
                -> Absyn.dec * StaticEnv.staticEnv
 
   val debugging : bool ref
@@ -103,7 +104,7 @@ fun makeOpenDecls (str, spath) =
  * are merged, there should be no special treatment for OPEN declarations,
  * and elabTop probably can be dramatically simplied. (ZHONG)
  *)
-fun elabTop(dec, env, compInfo as {error,...}: EU.compInfo) =
+fun elabTop(dec, env, compInfo as {error,...}: EU.compInfo, extRefInfo) =
 let 
 
 val _ = debugmsg ">>elabTop";

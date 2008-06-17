@@ -22,7 +22,8 @@ signature COMPILE0 = sig
     val elaborate : { ast: Ast.dec,
 		      statenv: StaticEnv.staticEnv,
 		      compInfo: Absyn.dec CompInfo.compInfo,
-		      guid: guid }
+		      guid: guid,
+		      extRefInfo: Symbol.symbol -> string option }
                     -> { absyn: Absyn.dec,
 			 newstatenv: StaticEnv.staticEnv,
  			 exportLvars: Access.lvar list,
@@ -37,6 +38,7 @@ signature COMPILE0 = sig
                     symenv: SymbolicEnv.env,
 		    compInfo: Absyn.dec CompInfo.compInfo, 
 		    guid: guid,
+		    extRefInfo: Symbol.symbol -> string option,
                     checkErr: string -> unit,
                     splitting: int option}
                   -> { csegments: CodeObj.csegments,
