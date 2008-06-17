@@ -70,8 +70,8 @@ functor AMD64CConventionsFn (
     fun toRegInfos rs = List.map toRegInfo rs
 
   (* registers *)
-    val gprReturnRegs = [rax, rdx]
-    val fprReturnRegs = [xmm0, xmm1]
+    val gprRetRegs = [rax, rdx]
+    val fprRetRegs = [xmm0, xmm1]
 
     val gprParamRegs = [rdi, rsi, rdx, rcx, r8, r9]
     val fprParamRegs = [xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7]
@@ -80,8 +80,8 @@ functor AMD64CConventionsFn (
     val cCallStk = SA.freshCounter ()
     val cCallGpr = SA.freshCounter ()
     val cCallFpr = SA.freshCounter ()
-    val (cRetGpr, ssGpr) = SA.useRegs (toRegInfos gprReturnRegs)
-    val (cRetFpr, ssFloat) = SA.useRegs (toRegInfos fprReturnRegs)
+    val cRetGpr = SA.freshCounter ()
+    val cRetFpr = SA.freshCounter ()
 
   (* frame alignment in bytes *)
     val maxAlign = 16
@@ -91,14 +91,13 @@ functor AMD64CConventionsFn (
 
   (* rules for passing arguments *)
     val callStages = [ 
+	  SA.WIDEN (fn w => Int.max (64, w)),
 	  SA.CHOICE [
 	    (fn (w, k, str) => k = K_GPR, SA.SEQ [
-		SA.WIDEN (fn w => Int.max (64, w)),
 		SA.BITCOUNTER cCallGpr,
 		SA.REGS_BY_BITS (cCallGpr, toRegInfos gprParamRegs) 
 	    ]),
 	    (fn (w, k, str) => k = K_FPR, SA.SEQ [
-		SA.WIDEN (fn w => Int.max (64, w)),
 		SA.BITCOUNTER cCallFpr,
 		SA.REGS_BY_BITS (cCallFpr, toRegInfos fprParamRegs) 
 	    ]),
@@ -114,11 +113,15 @@ functor AMD64CConventionsFn (
 
   (* rules for returning values *)
     val returnStages = [
+	  SA.WIDEN (fn w => Int.max (64, w)), 
 	  SA.CHOICE [
 	    (fn (w, k, str) => k = K_GPR,
-	     SA.SEQ [SA.WIDEN (fn w => Int.max (64, w)), ssGpr]),
+	     SA.SEQ [
+		SA.BITCOUNTER cRetGpr,
+		SA.REGS_BY_BITS (cRetGpr, toRegInfos gprRetRegs)]),
 	    (fn (w, k, str) => k = K_FPR,
-	     SA.SEQ [SA.WIDEN (fn w => Int.max (64, w)), ssFloat])]
+	     SA.SEQ [
+		SA.BITCOUNTER cRetFpr,
+	        SA.REGS_BY_BITS (cRetGpr, toRegInfos fprRetRegs)])]
 	  ]
-
   end
