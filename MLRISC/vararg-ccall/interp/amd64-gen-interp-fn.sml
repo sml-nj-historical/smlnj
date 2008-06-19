@@ -19,8 +19,8 @@ functor AMD64GenInterpFn (
     structure CCall = AMD64SVIDFn(structure T = T)
     structure GenInterp = GenInterpFn(
 			      structure T = T
-			      val callerSaveRegs = CCall.callerSaveRegs'
-			      val callerSaveFRegs = CCall.callerSaveFRegs'
+			      val callerSaveRegs = CCall.callerSaveRegs
+			      val callerSaveFRegs = CCall.callerSaveFRegs
 			      val gprParams = C.rax :: CCall.CCs.gprParamRegs
 			      val fprParams = CCall.CCs.fprParamRegs
 			      val gprTys = [32, 64]

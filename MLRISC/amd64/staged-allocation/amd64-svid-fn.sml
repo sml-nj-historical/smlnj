@@ -69,17 +69,17 @@ functor AMD64SVIDFn (
     fun toFpr r = (64, r)
     fun toFprs fprs = List.map toFpr fprs 
 		      
-    val calleeSaveRegs = toGprs [C.rbx, C.r12, C.r13, C.r14, C.r15]
-    val callerSaveRegs = toGprs [C.rax, C.rcx, C.rdx, C.rsi, C.rdi, C.r8, C.r9, C.r10, C.r11]
-    val callerSaveFRegs = toFprs (C.Regs CB.FP {from=0, to=15, step=1})
+    val calleeSaveRegs = [C.rbx, C.r12, C.r13, C.r14, C.r15]
+    val callerSaveRegs =  [C.rax, C.rcx, C.rdx, C.rsi, C.rdi, C.r8, C.r9, C.r10, C.r11]
+    val callerSaveFRegs = (C.Regs CB.FP {from=0, to=15, step=1})
     val calleeSaveFRegs = []
 			  
     val frameAlignB = 16
 
-    val calleeSaveRegs'  = List.map (fn (_, r) => r) calleeSaveRegs
-    val calleeSaveFRegs' = List.map (fn (_, r) => r) calleeSaveFRegs
-    val callerSaveRegs'  = List.map (fn (_, r) => r) callerSaveRegs
-    val callerSaveFRegs' = List.map (fn (_, r) => r) callerSaveFRegs
+    val calleeSaveRegs'  = toGprs calleeSaveRegs
+    val callerSaveRegs'  = toGprs callerSaveRegs
+    val calleeSaveFRegs' = toFprs calleeSaveFRegs
+    val callerSaveFRegs' = toFprs callerSaveFRegs
 
   (* convert a list of C types to a list of eight bytes *)
     fun eightBytesOfCTys ([], [], ebs) = List.rev (List.map List.rev ebs)
@@ -221,7 +221,7 @@ functor AMD64SVIDFn (
 	val (copyArgs, gprUses, fprUses) = CCall.copyArgs(args, argLocs)
        (* the defined registers of the call depend on the calling convention *)
  	val defs = (case #conv proto
-            of "ccall" => List.map (gpr o #2) callerSaveRegs @ List.map fpr callerSaveFRegs
+            of "ccall" => List.map (gpr o #2) callerSaveRegs' @ List.map fpr callerSaveFRegs'
 	     | "ccall-bare" => []
 	     | conv => raise Fail (concat [
 			"unknown calling convention \"", String.toString conv, "\""
