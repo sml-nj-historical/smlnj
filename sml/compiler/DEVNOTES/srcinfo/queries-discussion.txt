@@ -1,0 +1,141 @@
+Lars, 6/18/08
+
+Below are the major queries I need to ask from either a programming
+language tool frontend or if we wanted to write a little tool that can
+create a TAGS file to make emacs browsing better. Is there anything
+else that you can think of? And should we store this list somewhere in
+SVN?
+
+Related to browsing and nagivation features
+- All structures in this CM package
+- Members of a given structure
+- For this structure or member, what file and line is it defined at
+
+Related to code editing
+- What is the type of the token at this location in the file
+   (for tooltips on mouseover, goto-definition, and function argument hints)
+- Given a type, what are its members (supports completion lists after ".")
+- List of the members and types "in scope" at a location in the file
+   (supports completion on naked symbols)
+
+============================================================================
+Valentin, 6/18/08
+
+I guess the list can go in the base/compiler/DEVNOTES/srcinfo directry.
+
+Concerning your fifth idea : "Given a type, what are its members
+(supports completion lists after  ".")", if you give a datatype, it is
+possible to get all its dataconstructors, or if you give a type, I can
+give you its extended equivalent. But I don't know how you want to use
+this, you can't say neither "record.label", nor "option.NONE"...
+
+Concerning the sixth idea : "List of the members and types "in scope" at
+a location in the file.", I guess doing that will require going through
+the absyn.
+
+You can also want to ask : where is that variable/structure used, if you
+want to see what are the quantity of modifications to do if you were to
+change it.
+
+We can also ask something like : is there somewhere a member who is
+polymorpic but its specification is not (or less), maybe impairing
+performance.
+
+Valentin
+
+==============================================================================
+Dave, 6/24/08
+
+On Jun 17, 2008, at 11:57 AM, Lars Bergstrom wrote:
+
+Below are the major queries I need to ask from either a programming
+language tool frontend or if we wanted to write a little tool that can
+create a TAGS file to make emacs browsing better. Is there anything
+else that you can think of? And should we store this list somewhere in
+SVN?
+
+Related to browsing and nagivation features
+- All structures in this CM package
+
+    I'm not sure what you mean by "this CM package".  Do you mean all the
+    things (signatures, structures, and functors) constructed/loaded by a
+    given .cm file?  And would this include additional libraries loaded
+    through library specs?  This could include a large hierarchy of
+    modules going down to the Basis library modules.
+
+    I suppose you could limit the scope to the modules and signatures that
+    are specified in the export list of the cm description file, or
+    perhaps include modules that are specified directly as source files in
+    the file, even if they are not exported.
+
+- Members of a given structure
+
+    This should be straightforward.
+
+- For this structure or member, what file and line is it defined at
+
+    This should be one of the primary pieces of information available from
+    the database.  There is a slightly subtle question of how to designate
+    a particular module.  A symbolic path is the obvious designator, but
+    it has to be interpreted with respect to an implicit (or possibly
+    explicit) environment.  It is possible for the root module name in a
+    path to have multiple bindings in a large system (e.g. internal to
+    multiple libraries).
+
+    In general, the idea of the "context" of a query needs to be
+    clarified.  In CM, there is no "global" environment, and for each
+    compilation unit, a special compilation environment is constructed
+    based on its dependencies.
+
+    Even in the interactive system, where there is a global top-level
+    environment, it may be that you want to ask about a module or elements
+    of a module where that module's name has been shadowed by a later
+    binding.
+
+Related to code editing
+- What is the type of the token at this location in the file
+   (for tooltips on mouseover, goto-definition, and function argument hints)
+
+    We have a standard notion of a source location (file path, initial and
+    final character position), and the database should be able to map that
+    to a particular identifier (or path), and determine the contextual
+    type of that identifier occurrence (assuming it is a value
+    identifier).
+
+- Given a type, what are its members (supports completion lists after ".")
+
+    I'm not sure what you have in mind.  The mention of completion after
+    "." suggests that you are thinking of completing a path, which means
+    that the symbol before the "." would be a structure name, and a
+    completion list would then give the names of elements of that
+    structure (determined from its signature).  Is this what you have in
+    mind?
+
+    A type name can't occur in a path except at the end (i.e. there is no
+    dot selection from a type name).  On the other hand, if you do have a
+    type (a type path, or occurence of a type name), you might be
+    interested in seeing the definition of the type, or where its
+    definition occurs in the source, or what structure it comes from.
+
+
+- List of the members and types "in scope" at a location in the file
+  (supports completion on naked symbols)
+
+    I'm not sure what you mean by "completion on naked symbols" -- could you elaborate?
+
+    If you specify a source location, the set of bound identifiers that
+    are in scope at that point will often be fairly large (it is
+    essentially the domain of the static environment at the point where
+    that construct was elaborated).
+
+    Under CM, this would include all the module-level identifiers of the
+    imports of the current compilation unit (as determined by CM's
+    dependency analysis), plus identifiers that have been defined earlier
+    in the compilation unit (and not shadowed).  It is probably not a good
+    idea to store such lists directly in the database, and as Valentin
+    points out, it would require an analysis of the abstract syntax (plus
+    CM dependency information) to reconstruct.
+
+    Dave
+
+================================================================================
