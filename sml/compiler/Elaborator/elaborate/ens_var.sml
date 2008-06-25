@@ -31,7 +31,7 @@ in
    val ens_var = (ref []):env_var;       (*contains def and use of variables, and functions*)
    val ens_types = (ref []):env_ty;      (*contains type and datatype def and explicite use*)
    val ens_cons = (ref []):env_cons;     (*contains type constructors use*)
-   val ens_str = (ref []):env_str;
+   val ens_str = (ref []):env_str;       (*contains structure content*)
    val temp_map = (ref []):(A.access * ((int * A.access) list ref)) list ref;
 
    val stat_env = ref (StaticEnv.empty);     (*used only for printing without `?.' everywhere*)
@@ -75,47 +75,48 @@ in
 	       A.PATH (incl2 access2 old_access new_access, slot) 
 	 | incl2 access _ new_access= new_access (*verifier que ca fait bien ce qu'il faut ici*)
 			  
-       fun pred_1 {var = (VC.VALvar {access, ...}), ...} old_access = incl access old_access
-	 | pred_1 (_:var) _ = false
-
-       fun pred_2 {str = M.STR {access, ...}, ...} old_access = incl access old_access
-	 | pred_2 (_:str) _ = false
-
        fun change p ens old_access = List.partition (fn x => p x old_access) ens
-
-       fun modi {var = VC.VALvar {access, typ, prim, path}, def, usage, instance} old_access new_access=
-	   {var = VC.VALvar {access = incl2 access old_access new_access, typ = typ, prim = prim, path = path}, 
-	    def = def, 
-	    usage = usage,  
-	    instance = instance 
-	   }
-
-       fun modi2 {str = M.STR {access, sign, rlzn, prim}, def, usage, instance, map} old_access new_access = 
-	   {str = M.STR {access = incl2 access old_access new_access, sign = sign, rlzn = rlzn, prim = prim},
-	    def = def,
-	    usage = usage,
-	    instance = instance,
-	    map = map
-	   }
-
-       fun change_access_var old_access new_access =        
-	   let val (to_be_changed, no_change) = change pred_1 (!ens_var) old_access 
-	       val changed = List.map (fn x => modi x old_access new_access) to_be_changed
-	   in
-	       ens_var := changed @ no_change
-	   end
-
-       fun change_access_str old_access new_access = 
-	   let val (to_be_changed, no_change) = change pred_2 (!ens_str) old_access 
-	       val changed = List.map (fn x => modi2 x old_access new_access) to_be_changed
-	   in
-	       ens_str := changed @ no_change
-	   end
    in
-       fun change_access old_access new_access = (
-	   change_access_var old_access new_access;
-	   change_access_str old_access new_access
-       )
+       (*variable specific part*)
+       local
+	   fun pred_1 {var = (VC.VALvar {access, ...}), ...} old_access = incl access old_access
+	     | pred_1 (_:var) _ = false
+				  
+	   fun modi {var = VC.VALvar {access, typ, prim, path}, def, usage, instance} old_access new_access=
+	       {var = VC.VALvar {access = incl2 access old_access new_access, typ = typ, prim = prim, path = path}, 
+		def = def, 
+		usage = usage,  
+		instance = instance 
+	       }
+       in 
+           fun change_access_var old_access new_access =        
+	       let val (to_be_changed, no_change) = change pred_1 (!ens_var) old_access 
+		   val changed = List.map (fn x => modi x old_access new_access) to_be_changed
+	       in
+		   ens_var := changed @ no_change
+	       end
+       end
+       
+       (*structure specific part*)
+       local
+	   fun pred_2 {str = M.STR {access, ...}, ...} old_access = incl access old_access
+	     | pred_2 (_:str) _ = false
+				  
+	   fun modi2 {str = M.STR {access, sign, rlzn, prim}, def, usage, instance, map} old_access new_access = 
+	       {str = M.STR {access = incl2 access old_access new_access, sign = sign, rlzn = rlzn, prim = prim},
+		def = def,
+		usage = usage,
+		instance = instance,
+		map = map
+	       }
+       in
+           fun change_access_str old_access new_access = 
+	       let val (to_be_changed, no_change) = change pred_2 (!ens_str) old_access 
+		   val changed = List.map (fn x => modi2 x old_access new_access) to_be_changed
+	       in
+		   ens_str := changed @ no_change
+	       end
+       end
    end
    
    (************************************************************************************************************)
@@ -293,17 +294,20 @@ in
    (************************************************************************************************************)
    (***********************************functions to print environments******************************************)
    (************************************************************************************************************)
+
+   (*tranform a region in a string*)
+   fun rtoS (int1, int2) = 
+       "("^Int.toString(int1)^","^Int.toString(int2)^")";
+       
+   fun stoS symbol = let val S.SYMBOL(_, str) = symbol in str end
+		     
+   fun ptoS nil  = ""
+     | ptoS [s] = stoS s
+     | ptoS (t::q) = stoS t^"."^ptoS q
+			
+   val sptoS = SymPath.toString
+	     
    local
-       (*tranform a region in a string*)
-       fun rtoS (int1, int2) = 
-	   "("^Int.toString(int1)^","^Int.toString(int2)^")";
-
-       fun stoS symbol = let val S.SYMBOL(_, str) = symbol in str end
-			 
-       fun ptoS nil  = ""
-	 | ptoS [s] = stoS s
-	 | ptoS (t::q) = stoS t^"."^ptoS q
-
        (*print a type with an environment*)
        fun printer0 ty env = 
 	   (
@@ -415,6 +419,53 @@ in
 		    ens_str := [];
 		    temp_map := []
 		  )
+
+   (*************************************************************************************************************)
+   (******************************************** browsing stuff *************************************************)
+   (*************************************************************************************************************)
+
+   datatype id = Type of ty | Constructor of cons | Variable of var | Structure of str | Error;
+
+   fun find name place = 
+       let 
+	   fun pred_use (start, stop) = start <= place andalso place < stop
+	   fun is_used x = List.exists pred_use x
+
+	   fun pred_var ({var = VC.VALvar {path, ...}, usage, ...}:var) = 
+	       sptoS path = name andalso is_used (!usage)
+	   val is_a_var = List.find pred_var (!ens_var)
+
+	   fun pred_type ({tycon = T.DEFtyc {path = InvPath.IPATH path, ...}, usage, ...}:ty) = 
+	       ptoS (rev path) = name andalso is_used (!usage)
+	     | pred_type {tycon = T.GENtyc {path = InvPath.IPATH path, ...}, usage, ...} = 
+	       ptoS (rev path) = name andalso is_used (!usage)
+	   val is_a_type = List.find pred_type (!ens_types)
+
+	   fun pred_con ({cons = T.DATACON {name = name2, ...}, usage, ...}:cons) = 
+	       stoS name2 = name andalso is_used (!usage)
+	   val is_a_con = List.find pred_con (!ens_cons)
+
+	   fun pred_str ({str = M.STR {rlzn = {rpath = InvPath.IPATH path, ...}, ...}, usage, ...}:str) = 
+	       ptoS (rev path) = name andalso is_used (!usage)
+	   val is_a_str = List.find pred_str (!ens_str)
+			   
+       in
+	   case is_a_var of
+	       SOME v => Variable v
+	     | NONE => (
+	       case is_a_type of
+		   SOME t => Type t
+		 | NONE => (
+		   case is_a_con of
+		       SOME c => Constructor c
+		     | NONE => (
+		       case is_a_str of
+			   SOME s => Structure s
+			 | NONE => Error
+		       )
+		   )
+	       )
+       end
 
 end (*local*)
 

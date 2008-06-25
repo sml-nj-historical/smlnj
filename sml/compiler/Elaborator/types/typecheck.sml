@@ -458,7 +458,7 @@ in
       of VARexp(r as ref(VALvar{typ, access, path, ...}), _) =>
 	   let val (ty, insts) = instantiatePoly(!typ)
 	    in 
-	       EV.add_var_inst (ty, access);
+	       EV.add_var_inst ty access;
 	       (VARexp(r, insts), ty)
 	   end
        | VARexp(refvar as ref(OVLDvar _),_) =>

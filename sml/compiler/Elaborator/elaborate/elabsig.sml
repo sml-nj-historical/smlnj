@@ -343,8 +343,14 @@ fun elabWhere (sigexp,env,epContext,mkStamp,error,region) =
 		        loop1(rest,defs)))
 	     in loop1(whspecs,defs)
 	    end
-	  | loop(MarkSig(sigexp,region),defs,_) =
-	      loop(sigexp,defs,region)
+	  | loop(MarkSig(sigexp,region),defs,_) = (
+	    (*case sigexp of
+		VarSig (name as Symbol.SYMBOL (_, s)) => (print ("marksig : "^s^"\n"))
+	      | BaseSig _ => print ("marksig : basesig\n")
+	      | AugSig _ => print ("marksig : augsig\n")
+	      | _ => ();*)
+	    loop(sigexp,defs,region)
+	    )
 	  | loop(sigexp,defs,region) = (sigexp,defs,region)
      in loop(sigexp,nil,region)
     end
@@ -1138,7 +1144,12 @@ let val region0 = region
 	elabWhere(sigexp,env,epContext,mkStamp,error,region)
     val sign = 
       case sigexp
-	of VarSig name' => LU.lookSig(env,name',error region)
+	of VarSig name' => 
+	   let val sign = LU.lookSig(env,name',error region)
+	       val _ = Ens_var.add_sig_use name' sign region
+	   in
+	       sign
+	   end
 
 	 | BaseSig specs =>
 	     let val _ = debugmsg "--elabSig >> BaseSig"
@@ -1159,6 +1170,8 @@ let val region0 = region
 			      typsharing = tycShare,
 			      strsharing = strShare,
 			      stub = NONE}
+
+		 val _ = Ens_var.add_sig_def sign region
 
 	      in debugPrint("--elabSig: returned signature:",
 		   (fn pps => fn s => PPModules.ppSignature pps (s,env,6)),sign);

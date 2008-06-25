@@ -416,7 +416,6 @@ let
 		      let val dcb = pat_id (SP.SPATH path, env,  
                                             error region', compInfo) 
 			  val (p,tv) = elabPat(argument, env, region) 
-		          val (S.SYMBOL (_, str)::_) = path
 		      in 
 			 case dcb of 
 			     CONpat (datacon, _) => EV.add_cons_use datacon region
@@ -593,12 +592,14 @@ let
 	       end
 	   | MarkExp (exp,region) => (
 	     ( case exp of 
-		   (VarExp path) => (case LU.lookVal(env,SP.SPATH path,error region) of
-					 (VAL (VALvar {access, ...})) => (*(print (SymPath.toString(SP.SPATH path)^" "^Access.prAcc access^"\n"); *)EV.add_var_use access region(*)*)
-				       | (CON ( datacon as DATACON {name=S.SYMBOL(_, str), typ, rep, ...})) =>
-					 EV.add_cons_use datacon region
-				       | _ => ()
-				    )
+		   (VarExp path) => 
+		   ( case LU.lookVal(env,SP.SPATH path,error region) of
+			 VAL (v as VALvar _) => 
+			 EV.add_var_use v region
+		       | CON datacon =>
+			 EV.add_cons_use datacon region
+		       | _ => ()
+		   )
 		 | _ => ()
 	     );
 	     let val (e,tyv,updt) = elabExp(exp,env,region)
@@ -1266,9 +1267,9 @@ let
 			     fbs1));
 	   (let val (ndec, nenv) = 
                     FUNdec(completeMatch,map makefb fbs1,compInfo)
-		val (head::_) = fbs1 (*regarder si c'est bien vrai, et ce que ca fait avec des List.app par exemple*)
+		(*val (head::_) = fbs1 (*regarder si c'est bien vrai, et ce que ca fait avec des List.app par exemple*)*)
             in 
-		case head of 
+		case List.hd fbs1 of 
 		    (v as VALvar{path=SymPath.SPATH[symbol],...},cs,r) => 
 		        let val S.SYMBOL (_, y) = symbol 
 			    val (r1, _) = r

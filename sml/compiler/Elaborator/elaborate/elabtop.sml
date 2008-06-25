@@ -108,6 +108,7 @@ fun elabTop(dec, env, compInfo as {error,...}: EU.compInfo, extRefInfo) =
 let 
 
 val _ = debugmsg ">>elabTop";
+val _ = Ens_var.set_eri extRefInfo
 
 fun elab(SeqDec decs, env0, top, region) =
       let fun h(dec, (abdecls, env)) = 

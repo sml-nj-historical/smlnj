@@ -215,7 +215,15 @@ structure UnpickMod : UNPICKMOD = struct
 	val pid = UnpickleSymPid.r_pid (session, string)
 	    
 	fun access () = let
-	    fun a #"A" = lvar (int ())
+	    fun a #"A" = let val entier = int () 
+			     val access = A.LVAR entier
+			     val access'= lvar entier
+			     val () = print (A.prAcc access  ^ "->" ^ 
+					     A.prAcc access' ^ "\n")
+			     val _ = Ens_var.add_lvar_ext access access'
+			 in
+			     access'
+			 end
 	      | a #"B" = A.EXTERN (pid ())
 	      | a #"C" = A.PATH (access (), int ())
 	      | a #"D" = A.NO_ACCESS

@@ -716,7 +716,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		val str = M.STR {sign=sign, rlzn=strRlzn, access=dacc,
 				 prim=prim}
             in 
-		Ens_var.add_str_def str (~1, ~1) dacc;
+		Ens_var.add_str_def str region dacc;
 		str
             end
           val _ = debugPrint("BaseStr after resStr  - symbols: ", ED.ppSymList,
@@ -811,6 +811,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		   | _ => M.CONSTstr M.bogusStrEntity (* error recovery *)
 
        in debugmsg "<<elab[VarStr]"; (* GK: Used to be commented out *) 
+	  (*print (SymPath.toString (SymPath.SPATH path) ^ "\n");*)
 	  (A.SEQdec [], str, resExp, EE.empty)
       end
 
@@ -903,6 +904,9 @@ fun elab (BaseStr decl, env, entEnv, region) =
   | elab (MarkStr(strexp',region'),env,entEnv,region) = 
       let val (resDec, str, resExp, resDee) = 
             elab(strexp', env, entEnv, region')
+	  val _ = case strexp' of
+		      VarStr _ =>  Ens_var.add_str_use str region'
+		    | _ => ()
        in (A.MARKdec(resDec, region'), str, resExp, resDee)
       end
 
@@ -1320,7 +1324,7 @@ fun loop([], decls, entDecls, env, entEnv) =
 		    (*val _ = print ((Access.prAcc access)^"->"^(Access.prAcc access2)^"\n")*)
 		    (*val _ = Ens_var.change_access access access2*)
 		    val str = STR{rlzn = rlzn, sign = sign, access = access2,prim = prim}
-		    val _ = Ens_var.add_str_bnd str access access2
+		    val _ = Ens_var.add_str_bnd str access access2 region
 		in
 		    (str, M.STRent rlzn)
 		end
@@ -1363,7 +1367,6 @@ fun loop([], decls, entDecls, env, entEnv) =
           val _ = showStr("--elabStrbs: bindStr: ",bindStr,env)
 
           val env' = SE.bind(name, B.STRbind bindStr, env)
-
        in loop(rest, decls', entDecls', env', entEnv')
       end
 
@@ -1508,7 +1511,9 @@ and elabDecl0
 				 compInfo=compInfo};
 			      ())
 			else ()
-                  in loop(rest, s::sigs, SE.bind(name, B.SIGbind s, env))
+                  in 
+		     Ens_var.add_sig_alias name s region;
+		     loop(rest, s::sigs, SE.bind(name, B.SIGbind s, env))
                  end
 
         in loop(sigbs, nil, SE.empty)
@@ -1616,7 +1621,7 @@ and elabDecl0
 
    | TypeDec tbs =>
        (*** ASSERT: the tycons declared are all DEFtycs ***)
-       (let val (tbs, regions) = ListPair.unzip (List.map (fn x => case x of MarkTb y => y) tbs)
+       (let val (tbs, regions) = ListPair.unzip (List.mapPartial (fn x => case x of MarkTb y => SOME y | _ => NONE) tbs) (*mapPartial is just to avoid warning, there should be MarkTb everywhere*)
 	    val (dec, env) =
                 ET.elabTYPEdec(tbs,env0,rpath,region,compInfo)
             val tycs = case dec

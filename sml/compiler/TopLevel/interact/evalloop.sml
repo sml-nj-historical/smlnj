@@ -14,8 +14,6 @@ local open Environment
       structure PC = SMLofNJ.Internals.ProfControl
       structure ED = ElabDebug
 
-      structure EV = Ens_var
-		     
       open PP
 in 
 
@@ -186,8 +184,13 @@ fun evalLoop source = let
 		val e1 = E.mkenv { static = ste1,
 				   symbolic = E.symbolicPart e0,
 				   dynamic = E.dynamicPart e0 }
-		val _ = EV.maj (E.staticPart e1)
 
+
+		val _ = Ens_print.maj (E.staticPart e1)
+		(*val s = Pickle_ens.test ()
+		val all = Pickle_ens.test_back s
+		val _ = Ens_print.print_all all*)
+		
             in
 		(* testing code to print ast *)
 		ppAstDebug("AST::",ast);

@@ -53,6 +53,7 @@ Group
 
 	signature ENS_VAR
 	structure Ens_var
+	structure Ens_print
 
 is
 
@@ -112,5 +113,6 @@ is
 	$smlnj/smlnj-lib/controls-lib.cm
 	$smlnj/basis/basis.cm
 
-	elaborate/ens_var.sig
-	elaborate/ens_var.sml
+	srcinfo/ens_var.sig
+	srcinfo/ens_var.sml
+        srcinfo/ens_print.sml

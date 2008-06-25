@@ -1277,7 +1277,7 @@ in
 		     A.LVAR k => ( 
 		     (*print (SymPath.toString p ^ " " ^ Access.prAcc a^"->"^Access.prAcc (newAccess i) ^ "\n");*)
 		     if SymPath.toString p <> "it" then
-			 Ens_var.change_access a (newAccess i)
+			 Ens_var.change_access_var a (newAccess i)
 		     else
 			 ();
 		     (i+1,
@@ -1295,7 +1295,7 @@ in
 		(case a of
 		     A.LVAR k => (
 		     (*print (Access.prAcc a ^ "->" ^ Access.prAcc (newAccess i) ^"\n");*)
-		     Ens_var.change_access a (newAccess i);
+		     Ens_var.change_access_str a (newAccess i);
 		     (i+1,
 		      StaticEnv.bind (sym,
 				      B.STRbind (M.STR
