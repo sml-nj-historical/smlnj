@@ -218,8 +218,8 @@ structure UnpickMod : UNPICKMOD = struct
 	    fun a #"A" = let val entier = int () 
 			     val access = A.LVAR entier
 			     val access'= lvar entier
-			     val () = print (A.prAcc access  ^ "->" ^ 
-					     A.prAcc access' ^ "\n")
+			     (*val () = print (A.prAcc access  ^ "->" ^ 
+					     A.prAcc access' ^ "\n")*)
 			     val _ = Ens_var.add_lvar_ext access access'
 			 in
 			     access'

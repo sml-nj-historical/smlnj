@@ -128,7 +128,7 @@ Group
 
 	structure PPLty
 
-	structure Pickle_ens (* just added *)
+	structure Ens_pickle (* just added *)
 is
 
 Elaborator/srcinfo/pickle.sml (* just added *)

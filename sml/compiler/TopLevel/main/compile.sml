@@ -154,7 +154,7 @@ struct
 				    compInfo=cinfo} absyn
 			before (check "instrument")
 
-	    (*val () = Ens_var.print_all ()*)
+	    val () = Ens_var.print_all ()
 
 	    val {flint, imports} = 
 		translate {absyn=absyn, exportLvars=exportLvars, 

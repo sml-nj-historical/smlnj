@@ -561,7 +561,7 @@ in
 			"M" $ [bool b1, bool b2, list tyc ts1, list tyc ts2]
 		  | LT.TC_ARROW (LT.FF_FIXED, ts1, ts2) =>
 			"N" $ [list tyc ts1, list tyc ts2]
-		  | LT.TC_PARROW _ => bug "unexpected TC_PARREW in mkPickleLty"
+		  | LT.TC_PARROW _ => bug "unexpected TC_PARROW in mkPickleLty"
 		  | LT.TC_TOKEN (tk, t) => "O" $ [int (LT.token_int tk), tyc t]
 		  | LT.TC_IND _ => bug "unexpected TC_IND in mkPickleLty"
 		  | LT.TC_ENV _ => bug "unexpected TC_ENV in mkPickleLty"

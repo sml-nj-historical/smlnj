@@ -493,11 +493,36 @@ in
 	   (!ens_type, 
 	    {tycon = tycon, def = (!source, r1, r2), usage = ref []});
 
+   fun get_type_file tycon = 
+       let 
+	   val path_opt = 
+	       case tycon of 
+		   T.DEFtyc {path = InvPath.IPATH rpath, ...} => 
+		   SOME rpath
+		 | T.GENtyc {path = InvPath.IPATH rpath, ...} => 
+		   SOME rpath
+		 | _ => NONE
+       in
+	   case path_opt of
+	       NONE => NONE
+	     | SOME rpath => (!extRefInfo) (List.last rpath)
+       end
+
    fun add_type_use (ty as T.CONty (tycon, _)) (r1, r2) = 
        ( case TypeSet.find 
 		  (fn x => compare_type (#tycon x, tycon) = EQUAL) 
 		  (!ens_type)
-	  of NONE => ()
+	  of NONE => (*extern type*)
+	     ( case get_type_file tycon of
+		   NONE => () (*no avail. source -> lib*)
+		 | SOME file => (*available source*)
+		   ens_type := 
+		   TypeSet.add 
+		       (!ens_type, 
+			{tycon = tycon,
+			 def = (file, ~1, ~1), 
+			 usage = ref [((!source, r1, r2), ty)]})
+	     )
 	   | SOME {usage, ...} => 
 	     usage := ((!source, r1, r2), ty) :: (!usage)
        )
@@ -512,26 +537,34 @@ in
     *constructor, or ("", -1, -1) if not present
     *)
    fun find_reg_def cons = 
-       let
-	   fun default (SOME {def, ...} : type_elem option) = def
-	     | default NONE = ("", ~1, ~1)
-       in
-	   case get_family cons of 
-	       SOME tycon =>
-	       default (TypeSet.find 
-			    (fn x => compare_type (T.GENtyc tycon, #tycon x)
-				     = EQUAL) 
-			    (!ens_type)
-		       )
-	     | _ => default NONE
-       end
+       case get_family cons of 
+	   SOME tycon => 
+	   (case TypeSet.find 
+		     (fn x => compare_type (T.GENtyc tycon, #tycon x) = EQUAL) 
+		     (!ens_type) 
+	     of NONE =>
+		( case get_type_file (T.GENtyc tycon) of
+		      NONE => NONE
+		    | SOME file => (
+		      ens_type := 
+		      TypeSet.add 
+			  (!ens_type, 
+			   {tycon = (T.GENtyc tycon),
+			    def = (file, ~1, ~1), 
+			    usage = ref []});
+		      SOME (file, ~1, ~1)
+		      )
+		)
+	      | SOME {def, ...} => SOME def
+	   )
+	 | NONE => NONE
        
    (*add a type constructor use to the list*)
    fun add_cons_use datac (r1, r2) = 
        case ConsSet.find (fn x => cons_eq datac (#cons x)) (!ens_cons) of
 	   NONE => ( case find_reg_def datac of
-			 ("", ~1, ~1) => ()
-		       | loc => 
+			 NONE => ()
+		       | SOME loc => 
 			 ens_cons := 
 			 ConsSet.add 
 			     (!ens_cons, 
@@ -569,11 +602,11 @@ in
    fun print_sig () =
        SigSet.app EP.print_sig (!ens_sig)
    fun print_all () = (
-       print_var ();print "\n";
-       print_types ();print "\n";
-       print_cons ();print "\n";
-       print_str ();print "\n";
-       print_sig ();print "\n"
+       print "########### VAR ###########\n"; print_var (); print "\n";
+       print "########### TYPES ###########\n"; print_types (); print "\n";
+       print "########### CONS ###########\n"; print_cons (); print "\n";
+       print "########### STR ###########\n"; print_str (); print "\n";
+       print "########### SIG ###########\n"; print_sig (); print "\n"
    )
 
    fun print_ext () = (
