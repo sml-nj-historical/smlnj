@@ -3,6 +3,8 @@
 (* ENS short for ensemble *)
 signature ENS_VAR =  sig
 
+    val debugging : bool ref
+
     val add_var_def : VarCon.var -> int*int -> unit
     val add_var_use : VarCon.var -> int*int -> unit
     val add_var_inst : Types.ty -> Access.access -> unit

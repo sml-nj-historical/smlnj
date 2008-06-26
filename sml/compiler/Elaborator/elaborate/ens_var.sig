@@ -1,3 +1,7 @@
+(* ens_var.sig *)
+
+(* ENS short for ensemble *)
+
 signature ENS_VAR =  sig
 
    val add_var_def : VarCon.var -> int*int -> unit

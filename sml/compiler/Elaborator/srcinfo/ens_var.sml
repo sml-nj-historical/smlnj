@@ -13,6 +13,7 @@ local
     structure EP = Ens_print
 in 
 
+   val debugging : bool ref = ElabControl.infodebugging
    fun bug msg = EM.impossible("Bugs in Ens_var: "^msg);
 
    type file = EP.file
@@ -223,7 +224,8 @@ in
 	     NONE => NONE
 	   | SOME (_, access') => find_str access'
        )
-     | find_str _ = bug "find_str"
+     | find_str A.NO_ACCESS = NONE  (* bootstrap *)
+     | find_str (A.EXTERN _) = bug "find_str"
 
    and find_str_path a slot =
        case find_str a of
@@ -239,7 +241,8 @@ in
 	   NONE => NONE
 	 | SOME (_, access') => find_var' access'
        )
-     | find_var' _ = bug "find_var'"
+     | find_var' A.NO_ACCESS = NONE  (* bootstrap *)
+     | find_var' (A.EXTERN _) = bug "find_var'"
 
    fun find_var a = 
        case find_var' a of
@@ -315,11 +318,11 @@ in
        end;
 
    (*Pour les signatures : il faut probablement rajouter qqchose ici?*)
-   fun add_str_bnd str old_access new_access (r1, r2) = 
+   fun add_str_bnd str old_access (new_access: A.access) (r1, r2) = 
        case StrSet.find 
 		(fn {str = M.STR {access, ...}, ...} => access = old_access 
 		  | _ => bug "add_str_bnd") (!ens_str)
-	of NONE => ()(*print "Pas de binding\n" A FAIRE APRES*)
+	of NONE => ()  (*print "Pas de binding\n" A FAIRE APRES*)
 	 | SOME {map, str = M.STR _, ...} => 
 	   ens_str := StrSet.add (!ens_str, {str = str, 
 					     def = (!source, r1, r2), 
@@ -650,6 +653,30 @@ in
 	StrSet.listItems (!ens_str),
 	SigSet.listItems (!ens_sig))
 
+
+   val control = ElabControl.srcInfo
+
+   fun controlled1 f arg = if !control then f arg else ()
+   fun controlled2 f arg1 arg2 = if !control then f arg1 arg2 else ()
+   fun controlled3 f arg1 arg2 arg3 = if !control then f arg1 arg2 arg3 else ()
+   fun controlled4 f arg1 arg2 arg3 arg4 = if !control then f arg1 arg2 arg3 arg4 else ()
+
+   val add_var_def = controlled2 add_var_def
+   val add_var_use = controlled2 add_var_use
+   val add_var_inst = controlled2 add_var_inst
+   val add_type_def = controlled2 add_type_def
+   val add_type_use = controlled2 add_type_use
+   val add_cons_use = controlled2 add_cons_use
+   val add_cons_inst = controlled2 add_cons_inst
+   val add_str_use = controlled2 add_str_use
+   val add_str_def = controlled3 add_str_def
+   val add_str_bnd = controlled4 add_str_bnd
+   val add_mapping = controlled3 add_mapping
+   val add_sig_def = controlled2 add_sig_def
+   val add_sig_use = controlled3 add_sig_use
+   val add_sig_alias = controlled3 add_sig_alias
+   val change_access_var = controlled2 change_access_var
+   val change_access_str = controlled2 change_access_str
 
 end (*local*)
 

@@ -22,10 +22,14 @@ sig
       (* Typecheck *)
   val unidebugging : bool ref
       (* Unify *)
+  val infodebugging : bool ref
+      (* srcinfo (Ens_var) *)
   val instantiateSigs : bool ref
       (* ElabMod, Control_MC *)
 
   val internals : bool ref
+
+  val srcInfo : bool ref
 
   val markabsyn : bool ref
       (* ElabCore, ElabTop, ElabUtil, Control_MC *)                    

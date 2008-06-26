@@ -57,6 +57,9 @@ structure ElabControl = struct
         (* Typecheck *)
     val unidebugging = onew ("uni-debugging", "?", false)
         (* Unify *)
+    val infodebugging = onew ("info-debugging", "?", false)
+        (* Unify *)
+
     val instantiateSigs = onew ("instantiate-sigs", "?", true)
         (* ElabMod, Control_MC *)
 
@@ -67,6 +70,8 @@ structure ElabControl = struct
 
     val boxedconstconreps = onew ("boxedconstreps", "?", false)
         (* ConRep *)
+
+    val srcInfo = cnew("srcinfo", "src info", false)
 
     val multDefWarn = cnew ("mult-def-warn", "?", false)
         (* Instantiate, Control_MC (TopLevel/main/control.sml) *)
