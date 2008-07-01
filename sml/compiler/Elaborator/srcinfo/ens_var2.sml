@@ -123,6 +123,7 @@ in
 	    val elements' = 
 		List.mapPartial get_trip bl
 	in
+	    (*en profiter pour mettre a jour le champ parent des enfants?*)
 	    ens_str := StrSet.add(!ens_str, 
 				  { name = name, 
 				    access = access,
@@ -138,6 +139,11 @@ in
     fun print_str () = 
 	StrSet.app Ens_print2.print_str (!ens_str)
 
+
+    fun print_all () = (
+	print_var ();
+	print_str ()
+    )
 
 end (*end local*)
 end (*end struct*)

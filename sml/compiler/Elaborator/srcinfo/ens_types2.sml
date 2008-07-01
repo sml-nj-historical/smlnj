@@ -30,7 +30,8 @@ struct
     type str_elem = { name : Symbol.symbol, 
 		      access : Access.access,
 		      parent : Access.access option,
-		      sign : Stamps.stamp option,
+		      sign : Stamps.stamp option, 
+		      (*on ne met pas la signature si elle est inferee*)
 		      def : location, 
 		      elements : (int * Symbol.symbol * key) list,
 		      (* datatype elements = 
@@ -38,8 +39,12 @@ struct
 				| Constraint of (slot_s2 * slot_s) list * 
 						access_s
 			          ?? mettre le symbol dans la liste ??
+				  pour le cas structure s2 : SIG2 = s
 				| Alias of access 
 		       * et aussi garder les access avec les use de variables
+		       * le mieux serait de garder toutes les structures, 
+		       * nommees ou pas, et eventuellement on peut essayer de
+		       * supprimer les structures anonymes
 		       *)
 		      usage : location list ref}
 		    
