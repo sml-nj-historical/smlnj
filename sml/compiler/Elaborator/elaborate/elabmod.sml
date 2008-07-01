@@ -636,7 +636,7 @@ fun constrStr(transp, sign, str, strDec, strExp, evOp, tdepth, entEnv, rpath,
       Every structure expression strexp is now elaborated into a quadruple
        (absdec, str, exp, ee) where absdec is the corresponding abstract
       syntax tree, str is the resulting structure, exp is the entity 
-      expressions, and ee is the delta entity environment collected while
+      expression, and ee is the delta entity environment collected while
       elaborating the current structure expression. The deltaEntEnv is
       designed to deal with LetStr and LetFct and to maintain the hidden
       entity environment context.

@@ -52,6 +52,17 @@ val lineprint = ref false
 
 fun C f x y = f y x
 
+fun bindingName (B.VALbind (VarCon.VALvar{path,...})) = SymPath.last path
+  | bindingName (B.VALbind (VarCon.OVLDvar{name,...})) = name
+  | bindingName (B.CONbind (Types.DATACON{name,...})) = name
+  | bindingName (B.TYCbind tycon) = TypesUtil.tycName tycon
+  | bindingName (B.SIGbind (M.SIG{name=SOME name,...})) = name
+  | bindingName (B.STRbind str) = InvPath.last(ModuleUtil.getStrName str)
+  | bindingName (B.FSGbind (M.FSIG{kind=SOME name,...})) = name
+  | bindingName (B.FCTbind (M.FCT{rlzn={rpath,...},...})) = InvPath.last(rpath)
+  | bindingName (B.FIXbind _) = #2(S.var'n'fix "?")
+  | bindingName _ = bug "bindingName"
+
 val nullFix = INfix(0,0)
 val infFix = INfix(1000000,100000)
 fun strongerL(INfix(_,m),INfix(n,_)) = m >= n
@@ -729,7 +740,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
      in ppDec'
     end
 
-and ppStrexp (context as (_,source_opt)) ppstrm =
+and ppStrexp (context as (env,source_opt)) ppstrm =
   let val pps = PP.string ppstrm
       fun ppStrexp'(_,0) = pps "<strexp>"
 
@@ -741,14 +752,12 @@ and ppStrexp (context as (_,source_opt)) ppstrm =
         | ppStrexp'(STRstr bindings, d) =
               (openHVBox ppstrm (Rel 0);
                pps "struct"; nl_indent ppstrm 2;
-(*               pps "..."; *)
-               (* ppBinding not yet undefined *)
                  ppSequence ppstrm
                    {sep=newline,
-                    pr=(fn ppstrm => fn (B.VALbind v) => ppVar ppstrm v | b => pps "#"),
-                          (*ppBinding context ppstrm (b,d-1)),*)
+                    pr=(fn ppstrm => (fn b => PPModules.ppBinding ppstrm (bindingName b, b, env, d-1))),
                     style=CONSISTENT}
                  bindings;
+	       newline ppstrm;
                pps "end";
                closeBox ppstrm)
 	| ppStrexp'(LETstr(dec,body),d) =

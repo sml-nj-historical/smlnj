@@ -52,8 +52,12 @@ Group
 	structure PPAst
 
 	signature ENS_VAR
+	structure Ens_types
+	structure Ens_types2
 	structure Ens_var
+	structure Ens_var2
 	structure Ens_print
+	structure Ens_print2
 
 is
 
@@ -115,4 +119,8 @@ is
 
 	srcinfo/ens_var.sig
 	srcinfo/ens_var.sml
+	srcinfo/ens_var2.sml
+	srcinfo/ens_types.sml
+	srcinfo/ens_types2.sml
         srcinfo/ens_print.sml
+        srcinfo/ens_print2.sml

@@ -19,10 +19,9 @@ datatype numberedLabel = LABEL of {name: S.symbol, number: int}
 
 datatype exp
   = VARexp of var ref * tyvar list
-    (* the 2nd arg is a type mv list used to capture the instantiation
-       parameters for this occurence of var when its type is polymorphic.
-       FLINT will use these to provide explicit type parameters for
-       var if var is bound to a primop. *)
+    (* the 2nd arg is a type univariable list (tyvar list) used to capture
+       the instantiation parameters for this occurence of var when its type
+       is polymorphic. These are used by FLINT to produce explicit type parameters. *)
   | CONexp of datacon * tyvar list (* ditto *)
   | INTexp of IntInf.int * ty
   | WORDexp of IntInf.int * ty
