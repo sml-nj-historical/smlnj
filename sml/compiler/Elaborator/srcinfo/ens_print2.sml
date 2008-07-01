@@ -1,22 +1,22 @@
-signature ENS_PRINT = 
+signature ENS_PRINT2 = 
 sig
    val maj : StaticEnv.staticEnv -> unit
 
-   val rtoS : Ens_types.location -> string
+   val rtoS : Ens_types2.location -> string
    val stoS : Symbol.symbol -> string
    val ptoS : Symbol.symbol list -> string
    val rptoS : InvPath.path -> string
 
-   val print_var : Ens_types.var_elem -> unit
-   val print_type : Ens_types.type_elem -> unit
-   val print_cons : Ens_types.cons_elem -> unit
-   val print_str : Ens_types.str_elem -> unit
-   val print_sig : Ens_types.sig_elem -> unit
-   val print_all : Ens_types.all -> unit
+   val print_var : Ens_types2.var_elem -> unit
+   val print_type : Ens_types2.type_elem -> unit
+   val print_cons : Ens_types2.cons_elem -> unit
+   val print_str : Ens_types2.str_elem -> unit
+   val print_sig : Ens_types2.sig_elem -> unit
+   val print_all : Ens_types2.all -> unit
 
 end (* signature ENS_PRINT*)
 
-structure Ens_print : ENS_PRINT = 
+structure Ens_print2 : ENS_PRINT2 = 
 struct
 
 local 
@@ -26,7 +26,7 @@ local
     structure PP = PrettyPrintNew
     structure VC = VarCon
     structure M = Modules
-    open Ens_types
+    open Ens_types2
 in 
 
    fun bug msg = ErrorMsg.impossible("Bugs in Ens_print: "^msg);
@@ -77,15 +77,10 @@ in
        print "\n"
    )
 			      
-   fun print_var {var, def, usage} = (
-       case var of 
-	   VC.VALvar {access, typ, path, ...} => (
-	   print (A.prAcc access ^ ": \"" ^ SymPath.toString path ^ 
-		  "\" " ^ rtoS def ^ " has type ");
-	   printer (!typ)
-	   )
-	 | VC.ERRORvar => print ("ERRORvar : " ^ rtoS def)
-	 | VC.OVLDvar _ => print ("OVLDvar : " ^ rtoS def);
+   fun print_var ({access, name, parent, typ, def, usage}:var_elem) = (
+       print (A.prAcc access ^ ": \"" ^ stoS name ^ 
+	      "\" " ^ rtoS def ^ " has type ");
+       printer typ;
        print " and";
        print_instance usage
    )
@@ -126,45 +121,32 @@ in
 	   )
        
    (*print the different type constructors and uses*)
-   fun print_cons ({cons, def, usage}:cons_elem) = 
-       let 
-	   val (dc as T.DATACON {typ, name = S.SYMBOL (_, str), ...}) = cons
-       in
-	   print (str ^ " " ^ rtoS def ^ " has type ");
-	   printer typ;
-	   print " and";
-	   print_instance usage
-       end
+   fun print_cons ({name, typ, gen_typ, def, usage}:cons_elem) = (
+       print (stoS name ^ " " ^ rtoS def ^ " has type ");
+       printer typ;
+       print " and";
+       print_instance usage
+   )
 
-   local       
-       fun prr (a, b) = 
-	   "(" ^ Int.toString a ^ "," ^ A.prAcc b ^") "
-	   
-       fun print_map map = 
-	   List.app (fn x => print ("\n\t"^prr x)) map;
-	   
-   in
-       fun print_str ({str, def, usage, map} : str_elem) =
-	   (
-	    case str of 
-		M.STR {access, rlzn = {rpath, ...}, ...} =>
-		print ("("^A.prAcc access^") " ^ rptoS rpath ^ " " ^ 
-		       rtoS def ^ " has slots")
-	      | M.ERRORstr => print ("ERRORstr" ^ rtoS def ^ " has slots")
-	      | M.STRSIG _ => print ("STRSIG" ^ rtoS def ^ " has slots");
-	    print_map (!map);
-	    print " and";
-	    print_instance usage
-	   )
-   end
+   fun print_str ({name, access, parent, sign, def, elements, usage}:str_elem)=
+	let 
+	    fun print_key k = 
+		case k of 
+		    Var a => Access.prAcc a
+		  | _ => "others"
+	in
+	    print ("(" ^ A.prAcc access ^ ") " ^ stoS name ^ 
+		   " " ^ rtoS def ^ " contains ");
+	    List.app (fn (x, y, z)=> print ("\n\t("^Int.toString x^","^
+					    stoS y^","^print_key z^")") 
+		     ) elements;
+	    print " and is used at : ";
+	    List.app (fn x => print ("\n\t" ^ rtoS x)) (!usage);
+	    print "\n"
+	end
 
-   fun print_sig {sign, def, usage, alias} =
+   fun print_sig ({name, stamp, def, parent, elements, usage, alias}:sig_elem)=
        let
-	   fun print_so name = 
-	       case name of
-		   NONE => print "<anonymous>"
-		 | SOME name' => print (stoS name');
-	       
 	   fun print_inst usage = (
 	       print " and is used at :";
 	       List.app 
@@ -173,10 +155,7 @@ in
 	       print "\n"
 	   )
        in
-	   case sign of 
-	       M.SIG {name, ...} => print_so name
-	     | _ => ();
-	   print (" : "^rtoS def);
+	   print (stoS name ^ " : " ^ rtoS def);
 	   List.app 
 	       (fn (x, S.SYMBOL (_, str)) => 
 		   print ("\n\thas alias "^ str ^ " " ^ (rtoS x))) 

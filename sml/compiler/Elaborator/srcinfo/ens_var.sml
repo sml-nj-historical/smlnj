@@ -11,20 +11,11 @@ local
     structure VC = VarCon
     structure M = Modules
     structure EP = Ens_print
+    open Ens_types
 in 
 
    val debugging : bool ref = ElabControl.infodebugging
    fun bug msg = EM.impossible("Bugs in Ens_var: "^msg);
-
-   type file = EP.file
-   type location = EP.location
-   type var_elem = EP.var_elem
-   type type_elem = EP.type_elem
-   type cons_elem = EP.cons_elem
-   type str_elem = EP.str_elem
-   type sig_elem = EP.sig_elem
-
-   fun locFile ((f,_,_) : location) = f
 
    fun compare_acc (A.LVAR i, A.LVAR j) = Int.compare (i,j)
      | compare_acc (A.LVAR _, _) = LESS

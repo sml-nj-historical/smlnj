@@ -41,6 +41,6 @@ signature ENS_VAR =  sig
     val add_lvar_ext : Access.access -> Access.access -> unit
     val clear : unit -> unit
 
-    val give_all : unit -> Ens_print.all
+    val give_all : unit -> Ens_types.all
 
 end (* signature ENS_VAR*)
