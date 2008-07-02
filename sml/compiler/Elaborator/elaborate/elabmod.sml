@@ -699,8 +699,6 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			name=NONE, closed=false, fctflag=fctflag,
                         elements=elements, 
 			properties = PropList.newHolder (),
-			(* boundeps=ref(NONE),  *)
-                        (* lambdaty=ref(NONE), *)
                         typsharing=nil, strsharing=nil,
 			stub=NONE}
  
@@ -708,7 +706,6 @@ fun elab (BaseStr decl, env, entEnv, region) =
                     { stamp = mkStamp(), (* generate structure stamp *)
 		      entities=EE.mark(mkStamp,EE.atop(entEnvLocal, entEnv)),
 		      properties = PropList.newHolder (),
-		      (* lambdaty=ref NONE, *)
 		      rpath=rpath, stub = NONE}
 
                 (*val dacc = DA.namedAcc(tempStrId, mkv) MOVED BEFORE*)
