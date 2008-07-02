@@ -10,6 +10,8 @@ local
 in
     fun bug msg = ErrorMsg.impossible("Bugs in Ens_var2: "^msg);
 
+    fun loc_reg (r1, r2) = (("", r1, r2):location)
+
     fun compare_acc (A.LVAR i, A.LVAR j) = Int.compare (i,j)
       | compare_acc (A.LVAR _, _) = LESS
       | compare_acc (_, A.LVAR _) = GREATER
@@ -42,21 +44,25 @@ in
     structure VarSet = RedBlackSetFn(VarKey)
     val ens_var = (ref VarSet.empty);
 
-    fun add_var_def var (r1, r2) = 
-	case var of
-	    (VC.VALvar {path = SymPath.SPATH [S.SYMBOL (_, "it")], ...}) => ()
-	  | VC.VALvar {access, typ, path = SymPath.SPATH path, ...} => 
-	    ens_var := VarSet.add(!ens_var, 
-				  {access = access, 
-				   parent = access, (* temporary *)
-				   typ = !typ, 
-				   name = List.last path,
-				   def=("", r1, r2), 
-				   usage=ref []})
-	  | _ => ()
+    fun add_var_def var 
+		    region 
+		    {str = M.STR {access = parent_acc, ...}, def, name} = 
+	( case var of
+	      (VC.VALvar {path = SymPath.SPATH [S.SYMBOL (_, "it")],...}) => ()
+	    | VC.VALvar {access, typ, path = SymPath.SPATH path, ...} => 
+	      ens_var := VarSet.add(!ens_var, 
+				    {access = access, 
+				     parent = parent_acc, (* temporary *)
+				     typ = !typ, 
+				     name = List.last path,
+				     def= loc_reg region, 
+				     usage=ref []})
+	    | _ => ()
+	)
+      | add_var_def _ _ _ = ()
 
     fun add_var_use (VC.VALvar {access, path = SymPath.SPATH path, typ, ...})
-		    (r1, r2) 
+		    region
 		    (typ' : T.tyvar list) = 
 	( case VarSet.find
 		   (fn {access = access', ...} => access = access') 
@@ -71,7 +77,7 @@ in
 			      (!typ, List.map TypesUtil.pruneTyvar typ')
 			| _ => !typ
 	      in
-		  usage := (("", r1, r2), typ'') :: (!usage)
+		  usage := (loc_reg region, typ'', access) :: (!usage)
 	      end
 	)
       | add_var_use _ _ _ = ()
@@ -98,10 +104,17 @@ in
     structure StrSet = RedBlackSetFn(StrKey)
     val ens_str = (ref StrSet.empty);
 
-    fun add_str_def {name, str = M.STR {sign = M.SIG {stamp, elements, ...}, access, ...}, def} 
-		    bl (r1, r2) = 
+    fun add_str_def {name, 
+		     str = M.STR {sign = M.SIG {stamp, elements, ...}, 
+				  access, ...}, 
+		     def} 
+		    bl 
+		    region 
+		    parent_acc = 
 	let 
-	    fun get_symbol (B.VALbind (VC.VALvar {path = SymPath.SPATH path, ...})) = SOME (List.last path)
+	    fun get_symbol (B.VALbind 
+				(VC.VALvar {path = SymPath.SPATH path, ...})) =
+		SOME (List.last path)
 	      | get_symbol _ = NONE
 
 	    fun get_symbol' (x, _) = x
@@ -117,24 +130,63 @@ in
 
 	    fun get_trip b = 
 		case (b, get_acc b) of
-		    ((B.VALbind (VC.VALvar {access, ...})), SOME (s, M.VALspec {slot, ...})) => SOME (slot, s, Var access)
+		    ((B.VALbind (VC.VALvar {access, ...})), 
+		     SOME (s, M.VALspec {slot, ...})) => 
+		    SOME (slot, s, Var access)
 		  | _ => NONE
 
 	    val elements' = 
 		List.mapPartial get_trip bl
+
+	    fun get_slot (A.PATH (_, s)) = s
+
+	    val elements'' = 
+		case elements' of
+		    (_, _, Var (A.PATH (a, _)))::_ =>
+		    Constraint (
+		    List.map (fn (x, y, Var z)=> (x, y, get_slot z)) elements',
+		    a)
+		  | _ => 
+		    Def elements'
+
 	in
 	    (*en profiter pour mettre a jour le champ parent des enfants?*)
 	    ens_str := StrSet.add(!ens_str, 
 				  { name = name, 
 				    access = access,
-				    parent = NONE,
+				    parent = parent_acc,
 				    sign = SOME stamp,
-				    def = ("", r1, r2),
-				    elements = elements',
+				    def = loc_reg region,
+				    elements = elements'',
 				    usage = ref []}
 				 )
 	end
-      | add_str_def _ _ _ = ()
+      | add_str_def _ _ _ _ = ()
+
+    fun add_str_alias {name, 
+		       str = M.STR {sign = M.SIG {stamp, ...}, access, ...}, 
+		       def}
+		      (M.STR {access = access', ...})
+		      region 
+		      parent_acc = 
+	ens_str := StrSet.add(!ens_str, 
+			      { name = name, 
+				access = access,
+				parent = parent_acc,
+				sign = SOME stamp,
+				def = loc_reg region,
+				elements = Alias access',
+				usage = ref []}
+			     )
+      | add_str_alias _ _ _ _ = ()
+
+    fun add_str_use (M.STR {access = access', ...}) region = 
+	( case StrSet.find (fn {access, ...} => access=access') (!ens_str) of
+	      NONE => ()
+	    | SOME {usage, ...} => usage := loc_reg region :: !usage
+	)
+      | add_str_use _ _ = ()
+	  
 	
     fun print_str () = 
 	StrSet.app Ens_print2.print_str (!ens_str)

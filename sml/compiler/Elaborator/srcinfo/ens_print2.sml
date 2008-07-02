@@ -81,8 +81,17 @@ in
        print (A.prAcc access ^ ": \"" ^ stoS name ^ 
 	      "\" " ^ rtoS def ^ " has type ");
        printer typ;
-       print " and";
-       print_instance usage
+       print (", is defined in " ^ A.prAcc parent ^ " and");
+       print " is used at :";
+       List.app 
+	   ( fn (x, y, z) => 
+		( print ("\n\t" ^ rtoS x ^ " with type "); 
+		  printer y; 
+		  print (", access " ^ A.prAcc z)
+		)
+	   )
+	   (!usage);
+       print "\n"
    )
        
    (*print the different type and datatype definitions and explicit uses*)
@@ -136,10 +145,26 @@ in
 		  | _ => "others"
 	in
 	    print ("(" ^ A.prAcc access ^ ") " ^ stoS name ^ 
-		   " " ^ rtoS def ^ " contains ");
-	    List.app (fn (x, y, z)=> print ("\n\t("^Int.toString x^","^
-					    stoS y^","^print_key z^")") 
-		     ) elements;
+		   " " ^ rtoS def ^ " defined in ");
+	    case parent of 
+		NONE => print "the toplevel"
+	      | SOME parent' => print (A.prAcc parent');
+	    case elements of
+		Def el => (
+		print " contains ";
+		List.app ( fn (x, y, z)=> 
+			      print ("\n\t(" ^ Int.toString x ^ "," ^
+				     stoS y ^ "," ^ print_key z ^ ")") 
+			 ) el
+		)
+	      | Constraint (el, a) => 
+		( print (" constrains " ^ A.prAcc a ^ " : ");
+		  List.app ( fn (x, y, z) => 
+				print ("\n\t(" ^ Int.toString x ^ "," ^
+				       stoS y ^ ","^Int.toString z ^ ")") 
+			   ) el
+		)
+	      | Alias a => print (" aliases " ^ A.prAcc a);
 	    print " and is used at : ";
 	    List.app (fn x => print ("\n\t" ^ rtoS x)) (!usage);
 	    print "\n"

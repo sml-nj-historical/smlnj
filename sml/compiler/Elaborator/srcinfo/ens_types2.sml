@@ -6,10 +6,10 @@ struct
 
     type var_elem = { access : Access.access,
 		      name : Symbol.symbol,
-		      parent : Access.access, 
+		      parent : Access.access,
 		      typ : Types.ty,
 		      def : location, 
-		      usage : (location * Types.ty) list ref}
+		      usage : (location * Types.ty * Access.access) list ref}
 
     type type_elem = { tycon : Types.tycon, 
 		       def : location, 
@@ -27,25 +27,23 @@ struct
 		     | Cons of Stamps.stamp * int
 		     | Sig of Stamps.stamp
 
+    datatype elements = 
+	     Def of (int * Symbol.symbol * key) list
+	   | Constraint of (int * Symbol.symbol * int) list * Access.access
+	   | Alias of Access.access
+    (*
+     * et aussi garder les access avec les use de variables
+     * le mieux serait de garder toutes les structures, 
+     * nommees ou pas, et eventuellement on peut essayer de
+     * supprimer les structures anonymes
+     *)
+		      
     type str_elem = { name : Symbol.symbol, 
 		      access : Access.access,
 		      parent : Access.access option,
-		      sign : Stamps.stamp option, 
-		      (*on ne met pas la signature si elle est inferee*)
+		      sign : Stamps.stamp option, (*pas les sign. inferee*)
 		      def : location, 
-		      elements : (int * Symbol.symbol * key) list,
-		      (* datatype elements = 
-				  Def of <actual type> 
-				| Constraint of (slot_s2 * slot_s) list * 
-						access_s
-			          ?? mettre le symbol dans la liste ??
-				  pour le cas structure s2 : SIG2 = s
-				| Alias of access 
-		       * et aussi garder les access avec les use de variables
-		       * le mieux serait de garder toutes les structures, 
-		       * nommees ou pas, et eventuellement on peut essayer de
-		       * supprimer les structures anonymes
-		       *)
+		      elements : elements,
 		      usage : location list ref}
 		    
     datatype key_sig = Typ of Types.ty

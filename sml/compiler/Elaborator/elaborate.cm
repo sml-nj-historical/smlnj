@@ -52,13 +52,18 @@ Group
 	structure PPAst
 
 	signature ENS_VAR
-	structure Ens_types
-	structure Ens_types2
 	structure Ens_var
 	structure Ens_var2
+
+	structure Ens_types
+	structure Ens_types2
+
+	signature ENS_PRINT
 	structure Ens_print
+	signature ENS_PRINT2
 	structure Ens_print2
 
+	structure Ens_absyn
 is
 
 	basics/elabcontrol.sig
@@ -124,3 +129,4 @@ is
 	srcinfo/ens_types2.sml
         srcinfo/ens_print.sml
         srcinfo/ens_print2.sml
+	srcinfo/absyn_scan.sml

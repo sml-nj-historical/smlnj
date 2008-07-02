@@ -154,7 +154,16 @@ struct
 				    compInfo=cinfo} absyn
 			before (check "instrument")
 
-	    val () = if !Control.Elab.infodebugging then Ens_var.print_all () else ()
+
+	    val () = 
+		if !Control.Elab.infodebugging then 
+		    ( (*Ens_var.print_all ();*)
+		      Ens_print2.maj statenv;
+		      Ens_absyn.scan_dec absyn;
+		      Ens_var2.print_all ()
+		    ) 
+		else 
+		    ()		    	    
 
 	    val {flint, imports} = 
 		translate {absyn=absyn, exportLvars=exportLvars, 
