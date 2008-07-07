@@ -17,11 +17,35 @@ structure C :> C_INT = struct
 
     type addr = CMemory.addr
 
+    type schar = MLRep.Signed.int
+    type uchar = MLRep.Unsigned.word
+    type sint = MLRep.Signed.int
+    type uint = MLRep.Unsigned.word
+    type sshort = MLRep.Signed.int
+    type ushort = MLRep.Unsigned.word
+    type slong = MLRep.Signed.int
+    type ulong = MLRep.Unsigned.word
+    type slonglong = MLRep.LongLongSigned.int
+    type ulonglong = MLRep.LongLongUnsigned.word
+    type float = MLRep.Real.real
+    type double = MLRep.Real.real
+
     local
+	datatype arg =
+	     CHAR_A of uchar
+	   | INT_A of uint
+	   | SHORT_A of ushort
+	   | LONG_A of ulong
+	   | LONGLONG_A of ulonglong
+	   | FLOAT_A of float
+	   | DOUBLE_A of double
+	   | ADDR_A of addr
+
 	datatype objt =
 	    BASE of word
 	  | PTR of objt
 	  | FPTR of Unsafe.Object.object (* == addr -> 'f *)
+	  | VFPTR of Unsafe.Object.object (* == addr -> 's -> arg list -> 'r *)
 	  | ARR of { typ: objt, n: word, esz: word, asz: word }
 
 	(* Bitfield: b bits wide, l bits from left corner, r bits from right.
@@ -74,25 +98,15 @@ structure C :> C_INT = struct
     type 'f fptr = addr * 'f
     type 'f fptr' = addr		(* does not carry function around *)
 
+    type ('s, 'r) vfptr = addr * ('s -> arg list -> 'r)
+    type ('s, 'r) vfptr' = addr
+
     type void = unit
     type voidptr = void ptr'
 
     type 'tag su = unit
 
     type 'tag enum = MLRep.Signed.int
-
-    type schar = MLRep.Signed.int
-    type uchar = MLRep.Unsigned.word
-    type sint = MLRep.Signed.int
-    type uint = MLRep.Unsigned.word
-    type sshort = MLRep.Signed.int
-    type ushort = MLRep.Unsigned.word
-    type slong = MLRep.Signed.int
-    type ulong = MLRep.Unsigned.word
-    type slonglong = MLRep.LongLongSigned.int
-    type ulonglong = MLRep.LongLongUnsigned.word
-    type float = MLRep.Real.real
-    type double = MLRep.Real.real
 
     type 'c schar_obj = (schar, 'c) obj
     type 'c uchar_obj = (uchar, 'c) obj
@@ -109,6 +123,7 @@ structure C :> C_INT = struct
     type 'c voidptr_obj = (voidptr, 'c) obj
     type ('e, 'c) enum_obj = ('e enum, 'c) obj
     type ('f, 'c) fptr_obj = ('f fptr, 'c) obj
+    type ('s, 'r, 'c) vfptr_obj = (('s, 'r) vfptr, 'c) obj
     type ('s, 'c) su_obj = ('s su, 'c) obj
 
     type 'c schar_obj' = (schar, 'c) obj'
@@ -126,6 +141,7 @@ structure C :> C_INT = struct
     type 'c voidptr_obj' = (voidptr, 'c) obj'
     type ('e, 'c) enum_obj' = ('e enum, 'c) obj'
     type ('f, 'c) fptr_obj' = ('f fptr, 'c) obj'
+    type ('s, 'r, 'c) vfptr_obj' = (('s, 'r) vfptr, 'c) obj'
     type ('s, 'c) su_obj' = ('s su, 'c) obj'
 
     type 'c ubf = bf
@@ -218,6 +234,7 @@ structure C :> C_INT = struct
 	val voidptr = CMemory.addr_size
 	val ptr = CMemory.addr_size
 	val fptr = CMemory.addr_size
+	val vfptr = CMemory.addr_size
 	val enum = CMemory.int_size
     end
 
@@ -230,6 +247,7 @@ structure C :> C_INT = struct
 	fun sizeof (BASE b) = b
 	  | sizeof (PTR _) = S.ptr
 	  | sizeof (FPTR _) = S.fptr
+	  | sizeof (VFPTR _) = S.vfptr
 	  | sizeof (ARR a) = #asz a
 
 	(* use private (and unsafe) extension to Dim module here... *)
@@ -271,6 +289,7 @@ structure C :> C_INT = struct
         val obj = p_strip_type
 	val ptr = p_strip_type
 	val fptr = strip_fun
+	val vfptr = strip_fun
     end
 
     structure Heavy = struct
@@ -279,6 +298,8 @@ structure C :> C_INT = struct
 	  | ptr _ _ = bug "Heavy.ptr (non-object-pointer-type)"
 	fun fptr (FPTR mkf) p = (p, Unsafe.cast mkf p)
 	  | fptr _ _ = bug "Heavy.fptr (non-function-pointer-type)"
+	fun vfptr (VFPTR mkf) p = (p, Unsafe.cast mkf p)
+	  | vfptr _ _ = bug "Heavy.vfptr (non-vararg-function-pointer-type)"
     end
 
     fun sizeof (_: addr, t) = T.sizeof t
@@ -331,6 +352,7 @@ structure C :> C_INT = struct
 
 	val ptr' = CMemory.load_addr
 	val fptr' = CMemory.load_addr
+	val vfptr' = CMemory.load_addr
 	val voidptr' = CMemory.load_addr
 
 	val uchar = uchar' o strip_type
@@ -353,6 +375,9 @@ structure C :> C_INT = struct
 	fun fptr (a, FPTR mkf) =
 	    let val fa = CMemory.load_addr a in (fa, Unsafe.cast mkf fa) end
 	  | fptr _ = bug "Get.fptr (non-function-pointer)"
+	fun vfptr (a, VFPTR mkf) =
+	    let val fa = CMemory.load_addr a in (fa, Unsafe.cast mkf fa) end
+	  | vfptr _ = bug "Get.vfptr (non-vararg-function-pointer)"
 
 	local
 	    val u2s = MLRep.Signed.fromLarge o MLRep.Unsigned.toLargeIntX
@@ -381,6 +406,7 @@ structure C :> C_INT = struct
 
 	val ptr' = CMemory.store_addr
 	val fptr' = CMemory.store_addr
+	val vfptr' = CMemory.store_addr
 	val voidptr' = CMemory.store_addr
 	val ptr_voidptr' = CMemory.store_addr
 
@@ -407,6 +433,7 @@ structure C :> C_INT = struct
 
 	    fun ptr (x, p) = ptr' (p_strip_type x, p_strip_type p)
 	    fun fptr (x, f) = fptr' (p_strip_type x, strip_fun f)
+	    fun vfptr (x, f) = vfptr' (p_strip_type x, strip_fun f)
 	end
 
 	fun ubf ({ a, l, r, lr, m, im }, x) =
@@ -456,12 +483,18 @@ structure C :> C_INT = struct
 	val fnull' = CMemory.null
 	fun fnull t = Heavy.fptr t fnull'
 
+	val vfnull' = CMemory.null
+	fun vfnull t = Heavy.vfptr t vfnull'
+
 	val vIsNull = CMemory.isNull
 	fun isNull p = vIsNull (inject p)
 	val isNull' = CMemory.isNull
 
 	fun isFNull (p, _) = CMemory.isNull p
 	val isFNull' = CMemory.isNull
+
+	fun isVFNull (p, _) = CMemory.isNull p
+	val isVFNull' = CMemory.isNull
 
 	fun |+! s (p, i) = p ++ (Word.toInt s * i)
 	fun |-! s (p, p') = (p -- p') div Word.toInt s
@@ -507,6 +540,46 @@ structure C :> C_INT = struct
 	fun dim (_: addr, t) = T.dim t
     end
 
+    structure VA = struct
+
+        type 'a vsig = arg list -> 'a
+	type ('a, 'b) vargs = 'b vsig -> 'a vsig
+	type ('e, 'a) varg = ('e -> 'a, 'a) vargs
+
+	fun None k sl = k sl
+	fun Const C x k sl = C k sl x
+			     
+	local
+	    val s2u = MLRep.Unsigned.fromLargeInt o
+		      MLRep.Signed.toLarge
+	    val s2u_ll = MLRep.LongLongUnsigned.fromLargeInt o
+			 MLRep.LongLongSigned.toLarge
+	in
+
+	fun ptr k sl (p, _) = k (ADDR_A p :: sl)
+	fun fptr k sl (p, _) = k (ADDR_A p :: sl)
+	fun vfptr k sl (p, _) = k (ADDR_A p :: sl)
+	fun enum k sl i  = k (INT_A (s2u i) :: sl)
+	fun schar k sl c = k (CHAR_A (s2u c) :: sl)
+	fun uchar k sl c = k (CHAR_A c :: sl)
+	fun sint k sl i = k (INT_A (s2u i) :: sl)
+	fun uint k sl i = k (INT_A i :: sl)
+	fun sshort k sl s = k (SHORT_A (s2u s) :: sl)
+	fun ushort k sl s = k (SHORT_A s :: sl)
+	fun slong k sl l = k (LONG_A (s2u l) :: sl)
+	fun ulong k sl l = k (LONG_A l :: sl)
+	fun slonglong k sl ll = k (LONGLONG_A (s2u_ll ll) :: sl)
+	fun ulonglong k sl ll = k (LONGLONG_A ll :: sl)
+	fun float k sl f = k (FLOAT_A f :: sl)
+	fun double k sl d = k (DOUBLE_A d :: sl)
+
+	fun ptr' k sl p = k (ADDR_A p :: sl)
+	fun fptr' k sl p = k (ADDR_A p :: sl)
+	fun vfptr' k sl p = k (ADDR_A p :: sl)
+
+	end
+    end
+
     fun new' s = CMemory.alloc s
     fun new t = (new' (T.sizeof t), t)
 
@@ -523,6 +596,11 @@ structure C :> C_INT = struct
 
     fun call' (FPTR mkf) (a, x) = Unsafe.cast mkf a x
       | call' _ _ = bug "call' (non-function-pointer-type)"
+
+    fun vcall (_: addr, f) spec fixed =
+	spec (fn sl => f fixed (rev sl)) []
+
+    fun vcall' t p = vcall (Heavy.vfptr t p)
 
     structure U = struct
         fun fcast (f : 'a fptr') : 'b fptr' = f

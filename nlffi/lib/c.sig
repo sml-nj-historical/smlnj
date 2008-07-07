@@ -62,6 +62,12 @@ signature C = sig
     (* alt *)
     eqtype 'f fptr'
 
+    (* variadic function pointers *)
+    type ('s, 'r) vfptr		        (* 's - static args, 'r - result *)
+
+    (* alt *)
+    type ('s, 'r) vfptr'
+
     (* structures and unions *)
     type 'tag su			(* struct/union named 'tag;
 					 * 'tag is drawn from the types
@@ -129,6 +135,7 @@ signature C = sig
     type 'c voidptr_obj = (voidptr, 'c) obj
     type ('e, 'c) enum_obj = ('e enum, 'c) obj
     type ('f, 'c) fptr_obj = ('f fptr, 'c) obj
+    type ('s, 'r, 'c) vfptr_obj = (('s, 'r) vfptr, 'c) obj
     type ('s, 'c) su_obj = ('s su, 'c) obj
 
     (* alt *)
@@ -147,6 +154,7 @@ signature C = sig
     type 'c voidptr_obj' = (voidptr, 'c) obj'
     type ('e, 'c) enum_obj' = ('e enum, 'c) obj'
     type ('f, 'c) fptr_obj' = ('f fptr, 'c) obj'
+    type ('s, 'r, 'c) vfptr_obj' = (('s, 'r) vfptr, 'c) obj'
     type ('s, 'c) su_obj' = ('s su, 'c) obj'
 
     (* bitfields aren't "ordinary objects", so they have their own type *)
@@ -296,6 +304,7 @@ signature C = sig
 	val voidptr : voidptr size
 	val ptr : 'o ptr size
 	val fptr : 'f fptr size
+	val vfptr : ('s, 'r) vfptr size
 	val enum : 'tag enum size
     end
 
@@ -347,6 +356,7 @@ signature C = sig
 	val obj : ('t, 'c) obj -> ('t, 'c) obj'
 	val ptr : 'o ptr -> 'o ptr'
 	val fptr : 'f fptr -> 'f fptr'
+	val vfptr : ('s, 'r) vfptr -> ('s, 'r) vfptr'
     end
 
     (* and vice versa *)
@@ -354,6 +364,7 @@ signature C = sig
 	val obj : 't T.typ -> ('t, 'c) obj' -> ('t, 'c) obj
 	val ptr : 'o ptr T.typ -> 'o ptr' -> 'o ptr
 	val fptr : 'f fptr T.typ  -> 'f fptr' -> 'f fptr
+	val vfptr : ('s, 'r) vfptr T.typ -> ('s, 'r) vfptr' -> ('s, 'r) vfptr
     end
 
     (* calculate size of an object *)
@@ -396,11 +407,13 @@ signature C = sig
 	(* fetching pointers; results have to be abstract *)
 	val ptr : ('o ptr, 'c) obj -> 'o ptr
 	val fptr : ('f, 'c) fptr_obj -> 'f fptr
+	val vfptr : ('s, 'r, 'c) vfptr_obj -> ('s, 'r) vfptr
 	val voidptr : 'c voidptr_obj -> voidptr
 
 	(* alt *)
 	val ptr' : ('o ptr, 'c) obj' -> 'o ptr'
 	val fptr' : ('f, 'c) fptr_obj' -> 'f fptr'
+	val vfptr' : ('s, 'r, 'c) vfptr_obj' -> ('s, 'r) vfptr'
 	val voidptr' : 'c voidptr_obj' -> voidptr
 
 	(* bitfields; concrete again *)
@@ -443,11 +456,13 @@ signature C = sig
 	(* storing pointers; abstract *)
 	val ptr : ('o ptr, rw) obj * 'o ptr -> unit
 	val fptr : ('f, rw) fptr_obj * 'f fptr -> unit
+	val vfptr : ('s, 'r, rw) vfptr_obj * ('s, 'r) vfptr -> unit
 	val voidptr : rw voidptr_obj * voidptr -> unit
 
 	(* alt *)
 	val ptr' : ('o ptr, rw) obj' * 'o ptr' -> unit
 	val fptr' : ('f, rw) fptr_obj' * 'f fptr' -> unit
+	val vfptr' : ('s, 'r, rw) vfptr_obj' * ('s, 'r) vfptr' -> unit
 	val voidptr' : rw voidptr_obj' * voidptr -> unit
 
 	(* When storing, voidptr is compatible with any ptr type
@@ -536,6 +551,10 @@ signature C = sig
 	(* again, "light" version is simply a polymorphic constant *)
 	val fnull' : 'f fptr'
 
+	(* varargs null pointers *)
+	val vfnull : ('s, 'r) vfptr T.typ -> ('s, 'r) vfptr
+	val vfnull' : ('s, 'r) vfptr'
+
 	(* checking for NULL pointer *)
 	val vIsNull : voidptr -> bool
 
@@ -550,6 +569,10 @@ signature C = sig
 
 	(* alt *)
 	val isFNull' : 'f fptr' -> bool
+
+	(* varargs fptr null tests *)
+	val isVFNull : ('s, 'r) vfptr -> bool
+	val isVFNull' : ('s, 'r) vfptr' -> bool
 
 	(* pointer arithmetic *)
 	val |+| : ('t, 'c) obj ptr * int -> ('t, 'c) obj ptr
@@ -611,6 +634,39 @@ signature C = sig
 	val dim : (('t, 'n) arr, 'c) obj -> 'n Dim.dim
     end
 
+    (* varargs *)
+    structure VA : sig
+
+        type 'a vsig
+	type ('a, 'b) vargs = 'b vsig -> 'a vsig
+	type ('e, 'a) varg = ('e -> 'a, 'a) vargs
+
+	val None   : ('a, 'a) vargs
+	val Const  : ('e, 'a) varg -> 'e -> ('a, 'a) vargs
+
+	val ptr    : ('o ptr, 'a) varg
+	val fptr   : ('f fptr, 'a) varg
+	val vfptr  : (('s, 'r) vfptr, 'a) varg
+	val enum   : ('e enum, 'a) varg
+	val schar  : (schar, 'a) varg
+	val uchar  : (uchar, 'a) varg
+	val sint   : (sint, 'a) varg
+	val uint   : (uint, 'a) varg
+	val sshort : (sshort, 'a) varg
+	val ushort : (ushort, 'a) varg
+	val slong  : (slong, 'a) varg
+	val ulong  : (ulong, 'a) varg
+	val slonglong : (slonglong, 'a) varg
+	val ulonglong : (ulonglong, 'a) varg
+	val float  : (float, 'a) varg
+	val double : (double, 'a) varg
+
+	val ptr'   : ('o ptr', 'a) varg
+	val fptr'  : ('f fptr', 'a) varg
+	val vfptr' : (('s, 'r) vfptr', 'a) varg
+
+    end
+
     (* allocating new objects *)
     val new : 't T.typ -> ('t, 'c) obj
 
@@ -640,6 +696,13 @@ signature C = sig
 
     (* alt; needs explicit type for the function pointer *)
     val call' : ('a -> 'b) fptr T.typ -> ('a -> 'b) fptr' * 'a -> 'b
+
+    (* perform varargs function call through function pointer *)
+    val vcall : ('s, 'r) vfptr -> ('a, 'r) VA.vargs -> 's -> 'a
+
+    (* alt; needs explicit type for the function pointer *)
+    val vcall' : ('a, 'r) vfptr T.typ ->
+		 ('a, 'r) vfptr' -> ('a, 'r) VA.vargs -> 's -> 'a
 
     (* completely unsafe stuff that every C programmer just *loves* to do *)
     structure U : sig
