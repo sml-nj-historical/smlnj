@@ -990,7 +990,8 @@ let
 				    RVB{var=v,resultty=ty,tyvars=tvref, exp=match,
 					boundtvs=[]})
 			        rvbs),
-			   compInfo)
+			   compInfo,
+			   region)
          in (ndec, nenv, TS.empty, updt)
 	end (* fun elabVALRECstrict *)
 
@@ -1265,22 +1266,33 @@ let
 			(map (fn (VALvar{path=SymPath.SPATH[x],...},_,_) => x
 			       | _ => bug "makeFUNdec:checkuniq")
 			     fbs1));
-	   (let val (ndec, nenv) = 
-                    FUNdec(completeMatch,map makefb fbs1,compInfo)
-		(*val (head::_) = fbs1 (*regarder si c'est bien vrai, et ce que ca fait avec des List.app par exemple*)*)
-            in 
-		case List.hd fbs1 of 
-		    (v as VALvar{path=SymPath.SPATH[symbol],...},cs,r) => 
-		        let val S.SYMBOL (_, y) = symbol 
+	   (let 
+		val res = 
+		    case List.hd fbs1 of 
+			(v as VALvar{path=SymPath.SPATH[symbol],...},cs,r) =>
+			let val S.SYMBOL (_, y) = symbol 
 			    val (r1, _) = r
 			    val r2 = r1 + String.size y
 			    val region = (r1, r2)
 			in
-   		             case LU.lookValSym(nenv, symbol, error region) of
-				 (VAL (v as VALvar _)) => EV.add_var_def v region
-			       | _ => ()
+			    SOME (symbol, region)
 			end
-		  | _ => ();
+		      | _ => NONE
+		val (ndec, nenv) = 
+                    FUNdec ( completeMatch,
+			     map makefb fbs1,
+			     compInfo, 
+			     case res of NONE => (~2, ~2) 
+				       | SOME (_, region) => region
+			   )
+            in 
+		case res of 
+		    SOME (symbol, region) =>
+   		    ( case LU.lookValSym(nenv, symbol, error region) of
+			  (VAL (v as VALvar _)) => EV.add_var_def v region
+			| _ => ()
+		    )
+		  | NONE => ();
 		showDec("elabFUNdec: ",ndec,nenv);
 		(ndec, nenv, TS.empty, updt)
             end)

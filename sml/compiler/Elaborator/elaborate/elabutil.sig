@@ -87,9 +87,9 @@ sig
                     exp: Absyn.exp} list, 
           tyvars: Types.tyvar list ref,
 	  region: Ast.region } list 
-       * compInfo -> (Absyn.dec * StaticEnv.staticEnv)
+       * compInfo * Ast.region -> (Absyn.dec * StaticEnv.staticEnv)
 
-  val wrapRECdec : Absyn.rvb list * compInfo 
+  val wrapRECdec : Absyn.rvb list * compInfo * Ast.region
                    -> (Absyn.dec * StaticEnv.staticEnv)
 
   val labsym : Absyn.numberedLabel -> Symbol.symbol 

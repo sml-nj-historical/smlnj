@@ -113,6 +113,7 @@ val primTypes =
 	  {stamp=ST.special "PrimTypesSig",
 	   name=SOME(S.sigSymbol "PRIMTYPES"), closed=true,
 	   fctflag=false,
+	   inferred = false,
 	   elements=allElements,
 	   typsharing=nil,strsharing=nil,
 	   properties = PropList.newHolder (),
@@ -488,15 +489,16 @@ val uList =
 					  repl=false,scope=0}}),
              mkConElement("nil", BT.unilDcon),
              mkConElement("::", BT.uconsDcon)]
-      val sigrec = {stamp=ST.special "uListSig",
-		       name=NONE, closed=true, 
-		       fctflag=false,
-		       elements=allElements,
-		       typsharing=nil, strsharing=nil,
-		       properties = PropList.newHolder (),
-		       (* boundeps=ref (SOME []), *)
-		       (* lambdaty=ref NONE, *)
-		       stub = NONE}
+      val sigrec = { stamp=ST.special "uListSig",
+		     name=NONE, closed=true, 
+		     fctflag=false,
+		     inferred = false,
+		     elements=allElements,
+		     typsharing=nil, strsharing=nil,
+		     properties = PropList.newHolder (),
+		     (* boundeps=ref (SOME []), *)
+		     (* lambdaty=ref NONE, *)
+		     stub = NONE}
       val _ = ModulePropLists.setSigBoundeps (sigrec, SOME [])
    in M.STR{sign=M.SIG sigrec,
             rlzn={stamp=ST.special "uListStr",
@@ -532,13 +534,16 @@ val inLine =
       val (allElements, primList) = 
             (rev allElements, rev primList)
 
-      val sigrec ={stamp=ST.special "inLineSig",
-		   name=NONE, closed=true, 
-		   fctflag=false,
-		   elements=allElements,
-		   typsharing=nil, strsharing=nil,
-		   properties = PropList.newHolder (),  (* dbm: ??? *)
-		   stub = NONE}
+      val sigrec ={ stamp = ST.special "inLineSig",
+		    name = NONE, 
+		    closed = true, 
+		    fctflag = false,
+		    inferred = false,
+		    elements = allElements,
+		    typsharing = nil, 
+		    strsharing = nil,
+		    properties = PropList.newHolder (),  (* dbm: ??? *)
+		    stub = NONE}
 
       val _ = ModulePropLists.setSigBoundeps (sigrec, SOME [])
 

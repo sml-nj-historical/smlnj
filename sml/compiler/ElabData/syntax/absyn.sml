@@ -63,6 +63,7 @@ and pat
   | LAYEREDpat of pat * pat
   | ORpat of pat * pat
   | VECTORpat of pat list * ty       
+  (*| MARKpat of pat * region*)
   | NOpat
 
 and dec	

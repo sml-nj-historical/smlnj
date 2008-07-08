@@ -146,6 +146,7 @@ and sigrec =
      name       : Symbol.symbol option,
      closed     : bool,
      fctflag    : bool,
+     inferred   : bool,
      elements   : elements,
      properties : PropList.holder, (* boundeps, lambdaty *)
      typsharing : sharespec list,

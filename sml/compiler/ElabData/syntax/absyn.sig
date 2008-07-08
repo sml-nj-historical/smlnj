@@ -52,7 +52,8 @@ and pat
   | CONSTRAINTpat of pat * Types.ty
   | LAYEREDpat of pat * pat
   | ORpat of pat * pat
-  | VECTORpat of pat list * Types.ty       
+  | VECTORpat of pat list * Types.ty
+  (*| MARKpat of pat * region*)
   | NOpat
 
 and dec	

@@ -171,6 +171,7 @@ and sigrec =
      name       : S.symbol option,
      closed     : bool,
      fctflag    : bool,
+     inferred   : bool,
      elements   : elements,
      properties : PropList.holder, (* boundeps, lambdaty *)
      typsharing : sharespec list,
@@ -231,7 +232,10 @@ val bogusStrEntity : strEntity =
 
 val bogusSig : Signature = 
     SIG {stamp = bogusSigStamp,
-	 name=NONE, closed=true, fctflag=false,
+	 name=NONE, 
+	 closed=true, 
+	 fctflag=false,
+	 inferred=false,
 	 elements=[],
 	 properties = PropList.newHolder (),
 	 (* boundeps=ref NONE, lambdaty=ref NONE *)

@@ -65,7 +65,7 @@ fun specified(symbol,elements) =
 (* BUG! currently doesn't deal with general sigexp case (e.g. sigid where ...) *)
 fun elabInclude(SIG {stamp, elements=newElements,
 		     properties, typsharing, strsharing, 
-		     name, closed, fctflag, stub},
+		     name, closed, fctflag, inferred, stub},
                 oldEnv, oldElements, oldSlots,
                 region, compInfo as {mkStamp,error,...} : EU.compInfo) =
 let val err = error region
@@ -122,16 +122,14 @@ fun adjustTyc(tycon,[]) = tycon
  *)
 and adjustSig(sign,[]) = sign
   | adjustSig(sign as SIG {stamp, name, closed, fctflag, 
-			   elements, properties,
-			   (* boundeps, lambdaty, *)
+			   inferred, elements, properties,
 			   typsharing, strsharing, stub},
 	      tycmap) =
     if closed then sign
     else SIG{stamp = mkStamp(),
 	     name=name, closed=false, fctflag=fctflag,
+	     inferred = inferred,
 	     properties = PropList.newHolder (),
-             (* boundeps=ref NONE, *)
-	     (* lambdaty=ref NONE, *)
 	     elements=adjustElems(elements,tycmap), 
 	     typsharing=typsharing, 
 	     strsharing=strsharing,

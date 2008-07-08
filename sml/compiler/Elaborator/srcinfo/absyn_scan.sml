@@ -126,19 +126,14 @@ struct
 			if is_ext access then
 			    ()
 			else (
-			    EV.add_str_alias 
-				(head ()) 
-				s 
-				(~1, ~1) 
-				(str_par ());
-			    pop;
+			    EV.add_str_alias (head ()) s (~1, ~1) (str_par ());
 			    EV.add_str_use s (~1, ~1)
 			    )
 		    end
 		  | _ => ()
 		)
 	      | STRstr bl => 
-		(EV.add_str_def (head ()) bl (~1, ~1) (str_par ()); pop ())
+		EV.add_str_def (head ()) bl (~1, ~1) (str_par ())
 	      | APPstr _ => pop ()
 	      | LETstr (dec, strexp) => 
 		( scan_dec dec; 
@@ -170,11 +165,10 @@ struct
 	    case strb of
 		STRB (r as {def, name, str}) => 
 		(
-		  (*case Ens_print2.stoS name of
-		      ("<tempStr>"|"<anonymousStr>") => 
-		      ref_str := hd (!ref_str) :: !ref_str
-		    | _ =>*) push r;
-		  scan_strexp def )
+		 push r;
+		 scan_strexp def ;
+		 pop ()
+		)
 
 	and scan_fctb fctb = 
 	    case fctb of

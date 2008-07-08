@@ -232,7 +232,7 @@ fun pushDefs(elements,defs,error,mkStamp) =
 (* does this belong in ModuleUtil or ElabUtil? DBM *)
 and addWhereDefs(sign,nil,nameOp,error,mkStamp) = bug "addWhereDefs"
   | addWhereDefs(sign as SIG {stamp,name,closed,fctflag,stub,
-			      elements, properties,
+			      inferred, elements, properties,
 			      typsharing,strsharing},
 		 whereDefs,nameOp,error,mkStamp) =
     SIG{stamp = mkStamp(),
@@ -243,6 +243,7 @@ and addWhereDefs(sign,nil,nameOp,error,mkStamp) = bug "addWhereDefs"
 	       | NONE => name, (* retain old name (?) *)
 	closed=closed andalso closedDefs whereDefs,
         fctflag=fctflag,
+	inferred = inferred,
 	elements=pushDefs(elements,whereDefs,error,mkStamp),
 	properties = PropList.newHolder (),
 	typsharing=typsharing,
@@ -793,6 +794,7 @@ fun elabSTRspec((name,sigexp,defOp), env, elements, slots, region) =
 			      val sign' = 
 				SIG{stamp = mkStamp(),
 				    name=NONE, closed=false,fctflag=fflag',
+				    inferred = false,
 				    elements=elements',
 				    properties = PropList.newHolder (),
 				    typsharing=tycShare', 
@@ -1164,7 +1166,8 @@ let val region0 = region
 			      closed = case nameOp
 					of SOME _ => true
 					 | NONE => false,
-			      fctflag=fflag,
+			      fctflag = fflag,
+			      inferred = false,
 			      elements = elements,
 			      properties = PropList.newHolder (),
 			      typsharing = tycShare,

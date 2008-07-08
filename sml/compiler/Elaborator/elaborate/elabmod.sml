@@ -697,6 +697,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
                 val sign = 
                   M.SIG{stamp = mkStamp (),
 			name=NONE, closed=false, fctflag=fctflag,
+			inferred = true,
                         elements=elements, 
 			properties = PropList.newHolder (),
                         typsharing=nil, strsharing=nil,

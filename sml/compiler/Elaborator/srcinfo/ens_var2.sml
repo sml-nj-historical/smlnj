@@ -112,9 +112,10 @@ in
 		    region 
 		    parent_acc = 
 	let 
-	    fun get_symbol (B.VALbind 
-				(VC.VALvar {path = SymPath.SPATH path, ...})) =
-		SOME (List.last path)
+	    fun get_symbol (B.VALbind (VC.VALvar {path, ...})) =
+		SOME (SymPath.last path)
+	      | get_symbol (B.STRbind (M.STR {rlzn = {rpath, ...}, ...})) = 
+		SOME (InvPath.last rpath)
 	      | get_symbol _ = NONE
 
 	    fun get_symbol' (x, _) = x
@@ -129,10 +130,13 @@ in
 		end
 
 	    fun get_trip b = 
-		case (b, get_acc b) of
-		    ((B.VALbind (VC.VALvar {access, ...})), 
+		case (b, get_acc b)
+		 of (B.VALbind (VC.VALvar {access, ...}), 
 		     SOME (s, M.VALspec {slot, ...})) => 
 		    SOME (slot, s, Var access)
+		  | (B.STRbind (M.STR {access, ...}), 
+		     SOME (s, M.STRspec {slot, ...})) =>
+		    SOME (slot, s, Str access)
 		  | _ => NONE
 
 	    val elements' = 
@@ -142,10 +146,14 @@ in
 
 	    val elements'' = 
 		case elements' of
-		    (_, _, Var (A.PATH (a, _)))::_ =>
-		    Constraint (
-		    List.map (fn (x, y, Var z)=> (x, y, get_slot z)) elements',
-		    a)
+		    (_, _, Var (A.PATH (acc, _)))::_ =>
+		    Constraint 
+			( List.map 
+			      (fn ((x, y, Var z) | (x, y, Str z)) => 
+				  (x, y, get_slot z)) 
+			      elements',
+			  acc
+			)
 		  | _ => 
 		    Def elements'
 

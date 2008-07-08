@@ -141,7 +141,7 @@ in
 	let 
 	    fun print_key k = 
 		case k of 
-		    Var a => Access.prAcc a
+		    (Var a|Str a) => Access.prAcc a
 		  | _ => "others"
 	in
 	    print ("(" ^ A.prAcc access ^ ") " ^ stoS name ^ 

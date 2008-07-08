@@ -263,7 +263,7 @@ fun TUPLEpat l =
     end
 *)
 
-fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) = 
+fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo, reg) = 
   let fun g (RVB{var=v as VALvar{path=SP.SPATH [sym], ...}, ...}, nvars) = 
           let val nv = newVALvar(sym, mkv)
           in ((v, nv, sym)::nvars)
@@ -280,15 +280,15 @@ fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) =
    in (vars, 
        case vars
         of [(v, nv, sym)] =>
-            (VALdec [VB{pat=VARpat nv, boundtvs=[], tyvars=tyvars,
-                        exp=LETexp(odec, VARexp(ref v, []))}]) 
+            MARKdec ((VALdec [VB{pat=VARpat nv, boundtvs=[], tyvars=tyvars,
+                        exp=LETexp(odec, VARexp(ref v, []))}]), reg)
          | _ => 
           (let val vs = map (fn (v, _, _) => VARexp(ref v, [])) vars 
                val rootv = newVALvar(internalSym, mkv)
                val rvexp = VARexp(ref rootv, []) 
                val nvdec = 
-                 VALdec([VB{pat=VARpat rootv, boundtvs=[], tyvars=tyvars,
-                            exp=LETexp(odec, TUPLEexp vs)}])
+                 MARKdec (VALdec([VB{pat=VARpat rootv, boundtvs=[], tyvars=tyvars,
+                            exp=LETexp(odec, TUPLEexp vs)}]), reg)
 
                fun h([], _, d) =  
                      LOCALdec(nvdec, SEQdec(rev d))
@@ -301,15 +301,15 @@ fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) =
            end))
   end 
 
-fun wrapRECdec0 (rvbs, compInfo) = 
+(*fun wrapRECdec0 (rvbs, compInfo) = 
   let val (vars, ndec) = wrapRECdecGen(rvbs, compInfo)
    in case vars
        of [(_, nv, _)] => (nv, ndec)
         | _ => bug "unexpected case in wrapRECdec0"
-  end
+  end*)
 
-fun wrapRECdec (rvbs, compInfo) = 
-  let val (vars, ndec) = wrapRECdecGen(rvbs, compInfo)
+fun wrapRECdec (rvbs, compInfo, reg) = 
+  let val (vars, ndec) = wrapRECdecGen(rvbs, compInfo, reg)
       fun h((v, nv, sym), env) = SE.bind(sym, B.VALbind nv, env)
       val nenv = foldl h SE.empty vars
    in (ndec, nenv)
@@ -320,7 +320,7 @@ val argVarSym = S.varSymbol "arg"
 fun cMARKexp (e, r) = if !ElabControl.markabsyn then MARKexp (e, r) else e
 
 fun FUNdec (completeMatch, fbl,
-	    compInfo as {mkLvar=mkv,errorMatch,...}: compInfo) = 
+	    compInfo as {mkLvar=mkv,errorMatch,...}: compInfo, reg) = 
     let fun fb2rvb ({var, clauses as ({pats,resultty,exp}::_),tyvars,region}) =
 	    let fun getvar _ =  newVALvar(argVarSym, mkv)
 		val vars = map getvar pats
@@ -357,7 +357,7 @@ fun FUNdec (completeMatch, fbl,
 		     tyvars=tyvars}
 	    end
           | fb2rvb _ = bug "FUNdec"
-     in wrapRECdec (map fb2rvb fbl, compInfo)
+     in wrapRECdec (map fb2rvb fbl, compInfo, reg)
     end
 
 fun makeHANDLEexp(exp, rules, compInfo as {mkLvar=mkv, ...}: compInfo) =
