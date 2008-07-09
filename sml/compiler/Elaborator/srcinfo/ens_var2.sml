@@ -6,6 +6,7 @@ local
     structure S = Symbol
     structure M = Modules
     structure B = Bindings
+    structure EP = Ens_print2
     open Ens_types2
 in
     fun bug msg = ErrorMsg.impossible("Bugs in Ens_var2: "^msg);
@@ -28,6 +29,104 @@ in
       | compare_acc (_, A.PATH _) = GREATER
       | compare_acc (A.NO_ACCESS, A.NO_ACCESS) = EQUAL
 
+    fun print_ty (ty:T.ty) = 
+	case ty of
+	    T.VARty (ref v) => (
+	    case v of
+		T.INSTANTIATED ty => 
+		(print "(instantiated "; print_ty ty; print ")")
+	      | T.OPEN _ => print "open"
+	      | T.UBOUND _ => print "ubound"
+	      | T.LITERAL _ => print "literal"
+	      | T.SCHEME _ => print "scheme"
+	      | T.LBOUND _ => print "lbound"
+	    )
+	  | T.IBOUND i => print ("(ibound " ^ Int.toString i ^ ")")
+	  | T.CONty (tyc, tyl) => 
+	    ( print "(conty ";
+	      print_tyc tyc;
+	      print ", ";
+	      List.app print_ty tyl;
+	      print ")"
+	    )
+	  | T.POLYty {tyfun = T.TYFUN {body, ...}, ...} => 
+	    (print "(polyty "; print_ty body; print ")")
+	  | _ => print "other_ty"
+
+    and print_tyc (tyc:T.tycon) = (
+	case tyc of
+	    T.GENtyc _ => print "gentyc"
+	  | T.DEFtyc _ => print "deftyc"
+	  | T.RECORDtyc _ => print "recordtyc"
+	  | _ => print "other_tyc";
+	print ("_" ^ EP.stoS (TypesUtil.tycName tyc))
+    )
+
+    fun print_ty' ty = 
+	case ty of
+	    CONty (tycon, tyl) => (
+	    print "(CONty ";
+	    print_tyc' tycon;
+	    print ", ";
+	    List.app print_ty' tyl;
+	    print ")"
+	    )
+	  | IBOUND i => print ("(ibound " ^ Int.toString i ^ ")")
+
+    and print_tyc' tyc = 
+	case tyc of
+	    GENtyc  {name, ...} => print ("(gentyc "  ^ EP.stoS name ^ ")")
+	  | PRIMtyc {name, ...} => print ("(primtyc " ^ EP.stoS name ^ ")")
+	  | DEFtyc  {name, ...} => print ("(deftyc "  ^ EP.stoS name ^ ")")
+	  | RECORDtyc ll => 
+	    ( print "(recordtyc"; 
+	      List.app (fn x => print (" " ^ EP.stoS x)) ll; 
+	      print ")")
+
+    fun print_ty'' (ty : ty') : unit = 
+	case ty of
+	    CONty (RECORDtyc [], []) => print "unit"
+	  | CONty (RECORDtyc ((Symbol.SYMBOL (_, "1"))::_), tyl) =>
+	    let fun p [] = ErrorMsg.impossible "Ens_var2: print_ty''.1"
+		  | p [x] = print_ty'' x
+		  | p (x::y) = (print_ty'' x; print " * "; p y)
+	    in
+		p tyl
+	    end
+	  | CONty (RECORDtyc ll, tyl) =>
+	    ( print "{";
+	      List.app 
+		  (fn (x, y) => 
+		      (print (EP.stoS x ^ ":"); print_ty'' y; print ", "))
+		  (ListPair.zip (ll, tyl)); 
+	      print "}"
+	    )
+	  | CONty (tycon, []) => 
+	    print_tyc'' tycon
+	  | CONty (tycon, [t]) => 
+	    ( print_ty'' t; 
+	      print " "; 
+	      print_tyc'' tycon
+	    )
+	  | CONty (tycon, [t1, t2]) => 
+	    ( print_ty'' t1; 
+	      print " "; 
+	      print_tyc'' tycon; 
+	      print " "; 
+	      print_ty'' t2
+	    )
+	  | CONty _ => 
+	    ErrorMsg.impossible "Ens_var2: print_ty''.2"
+	  | IBOUND i => 
+	    print ("'" ^ str (Char.chr (Char.ord #"a" + i)))
+
+    and print_tyc'' (tyc : tycon') : unit =
+	case tyc of
+	    GENtyc {name, ...} => print (EP.stoS name)
+	  | PRIMtyc {name, ...} => print (EP.stoS name)
+	  | DEFtyc {name, ...} => print (EP.stoS name)
+	  | RECORDtyc _ => ErrorMsg.impossible "Ens_var2: print_tyc''"
+	    
 
     (* variables *)
     structure VarKey : ORD_KEY =
@@ -49,7 +148,10 @@ in
 		    {str = M.STR {access = parent_acc, ...}, def, name} = 
 	( case var of
 	      (VC.VALvar {path = SymPath.SPATH [S.SYMBOL (_, "it")],...}) => ()
-	    | VC.VALvar {access, typ, path = SymPath.SPATH path, ...} => 
+	    | VC.VALvar {access, typ, path = SymPath.SPATH path, ...} => (
+	      EP.printer (!typ); print " : "; (*print_ty (!typ); print "\n";
+	      print "\t"; print_ty'  (conv_ty (!typ)); print "\n";
+	      print "\t";*) print_ty'' (conv_ty (!typ)); print "\n";
 	      ens_var := VarSet.add(!ens_var, 
 				    {access = access, 
 				     parent = parent_acc, (* temporary *)
@@ -57,6 +159,7 @@ in
 				     name = List.last path,
 				     def= loc_reg region, 
 				     usage=ref []})
+	      )
 	    | _ => ()
 	)
       | add_var_def _ _ _ = ()
@@ -83,7 +186,7 @@ in
       | add_var_use _ _ _ = ()
 
     fun print_var () = 
-	VarSet.app Ens_print2.print_var (!ens_var)
+	VarSet.app EP.print_var (!ens_var)
 			  
 
 
@@ -197,7 +300,7 @@ in
 	  
 	
     fun print_str () = 
-	StrSet.app Ens_print2.print_str (!ens_str)
+	StrSet.app EP.print_str (!ens_str)
 
 
     fun print_all () = (

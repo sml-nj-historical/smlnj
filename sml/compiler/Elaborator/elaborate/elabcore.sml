@@ -444,6 +444,7 @@ let
        | MarkPat (pat,region) =>
 	   let val (p,tv) = elabPat(pat, env, region)
 	    in 
+	       (*(MARKpat (p, region), tv)*)
 	       (p,tv)
 	   end
        | FlatAppPat pats => elabPat(patParse(pats,env,error), env, region)

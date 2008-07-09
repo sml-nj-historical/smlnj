@@ -7,6 +7,8 @@ sig
    val ptoS : Symbol.symbol list -> string
    val rptoS : InvPath.path -> string
 
+   val printer : Types.ty -> unit
+
    val print_var : Ens_types2.var_elem -> unit
    val print_type : Ens_types2.type_elem -> unit
    val print_cons : Ens_types2.cons_elem -> unit

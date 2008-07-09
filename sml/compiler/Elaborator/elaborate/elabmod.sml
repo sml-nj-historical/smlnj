@@ -506,6 +506,7 @@ fun extractSig (env, epContext, context,
 		| procpat(A.ORpat(pat,pat')) = (procpat pat)@(procpat pat')
 		| procpat(A.VECTORpat(pats,_)) = 
 		    foldl (fn (pat,names) => (procpat pat)@names) [] pats
+		(*| procpat (A.MARKpat (p, _)) = procpat p*)
 		| procpat _ = []
 	      fun procvbs([]) = []
 		| procvbs((A.VB{pat,...})::rest) = 

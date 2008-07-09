@@ -436,6 +436,11 @@ fun patType(pat: pat, depth, region) : pat * ty =
 		   then (typ := ty; (LAYEREDpat(cpat,npat),ty))
 		  else (pat,WILDCARDty)
 	   end
+       (* | MARKpat (p, region) => 
+	    let val (p',pty) = patType(p,depth,region)
+            in (MARKpat(p',region),pty)
+            end
+	*)
        | p => bug "patType -- unexpected pattern"
 
 fun expType(exp: exp, occ: occ, tdepth: DI.depth, region) : exp * ty =
