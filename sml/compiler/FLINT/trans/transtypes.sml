@@ -285,7 +285,8 @@ and toTyc d t =
                           * toLty (see below). *)
 	| g (MARKty (t, _)) = g t
         | g (POLYty _) = bug "unexpected poly-type in toTyc"
-        | g (UNDEFty) = bug "unexpected undef-type in toTyc"
+        | g (UNDEFty) = (* mkVB kluge!!! *) LT.tcc_void
+	    (* bug "unexpected undef-type in toTyc" *)
         | g (WILDCARDty) = bug "unexpected wildcard-type in toTyc"      
    in g t
   end

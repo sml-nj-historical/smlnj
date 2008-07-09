@@ -40,10 +40,12 @@ fun reslty (lt, ts) =
 
 exception RecoverLty
 fun recover (fdec, postRep) =
-  let val zz : lty IntHashTable.hash_table =
+  let val ltyTable : lty IntHashTable.hash_table =
 	  IntHashTable.mkTable(32, RecoverLty)
-      val get = IntHashTable.lookup zz
-      val addv = IntHashTable.insert zz
+      fun get v = IntHashTable.lookup ltyTable v
+		  handle RecoverTy => (print ("Recover.get: "^ Int.toString v ^ "\n");
+				       bug "Recover.recover.get")
+      val addv = IntHashTable.insert ltyTable
       fun addvs vts = app addv vts
       fun getlty (VAR v) = get v
         | getlty (INT _ | WORD _) = LT.ltc_int
@@ -127,7 +129,7 @@ fun recover (fdec, postRep) =
       (* val _ = PPFlint.printLexp e *)
       val rtys = loop e 
       val _ = addv (f, LT.ltc_fkfun(fkind, atys, rtys))
-  in {getLty=getlty, cleanUp=fn () => IntHashTable.clear zz, addLty=addv}
+  in {getLty=getlty, cleanUp=fn () => IntHashTable.clear ltyTable, addLty=addv}
  end (* function recover *)
 
 end (* local *)

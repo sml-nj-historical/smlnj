@@ -25,7 +25,7 @@ val --> = CoreBasicTypes.-->
 infix -->
 
 val say = Control_Print.say
-val debugging = ref false
+val debugging = ElabDataControl.tudebugging
 fun debugmsg msg = if !debugging then say ("TypesUtil: " ^ msg ^ "\n") else ()
 fun bug msg = EM.impossible("TypesUtil: "^msg)
 
@@ -199,6 +199,7 @@ fun applyTyfun(TYFUN{arity,body}, args: ty list) =
   let fun subst(IBOUND n) = List.nth(args,n)
         | subst(CONty(tyc,args)) = CONty(tyc, shareMap subst args)
         | subst(VARty(ref(INSTANTIATED ty))) = subst ty
+	| subst(MARKty(ty,_)) = subst ty
         | subst _ = raise SHARE
    in if arity <> length args
         then (say ("$$$ applyTyfun: arity = "^(Int.toString arity)^
@@ -589,7 +590,7 @@ fun indexBoundTyvars (tdepth : int, []: tyvar list) : unit = ()
  * of abstract types, i.e., this call is being used in FLINT where
  * we can look into abstract types.  
  * The third argument is a spec type (e.g. from a signature spec),
- * while the third is a potentially more general actual type. The
+ * while the fourth is a potentially more general actual type. The
  * two types are instantiated (if they are polymorphic), and a one-way
  * match is performed on their generic instantiations. 
  * [Note that the match cannot succeed if spec is polymorphic while
@@ -613,6 +614,8 @@ fun matchInstTypes(doExpandAbstract,tdepth,specTy,actualTy) =
 					 to match valspec and vals mentioning
 					 that missing type. *)
 	  | match'(_, WILDCARDty) = ()
+	  | match'(MARKty (t, _), t') = match'(t, t')
+	  | match'(t, MARKty (t', _)) = match'(t, t')
 	  | match'(ty1, ty2 as VARty(tv as ref(OPEN{kind=META,eq,...}))) =
               (* If we're told to ignore abstract, then we can't 
 		 check for equality types because the original GENtyc
@@ -663,8 +666,6 @@ fun matchInstTypes(doExpandAbstract,tdepth,specTy,actualTy) =
 	  | match'(_, CONty _) = (debugmsg' "unmatched CONty"; raise CompareTypes)
 	  | match'(t1, VARty vk) = (debugmsg' "VARty other"; 
 				    raise CompareTypes)
-	  | match'(MARKty (t, _), t') = match'(t, t')
-	  | match'(t, MARKty (t', _)) = match'(t, t')
         and match(ty1,ty2) = match'(headReduceType ty1, headReduceType ty2)
         val (actinst, actParamTvs) = instantiatePoly actualTy
         val (specinst, specGenericTvs) = instantiatePoly specTy

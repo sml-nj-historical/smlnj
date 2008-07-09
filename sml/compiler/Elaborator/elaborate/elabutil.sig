@@ -42,9 +42,6 @@ sig
 
   val bindVARp : Absyn.pat list * ErrorMsg.complainer -> StaticEnv.staticEnv
 
-  val aconvertPat : Absyn.pat * compInfo 
-                    -> Absyn.pat * VarCon.var list * VarCon.var list
-
   val checkUniq : ErrorMsg.complainer * string * Symbol.symbol list -> unit
 
   val clean_pat : ErrorMsg.complainer -> Absyn.pat -> Absyn.pat

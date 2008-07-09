@@ -24,7 +24,7 @@ val say = Control_Print.say
 fun debugmsg (msg: string) =
     if !debugging then (say msg; say "\n") else ()
 
-fun bug msg = ErrorMsg.impossible("ElabType: "^msg)
+fun bug msg = ErrorMsg.impossible("ElabType: " ^ msg)
 
 (**** TYPES ****)
 
@@ -417,6 +417,7 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 		      end
 		  | f (POLYty{sign,tyfun=TYFUN{arity,body}}) =
 		      POLYty{sign=sign,tyfun=TYFUN{arity=arity,body=f body}}
+		  | f (MARKty(t,_)) = f t
 		  | f t = t
              in f
             end

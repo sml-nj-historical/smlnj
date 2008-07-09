@@ -7,7 +7,6 @@ struct
 local structure SP = SymPath
       structure LU = Lookup
       structure A = Access
-      (* structure II = InlInfo *)
       structure B  = Bindings
       structure SE = StaticEnv
       structure EE = EntityEnv
@@ -142,51 +141,6 @@ fun isPrimPat (VARpat{info, ...}) = II.isPrimInfo(info)
   | isPrimPat _ = false
 *)
 
-(* aconvertPat:
- *   "alpha convert" a pattern with respect to the lvar access values
- *   of the pattern variables. Old variables are replaced by
- *   new ones, with fresh LVAR accesses and new refs for the typ field.
- *   Returns the converted pattern, the list of the original variable
- *   patterns (VARpats) and the list of new variables (VALvars).
- * called only once, in elabVB in elabcore.sml *)
-
-fun aconvertPat (pat, {mkLvar=mkv, ...} : compInfo)
-    : Absyn.pat * var list * var list =
-    let val varmap : (var * var) list ref = ref nil
-            (* association list mapping old vars to new *)
-        (* ASSERT: any VARpat/VALvar will have an LVAR access. *)
-	fun mappat (VARpat(oldvar as VALvar{access=A.LVAR(oldlvar),
-                                            typ=ref typ',prim,btvs,path})) =
-              let fun find ((VALvar{access=A.LVAR(lv),...}, newvar)::rest) =
-                        if lv=oldlvar then newvar else find rest
-			(* a variable could occur multiple times because
-                           repetition in OR patterns *)
-                    | find (_::rest) = bug "aconvertPat: bad varmap key"
-		    | find nil =
-		        let val newvar =
-                                VALvar{access=A.dupAcc(oldlvar,mkv), prim=prim,
-                                       typ=ref typ', path=path, btvs = btvs}
-			 in varmap := (oldvar,newvar)::(!varmap); newvar
-			end
-	       in VARpat(find(!varmap))
-	      end
-	  | mappat (VARpat _) = bug "aconvertPat: bad variable"
-	  | mappat (RECORDpat{fields,flex,typ}) =
-		RECORDpat{fields=map (fn(l,p)=>(l,mappat p)) fields,
-                          flex=flex, typ=typ}
-	  | mappat (VECTORpat(pats,t)) = VECTORpat(map mappat pats, t)
-	  | mappat (APPpat(d,c,p)) = APPpat(d,c,mappat p)
-	  | mappat (ORpat(a,b)) = ORpat(mappat a, mappat b)
-	  | mappat (CONSTRAINTpat(p,t)) = CONSTRAINTpat(mappat p, t)
-	  | mappat (LAYEREDpat(p,q)) = LAYEREDpat(mappat p, mappat q)
-	  | mappat p = p
-
-        val newpat = mappat pat
-
-        val (oldvars,newvars) = ListPair.unzip (!varmap)
-
-     in (newpat,oldvars,newvars)
-    end (* aconvertPat *)
 
 (* sort the labels in a record the order is redefined to take the usual 
    ordering on numbers expressed by strings (tuples) *)
@@ -244,11 +198,11 @@ fun completeMatch'' rule [r as RULE(pat,MARKexp(_,(_,right)))] =
 fun completeMatch' (RULE(p,e)) =
     completeMatch'' (fn marker => RULE(p,marker e))
 
-fun completeMatch(env,name) =
+fun completeMatch(env,exnName: string) =
     completeMatch'' 
       (fn marker =>
           RULE(WILDpat, 
-	       marker(RAISEexp(CONexp(CoreAccess.getExn env [name],[]),
+	       marker(RAISEexp(CONexp(CoreAccess.getExn env [exnName],[]),
 			       UNDEFty))))
 (** Updated to the ty option type - GK *)
 
@@ -450,7 +404,8 @@ fun calc_strictness (arity, body) =
               (case tycon
                  of DEFtyc _ => search(headReduceType ty)
                   | _ => app search args)
-	  | search _ = ()	(* for now... *)
+	  | search(MARKty(ty,_)) = search ty
+	  | search _ = (print "#### calc_strictness ####\n")	(* for now... ???? *)
      in search body;
 	Array.foldr (op ::) nil argument_found
     end

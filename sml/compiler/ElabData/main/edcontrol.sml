@@ -33,7 +33,12 @@ structure ElabDataControl : ELABDATA_CONTROL = struct
 	r
     end
 
+
     val saveLvarNames = new ("save-lvar-names", "?", false)
     val eedebugging = new ("ee-debugging", "?", false)
     val mudebugging = new ("mu-debugging", "?", false)
+
+    val tudebugging = new ("tu-debugging", "?", false)
+        (* TypesUtil *)
+
 end

@@ -144,6 +144,7 @@ fun fieldwise(_,just2,_,[],fields2) = map (fn (n,t) => (n,just2 t)) fields2
 fun adjustType (var,depth,eq,ty) =
     let val _ = debugPPType(">>adjustType: ",ty)
 	fun iter _ WILDCARDty = ()
+	  | iter eq (MARKty(ty, _)) = iter eq ty
 	  | iter eq (VARty(var' as ref(info))) =
 	      (case info
 		 of INSTANTIATED ty => 
@@ -204,7 +205,6 @@ fun adjustType (var,depth,eq,ty) =
     to arguments that are unreduced applications of DEFtycs? *)
           | iter _ (POLYty _) = bug "adjustType 1"
           | iter _ (IBOUND _) = bug "adjustType 2"
-	  | iter eq (MARKty(ty, region)) = iter eq ty
 	  | iter _ _ = bug "adjustType 3"
      in iter eq ty; debugmsg "<<adjustType"
     end
@@ -241,7 +241,10 @@ fun unifyTy(type1,type2) =
 	val _ = debugPPType(">>unifyTy: type2: ",type2)
 	fun unifyRaw(type1, type2) = 
 	 case (type1, type2)
-	  of (VARty var1,VARty var2) =>
+	  of (MARKty (ty, _), ty') => unifyTy(ty, ty')
+	   | (ty, MARKty (ty', _)) => unifyTy(ty, ty')
+	      (* missing region args to unify, so MARKs are discarded *)
+	   | (VARty var1,VARty var2) =>
 	       unifyTyvars(var1,var2)  (* used to take type1 and type2 as args *)
 	   | (VARty var1, _) => (* type2 may be WILDCARDty *)
 	       instTyvar(var1,type2)
@@ -274,8 +277,6 @@ fun unifyTy(type1,type2) =
                (app (fn x => unifyTy(x, WILDCARDty)) args2)
            | (CONty(_, args1), WILDCARDty) =>
                (app (fn x => unifyTy(x, WILDCARDty)) args1)
-	   | (MARKty (ty, _), ty') => unifyTy(ty, ty')
-	   | (ty, MARKty (ty', _)) => unifyTy(ty, ty')
 	   | (WILDCARDty,_) => ()
 	   | (_,WILDCARDty) => ()
 	   | tys => raise Unify (TYP tys)
