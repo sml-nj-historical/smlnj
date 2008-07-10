@@ -15,6 +15,9 @@ sig
     val newGenerator : unit -> generator
     val fresh : generator -> stamp
 
+    (*used only in Elaborate/srcinfo/ens_print2.sml*)
+    val fresh' : int -> stamp
+
     (* Make a new "special" stamp (for things in primEnv). *)
     val special : string -> stamp
 
