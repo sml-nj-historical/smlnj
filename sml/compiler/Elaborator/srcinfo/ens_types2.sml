@@ -8,7 +8,9 @@ struct
 			| Record of Symbol.symbol list
 
     datatype ty' = Conty of stub_tycon * ty' list
-		 | Ibound of int
+		 | Ibound of {index: int, depth: int}
+		 | Ubound of Symbol.symbol
+		 | Poly of {arity: int, body: ty'}
 
     datatype tycon' = Datatype of bool * Symbol.symbol list (*eq * cons list*)
 		    | Abstract of Symbol.symbol list
@@ -36,12 +38,13 @@ struct
 	      | T.VARty _ => (
 		case TypesUtil.prune ty of
 		    (*que faire dans ce cas la, lbound par ex?*)
-		    T.VARty (ref (T.LBOUND {index, ...})) => Ibound index
+		    T.VARty (ref (T.LBOUND {index,depth,...})) => Ibound {index=index,depth=depth}
+		  | T.VARty (ref (T.UBOUND {name,...})) => Ubound name
 		  | T.VARty _ => ErrorMsg.impossible "Ens_types2: conv_ty.2"
 		  | typ => conv_ty typ
 		)
-	      | T.POLYty {tyfun = T.TYFUN {body, ...}, ...} =>
-		conv_ty body
+	      | T.POLYty {tyfun = T.TYFUN {arity, body}, ...} =>
+		conv_ty {arity=arity, body=body}
 	      | T.CONty (tycon, tyl) =>
 		Conty (conv_stub_tycon tycon, List.map conv_ty tyl)
 	      | (T.WILDCARDty | T.UNDEFty) => 
