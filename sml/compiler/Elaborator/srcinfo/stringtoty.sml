@@ -18,6 +18,8 @@ struct
 
 fun bug x = ErrorMsg.impossible ("StringToTy: " ^ x)
 
+val tokenize string -> string list = String.tokens Char.isSpace
+
 fun get_int s =
     Option.valOf (Int.fromString s)
 
@@ -131,7 +133,7 @@ and stringToTyList sl =
     stringToList stringsToTy sl
 
 fun stringToTy s = 
-    #1 (stringsToTy (String.tokens (fn c => c = #" ") s))
+    #1 (stringsToTy (tokenize s))
 
 fun stringsToTycon ("D" :: h1 :: sl) = 
     let val (labels, sl') = stringToLabels sl in
@@ -148,7 +150,7 @@ fun stringsToTycon ("D" :: h1 :: sl) =
   | stringsToTycon _ = bug "stringsToTycon"
 
 fun stringToTycon s = 
-    #1 (stringsToTycon (String.tokens (fn c => c = #" ") s))
+    #1 (stringsToTycon (tokenize s))
 
 fun stringToString s = 
     case String.tokens (fn c => c = #"<" orelse c = #">") s of
@@ -356,15 +358,15 @@ fun stringToSig sl =
     stringToList stringToSigElem sl
 
 fun stringsToAll sl = 
-    let val (v, sl0) = stringToVar sl
-	val (str, sl1) = stringToStr sl0
-	val (sign, sl2) = stringToSig sl1
+    let val (vars, sl0) = stringToVar sl
+	val (strs, sl1) = stringToStr sl0
+	val (signs, sl2) = stringToSig sl1
     in
-	((v, str, sign), sl2)
+	((vars, strs, signs), sl2)
     end
 
 fun stringToAll s = 
-    #1 (stringsToAll (String.tokens (fn c => c = #" ") s))
+    #1 (stringsToAll (tokenize s))
 
 end (* structure StringToTy*)
 end (* local *)

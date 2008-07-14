@@ -98,10 +98,6 @@ in
 	VarSet.app EP.print_var (!ens_var)
 			  
 
-
-
-
-
     (* type *)
     structure TypeKey : ORD_KEY =
     struct
