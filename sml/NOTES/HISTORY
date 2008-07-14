@@ -14,6 +14,17 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/04/12
+Description:
+
+Various updates to the ml-lpt tree.  The documentation has been updated;
+bugs in the parsing of negation and character classes in ml-ulex have
+been fixed; and changes have been made to make the ml-lpt tools more
+compatible with MLton (and other SML implementations).  Thanks to
+Matthew Fluet and Aaron Turon for their patches.
+
+----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
 Date: 2008/20/04
 Description:
