@@ -8,6 +8,7 @@ local
     structure B = Bindings
     structure EP = Ens_print2
     open Ens_types2
+    open Conversion
 in
     fun bug msg = ErrorMsg.impossible("Bugs in Ens_var2: "^msg);
 
@@ -49,26 +50,25 @@ in
 		    {str = M.STR {access = parent_acc, ...}, def, name} = 
 	( case var of
 	      (VC.VALvar {path = SymPath.SPATH [S.SYMBOL (_, "it")],...}) => ()
-	    | VC.VALvar {access, typ, path = SymPath.SPATH path, ...} => (
-	      EP.printer (!typ); 
-	      print " : "; 
-	      print
-		  (EP.print_ty' 
-		       (conv_ty (!typ)));
-	      print "\n\t";
-	      print (EP.print_ty' 
-			 (EP.scanty' 
-			      (EP.print_ty' 
-				   (conv_ty (!typ)))));
-	      print "\n";
-	      ens_var := VarSet.add(!ens_var, 
-				    {access = access, 
-				     parent = parent_acc, (* temporary *)
-				     typ = conv_ty (!typ),
-				     name = List.last path,
-				     def= loc_reg region, 
-				     usage=ref []})
-	      )
+	    | VC.VALvar {access, typ, path = SymPath.SPATH path, ...} =>
+	      (*let
+		  val () = EP.printer (!typ)
+		  val ty' = ty_to_ty' (!typ)
+		  val s = TyToString.tyToString ty'
+		  val () = print (" : \n\t" ^ s ^ "\n\t")
+		  val ty'' = StringToTy.stringToTy s
+		  val () = EP.print_ty' ty''
+		  val s' = TyToString.tyToString ty''
+		  val () = print ("\n\t" ^ s' ^ "\n")
+	      in*)
+		  ens_var := VarSet.add(!ens_var, 
+					{access = access, 
+					 parent = parent_acc, (* temporary *)
+					 typ = ty_to_ty' (!typ),
+					 name = List.last path,
+					 def= loc_reg region, 
+					 usage=ref []})
+	      (*end*)
 	    | _ => ()
 	)
       | add_var_def _ _ _ = ()
@@ -89,7 +89,7 @@ in
 			      (!typ, List.map TypesUtil.pruneTyvar typ')
 			| _ => !typ
 	      in
-		  usage := (loc_reg region, conv_ty typ'', access) :: (!usage)
+		  usage := (loc_reg region, ty_to_ty' typ'', access) :: (!usage)
 	      end
 	)
       | add_var_use _ _ _ = ()
@@ -97,6 +97,125 @@ in
     fun print_var () = 
 	VarSet.app EP.print_var (!ens_var)
 			  
+
+
+
+
+
+    (* type *)
+    structure TypeKey : ORD_KEY =
+    struct
+        type ord_key = type_elem
+	fun compare ({stamp = stamp1, ...}:ord_key, 
+		     {stamp = stamp2, ...}:ord_key) =
+	    Stamps.compare (stamp1, stamp2)
+    end (* structure TypeKey *)
+    
+    (* type sets *)
+    structure TySet = RedBlackSetFn(TypeKey)
+    val ens_ty = (ref TySet.empty);
+
+    (* constructors *)
+    structure ConsKey : ORD_KEY =
+    struct
+        type ord_key = cons_elem
+	fun compare ({name = name1, dataty = s1, ...}:ord_key, 
+		     {name = name2, dataty = s2, ...}:ord_key) =
+	    case Stamps.compare (s1, s2) of
+		EQUAL => String.compare (Symbol.name name1, Symbol.name name2)
+	      | ord => ord
+    end (* structure ConsKey *)
+    
+    (* constructor sets *)
+    structure ConsSet = RedBlackSetFn(ConsKey)
+    val ens_cons = (ref ConsSet.empty);
+
+    fun add_ty_def tycon region = 
+	let val (stamp, path, tycon'(*, dcons*)) = tycon_to_tycon' tycon in
+	    ens_ty := TySet.add ( !ens_ty,
+				  { tycon = tycon',
+				    name = InvPath.last path,
+				    stamp = stamp,
+				    def = loc_reg region,
+				    usage = ref []}
+				)(*;
+	    case (tycon', dcons) of
+		((Datatype (_, sl) | Abstract sl), SOME dcons) =>
+		List.foldl
+		    ( fn (x, n) => (
+			 ConsSet.add 
+			     ( !ens_cons,
+			       { name = x, 
+				 dataty = stamp,
+				 def = loc_reg region,
+				 ty=ty_to_ty' 
+					(Option.valOf 
+					     (#domain
+						  (#dcons 
+						       (Vector.sub(members,n))
+						  )
+					     )
+					),
+				 usage = ref []
+			       }
+			     );
+			 (n+1)
+			 )
+		    )
+		    0
+		    sl
+	      | ((Deftyc | Primtyc _), _) => 0;
+	    ()*)
+	end
+
+    fun add_ty_use ty region = 
+	case ty_to_ty' ty of
+	    Conty (General (_, p), _) => print (EP.rptoS p ^ " used\n")
+	  | _ => ()
+
+    fun print_ty () = 
+	TySet.app EP.print_type (!ens_ty)
+
+    fun print_cons () = 
+	ConsSet.app EP.print_cons (!ens_cons)
+
+
+
+
+
+    (*signature*)
+    structure SigKey : ORD_KEY =
+    struct
+        type ord_key = sig_elem
+	fun compare ({stamp = stamp1, ...}:ord_key, 
+		     {stamp = stamp2, ...}:ord_key)=
+	    Stamps.compare (stamp1, stamp2)
+    end (* structure SigKey *)
+    
+    (* signature sets *)
+    structure SigSet = RedBlackSetFn(SigKey)
+    val ens_sig = ref SigSet.empty;
+
+    fun add_sig_def sign region = 
+	let val {name, stamp, inferred, def, elements, alias, usage} = 
+		sig_to_elem sign in
+	    ens_sig := SigSet.add ( !ens_sig,
+				    { name = name, 
+				      stamp = stamp,
+				      inferred = inferred,
+				      def = loc_reg region,
+				      elements = elements,
+				      alias = alias,
+				      usage = usage
+				    }
+				  )
+	end
+	
+    fun print_sig () = 
+	SigSet.app EP.print_sig (!ens_sig)
+
+
+
 
 
 
@@ -116,14 +235,16 @@ in
     structure StrSet = RedBlackSetFn(StrKey)
     val ens_str = (ref StrSet.empty);
 
-    fun add_str_def {name, 
-		     str = M.STR {sign = M.SIG {stamp, elements, ...}, 
-				  access, ...}, 
-		     def} 
+    fun add_str_def { name, 
+		      str = 
+		      M.STR { sign = (sign as M.SIG {stamp, elements, ...}), 
+			      access, ...}, 
+		      def} 
 		    bl 
 		    region 
 		    parent_acc = 
 	let 
+	    val () = add_sig_def sign region
 	    fun get_symbol (B.VALbind (VC.VALvar {path, ...})) =
 		SOME (SymPath.last path)
 	      | get_symbol (B.STRbind (M.STR {rlzn = {rpath, ...}, ...})) = 
@@ -212,10 +333,39 @@ in
 	StrSet.app EP.print_str (!ens_str)
 
 
+
+
+
+
+
     fun print_all () = (
 	print_var ();
-	print_str ()
+	print_str ();
+	print_ty ();
+	print_cons ();
+	print_sig ()
     )
+
+
+    fun test () =
+	print_all ()
+	(*let val s = ( TyToString.allToString 
+			  ( VarSet.listItems (!ens_var),
+			    StrSet.listItems (!ens_str),
+			    SigSet.listItems (!ens_sig)
+			  )
+		    )
+	    val () = print ("\n\n" ^ s ^ "\n")
+	    val t = StringToTy.stringToAll s
+	    val s' = TyToString.allToString t
+	    val () = print ("\n" ^ s' ^ "\n\n")
+	    val sign = #3 t
+	    val () = List.app EP.print_sig sign
+	in
+	    ()
+	end*)
+
+
 
 end (*end local*)
 end (*end struct*)

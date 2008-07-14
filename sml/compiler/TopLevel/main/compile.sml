@@ -157,10 +157,9 @@ struct
 
 	    val () = 
 		if !Control.Elab.infodebugging then 
-		    ( (*Ens_var.print_all ();*)
-		      Ens_print2.maj statenv;
+		    ( Ens_print2.maj statenv;
 		      Ens_absyn.scan_dec absyn;
-		      Ens_var2.print_all ()
+		      Ens_var2.test ()
 		    ) 
 		else 
 		    ()		    	    

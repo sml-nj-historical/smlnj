@@ -53,7 +53,7 @@ struct
 	      | FNexp fnrules => List.app scan_rule (#1 fnrules)
 	      | LETexp (dec, exp) => (scan_dec dec; scan_exp exp)
 	      | SEQexp expl => List.app scan_exp expl
-	      | CONSTRAINTexp (exp, _) => scan_exp exp
+	      | CONSTRAINTexp (exp, ty) => (EV.add_ty_use ty (~1, ~1); scan_exp exp)
 	      | MARKexp (exp, region) => 
 		( case exp of 
 		      VARexp (ref var, tyvarl) => 
@@ -92,14 +92,16 @@ struct
 	    case dec of
 		VALdec vbl => List.app scan_vb vbl
 	      | VALRECdec rvbl => List.app scan_rvb rvbl
-	      | TYPEdec _ => ()
+	      | TYPEdec tl => 
+		List.app (fn x => Ens_var2.add_ty_def x (~1, ~1)) tl
 	      | DATATYPEdec _ => ()
 	      | ABSTYPEdec {body, ...} => scan_dec body
 	      | EXCEPTIONdec ebl => List.app scan_eb ebl
 	      | STRdec strbl => List.app scan_strb strbl
 	      | ABSdec strbl => List.app scan_strb strbl
 	      | FCTdec fctbl => List.app scan_fctb fctbl
-	      | SIGdec _ => ()
+	      | SIGdec sigl => 
+		List.app (fn x => EV.add_sig_def x (~1, ~1)) sigl
 	      | FSIGdec _ => ()
 	      | OPENdec _ => ()
 	      | LOCALdec (d1, d2) => (scan_dec d1; scan_dec d2)
