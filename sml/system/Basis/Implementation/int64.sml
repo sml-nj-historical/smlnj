@@ -80,7 +80,7 @@ structure Int64 : INTEGER = struct
 	      else SOME (intern (CoreIntInf.truncInf64 i), s')
 	  | NONE => NONE
 
-    val fromString = PreBasis.scanString (scan StringCvt.HEX)
+    val fromString = PreBasis.scanString (scan StringCvt.DEC)
 
     val ~      : int -> int        = ~
     val op +   : int * int -> int  = op +
