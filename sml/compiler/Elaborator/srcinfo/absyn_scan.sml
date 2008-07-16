@@ -128,32 +128,47 @@ struct
 		  scan_dec dec
 		)
 			     
-	and scan_strexp strexp = 
-	    case strexp of
-		VARstr s => (
-		case s of
-		    Modules.STR {access, ...} =>
-		    let fun is_ext (Access.EXTERN _) = true
-			  | is_ext (Access.PATH (s, _)) = is_ext s
-			  | is_ext _ = false
-		    in
-			if is_ext access then
-			    ()
-			else (
-			    EV.add_str_alias (head ()) s (~1, ~1) (str_par ());
-			    EV.add_str_use s (~1, ~1)
-			    )
-		    end
-		  | _ => ()
-		)
-	      | STRstr bl => 
-		EV.add_str_def (head ()) bl (~1, ~1) (str_par ())
-	      | APPstr _ => pop ()
-	      | LETstr (dec, strexp) => 
-		( scan_dec dec; 
-		  scan_strexp strexp)
-	      | MARKstr (strexp, _) => scan_strexp strexp
-
+	and scan_strexp strexp =
+	    let fun add s region = 
+		    case s of
+			Modules.STR {access, ...} =>
+			let fun is_ext (Access.EXTERN _) = true
+			      | is_ext (Access.PATH (s, _)) = is_ext s
+			      | is_ext _ = false
+			in
+			    if is_ext access then
+				()
+			    else (
+				EV.add_str_alias 
+				    (head ()) 
+				    s 
+				    region
+				    (str_par ());
+				EV.add_str_use 
+				    s 
+				    region
+				)
+			end
+		      | _ => ()
+	    in
+		case strexp of
+		    VARstr s => add s (~12, ~12)
+		  | STRstr bl => 
+		    EV.add_str_def (head ()) bl (~5, ~5) (str_par ())
+		  | APPstr _ => pop ()
+		  | LETstr (dec, strexp) => 
+		    ( scan_dec dec; 
+		      scan_strexp strexp)
+		  | MARKstr (strexp, region as (r1,r2)) => 
+		    ( case strexp of
+			  STRstr bl => 
+			  EV.add_str_def (head ()) bl region (str_par ())
+			| VARstr s => 
+			  add s region
+			| _ => scan_strexp strexp
+		    )
+	    end
+				 
 	and scan_fctexp fctexp =
 	    case fctexp of
 		VARfct _ => ()

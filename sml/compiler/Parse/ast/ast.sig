@@ -189,7 +189,7 @@ sig
 
   (* STRUCTURE BINDING *)
   and strb = Strb of {name: symbol,def: strexp,constraint: sigexp sigConst}
-	   | MarkStrb of strb * region
+	   | MarkStrb of strb * region * region
 
   (* FUNCTOR BINDING *)
   and fctb = Fctb of {name: symbol,def: fctexp}

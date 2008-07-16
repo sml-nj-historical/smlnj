@@ -1190,7 +1190,7 @@ and ppStrb (context as (_,source_opt)) ppstrm =
 	      ppSym ppstrm name; PP.string ppstrm " :";
 	      break ppstrm {nsp=1,offset=2}; ppStrExp context ppstrm (def,d-1);
 	      closeBox ppstrm)
-	  | ppStrb'(MarkStrb (t,r),d) = ppStrb context ppstrm (t,d)
+	  | ppStrb'(MarkStrb (t,_,_),d) = ppStrb context ppstrm (t,d)
     in
 	ppStrb'
     end

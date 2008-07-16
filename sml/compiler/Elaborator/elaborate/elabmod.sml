@@ -114,10 +114,6 @@ fun stripMarkFctb(MarkFctb(fctb',region'),region) =
       stripMarkFctb(fctb',region')
   | stripMarkFctb x = x
 
-fun stripMarkStrb(MarkStrb(strb',region'),region) =
-      stripMarkStrb(strb',region')
-  | stripMarkStrb x = x
-
 (* change of context on entering a structure *)
 fun inStr (EU.TOP) = EU.INSTR
   | inStr z = z 
@@ -674,7 +670,7 @@ val _ = debugmsg (">>elabStr: " ^ sname)
  * elab: Ast.strexp * staticEnv * entityEnv * region
  *        -> A.dec * M.Structure * M.strExp * EE.entityEnv
  *)
-fun elab (BaseStr decl, env, entEnv, region) =
+fun elab (MarkStr (BaseStr decl, wholeregion), env, entEnv, region) =
       let val _ = debugmsg ">>elab[BaseStr]"
           (* we enter the epcontext when we get into BaseStr *)
           val epContext'=EPC.enterOpen(epContext,entsv) 
@@ -726,7 +722,10 @@ fun elab (BaseStr decl, env, entEnv, region) =
           val _ = debugPrint("BaseStr after resStr  - symbols: ", ED.ppSymList,
                              ED.envSymbols env')
           val resDec = 
-            let val body = A.LETstr(absDecl, A.STRstr(locations))
+            let val body = 
+		    A.LETstr( absDecl, 
+			      A.MARKstr(A.STRstr(locations), wholeregion)
+			    )
              in A.STRdec [A.STRB {name=tempStrId, str=resStr, def=body}]
             end
 
@@ -734,7 +733,10 @@ fun elab (BaseStr decl, env, entEnv, region) =
 
        in (resDec, resStr, strExp, EE.empty)
       end
-
+  | elab (a as BaseStr _, b, c, d) = 
+    (*bug "elab: expected mark around BaseStr"*)
+    (*des constructions internes doivent faire apparaitre ce cas*)
+    elab (MarkStr (a, (~2, ~2)), b, c, d)
   | elab (AppStr(spath,args), env, entEnv, region) =
       let val strexp' = LetStr(StrDec[Strb{name=returnId,constraint=NoSig,
 					   def=AppStrI(spath,args)}],
@@ -848,7 +850,8 @@ fun elab (BaseStr decl, env, entEnv, region) =
        in (resDec, bodyStr, resExp, EE.mark(mkStamp,EE.atopSp(bodyDee,entEnv')))
       end
 
-  | elab (ConstrainedStr(strexp,constraint), env, entEnv, region) =
+  | elab (MarkStr(ConstrainedStr(strexp,constraint), constraintregion), 
+	  env, entEnv, region) =
       let val (entsv, evOp, csigOp, transp) = 
             let fun h x = 
                   ES.elabSig {sigexp=x, nameOp=NONE, env=env, 
@@ -901,10 +904,10 @@ fun elab (BaseStr decl, env, entEnv, region) =
                       constrStr(transp, csig, str, strAbsDec, exp, 
                                 evOp, depth, entEnv, rpath,
                                 env, region, compInfo)
-
        in (resDec, resStr, resExp, resDee)
       end
-
+  | elab (ConstrainedStr _, _, _, _) = 
+    bug "elab: expected mark around ConstraintedStr"
   | elab (MarkStr(strexp',region'),env,entEnv,region) = 
       let val (resDec, str, resExp, resDee) = 
             elab(strexp', env, entEnv, region')
@@ -1215,9 +1218,12 @@ fun loop([], decls, entDecls, env, entEnv) =
 
   | loop(strb::rest, decls, entDecls, env, entEnv) = 
       let val _ = debugmsg ">>elabStrbs"
-          val (name, constraint, def, region') =
-              case stripMarkStrb(strb,region)
-                of (Strb{name=n,constraint=c,def=d},r) => (n, c, d, r)
+          val (name, constraint, def, region', regionID) =
+              case strb
+                of MarkStrb (Strb{name=n,constraint=c,def=d},r,r') => 
+		   (n, c, d, r, r')
+		 | Strb{name=n,constraint=c,def=d} => 
+		   (n, c, d, region, (~3, ~3))
                  | _ => bug "non structure bindings in elabStrbs"
           val _ = debugmsg("--elabStrbs: structure "^S.name name)
 
@@ -1336,8 +1342,13 @@ fun loop([], decls, entDecls, env, entEnv) =
 
           val _ = showStr("--elabStrbs: bindStr: ",bindStr,env)
 
-          val sb = A.STRB{name = name, str = bindStr, 
-                          def = A.LETstr(resDec, A.VARstr resStr)}
+          val sb = A.STRB{name = name, 
+			  str = bindStr, 
+			  def = A.LETstr 
+				    ( resDec, 
+				      A.MARKstr (A.VARstr resStr, regionID)
+				    )
+			 }
           val decls' = sb :: decls
 
           val (entEnv', entDecls') = 

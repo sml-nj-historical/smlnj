@@ -182,7 +182,7 @@ structure SkelCvt :> SKELCVT = struct
       | db_s (MarkDb (arg, _), set) = db_s (arg, set)
 
     fun tb_s (Tb { tyc, def, tyvars }, set) = ty_s (def, set)
-      | tb_s (MarkTb (arg, _), set) = tb_s (arg, set)
+      | tb_s (MarkTb (arg, _, _), set) = tb_s (arg, set)
 
     (* get a dl from an expression... *)
     fun exp_dl (VarExp p, d) = dl_addMP (p, d)
@@ -356,7 +356,7 @@ structure SkelCvt :> SKELCVT = struct
 		 dec_dl (body, d))
       | dec_dl (ExceptionDec l, d) = dl_addS (foldl eb_s SS.empty l, d)
       | dec_dl ((StrDec l | AbsDec l), d) = let
-	    fun one (MarkStrb (arg, _), x) = one (arg, x)
+	    fun one (MarkStrb (arg, _, _), x) = one (arg, x)
 	      | one (Strb { name, def, constraint }, (s, bl)) = let
 		    val (s', e) = ign (strexp_p def, sigexpc_p constraint)
 		in

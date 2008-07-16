@@ -18,7 +18,7 @@ in
 		    A.Strb { name = CoreSym.coreSym, def = def,
 			     constraint = constraint }
 		else x
-	      | strb (A.MarkStrb (x, r)) = A.MarkStrb (strb x, r)
+	      | strb (A.MarkStrb (x, r, r')) = A.MarkStrb (strb x, r, r')
 	    fun dec (A.StrDec l) = A.StrDec (map strb l)
 	      | dec (A.LocalDec (d1, d2)) = A.LocalDec (d1, dec d2)
 	      | dec (A.SeqDec l) = A.SeqDec (map dec l)

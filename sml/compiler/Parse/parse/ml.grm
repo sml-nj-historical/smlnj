@@ -675,7 +675,7 @@ sdec	: STRUCTURE strb	(StrDec strb)
 strb	: ident sigconstraint_op EQUALOP str
 	   		([MarkStrb(Strb{name = strSymbol ident,def = str, 
 					constraint=sigconstraint_op},
-				   (identleft,strright))])
+				   (identleft,strright), (identleft, identright))])
 	| strb AND strb		(strb1 @ strb2)
 
 fparam	: ID COLON sign		((SOME(strSymbol ID),sign))
