@@ -21,6 +21,7 @@ structure OS_Process : OS_PROCESS =
 
     val success = P.success
     val failure = P.failure
+    val isSuccess = P.isSuccess
 
 (** NOTE: we probably need to disable timer signals here **)
     fun system' cmd = let
@@ -47,5 +48,8 @@ structure OS_Process : OS_PROCESS =
     fun terminate sts = (S.atomicBegin(); CC.throw (!S.shutdownHook) (false, sts))
 
     val getEnv = P.getEnv
+
+  (* should sleep be per-thread or for the whole system? *)
+    val sleep = Event.sync o TimeOut.timeOutEvt
 
   end
