@@ -34,7 +34,7 @@ infix -->
 fun elabTyv(tyv:Ast.tyvar,error,region:region)  =
     case tyv
      of Tyv vt => mkTyvar(mkUBOUND(vt))
-      | MarkTyv(tyv,region) => elabTyv(tyv,error,region)
+      | MarkTyv(tyv,region) => elabTyv(tyv,error,region)  (* ignore MarkTy *)
 
 fun elabTyvList (tyvars,error,region) =
   let val tvs = map (fn tyv => elabTyv(tyv,error,region)) tyvars
@@ -67,10 +67,11 @@ fun elabType(ast:Ast.ty,env:SE.staticEnv,error,region:region)
 	   let val (lts1,lvt1) = elabTypeList(ts,env,error,region)
 	    in (BT.tupleTy lts1,lvt1)
 	   end
-       | MarkTy (ty,region) =>
-	   let val (tyc,lvt) = elabType(ty,env,error,region)
-	   in (MARKty(tyc,region),lvt)
-	   end
+       | MarkTy (ty,region) => elabType(ty,env,error,region)  (* ignore MarkTy *)
+	 (*  let val (tyc,lvt) = elabType(ty,env,error,region)
+	      in (MARKty(tyc,region),lvt)
+	     end
+          *)
 
 and elabTLabel(labs,env,error,region:region) =
     foldr 

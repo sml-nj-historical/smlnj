@@ -114,12 +114,13 @@ fun checkFlex (): unit =
        else app check1 (!flexTyVars)
     end
 			
-
+(* debugging diagnostic
 fun findRegion ty =
-    case ty of
-        MARKty (t as MARKty(_, _), _) => findRegion t
-      | MARKty (_, pos) => SOME pos
-      | _ => NONE
+    case ty
+      of MARKty (t as MARKty(_, _), _) => findRegion t
+       | MARKty (_, pos) => SOME pos
+       | _ => NONE
+*)
 
 fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
     (unifyTy(ty1,ty2); true) handle Unify(mode) =>
@@ -131,10 +132,6 @@ fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
 	      val spaces = "                                   "
 	      val pad1= substring(spaces,0,Int.max(0,len2-len1))
 	      val pad2= substring(spaces,0,Int.max(0,len2-len1))
-              val () = case (findRegion ty1, findRegion ty2) of
-                         (SOME t, _) => PP.string ppstrm "found mark"
-                       | (_, SOME t) => PP.string ppstrm "found mark"
-                       | _ => PP.string ppstrm "no mark"
 	      val m = if m="" then name1 ^ " and " ^ name2 ^ " don't agree"
 		      else m
 	  in if name1="" then ()
