@@ -37,7 +37,7 @@ struct
     fun ty_to_ty' ty = 
 	case ty of
 	    T.IBOUND i => 
-	    Ibound {index = i, depth = 0} (* ?? *)
+	    Ibound {index = i, depth = ~1} (* ?? *)
 	  | T.VARty _ => (
 	    case TypesUtil.prune ty of
 		(*que faire dans ce cas la, lbound par ex?*)

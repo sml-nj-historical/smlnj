@@ -1069,9 +1069,8 @@ let
                 in M.STR {sign=specSig, rlzn=strEnt, access=dacc,
                           prim=dinfo}
                 end
-
               val resDec = 
-                let val body = A.LETstr(A.SEQdec absDecs, A.STRstr bindings)
+                let val body = A.LETstr(A.SEQdec absDecs, A.MARKstr (A.STRstr bindings, region))
                  in A.STRdec [A.STRB{name=strName, str=resStr, def=body}]
                 end
 

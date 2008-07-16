@@ -142,7 +142,7 @@ in
 	 | Conty _ => 
 	   ErrorMsg.impossible "Ens_var2: print_ty'.2"
 	 | Ibound {depth, index} => 
-	   print ("'" ^ str (Char.chr (Char.ord #"a" + index)))
+	   print ("'" ^ str (Char.chr (Char.ord (if depth = ~1 then #"a" else #"A") + index)))
 	 | Ubound s => print (stoS s)
 	 | Poly {body, arity} => print_ty' body
 	   

@@ -49,29 +49,21 @@ in
     val ens_var = (ref VarSet.empty);
 
     fun add_var_def var 
-		    region 
+		    (r1, _)
 		    {str = M.STR {access = parent_acc, ...}, def, name} = 
 	( case var of
 	      (VC.VALvar {path = SymPath.SPATH [S.SYMBOL (_, "it")],...}) => ()
 	    | VC.VALvar {access, typ, path = SymPath.SPATH path, ...} =>
-	      (*let
-		  val () = EP.printer (!typ)
-		  val ty' = ty_to_ty' (!typ)
-		  val s = TyToString.tyToString ty'
-		  val () = print (" : \n\t" ^ s ^ "\n\t")
-		  val ty'' = StringToTy.stringToTy s
-		  val () = EP.print_ty' ty''
-		  val s' = TyToString.tyToString ty''
-		  val () = print ("\n\t" ^ s' ^ "\n")
-	      in*)
-		  ens_var := VarSet.add(!ens_var, 
-					{access = access, 
-					 parent = parent_acc, (* temporary *)
-					 typ = ty_to_ty' (!typ),
-					 name = List.last path,
-					 def= loc_reg region, 
-					 usage=ref []})
-	      (*end*)
+		  ens_var := 
+		  VarSet.add(!ens_var, 
+			     {access = access, 
+			      parent = parent_acc,
+			      typ = ty_to_ty' (!typ),
+			      name = List.last path,
+			      def= loc_reg (r1,r1+String.size 
+						      (Symbol.name 
+							   (List.last path))), 
+			      usage=ref []})
 	    | _ => ()
 	)
       | add_var_def _ _ _ = ()
