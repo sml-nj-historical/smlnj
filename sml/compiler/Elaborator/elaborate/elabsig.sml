@@ -657,8 +657,9 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
        *)
       val vizty = (fn ty => #1(MU.relativizeType epContext ty))
       val viztc = (fn tc => #1(MU.relativizeTyc epContext tc))
+      fun get_tyc (Absyn.MARKtyc (tyc, _)) = tyc
       val ndtycs = 
-        (case dtycs
+        (case map get_tyc dtycs
           of (T.GENtyc { stamp, kind, ... } :: _) =>
 	     (case kind of
 		  T.DATATYPE{index=0,family,freetycs, stamps, root} =>
@@ -694,7 +695,7 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
                                end
 			     | _ => bug "unexpected case in newdtyc (1)")
 			| newdt _ = bug "unexpected case in newdtyc (2)"
-		  in map newdt dtycs
+		  in map newdt (map get_tyc dtycs)
 		  end
 		| _ => bug "unexpected tycs in bindNewTycs (1)")
            | _ => bug "unexpected tycs in bindNewTycs (2)")
@@ -710,7 +711,7 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
 		in (ev, arity, nwt)
 		end
 	      | newwt _ = bug "newwt"
-         in map newwt wtycs
+         in map (fn (Absyn.MARKtyc (tyc, _)) => newwt tyc) wtycs
         end
 
       fun addTycs([], env, elems) = (env, elems)
@@ -760,10 +761,12 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
 
 fun elabDATATYPEspec(db as {datatycs,withtycs}, env, elements, region) = 
     case datatycs
-      of ([spec as Db{rhs=Repl path,tyc=name,tyvars=[],lazyp=false}]) =>
+      of 
+	([spec as
+	       (MarkDb(Db{rhs=Repl path,tyc=name,tyvars=[],lazyp=false},_))])=>
 	  (* LAZY: not allowing datatype replication with lazy keyword *)
 	  elabDATArepl(name,path,env,elements,region)
-       | (Db{rhs=Constrs _,...}::_) => 
+       | (MarkDb (Db{rhs=Constrs _,...}, _)::_) => 
 	  (elabDATATYPEspec0(db,env,elements,region)
            handle TypeDups => (env,elements))
        | _ => (error region EM.COMPLAIN "ill-formed datatype spec"

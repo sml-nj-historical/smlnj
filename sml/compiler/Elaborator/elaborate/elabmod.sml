@@ -491,7 +491,9 @@ fun extractSig (env, epContext, context,
 	 in decl. We use this function to return the signature elements
          in the same order as the structure element decls. *)
       fun getDeclOrder(decl) =
-	  let fun procstrbs([]) = []
+	  let fun strip (Absyn.MARKtyc (tyc, _)) = tyc
+	      val stripl = List.map strip
+	      fun procstrbs([]) = []
 		| procstrbs((A.STRB{name,...})::rest) = name::(procstrbs rest)
 	      fun procpat(A.VARpat(V.VALvar{path,...})) = [SymPath.first path] 
 		| procpat(A.VARpat(_)) = 
@@ -545,11 +547,14 @@ fun extractSig (env, epContext, context,
 	      of A.STRdec(strbs) => procstrbs strbs
 	       | A.VALdec(vbs) => procvbs vbs
 	       | A.VALRECdec(rvbs) => procrvbs rvbs
-	       | A.TYPEdec(tycs) => proctycs tycs
+	       | A.TYPEdec(tycs) => proctycs (stripl tycs)
 	       | A.DATATYPEdec{datatycs,withtycs} => 
-		   (rev (proctycs withtycs))@(rev (procdatatycs datatycs))
+		   rev (proctycs (stripl withtycs)) @
+		   rev (procdatatycs (stripl datatycs))
 	       | A.ABSTYPEdec{abstycs,withtycs,body} =>
-		   (proctycs abstycs)@(proctycs withtycs)@(getDeclOrder body)
+		   (proctycs (stripl abstycs))@
+		   (proctycs (stripl withtycs))@
+		   (getDeclOrder body)
 	       | A.EXCEPTIONdec(ebs) => procebs ebs
 	       | A.ABSdec(strbs) => procstrbs strbs
 	       | A.FCTdec(fctbs) => procfctbs fctbs
@@ -1391,7 +1396,10 @@ and elabDecl0
        compInfo as {mkStamp,mkLvar=mkv,error,anyErrors,transform,...}
          : EU.compInfo)
       : A.dec * entityDec * SE.staticEnv * entityEnv =
-
+let
+    fun strip (Absyn.MARKtyc (tyc, _)) = tyc
+    val stripl = List.map strip
+in
 (case decl
   of StrDec strbs =>
      (elabStrbs(strbs, true, env0, entEnv0, context, tdepth, epContext, 
@@ -1620,17 +1628,17 @@ and elabDecl0
 
    | TypeDec tbs =>
        (*** ASSERT: the tycons declared are all DEFtycs ***)
-       (let val (tbs, regions) = ListPair.unzip (List.mapPartial (fn x => case x of MarkTb y => SOME y | _ => NONE) tbs) (*mapPartial is just to avoid warning, there should be MarkTb everywhere*)
+       (let (*val (tbs, regions) = ListPair.unzip (List.mapPartial (fn x => case x of MarkTb y => SOME y | _ => NONE) tbs) (*mapPartial is just to avoid warning, there should be MarkTb everywhere*)*)
 	    val (dec, env) =
                 ET.elabTYPEdec(tbs,env0,rpath,region,compInfo)
             val tycs = case dec
 			 of A.TYPEdec z => z
 			  | _ => bug "elabDecl0 for TypeDec"
-            val (entEnv, entDec) = 
-              bindNewTycs(context, epContext, mkStamp, [], tycs, rpath,
+	    val (entEnv, entDec) = 
+              bindNewTycs(context, epContext, mkStamp, [], stripl tycs, rpath,
 			  error region)
         in 
-	    List.app (fn (x,y) => Ens_var.add_type_def x y) (ListPair.zip (tycs, regions));
+	    (*List.app (fn (x,y) => Ens_var.add_type_def x y) (ListPair.zip (tycs, regions));*)
 	    (dec, entDec, env, entEnv)
         end
         handle EE.Unbound =>
@@ -1639,7 +1647,7 @@ and elabDecl0
 
    | DatatypeDec (x as {datatycs,withtycs}) =>
       (case datatycs
-	 of (Db{rhs=(Constrs _), ...}) :: _ =>
+	 of (MarkDb (Db{rhs=(Constrs _), ...},_) :: _) =>
 	      let val isFree = 
                     (case context 
                       of EU.INFCT _ =>
@@ -1654,15 +1662,16 @@ and elabDecl0
                                        region, compInfo)
 		  val (entEnv, entDec) = 
 		    bindNewTycs(context, epContext, mkStamp, 
-                                datatycs, withtycs, rpath, error region)
+                                stripl datatycs, stripl withtycs, rpath, error region)
 		  val resDec = 
                     A.DATATYPEdec{datatycs=datatycs,withtycs=withtycs}
 
-		  val _ = List.app (fn x => Ens_var.add_type_def x region) datatycs
+		  (*val _ = List.app (fn x => Ens_var.add_type_def x region) datatycs*)
 	       in (resDec, entDec, env, entEnv)
 	      end
 
-	  | (Db{tyc=name,rhs=Repl syms,tyvars=nil,lazyp=false}::nil) => let
+	  | (MarkDb (Db{tyc=name,rhs=Repl syms,tyvars=nil,lazyp=false}, regionID)::nil) 
+	    => let
 		fun no_datatype () =
 		    (error region EM.COMPLAIN
 			   "rhs of datatype replication not a datatype"
@@ -1710,8 +1719,9 @@ and elabDecl0
 						     eq=eq, path=InvPath.extend(InvPath.empty,name),
 						     stub=stub, kind=dt}
 				 val resDec =
-				     A.DATATYPEdec{datatycs=[tyc' (* tyc *)],
-						   withtycs=[]}
+				     A.DATATYPEdec{
+				     datatycs=[Absyn.MARKtyc (tyc', regionID)],
+				     withtycs=[]}
 			     in
 				 EPC.bindTycPath(epContext, tyc_id, ev);
 				 (resDec, ee_dec, env, ee_env)
@@ -1752,8 +1762,8 @@ and elabDecl0
             val decl' = Typecheck.decType(SE.atop(env',env0), transform decl,
                                           tdepth, top, error, chkError, region)
             val (entEnv, entDec) = 
-              bindNewTycs(context, epContext, mkStamp, abstycs, withtycs,
-			  rpath, error region)
+              bindNewTycs(context, epContext, mkStamp, stripl abstycs, 
+			  stripl withtycs, rpath, error region)
          in (decl', entDec, env', entEnv)
         end
         handle EE.Unbound =>
@@ -1789,8 +1799,9 @@ and elabDecl0
             val _ = debugmsg ">>elabDecl0.dec[after decType]"
          in (decl'', M.EMPTYdec, env', EE.empty)
         end handle EE.Unbound =>
-	      (debugmsg("$elabDecl0: CoreDec"); raise EE.Unbound)))
-
+	      (debugmsg("$elabDecl0: CoreDec"); raise EE.Unbound))
+)
+end
 
 (*** the top-level wrapper of the elabDecl0 function ***)
 fun elabDecl {ast, statenv, entEnv, context, level, tdepth,

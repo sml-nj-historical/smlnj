@@ -49,6 +49,9 @@ fun pplist_nl ppstrm pr =
 fun C f x y = f y x;
 
 fun xtract (v, pos) = Unsafe.Object.nth (v, pos)
+fun strip (Absyn.MARKtyc (t, _)) = t
+val stripl = List.map strip
+
 
 exception OVERLOAD
 
@@ -338,13 +341,13 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 	    case (resetPPType(); dec)
 	      of VALdec vbs => app ppVb vbs
 	       | VALRECdec rvbs => app ppRvb rvbs
-	       | TYPEdec tbs => app ppTb tbs
+	       | TYPEdec tbs => app (ppTb o strip) tbs
 	       | DATATYPEdec{datatycs,withtycs} =>
-		   (app ppDataTyc datatycs; 
-		    app ppTb withtycs)
+		   (app (ppDataTyc o strip) datatycs; 
+		    app (ppTb o strip) withtycs)
 	       | ABSTYPEdec{abstycs,withtycs,body} =>
-		   (app ppAbsTyc abstycs;
-		    app ppTb withtycs;
+		   (app (ppAbsTyc o strip) abstycs;
+		    app (ppTb o strip) withtycs;
 		    ppDec0 body)
 	       | EXCEPTIONdec ebs => app ppEb ebs
 	       | STRdec strbs => app (ppStrb false) strbs

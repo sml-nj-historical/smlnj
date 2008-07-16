@@ -4,8 +4,10 @@ struct
 	open Absyn
 	structure EV = Ens_var2
     in
-    
-        val ref_str = (ref [] : {def:strexp, name:Symbol.symbol, str:Modules.Structure} list ref)
+        val ref_str = 
+	    (ref [] : {def:strexp, 
+		       name:Symbol.symbol, 
+		       str:Modules.Structure} list ref)
 	fun push str = ref_str := str :: !ref_str
 	fun pop () = 
 	    case !ref_str of
@@ -21,6 +23,7 @@ struct
 	      | [_] => NONE
 	      | _::{str=Modules.STR{access, ...}, ...}::_ => SOME access
 	      | _ => ErrorMsg.impossible "Ens_absyn.str_par2"
+
 
         fun scan_exp exp = 
 	    case exp of 
@@ -88,14 +91,23 @@ struct
 	      | VECTORpat (patl, _) => List.app scan_pat patl
 	      | NOpat => ()
 
+	and scan_markedtycon (MARKtyc (tycon, region)) = 
+	    Ens_var2.add_ty_def tycon region
+
 	and scan_dec dec =
 	    case dec of
 		VALdec vbl => List.app scan_vb vbl
 	      | VALRECdec rvbl => List.app scan_rvb rvbl
-	      | TYPEdec tl => 
-		List.app (fn x => Ens_var2.add_ty_def x (~1, ~1)) tl
-	      | DATATYPEdec _ => ()
-	      | ABSTYPEdec {body, ...} => scan_dec body
+	      | TYPEdec tl => List.app scan_markedtycon tl
+	      | DATATYPEdec {datatycs, withtycs} => 
+		( List.app scan_markedtycon withtycs;
+		  List.app scan_markedtycon datatycs
+		)
+	      | ABSTYPEdec {body, abstycs, withtycs} => 
+		( List.app scan_markedtycon withtycs;
+		  List.app scan_markedtycon abstycs;
+		  scan_dec body
+		)
 	      | EXCEPTIONdec ebl => List.app scan_eb ebl
 	      | STRdec strbl => List.app scan_strb strbl
 	      | ABSdec strbl => List.app scan_strb strbl

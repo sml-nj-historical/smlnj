@@ -66,12 +66,15 @@ and pat
   (*| MARKpat of pat * region*)
   | NOpat
 
+and markedTycon = MARKtyc of Types.tycon * region
+
 and dec	
   = VALdec of vb list                  (* always a single element list *)
   | VALRECdec of rvb list
-  | TYPEdec of tycon list
-  | DATATYPEdec of {datatycs: tycon list, withtycs: tycon list}
-  | ABSTYPEdec of {abstycs: tycon list, withtycs: tycon list, body: dec}
+  | TYPEdec of markedTycon list
+  | DATATYPEdec of {datatycs: markedTycon list, withtycs: markedTycon list}
+  | ABSTYPEdec of 
+    {abstycs: markedTycon list, withtycs: markedTycon list, body: dec}
   | EXCEPTIONdec of eb list
   | STRdec of strb list
   | ABSdec of strb list      (* should be merged with STRdec in the future *)

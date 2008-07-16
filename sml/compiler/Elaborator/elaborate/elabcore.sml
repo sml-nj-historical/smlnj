@@ -143,7 +143,12 @@ fun elabABSTYPEdec({abstycs,withtycs,body},env,context,isFree,
       (* datatycs will be changed to abstycs during type checking
 	 by changing the eqprop field *)
       fun bind (x, e) = SE.bind(TU.tycName x, B.TYCbind x, e)
-      val envt = foldl bind (foldl bind SE.empty datatycs) withtycs 
+      val stripl = List.map (fn (Absyn.MARKtyc (tyc, _)) => tyc)
+      val envt = 
+	  foldl 
+	      bind 
+	      (foldl bind SE.empty (stripl datatycs))
+	      (stripl withtycs)
 
    in (ABSTYPEdec{abstycs=datatycs,withtycs=withtycs,body=body},
        SE.atop(env2,envt))
@@ -678,48 +683,49 @@ let
 	     end
 	   | DatatypeDec(x as {datatycs,withtycs}) => 
 	     (case datatycs
-		of (Db{rhs=(Constrs _), ...}) :: _ =>
+		of (MarkDb (Db{rhs=(Constrs _), ...}, _) :: _) =>
 		     let val (dtycs, wtycs, _, env') =
 			 ET.elabDATATYPEdec(x,env,[],EE.empty,isFree,
                                             rpath,region,compInfo)
 		      in noTyvars(DATATYPEdec{datatycs=dtycs,withtycs=wtycs}, env')
 		     end
-	         | (Db{tyc=name,rhs=Repl syms,tyvars=nil,lazyp=false}::nil) =>
-		     (* LAZY: not allowing "datatype lazy t = datatype t'" *)
-		     (* BUG: what to do if rhs is lazy "datatype"? (DBM) *)
-		     (case withtycs
-			of nil =>
-			    (case LU.lookTyc(env, SP.SPATH syms, error region)
-			      of (DEFtyc _) =>
-			        (* [GK 5/7/07] Shouldn't we flag an error
-				   if this tyc is a DEFtyc? See bug 1578.1 
-				   (an open bug) *)
-				    ((error region EM.COMPLAIN
-					   "rhs of datatype replication not a \
-					   \datatype"
-					   EM.nullErrorBody);
-				     noTyvars(SEQdec[], SE.empty))
-			       | tyc =>
-				 let 
-				     val dcons = TU.extractDcons tyc
-				     val envDcons =
-					 foldl (fn (d as T.DATACON{name,...},e)=>
-						   SE.bind(name,B.CONbind d, e))
-					       SE.empty 
-					       dcons
-				     val env = SE.bind(name,B.TYCbind tyc,envDcons)
-				 in noTyvars(DATATYPEdec{datatycs=[tyc], 
-							 withtycs=[]},
-					     env)
-				 end)
-			 | _ => (error region EM.COMPLAIN
-				  "withtype not allowed in datatype replication"
-				  EM.nullErrorBody;
-				 noTyvars(SEQdec[],SE.empty)))
-		  | _ => (error region EM.COMPLAIN
-			   "argument type variables in datatype replication"
-			   EM.nullErrorBody;
-			  noTyvars(SEQdec[],SE.empty)))
+	         | (MarkDb (Db{tyc=name,rhs=Repl syms,tyvars=nil,lazyp=false}, regionID)
+		    ::nil) =>
+		   (* LAZY: not allowing "datatype lazy t = datatype t'" *)
+		   (* BUG: what to do if rhs is lazy "datatype"? (DBM) *)
+		   (case withtycs
+		     of nil =>
+			(case LU.lookTyc(env, SP.SPATH syms, error region)
+			  of (DEFtyc _) =>
+			     (* [GK 5/7/07] Shouldn't we flag an error
+			      * if this tyc is a DEFtyc? See bug 1578.1 
+			      * (an open bug) *)
+			     ((error region EM.COMPLAIN
+				     "rhs of datatype replication not a \
+				     \datatype"
+				     EM.nullErrorBody);
+			      noTyvars(SEQdec[], SE.empty))
+			   | tyc =>
+			     let 
+				 val dcons = TU.extractDcons tyc
+				 val envDcons =
+				     foldl (fn (d as T.DATACON{name,...},e)=>
+					       SE.bind(name,B.CONbind d, e))
+					   SE.empty 
+					   dcons
+				 val env = SE.bind(name,B.TYCbind tyc,envDcons)
+			     in noTyvars(DATATYPEdec{datatycs=[MARKtyc (tyc, regionID)],
+						     withtycs=[]},
+					 env)
+			     end)
+		      | _ => (error region EM.COMPLAIN
+				    "withtype not allowed in datatype replication"
+				    EM.nullErrorBody;
+			      noTyvars(SEQdec[],SE.empty)))
+		 | _ => (error region EM.COMPLAIN
+			       "argument type variables in datatype replication"
+			       EM.nullErrorBody;
+			 noTyvars(SEQdec[],SE.empty)))
 	   | AbstypeDec x => 
 	      let val (dec', env') =
   		    elabABSTYPEdec(x,env,EU.TOP,isFree,

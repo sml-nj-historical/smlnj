@@ -535,7 +535,8 @@ and ppRVB context ppstrm (RVB{var, exp, ...},d) =
     else PP.string ppstrm "<rec binding>"
 
 and ppDec (context as (env,source_opt)) ppstrm =
-  let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
+  let fun get_tyc (Absyn.MARKtyc (tyc, _)) = tyc
+      val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
 
       fun ppDec'(_,0) = pps "<dec>"
         | ppDec'(VALdec vbs,d) =
@@ -560,7 +561,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
 		| f _ _ = bug "ppDec'(TYPEdec)"
 	  in
 	      openHVBox 0;
-	      ppvlist ppstrm ("type "," and ", f, tycs);
+	      ppvlist ppstrm ("type "," and ", f, List.map get_tyc tycs);
 	      closeBox ()
 	  end
         | ppDec'(DATATYPEdec{datatycs,withtycs},d) = let
@@ -594,9 +595,13 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	  in
 	      (* could call PPDec.ppDec here *)
 	      openHVBox 0;
-	      ppvlist ppstrm ("datatype ","and ", ppDATA, datatycs);
+	      ppvlist 
+		  ppstrm 
+		  ("datatype ","and ", ppDATA, List.map get_tyc datatycs);
 	      newline ppstrm;
-	      ppvlist ppstrm ("withtype ","and ", ppWITH, withtycs);
+	      ppvlist 
+		  ppstrm 
+		  ("withtype ","and ", ppWITH, List.map get_tyc withtycs);
 	      closeBox ()
 	  end
         | ppDec'(ABSTYPEdec _,d) = pps "abstype"

@@ -22,7 +22,7 @@ sig
         * ExpandTycon.sigContext * EntityEnv.entityEnv 
         * (Types.tycon -> bool) * InvPath.path 
         * SourceMap.region * ElabUtil.compInfo
-        -> Types.tycon list * Types.tycon list * VarCon.datacon list 
+        -> Absyn.markedTycon list * Absyn.markedTycon list * VarCon.datacon list 
            * StaticEnv.staticEnv
 
   val debugging : bool ref

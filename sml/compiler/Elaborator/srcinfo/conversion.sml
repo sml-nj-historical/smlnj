@@ -90,7 +90,7 @@ struct
 
     fun sig_to_elem (Modules.SIG {name, stamp, inferred, elements, ...}) = 
 	let
-	    fun conv_spec (M.VALspec {spec = ty, ...}) = 
+	    (*fun conv_spec (M.VALspec {spec = ty, ...}) = 
 		Val (ty_to_ty' ty)
 	      (*| conv_spec 
 		    (M.STRspec {def = SOME (M.CONSTstrDef str, _), ...}) =
@@ -105,7 +105,21 @@ struct
 	      | conv_spec _ =
 		bug "non implemente"
 
-	    fun conv (x, y) = (x, conv_spec y)
+	    fun conv (x, y) = (x, conv_spec y)*)
+
+	    fun conv_spec (M.VALspec {spec = ty, ...}) = 
+		SOME (Val (ty_to_ty' ty))
+	      | conv_spec (M.STRspec {def = NONE, sign = (sign as M.SIG {name = NONE, ...}), ...}) = 
+		SOME (InlineStr (#elements (sig_to_elem sign)))
+	      | conv_spec (M.STRspec {def = NONE, sign = (sign as M.SIG {name = SOME name, stamp, ...}), ...}) = 
+		SOME (NamedStr (name, stamp))
+	      | conv_spec _ =
+		NONE
+
+	    fun conv (x, y) = 
+		case conv_spec y of
+		    NONE => NONE
+		  | SOME y' => SOME (x, y')
 	in
 	    { name = case name of 
 			 SOME s => s 
@@ -113,7 +127,7 @@ struct
 	      stamp = stamp,
 	      inferred = inferred,
 	      def = ("", ~1, ~1),
-	      elements = List.map conv elements,
+	      elements = List.mapPartial conv elements,
 	      alias = ref [],
 	      usage = ref []
 	    }

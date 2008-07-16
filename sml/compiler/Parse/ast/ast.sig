@@ -172,7 +172,7 @@ sig
 
   (* TYPE BINDING *)
   and tb = Tb of {tyc : symbol, def : ty, tyvars : tyvar list}
-	 | MarkTb of tb * region
+	 | MarkTb of tb * region * region
 
   (* DATATYPE BINDING *)
   and db = Db of {tyc : symbol, tyvars : tyvar list, rhs : dbrhs, lazyp: bool}

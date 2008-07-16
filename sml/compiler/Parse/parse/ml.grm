@@ -447,9 +447,9 @@ clause	: apats constraint EQUALOP exp
 			exp=markexp(exp,expleft,expright)})
 
 
-tb	: tyvars ID EQUALOP ty	([ MarkTb ( MarkTb(
+tb	: tyvars ID EQUALOP ty	([ MarkTb(
 				   Tb{tyvars=tyvars,tyc=tycSymbol ID,def=ty},
-				   (tyleft,tyright)) , (IDleft, IDright)) ])
+				   (tyleft,tyright),(IDleft, IDright)) ])
 	| tb AND tb		(tb1 @ tb2)
 
 tyvars	: TYVAR			([MarkTyv(Tyv(tyvSymbol TYVAR),
@@ -467,13 +467,15 @@ tyvar_pc: TYVAR	([MarkTyv(Tyv(tyvSymbol TYVAR), (TYVARleft,TYVARright))])
 		 :: tyvar_pc)
 
 db	: db AND db			(db1 @ db2)
-	| tyvars ident EQUALOP dbrhs	([Db{tyc=tycSymbol ident,
-					     tyvars=tyvars,
-					     rhs=dbrhs,lazyp=false}])
+	| tyvars ident EQUALOP dbrhs	([MarkDb (Db{tyc=tycSymbol ident,
+						     tyvars=tyvars,
+						     rhs=dbrhs,lazyp=false},
+						  (identleft, identright))])
         | LAZY tyvars ident EQUALOP dbrhs   
-	                                ([Db{tyc=tycSymbol ident,
-                                             tyvars=tyvars,
-                                             rhs=dbrhs,lazyp=true}])
+	                                ([MarkDb (Db{tyc=tycSymbol ident,
+						     tyvars=tyvars,
+						     rhs=dbrhs,lazyp=true},
+						  (identleft, identright))])
 
 dbrhs   : constrs			(Constrs constrs)
         | DATATYPE tycon		(Repl tycon)

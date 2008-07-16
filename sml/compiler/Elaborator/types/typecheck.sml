@@ -876,14 +876,16 @@ and decType0(decl,occ,tdepth,region) : dec =
        | SEQdec(decls) => 
            SEQdec(map (fn decl => decType0(decl,occ,tdepth,region)) decls)
        | ABSTYPEdec{abstycs,withtycs,body} => 
-	   let fun makeAbstract(GENtyc { eq, ... }) = eq := ABS
+	   let fun get_tyc (Absyn.MARKtyc (tyc, _)) = tyc
+	       fun makeAbstract(GENtyc { eq, ... }) = eq := ABS
 		 | makeAbstract _ = bug "makeAbstract"
 	       fun redefineEq(DATATYPEdec{datatycs,...}) =
 		   let fun setDATA (GENtyc { eq, ... }) = eq := DATA
 			 | setDATA _ = ()
+		       val datatycs' = map get_tyc datatycs
 		   in
-		       app setDATA datatycs;
-		       EqTypes.defineEqProps(datatycs,nil,EntityEnv.empty)
+		       app setDATA datatycs';
+		       EqTypes.defineEqProps(datatycs',nil,EntityEnv.empty)
 		   end
 	         | redefineEq(SEQdec decs) = app redefineEq decs
 	         | redefineEq(LOCALdec(din,dout)) =
@@ -891,8 +893,9 @@ and decType0(decl,occ,tdepth,region) : dec =
 	         | redefineEq(MARKdec(dec,_)) = redefineEq dec
 	         | redefineEq _ = ()
 	       val body'= decType0(body,occ,tdepth,region)
+	       val abstycs' = map get_tyc abstycs
 	       val _ = debugmsg ">>decType0: ABSTYPEdec"
-	    in app makeAbstract abstycs;
+	    in app makeAbstract abstycs';
 	       redefineEq body';
 	       ABSTYPEdec{abstycs=abstycs,withtycs=withtycs,body=body'}
 	   end

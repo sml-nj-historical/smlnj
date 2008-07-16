@@ -158,7 +158,11 @@ struct
 	    val () = 
 		if !Control.Elab.infodebugging then 
 		    ( Ens_print2.maj statenv;
+		      (* pb avec le toplevel interactif avec clear *)
+		      Ens_var2.clear(); 
+		      Ens_var2.set_source (#sourceName cinfo);
 		      Ens_absyn.scan_dec absyn;
+		      Ens_var2.save (#sourceName cinfo);
 		      Ens_var2.test ()
 		    ) 
 		else 

@@ -173,32 +173,32 @@ fun elabDB((tyc,args,name,def,region,lazyp),env,rpath:IP.path,error) =
 
 fun elabTBlist(tbl:Ast.tb list,notwith:bool,env0,rpath,region,
 	       {mkStamp,error,...}: EU.compInfo)
-      : T.tycon list * S.symbol list * SE.staticEnv =
-    let fun elabTB(tb: Ast.tb, env, region): (T.tycon * symbol) =
+      : Absyn.markedTycon list * S.symbol list * SE.staticEnv =
+    let fun elabTB(tb: Ast.tb, env): (T.tycon * Ast.region * symbol) =
 	    case tb
-	      of Tb{tyc=name,def,tyvars} =>
-		   let val tvs = elabTyvList(tyvars,error,region)
-		       val (ty,tv) = elabType(def,env,error,region)
-		       val arity = length tvs
-		       val _ = EU.checkBoundTyvars(tv,tvs,error region)
-		       val _ = TU.bindTyvars tvs
-		       val _ = TU.compressTy ty
-		       val tycon = 
-			   DEFtyc{stamp=mkStamp(),
-				  path=InvPath.extend(rpath,name),
-				  strict=EU.calc_strictness(arity,ty),
-				  tyfun=TYFUN{arity=arity, body=ty}}
-		    in (tycon,name)
-		   end
-	      | MarkTb(tb',region') => elabTB(tb',env,region')
+	      of MarkTb(Tb{tyc=name,def,tyvars},regionRHS,regionID) =>
+		 let val tvs = elabTyvList(tyvars,error,regionID)
+		     val (ty,tv) = elabType(def,env,error,regionRHS)
+		     val arity = length tvs
+		     val _ = EU.checkBoundTyvars(tv,tvs,error regionRHS)
+		     val _ = TU.bindTyvars tvs
+		     val _ = TU.compressTy ty
+		     val tycon = 
+			 DEFtyc{stamp=mkStamp(),
+				path=InvPath.extend(rpath,name),
+				strict=EU.calc_strictness(arity,ty),
+				tyfun=TYFUN{arity=arity, body=ty}}
+		 in (tycon,regionID,name)
+		 end
+	      | _ => bug "elabTB" 
 	fun loop(nil,tycons,names,env) = (rev tycons,rev names,env)
 	  | loop(tb::rest,tycons,names,env) =
 	      let val env' = if notwith then env0 else SE.atop(env,env0)
-		  val (tycon,name) = elabTB(tb,env',region)
-	       in loop(rest,tycon::tycons,name::names,
+		  val (tycon,region, name) = elabTB(tb,env')
+	       in loop(rest,MARKtyc(tycon, region)::tycons,name::names,
 		       SE.bind(name,B.TYCbind tycon,env))
 	      end
-     in loop(tbl,nil,nil,SE.empty)
+    in loop(tbl,nil,nil,SE.empty)
     end
 
 fun elabTYPEdec(tbl: Ast.tb list,env,rpath,region,
@@ -218,7 +218,10 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
                      compInfo as {mkStamp,error,...}: EU.compInfo) =
     let (* predefine datatypes *)
 	val _ = debugmsg ">>elabDATATYPEdec"
-	fun preprocess region (Db{tyc=name,rhs=Constrs def,tyvars,lazyp}) = 
+	fun preprocess 
+		region 
+		(MarkDb (Db{tyc=name,rhs=Constrs def,tyvars,lazyp}, regionID)) 
+	    =
 	    let val tvs = elabTyvList(tyvars,error,region)
 		val strictName =
 		    if lazyp
@@ -232,26 +235,30 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 				 stub = NONE}
 		val binddef =
 		    if lazyp then
-			   DEFtyc{stamp=mkStamp(),
-				  tyfun=TYFUN{arity=length tyvars,
-					      body=CONty(BT.suspTycon,
-						    [CONty(tyc,map VARty tvs)])},
-			          strict=map (fn _ => true) tyvars,
-				  path=IP.extend(rpath,name)}
-			   
+			DEFtyc{stamp=mkStamp(),
+			       tyfun=TYFUN{arity=length tyvars,
+					   body=CONty(BT.suspTycon,
+						      [CONty(tyc,
+							     map VARty tvs)])},
+			       strict=map (fn _ => true) tyvars,
+			       path=IP.extend(rpath,name)}
+			
 		    else tyc
-	     in SOME{tvs=tvs, name=name,def=def,region=region,
+	     in SOME({tvs=tvs, name=name,def=def,region=region,
 		     tyc=tyc, binddef=binddef,lazyp=lazyp,
-		     strictName=strictName}
+		     strictName=strictName}, regionID)
 	    end
-	  | preprocess region (Db{tyc=name,rhs=Repl _,...}) = 
-	     (error region EM.COMPLAIN
-	       ("datatype replication mixed with regular datatypes:" ^ S.name name)
-	       EM.nullErrorBody;
-	      NONE)
-	  | preprocess _ (MarkDb(db',region')) = preprocess region' db'
+	  | preprocess region (MarkDb(Db{tyc=name,rhs=Repl _,...}, regionID)) =
+	    (error regionID EM.COMPLAIN
+		   ("datatype replication mixed with regular datatypes:" ^ 
+		    S.name name)
+		   EM.nullErrorBody;
+	     NONE)
+	  | preprocess _ (Db _|MarkDb (MarkDb _, _)) = 
+	    bug "preprocess"
 
-        val dbs = List.mapPartial (preprocess region) datatycs
+        val (dbs, markdbs) = 
+	    ListPair.unzip (List.mapPartial (preprocess region) datatycs)
         val _ = debugmsg "--elabDATATYPEdec: preprocessing done"
 
 
@@ -274,7 +281,9 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
         val _ = debugmsg "--elabDATATYPEdec: uniqueness checked"
 
         (* add lazy auxiliary withtycs if any *)
-        val withtycs = map #binddef (List.filter #lazyp dbs) @ withtycs
+        val withtycs = map (fn x => Absyn.MARKtyc (#binddef x, (~1, ~1))) 
+			   (List.filter #lazyp dbs) @ 
+		       withtycs
 
 	(* staticEnv containing only new datatycs and withtycs *)
 	val envTycs = SE.atop(envWTycs, envDTycs)
@@ -399,6 +408,18 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
         val _ = debugmsg "--elabDATATYPEdec: finalDtycs defined"
 
         val _ = EqTypes.defineEqProps(finalDtycs,sigContext,sigEntEnv)
+	val finalDtycs = 
+	    let
+		val markdbs = 
+		    if List.length finalDtycs = List.length markdbs then
+			markdbs
+		    else (
+			print "Wrong length in Elabtype\n";
+			List.tabulate (List.length finalDtycs, fn x => (~1,~1))
+			)
+	    in
+		List.map Absyn.MARKtyc (ListPair.zip (finalDtycs,markdbs))
+	    end
         val _ = debugmsg "--elabDATATYPEdec: defineEqProps done"
 
         fun applyMap m =
@@ -420,8 +441,9 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
              in f
             end
 
-        fun augTycmap (tyc as DEFtyc{tyfun=TYFUN{arity,body},stamp,
-                                     strict,path}, tycmap) =
+        fun augTycmap (tyc as 
+		 DEFtyc{tyfun=TYFUN{arity,body},stamp,strict,path}, 
+		 tycmap) =
             {old=tyc,name=IP.last path,
 	     new=DEFtyc{tyfun=TYFUN{arity=arity,body=applyMap tycmap body},
 			strict=strict,stamp=stamp,path=path}}
@@ -429,14 +451,17 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 	  | augTycmap _ = bug "augTycMap"
 
         (* use foldl to process the withtycs in their original order *)
-        val alltycmap = foldl augTycmap dtycmap withtycs
+	val (tycs, marktbs) = 
+	    ListPair.unzip (List.map (fn (Absyn.MARKtyc a)=>a) withtycs)
+        val alltycmap = foldl augTycmap dtycmap tycs
         val _ = debugmsg "--elabDATATYPEdec: alltycmap defined"
 
         fun header(_, 0, z) = z
           | header(a::r, n, z) = header(r, n-1, a::z)
           | header([], _, _) = bug "header2 in elabDATATYPEdec"
 
-	val finalWithtycs = map #new (header(alltycmap,length withtycs,[]))
+	val finalWithtycs = map #new (header(alltycmap,length tycs,[]))
+	val finalWithtycs = List.map Absyn.MARKtyc (ListPair.zip(tycs,marktbs))
         val _ = debugmsg "--elabDATATYPEdec: finalWithtycs defined"
 
         fun fixDcon (DATACON{name,const,rep,sign,typ,lazyp}) = 

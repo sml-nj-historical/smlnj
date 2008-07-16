@@ -1102,7 +1102,7 @@ and ppTb (context as (_,source_opt)) ppstrm  =
 	  	  break ppstrm {nsp=1,offset=0}; ppTy context ppstrm (def, d);
 		  pp_tyvar_list (tyvars,d);
 	  	 closeBox ppstrm)
-	    | ppTb'(MarkTb (t,r),d) = ppTb context ppstrm (t,d)
+	    | ppTb'(MarkTb (t,_,_),d) = ppTb context ppstrm (t,d)
     in
 	ppTb'
     end

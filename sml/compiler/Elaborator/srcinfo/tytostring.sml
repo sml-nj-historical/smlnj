@@ -166,8 +166,32 @@ fun sigElemToString {name, stamp, inferred, def, elements, alias, usage} =
 fun sigToString l = 
     listToString sigElemToString l
 
-fun allToStrings (var, str, sign) = 
-    varToString var @ strToString str @ sigToString sign
+fun typeElemToString {tycon, stamp, name, def, usage} = 
+    tyconToStrings tycon @ 
+    stampToString stamp @
+    Symbol.name name :: 
+    locationToString def @
+    listToString locationToString (!usage)
+
+fun typeToString l = 
+    listToString typeElemToString l
+
+fun consElemToString {name, dataty, def, ty, usage} = 
+    Symbol.name name ::
+    stampToString dataty @
+    locationToString def @
+    tyToStrings ty @
+    listToString (fn (x, y) => locationToString x @ tyToStrings y) (!usage)
+
+fun consToString l = 
+    listToString consElemToString l
+
+fun allToStrings (var, ty, cons, str, sign) = 
+    varToString var @ 
+    typeToString ty @ 
+    consToString cons @
+    strToString str @ 
+    sigToString sign
 
 fun allToString t = 
     flatten (allToStrings t)

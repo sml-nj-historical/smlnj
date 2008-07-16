@@ -94,17 +94,17 @@ in
    fun print_tycon' tyc =  
        case tyc of  
 	   Datatype (b, sl) => 
-	   ( print ("datatype " ^ Bool.toString b ^ " ( ");
-	     print (String.concatWith " " (List.map Symbol.symbolToString sl));
-	     print " )"
+	   ( print ("datatype " ^ (if b then "(eq)" else "") ^ " (");
+	     print (String.concatWith " " (List.map Symbol.name sl));
+	     print ")"
 	   )
 	 | Abstract sl => 
-	   ( print ("abstract ( ");
-	     print (String.concatWith " " (List.map Symbol.symbolToString sl));
-	     print " )"
+	   ( print ("abstract (");
+	     print (String.concatWith " " (List.map Symbol.name sl));
+	     print ")"
 	   )
 	 | Deftyc => print "deftyc" 
-	 | Primtyc b => print ("primtyc "  ^ Bool.toString b)
+	 | Primtyc b => print ("primtyc "  ^ (if b then "(eq)" else ""))
 			
    fun print_ty' ty = 
        case ty of

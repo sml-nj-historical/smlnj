@@ -53,16 +53,17 @@ and pat
   | LAYEREDpat of pat * pat
   | ORpat of pat * pat
   | VECTORpat of pat list * Types.ty
-  (*| MARKpat of pat * region*)
   | NOpat
+
+and markedTycon = MARKtyc of Types.tycon * region
 
 and dec	
   = VALdec of vb list
   | VALRECdec of rvb list
-  | TYPEdec of Types.tycon list
-  | DATATYPEdec of {datatycs: Types.tycon list, withtycs: Types.tycon list}
-  | ABSTYPEdec of {abstycs: Types.tycon list, 
-                   withtycs: Types.tycon list, body: dec}
+  | TYPEdec of markedTycon list
+  | DATATYPEdec of {datatycs: markedTycon list, withtycs: markedTycon list}
+  | ABSTYPEdec of {abstycs: markedTycon list, 
+                   withtycs: markedTycon list, body: dec}
   | EXCEPTIONdec of eb list
   | STRdec of strb list
   | ABSdec of strb list

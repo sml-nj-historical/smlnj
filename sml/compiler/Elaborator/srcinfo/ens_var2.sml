@@ -10,9 +10,12 @@ local
     open Ens_types2
     open Conversion
 in
+    val source = ref ""
+    fun set_source s = source := s
+
     fun bug msg = ErrorMsg.impossible("Bugs in Ens_var2: "^msg);
 
-    fun loc_reg (r1, r2) = (("", r1, r2):location)
+    fun loc_reg (r1, r2) = ((!source, r1, r2):location)
 
     fun compare_acc (A.LVAR i, A.LVAR j) = Int.compare (i,j)
       | compare_acc (A.LVAR _, _) = LESS
@@ -166,7 +169,14 @@ in
 
     fun add_ty_use ty region = 
 	case ty_to_ty' ty of
-	    Conty (General (_, p), _) => print (EP.rptoS p ^ " used\n")
+	    Conty (General (st, p), _) => (*print (EP.rptoS p ^ " used\n")*)
+	    ( case TySet.find 
+		       (fn {stamp, ...} => Stamps.eq (stamp,st)) 
+		       (!ens_ty) 
+	       of NONE => () (*probablement un truc primitif, mais peut etre un
+			      * type extern*)
+		| SOME {usage, ...} => usage := loc_reg region :: (!usage)
+	    )
 	  | _ => ()
 
     fun print_ty () = 
@@ -343,23 +353,55 @@ in
     )
 
 
+    fun clear () = (
+	ens_var := VarSet.empty;
+	ens_ty := TySet.empty;
+	ens_cons := ConsSet.empty;
+	ens_str := StrSet.empty;
+	ens_sig := SigSet.empty
+    )
+
+    fun save sourcefile = 
+	case sourcefile of
+	     ("<instream>"|"stdIn") => ()
+	   | _ =>
+	     let val new_source = sourcefile ^ ".si"
+		 val os = TextIO.openOut new_source
+		 val s = ( TyToString.allToString 
+			       ( VarSet.listItems (!ens_var),
+				 TySet.listItems (!ens_ty),
+				 ConsSet.listItems (!ens_cons),
+				 StrSet.listItems (!ens_str),
+				 SigSet.listItems (!ens_sig)
+			       )
+			 )
+	     in
+		 TextIO.output (os, s);
+		 TextIO.output (os, "\n");
+		 TextIO.flushOut os;
+		 TextIO.closeOut os;
+		 print ("Wrote to file " ^ new_source ^ "\n")
+	     end
+
     fun test () =
-	print_all ()
-	(*let val s = ( TyToString.allToString 
+	let val s = ( TyToString.allToString 
 			  ( VarSet.listItems (!ens_var),
+			    TySet.listItems (!ens_ty),
+			    ConsSet.listItems (!ens_cons),
 			    StrSet.listItems (!ens_str),
 			    SigSet.listItems (!ens_sig)
 			  )
 		    )
-	    val () = print ("\n\n" ^ s ^ "\n")
 	    val t = StringToTy.stringToAll s
-	    val s' = TyToString.allToString t
-	    val () = print ("\n" ^ s' ^ "\n\n")
-	    val sign = #3 t
-	    val () = List.app EP.print_sig sign
+	    val () = List.app EP.print_var (#1 t)
+	    val () = List.app EP.print_type (#2 t)
+	    val () = List.app EP.print_cons (#3 t)	    
+	    val () = List.app EP.print_str (#4 t)
+	    val () = List.app EP.print_sig (#5 t)
+
 	in
 	    ()
-	end*)
+	end
 
 
 

@@ -6,6 +6,8 @@ sig
     val stringToTy : string -> Ens_types2.ty'
     val stringToTycon : string -> Ens_types2.tycon'
     val stringToAll : string -> Ens_types2.var_elem list * 
+				Ens_types2.type_elem list * 
+				Ens_types2.cons_elem list * 
 				Ens_types2.str_elem list * 
 				Ens_types2.sig_elem list
 end (* signature STRINGTOTY *)
@@ -18,7 +20,7 @@ struct
 
 fun bug x = ErrorMsg.impossible ("StringToTy: " ^ x)
 
-val tokenize string -> string list = String.tokens Char.isSpace
+val tokenize : string -> string list = String.tokens Char.isSpace
 
 fun get_int s =
     Option.valOf (Int.fromString s)
@@ -264,7 +266,7 @@ fun stringToOption _ ("N" :: sl) = (NONE, sl)
 
 fun stringToStrElem (h :: sl0) = 
     let
-	val name = get_symbol h
+	val name = Symbol.strSymbol h
 	val (access, sl1) = stringToAccess sl0
 	val (parent, sl2) = stringToOption stringToAccess sl1
 	val (sign, sl3) = stringToOption stringToStamp sl2
@@ -357,12 +359,62 @@ fun stringToSigElem (h :: sl) =
 fun stringToSig sl = 
     stringToList stringToSigElem sl
 
+fun stringToTypeElem sl = 
+    let val (tycon, sl0) = stringsToTycon sl
+	val (stamp, sl1) = stringToStamp sl0
+	val (name, sl2) = 
+	    case sl1 of
+		[] => bug "stringToTypeElem.1"
+	      | h :: sl2 => (Symbol.tycSymbol h, sl2)
+	val (def, sl3) = stringToLocation sl2
+	val (usage, sl4) = stringToList stringToLocation sl3
+    in
+	( { tycon = tycon, 
+	    stamp = stamp, 
+	    name = name, 
+	    def = def, 
+	    usage = ref usage
+	  }
+	,sl4)
+    end
+
+fun stringToType sl = 
+    stringToList stringToTypeElem sl
+
+fun stringToConsElem (h :: sl) = 
+    let val name = Symbol.varSymbol h
+	val (dataty, sl0) = stringToStamp sl
+	val (def, sl1) = stringToLocation sl0
+	val (ty, sl2) = stringsToTy sl1
+	fun f sl = 
+	    let val (loc, sl') = stringToLocation sl
+		val (ty, sl'') = stringsToTy sl'
+	    in
+		((loc, ty), sl'')
+	    end
+	val (usage, sl3) = stringToList f sl2
+    in
+	( { name = name,
+	    dataty = dataty,
+	    def = def,
+	    ty = ty,
+	    usage = ref usage
+	  }, sl3)
+    end
+  | stringToConsElem [] = 
+    bug "stringToConsElem"
+
+fun stringToCons sl = 
+    stringToList stringToConsElem sl
+
 fun stringsToAll sl = 
     let val (vars, sl0) = stringToVar sl
-	val (strs, sl1) = stringToStr sl0
-	val (signs, sl2) = stringToSig sl1
+	val (tys, sl1) = stringToType sl0
+	val (cons, sl2) = stringToCons sl1
+	val (strs, sl3) = stringToStr sl2
+	val (signs, sl4) = stringToSig sl3
     in
-	((vars, strs, signs), sl2)
+	((vars, tys, cons, strs, signs), sl2)
     end
 
 fun stringToAll s = 
