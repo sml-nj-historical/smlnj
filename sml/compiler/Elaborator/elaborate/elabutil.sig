@@ -41,9 +41,6 @@ sig
   val bogusExp: Absyn.exp
 
   val bindVARp : Absyn.pat list * ErrorMsg.complainer -> StaticEnv.staticEnv
- (* val isPrimPat : Absyn.pat -> bool *)
-  val patproc : Absyn.pat * compInfo 
-                  -> Absyn.pat * Absyn.pat list * VarCon.var list
 
   val checkUniq : ErrorMsg.complainer * string * Symbol.symbol list -> unit
 
