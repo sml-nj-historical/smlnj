@@ -24,7 +24,15 @@
    what is the type of "x" as an element of structure "A"
    what structures import structure "A"?
    what structure contains location "L"?
-
+   what function is variable x defined in (assuming it is a local variable)
+   what is the nested hierarchy of functions containing this occurrence/location
+   what are all the symbols defined in this compilation unit
+   what symbols are exported from this structure
+   what are the functions defined in a file (or module)
+      primary (i.e. at "top-level" within the file/module
+      seconday (i.e. nested within higher-level functions)
+   explore the hierarchial tree of function definitions
+   what is the symbol (or token?) at character position n in a file
 *)
 
 (* query : 
