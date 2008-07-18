@@ -56,7 +56,8 @@ struct
 	      | FNexp fnrules => List.app scan_rule (#1 fnrules)
 	      | LETexp (dec, exp) => (scan_dec dec; scan_exp exp)
 	      | SEQexp expl => List.app scan_exp expl
-	      | CONSTRAINTexp (exp, ty) => (EV.add_ty_use ty (~1, ~1); scan_exp exp)
+	      | CONSTRAINTexp (exp, ty) => 
+		(EV.add_ty_use ty (~1, ~1); scan_exp exp)
 	      | MARKexp (exp, region) => 
 		( case exp of 
 		      VARexp (ref var, tyvarl) => 
@@ -130,26 +131,15 @@ struct
 			     
 	and scan_strexp strexp =
 	    let fun add s region = 
-		    case s of
-			Modules.STR {access, ...} =>
-			let fun is_ext (Access.EXTERN _) = true
-			      | is_ext (Access.PATH (s, _)) = is_ext s
-			      | is_ext _ = false
-			in
-			    if is_ext access then
-				()
-			    else (
-				EV.add_str_alias 
-				    (head ()) 
-				    s 
-				    region
-				    (str_par ());
-				EV.add_str_use 
-				    s 
-				    region
-				)
-			end
-		      | _ => ()
+		    ( EV.add_str_alias 
+			  (head ()) 
+			  s 
+			  region
+			  (str_par ());
+		      EV.add_str_use 
+			  s 
+			  region
+		    )
 	    in
 		case strexp of
 		    VARstr s => add s (~12, ~12)

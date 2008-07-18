@@ -3,13 +3,14 @@
 signature STRINGTOTY = 
 sig
 
-    val stringToTy : string -> Ens_types2.ty'
-    val stringToTycon : string -> Ens_types2.tycon'
-    val stringToAll : string -> Ens_types2.var_elem list * 
-				Ens_types2.type_elem list * 
-				Ens_types2.cons_elem list * 
-				Ens_types2.str_elem list * 
-				Ens_types2.sig_elem list
+    val stringToVar : string -> Ens_types2.var_elem list
+    val stringToType : string -> Ens_types2.type_elem list
+    val stringToCons : string -> Ens_types2.cons_elem list 
+    val stringToStr : string -> Ens_types2.str_elem list 
+    val stringToSig : string -> Ens_types2.sig_elem list
+    val stringToExt : string -> Ens_types2.ext_elem list
+
+    val stringToLvarExt : string -> (Access.access * Access.access) list
 end (* signature STRINGTOTY *)
 
 local
@@ -22,26 +23,12 @@ fun bug x = ErrorMsg.impossible ("StringToTy: " ^ x)
 
 val tokenize : string -> string list = String.tokens Char.isSpace
 
+val concat = String.concatWith " "
+
 fun get_int s =
-    Option.valOf (Int.fromString s)
-
-fun get_bool "t" = true
-  | get_bool "f" = false
-  | get_bool _ = bug "get_bool"
-    
-
-fun get_symbol s = 
-    case String.tokens (fn c => c = #"$") s of
-	["VAL",  name] => Symbol.varSymbol  name
-      | ["SIG",  name] => Symbol.sigSymbol  name
-      | ["STR",  name] => Symbol.strSymbol  name
-      | ["FSIG", name] => Symbol.fsigSymbol name
-      | ["FCT",  name] => Symbol.fctSymbol  name
-      | ["TYC",  name] => Symbol.tycSymbol  name
-      | ["LAB",  name] => Symbol.labSymbol  name
-      | ["TYV",  name] => Symbol.tyvSymbol  name
-      | ["FIX",  name] => Symbol.fixSymbol  name
-      | _ => bug ("get_symbol: " ^ s)
+    case Int.fromString s of
+	NONE => bug ("get_int: " ^ s)
+      | SOME i => i
 
 fun stringToList stringToA (h :: sl) = 
     let 
@@ -58,14 +45,44 @@ fun stringToList stringToA (h :: sl) =
   | stringToList _ [] = 
     bug "stringToList"
 
+fun ext_fun f msg s = 
+    case stringToList f (tokenize s) of
+	(list, []) => list
+      | (_, rem) => (print (concat rem); print "\n"; bug msg)
+
+fun get_bool "t" = true
+  | get_bool "f" = false
+  | get_bool _ = bug "get_bool"
+
+fun get_symbol s = 
+    case String.tokens (fn c => c = #"$") s of
+	["VAL",  name] => Symbol.varSymbol  name
+      | ["SIG",  name] => Symbol.sigSymbol  name
+      | ["STR",  name] => Symbol.strSymbol  name
+      | ["FSIG", name] => Symbol.fsigSymbol name
+      | ["FCT",  name] => Symbol.fctSymbol  name
+      | ["TYC",  name] => Symbol.tycSymbol  name
+      | ["LAB",  name] => Symbol.labSymbol  name
+      | ["TYV",  name] => Symbol.tyvSymbol  name
+      | ["FIX",  name] => Symbol.fixSymbol  name
+      | _ => bug ("get_symbol: " ^ s)
+
+fun get_persstamps s = 
+    case PersStamps.fromHex s of
+	NONE => bug ("get_persstamps" ^ s)
+      | SOME st => st
+
 fun stringToStamp ("SS" :: h :: sl) =
     (Stamps.special h, sl)
   | stringToStamp ("GS" :: h1 :: h2 :: sl) = 
     ( Stamps.global 
-	  {pid = Option.valOf (PersStamps.fromHex h1), cnt = get_int h2}, 
+	  {pid = get_persstamps h1, cnt = get_int h2}, 
       sl
     )
-  | stringToStamp sl = (Stamps.fresh' 0, sl)
+  | stringToStamp ("FS" :: h :: sl) = 
+	(Stamps.fresh' (get_int h), sl)
+  | stringToStamp _ = 
+    bug "stringToStamp"
 
 fun stringToLabels (h :: sl) = 
     let val sl2 = String.tokens 
@@ -116,8 +133,10 @@ fun stringsToTy ("C" :: sl') =
     in
 	(Conty (stub, args), sl''')
     end
-  | stringsToTy ("I" :: h1 :: h2 :: sl') =
-    (Ibound {index = get_int h1, depth = get_int h2}, sl')
+  | stringsToTy ("I" :: h :: sl) = 
+    (Ibound (get_int h), sl)
+  | stringsToTy ("L" :: h1 :: h2 :: sl') =
+    (Lbound {index = get_int h1, depth = get_int h2}, sl')
   | stringsToTy ("U" :: h :: sl') =
     let val s = Symbol.tycSymbol h in
 	(Ubound s, sl')
@@ -167,13 +186,26 @@ fun stringToLocation (h1 :: h2 :: h3 :: sl) =
 fun stringToAccess ("L" :: h :: sl) = 
     (Access.LVAR (get_int h), sl)
   | stringToAccess ("E" :: h :: sl) = 
-    (Access.EXTERN (Option.valOf (PersStamps.fromHex h)), sl)
+    (Access.EXTERN (get_persstamps h), sl)
   | stringToAccess ("P" :: h :: sl) = 
     let val (acc, sl') = stringToAccess sl in
 	(Access.PATH (acc, get_int h), sl')
     end
   | stringToAccess _ = 
     bug "stringToAccess"
+
+fun stringToVarElemUsage sl = 
+    let
+	fun f sl = 
+	    let val (loc, sl0) = stringToLocation sl
+		val (ty, sl1) = stringsToTy sl0
+		val (acc, sl2) = stringToAccess sl1
+	    in
+		((loc, ty, acc), sl2)
+	    end
+    in
+	stringToList f sl
+    end
 
 fun stringToVarElem sl = 
     let
@@ -185,14 +217,7 @@ fun stringToVarElem sl =
 	val (parent, sl2) = stringToAccess sl1
 	val (typ, sl3) = stringsToTy sl2
 	val (def, sl4) = stringToLocation sl3
-	fun f sl = 
-	    let val (loc, sl0) = stringToLocation sl
-		val (ty, sl1) = stringsToTy sl0
-		val (acc, sl2) = stringToAccess sl1
-	    in
-		((loc, ty, acc), sl2)
-	    end
-	val (usage, sl5) = stringToList f sl4
+	val (usage, sl5) = stringToVarElemUsage sl4
     in
 	({ access = access,
 	  name = name,
@@ -203,8 +228,8 @@ fun stringToVarElem sl =
 	}, sl5)
     end
 
-fun stringToVar sl = 
-    stringToList stringToVarElem sl
+val stringToVar = 
+    ext_fun stringToVarElem "stringToVar"
 
 fun stringToKey ("V" :: sl) = 
     let val (acc, sl') = stringToAccess sl in
@@ -264,6 +289,9 @@ fun stringToOption _ ("N" :: sl) = (NONE, sl)
     end
   | stringToOption _ _ = bug "stringToOption"
 
+fun stringToStrElemUsage sl = 
+    stringToList stringToLocation sl
+
 fun stringToStrElem (h :: sl0) = 
     let
 	val name = Symbol.strSymbol h
@@ -272,7 +300,7 @@ fun stringToStrElem (h :: sl0) =
 	val (sign, sl3) = stringToOption stringToStamp sl2
 	val (def, sl4) = stringToLocation sl3
 	val (elements, sl5) = stringToElements sl4
-	val (usage, sl6) = stringToList stringToLocation sl5
+	val (usage, sl6) = stringToStrElemUsage sl5
     in
 	({ name = name,
 	   access = access,
@@ -285,8 +313,8 @@ fun stringToStrElem (h :: sl0) =
     end
   | stringToStrElem [] = bug "stringToStrElem"
 
-fun stringToStr sl = 
-    stringToList stringToStrElem sl
+val stringToStr = 
+    ext_fun stringToStrElem "stringToStr"
 
 fun stringToSpecSig ("T" :: sl) = 
     let val (tycon, sl') = stringsToTycon sl in
@@ -324,6 +352,24 @@ and stringToElementsSig sl =
 	stringToList f sl
     end
 
+fun stringToSigElemUsage sl = 
+    let
+	fun f sl = 
+	    let val (loc, sl') = stringToLocation sl
+		val (symbol, sl'') = 
+		    case sl' of
+			[] => bug "stringToSigElemUsage"
+		      | h :: sl'' => (Symbol.sigSymbol h, sl'')
+	    in
+		((loc, symbol), sl'')
+	    end
+    in
+	stringToList f sl
+    end
+
+fun stringToSigElemAlias sl = 
+    stringToSigElemUsage sl
+
 fun stringToSigElem (h :: sl) = 
     let val name = Symbol.sigSymbol h
 	val (stamp, sl0) = stringToStamp sl
@@ -333,17 +379,8 @@ fun stringToSigElem (h :: sl) =
 	      | h :: sl1 => (get_bool h, sl1)
 	val (def, sl2) = stringToLocation sl1
 	val (elements, sl3) = stringToElementsSig sl2
-	fun f sl = 
-	    let val (loc, sl') = stringToLocation sl
-		val (symbol, sl'') = 
-		    case sl' of
-			[] => bug "stringToSigElem.2"
-		      | h :: sl'' => (Symbol.sigSymbol h, sl'')
-	    in
-		((loc, symbol), sl'')
-	    end
-	val (alias, sl4) = stringToList f sl3
-	val (usage, sl5) = stringToList f sl4
+	val (alias, sl4) = stringToSigElemAlias sl3
+	val (usage, sl5) = stringToSigElemUsage sl4
     in
 	({ name = name,
 	  stamp = stamp,
@@ -354,10 +391,13 @@ fun stringToSigElem (h :: sl) =
 	  usage = ref usage
 	}, sl5)
     end
-  | stringToSigElem [] = bug "stringToSigElem"
+  | stringToSigElem [] = bug "stringToSigElem.2"
 
-fun stringToSig sl = 
-    stringToList stringToSigElem sl
+val stringToSig = 
+    ext_fun stringToSigElem "stringToSig"
+
+fun stringToTypeElemUsage sl = 
+    stringToList stringToLocation sl
 
 fun stringToTypeElem sl = 
     let val (tycon, sl0) = stringsToTycon sl
@@ -367,7 +407,7 @@ fun stringToTypeElem sl =
 		[] => bug "stringToTypeElem.1"
 	      | h :: sl2 => (Symbol.tycSymbol h, sl2)
 	val (def, sl3) = stringToLocation sl2
-	val (usage, sl4) = stringToList stringToLocation sl3
+	val (usage, sl4) = stringToTypeElemUsage sl3
     in
 	( { tycon = tycon, 
 	    stamp = stamp, 
@@ -378,21 +418,26 @@ fun stringToTypeElem sl =
 	,sl4)
     end
 
-fun stringToType sl = 
-    stringToList stringToTypeElem sl
+val stringToType = 
+    ext_fun stringToTypeElem "stringToType"
+
+fun stringToConsElemUsage sl = 
+    let fun f sl = 
+	    let val (loc, sl') = stringToLocation sl
+		val (ty, sl'') = stringsToTy sl'
+	    in
+		((loc, ty), sl'')
+	    end
+    in
+	stringToList f sl
+    end
 
 fun stringToConsElem (h :: sl) = 
     let val name = Symbol.varSymbol h
 	val (dataty, sl0) = stringToStamp sl
 	val (def, sl1) = stringToLocation sl0
 	val (ty, sl2) = stringsToTy sl1
-	fun f sl = 
-	    let val (loc, sl') = stringToLocation sl
-		val (ty, sl'') = stringsToTy sl'
-	    in
-		((loc, ty), sl'')
-	    end
-	val (usage, sl3) = stringToList f sl2
+	val (usage, sl3) = stringToConsElemUsage sl2
     in
 	( { name = name,
 	    dataty = dataty,
@@ -404,21 +449,55 @@ fun stringToConsElem (h :: sl) =
   | stringToConsElem [] = 
     bug "stringToConsElem"
 
-fun stringToCons sl = 
-    stringToList stringToConsElem sl
+val stringToCons = 
+    ext_fun stringToConsElem "stringToCons"
 
-fun stringsToAll sl = 
-    let val (vars, sl0) = stringToVar sl
-	val (tys, sl1) = stringToType sl0
-	val (cons, sl2) = stringToCons sl1
-	val (strs, sl3) = stringToStr sl2
-	val (signs, sl4) = stringToSig sl3
+fun stringToExtElem ("v" :: sl) = 
+    let	val (access, sl0) = stringToAccess sl
+	val (usage, sl1) = stringToVarElemUsage sl0
     in
-	((vars, tys, cons, strs, signs), sl2)
+	(ExtVar{access = access, usage = ref usage}, sl1)
+    end
+  | stringToExtElem ("s" :: sl) = 
+    let	val (access, sl0) = stringToAccess sl
+	val (usage, sl1) = stringToStrElemUsage sl0
+    in
+	(ExtStr{access = access, usage = ref usage}, sl1)
+    end
+  | stringToExtElem ("t" :: sl) =
+    let	val (stamp, sl0) = stringToStamp sl
+	val (usage, sl1) = stringToTypeElemUsage sl0
+    in
+	(ExtType{stamp = stamp, usage = ref usage}, sl1)
+    end
+  | stringToExtElem ("c" :: h ::sl) = 
+    let val name = Symbol.varSymbol h
+	val (stamp, sl0) = stringToStamp sl
+	val (usage, sl1) = stringToConsElemUsage sl0
+    in
+	(ExtCons{name = name, stamp = stamp, usage = ref usage}, sl1)
+    end
+  | stringToExtElem ("g" :: sl) = 
+    let val (stamp, sl0) = stringToStamp sl
+	val (usage, sl1) = stringToSigElemUsage sl0
+    in
+	(ExtSig{stamp = stamp, usage = ref usage}, sl1)
+    end
+  | stringToExtElem _ =
+    bug "stringToExtElem"
+
+val stringToExt = 
+    ext_fun stringToExtElem "stringToExt"
+
+fun stringToLvarExtElem sl =
+    let val (acc1, sl0) = stringToAccess sl
+	val (acc2, sl1) = stringToAccess sl0
+    in
+	((acc1, acc2), sl1)
     end
 
-fun stringToAll s = 
-    #1 (stringsToAll (tokenize s))
+val stringToLvarExt = 
+    ext_fun stringToLvarExtElem "stringToLvarExt"
 
 end (* structure StringToTy*)
 end (* local *)

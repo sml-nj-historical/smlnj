@@ -16,7 +16,7 @@ sig
    val print_cons : Ens_types2.cons_elem -> unit
    val print_str : Ens_types2.str_elem -> unit
    val print_sig : Ens_types2.sig_elem -> unit
-   val print_all : Ens_types2.all -> unit
+   val print_ext : Ens_types2.ext_elem -> unit
 
 end (* signature ENS_PRINT*)
 
@@ -141,8 +141,11 @@ in
 	   )
 	 | Conty _ => 
 	   ErrorMsg.impossible "Ens_var2: print_ty'.2"
-	 | Ibound {depth, index} => 
-	   print ("'" ^ str (Char.chr (Char.ord (if depth = ~1 then #"a" else #"A") + index)))
+	 | Ibound index =>
+	   print ("'" ^ str (Char.chr (Char.ord #"a" + index)))
+	 | Lbound {depth, index} => 
+	   print ("'" ^ str (Char.chr (Char.ord #"A" + index)) ^ 
+		  Int.toString depth)
 	 | Ubound s => print (stoS s)
 	 | Poly {body, arity} => print_ty' body
 	   
@@ -168,24 +171,36 @@ in
 	   (!usage);
        print "\n"
    )
-			      
+	
+   fun print_var_usage usage = 
+       ( print " is used at :";
+	 List.app 
+	     ( fn (x, y, z) => 
+		  ( print ("\n\t" ^ rtoS x ^ " with type "); 
+		    print_ty' y; 
+		    print (", access " ^ A.prAcc z)
+		  )
+	     )
+	     (!usage);
+	 print "\n"
+       )
+	      
    fun print_var ({access, name, parent, typ, def, usage}:var_elem) = (
        print (A.prAcc access ^ ": \"" ^ stoS name ^ 
 	      "\" " ^ rtoS def ^ " has type ");
        print_ty' typ;
        print (", is defined in " ^ A.prAcc parent ^ " and");
-       print " is used at :";
-       List.app 
-	   ( fn (x, y, z) => 
-		( print ("\n\t" ^ rtoS x ^ " with type "); 
-		  print_ty' y; 
-		  print (", access " ^ A.prAcc z)
-		)
-	   )
-	   (!usage);
-       print "\n"
+       print_var_usage usage
    )
-       
+    
+   fun print_type_usage usage = 
+       ( print " is used at: ";
+	 List.app 
+	     (fn x => print ("\n\t" ^ rtoS x))
+	     (!usage);
+	 print "\n"
+       )
+
    (*print the different type and datatype definitions and explicit uses*)
    fun print_type ({tycon, stamp, name, def, usage} : type_elem) = 
        ( print_tycon' tycon;
@@ -193,13 +208,17 @@ in
 	 print (stoS name);
 	 print " ";
 	 print (rtoS def);
-	 print " is used at: ";
-	 List.app 
-	     (fn x => print ("\n\t" ^ rtoS x))
+	 print_type_usage usage
+       )
+       
+   fun print_cons_usage usage = 
+       ( List.app 
+	     (fn (x, y) => 
+		 (print ("\n\t" ^ rtoS x ^ " with type "); print_ty' y))
 	     (!usage);
 	 print "\n"
        )
-       
+
    (*print the different type constructors and uses*)
    fun print_cons ({name, ty, dataty, def, usage} : cons_elem) = (
        print (stoS name);
@@ -207,12 +226,15 @@ in
        print_ty' ty;
        print " ";
        print (rtoS def);
-       List.app 
-	   (fn (x, y)=>(print ("\n\t" ^ rtoS x ^ " with type "); print_ty' y))
-	   (!usage);
-       print "\n"
+       print_cons_usage usage
    )
        
+   fun print_str_usage usage = 
+       ( print " and is used at : ";
+	 List.app (fn x => print ("\n\t" ^ rtoS x)) (!usage);
+	 print "\n"
+       )
+
    fun print_str ({name, access, parent, sign, def, elements, usage}:str_elem)=
 	let 
 	    fun print_key k = 
@@ -241,20 +263,19 @@ in
 			   ) el
 		)
 	      | Alias a => print (" aliases " ^ A.prAcc a);
-	    print " and is used at : ";
-	    List.app (fn x => print ("\n\t" ^ rtoS x)) (!usage);
-	    print "\n"
+	    print_str_usage usage
 	end
 
-   fun print_sig ({name, stamp, inferred, def, elements, usage, alias}:sig_elem)=
+   fun print_sig_usage usage = 
+       ( print " and is used at :";
+	 List.app 
+	     (fn (x, y) => print ("\n\t"^(rtoS x)^" with name "^stoS y))
+	     (!usage);
+	 print "\n"
+       )
+
+   fun print_sig ({name,stamp,inferred,def,elements,usage,alias} : sig_elem) =
        let
-	   fun print_inst usage = (
-	       print " and is used at :";
-	       List.app 
-		   (fn (x, y) => print ("\n\t"^(rtoS x)^" with name "^stoS y))
-		   (!usage);
-	       print "\n"
-	   )
 	   fun print_elem l pref = 
 	       let fun print_symbol_spec (s, spec) = 
 		       let fun print_spec (Typ tycon') = 
@@ -278,22 +299,41 @@ in
 		       l
 	       end
        in
-	   print (stoS name ^ (if inferred then " (inferred)" else "") 
+	   print (Stamps.toString stamp ^ " " ^ stoS name ^ 
+		  (if inferred then " (inferred)" else "") 
 		  ^ " : " ^ rtoS def);
 	   print_elem elements "   ";
 	   List.app 
 	       (fn (x, symb) => 
 		   print ("\n\thas alias "^ stoS symb ^ " " ^ (rtoS x))) 
 	       (!alias);
-	   print_inst usage
+	   print_sig_usage usage
        end
 
-   fun print_all (a, b, c, d, e) = (
-       List.app print_var a;
-       List.app print_type b;
-       List.app print_cons c;
-       List.app print_str d;
-       List.app print_sig e
-   )
+   fun print_ext ext = 
+       case ext of
+	   ExtVar {access, usage} =>
+	   ( print ("ExtVar (" ^ A.prAcc access ^ ")");
+	     print_var_usage usage
+	   )
+	 | ExtStr {access, usage} =>
+	   ( print ("ExtStr (" ^ A.prAcc access ^ ")");
+	     print_str_usage usage
+	   )
+	 | ExtType {stamp, usage} =>
+	   ( print ("ExtType " ^ Stamps.toString stamp);
+	     print_type_usage usage
+	   )
+	 | ExtCons {stamp, usage, name} =>
+	   ( print ("ExtCons " ^ Symbol.name name ^ " " ^ 
+		    Stamps.toString stamp);
+	     print_cons_usage usage
+	   )
+	 | ExtSig {stamp, usage} =>
+	   ( print ("ExtSig " ^ Stamps.toString stamp);
+	     print_sig_usage usage
+	   )
+       
+
 end
 end (* structure Ens_print *)

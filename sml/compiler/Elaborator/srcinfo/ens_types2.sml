@@ -10,26 +10,29 @@ struct
     datatype stub_tycon
       = General of Stamps.stamp * InvPath.path
       | Record of Symbol.symbol list
-      | Path of InvPath.path  (* translation of PATHtyc; appears only in sigs *)
+      | Path of InvPath.path (* translation of PATHtyc; appears only in sigs *)
 
     datatype ty'
       = Conty of stub_tycon * ty' list
       | Ibound of int
-          (* references to poly-bound type variables within the body of the polytype *)
+      (* references to poly-bound type variables within the body of the 
+       * polytype *)
       | Lbound of {index: int, depth: int}
-          (* type variables bound by implicit type abstractions in expressions *)
+      (* type variables bound by implicit type abstractions in expressions *)
       | Ubound of Symbol.symbol
-          (* Residual user-introduced type variables. These will rarely occur, since
-           * where they occur in the type of a definiens, they must be generalized, and
-           * hence translated into IBOUND in polytypes and LBOUND in expression types.
-	   * However, they may occur in the anomolous cases where they don't get generalized,
-	   * such as "val x = ([]: 'a list, 3);" *)
+      (* Residual user-introduced type variables. These will rarely occur, 
+       * since where they occur in the type of a definiens, they must be 
+       * generalized, and hence translated into IBOUND in polytypes and LBOUND 
+       * in expression types. 
+       * However, they may occur in the anomolous cases where they don't get 
+       * generalized, such as "val x = ([]: 'a list, 3);" *)
       | Poly of {arity: int, body: ty'}
 
     (* descriptive info for tycon records *)
     datatype tycon'
       = Datatype of bool * Symbol.symbol list (* eq * cons list *)
-      | Abstract of Symbol.symbol list (* cons list for representation datatype (why?) *)
+      | Abstract of Symbol.symbol list 
+      (* cons list for representation datatype (why?) *)
       | Deftyc
       | Primtyc of bool (* : eq *)
 
@@ -91,7 +94,25 @@ struct
 		      alias : (location * Symbol.symbol) list ref, 
 		      usage : (location * Symbol.symbol) list ref
 		    }
-		    
+		   
+    datatype ext_elem = 
+	     ExtVar of { access : Access.access, 
+			 usage : (location * ty' * Access.access) list ref
+		       }
+	   | ExtStr of { access : Access.access,
+			 usage : location list ref
+		       }
+	   | ExtType of { stamp : Stamps.stamp,
+			  usage : location list ref
+			}
+	   | ExtCons of { stamp : Stamps.stamp,
+			  name : Symbol.symbol,
+			  usage : (location * ty') list ref
+			}
+	   | ExtSig of { stamp : Stamps.stamp,
+			 usage : (location * Symbol.symbol) list ref
+		       }
+ 
     type all = var_elem list * 
 	       type_elem list * 
 	       cons_elem list * 

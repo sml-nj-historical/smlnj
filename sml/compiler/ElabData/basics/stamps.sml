@@ -51,6 +51,10 @@ struct
                        end)
   end
 
+  fun Case' (Special s) { fresh, global, special } = special s
+    | Case' (Global g) { global, ... } = global g
+    | Case' (Fresh i) { fresh, ... } = fresh i
+
   fun isFresh (Fresh _) = true
     | isFresh _ = false
 

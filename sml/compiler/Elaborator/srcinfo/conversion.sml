@@ -37,12 +37,11 @@ struct
     fun ty_to_ty' ty = 
 	case ty of
 	    T.IBOUND i => 
-	    Ibound {index = i, depth = ~1} (* ?? *)
+	    Ibound i
 	  | T.VARty _ => (
 	    case TypesUtil.prune ty of
-		(*que faire dans ce cas la, lbound par ex?*)
 		T.VARty (ref (T.LBOUND {index,depth,...})) => 
-		Ibound {index=index,depth=depth}
+		Lbound {index=index,depth=depth}
 	      | T.VARty (ref (T.UBOUND {name,...})) => Ubound name
 	      | T.VARty _ => ErrorMsg.impossible "Ens_types2: ty_to_ty'.2"
 	      | typ => ty_to_ty' typ
@@ -132,6 +131,8 @@ struct
 	      usage = ref []
 	    }
 	end
+      | sig_to_elem M.ERRORsig = 
+	bug "sig_to_elem"
     
 end (* structure Conversion *)
 end (* end local *)

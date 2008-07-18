@@ -13,13 +13,15 @@ val flatten = String.concatWith " "
 fun listToString aToString l = 
     Int.toString(length l) :: List.concat(map aToString l)
 
+fun ext_fun f l = 
+    flatten (listToString f l)
+
 fun stampToString stamp =
-    let fun fresh n = []
+    let fun fresh n = ["FS", Int.toString n]
 	fun special s = ["SS", s]
 	fun global {pid,cnt} = ["GS", PersStamps.toHex pid, Int.toString cnt]
     in 
-	Stamps.Case 
-	    (Stamps.newConverter()) 
+	Stamps.Case'
 	    stamp
 	    {fresh=fresh,special=special,global=global} 
     end
@@ -45,8 +47,10 @@ fun tycToString (General(stamp,path)) =
 
 fun tyToStrings (Conty(stubtyc,args)) = 
     "C" :: tycToString stubtyc @ tyListToString args
-  | tyToStrings (Ibound{index,depth}) = 
-    ["I", Int.toString index, Int.toString depth]
+  | tyToStrings (Ibound index) = 
+    ["I", Int.toString index]
+  | tyToStrings (Lbound{index,depth}) = 
+    ["L", Int.toString index, Int.toString depth]
   | tyToStrings (Ubound s) = 
     ["U", Symbol.symbolToString s]
   | tyToStrings (Poly{arity,body}) = 
@@ -85,18 +89,21 @@ fun accessToString (Access.LVAR i) =
   | accessToString (Access.NO_ACCESS) = 
     bug "accessToString"
 
+fun varElemUsageToString usage = 
+    listToString 
+	(fn(x, y, z) => locationToString x @ tyToStrings y @ accessToString z) 
+	(!usage)
+    
 fun varElemToString {access, name, parent, typ, def, usage} = 
     accessToString access @
     Symbol.name name ::
     accessToString parent @
     tyToStrings typ @
     locationToString def @
-    listToString 
-	(fn(x, y, z) => locationToString x @ tyToStrings y @ accessToString z) 
-	(!usage)
+    varElemUsageToString usage
 
-fun varToString l = 
-    listToString varElemToString l
+val varToString = 
+    ext_fun varElemToString
 
 fun keyToString (Var acc) = 
     "V" :: accessToString acc
@@ -128,6 +135,9 @@ fun elementsToString (Def l) =
 fun optionToString _ NONE = ["N"]
   | optionToString aToString (SOME a) = "S" :: aToString a
 
+fun strElemUsageToString usage = 
+    listToString locationToString (!usage)
+
 fun strElemToString {name, access, parent, sign, def, elements, usage} =
     Symbol.name name ::
     accessToString access @
@@ -135,10 +145,10 @@ fun strElemToString {name, access, parent, sign, def, elements, usage} =
     optionToString stampToString sign @
     locationToString def @
     elementsToString elements @
-    listToString locationToString (!usage)
+    strElemUsageToString usage
 
-fun strToString l = 
-    listToString strElemToString l
+val strToString = 
+    ext_fun strElemToString
 
 fun specSigToString (Typ tycon) = 
     "T" :: tyconToStrings tycon
@@ -154,47 +164,70 @@ fun specSigToString (Typ tycon) =
 and elementsSigToString l = 
     listToString (fn (x, y) => Symbol.symbolToString x :: specSigToString y) l
 
+fun sigElemUsageToString usage = 
+    listToString (fn (x, y) => locationToString x @ [Symbol.name y]) (!usage)
+
+fun sigElemAliasToString alias = 
+    sigElemUsageToString alias
+
 fun sigElemToString {name, stamp, inferred, def, elements, alias, usage} = 
     Symbol.name name ::
     stampToString stamp @ 
     boolToString inferred :: 
     locationToString def @ 
     elementsSigToString elements @
-    listToString (fn (x, y) => locationToString x @ [Symbol.name y]) (!alias) @
-    listToString (fn (x, y) => locationToString x @ [Symbol.name y]) (!usage)
+    sigElemAliasToString alias @
+    sigElemUsageToString usage
 
-fun sigToString l = 
-    listToString sigElemToString l
+val sigToString =
+    ext_fun sigElemToString
+
+fun typeElemUsageToString usage = 
+    listToString locationToString (!usage)
 
 fun typeElemToString {tycon, stamp, name, def, usage} = 
     tyconToStrings tycon @ 
     stampToString stamp @
     Symbol.name name :: 
     locationToString def @
-    listToString locationToString (!usage)
+    typeElemUsageToString usage
 
-fun typeToString l = 
-    listToString typeElemToString l
+val typeToString = 
+    ext_fun typeElemToString
+
+fun consElemUsageToString usage = 
+    listToString (fn (x, y) => locationToString x @ tyToStrings y) (!usage)
 
 fun consElemToString {name, dataty, def, ty, usage} = 
     Symbol.name name ::
     stampToString dataty @
     locationToString def @
     tyToStrings ty @
-    listToString (fn (x, y) => locationToString x @ tyToStrings y) (!usage)
+    consElemUsageToString usage
 
-fun consToString l = 
-    listToString consElemToString l
+val consToString = 
+    ext_fun consElemToString
 
-fun allToStrings (var, ty, cons, str, sign) = 
-    varToString var @ 
-    typeToString ty @ 
-    consToString cons @
-    strToString str @ 
-    sigToString sign
+fun extElemToString (ExtVar {access, usage}) = 
+    "v" :: accessToString access @ varElemUsageToString usage
+  | extElemToString (ExtStr {access, usage}) = 
+    "s" :: accessToString access @ strElemUsageToString usage
+  | extElemToString (ExtType {stamp, usage}) = 
+    "t" :: stampToString stamp @ typeElemUsageToString usage
+  | extElemToString (ExtCons {name, stamp, usage}) = 
+    "c" :: Symbol.name name :: stampToString stamp @ 
+    consElemUsageToString usage
+  | extElemToString (ExtSig {stamp, usage}) = 
+    "g" :: stampToString stamp @ sigElemUsageToString usage
 
-fun allToString t = 
-    flatten (allToStrings t)
+val extToString = 
+    ext_fun extElemToString
+
+fun lvarExtElemToString (acc1, acc2) = 
+    accessToString acc1 @ accessToString acc2
+
+val lvarExtToString  = 
+    ext_fun lvarExtElemToString
 
 end (* structure TyToString *)
 end (* end local *)

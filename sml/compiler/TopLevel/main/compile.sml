@@ -38,7 +38,7 @@ struct
     fun elaborate {ast, statenv=senv, compInfo=cinfo, guid,
 		   extRefInfo : Symbol.symbol -> string option } = let
 	val _ = Ens_var.set_source (#sourceName cinfo)
-	val (absyn, nenv) = ElabTop.elabTop(ast, senv, cinfo, extRefInfo)
+	val (absyn, nenv) = ElabTop.elabTop(ast, senv, cinfo)
 	val (absyn, nenv) = 
             if CompInfo.anyErrors cinfo then
 		(Absyn.SEQdec nil, StaticEnv.empty)
@@ -158,11 +158,12 @@ struct
 	    val () = 
 		if !Control.Elab.infodebugging then 
 		    ( Ens_print2.maj statenv;
+		      Ens_var2.clear();
 		      (* pb avec le toplevel interactif avec clear *)
-		      Ens_var2.clear(); 
 		      Ens_var2.set_source (#sourceName cinfo);
+		      Ens_var2.set_eri extRefInfo;
 		      Ens_absyn.scan_dec absyn;
-		      Ens_var2.save (#sourceName cinfo);
+		      Ens_var2.save ();
 		      Ens_var2.test ()
 		    ) 
 		else 

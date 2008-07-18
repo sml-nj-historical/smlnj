@@ -220,7 +220,12 @@ structure UnpickMod : UNPICKMOD = struct
 			     val access'= lvar entier
 			     (*val () = print (A.prAcc access  ^ "->" ^ 
 					     A.prAcc access' ^ "\n")*)
-			     val _ = Ens_var.add_lvar_ext access access'
+			     (*val _ = Ens_var.add_lvar_ext access access'*)
+			     val () = 
+				 if !Control.Elab.infodebugging then
+				     Ens_var2.add_lvar_ext access access'
+				 else
+				     ()
 			 in
 			     access'
 			 end

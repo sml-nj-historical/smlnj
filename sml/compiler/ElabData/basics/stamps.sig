@@ -15,7 +15,7 @@ sig
     val newGenerator : unit -> generator
     val fresh : generator -> stamp
 
-    (*used only in Elaborate/srcinfo/ens_print2.sml*)
+    (*used only in Elaborate/srcinfo/stringtoty.sml*)
     val fresh' : int -> stamp
 
     (* Make a new "special" stamp (for things in primEnv). *)
@@ -34,6 +34,12 @@ sig
 		 global  : { pid: pid, cnt: int } -> 'a,
 		 special : string -> 'a } -> 'a
 
+    (*only used in Elaborate/srcinfo/tytostring.sml*)
+    val Case' : stamp ->
+	       { fresh   : int -> 'a,
+		 global  : { pid: pid, cnt: int } -> 'a,
+		 special : string -> 'a } -> 'a
+					     
     (* testing for freshness quickly... *)
     val isFresh : stamp -> bool
 
