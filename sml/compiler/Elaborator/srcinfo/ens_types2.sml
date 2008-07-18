@@ -7,19 +7,31 @@ struct
 
 
     (*simplified versions of the internal compiler types*)
-    datatype stub_tycon = General of Stamps.stamp * InvPath.path
-			| Record of Symbol.symbol list
-			| Path of InvPath.path
+    datatype stub_tycon
+      = General of Stamps.stamp * InvPath.path
+      | Record of Symbol.symbol list
+      | Path of InvPath.path  (* translation of PATHtyc; appears only in sigs *)
 
-    datatype ty' = Conty of stub_tycon * ty' list
-		 | Ibound of {index: int, depth: int}
-		 | Ubound of Symbol.symbol
-		 | Poly of {arity: int, body: ty'}
+    datatype ty'
+      = Conty of stub_tycon * ty' list
+      | Ibound of int
+          (* references to poly-bound type variables within the body of the polytype *)
+      | Lbound of {index: int, depth: int}
+          (* type variables bound by implicit type abstractions in expressions *)
+      | Ubound of Symbol.symbol
+          (* Residual user-introduced type variables. These will rarely occur, since
+           * where they occur in the type of a definiens, they must be generalized, and
+           * hence translated into IBOUND in polytypes and LBOUND in expression types.
+	   * However, they may occur in the anomolous cases where they don't get generalized,
+	   * such as "val x = ([]: 'a list, 3);" *)
+      | Poly of {arity: int, body: ty'}
 
-    datatype tycon' = Datatype of bool * Symbol.symbol list (*eq * cons list*)
-		    | Abstract of Symbol.symbol list
-		    | Deftyc
-		    | Primtyc of bool (* : eq *)
+    (* descriptive info for tycon records *)
+    datatype tycon'
+      = Datatype of bool * Symbol.symbol list (* eq * cons list *)
+      | Abstract of Symbol.symbol list (* cons list for representation datatype (why?) *)
+      | Deftyc
+      | Primtyc of bool (* : eq *)
 
 
     (*the record containing def locations ...*)
