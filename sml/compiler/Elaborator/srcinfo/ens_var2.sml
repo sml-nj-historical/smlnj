@@ -91,6 +91,12 @@ in
     fun set_eri eri = 
 	(extRefInfo := eri)
 
+    fun is_available_rsl rev_symbol_list = 
+	!extRefInfo (List.last rev_symbol_list) <> NONE
+
+    fun is_available (InvPath.IPATH rpath) = 
+	is_available_rsl rpath
+	
     fun bug msg = ErrorMsg.impossible("Bugs in Ens_var2: "^msg);
 
     fun loc_reg (r1, r2) = ((!source, r1, r2):location)
@@ -390,11 +396,12 @@ in
 	      ( case access of
 		    (A.PATH (suite, _)) => 
 		    let val rpath = rev path
-			val toplevel = List.hd path 
+			(*val toplevel = List.hd path *)
 		    in
-			case !extRefInfo toplevel of
+			if is_available_rsl rpath then
+			(*case !extRefInfo toplevel of
 			    NONE => ()
-			  | SOME _ =>
+			  | SOME _ =>*)
 			    let val (_, r2) = region
 				(* +1 pour compenser le -1 qui aura lieu dans 
 				 * modify *)
@@ -411,6 +418,8 @@ in
 				    usage := triplet :: !usage;
 				add_implicite_uses_ext suite rpath region
 			    end
+			else
+			    ()
 		    end
 		  | _ => bug "add_var_use2"
 	      )
@@ -474,12 +483,16 @@ in
 
     fun add_ty_use ty region = 
 	case ty_to_ty' ty of
-	    Conty (General (st, p), _) => (*print (EP.rptoS p ^ " used\n")*)
+	    Conty (General (st, p), _) =>
 	    ( case TySet.find 
 		       (fn {stamp, ...} => Stamps.eq (stamp,st)) 
 		       (!ens_ty) 
-	       of NONE => () (*probablement un truc primitif, mais peut etre un
-			      * type extern*)
+	       of NONE =>  (*probablement un truc primitif, mais peut etre un
+			    * type extern*)
+		  if is_available p then
+		      ()
+		  else
+		      ()
 		| SOME {usage, ...} => usage := loc_reg region :: (!usage)
 	    )
 	  | _ => ()
@@ -609,13 +622,16 @@ in
 	( case is_accessible access of
 	      SOME false => (*extern*)
 	      let val rpath = get_path rlzn
-		  val toplevel = List.last rpath 
+		  (*val toplevel = List.last rpath *)
 	      in
-		  case !extRefInfo toplevel of
-		      NONE => () (*print ("No sourcefile for " ^ 
-				     Symbol.name toplevel ^ "\n")*)
-		    | SOME _ =>
+		  if is_available_rsl rpath then
 		      add_implicite_uses_ext access rpath region
+		  else
+		      ()
+    	          (* case !extRefInfo toplevel of
+			 NONE => () (*print ("No sourcefile for " ^ 
+					     Symbol.name toplevel ^ "\n")*)
+		       | SOME _ =>*)
 	      end
 	    | SOME true => (*local*)
 	      let val new_acc = add_implicite_use access (get_path rlzn) 

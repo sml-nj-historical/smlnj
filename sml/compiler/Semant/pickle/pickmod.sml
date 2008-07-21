@@ -1279,12 +1279,7 @@ in
 	    case StaticEnv.look (senv, sym) of
 		B.VALbind (V.VALvar {access=a, prim=z, path=p, typ= ref t }) =>
 		(case a of
-		     A.LVAR k => ( 
-		     (*print (SymPath.toString p ^ " " ^ Access.prAcc a^"->"^Access.prAcc (newAccess i) ^ "\n");*)
-		     if SymPath.toString p <> "it" then
-			 Ens_var.change_access_var a (newAccess i)
-		     else
-			 ();
+		     A.LVAR k =>
 		     (i+1,
 		      StaticEnv.bind (sym,
 				      B.VALbind (V.VALvar
@@ -1293,14 +1288,11 @@ in
 						       typ = ref t}),
 				      env),
 		      k :: lvars)
-		     )
 		   | _ => bug ("dontPickle 1: " ^ A.prAcc a)
 		)
-	      | B.STRbind (M.STR { sign = s, rlzn = r, access = a, prim =z }) =>
+	      | B.STRbind (M.STR { sign = s, rlzn = r, access = a, prim =z })=>
 		(case a of
-		     A.LVAR k => (
-		     (*print (Access.prAcc a ^ "->" ^ Access.prAcc (newAccess i) ^"\n");*)
-		     Ens_var.change_access_str a (newAccess i);
+		     A.LVAR k =>
 		     (i+1,
 		      StaticEnv.bind (sym,
 				      B.STRbind (M.STR
@@ -1309,7 +1301,6 @@ in
 						       prim = z }),
 				env),
 		      k :: lvars)
-		     )
 		   | _ => bug ("dontPickle 2" ^ A.prAcc a))
 	      | B.FCTbind (M.FCT { sign = s, rlzn = r, access = a, prim = z }) =>
 		(case a of
@@ -1343,9 +1334,7 @@ in
 		end
 	      | binding => (i, StaticEnv.bind (sym, binding, env), lvars)
 	val (_,newenv,lvars) = foldl mapbinding (0, StaticEnv.empty, nil) syms
-	(*val _ = Ens_var.apply_mod ()*)
 	val hasExports = not (List.null lvars)
-	(*val _ = Ens_var.clear_intern ()*)
     in
 	{ newenv = newenv, hash = hash,
 	  exportLvars = rev lvars, hasExports = hasExports }

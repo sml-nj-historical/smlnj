@@ -127,11 +127,7 @@ Group
 	structure DebIndex
 
 	structure PPLty
-
-	structure Ens_pickle (* just added *)
 is
-
-Elaborator/srcinfo/pickle.sml (* just added *)
 
 TopLevel/environ/environ.sig
 TopLevel/environ/environ.sml

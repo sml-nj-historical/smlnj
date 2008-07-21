@@ -98,7 +98,7 @@ fun varDefOcc (occ : occurrence) : location option =
       | NONE => NONE
 
 (* find type of a (variable?) applied occurrence *)
-fun varDefOcc (occ as (sym,loc): occurrence) : ty' option = 
+fun varTypOcc (occ as (sym,loc): occurrence) : ty' option = 
     case findVar (occIsVar occ)
      of SOME{def,usage} =>
 	  let val (_,ty,_) =  findUse(loc,!usage)

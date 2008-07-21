@@ -186,11 +186,6 @@ fun evalLoop source = let
 				   dynamic = E.dynamicPart e0 }
 
 
-		val _ = Ens_print.maj (E.staticPart e1)
-		(*val s = Pickle_ens.test ()
-		val all = Pickle_ens.test_back s
-		val _ = Ens_print.print_all all*)
-		
             in
 		(* testing code to print ast *)
 		ppAstDebug("AST::",ast);

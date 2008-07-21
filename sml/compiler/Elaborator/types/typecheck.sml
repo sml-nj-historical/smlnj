@@ -37,7 +37,6 @@ local open Array List Types VarCon BasicTypes TypesUtil Unify Absyn
   structure PP = PrettyPrintNew
 
   structure EM = ErrorMsg
-  structure EV = Ens_var
 in 
 
 (* debugging *)
@@ -399,7 +398,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
                                    | _ => (typ,dcon)
                val (ty2,insts) = instantiatePoly ty1
                val npat = APPpat(ndcon,insts,argpat)
-            in Ens_var.add_cons_inst dcon ty2;
+            in 
 	       (npat,applyType(ty2,argty))
 	       handle Unify(mode) =>
 		(err region COMPLAIN
@@ -463,7 +462,6 @@ in
       of VARexp(r as ref(VALvar{typ, access, path, ...}), _) =>
 	   let val (ty, insts) = instantiatePoly(!typ)
 	    in 
-	       EV.add_var_inst ty access;
 	       (VARexp(r, insts), ty)
 	   end
        | VARexp(refvar as ref(OVLDvar _),_) =>
@@ -478,10 +476,6 @@ in
 				 handle _ => print "fail to print anything")
 			       )
             in 
-	       (*print "cons used ";
-	       printer ty;
-	       print "\n";*)
-	       Ens_var.add_cons_inst dcon ty;
 	       (CONexp(dcon, insts), ty)
            end
        | INTexp (_,ty) => (oll_push ty; (exp,ty))
@@ -549,20 +543,8 @@ in
 	   let val (rator',ratorTy) = expType(rator,occ,tdepth,region)
 	       val (rand',randTy) = expType(rand,occ,tdepth,region)
                val exp' = APPexp(rator',rand')
-	       (*fun printer x y = (((PP.with_pp 
-				       (EM.defaultConsumer())
-				       (fn ppstrm =>
-					   (PP.string ppstrm x;
-					    PPType.resetPPType();
-					    PPType.ppType (StaticEnv.empty) ppstrm y)))
-				 handle _ => print "fail to print anything");
- 				print "\n";
-				y
-			   )
-	       val _ = printer "operator :" ratorTy
-	       val _ = printer "operand :" randTy*)
 	    in 
-	       (exp',(*printer "app :" *)(applyType (ratorTy,randTy)))
+	       (exp',(applyType (ratorTy,randTy)))
 	       handle Unify(mode) => 
 	       let val ratorTy = prune ratorTy
 		   val reducedRatorTy = headReduceType ratorTy

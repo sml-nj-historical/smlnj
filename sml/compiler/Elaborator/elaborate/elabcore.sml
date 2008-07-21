@@ -46,8 +46,6 @@ local structure EM = ErrorMsg
 
       structure Tbl = SymbolHashTable
 
-      structure EV = Ens_var
-
       open Absyn Ast BasicTypes Access ElabUtil Types VarCon
    (*
       open BasicTypes Symbol Absyn Ast PrintUtil AstUtil BasicTypes TyvarSet
@@ -306,17 +304,11 @@ let
 		 : Absyn.pat * TS.tyvarset =
       case pat
       of WildPat => (WILDpat, TS.empty)
-       | VarPat path => (
-	 let val resultat = (clean_pat (error region) 
-			        (pat_id(SP.SPATH path, env, error region, compInfo)),
-			     TS.empty)
-	 in
-	     case resultat of
-		 (VARpat (v as VALvar {access, ...}), _) => EV.add_var_def v region
-	       | _ => ();
-	     resultat
-	 end
-	 )
+       | VarPat path =>
+	 (clean_pat (error region) 
+		    (pat_id(SP.SPATH path, env, error region, compInfo)),
+	  TS.empty)
+	 
        | IntPat s => (INTpat(s,TU.mkLITERALty(T.INT,region)),TS.empty)
        | WordPat s => (WORDpat(s,TU.mkLITERALty(T.WORD,region)),TS.empty)
        | StringPat s => (STRINGpat s,TS.empty)
@@ -422,9 +414,6 @@ let
                                             error region', compInfo) 
 			  val (p,tv) = elabPat(argument, env, region) 
 		      in 
-			 case dcb of 
-			     CONpat (datacon, _) => EV.add_cons_use datacon region
-			   | _ => ();
 			 (makeAPPpat (error region) (dcb,p),tv)
 		      end 
 		 | getVar (_, region') = 
@@ -438,7 +427,6 @@ let
 	   let val (p1,tv1) = elabPat(pat, env, region)
 	       val (t2,tv2) = ET.elabType(ty,env,error,region)
 	    in
-	       Ens_var.add_type_use t2 region;
 	       (CONSTRAINTpat(p1,t2), union(tv1,tv2,error region))
 	   end
        | LayeredPat {varPat,expPat} =>
@@ -596,22 +584,10 @@ let
 	       let val (rls,tyv,updt) = elabMatch(rules,env,region)
 		in (FNexp (completeMatch rls,UNDEFty),tyv,updt)
 	       end
-	   | MarkExp (exp,region) => (
-	     ( case exp of 
-		   (VarExp path) => 
-		   ( case LU.lookVal(env,SP.SPATH path,error region) of
-			 VAL (v as VALvar _) => 
-			 EV.add_var_use v region
-		       | CON datacon =>
-			 EV.add_cons_use datacon region
-		       | _ => ()
-		   )
-		 | _ => ()
-	     );
+	   | MarkExp (exp,region) =>
 	     let val (e,tyv,updt) = elabExp(exp,env,region)
 	     in (cMARKexp(e,region), tyv, updt)
 	     end
-	     )
 	   | SelectorExp s => 
 	       (let val v = newVALvar s
 		 in FNexp(completeMatch
@@ -1293,13 +1269,6 @@ let
 				       | SOME (_, region) => region
 			   )
             in 
-		case res of 
-		    SOME (symbol, region) =>
-   		    ( case LU.lookValSym(nenv, symbol, error region) of
-			  (VAL (v as VALvar _)) => EV.add_var_def v region
-			| _ => ()
-		    )
-		  | NONE => ();
 		showDec("elabFUNdec: ",ndec,nenv);
 		(ndec, nenv, TS.empty, updt)
             end)

@@ -37,7 +37,6 @@ struct
      ** and output the new env, absyn and pickles *)
     fun elaborate {ast, statenv=senv, compInfo=cinfo, guid,
 		   extRefInfo : Symbol.symbol -> string option } = let
-	val _ = Ens_var.set_source (#sourceName cinfo)
 	val (absyn, nenv) = ElabTop.elabTop(ast, senv, cinfo)
 	val (absyn, nenv) = 
             if CompInfo.anyErrors cinfo then

@@ -350,9 +350,6 @@ fun extractSig (env, epContext, context,
         case binding
          of B.VALbind(V.VALvar{typ,path,access, ...}) =>
               let 
-		  (*val _ = print (SymPath.toString path ^ "\n")*)
-		  (*val _ = Ens_var.change_access access (DA.PATH (dacc, slotCount))*)
-		  val _ = Ens_var.add_mapping dacc slotCount access
 		  val spec = VALspec{spec=relativize(!typ),
                                      slot=slotCount}
                   val elements' = addElems((sym, spec), elements)
@@ -407,8 +404,6 @@ fun extractSig (env, epContext, context,
                     (case sign 
                       of SIG sg => fctflag orelse #fctflag sg
                        | _ => fctflag)
-		  (*val _ = Ens_var.change_access access (DA.PATH (dacc, slotCount))*)
-		  val _ = Ens_var.add_mapping dacc slotCount access
                in (elements', entEnv', entDecl', binding::trans, 
                    slotCount+1, fctflag')
               end
@@ -713,11 +708,8 @@ fun elab (MarkStr (BaseStr decl, wholeregion), env, entEnv, region) =
 
                 (*val dacc = DA.namedAcc(tempStrId, mkv) MOVED BEFORE*)
                 val prim = MU.strPrimElemInBinds locations
-		val str = M.STR {sign=sign, rlzn=strRlzn, access=dacc,
-				 prim=prim}
             in 
-		Ens_var.add_str_def str region dacc;
-		str
+		M.STR {sign=sign, rlzn=strRlzn, access=dacc,prim=prim}
             end
           val _ = debugPrint("BaseStr after resStr  - symbols: ", ED.ppSymList,
                              ED.envSymbols env')
@@ -911,9 +903,6 @@ fun elab (MarkStr (BaseStr decl, wholeregion), env, entEnv, region) =
   | elab (MarkStr(strexp',region'),env,entEnv,region) = 
       let val (resDec, str, resExp, resDee) = 
             elab(strexp', env, entEnv, region')
-	  val _ = case strexp' of
-		      VarStr _ =>  Ens_var.add_str_use str region'
-		    | _ => ()
        in (A.MARKdec(resDec, region'), str, resExp, resDee)
       end
 
@@ -1331,10 +1320,8 @@ fun loop([], decls, entDecls, env, entEnv) =
             case resStr
              of STR { rlzn, sign, access, prim } =>
 		let val access2 = DA.namedAcc(name, mkv)
-		    (*val _ = print ((Access.prAcc access)^"->"^(Access.prAcc access2)^"\n")*)
-		    (*val _ = Ens_var.change_access access access2*)
-		    val str = STR{rlzn = rlzn, sign = sign, access = access2,prim = prim}
-		    val _ = Ens_var.add_str_bnd str access access2 region
+		    val str = STR{rlzn = rlzn, sign = sign, access = access2,
+				  prim = prim}
 		in
 		    (str, M.STRent rlzn)
 		end
@@ -1530,7 +1517,6 @@ in
 			      ())
 			else ()
                   in 
-		     Ens_var.add_sig_alias name s region;
 		     loop(rest, s::sigs, SE.bind(name, B.SIGbind s, env))
                  end
 
@@ -1649,7 +1635,6 @@ in
               bindNewTycs(context, epContext, mkStamp, [], stripl tycs, rpath,
 			  error region)
         in 
-	    (*List.app (fn (x,y) => Ens_var.add_type_def x y) (ListPair.zip (tycs, regions));*)
 	    (dec, entDec, env, entEnv)
         end
         handle EE.Unbound =>
@@ -1677,7 +1662,6 @@ in
 		  val resDec = 
                     A.DATATYPEdec{datatycs=datatycs,withtycs=withtycs}
 
-		  (*val _ = List.app (fn x => Ens_var.add_type_def x region) datatycs*)
 	       in (resDec, entDec, env, entEnv)
 	      end
 

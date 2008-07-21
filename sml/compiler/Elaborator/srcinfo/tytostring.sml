@@ -41,7 +41,7 @@ fun pathToString (InvPath.IPATH (h::q)) =
   | pathToString (InvPath.IPATH []) = 
     bug "pathToString"
 
-fun tycToStrings (General(stamp,path)) : string = 
+fun tycToStrings (General(stamp,path)) : string list = 
     "G" :: stampToStrings stamp @ [pathToString path]
   | tycToStrings (Record labels) = ["R", labelsToString labels]
   | tycToStrings (Path path) = ["P", pathToString path]
