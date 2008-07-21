@@ -203,7 +203,8 @@ in
 
    (*print the different type and datatype definitions and explicit uses*)
    fun print_type ({tycon, stamp, name, def, usage} : type_elem) = 
-       ( print_tycon' tycon;
+       ( print (Stamps.toString stamp ^ " ");
+	 print_tycon' tycon;
 	 print " ";
 	 print (stoS name);
 	 print " ";
@@ -221,6 +222,7 @@ in
 
    (*print the different type constructors and uses*)
    fun print_cons ({name, ty, dataty, def, usage} : cons_elem) = (
+       print (Stamps.toString dataty ^ " ");
        print (stoS name);
        print " ";
        print_ty' ty;

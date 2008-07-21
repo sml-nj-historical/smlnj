@@ -236,89 +236,48 @@ in
 
 
     (* acc can be anything and we gave back an lvar *) 
-    fun get_str_lvar2 acc slot = 
-	case acc of 
-	    A.LVAR _ =>
-	    ( case StrSet.find (find_acc acc) (!ens_str) of
-		  NONE => bug ("get_str_lvar2: " ^ A.prAcc acc)
-		| SOME {elements = Def l, ...} => 
-		  ( case List.find (fn (x, _, _) => x = slot) l of
-			NONE => bug ("get_str_lvar22: " ^ A.prAcc acc)
-		      | SOME (_, _, Str access) => access
-		      | SOME _ => bug ("get_str_lvar23: " ^ A.prAcc acc)
-		  )
-		| SOME {elements = Constraint (l, acc2), ...} => 
-		  ( case List.find (fn (x, _, _) => x = slot) l of
-			NONE => bug ("get_str_lvar24: " ^ A.prAcc acc)
-		      | SOME (_, _, slot2) => get_str_lvar2 acc2 slot2
-		  )
-		| SOME {elements = Alias a, ...} => get_str_lvar2 a slot
-	    )
-	  | A.PATH (a2, slot2) =>
-	    let val acc' = get_str_lvar2 a2 slot2 in
-		get_str_lvar2 acc' slot
-	    end
-	  | _ =>
-	    bug "get_str_lvar25"
+    fun get_str_lvar2 (acc as A.PATH (a, slot)) = 
+	let val acc' = get_str_lvar2 a in
+	    case StrSet.find (find_acc acc') (!ens_str) of
+		NONE => bug ("get_str_lvar2: " ^ A.prAcc acc)
+	      | SOME {elements = Def l, ...} => 
+		( case List.find (fn (x, _, _) => x = slot) l of
+		      NONE => bug ("get_str_lvar22: " ^ A.prAcc acc)
+		    | SOME (_, _, Str access) => get_str_lvar2 access
+		    | SOME _ => bug ("get_str_lvar23: " ^ A.prAcc acc)
+		)
+	      | SOME {elements = Constraint (l, acc2), ...} => 
+		( case List.find (fn (x, _, _) => x = slot) l of
+		      NONE => bug ("get_str_lvar24: " ^ A.prAcc acc)
+		    | SOME (_, _, slot2) => get_str_lvar2 (A.PATH (acc2,slot2))
+		)
+	      | SOME {elements = Alias a, ...} => 
+		get_str_lvar2 (A.PATH (a,slot))
+	end
+      | get_str_lvar2 (acc as A.LVAR _) = acc
+      | get_str_lvar2 _ = bug "get_str_lvar25"
 		
     (* idem *) 				    
-    fun get_var_lvar2 acc slot = 
-	case acc of 
-	    A.LVAR _ =>
-	    ( case StrSet.find (find_acc acc) (!ens_str) of
-		  NONE => bug ("get_var_lvar2: " ^ A.prAcc acc)
-		| SOME {elements = Def l, ...} => 
-		  ( case List.find (fn (x, _, _) => x = slot) l of
-			NONE => bug ("get_var_lvar22: " ^ A.prAcc acc)
-		      | SOME (_, _, Var access) => access
-		      | SOME _ => bug ("get_var_lvar23: " ^ A.prAcc acc)
-		  )
-		| SOME {elements = Constraint (l, acc2), ...} => 
-		  ( case List.find (fn (x, _, _) => x = slot) l of
-			NONE => bug ("get_var_lvar24: " ^ A.prAcc acc)
-		      | SOME (_, _, slot2) => get_var_lvar2 acc2 slot2
-		  )
-		| SOME {elements = Alias a, ...} => get_var_lvar2 a slot
-	    )
-	  | A.PATH (a2, slot2) =>
-	    let val acc' = get_str_lvar2 a2 slot2 in
-		get_var_lvar2 acc' slot
-	    end
-	  | _ => bug "get_var_lvar25"
-
-    (* acc should be an lvar of a structure *)
-    fun get_var_lvar acc slot = 
-	case StrSet.find (find_acc acc) (!ens_str) of
-	    NONE => bug ("get_var_lvar: " ^ A.prAcc acc)
-	  | SOME {elements = Def l, ...} => 
-	    ( case List.find (fn (x, _, _) => x = slot) l of
-		  NONE => bug ("get_var_lvar2: " ^ A.prAcc acc)
-		| SOME (_, _, Var access) => access
-		| SOME _ => bug ("get_var_lvar3: " ^ A.prAcc acc)
-	    )
-	  | SOME {elements = Constraint (l, acc2), ...} => 
-	    ( case List.find (fn (x, _, _) => x = slot) l of
-		  NONE => bug ("get_var_lvar4: " ^ A.prAcc acc)
-		| SOME (_, _, slot2) => get_var_lvar acc2 slot2
-	    )
-	  | SOME {elements = Alias a, ...} => get_var_lvar a slot
-
-    (* acc should be the lvar of a structure *) 
-    fun get_str_lvar acc slot = 
-	case StrSet.find (find_acc acc) (!ens_str) of
-	    NONE => bug ("get_str_lvar: " ^ A.prAcc acc)
-	  | SOME {elements = Def l, ...} => 
-	    ( case List.find (fn (x, _, _) => x = slot) l of
-		  NONE => bug ("get_str_lvar2: " ^ A.prAcc acc)
-		| SOME (_, _, Str access) => access
-		| SOME _ => bug ("get_str_lvar3: " ^ A.prAcc acc)
-	    )
-	  | SOME {elements = Constraint (l, acc2), ...} => 
-	    ( case List.find (fn (x, _, _) => x = slot) l of
-		  NONE => bug ("get_str_lvar4: " ^ A.prAcc acc)
-		| SOME (_, _, slot2) => get_str_lvar acc2 slot2
-	    )
-	  | SOME {elements = Alias a, ...} => get_str_lvar a slot
+    fun get_var_lvar2 (acc as A.PATH (a, slot)) = 
+	let val acc' = get_str_lvar2 a in
+	    case StrSet.find (find_acc acc') (!ens_str) of
+		NONE => bug ("get_var_lvar2: " ^ A.prAcc acc)
+	      | SOME {elements = Def l, ...} => 
+		( case List.find (fn (x, _, _) => x = slot) l of
+		      NONE => bug ("get_var_lvar22: " ^ A.prAcc acc)
+		    | SOME (_, _, Var access) => get_var_lvar2 access
+		    | SOME _ => bug ("get_var_lvar23: " ^ A.prAcc acc)
+		)
+	      | SOME {elements = Constraint (l, acc2), ...} => 
+		( case List.find (fn (x, _, _) => x = slot) l of
+		      NONE => bug ("get_var_lvar24: " ^ A.prAcc acc)
+		    | SOME (_, _, slot2) => get_var_lvar2 (A.PATH(acc2,slot2))
+		)
+	      | SOME {elements = Alias a, ...} => 
+		get_var_lvar2 (A.PATH(a,slot))
+	end
+      | get_var_lvar2 (acc as A.LVAR _) = acc
+      | get_var_lvar2 _ = bug "get_var_lvar25"
 
     fun modify [] region = 
 	([], region)
@@ -332,7 +291,7 @@ in
 	      | add_uses (a as (A.PATH (a', slot))) rpath region = 
 		let val (rpath, region) = modify rpath region
 		    val a' = add_uses a' rpath region
-		    val a = get_str_lvar a' slot
+		    val a = get_str_lvar2 (A.PATH (a',slot))
 		in
 		    case StrSet.find (find_acc a) (!ens_str) of
 			NONE => print "pb in add_implicite_use1\n"
@@ -343,9 +302,9 @@ in
 	      | add_uses a _ _ = bug ("add_implicite_use3" ^ A.prAcc a)
 	in
 	    if is_str then
-		get_str_lvar (add_uses access rpath region) slot0
+		get_str_lvar2 (A.PATH ((add_uses access rpath region),slot0))
 	    else
-		get_var_lvar (add_uses access rpath region) slot0
+		get_var_lvar2 (A.PATH ((add_uses access rpath region),slot0))
 	end
       | add_implicite_use (access as A.LVAR _) _ _ _ = access
       | add_implicite_use _ _ _ _ = bug "add_implicite_use4"
@@ -434,14 +393,9 @@ in
 			val toplevel = List.hd path 
 		    in
 			case !extRefInfo toplevel of
-			    NONE => () (*print ("No sourcefile for " ^ 
-					   Symbol.name toplevel ^ "\n")*)
+			    NONE => ()
 			  | SOME _ =>
-			    let val last = 
-				    case path of
-					[] => bug "add_var_use1"
-				      | h :: _ => h
-				val (_, r2) = region
+			    let val (_, r2) = region
 				(* +1 pour compenser le -1 qui aura lieu dans 
 				 * modify *)
 				val region = (r2+1, r2+1)
@@ -801,11 +755,11 @@ in
     fun distribution (va,ty,co,st,si,lv) ext = 
 	case ext of
 	    ExtVar {access, usage} =>
-	    let val (lvar, sourcename) = 
+	    let val (acc, sourcename) = 
 		    case modify_path access lv of
-			(A.PATH (mod_acc, slot), s) => 
-			(get_var_lvar2(*???*) mod_acc slot, s)
+			(pair as (A.PATH _, _)) => pair
 		      | _ => bug "distribution.ExtVar1"
+		val lvar = get_var_lvar2 acc
 	    in case VarSet.find (fn {access, def, ...} => 
 				    access = lvar andalso
 				    locFile def = sourcename
@@ -815,12 +769,8 @@ in
 		 | SOME {usage = u, ...} => u := !usage @ !u
 	    end
 	  | ExtStr {access, usage} =>
-	    let val (lvar, sourcename) = 
-		    case modify_path access lv of
-			(A.PATH (mod_acc, slot), s) => 
-			(get_str_lvar2 mod_acc slot, s)
-		      | ((a as A.LVAR _), s) => (a, s)
-		      | _ => bug "distribution.ExtStr1"
+	    let val (acc, sourcename) = modify_path access lv
+		val lvar = get_str_lvar2 acc
 	    in case StrSet.find (fn {access, def, ...} => 
 				    access = lvar andalso
 				    locFile def = sourcename
