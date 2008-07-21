@@ -46,12 +46,12 @@ struct
 	      | T.VARty _ => ErrorMsg.impossible "Ens_types2: ty_to_ty'.2"
 	      | typ => ty_to_ty' typ
 	    )
-	  | T.POLYty {tyfun = T.TYFUN {arity, body}, ...} =>
-	    Poly {arity = arity, body = ty_to_ty' body}
-	  | T.CONty (tycon, tyl) =>
-	    Conty (to_stub tycon, List.map ty_to_ty' tyl)
-	  | (T.WILDCARDty | T.UNDEFty) => 
-	    ErrorMsg.impossible "Ens_types2: ty_to_ty'.1"
+	   | T.POLYty {tyfun = T.TYFUN {arity, body}, ...} =>
+	       Poly {arity = arity, body = ty_to_ty' body}
+	   | T.CONty (tycon, tyl) =>
+	       Conty (to_stub tycon, List.map ty_to_ty' tyl)
+	   | (T.WILDCARDty | T.UNDEFty) => 
+	       ErrorMsg.impossible "Ens_types2: ty_to_ty'.1"
 
     fun tycon_to_tycon' tyc = 
 	case tyc of
@@ -75,7 +75,12 @@ struct
 		end
 	  | T.GENtyc {stamp, eq, path, kind = T.PRIMITIVE _, ...} =>
 	    (stamp, path, Primtyc (!eq = T.YES))
-	  | T.GENtyc {stamp, path, kind = T.ABSTRACT (T.GENtyc {kind = T.DATATYPE {index, family = {members, ...}, ...}, ...}), ...} => 
+	  | T.GENtyc {stamp, path,
+		      kind = T.ABSTRACT(T.GENtyc {kind = T.DATATYPE {index,
+								     family = {members, ...},
+								     ...},
+						  ...}),
+		      ...} => 
 	    let val {tycname, dcons, ...} = Vector.sub (members,index)
 	    in
 		( stamp,
@@ -87,7 +92,7 @@ struct
 	    ErrorMsg.impossible "Ens_types2: tycon_to_tycon'.2"
 	    
 
-    fun sig_to_elem (Modules.SIG {name, stamp, inferred, elements, ...}) = 
+    fun sig_to_elem (Modules.SIG {name, stamp, inferred, elements, ...}) : sig_elem = 
 	let
 	    (*fun conv_spec (M.VALspec {spec = ty, ...}) = 
 		Val (ty_to_ty' ty)
@@ -125,7 +130,7 @@ struct
 		       | NONE => Symbol.sigSymbol "<anonymousSig>",
 	      stamp = stamp,
 	      inferred = inferred,
-	      def = ("", ~1, ~1),
+	      def = ("", ~1, ~1),    (* DBM: needs to be properly defined using marked sig *)
 	      elements = List.mapPartial conv elements,
 	      alias = ref [],
 	      usage = ref []

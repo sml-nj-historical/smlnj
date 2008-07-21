@@ -37,81 +37,95 @@ struct
       | Primtyc of bool (* : eq *)
 
 
+    type varUse = location * ty' * Access.access
+
     (*the record containing def locations ...*)
-    type var_elem = { access : Access.access,
-		      name : Symbol.symbol,
-		      parent : Access.access,
-		      typ : ty',
-		      def : location, 
-		      usage : (location * ty' * Access.access) list ref
-		    }
+    type var_elem
+      = { access : Access.access,
+	  name : Symbol.symbol,
+	  parent : Access.access,
+	  typ : ty',
+	  def : location, 
+	  usage : varUse list ref
+	}
 
-    type type_elem = { tycon : tycon',
-		       stamp : Stamps.stamp,
-		       name : Symbol.symbol,
-		       def : location, 
-		       usage : location list ref
-		     }
+    type type_elem
+      = { tycon : tycon',
+	  stamp : Stamps.stamp,
+	  name : Symbol.symbol,
+	  def : location, 
+	  usage : location list ref
+	}
 		     
-    type cons_elem = { name : Symbol.symbol,
-		       dataty : Stamps.stamp,
-		       def : location, 
-		       ty : ty',
-		       usage : (location * ty') list ref
-		     }
+    type cons_elem
+      = { name : Symbol.symbol,
+	  dataty : Stamps.stamp,
+	  def : location, 
+	  ty : ty',
+	  usage : (location * ty') list ref
+	}
 
-    datatype key = Var of Access.access 		
-		 | Str of Access.access 
-		 | Type of Stamps.stamp 
-		 | Cons of Stamps.stamp * Symbol.symbol
-		 | Sig of Stamps.stamp
+    datatype key
+      = Var of Access.access 		
+      | Str of Access.access 
+      | Type of Stamps.stamp 
+      | Cons of Stamps.stamp * Symbol.symbol
+      | Sig of Stamps.stamp
 
-    datatype elements = 
-	     Def of (int * Symbol.symbol * key) list
-	   | Constraint of (int * Symbol.symbol * int) list * Access.access
-	   | Alias of Access.access
+    datatype elements
+      = Def of (int * Symbol.symbol * key) list
+      | Constraint of (int * Symbol.symbol * int) list * Access.access
+      | Alias of Access.access
 		      
-    type str_elem = { name : Symbol.symbol, 
-		      access : Access.access,
-		      parent : Access.access option,
-		      sign : Stamps.stamp option, (*pas de sig pour les alias*)
-		      def : location, 
-		      elements : elements,
-		      usage : location list ref
-		    }
+    type str_elem
+      = { name : Symbol.symbol, 
+	  access : Access.access,
+	  parent : Access.access option,
+	  sign : Stamps.stamp option, (*pas de sig pour les alias*)
+	  def : location, 
+	  elements : elements,
+	  usage : location list ref
+	}
 		    
-    datatype spec_sig = Typ of tycon'
-		      | Val of ty'
-		      | Exception of ty'
-		      | NamedStr of Symbol.symbol * Stamps.stamp
-		      | InlineStr of (Symbol.symbol * spec_sig) list
+    datatype spec_sig
+      = Typ of tycon'
+      | Val of ty'
+      | Exception of ty'
+      | NamedStr of Symbol.symbol * Stamps.stamp
+      | InlineStr of (Symbol.symbol * spec_sig) list
 
-    type sig_elem = { name : Symbol.symbol,
-		      stamp : Stamps.stamp,
-		      inferred : bool,
-		      def : location, 
-		      elements : (Symbol.symbol * spec_sig) list,
-		      alias : (location * Symbol.symbol) list ref, 
-		      usage : (location * Symbol.symbol) list ref
-		    }
+    type sig_elem
+      = { name : Symbol.symbol,
+	  stamp : Stamps.stamp,
+	  inferred : bool,
+	  def : location, 
+	  elements : (Symbol.symbol * spec_sig) list,
+	  alias : (location * Symbol.symbol) list ref, 
+	  usage : (location * Symbol.symbol) list ref
+	}
 		   
-    datatype ext_elem = 
-	     ExtVar of { access : Access.access, 
-			 usage : (location * ty' * Access.access) list ref
-		       }
-	   | ExtStr of { access : Access.access,
-			 usage : location list ref
-		       }
-	   | ExtType of { stamp : Stamps.stamp,
-			  usage : location list ref
-			}
-	   | ExtCons of { stamp : Stamps.stamp,
-			  name : Symbol.symbol,
-			  usage : (location * ty') list ref
-			}
-	   | ExtSig of { stamp : Stamps.stamp,
-			 usage : (location * Symbol.symbol) list ref
-		       }
+    datatype ext_elem
+      = ExtVar of 
+	  { access : Access.access, 
+	    usage : (location * ty' * Access.access) list ref
+	  }
+      | ExtStr of
+	  { access : Access.access,
+	    usage : location list ref
+	  }
+      | ExtType of
+	  { stamp : Stamps.stamp,
+	    usage : location list ref
+	  }
+      | ExtCons of
+	  { stamp : Stamps.stamp,
+	    name : Symbol.symbol,
+	    usage : (location * ty') list ref
+	  }
+      | ExtSig of
+	  { stamp : Stamps.stamp,
+	    usage : (location * Symbol.symbol) list ref
+	  }
  
     type all = var_elem list * 
 	       type_elem list * 

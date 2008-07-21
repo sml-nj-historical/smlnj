@@ -10,17 +10,18 @@ fun bug x = ErrorMsg.impossible ("TyToString: " ^ x)
 
 val flatten = String.concatWith " "
 
-fun listToStrings aToStrings l = 
+(* listToStrings : ('a -> string list) -> 'a list -> string list *)
+fun listToStrings aToStrings l : string list = 
     Int.toString(length l) :: List.concat(map aToStrings l)
 
 fun ext_fun f l = 
     flatten (listToStrings f l)
 
-fun stampToStrings stamp =
+fun stampToStrings stamp : string list =
     let fun fresh n = ["FS", Int.toString n]
 	fun special s = ["SS", s]
 	fun global {pid,cnt} = ["GS", PersStamps.toHex pid, Int.toString cnt]
-    in 
+     in 
 	Stamps.Case'
 	    stamp
 	    {fresh=fresh,special=special,global=global} 
@@ -40,12 +41,12 @@ fun pathToString (InvPath.IPATH (h::q)) =
   | pathToString (InvPath.IPATH []) = 
     bug "pathToString"
 
-fun tycToStrings (General(stamp,path)) = 
+fun tycToStrings (General(stamp,path)) : string = 
     "G" :: stampToStrings stamp @ [pathToString path]
   | tycToStrings (Record labels) = ["R", labelsToString labels]
   | tycToStrings (Path path) = ["P", pathToString path]
 
-fun tyToStrings (Conty(stubtyc,args)) = 
+fun tyToStrings (Conty(stubtyc,args)) : string list = 
     "C" :: tycToStrings stubtyc @ tyListToStrings args
   | tyToStrings (Ibound index) = 
     ["I", Int.toString index]
@@ -59,12 +60,12 @@ fun tyToStrings (Conty(stubtyc,args)) =
 and tyListToStrings l = 
     listToStrings tyToStrings l
 
-(*fun tyToString ty = flatten (tyToStrings ty)*)
+(* fun tyToString ty = flatten (tyToStrings ty) *)
 
 fun boolToString b = 
     if b then "t" else "f"
 
-fun tyconToStrings (Datatype (b, sl)) = 
+fun tyconToStrings (Datatype (b, sl)) : string list = 
     ["D", boolToString b, labelsToString sl]
   | tyconToStrings (Abstract sl) = 
     ["A", labelsToString sl]
@@ -73,14 +74,14 @@ fun tyconToStrings (Datatype (b, sl)) =
   | tyconToStrings (Primtyc b) =
     ["P", boolToString b]
 
-(*fun tyconToString tycon = flatten (tyconToStrings tycon)*)
+(* fun tyconToString tycon : string = flatten (tyconToStrings tycon) *)
 
 fun stringToString s = "<" ^ s ^ ">"
 
-fun locationToStrings (f, r1, r2) = 
+fun locationToStrings (f, r1, r2) : string list = 
     [stringToString f, Int.toString r1, Int.toString r2]
 
-fun accessToStrings (Access.LVAR i) = 
+fun accessToStrings (Access.LVAR i) : string list = 
     ["L", Int.toString i]
   | accessToStrings (Access.EXTERN pstamp) = 
     ["E", PersStamps.toHex pstamp]
@@ -89,12 +90,13 @@ fun accessToStrings (Access.LVAR i) =
   | accessToStrings (Access.NO_ACCESS) = 
     bug "accessToStrings"
 
+
 fun varElemUsageToStrings usage = 
     listToStrings 
 	(fn(x, y, z) =>locationToStrings x @ tyToStrings y @ accessToStrings z)
 	(!usage)
     
-fun varElemToStrings {access, name, parent, typ, def, usage} = 
+fun varElemToStrings {access, name, parent, typ, def, usage} : string list = 
     accessToStrings access @
     Symbol.name name ::
     accessToStrings parent @
@@ -105,7 +107,7 @@ fun varElemToStrings {access, name, parent, typ, def, usage} =
 val varToString = 
     ext_fun varElemToStrings
 
-fun keyToStrings (Var acc) = 
+fun keyToStrings (Var acc) : string list = 
     "V" :: accessToStrings acc
   | keyToStrings (Str acc) = 
     "S" :: accessToStrings acc
@@ -116,7 +118,7 @@ fun keyToStrings (Var acc) =
   | keyToStrings (Sig s) = 
     "G" :: stampToStrings s
 
-fun elementsToStrings (Def l) = 
+fun elementsToStrings (Def l) : string list = 
     "D" :: listToStrings 
 	       (fn (x, y, z) => Int.toString x :: 
 				Symbol.symbolToString y ::
@@ -178,6 +180,7 @@ fun sigElemToStrings {name, stamp, inferred, def, elements, alias, usage} =
     elementsSigToStrings elements @
     sigElemAliasToStrings alias @
     sigElemUsageToStrings usage
+
 
 val sigToString =
     ext_fun sigElemToStrings

@@ -32,7 +32,8 @@
       primary (i.e. at "top-level" within the file/module
       seconday (i.e. nested within higher-level functions)
    explore the hierarchial tree of function definitions
-   what is the symbol (or token?) at character position n in a file
+   what is the symbol (or token?) "at" character position n in a file
+     "at" == first symbol (in text order) whose terminal position exceeds n
 *)
 
 (* query : 
@@ -48,13 +49,61 @@
      qualifications?
 	name space (if we don't view that as part of the basic designation)
 
-    An "occurrence" of a symbol uniquely determines an abstract variable.
+    An "occurrence" of a symbol uniquely determines an abstract variable (value, tycon, str, etc.).
     An "occurrence" is a location of a single symbol.
 *)
 
-type occurrence = location (?)
+structure Queries =
+struct
+
+structure S = Symbol
+
+open Ens_types2 Ens_var
+
+type occurrence = symbol * location
+(*
 type subject = OCC of occurrence | SYM of symbol | ???
 
 (* a crude first attempt *)
 datatype query = 
   Q of subjet * qualifier list * attributes
+*)
+
+(* 
+needed basic utility functions: 
+
+   eqLocation : location * location -> bool
+
+needed database functions:
+
+   findVar : (var_elem -> bool) -> var_elem option
+     -- finds first or unique element of ens_var (variable table) satisfying predicate
+*)
+
+(* query utility functions *)
+
+fun occIsVar (occ as (sym,loc): occurrence) ({name,usage,...} : var_elem) : bool =
+    S.eq (sym,name) andalso List.exists (fn (loc',_,_) => eqLocation(loc', loc)) (!usage)
+
+fun findUse(loc: location, usage: varUse list) : varUse option =
+    List.find (fn (loc',ty,acc) => eqLocation(loc,loc')) 
+
+
+(* sample query functions *)
+
+(* find defining occurrence for a (variable?) applied occurrence *)
+fun varDefOcc (occ : occurrence) : location option = 
+    case findVar (occIsVar occ) 
+     of SOME{def,...} => SOME def
+      | NONE => NONE
+
+(* find type of a (variable?) applied occurrence *)
+fun varDefOcc (occ as (sym,loc): occurrence) : ty' option = 
+    case findVar (occIsVar occ)
+     of SOME{def,usage} =>
+	  let val (_,ty,_) =  findUse(loc,!usage)
+	   in SOME ty
+	  end
+      | NONE => NONE
+
+end (* structure Queries *)

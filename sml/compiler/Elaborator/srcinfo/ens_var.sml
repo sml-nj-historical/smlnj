@@ -58,24 +58,14 @@ in
    structure VarSet = RedBlackSetFn(VarKey)
 
 
-
-
-
-   fun compare_type (T.DEFtyc tycon, T.DEFtyc tycon2) = 
-       Stamps.compare (#stamp tycon, #stamp tycon2)
-     | compare_type 
-	   (T.GENtyc ({stamp = stamp,  
-		       kind = T.DATATYPE{index = index,  ...}, ...}),
-	    T.GENtyc ({stamp = stamp2, 
-		       kind = T.DATATYPE{index = index2, ...}, ...})) = 
-       ( case Stamps.compare (stamp, stamp2) of 
-	     EQUAL => Int.compare (index,  index2)
-	   | ord => ord
-       )
+   fun compare_type (T.DEFtyc{stamp=s1,...}, T.DEFtyc{stamp=s2,...}) = 
+       Stamps.compare (s1, s2)
+     | compare_type (T.GENtyc{stamp = s1,...}, T.GENtyc{stamp = s2,...}) =
+       Stamps.compare (s1, s2)
      | compare_type (T.DEFtyc _, _) = GREATER
      | compare_type _ = LESS
 
-   (* type *)
+   (* type elems with ordering *)
    structure TypeKey : ORD_KEY =
    struct
       type ord_key = type_elem
@@ -85,9 +75,6 @@ in
    
    (* type sets *)
    structure TypeSet = RedBlackSetFn(TypeKey)
-
-
-
 
 
 
