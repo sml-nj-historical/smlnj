@@ -216,18 +216,14 @@ structure UnpickMod : UNPICKMOD = struct
 	    
 	fun access () = let
 	    fun a #"A" = let val entier = int () 
-			     val access = A.LVAR entier
-			     val access'= lvar entier
-			     (*val () = print (A.prAcc access  ^ "->" ^ 
-					     A.prAcc access' ^ "\n")*)
-			     (*val _ = Ens_var.add_lvar_ext access access'*)
+			     val access = lvar entier
 			     val () = 
 				 if !Control.Elab.infodebugging then
-				     Ens_var2.add_lvar_ext access access'
+				     Ens_var2.add_ext_acc access
 				 else
 				     ()
 			 in
-			     access'
+			     access
 			 end
 	      | a #"B" = A.EXTERN (pid ())
 	      | a #"C" = A.PATH (access (), int ())

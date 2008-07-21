@@ -33,12 +33,15 @@ sig
 
     val print_all : unit -> unit
     val set_source : string -> unit
-    val add_lvar_ext : Access.access -> Access.access -> unit
+    val add_lvar : Access.access -> unit
+    val add_ext_acc : Access.access -> unit
+    val pickling_over : unit -> unit
     val set_eri : (Symbol.symbol -> string option) -> unit
-    val set_pid : (PersStamps.persstamp -> unit)
+    val clear_lvar : unit -> unit
     val clear : unit -> unit
     val save : unit -> unit
-    val load : string -> unit
+    val load_replace : string -> unit
+    val load_merge : string -> unit
     val test : unit -> unit
 end
 
@@ -58,8 +61,13 @@ in
     fun set_source s = source := s
 
     val lvar_ext = ref [] : (A.access * A.access) list ref
-    fun add_lvar_ext lvar ext = 
-	lvar_ext := (lvar, ext) :: (!lvar_ext)
+    val lvars = ref [] : A.access list ref
+    val exts = ref [] : A.access list ref
+
+    fun clear_lvar () = (lvars := []; exts := []; lvar_ext := [])
+    fun add_lvar access = lvars := access :: !lvars 
+    fun add_ext_acc access = exts := access :: !exts
+    fun pickling_over () = lvar_ext := ListPair.zipEq (!lvars, !exts)
 
     fun print_lvars () = 
 	case !lvar_ext of
@@ -70,13 +78,6 @@ in
 		  (!lvar_ext);
 	      print "\n"
 	    )
-
-    val pid = ref NONE : PersStamps.persstamp option ref
-    fun set_pid pid' = (lvar_ext := []; pid := SOME pid')
-    fun print_pid () =
-	case !pid of
-	    NONE => print "No pid\n"
-	  | (SOME p) => print ("pid : " ^ PersStamps.toHex p ^ "\n")
 
     val extRefInfo = ref (fn _ => NONE) : (Symbol.symbol -> string option) ref
     fun set_eri eri = 
@@ -620,8 +621,8 @@ in
 	print_cons ();
 	print_sig ();
 	print_ext ();
-	print_lvars ();
-	print_pid ()
+	print_lvars ()(*;
+	print_pid ()*)
     )
 
 
@@ -633,8 +634,6 @@ in
 	ens_sig := SigSet.empty;
 	ens_ext := ExtSet.empty;
 	source := "";
-	(*lvar_ext := [];
-	pid := NONE;*)
 	extRefInfo := (fn _ => NONE)
     )
 
@@ -669,8 +668,7 @@ in
 		 val os = TextIO.openOut new_source
 		 val s = get_strings (!ens_var, !ens_ty, !ens_cons, !ens_str,
 				      !ens_sig, !ens_ext, !lvar_ext)
-	     in
-		 List.app (fn x => (TextIO.output (os, x);
+	     in  List.app (fn x => (TextIO.output (os, x);
 				    TextIO.output (os, "\n")))
 			  s;
 		 TextIO.flushOut os;
@@ -680,7 +678,7 @@ in
 
     fun save () = save_to_file (!source)
 
-    fun load sourcefile =
+    fun load_return sourcefile = 
 	let val new_source = pickfile sourcefile
 	    val os = TextIO.openIn new_source
 	    fun get_val NONE = bug ("sourcefile "^new_source^":unexpected EOF")
@@ -689,24 +687,87 @@ in
 	    val (var,ty,cons,str,sign,ext,lvarext) =
 		get_sets (gs(),gs(),gs(),gs(),gs(),gs(),gs())
 	in
-	    ens_var := var;
+	    (var, ty, cons, str, sign, ext, lvarext)
+	end
+
+    fun load_replace sourcefile =
+	let val (var,ty,cons,str,sign,ext,lvarext)=load_return sourcefile
+	in  ens_var := var;
 	    ens_ty := ty;
 	    ens_cons := cons;
 	    ens_str := str;
 	    ens_sig := sign;
 	    ens_ext := ext;
-	    lvar_ext := lvarext;
-	    pid := ( case !lvar_ext of
-			 [] => NONE
-		       | ((_, acc) :: _) =>
-			 let fun f (A.PATH (a, _)) = f a
-			       | f (A.EXTERN p) = p
-			       | f _ = bug "load"
-			 in
-			     SOME (f acc)
-			 end
-		   )
+	    lvar_ext := lvarext
 	end
+
+    fun modify_path (a as A.PATH (A.EXTERN _, _)) lv = 
+	( case List.find (fn (_, ext_acc) => ext_acc = a) lv of
+	      NONE => bug "modify_path2"
+	    | SOME (loc_acc, _) => loc_acc
+	)
+      | modify_path (A.PATH (a, slot)) lv = 
+	A.PATH (modify_path a lv, slot)
+      | modify_path _ _ = bug "modify_path1"
+		
+    fun distribution (va,ty,co,st,si,lv) ext = 
+	case ext of
+	    ExtVar {access, usage} =>
+	    let val lvar = 
+		    case modify_path access lv of
+			A.PATH (mod_acc, slot) => get_var_lvar mod_acc slot
+		      | _ => bug "distribution.ExtVar1"
+	    in case VarSet.find (fn {access, ...} => access = lvar) (!va)
+		of NONE => bug "distribution.ExtVar"
+		 | SOME {usage = u, ...} => u := !usage @ !u
+	    end
+	  | ExtStr {access, usage} =>
+	    let val lvar = 
+		    case modify_path access lv of
+			A.PATH (mod_acc, slot) => get_str_lvar mod_acc slot
+		      | (a as A.LVAR _) => a
+		      | _ => bug "distribution.ExtStr1"
+	    in case StrSet.find (find_acc lvar) (!st) of
+		   NONE => bug "distribution.ExtStr"
+		 | SOME {usage = u, ...} => u := !usage @ !u
+	    end
+	  | ExtType {stamp, usage} => ()
+	    (* case TySet.find () (!ty) of
+		  NONE => bug "distribution.ExtType"
+		| SOME {usage = u, ...} => u := !usage @ !u
+	    *)
+	  | ExtCons {stamp, name, usage} => ()
+	    (* case ConsSet.find () (!co) of
+		  NONE => bug "distribution.ExtCons"
+		| SOME {usage = u, ...} => u := !usage @ !u
+	    *)
+	  | ExtSig {stamp, usage} => ()
+	    (* case SigSet.find () (!si) of
+		  NONE => bug "distribution.ExtSig"
+		| SOME {usage = u, ...} => u := !usage @ !u
+	    *)
+
+    fun load_merge sourcefile = 
+	let val (var,ty,cons,str,sign,ext,lvarext(*,pid'*))=load_return sourcefile
+	    val ens_var2 = ref var
+	    val ens_ty2 = ref ty
+	    val ens_cons2 = ref cons
+	    val ens_str2 = ref str
+	    val ens_sig2 = ref sign
+	    val distrib = distribution (ens_var, ens_ty, ens_cons, ens_str,
+					ens_sig, !lvar_ext)
+	in 
+	    ExtSet.app distrib ext;
+	    ens_var  := VarSet.union  (!ens_var,  !ens_var2);
+	    ens_ty   := TySet.union   (!ens_ty,   !ens_ty2);
+	    ens_cons := ConsSet.union (!ens_cons, !ens_cons2);
+	    ens_str  := StrSet.union  (!ens_str,  !ens_str2);
+	    ens_sig  := SigSet.union  (!ens_sig,  !ens_sig2);
+	    (*ens_ext := ext; should be empty anyway*)
+	    lvar_ext := lvarext @ !lvar_ext(*;
+	    pid := pid'*)
+	end
+
 
     fun test () =
 	let val s = get_strings (!ens_var, !ens_ty, !ens_cons, !ens_str,
@@ -757,8 +818,7 @@ in
 	    StrSet.app EP.print_str d;
 	    SigSet.app EP.print_sig e;
 	    ExtSet.app EP.print_ext f;
-	    print_lvars ();
-	    print_pid ()
+	    print_lvars ()
 	end
 
 

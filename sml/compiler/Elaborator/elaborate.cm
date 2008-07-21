@@ -53,6 +53,7 @@ Group
 
 	signature ENS_VAR
 	structure Ens_var
+	signature ENS_VAR2
 	structure Ens_var2
 	structure Ens_types
 	structure Ens_types2

@@ -482,7 +482,12 @@ in
 
     fun mkAccess { lvar, isLocalPid } = let
 	val op $ = PU.$ A
-	fun access (A.LVAR i) = "A" $ [lvar i]
+	fun access (a as A.LVAR i) = 
+	    ( if !Control.Elab.infodebugging then
+		  Ens_var2.add_lvar a 
+	      else 
+		  ();
+	      "A" $ [lvar i])
 	  | access (A.EXTERN p) = "B" $ [pid p]
 	  | access (A.PATH (a as A.EXTERN p, i)) =
 	    (* isLocalPid always returns false for in the "normal pickler"

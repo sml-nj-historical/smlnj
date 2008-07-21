@@ -122,7 +122,7 @@ in
 		 List.app 
 		     (fn (x, y) => 
 			 (print (stoS x ^ ":"); print_ty' y; print ", "))
-		     (ListPair.zip (ll, tyl)); 
+		     (ListPair.zipEq (ll, tyl)); 
 		 print "}"
 	       )
 	 | Conty (General (_, path), []) => 
