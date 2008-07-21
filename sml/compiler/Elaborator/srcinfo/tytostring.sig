@@ -10,5 +10,6 @@ sig
     val extToString  : Ens_types2.ext_elem  list -> string
 
     val lvarExtToString : (Access.access * Access.access) list -> string
+    val pidOptionToString : PersStamps.persstamp option -> string
 
 end

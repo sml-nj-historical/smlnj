@@ -10,6 +10,7 @@ sig
     val stringToExt : string -> Ens_types2.ext_elem list
 
     val stringToLvarExt : string -> (Access.access * Access.access) list
+    val stringToPidOption : string -> PersStamps.persstamp option
 end (* signature STRINGTOTY *)
 
 local
@@ -70,6 +71,11 @@ fun get_persstamps s =
     case PersStamps.fromHex s of
 	NONE => bug ("get_persstamps" ^ s)
       | SOME st => st
+
+fun stringsToPersstamps (h :: sl) = 
+    (get_persstamps h, sl)
+  | stringsToPersstamps [] = 
+    bug "stringsToPersstamps"
 
 fun stringsToStamp ("SS" :: h :: sl) =
     (Stamps.special h, sl)
@@ -488,7 +494,7 @@ fun stringsToExtElem ("v" :: sl) =
 val stringToExt = 
     ext_fun stringsToExtElem "stringToExt"
 
-fun stringToLvarExtElems sl =
+fun stringsToLvarExtElems sl =
     let val (acc1, sl0) = stringsToAccess sl
 	val (acc2, sl1) = stringsToAccess sl0
     in
@@ -496,7 +502,15 @@ fun stringToLvarExtElems sl =
     end
 
 val stringToLvarExt = 
-    ext_fun stringToLvarExtElems "stringToLvarExt"
+    ext_fun stringsToLvarExtElems "stringToLvarExt"
+
+fun stringsToPidOption sl = 
+    stringsToOption stringsToPersstamps sl
+
+fun stringToPidOption s = 
+    case stringsToPidOption (tokenize s) of
+	(v, []) => v
+      | (_, rem) => (print (concat rem); print "\n"; bug "stringToPidOption")
 
 end (* structure StringToTy*)
 end (* local *)

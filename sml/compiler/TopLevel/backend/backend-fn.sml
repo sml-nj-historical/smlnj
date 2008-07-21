@@ -71,7 +71,9 @@ functor BackendFn (structure M : CODEGENERATOR
 			  UnpickMod.unpickleEnv up_context (pid, pickle)
 		      val () = 
 			  if !Control.Elab.infodebugging then
-			      Ens_var2.pickling_over ()
+			      ( Ens_var2.pickling_over ();
+				Ens_var2.set_pid pid
+			      )
 			  else
 			      ()
 		  in

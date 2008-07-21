@@ -229,5 +229,11 @@ fun lvarExtElemToStrings (acc1, acc2) =
 val lvarExtToString  = 
     ext_fun lvarExtElemToStrings
 
+fun pidOptionToStrings po = 
+    optionToStrings (fn x => [PersStamps.toHex x]) po
+
+fun pidOptionToString po = 
+    flatten (pidOptionToStrings po)
+
 end (* structure TyToString *)
 end (* end local *)
