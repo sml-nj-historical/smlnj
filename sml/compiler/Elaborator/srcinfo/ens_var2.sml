@@ -44,6 +44,38 @@ sig
     val load_replace : string -> unit
     val load_merge : string -> unit
     val test : unit -> unit
+
+    val find_var : (Ens_types2.var_elem -> bool) -> Ens_types2.var_elem option
+    val exists_var : 
+	(Ens_types2.var_elem -> bool) -> bool
+    val filter_var : 
+	(Ens_types2.var_elem -> bool) -> Ens_types2.var_elem list
+
+    val find_str : (Ens_types2.str_elem -> bool) -> Ens_types2.str_elem option
+    val exists_str : 
+	(Ens_types2.str_elem -> bool) -> bool
+    val filter_str : 
+	(Ens_types2.str_elem -> bool) -> Ens_types2.str_elem list
+
+    val find_typ : 
+	(Ens_types2.type_elem -> bool) -> Ens_types2.type_elem option
+    val exists_typ : 
+	(Ens_types2.type_elem -> bool) -> bool
+    val filter_typ : 
+	(Ens_types2.type_elem -> bool) -> Ens_types2.type_elem list
+
+    val find_cons : 
+	(Ens_types2.cons_elem -> bool) -> Ens_types2.cons_elem option
+    val exists_cons : 
+	(Ens_types2.cons_elem -> bool) -> bool
+    val filter_cons : 
+	(Ens_types2.cons_elem -> bool) -> Ens_types2.cons_elem list
+
+    val find_sig : (Ens_types2.sig_elem -> bool) -> Ens_types2.sig_elem option
+    val exists_sig : 
+	(Ens_types2.sig_elem -> bool) -> bool
+    val filter_sig : 
+	(Ens_types2.sig_elem -> bool) -> Ens_types2.sig_elem list
 end
 
 structure Ens_var2 : ENS_VAR2 = struct
@@ -176,6 +208,10 @@ in
     structure VarSet = RedBlackSetFn(VarKey)
     val ens_var = (ref VarSet.empty);
 
+    fun find_var p = VarSet.find p (!ens_var)
+    fun exists_var p = VarSet.exists p (!ens_var)
+    fun filter_var p = VarSet.listItems (VarSet.filter p (!ens_var))
+
     (* structures *)
     structure StrKey : ORD_KEY =
     struct
@@ -189,6 +225,10 @@ in
     structure StrSet = RedBlackSetFn(StrKey)
     val ens_str = (ref StrSet.empty);
 
+    fun find_str p = StrSet.find p (!ens_str)
+    fun exists_str p = StrSet.exists p (!ens_str)
+    fun filter_str p = StrSet.listItems (StrSet.filter p (!ens_str))
+
     (* type *)
     structure TypeKey : ORD_KEY =
     struct
@@ -201,6 +241,10 @@ in
     (* type sets *)
     structure TySet = RedBlackSetFn(TypeKey)
     val ens_ty = (ref TySet.empty);
+
+    fun find_typ p = TySet.find p (!ens_ty)
+    fun exists_typ p = TySet.exists p (!ens_ty)
+    fun filter_typ p = TySet.listItems (TySet.filter p (!ens_ty))
 
     (* constructors *)
     structure ConsKey : ORD_KEY =
@@ -217,6 +261,10 @@ in
     structure ConsSet = RedBlackSetFn(ConsKey)
     val ens_cons = (ref ConsSet.empty);
 
+    fun find_cons p = ConsSet.find p (!ens_cons)
+    fun exists_cons p = ConsSet.exists p (!ens_cons)
+    fun filter_cons p = ConsSet.listItems (ConsSet.filter p (!ens_cons))
+
     (*signature*)
     structure SigKey : ORD_KEY =
     struct
@@ -230,6 +278,9 @@ in
     structure SigSet = RedBlackSetFn(SigKey)
     val ens_sig = ref SigSet.empty;
 
+    fun find_sig p = SigSet.find p (!ens_sig)
+    fun exists_sig p = SigSet.exists p (!ens_sig)
+    fun filter_sig p = SigSet.listItems (SigSet.filter p (!ens_sig))
 
 
     fun add_ext v = 

@@ -4,7 +4,7 @@ struct
 
     type location = file * int * int
     fun locFile ((f,_,_) : location) = f
-
+    fun eqLocation (l1 : location, l2) = l1 = l2
 
     (*simplified versions of the internal compiler types*)
     datatype stub_tycon

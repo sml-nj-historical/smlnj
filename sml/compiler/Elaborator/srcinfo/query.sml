@@ -58,7 +58,7 @@ struct
 
 structure S = Symbol
 
-open Ens_types2 Ens_var
+open Ens_types2 Ens_var2
 
 type occurrence = symbol * location
 (*
