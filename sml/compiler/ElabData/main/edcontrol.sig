@@ -10,4 +10,6 @@ sig
   val eedebugging : bool ref
   val mudebugging : bool ref
 
+  val tudebugging : bool ref
+      (* TypesUtil *)
 end

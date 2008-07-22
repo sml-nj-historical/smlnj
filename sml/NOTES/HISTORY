@@ -15,6 +15,13 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/07/12
+Description:
+
+Fixed Int64.fromString to use base-10.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2008/04/12
 Description:
 

@@ -239,7 +239,8 @@ fun mkVal (sym, sp, sign as SIG {elements,...},
          V.VAL(V.VALvar{access = A.selAcc(dacc,slot), 
 			prim = POI.selValPrimFromStrPrim (dinfo, slot),
 			path = sp,
-			typ = ref(transType entities spec)})
+			typ = ref(transType entities spec),
+			btvs = ref []})
        | CONspec{spec=T.DATACON{name, const, typ, rep, sign, lazyp},
 		 slot} =>
          let val newrep =

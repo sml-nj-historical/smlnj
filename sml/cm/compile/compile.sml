@@ -334,9 +334,11 @@ in
 			    val topLevel = EnvRef.loc ()
 			    val orig_settings =
 				map (fn c => #save'restore c ()) controllers
+(*
 			    val orig_toplenv = #get topLevel ()
+*)
 			    fun reset _ =
-				(#set topLevel orig_toplenv;
+				((* #set topLevel orig_toplenv; *)
 				 app (fn r => r ()) orig_settings)
 			    fun work () = let
 				val _ = map (fn c => #set c ()) controllers

@@ -88,6 +88,7 @@ and ty
   | POLYty of {sign: polysign, tyfun: tyfun}
   | WILDCARDty
   | UNDEFty
+  | MARKty of ty * SourceMap.region
 
 and tyfun 
   = TYFUN of {arity: int, body: ty}
