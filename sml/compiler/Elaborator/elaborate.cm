@@ -63,7 +63,9 @@ Group
 	signature STRINGTOTY
 	structure Conversion
 	signature CONVERSION
+	structure Queries
 	structure SrcInfo
+
 is
 
 	basics/elabcontrol.sig
@@ -130,5 +132,5 @@ is
 	srcinfo/tytostring.sml
 	srcinfo/tytostring.sig
 	srcinfo/conversion.sml
-
+	srcinfo/query.sml
 	srcinfo/srcinfo.sml

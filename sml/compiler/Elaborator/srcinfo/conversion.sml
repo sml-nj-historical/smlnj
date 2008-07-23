@@ -38,18 +38,25 @@ struct
 	case ty of
 	    T.IBOUND i => 
 	    Ibound i
-	  | T.VARty _ => (
-	    case TypesUtil.prune ty of
-		T.VARty (ref (T.LBOUND {index,depth,...})) => 
-		Lbound {index=index,depth=depth}
-	      | T.VARty (ref (T.UBOUND {name,...})) => Ubound name
-	      | T.VARty _ => ErrorMsg.impossible "Ens_types2: ty_to_ty'.2"
-	      | typ => ty_to_ty' typ
-	    )
+	  | T.VARty _ =>
+	    let fun strip (T.MARKty (ty, _)) = strip ty
+		  | strip ty = ty 
+	    in case strip (TypesUtil.prune ty) of
+		   T.VARty (ref (T.LBOUND {index,depth,...})) => 
+		   Lbound {index=index,depth=depth}
+		 | T.VARty (ref (T.UBOUND {name,...})) => Ubound name
+		 | T.VARty (ref (T.OPEN _)) => 
+		   ErrorMsg.impossible "Ens_types2: ty_to_ty'.2 OPEN"
+		 | T.VARty (ref (T.LITERAL _)) => 
+		   ErrorMsg.impossible "Ens_types2: ty_to_ty'.2 LITERAL"
+		 | T.VARty _ => ErrorMsg.impossible "Ens_types2: ty_to_ty'.2"
+		 | typ => ty_to_ty' typ
+	    end
 	   | T.POLYty {tyfun = T.TYFUN {arity, body}, ...} =>
 	       Poly {arity = arity, body = ty_to_ty' body}
 	   | T.CONty (tycon, tyl) =>
 	       Conty (to_stub tycon, List.map ty_to_ty' tyl)
+	   | T.MARKty (ty, _) => ty_to_ty' ty
 	   | (T.WILDCARDty | T.UNDEFty) => 
 	       ErrorMsg.impossible "Ens_types2: ty_to_ty'.1"
 

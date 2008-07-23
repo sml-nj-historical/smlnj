@@ -49,20 +49,24 @@ struct
 	  usage : varUse list ref
 	}
 
+    type typeUse = location
+
     type type_elem
       = { tycon : tycon',
 	  stamp : Stamps.stamp,
 	  name : Symbol.symbol,
 	  def : location, 
-	  usage : location list ref
+	  usage : typeUse list ref
 	}
-		     
+
+    type consUse = location * ty'
+
     type cons_elem
       = { name : Symbol.symbol,
 	  dataty : Stamps.stamp,
 	  def : location, 
 	  ty : ty',
-	  usage : (location * ty') list ref
+	  usage : consUse list ref
 	}
 
     datatype key
@@ -76,15 +80,17 @@ struct
       = Def of (int * Symbol.symbol * key) list
       | Constraint of (int * Symbol.symbol * int) list * Access.access
       | Alias of Access.access
-		      
+	
+    type strUse = location
+	      
     type str_elem
       = { name : Symbol.symbol, 
 	  access : Access.access,
 	  parent : Access.access option,
-	  sign : Stamps.stamp option, (*pas de sig pour les alias*)
+	  sign : Stamps.stamp option, (*pas de sig pour les alias???*)
 	  def : location, 
 	  elements : elements,
-	  usage : location list ref
+	  usage : strUse list ref
 	}
 		    
     datatype spec_sig
@@ -94,6 +100,8 @@ struct
       | NamedStr of Symbol.symbol * Stamps.stamp
       | InlineStr of (Symbol.symbol * spec_sig) list
 
+    type sigUse = location * Symbol.symbol
+
     type sig_elem
       = { name : Symbol.symbol,
 	  stamp : Stamps.stamp,
@@ -101,30 +109,30 @@ struct
 	  def : location, 
 	  elements : (Symbol.symbol * spec_sig) list,
 	  alias : (location * Symbol.symbol) list ref, 
-	  usage : (location * Symbol.symbol) list ref
+	  usage : sigUse list ref
 	}
 		   
     datatype ext_elem
       = ExtVar of 
 	  { access : Access.access, 
-	    usage : (location * ty' * Access.access) list ref
+	    usage : varUse list ref
 	  }
       | ExtStr of
 	  { access : Access.access,
-	    usage : location list ref
+	    usage : strUse list ref
 	  }
       | ExtType of
 	  { stamp : Stamps.stamp,
-	    usage : location list ref
+	    usage : typeUse list ref
 	  }
       | ExtCons of
 	  { stamp : Stamps.stamp,
 	    name : Symbol.symbol,
-	    usage : (location * ty') list ref
+	    usage : consUse list ref
 	  }
       | ExtSig of
 	  { stamp : Stamps.stamp,
-	    usage : (location * Symbol.symbol) list ref
+	    usage : sigUse list ref
 	  }
  
     type all = var_elem list * 

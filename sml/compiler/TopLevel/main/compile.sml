@@ -153,19 +153,20 @@ struct
 			before (check "instrument")
 
 
-	    val () = 
+	    val srcinfo = 
 		if !Control.Elab.infodebugging then 
 		    ( Ens_print2.maj statenv;
-		      Ens_var2.clear();
+		      (*Ens_var2.clear();*)
 		      (* pb avec le toplevel interactif avec clear *)
 		      Ens_var2.set_source (#longName (#source cinfo));
 		      Ens_var2.set_eri extRefInfo;
 		      Ens_absyn.scan_dec absyn;
-		      Ens_var2.save ();
-		      Ens_var2.test ()
+		      (*Ens_var2.save ();*)
+		      (*Ens_var2.test ()*)
+		      SOME (Ens_var2.get_pickle ())
 		    ) 
 		else 
-		    ()		    	    
+		    NONE	    	    
 
 	    val {flint, imports} = 
 		translate {absyn=absyn, exportLvars=exportLvars, 
@@ -193,6 +194,6 @@ struct
 	      pickle = pickle,
 	      inlineExp = inlineExp,
 	      imports = revisedImports,
-	      srcinfo = NONE (* !!! provide the real info here!!! *) }
+	      srcinfo = srcinfo }
 	end (* function compile *)
 end (* functor CompileF *)

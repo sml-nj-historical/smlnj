@@ -60,7 +60,7 @@ structure S = Symbol
 
 open Ens_types2 Ens_var2
 
-type occurrence = symbol * location
+type occurrence = S.symbol * location
 (*
 type subject = OCC of occurrence | SYM of symbol | ???
 
@@ -86,24 +86,25 @@ fun occIsVar (occ as (sym,loc): occurrence) ({name,usage,...} : var_elem) : bool
     S.eq (sym,name) andalso List.exists (fn (loc',_,_) => eqLocation(loc', loc)) (!usage)
 
 fun findUse(loc: location, usage: varUse list) : varUse option =
-    List.find (fn (loc',ty,acc) => eqLocation(loc,loc')) 
+    List.find (fn (loc',ty,acc) => eqLocation(loc,loc')) usage
 
 
 (* sample query functions *)
 
 (* find defining occurrence for a (variable?) applied occurrence *)
 fun varDefOcc (occ : occurrence) : location option = 
-    case findVar (occIsVar occ) 
+    case find_var (occIsVar occ) 
      of SOME{def,...} => SOME def
       | NONE => NONE
 
 (* find type of a (variable?) applied occurrence *)
 fun varTypOcc (occ as (sym,loc): occurrence) : ty' option = 
-    case findVar (occIsVar occ)
-     of SOME{def,usage} =>
-	  let val (_,ty,_) =  findUse(loc,!usage)
-	   in SOME ty
-	  end
+    case find_var (occIsVar occ)
+     of SOME{def,usage, ...} =>
+	( case findUse(loc,!usage) 
+	   of SOME (_,ty,_) => SOME ty
+	    | NONE => NONE
+	)
       | NONE => NONE
 
 end (* structure Queries *)

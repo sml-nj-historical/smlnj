@@ -222,7 +222,7 @@ struct
           end
   in
 
-    structure EV : ENS_VAR2 = Ens_var2
+    (*structure EV : ENS_VAR2 = Ens_var2*)
 
     structure Print : PRINTCONTROL = Control_Print
 

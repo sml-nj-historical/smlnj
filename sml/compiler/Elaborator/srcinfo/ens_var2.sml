@@ -40,10 +40,12 @@ sig
     val set_pid : PersStamps.persstamp -> unit
     val clear_lvar : unit -> unit
     val clear : unit -> unit
-    val save : unit -> unit
-    val load_replace : string -> unit
+    val clear_all : unit -> unit
+    (*val save : unit -> unit*)
     val load_merge : string -> unit
+    val merge_pickle : string -> string -> unit
     val test : unit -> unit
+    val get_pickle : unit -> string
 
     val find_var : (Ens_types2.var_elem -> bool) -> Ens_types2.var_elem option
     val exists_var : 
@@ -91,8 +93,7 @@ local
     open Conversion
 in
     val source = ref ""
-    fun set_source s = 
-	source := OS.FileSys.getDir () ^ "/" ^ s
+    fun set_source s = source := s
 
     val pid = ref NONE : PersStamps.persstamp option ref
     fun set_pid pid' = pid := SOME pid'
@@ -100,28 +101,25 @@ in
      * not pickled
      * when unpickled, this string is initialised with the name of the file 
      * just unpickled *)
-    val lvar_ext = ref [] :  (A.access * A.access) list ref
     val lvars = ref [] : A.access list ref
     val exts = ref [] : A.access list ref
 
-    fun clear_lvar () = (lvars := []; exts := []; lvar_ext := []; pid := NONE)
+    fun clear_lvar () = (lvars := []; exts := []; pid := NONE)
     fun add_lvar access = lvars := access :: !lvars 
     fun add_ext_acc access = exts := access :: !exts
-    fun pickling_over () = lvar_ext := ListPair.zipEq (!lvars, !exts)
-
-    fun print_lvars () = 
-	case !lvar_ext of
-	    [] => print "No exports\n"
-	  | l =>
-	    ( List.app 
-		  (fn (x, y) => print (A.prAcc x ^ "->" ^ A.prAcc y ^ ", ")) 
-		  l;
-	      print "\n"
-	    )
 
     val extRefInfo = ref (fn _ => NONE) : (Symbol.symbol -> string option) ref
     fun set_eri eri = 
 	(extRefInfo := eri)
+
+    val pid_file = ref [] : (PersStamps.persstamp * string) list ref
+    fun print_pids () = 
+	( List.app 
+	      (fn (x,y) => print (PersStamps.toHex x ^ "->" ^ y ^ ", "))
+	      (!pid_file);
+	  print "\n"
+	)
+    (******)
 
     fun is_available_rsl rev_symbol_list = 
 	!extRefInfo (List.last rev_symbol_list) <> NONE
@@ -139,8 +137,7 @@ in
       | is_accessible (A.PATH (s, _)) = is_accessible s
       | is_accessible (A.LVAR _) = SOME true
 
-
-
+    (******)
 
     fun compare_acc (A.LVAR i, A.LVAR j) = Int.compare (i,j)
       | compare_acc (A.LVAR _, _) = LESS
@@ -157,6 +154,31 @@ in
       | compare_acc (A.PATH _, _) = LESS
       | compare_acc (_, A.PATH _) = GREATER
       | compare_acc (A.NO_ACCESS, A.NO_ACCESS) = EQUAL
+
+    (*mapping from PATH (... EXTERN) to LVAR*) 
+    structure LvarExtKey : ORD_KEY = 
+    struct
+        type ord_key = A.access * A.access
+        fun compare ((acc1, _), (acc2, _))= compare_acc (acc1,acc2)
+    end
+    structure LvarExtSet = RedBlackSetFn (LvarExtKey)
+    val lvar_ext = ref LvarExtSet.empty
+
+    fun pickling_over () = 
+	lvar_ext := LvarExtSet.addList ( !lvar_ext,
+					 ListPair.zipEq (!exts, !lvars)
+				       )
+    fun print_lvars () = 
+	if LvarExtSet.isEmpty (!lvar_ext) then
+	    print "No exports\n"
+	else
+	    ( LvarExtSet.app 
+		  (fn (x, y) => print (A.prAcc x ^ "->" ^ A.prAcc y ^ ", ")) 
+		  (!lvar_ext);
+	      print "\n"
+	    )
+
+    (* end of LvarExt part*)
 
     fun compare_loc_acc (loc1, loc2) accs = 
 	case String.compare (locFile loc1, locFile loc2) of
@@ -616,23 +638,34 @@ in
 		     SOME (s, M.STRspec {slot, ...})) =>
 		    SOME (slot, s, Str access)
 		  | _ => NONE
-			 
+		 
 	    val elements' = 
 		List.mapPartial get_trip bl
 		
 	    fun get_slot (A.PATH (_, s)) = s
+	      | get_slot acc = bug ("Ens_var2.add_str_def.get_slot")
 					   
 	    val elements'' = 
-		case elements' of
-		    (_, _, Var (A.PATH (acc, _)))::_ =>
-		    Constraint 
-			( List.map 
-			      (fn ((x, y, Var z) | (x, y, Str z)) => 
-				  (x, y, get_slot z)) 
-			      elements',
-			  acc
-			)
-		  | _ => 
+		(*case elements' of
+		    (_, _, (Var (A.PATH (acc, _))|Str (A.PATH (acc, _))))::_ =>
+		    ( case is_accessible acc of 
+			  (* et si on fait structure s = ...; structure s2 = struct open s ... end?*)
+			  NONE => bug "add_str_def.elements''"
+			| SOME true =>
+			  Constraint 
+			      ( List.map 
+				    (fn ((x, y, Var z) | (x, y, Str z)) => 
+					( print (Int.toString x ^ " " ^ Symbol.name y ^ " " ^ 
+						 A.prAcc z ^ "\n");
+					  (x, y, get_slot z)
+					)
+				    )
+				    elements',
+				acc
+			      )
+		      | SOME false => Def elements'
+		    )
+		  | _ => *)
 		    Def elements'
 		    
 	in
@@ -711,8 +744,8 @@ in
 	print_cons ();
 	print_sig ();
 	print_ext ();
-	print_lvars ()(*;
-	print_pid ()*)
+	print_lvars ();
+        print_pids ()
     )
 
 
@@ -723,84 +756,81 @@ in
 	ens_str := StrSet.empty;
 	ens_sig := SigSet.empty;
 	ens_ext := ExtSet.empty;
+	pid_file := [];
 	source := "";
 	extRefInfo := (fn _ => NONE)
     )
 
+    fun clear_all () = 
+	( clear ();
+	  clear_lvar ()
+	)
+
     fun get_strings (a, b, c, d, e, f, g, h) = 
-	TyToString.varToString  (VarSet.listItems  a) ::
-	TyToString.typeToString (TySet.listItems   b) ::
-	TyToString.consToString (ConsSet.listItems c) ::
-	TyToString.strToString  (StrSet.listItems  d) ::
-	TyToString.sigToString  (SigSet.listItems  e) ::
-	TyToString.extToString  (ExtSet.listItems  f) ::
-	TyToString.lvarExtToString g ::
-	TyToString.pidOptionToString h ::
-	nil
+	( TyToString.varToString     (VarSet.listItems  a),
+	  TyToString.typeToString    (TySet.listItems   b),
+	  TyToString.consToString    (ConsSet.listItems c),
+	  TyToString.strToString     (StrSet.listItems  d),
+	  TyToString.sigToString     (SigSet.listItems  e),
+	  TyToString.extToString     (ExtSet.listItems  f),
+	  TyToString.lvarExtToString (LvarExtSet.listItems g),
+	  TyToString.pidOptionToString h
+	)
 
     fun get_sets (a, b, c, d, e, f, g, h) = 
-	( VarSet.fromList  (StringToTy.stringToVar  a),
-	  TySet.fromList   (StringToTy.stringToType b),
-	  ConsSet.fromList (StringToTy.stringToCons c),
-	  StrSet.fromList  (StringToTy.stringToStr  d),
-	  SigSet.fromList  (StringToTy.stringToSig  e),
-	  ExtSet.fromList  (StringToTy.stringToExt  f),
-	  StringToTy.stringToLvarExt g,
+	( VarSet.fromList     (StringToTy.stringToVar  a),
+	  TySet.fromList      (StringToTy.stringToType b),
+	  ConsSet.fromList    (StringToTy.stringToCons c),
+	  StrSet.fromList     (StringToTy.stringToStr  d),
+	  SigSet.fromList     (StringToTy.stringToSig  e),
+	  ExtSet.fromList     (StringToTy.stringToExt  f),
+	  LvarExtSet.fromList (StringToTy.stringToLvarExt g),
 	  StringToTy.stringToPidOption h
 	)
 	
 
-    fun pickfile str = str ^ ".si"
+    (*fun pickfile str = str ^ ".si"*)
 
-    fun save_to_file sourcefile = 
-	if sourcefile = "<instream>" orelse
-	   sourcefile = "stdIn" orelse
+    fun get_pickle () = 
+	let val (a,b,c,d,e,f,g,h) = 
+		get_strings (!ens_var, !ens_ty, !ens_cons, !ens_str,
+			     !ens_sig, !ens_ext, !lvar_ext, !pid)
+	in String.concat 
+	       [a,"\n",b,"\n",c,"\n",d,"\n",e,"\n",f,"\n",g,"\n",h,"\n"]
+	end
+
+    (*fun save_to_file sourcefile = 
+	if String.isSuffix "<instream>" sourcefile orelse
+	   String.isSuffix "stdIn" sourcefile orelse
 	   String.isSuffix "-export.sml" sourcefile 
 	then
 	    ()
 	else
 	     let val new_source = pickfile sourcefile
 		 val os = TextIO.openOut new_source
-		 val s = get_strings (!ens_var, !ens_ty, !ens_cons, !ens_str,
-				      !ens_sig, !ens_ext, !lvar_ext, !pid)
-	     in  List.app (fn x => (TextIO.output (os, x);
-				    TextIO.output (os, "\n")))
-			  s;
+		 val (a,b,c,d,e,f,g,h) = 
+		     get_strings (!ens_var, !ens_ty, !ens_cons, !ens_str,
+				  !ens_sig, !ens_ext, !lvar_ext, !pid)
+		 fun write x = ( TextIO.output (os, x);
+				 TextIO.output (os, "\n")
+			       )
+			 
+	     in  write a; write b; write c; write d;
+		 write e; write f; write g; write h;
 		 TextIO.flushOut os;
 		 TextIO.closeOut os;
 		 print ("Wrote to file " ^ new_source ^ "\n")
 	     end
 
-    fun save () = save_to_file (!source)
+    fun save () = save_to_file (!source)*)
 
-    fun load_return sourcefile = 
-	let val new_source = pickfile sourcefile
-	    val os = TextIO.openIn new_source
-	    fun get_val NONE = bug ("sourcefile "^new_source^":unexpected EOF")
+    fun load_return source = 
+	let val os = TextIO.openIn source
+	    fun get_val NONE = bug ("sourcefile " ^ source ^ ":unexpected EOF")
 	      | get_val (SOME s) = s
 	    fun gs () = get_val (TextIO.inputLine os)
-	    val (var,ty,cons,str,sign,ext,lvarext,pid')=
-		get_sets (gs(),gs(),gs(),gs(),gs(),gs(),gs(),gs())
 	in
-	    (var, ty, cons, str, sign, ext, lvarext, pid')
-	end
-
-    val pid_file = ref [] : (PersStamps.persstamp * string) list ref
-
-    fun load_replace sourcefile =
-	let val (var,ty,cons,str,sign,ext,lvarext,pid')=load_return sourcefile
-	in  ens_var := var;
-	    ens_ty := ty;
-	    ens_cons := cons;
-	    ens_str := str;
-	    ens_sig := sign;
-	    ens_ext := ext;
-	    lvar_ext := lvarext;
-	    (*pid := pid'*)
-	    pid_file := ( case pid' of
-			      NONE => bug "load_replace"
-			    | SOME pid'' => [(pid'', sourcefile)]
-			)
+	    get_sets (gs(),gs(),gs(),gs(),gs(),gs(),gs(),gs())
 	end
 
     fun get_file e = 
@@ -809,9 +839,9 @@ in
 	  | SOME (_, filename) => filename
 
     fun modify_path (a as A.PATH (A.EXTERN e, _)) lv = 
-	( case List.find (fn (_, ext_acc) => ext_acc = a) lv of
-	      NONE => bug "modify_path2"
-	    | SOME (loc_acc, _) => (loc_acc, get_file e)
+	( case LvarExtSet.find (fn (ext_acc, _) => ext_acc = a) lv of
+	      NONE => bug ("modify_path2 " ^ A.prAcc a)
+	    | SOME (_, loc_acc) => (loc_acc, get_file e)
 	)
       | modify_path (A.PATH (a, slot)) lv = 
 	let val (a', file) = modify_path a lv in
@@ -861,9 +891,8 @@ in
 		| SOME {usage = u, ...} => u := !usage @ !u
 	    *)
 
-    fun load_merge sourcefile = 
-	let val (var,ty,cons,str,sign,ext,lvarext,pid')=load_return sourcefile
-	    val ens_var2 = ref var
+    fun merge (var,ty,cons,str,sign,ext,lvarext,pid') sourcefile = 
+	let val ens_var2 = ref var
 	    val ens_ty2 = ref ty
 	    val ens_cons2 = ref cons
 	    val ens_str2 = ref str
@@ -878,22 +907,43 @@ in
 	    ens_str  := StrSet.union  (!ens_str,  !ens_str2);
 	    ens_sig  := SigSet.union  (!ens_sig,  !ens_sig2);
 	    (*ens_ext := ext; should be empty anyway*)
-	    lvar_ext := lvarext @ !lvar_ext;
+	    lvar_ext := LvarExtSet.union (lvarext,!lvar_ext);
 	    (*pid := pid'*)
 	    pid_file := ( case pid' of
-			      NONE => bug "load_merge"
+			      NONE => bug "merge"
 			    | SOME pid'' => (pid'', sourcefile) :: !pid_file
 			)
 	end
 
+    fun merge_pickle sourcefile pickle = 
+	case String.tokens (fn x => x = #"\n") pickle of
+	    [a,b,c,d,e,f,g,h] => merge (get_sets (a,b,c,d,e,f,g,h)) sourcefile
+	  | l => bug ("merge_pickle " ^ Int.toString (List.length l))
+
+    fun load_merge sourcefile = 
+	merge (load_return sourcefile) sourcefile
+
+
+    (*********** A FAIRE ***********)
+    (*fun remove file = 
+	ens_ext := ExtSet.empty;
+	VarSet.app ( fn {usage, ...} => 
+			usage := List.filter 
+				     (fn (x, _, _) => locFile x <> file)
+				     (!usage)
+		   )
+		   (!ens_var);
+	ens_var := VarSet.filter 
+		       (fun {def, usage, ...} => 
+			    ExtSet.addList (!ens_ext, (List.map Var (!usage)))
+			    locFile def <> file) 
+		       (!ens_var)*)
 
     fun test () =
-	let val s = get_strings (!ens_var, !ens_ty, !ens_cons, !ens_str,
-				 !ens_sig, !ens_ext, !lvar_ext, !pid)
-	    val (a,b,c,d,e,f,g,h) = 
-		case s of
-		    [a, b, c, d, e, f, g, h]=>get_sets (a, b, c, d, e, f, g, h)
-		  | _ => bug "test"
+	let val (a,b,c,d,e,f,g,h) = 
+		get_sets ( get_strings (!ens_var, !ens_ty, !ens_cons, !ens_str,
+					!ens_sig, !ens_ext, !lvar_ext, !pid)
+			 )
 	    val () = 
 		if VarSet.numItems a <> VarSet.numItems (!ens_var) then
 		    bug "test ().var length"
@@ -925,7 +975,7 @@ in
 		else
 		    ()
 	    val () = 
-		if List.length g <> List.length (!lvar_ext) then
+		if LvarExtSet.numItems g <>LvarExtSet.numItems (!lvar_ext) then
 		    bug "test ().lvar_ext length"
 		else
 		    ()
