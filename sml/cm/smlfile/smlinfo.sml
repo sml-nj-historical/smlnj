@@ -61,6 +61,7 @@ signature SMLINFO = sig
     val sourcepath : info -> SrcPath.file
     val skelname : info -> string
     val binname : info -> string
+    val srcinfoname : info -> string
     val group : info -> SrcPath.file
     val error : GeneralParams.info -> info -> complainer
 
@@ -151,6 +152,7 @@ structure SmlInfo :> SMLINFO = struct
 	INFO of { sourcepath: SrcPath.file,
 		  mkSkelname: unit -> string,
 		  mkBinname: unit -> string,
+		  mkSrcinfoname: unit -> string,
 		  persinfo: persinfo,
 		  sh_spec: Sharing.request,
 		  attribs: attribs,
@@ -170,6 +172,7 @@ structure SmlInfo :> SMLINFO = struct
     fun sourcepath (INFO { sourcepath = sp, ... }) = sp
     fun skelname (INFO { mkSkelname = msn, ... }) = msn ()
     fun binname (INFO { mkBinname = mbn, ... }) = mbn ()
+    fun srcinfoname (INFO { mkSrcinfoname = msn, ... }) = msn ()
     fun sh_spec (INFO { sh_spec = s, ... }) = s
     fun sh_mode (INFO { persinfo = PERS { sh_mode = ref m, ... }, ... }) = m
     fun set_sh_mode (INFO { persinfo = PERS { sh_mode, ... }, ... }, m) =
@@ -243,6 +246,7 @@ structure SmlInfo :> SMLINFO = struct
 	val policy = #fnpolicy (#param gp)
 	fun mkSkelname () = FNP.mkSkelName policy sourcepath
 	fun mkBinname () = FNP.mkBinName policy sourcepath
+	fun mkSrcinfoname () = FNP.mkSrcinfoName policy sourcepath
 	fun mkguidname () = FNP.mkGUidName policy sourcepath
 	val groupreg = #groupreg gp
 	val (getguid, setguid) =
@@ -330,6 +334,7 @@ structure SmlInfo :> SMLINFO = struct
     in
 	INFO { sourcepath = sourcepath,
 	       mkSkelname = mkSkelname,
+	       mkSrcinfoname = mkSrcinfoname,
 	       mkBinname = mkBinname,
 	       persinfo = persinfo (),
 	       sh_spec = sh_spec,

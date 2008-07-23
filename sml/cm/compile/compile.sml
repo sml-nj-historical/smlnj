@@ -235,6 +235,8 @@ in
 		val { smlinfo = i, localimports = li, globalimports = gi } = n
 		val binname = SmlInfo.binname i
 		val descr = SmlInfo.descr i
+		val srcinfoname = SmlInfo.srcinfoname i
+		val srcinfokey = SrcPath.encode (SmlInfo.sourcepath i)
 
 		fun pstats (s: BF.stats) = let
 		    fun info ((sel, lab), (l, t)) =
@@ -391,16 +393,27 @@ in
 				storeBFC' (gp, i,
 					   { contents = bfc,
 					     stats = save bfc });
-				(* !!! save srcinfo here *)
-				(* !!! merge srcinfo into global DB here *)
-				(* !!! *) SrcInfo.merge { pathname = "", localdb = "" };
+				case srcinfo of
+				    NONE => ()
+				  | SOME localdb =>
+				      let val v = Byte.stringToBytes localdb
+					  fun openIt () =
+					      AutoDir.openBinOut srcinfoname
+					  fun writeit s = BinIO.output (s, v)
+				      in SafeIO.perform
+					     { openIt = openIt,
+					       closeIt = BinIO.closeOut,
+					       work = writeit,
+					       cleanup = fn _ => () };
+					 SrcInfo.merge { pathname = srcinfokey,
+							 localdb = localdb }
+				      end;
 				SOME memo
 			    end
-			in
-			    SafeIO.perform { openIt = fn () => (),
-					     work = work,
-					     closeIt = fn () => (),
-					     cleanup = reset }
+			in SafeIO.perform { openIt = fn () => (),
+					    work = work,
+					    closeIt = fn () => (),
+					    cleanup = reset }
 			end handle (EM.Error | CompileExn.Compile _)
 				   (* At this point we handle only
 				    * explicit compiler bugs and ordinary
@@ -454,9 +467,23 @@ in
 					    BF.read { arch = arch,
 						      version = version,
 						      stream = s }
-				    in
-					SmlInfo.setguid (i, BF.guidOf contents);
-					(contents, ts, stats)
+					fun openinfo () =
+					    BinIO.openIn srcinfoname
+					fun read'n'merge'info s =
+					    case Byte.bytesToString
+						     (BinIO.inputAll s)
+					     of "" => ()
+					      | localdb => SrcInfo.merge
+						       { pathname = srcinfokey,
+							 localdb = localdb }
+				    in SafeIO.perform
+					   { openIt = openinfo,
+					     closeIt = BinIO.closeIn,
+					     work = read'n'merge'info,
+					     cleanup = fn _ => () }
+				         handle _ => ();
+				       SmlInfo.setguid (i, BF.guidOf contents);
+				       (contents, ts, stats)
 				    end
 				in
 				    SOME (SafeIO.perform
