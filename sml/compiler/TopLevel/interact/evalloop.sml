@@ -260,7 +260,8 @@ fun withErrorHandling treatasuser { thunk, flush, cont = k } =
 
 (*** interactive loop, with error handling ***)
 fun interact () =
-    let val source = Source.newSource ("stdIn", 1, TextIO.stdIn, true,
+    let val source = Source.newSource ("stdIn", "stdIn",
+				       1, TextIO.stdIn, true,
                                        EM.defaultConsumer ())
 	fun flush' () =
             case TextIO.canInput(TextIO.stdIn, 4096) of
@@ -291,7 +292,8 @@ fun isTermIn f =
 
 fun evalStream (fname, stream) =
     let val interactive = isTermIn stream
-	val source = Source.newSource (fname, 1, stream, interactive,
+	val source = Source.newSource (fname, fname, (* !!! need long name? *)
+				       1, stream, interactive,
                                        EM.defaultConsumer ())
     in evalLoop source
        handle exn => (Source.closeSource source;

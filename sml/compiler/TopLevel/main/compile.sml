@@ -35,8 +35,7 @@ struct
 
     (** take ast, do semantic checks,
      ** and output the new env, absyn and pickles *)
-    fun elaborate {ast, statenv=senv, compInfo=cinfo, guid,
-		   extRefInfo : Symbol.symbol -> string option } = let
+    fun elaborate {ast, statenv=senv, compInfo=cinfo, guid } = let
 	val (absyn, nenv) = ElabTop.elabTop(ast, senv, cinfo)
 	val (absyn, nenv) = 
             if CompInfo.anyErrors cinfo then
@@ -146,7 +145,7 @@ struct
 	let val {absyn, newstatenv, exportLvars, exportPid,
 		 staticPid, pickle } =
 		elaborate {ast=ast, statenv=statenv, compInfo=cinfo,
-			   guid = guid, extRefInfo = extRefInfo }
+			   guid = guid }
 		before (check "elaborate")
 
 	    val absyn = instrument {source=source, senv = statenv,
@@ -159,7 +158,7 @@ struct
 		    ( Ens_print2.maj statenv;
 		      Ens_var2.clear();
 		      (* pb avec le toplevel interactif avec clear *)
-		      Ens_var2.set_source (#sourceName cinfo);
+		      Ens_var2.set_source (#longName (#source cinfo));
 		      Ens_var2.set_eri extRefInfo;
 		      Ens_absyn.scan_dec absyn;
 		      Ens_var2.save ();
@@ -193,6 +192,7 @@ struct
 	      staticPid = staticPid,
 	      pickle = pickle,
 	      inlineExp = inlineExp,
-	      imports = revisedImports }
+	      imports = revisedImports,
+	      srcinfo = NONE (* !!! provide the real info here!!! *) }
 	end (* function compile *)
 end (* functor CompileF *)

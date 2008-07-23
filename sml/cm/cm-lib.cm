@@ -119,6 +119,7 @@ is
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/parser.cm
 	$smlnj/viscomp/elabdata.cm
+	$smlnj/viscomp/elaborate.cm
 	$smlnj/viscomp/execute.cm
 	$smlnj/viscomp/core.cm
 	

@@ -360,7 +360,8 @@ in
 				val guid = SmlInfo.guid i
 				val { csegments, newstatenv, exportPid,
 				      staticPid, imports, pickle = senvP,
-				      inlineExp, ... } =
+				      inlineExp, absyn = _, exportLvars = _,
+				      srcinfo } =
 				    C.compile { source = source, ast = ast,
 						statenv = stat, symenv = sym,
 						compInfo = cinfo, checkErr = check,
@@ -390,6 +391,9 @@ in
 				storeBFC' (gp, i,
 					   { contents = bfc,
 					     stats = save bfc });
+				(* !!! save srcinfo here *)
+				(* !!! merge srcinfo into global DB here *)
+				(* !!! *) SrcInfo.merge { pathname = "", localdb = "" };
 				SOME memo
 			    end
 			in

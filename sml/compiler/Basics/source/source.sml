@@ -11,6 +11,7 @@ struct
   type inputSource = {
         sourceMap: SourceMap.sourcemap,
         fileOpened: string,
+	longName: string,
         anyErrors: bool ref,
         errConsumer: PrettyPrintNew.device,
         interactive: bool,
@@ -21,10 +22,11 @@ struct
 
   val lexer_initial_position = 2 (* position of first char according to ml-lex *)
 
-  fun newSource(fileName,lineNum,sourceStream,interactive, errConsumer) =
+  fun newSource(fileName,longName,lineNum,sourceStream,interactive, errConsumer) =
       {sourceMap=SourceMap.newmap(lexer_initial_position, 
                                   {fileName=fileName, line=lineNum, column=1}),
        sourceStream=sourceStream,interactive=interactive,fileOpened=fileName,
+       longName=longName,
        errConsumer=errConsumer,anyErrors=ref false}
 
   fun closeSource ({interactive=true, ...} : inputSource) = ()

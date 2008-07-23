@@ -338,6 +338,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		fun work stream = let
 		    val source =
 			S.newSource (SrcPath.osstring group,
+				     SrcPath.encode group,
 				     1, stream, false, errcons)
 		    val sourceMap = #sourceMap source
 		    val _ = GroupReg.register groupreg (group, source)

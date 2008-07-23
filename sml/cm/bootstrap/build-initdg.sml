@@ -43,6 +43,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 
 	fun work stream = let
 	    val source = S.newSource (SrcPath.osstring specgroup,
+				      SrcPath.encode specgroup,
 				      1, stream, false, errcons)
 	    val sourceMap = #sourceMap source
 

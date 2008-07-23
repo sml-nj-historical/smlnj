@@ -91,7 +91,7 @@ val fcs : (FLINT.prog -> FLINT.prog) list ref = ref []
 (** compiling FLINT code into the binary machine code *)
 fun flintcomp
 	(flint,
-	 compInfo as {error, sourceName=src, ...}: Absyn.dec CompInfo.compInfo,
+	 compInfo as {error, source = { fileOpened = src, ... }, ...}: Absyn.dec CompInfo.compInfo,
 	 splitting) = 
   let fun err severity s =
  	error (0,0) severity (concat["Real constant out of range: ",s,"\n"])

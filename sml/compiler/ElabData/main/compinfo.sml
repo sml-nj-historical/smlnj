@@ -10,7 +10,7 @@ structure CompInfo = struct
                     error: ErrorMsg.errorFn,
                     errorMatch: SourceMap.region -> string,
                     transform: 'absyn -> 'absyn,
-                    sourceName : string }
+	            source: Source.inputSource }
 
   fun mkCompInfo { source, transform : 'a -> 'a, mkMkStamp } =
       let val { error, errorMatch, anyErrors } = ErrorMsg.errors source
@@ -24,7 +24,7 @@ structure CompInfo = struct
            error = error,
            errorMatch = errorMatch,
            transform = transform,
-           sourceName = #fileOpened source } : 'a compInfo
+	   source = source } : 'a compInfo
       end
 
   fun anyErrors (ci : 'a compInfo) = ! (#anyErrors ci)

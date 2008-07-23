@@ -22,8 +22,7 @@ signature COMPILE0 = sig
     val elaborate : { ast: Ast.dec,
 		      statenv: StaticEnv.staticEnv,
 		      compInfo: Absyn.dec CompInfo.compInfo,
-		      guid: guid,
-		      extRefInfo: Symbol.symbol -> string option }
+		      guid: guid }
                     -> { absyn: Absyn.dec,
 			 newstatenv: StaticEnv.staticEnv,
  			 exportLvars: Access.lvar list,
@@ -49,7 +48,8 @@ signature COMPILE0 = sig
                        staticPid: hash,
 		       pickle: pickle, 
                        inlineExp: FLINT.prog option,
-		       imports: ImportTree.import list }
+		       imports: ImportTree.import list,
+		       srcinfo: string option }
 
 end (* signature COMPILE0 *)
 
