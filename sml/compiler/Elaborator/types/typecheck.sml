@@ -338,7 +338,9 @@ fun generalizePat(pat: pat, userbound: tyvar list, occ: occ, tdepth,
 	  | gen(LAYEREDpat(varPat,pat)) = (gen varPat; gen pat)
 	  | gen _ = ()
      in gen pat;
-        (* indexBoundTyvars(tdepth,!tvs); *)
+        indexBoundTyvars(tdepth,!tvs);
+           (* assign LBOUND values to generalized tyvars --
+	    * note that tdepth values are not necessarily accurate *)
 	!tvs
     end
 
