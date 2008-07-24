@@ -1,0 +1,21 @@
+srcinfo Notes
+=============
+
+1. [dbm] Possible renamings
+   Ens_var2 ==> Database   (ens_var2.sml ==> database.sig/sml)
+   ENS_VAR2 ==> DATABASE   (new database.sig)
+
+   TyToString ==> SerializeDB     (tytostring.sml ==> serializedb.sml)
+   TYTOSTRING ==> SERIALIZE_DB    (tytostring.sig ==> serializedb.sig)
+   StringToTy ==> UnSerializeDB   (stringtoty.sml ==> unserializedb.sml)
+   STRINGTOTY ==> UNSERIALIZE_DB  (new unserializedb.sig)
+
+   Ens_types2 ==> DBTypes   (ens_types2.sml ==> dbtypes.sml)
+
+   Ens_print2 ==> DBPrint   (ens_print2.sml ==> dbprint.sml)
+   ENS_PRINT2 ==> DBPRINT   (new dbprint.sig)
+
+
+2. SrcInfo structure is interface to srcinfo for the rest of the compiler
+   (i.e. CM).
+

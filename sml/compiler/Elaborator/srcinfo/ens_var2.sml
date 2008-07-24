@@ -1,5 +1,6 @@
 signature ENS_VAR2 = 
 sig
+    (* variables *)
     val add_var_def : 
 	VarCon.var -> 
 	int*int -> 
@@ -8,14 +9,17 @@ sig
     val add_var_use : VarCon.var -> int*int -> Types.tyvar list -> unit
     val print_var : unit -> unit
 
+    (* tycons *)
     val add_ty_def : Types.tycon -> int*int -> unit
     val add_ty_use : Types.ty -> int*int -> unit
     val print_ty : unit -> unit
     val print_cons : unit -> unit
 
+    (* signatures *)
     val add_sig_def : Modules.Signature -> int*int -> unit
     val print_sig : unit -> unit
 
+    (* structures *)
     val add_str_def : 
 	{name: Symbol.symbol, str: Modules.Structure, def: Absyn.strexp} -> 
 	Bindings.binding list -> 
@@ -31,10 +35,12 @@ sig
     val add_str_use : Modules.Structure -> int*int -> unit
     val print_str : unit -> unit
 
-    val print_all : unit -> unit
-    val set_source : string -> unit
+    (* external references (variables only?) *)
     val add_lvar : Access.access -> unit
     val add_ext_acc : Access.access -> unit
+
+    val print_all : unit -> unit
+    val set_source : string -> unit
     val pickling_over : unit -> unit
     val set_eri : (Symbol.symbol -> string option) -> unit
     val set_pid : PersStamps.persstamp -> unit
@@ -47,6 +53,7 @@ sig
     val test : unit -> unit
     val get_pickle : unit -> string
 
+    (* query support functions *)
     val find_var : (Ens_types2.var_elem -> bool) -> Ens_types2.var_elem option
     val exists_var : 
 	(Ens_types2.var_elem -> bool) -> bool
@@ -78,7 +85,8 @@ sig
 	(Ens_types2.sig_elem -> bool) -> bool
     val filter_sig : 
 	(Ens_types2.sig_elem -> bool) -> Ens_types2.sig_elem list
-end
+
+end (* signature ENS_VAR2  (==> DATABASE) *)
 
 structure Ens_var2 : ENS_VAR2 = struct
 local 
@@ -990,6 +998,5 @@ in
 	end
 
 
-
 end (*end local*)
-end (*end struct*)
+end (*structure Ens_var2 *)
