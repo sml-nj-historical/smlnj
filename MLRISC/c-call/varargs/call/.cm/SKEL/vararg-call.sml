@@ -1,0 +1,2 @@
+Skeleton 5
+d2f4d"AMD64Cells"d"X86Cells"d"CellsBasis"d"CLocKind"ad"VarargCCall"h7aä¢X86SA"êè0çð±å¢StagedAllocationFn"ad"X86Convention"jè±áä¢SA"çð±ÿgp1e"X86CConventionFn"Cad"X86VarArgCall"jÿ;çð±å¢VarArgCallFn"aä¢X86_64SA"ÿad"X86_64Convention"jè±áÿ>çð±ÿƒgp1e"X86_64CConventionFn"ad"X86_64VarArgCall"jÿƒ+ÿ‚5ad"DL"gp1d"DynLinkage"N
