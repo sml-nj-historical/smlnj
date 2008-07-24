@@ -83,10 +83,12 @@ struct
 	  | T.GENtyc {stamp, eq, path, kind = T.PRIMITIVE _, ...} =>
 	    (stamp, path, Primtyc (!eq = T.YES))
 	  | T.GENtyc {stamp, path,
-		      kind = T.ABSTRACT(T.GENtyc {kind = T.DATATYPE {index,
-								     family = {members, ...},
-								     ...},
-						  ...}),
+		      kind = T.ABSTRACT
+				 (T.GENtyc {kind = T.DATATYPE 
+						       {index,
+							family = {members,...},
+							...},
+					    ...}),
 		      ...} => 
 	    let val {tycname, dcons, ...} = Vector.sub (members,index)
 	    in

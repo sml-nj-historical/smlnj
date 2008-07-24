@@ -52,6 +52,7 @@ sig
     val merge_pickle : string -> string -> unit
     val test : unit -> unit
     val get_pickle : unit -> string
+    val remove : string -> unit
 
     (* query support functions *)
     val find_var : (Ens_types2.var_elem -> bool) -> Ens_types2.var_elem option
@@ -120,9 +121,16 @@ in
     fun set_eri eri = 
 	(extRefInfo := eri)
 
-    val pid_file = ref [] : (PersStamps.persstamp * string) list ref
+
+    structure PidFileKey : ORD_KEY = 
+    struct
+        type ord_key = (PersStamps.persstamp * string)
+	fun compare ((pid1, _), (pid2, _))= PersStamps.compare (pid1, pid2)
+    end
+    structure PidFileSet = RedBlackSetFn (PidFileKey)
+    val pid_file = ref PidFileSet.empty
     fun print_pids () = 
-	( List.app 
+	( PidFileSet.app 
 	      (fn (x,y) => print (PersStamps.toHex x ^ "->" ^ y ^ ", "))
 	      (!pid_file);
 	  print "\n"
@@ -177,14 +185,11 @@ in
 					 ListPair.zipEq (!exts, !lvars)
 				       )
     fun print_lvars () = 
-	if LvarExtSet.isEmpty (!lvar_ext) then
-	    print "No exports\n"
-	else
-	    ( LvarExtSet.app 
-		  (fn (x, y) => print (A.prAcc x ^ "->" ^ A.prAcc y ^ ", ")) 
-		  (!lvar_ext);
-	      print "\n"
-	    )
+	( LvarExtSet.app 
+	      (fn (x, y) => print (A.prAcc x ^ "->" ^ A.prAcc y ^ ", ")) 
+	      (!lvar_ext);
+	  print "\n"
+	)
 
     (* end of LvarExt part*)
 
@@ -746,14 +751,14 @@ in
 
 
     fun print_all () = (
-	print_var ();
-	print_str ();
-	print_ty ();
-	print_cons ();
-	print_sig ();
-	print_ext ();
-	print_lvars ();
-        print_pids ()
+	print "****** VAR : \n";print_var ();
+	print "****** STR : \n";print_str ();
+	print "****** TYP : \n";print_ty ();
+	print "****** CON : \n";print_cons ();
+	print "****** SIG : \n";print_sig ();
+	print "****** EXT : \n";print_ext ();
+	print "****** LVA : \n";print_lvars ();
+        print "****** PID : \n";print_pids ()
     )
 
 
@@ -764,7 +769,7 @@ in
 	ens_str := StrSet.empty;
 	ens_sig := SigSet.empty;
 	ens_ext := ExtSet.empty;
-	pid_file := [];
+	pid_file := PidFileSet.empty;
 	source := "";
 	extRefInfo := (fn _ => NONE)
     )
@@ -842,7 +847,7 @@ in
 	end
 
     fun get_file e = 
-	case List.find (fn (pid, _) => pid = e) (!pid_file) of
+	case PidFileSet.find (fn (pid, _) => pid = e) (!pid_file) of
 	    NONE => bug "get_file"
 	  | SOME (_, filename) => filename
 
@@ -880,7 +885,8 @@ in
 				    access = lvar andalso
 				    locFile def = sourcename
 				) (!st) of
-		   NONE => bug "distribution.ExtStr"
+		   NONE => bug ("distribution.ExtStr " ^ A.prAcc access ^ " " ^
+				A.prAcc lvar)
 		 | SOME {usage = u, ...} => u := !usage @ !u
 	    end
 	  | ExtType {stamp, usage} => ()
@@ -899,6 +905,15 @@ in
 		| SOME {usage = u, ...} => u := !usage @ !u
 	    *)
 
+    fun get_pid file = 
+	case PidFileSet.find (fn (_,x) => file = x) (!pid_file) of
+	    NONE => bug ("get_pid" ^ file)
+	  | SOME (x, _) => x
+
+    fun get_hash (A.EXTERN e) = e
+      | get_hash (A.PATH (a, _)) = get_hash a
+      | get_hash _ = bug "get_hash"
+
     fun merge (var,ty,cons,str,sign,ext,lvarext,pid') sourcefile = 
 	let val ens_var2 = ref var
 	    val ens_ty2 = ref ty
@@ -914,13 +929,24 @@ in
 	    ens_cons := ConsSet.union (!ens_cons, !ens_cons2);
 	    ens_str  := StrSet.union  (!ens_str,  !ens_str2);
 	    ens_sig  := SigSet.union  (!ens_sig,  !ens_sig2);
-	    (*ens_ext := ext; should be empty anyway*)
 	    lvar_ext := LvarExtSet.union (lvarext,!lvar_ext);
-	    (*pid := pid'*)
-	    pid_file := ( case pid' of
-			      NONE => bug "merge"
-			    | SOME pid'' => (pid'', sourcefile) :: !pid_file
-			)
+            (*ens_ext := ext; should be empty anyway !! not when removing *)
+	    pid_file := PidFileSet.add
+			    (!pid_file, 
+			     case pid' of
+				 NONE => bug "merge"
+			       | SOME pid'' => (pid'', sourcefile)
+			    );
+	    let val pid = get_pid sourcefile
+		val (to_be_added, others) = 
+		    ExtSet.partition 
+			(fn ExtStr {access, ...} => get_hash access = pid
+			  | _ => false)
+			(!ens_ext)
+	    in
+		ExtSet.app distrib to_be_added;
+		ens_ext := others
+	    end
 	end
 
     fun merge_pickle sourcefile pickle = 
@@ -929,23 +955,149 @@ in
 	  | l => bug ("merge_pickle " ^ Int.toString (List.length l))
 
     fun load_merge sourcefile = 
-	merge (load_return sourcefile) sourcefile
+	let val sl = String.tokens (fn x => x = #"/") sourcefile
+	    fun modi [a] = [".cm","INFO",a]
+	      | modi [] = bug "load_merge"
+	      | modi  (h :: q) = h :: modi q
+	    val sourcefile2 = String.concatWith "/" ("" :: modi sl)
+	    val () = print (sourcefile ^ " " ^ sourcefile2 ^ "\n")
+	in
+	    merge (load_return sourcefile2) sourcefile
+	end
+
+    fun externalize_str access file = 
+	let fun find_son access_par access_son = 
+		case StrSet.find 
+			 (fn {access = access1, def, ...} => 
+			     access1 = access_par andalso 
+			     locFile def = file)
+			 (!ens_str)
+		 of NONE => bug "find_son"
+		  | SOME {elements = Alias a, ...} =>
+		    find_son a access_son
+		  | SOME {elements = Def l, ...} => 
+		    ( case List.find 
+			   (fn (_, _, Str a) => a = access_son
+			     | _ => false 
+			   )
+			   l
+		       of NONE => bug "find_son2"
+			| SOME (i, _, _) => i
+		    )
+		  | SOME {elements = Constraint _, ...} =>
+		    bug "find_son3"
+	    fun str access = 
+		case StrSet.find 
+			 (fn {access = access1, def, ...} => 
+			     access1 = access andalso locFile def = file)
+			 (!ens_str)
+		 of NONE => bug "externalize"
+		  | SOME {parent = SOME access_loc_parent, ...} =>
+		    let val access_lvar_parent= get_str_lvar2 access_loc_parent
+			val slot = 
+			    find_son access_lvar_parent access
+			val access_ext_parent = str access_lvar_parent
+						
+		    in (A.PATH (access_ext_parent, slot))
+		    end
+		  | SOME {parent = NONE, ...} => 
+		    let val pid = get_pid file in
+		    case LvarExtSet.find 
+			     (fn (A.PATH (A.EXTERN e, _), y) => 
+				 e = pid andalso
+				 y = access
+			       | _ => bug "extermalize 1.5"
+			     )
+			     (!lvar_ext)
+		     of
+			NONE => bug "externalize2"
+		      | SOME (A.PATH (A.EXTERN _, slot), _) =>
+			A.PATH(A.EXTERN pid, slot)
+		      | SOME _ => bug "externalize3"
+		    end
+	in
+	    str access
+	end
 
 
     (*********** A FAIRE ***********)
-    (*fun remove file = 
-	ens_ext := ExtSet.empty;
-	VarSet.app ( fn {usage, ...} => 
+    fun remove file = (
+	(*ens_ext := ExtSet.empty;*)
+	(* il faudrait d'abord faire l'autre filtre, mais du coup il faudra
+	 * me prendre qu'une partie de la liste usage *)
+	(*VarSet.app ( fn {usage, ...} => 
 			usage := List.filter 
 				     (fn (x, _, _) => locFile x <> file)
 				     (!usage)
 		   )
 		   (!ens_var);
 	ens_var := VarSet.filter 
-		       (fun {def, usage, ...} => 
-			    ExtSet.addList (!ens_ext, (List.map Var (!usage)))
-			    locFile def <> file) 
-		       (!ens_var)*)
+		       ( fn {access, def, usage, ...} => 
+			    (if locFile def = file then 
+				 let val () = 
+				     if not (List.null (!usage)) then
+					 ens_ext := 
+					 ExtSet.add 
+					     ( !ens_ext,
+					       ExtVar {access = 
+						       externalize_var access, 
+						       usage = usage}
+					     )
+				     else
+					 ()
+				 in
+				     false
+				 end
+			     else
+				 true
+			    )
+		       )
+		       (!ens_var);*)
+	StrSet.app
+	    ( fn {access, def, usage, ...} => 
+		 (if locFile def = file then 
+		      let val usage = 
+			      List.filter 
+				  (fn x => locFile x <> file)
+				  (!usage)
+		      in
+			  if not (List.null usage) then
+			      ens_ext := 
+			      ExtSet.add 
+				  ( !ens_ext,
+				    ExtStr {access = 
+					    externalize_str access 
+							    file, 
+					    usage = ref usage}
+				  )
+			  else
+			      ()
+		      end
+		  else
+		      ()
+		 )
+	    )
+	    (!ens_str);
+	ens_str := StrSet.filter 
+		       ( fn {usage, def, ...} => 
+			    if locFile def = file then 
+				false
+			    else (
+				usage := List.filter 
+					     (fn x => locFile x <> file)
+					     (!usage);
+				true
+				)
+		       )
+		       (!ens_str)
+    (*     
+     let val pid = get_pid file in
+	 lvar_ext := LvarExtSet.filter 
+			 (fn (x, _) => get_hash x <> pid) 
+			 (!lvar_ext)
+     end;
+     pid_file := List.filter (fn (_,x) => x <> file) (!pid_file)*)
+    )
 
     fun test () =
 	let val (a,b,c,d,e,f,g,h) = 
