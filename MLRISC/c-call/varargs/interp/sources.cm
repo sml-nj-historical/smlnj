@@ -12,7 +12,7 @@ is
 	../../cm/wrapper.cm
 
 	../call/vararg-constants.sml
-	../call/var-arg.sml
+	../call/vararg.sml
 	
 	gen-fn.sml
 	x86-gen.sml
