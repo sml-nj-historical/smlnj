@@ -1,0 +1,21 @@
+Group
+
+	signature STAGED_ALLOCATION
+	functor StagedAllocationFn
+
+	structure CLocKind
+
+	functor X86_64CConventionFn
+	functor X86CConventionFn
+
+is
+
+	$/basis.cm
+	$/smlnj-lib.cm
+
+	../allocator/staged-allocation-sig.sml
+	../allocator/staged-allocation-fn.sml
+
+	../conventions/c-loc-kind.sml
+	../conventions/x86-64-c-fn.sml
+	../conventions/x86-c-fn.sml
