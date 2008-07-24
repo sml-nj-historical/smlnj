@@ -2,10 +2,10 @@ Group
 	structure X86MLRISCGen
 	structure X86MLTree
 
-	group(../../staged-allocation/cm/sources.cm)
-	library(/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/MLRISC.cm)
-	library(/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/IA32.cm)
-	library(/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/AMD64.cm)
+	group(../../staged-alloc/cm/sources.cm)
+	library(../../cm/MLRISC.cm)
+	library(../../cm/IA32.cm)
+	library(../../cm/AMD64.cm)
 is
 
 	$/basis.cm
@@ -14,23 +14,23 @@ is
 	$/pp-lib.cm
 	$smlnj-tdp/plugins.cm
 
-	/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/Control.cm
-	/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/Lib.cm
-	/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/MLRISC.cm
-	/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/Graphs.cm
-	/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/MLTREE.cm
-	/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/RA.cm
-	/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/Visual.cm
-	/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/Peephole.cm
-	/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/IA32.cm
-	/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/AMD64.cm
-	/Users/mrainey/Manticore/SMLNJ/MLRISC//cm/RTL.cm
+	../../cm/Control.cm
+	../../cm/Lib.cm
+	../../cm/MLRISC.cm
+	../../cm/Graphs.cm
+	../../cm/MLTREE.cm
+	../../cm/RA.cm
+	../../cm/Visual.cm
+	../../cm/Peephole.cm
+	../../cm/IA32.cm
+	../../cm/AMD64.cm
+	../../cm/RTL.cm
 
 	../gen/c-call-sig.sml
 	../gen/c-call-fn.sml
 	../gen/c-types.sml
 
-	../../staged-allocation/cm/sources.cm
+	../../staged-alloc/cm/sources.cm
 
 	../archs/x86-64-svid-fn.sml
 	../archs/x86-64-c-sizes.sml
