@@ -100,7 +100,11 @@ fun varDefOcc (occ : occurrence) : location option =
      of SOME{def,...} => SOME def
       | NONE => NONE
 
+fun varRecordOcc (occ : occurrence) = 
+    find_var (occIsVar occ) 
+
 val varDefOcc' = varDefOcc o toVarOcc
+val varDefOcc'' = Option.map #def o varRecordOcc o toVarOcc
 
 (* find type of a (variable?) applied occurrence *)
 fun varTypOcc (occ as (sym,loc): occurrence) : ty' option = 

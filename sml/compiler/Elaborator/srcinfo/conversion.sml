@@ -32,7 +32,7 @@ struct
 	  | T.PATHtyc {path, ...} =>
 	    Path path
 	  | (T.ERRORtyc | T.FREEtyc _ | T.RECtyc _) =>
-	    ErrorMsg.impossible "DBTypes: to_stub.1"
+	    bug "to_stub.1"
 	    
     fun ty_to_ty' ty = 
 	case ty of
@@ -46,10 +46,10 @@ struct
 		   Lbound {index=index,depth=depth}
 		 | T.VARty (ref (T.UBOUND {name,...})) => Ubound name
 		 | T.VARty (ref (T.OPEN _)) => 
-		   ErrorMsg.impossible "DBTypes: ty_to_ty'.2 OPEN"
+		   bug "ty_to_ty'.2 OPEN"
 		 | T.VARty (ref (T.LITERAL _)) => 
-		   ErrorMsg.impossible "DBTypes: ty_to_ty'.2 LITERAL"
-		 | T.VARty _ => ErrorMsg.impossible "DBTypes: ty_to_ty'.2"
+		   bug "ty_to_ty'.2 LITERAL"
+		 | T.VARty _ => bug "ty_to_ty'.2"
 		 | typ => ty_to_ty' typ
 	    end
 	   | T.POLYty {tyfun = T.TYFUN {arity, body}, ...} =>
@@ -58,13 +58,13 @@ struct
 	       Conty (to_stub tycon, List.map ty_to_ty' tyl)
 	   | T.MARKty (ty, _) => ty_to_ty' ty
 	   | (T.WILDCARDty | T.UNDEFty) => 
-	       ErrorMsg.impossible "DBTypes: ty_to_ty'.1"
+	       bug "ty_to_ty'.1"
 
     fun tycon_to_tycon' tyc = 
 	case tyc of
 	    (T.ERRORtyc | T.FREEtyc _ | T.RECtyc _ | 
 	     T.PATHtyc _ | T.RECORDtyc _) =>
-	    ErrorMsg.impossible "DBTypes: tycon_to_tycon'.1"
+	    bug "tycon_to_tycon'.1"
 	  | T.DEFtyc {stamp, path, ...} =>
 	    (stamp, path, Deftyc)
 	  | T.GENtyc { kind = T.DATATYPE { index, 
@@ -98,28 +98,11 @@ struct
 		)
 	    end
 	  | _ =>
-	    ErrorMsg.impossible "DBTypes: tycon_to_tycon'.2"
+	    bug "tycon_to_tycon'.2"
 	    
 
     fun sig_to_elem (Modules.SIG {name, stamp, inferred, elements, ...}) : sig_elem = 
 	let
-	    (*fun conv_spec (M.VALspec {spec = ty, ...}) = 
-		Val (ty_to_ty' ty)
-	      (*| conv_spec 
-		    (M.STRspec {def = SOME (M.CONSTstrDef str, _), ...}) =
-		NamedStr (InvPath.last (MU.getStrName str), MU.getStrStamp str)
-	      | conv_spec 
-		    (M.STRspec {def = SOME (M.VARstrDef (sign, _), _), ...}) =
-		InlineStr (#elements (sig_to_elem sign))*)
-	      | conv_spec (M.STRspec {def = NONE, sign = (sign as M.SIG {name = NONE, ...}), ...}) = 
-		InlineStr (#elements (sig_to_elem sign))
-	      | conv_spec (M.STRspec {def = NONE, sign = (sign as M.SIG {name = SOME name, stamp, ...}), ...}) = 
-		NamedStr (name, stamp)
-	      | conv_spec _ =
-		bug "non implemente"
-
-	    fun conv (x, y) = (x, conv_spec y)*)
-
 	    fun conv_spec (M.VALspec {spec = ty, ...}) = 
 		SOME (Val (ty_to_ty' ty))
 	      | conv_spec (M.STRspec {def = NONE, sign = (sign as M.SIG {name = NONE, ...}), ...}) = 

@@ -1,4 +1,4 @@
-(* tytostring.sig *)
+(* SERIALIZE_DB.sig *)
 
 signature SERIALIZE_DB =
 sig
