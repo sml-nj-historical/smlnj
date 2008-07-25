@@ -229,6 +229,7 @@ in
     (* external value set *)
     structure ExtSet = RedBlackSetFn(ExtKey)
     val ens_ext = (ref ExtSet.empty)
+    val ens_ext_removed = (ref ExtSet.empty)
 
     (* variables *)
     structure VarKey : ORD_KEY =
@@ -876,7 +877,8 @@ in
 				) (!va)
 		of NONE => bug ("distribution.ExtVar: " ^ A.prAcc access ^ 
 				" " ^ sourcename)
-		 | SOME {usage = u, ...} => u := !usage @ !u
+		 | SOME {usage = u, name, ...} => 
+		   u := !usage @ !u
 	    end
 	  | ExtStr {access, usage} =>
 	    let val (acc, sourcename) = modify_path access lv
@@ -941,11 +943,14 @@ in
 		val (to_be_added, others) = 
 		    ExtSet.partition 
 			(fn ExtStr {access, ...} => get_hash access = pid
+			  | ExtVar {access, ...} => get_hash access = pid
 			  | _ => false)
-			(!ens_ext)
+			(!ens_ext_removed)
 	    in
 		ExtSet.app distrib to_be_added;
-		ens_ext := others
+		ens_ext_removed := others(*;
+		ExtSet.app EP.print_ext (!ens_ext);
+		print "\n"*)
 	    end
 	end
 
@@ -960,45 +965,63 @@ in
 	      | modi [] = bug "load_merge"
 	      | modi  (h :: q) = h :: modi q
 	    val sourcefile2 = String.concatWith "/" ("" :: modi sl)
-	    val () = print (sourcefile ^ " " ^ sourcefile2 ^ "\n")
 	in
 	    merge (load_return sourcefile2) sourcefile
 	end
-
+	
+    fun find_son access_par access_son file good_key = 
+	case StrSet.find 
+		 (fn {access = access1, def, ...} => 
+		     access1 = access_par andalso 
+		     locFile def = file)
+		 (!ens_str)
+	 of NONE => bug "find_son"
+	  | SOME {elements = Alias a, ...} =>
+	    find_son a access_son file good_key
+	  | SOME {elements = Def l, ...} => 
+	    ( case List.find 
+		       (fn (_, _, k) => good_key (k,access_son))
+		       l
+	       of NONE => (List.app (fn (_,_,x)=>(EP.print_key x;print " ")) l;
+			   print "\n";
+			   print (A.prAcc access_par ^ " "^A.prAcc access_son);
+			   print "\n";
+			   bug "find_son2")
+		| SOME (i, _, _) => i
+	    )
+	  | SOME {elements = Constraint _, ...} =>
+	    bug "find_son3"
+	    
     fun externalize_str access file = 
-	let fun find_son access_par access_son = 
-		case StrSet.find 
-			 (fn {access = access1, def, ...} => 
-			     access1 = access_par andalso 
-			     locFile def = file)
-			 (!ens_str)
-		 of NONE => bug "find_son"
-		  | SOME {elements = Alias a, ...} =>
-		    find_son a access_son
-		  | SOME {elements = Def l, ...} => 
-		    ( case List.find 
-			   (fn (_, _, Str a) => a = access_son
-			     | _ => false 
-			   )
-			   l
-		       of NONE => bug "find_son2"
-			| SOME (i, _, _) => i
-		    )
-		  | SOME {elements = Constraint _, ...} =>
-		    bug "find_son3"
+	let fun find_son2 x y = 
+		find_son x y file (fn (Str a,a2) => a = a2 | _ => false)
 	    fun str access = 
 		case StrSet.find 
 			 (fn {access = access1, def, ...} => 
 			     access1 = access andalso locFile def = file)
 			 (!ens_str)
-		 of NONE => bug "externalize"
+		 of NONE => bug "externalize1"
 		  | SOME {parent = SOME access_loc_parent, ...} =>
 		    let val access_lvar_parent= get_str_lvar2 access_loc_parent
-			val slot = 
-			    find_son access_lvar_parent access
 			val access_ext_parent = str access_lvar_parent
-						
-		    in (A.PATH (access_ext_parent, slot))
+			val is_alias = 
+			    ( case StrSet.find 
+				       (fn {access, def, ...} => 
+					   access_lvar_parent = access andalso 
+					   locFile def = file
+				       )
+				       (!ens_str)
+			       of NONE => bug "externalize2"
+				| SOME {elements = Alias a, ...} => true
+				| _ => false
+			    )
+		    in
+			if is_alias then
+			    access_ext_parent
+			else
+			    let val slot = find_son2 access_lvar_parent access
+			    in (A.PATH (access_ext_parent, slot))
+			    end
 		    end
 		  | SOME {parent = NONE, ...} => 
 		    let val pid = get_pid file in
@@ -1006,19 +1029,35 @@ in
 			     (fn (A.PATH (A.EXTERN e, _), y) => 
 				 e = pid andalso
 				 y = access
-			       | _ => bug "extermalize 1.5"
+			       | _ => bug "externalize 4"
 			     )
 			     (!lvar_ext)
 		     of
-			NONE => bug "externalize2"
+			NONE => bug "externalize5"
 		      | SOME (A.PATH (A.EXTERN _, slot), _) =>
 			A.PATH(A.EXTERN pid, slot)
-		      | SOME _ => bug "externalize3"
+		      | SOME _ => bug "externalize6"
 		    end
 	in
 	    str access
 	end
 
+    fun externalize_var (A.PATH (access, slot)) file = 
+	A.PATH (externalize_str access file, slot)
+      | externalize_var (access as A.LVAR _) file =
+	let fun find_son2 x y = 
+		find_son x y file (fn (Var a, a2) => a = a2 | _ => false)
+	in 
+	    case VarSet.find (fn {access = access1, def, ...} => 
+				 access1 = access andalso 
+				 locFile def = file)
+			     (!ens_var)
+	     of NONE => bug "externalize_var"
+	      | SOME {parent, ...} => 
+		A.PATH (externalize_str parent file, 
+			find_son2 (get_str_lvar2 parent) access)
+	end
+      | externalize_var _ _ = bug "externalize_var"
 
     (*********** A FAIRE ***********)
     fun remove file = (
@@ -1053,6 +1092,43 @@ in
 			    )
 		       )
 		       (!ens_var);*)
+	VarSet.app
+	    ( fn {access, def, usage, ...} => 
+		 (if locFile def = file then 
+		      let val usage = 
+			      List.filter 
+				  (fn (x, _, _) => locFile x <> file)
+				  (!usage)
+		      in
+			  if not (List.null usage) then
+			      ens_ext_removed := 
+			      ExtSet.add 
+				  ( !ens_ext_removed,
+				    ExtVar {access = 
+					    externalize_var access 
+							    file, 
+					    usage = ref usage}
+				  )
+			  else
+			      ()
+		      end
+		  else
+		      ()
+		 )
+	    )
+	    (!ens_var);
+	ens_var := VarSet.filter 
+		       ( fn {usage, def, ...} => 
+			    if locFile def = file then 
+				false
+			    else (
+				usage := List.filter 
+					     (fn (x, _, _)=> locFile x <> file)
+					     (!usage);
+				true
+				)
+		       )
+		       (!ens_var);
 	StrSet.app
 	    ( fn {access, def, usage, ...} => 
 		 (if locFile def = file then 
@@ -1062,9 +1138,9 @@ in
 				  (!usage)
 		      in
 			  if not (List.null usage) then
-			      ens_ext := 
+			      ens_ext_removed := 
 			      ExtSet.add 
-				  ( !ens_ext,
+				  ( !ens_ext_removed,
 				    ExtStr {access = 
 					    externalize_str access 
 							    file, 

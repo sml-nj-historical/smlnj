@@ -11,6 +11,8 @@ sig
    val print_tycon' : Ens_types2.tycon' -> unit
    val printer : Types.ty -> unit
 
+   val print_key : Ens_types2.key -> string
+
    val print_var : Ens_types2.var_elem -> unit
    val print_type : Ens_types2.type_elem -> unit
    val print_cons : Ens_types2.cons_elem -> unit
@@ -237,12 +239,15 @@ in
 	 print "\n"
        )
 
+   fun print_key k = 
+       case k of 
+	   Var a => "Var " ^ Access.prAcc a
+	 | Str a => "Str " ^ Access.prAcc a
+	 | _ => "others"
+
    fun print_str ({name, access, parent, sign, def, elements, usage}:str_elem)=
 	let 
-	    fun print_key k = 
-		case k of 
-		    (Var a|Str a) => Access.prAcc a
-		  | _ => "others"
+	    val () = ()
 	in
 	    print ("(" ^ A.prAcc access ^ ") " ^ stoS name ^ 
 		   " " ^ rtoS def ^ " defined in ");
