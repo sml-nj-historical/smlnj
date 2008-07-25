@@ -1,28 +1,4 @@
-signature ENS_PRINT2 = 
-sig
-   val maj : StaticEnv.staticEnv -> unit
-
-   val rtoS : Ens_types2.location -> string
-   val stoS : Symbol.symbol -> string
-   val ptoS : Symbol.symbol list -> string
-   val rptoS : InvPath.path -> string
-
-   val print_ty' : Ens_types2.ty' -> unit
-   val print_tycon' : Ens_types2.tycon' -> unit
-   val printer : Types.ty -> unit
-
-   val print_key : Ens_types2.key -> string
-
-   val print_var : Ens_types2.var_elem -> unit
-   val print_type : Ens_types2.type_elem -> unit
-   val print_cons : Ens_types2.cons_elem -> unit
-   val print_str : Ens_types2.str_elem -> unit
-   val print_sig : Ens_types2.sig_elem -> unit
-   val print_ext : Ens_types2.ext_elem -> unit
-
-end (* signature ENS_PRINT*)
-
-structure Ens_print2 : ENS_PRINT2 = 
+structure DBPrint : DBPRINT = 
 struct
 
 local 
@@ -32,10 +8,10 @@ local
     structure PP = PrettyPrintNew
     structure VC = VarCon
     structure M = Modules
-    open Ens_types2
+    open DBTypes
 in 
 
-   fun bug msg = ErrorMsg.impossible("Bugs in Ens_print2: "^msg);
+   fun bug msg = ErrorMsg.impossible("DBPrint: "^msg);
 
    val stat_env = ref (StaticEnv.empty);
    fun maj e = stat_env := e;
@@ -113,7 +89,7 @@ in
 	   Conty (Record [], []) => print "unit"
 	 | Conty (Record (ll as h::_), tyl) =>
 	   if stoS h = "1" then
-	       let fun p [] = ErrorMsg.impossible "Ens_var2: print_ty'.1"
+	       let fun p [] = bug "print_ty'.1"
 		     | p [x] = print_ty' x
 		     | p (x::y) = (print_ty' x; print " * "; p y)
 	       in
@@ -142,7 +118,7 @@ in
 	     print_ty' t2
 	   )
 	 | Conty _ => 
-	   ErrorMsg.impossible "Ens_var2: print_ty'.2"
+	   bug "print_ty'.2"
 	 | Ibound index =>
 	   print ("'" ^ str (Char.chr (Char.ord #"a" + index)))
 	 | Lbound {depth, index} => 
@@ -343,4 +319,4 @@ in
        
 
 end
-end (* structure Ens_print *)
+end (* structure DBPrint *)

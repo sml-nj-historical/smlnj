@@ -1,22 +1,9 @@
-(* stringtoty.sml *)
-
-signature STRINGTOTY = 
-sig
-    val stringToVar : string -> Ens_types2.var_elem list
-    val stringToType : string -> Ens_types2.type_elem list
-    val stringToCons : string -> Ens_types2.cons_elem list 
-    val stringToStr : string -> Ens_types2.str_elem list 
-    val stringToSig : string -> Ens_types2.sig_elem list
-    val stringToExt : string -> Ens_types2.ext_elem list
-
-    val stringToLvarExt : string -> (Access.access * Access.access) list
-    val stringToPidOption : string -> PersStamps.persstamp option
-end (* signature STRINGTOTY *)
+(* unserializedb.sml *)
 
 local
-    open Ens_types2
+    open DBTypes
 in
-structure StringToTy : STRINGTOTY =
+structure UnSerializeDB : UNSERIALIZE_DB =
 struct
 
 fun bug x = ErrorMsg.impossible ("StringToTy: " ^ x)

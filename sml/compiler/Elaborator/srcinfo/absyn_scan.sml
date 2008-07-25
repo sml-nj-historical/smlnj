@@ -1,28 +1,31 @@
-structure Ens_absyn = 
+structure AbsynScan = 
 struct
     local 
 	open Absyn
-	structure EV = Ens_var2
+	structure DB = Database
     in
         val ref_str = 
 	    (ref [] : {def:strexp, 
 		       name:Symbol.symbol, 
 		       str:Modules.Structure} list ref)
+	    
+	fun bug x = ErrorMsg.impossible ("AbsynScan: " ^ x)
+
 	fun push str = ref_str := str :: !ref_str
 	fun pop () = 
 	    case !ref_str of
-		[] => ErrorMsg.impossible "Ens_absyn.pop"
+		[] => bug "pop"
 	      | _::q => ref_str := q
 	fun head () = 
 	    case !ref_str of
-		[] => ErrorMsg.impossible "Ens_absyn.head"
+		[] => bug "head"
 	      | h::_ => h
 	fun str_par () = 
 	    case !ref_str of
-		[] => ErrorMsg.impossible "Ens_absyn.str_par"
+		[] => bug "str_par"
 	      | [_] => NONE
 	      | _::{str=Modules.STR{access, ...}, ...}::_ => SOME access
-	      | _ => ErrorMsg.impossible "Ens_absyn.str_par2"
+	      | _ => bug "str_par2"
 
 
         fun scan_exp exp = 
@@ -57,11 +60,11 @@ struct
 	      | LETexp (dec, exp) => (scan_dec dec; scan_exp exp)
 	      | SEQexp expl => List.app scan_exp expl
 	      | CONSTRAINTexp (exp, ty) => 
-		(EV.add_ty_use ty (~1, ~1); scan_exp exp)
+		(DB.add_ty_use ty (~1, ~1); scan_exp exp)
 	      | MARKexp (exp, region) => 
 		( case exp of 
 		      VARexp (ref var, tyvarl) => 
-		      EV.add_var_use var region tyvarl
+		      DB.add_var_use var region tyvarl
 		    | _ => ();
 		  scan_exp exp
 		)
@@ -70,7 +73,7 @@ struct
 	    case rule of
 		RULE (pat, exp) => (
 		case pat of 
-		    VARpat var => EV.add_var_def var (~1, ~1) (head ())
+		    VARpat var => DB.add_var_def var (~1, ~1) (head ())
 		  | _ => ();
 		scan_pat pat; scan_exp exp)
 			  
@@ -93,7 +96,7 @@ struct
 	      | NOpat => ()
 
 	and scan_markedtycon (MARKtyc (tycon, region)) = 
-	    Ens_var2.add_ty_def tycon region
+	    DB.add_ty_def tycon region
 
 	and scan_dec dec =
 	    case dec of
@@ -114,7 +117,7 @@ struct
 	      | ABSdec strbl => List.app scan_strb strbl
 	      | FCTdec fctbl => List.app scan_fctb fctbl
 	      | SIGdec sigl => 
-		List.app (fn x => EV.add_sig_def x (~1, ~1)) sigl
+		List.app (fn x => DB.add_sig_def x (~1, ~1)) sigl
 	      | FSIGdec _ => ()
 	      | OPENdec _ => ()
 	      | LOCALdec (d1, d2) => (scan_dec d1; scan_dec d2)
@@ -124,19 +127,19 @@ struct
 	      | MARKdec (dec, region) => 
 		( case dec of
 		      VALdec [VB {pat = VARpat var, ...}] => 
-		      EV.add_var_def var region (head ())
+		      DB.add_var_def var region (head ())
 		    | _ => ();
 		  scan_dec dec
 		)
 			     
 	and scan_strexp strexp =
 	    let fun add s region = 
-		    ( EV.add_str_alias 
+		    ( DB.add_str_alias 
 			  (head ()) 
 			  s 
 			  region
 			  (str_par ());
-		      EV.add_str_use 
+		      DB.add_str_use 
 			  s 
 			  region
 		    )
@@ -144,7 +147,7 @@ struct
 		case strexp of
 		    VARstr s => add s (~12, ~12)
 		  | STRstr bl => 
-		    EV.add_str_def (head ()) bl (~5, ~5) (str_par ())
+		    DB.add_str_def (head ()) bl (~5, ~5) (str_par ())
 		  | APPstr _ => pop ()
 		  | LETstr (dec, strexp) => 
 		    ( scan_dec dec; 
@@ -152,7 +155,7 @@ struct
 		  | MARKstr (strexp, region as (r1,r2)) => 
 		    ( case strexp of
 			  STRstr bl => 
-			  EV.add_str_def (head ()) bl region (str_par ())
+			  DB.add_str_def (head ()) bl region (str_par ())
 			| VARstr s => 
 			  add s region
 			| _ => scan_strexp strexp
