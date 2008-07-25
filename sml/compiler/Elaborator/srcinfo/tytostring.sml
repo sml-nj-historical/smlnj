@@ -1,9 +1,9 @@
-(* tytostring.sml *)
+(* serializedb.sml *)
 
 local
-    open Ens_types2
+    open DBTypes
 in
-structure TyToString : TYTOSTRING =
+structure SerializeDB : SERIALIZE_DB = 
 struct
 
 fun bug x = ErrorMsg.impossible ("TyToString: " ^ x)
@@ -238,5 +238,5 @@ fun pidOptionToStrings po =
 fun pidOptionToString po = 
     flatten (pidOptionToStrings po)
 
-end (* structure TyToString *)
+end (* structure SerializeDB *)
 end (* end local *)
