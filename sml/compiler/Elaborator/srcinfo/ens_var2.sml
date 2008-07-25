@@ -40,6 +40,7 @@ sig
     val add_ext_acc : Access.access -> unit
 
     val print_all : unit -> unit
+    val print_all_g : unit -> unit
     val set_source : string -> unit
     val pickling_over : unit -> unit
     val set_eri : (Symbol.symbol -> string option) -> unit
@@ -243,6 +244,7 @@ in
     (* variable sets *)
     structure VarSet = RedBlackSetFn(VarKey)
     val ens_var = (ref VarSet.empty);
+    val ens_var_g = (ref VarSet.empty);
 
     fun find_var p = VarSet.find p (!ens_var)
     fun exists_var p = VarSet.exists p (!ens_var)
@@ -260,6 +262,7 @@ in
     (* structure sets *)
     structure StrSet = RedBlackSetFn(StrKey)
     val ens_str = (ref StrSet.empty);
+    val ens_str_g = (ref StrSet.empty);
 
     fun find_str p = StrSet.find p (!ens_str)
     fun exists_str p = StrSet.exists p (!ens_str)
@@ -277,6 +280,7 @@ in
     (* type sets *)
     structure TySet = RedBlackSetFn(TypeKey)
     val ens_ty = (ref TySet.empty);
+    val ens_ty_g = (ref TySet.empty);
 
     fun find_typ p = TySet.find p (!ens_ty)
     fun exists_typ p = TySet.exists p (!ens_ty)
@@ -296,6 +300,7 @@ in
     (* constructor sets *)
     structure ConsSet = RedBlackSetFn(ConsKey)
     val ens_cons = (ref ConsSet.empty);
+    val ens_cons_g = (ref ConsSet.empty);
 
     fun find_cons p = ConsSet.find p (!ens_cons)
     fun exists_cons p = ConsSet.exists p (!ens_cons)
@@ -313,6 +318,7 @@ in
     (* signature sets *)
     structure SigSet = RedBlackSetFn(SigKey)
     val ens_sig = ref SigSet.empty;
+    val ens_sig_g = ref SigSet.empty;
 
     fun find_sig p = SigSet.find p (!ens_sig)
     fun exists_sig p = SigSet.exists p (!ens_sig)
@@ -329,48 +335,57 @@ in
 
 
     (* acc can be anything and we gave back an lvar *) 
-    fun get_str_lvar2 (acc as A.PATH (a, slot)) = 
-	let val acc' = get_str_lvar2 a in
-	    case StrSet.find (find_acc acc') (!ens_str) of
-		NONE => bug ("get_str_lvar2: " ^ A.prAcc acc)
+    fun get_str_lvar set (acc as A.PATH (a, slot)) = 
+	let val acc' = get_str_lvar set a in
+	    case StrSet.find (find_acc acc') (!set) of
+		NONE => bug ("get_str_lvar: " ^ A.prAcc acc)
 	      | SOME {elements = Def l, ...} => 
 		( case List.find (fn (x, _, _) => x = slot) l of
-		      NONE => bug ("get_str_lvar22: " ^ A.prAcc acc)
-		    | SOME (_, _, Str access) => get_str_lvar2 access
-		    | SOME _ => bug ("get_str_lvar23: " ^ A.prAcc acc)
+		      NONE => bug ("get_str_lvar2: " ^ A.prAcc acc)
+		    | SOME (_, _, Str access) => get_str_lvar set access
+		    | SOME _ => bug ("get_str_lvar3: " ^ A.prAcc acc)
 		)
 	      | SOME {elements = Constraint (l, acc2), ...} => 
 		( case List.find (fn (x, _, _) => x = slot) l of
-		      NONE => bug ("get_str_lvar24: " ^ A.prAcc acc)
-		    | SOME (_, _, slot2) => get_str_lvar2 (A.PATH (acc2,slot2))
+		      NONE => bug ("get_str_lvar4: " ^ A.prAcc acc)
+		    | SOME (_, _, slot2) => 
+		      get_str_lvar set (A.PATH (acc2,slot2))
 		)
 	      | SOME {elements = Alias a, ...} => 
-		get_str_lvar2 (A.PATH (a,slot))
+		get_str_lvar set (A.PATH (a,slot))
 	end
-      | get_str_lvar2 (acc as A.LVAR _) = acc
-      | get_str_lvar2 _ = bug "get_str_lvar25"
+      | get_str_lvar _ (acc as A.LVAR _) = acc
+      | get_str_lvar _ _ = bug "get_str_lvar5"
 		
+    val get_str_lvar2 = get_str_lvar ens_str
+    val get_str_lvar2_g = get_str_lvar ens_str_g
+
     (* idem *) 				    
-    fun get_var_lvar2 (acc as A.PATH (a, slot)) = 
-	let val acc' = get_str_lvar2 a in
-	    case StrSet.find (find_acc acc') (!ens_str) of
-		NONE => bug ("get_var_lvar2: " ^ A.prAcc acc)
+    fun get_var_lvar set_str (acc as A.PATH (a, slot)) = 
+	let val acc' = get_str_lvar set_str a in
+	    case StrSet.find (find_acc acc') (!set_str) of
+		NONE => bug ("get_var_lvar: " ^ A.prAcc acc)
 	      | SOME {elements = Def l, ...} => 
 		( case List.find (fn (x, _, _) => x = slot) l of
-		      NONE => bug ("get_var_lvar22: " ^ A.prAcc acc)
-		    | SOME (_, _, Var access) => get_var_lvar2 access
-		    | SOME _ => bug ("get_var_lvar23: " ^ A.prAcc acc)
+		      NONE => bug ("get_var_lvar2: " ^ A.prAcc acc)
+		    | SOME (_, _, Var access) => 
+		      get_var_lvar set_str access
+		    | SOME _ => bug ("get_var_lvar3: " ^ A.prAcc acc)
 		)
 	      | SOME {elements = Constraint (l, acc2), ...} => 
 		( case List.find (fn (x, _, _) => x = slot) l of
-		      NONE => bug ("get_var_lvar24: " ^ A.prAcc acc)
-		    | SOME (_, _, slot2) => get_var_lvar2 (A.PATH(acc2,slot2))
+		      NONE => bug ("get_var_lvar4: " ^ A.prAcc acc)
+		    | SOME (_, _, slot2) => 
+		      get_var_lvar set_str (A.PATH(acc2,slot2))
 		)
 	      | SOME {elements = Alias a, ...} => 
-		get_var_lvar2 (A.PATH(a,slot))
+		get_var_lvar set_str (A.PATH(a,slot))
 	end
-      | get_var_lvar2 (acc as A.LVAR _) = acc
-      | get_var_lvar2 _ = bug "get_var_lvar25"
+      | get_var_lvar _ (acc as A.LVAR _) = acc
+      | get_var_lvar _ _ = bug "get_var_lvar5"
+
+    val get_var_lvar2 = get_var_lvar ens_str
+    val get_var_lvar2_g = get_var_lvar ens_str_g
 
     fun modify [] region = 
 	([], region)
@@ -527,7 +542,8 @@ in
     fun print_var () = 
 	VarSet.app EP.print_var (!ens_var)
 			  
-
+    fun print_var_g () = 
+	VarSet.app EP.print_var (!ens_var_g)
 
 
     fun add_ty_def tycon region = 
@@ -587,10 +603,14 @@ in
     fun print_ty () = 
 	TySet.app EP.print_type (!ens_ty)
 
+    fun print_ty_g () = 
+	TySet.app EP.print_type (!ens_ty_g)
+
     fun print_cons () = 
 	ConsSet.app EP.print_cons (!ens_cons)
 
-
+    fun print_cons_g () = 
+	ConsSet.app EP.print_cons (!ens_cons_g)
 
 
     fun add_sig_def sign region = 
@@ -610,8 +630,9 @@ in
 	
     fun print_sig () = 
 	SigSet.app EP.print_sig (!ens_sig)
-
-
+	
+    fun print_sig_g () = 
+	SigSet.app EP.print_sig (!ens_sig_g)
 
 
 
@@ -747,7 +768,8 @@ in
     fun print_str () = 
 	StrSet.app EP.print_str (!ens_str)
 
-
+    fun print_str_g () = 
+	StrSet.app EP.print_str (!ens_str_g)
 
 
 
@@ -762,6 +784,17 @@ in
         print "****** PID : \n";print_pids ()
     )
 
+    fun print_all_g () = (
+	print "****** VAR : \n";print_var_g ();
+	print "****** STR : \n";print_str_g ();
+	print "****** TYP : \n";print_ty_g ();
+	print "****** CON : \n";print_cons_g ();
+	print "****** SIG : \n";print_sig_g ();
+	print "****** EXT : \n";print_ext ();
+	print "****** LVA : \n";print_lvars ();
+        print "****** PID : \n";print_pids ()
+    )
+
 
     fun clear () = (
 	ens_var := VarSet.empty;
@@ -770,7 +803,6 @@ in
 	ens_str := StrSet.empty;
 	ens_sig := SigSet.empty;
 	ens_ext := ExtSet.empty;
-	pid_file := PidFileSet.empty;
 	source := "";
 	extRefInfo := (fn _ => NONE)
     )
@@ -870,7 +902,7 @@ in
 		    case modify_path access lv of
 			(pair as (A.PATH _, _)) => pair
 		      | _ => bug "distribution.ExtVar1"
-		val lvar = get_var_lvar2 acc
+		val lvar = get_var_lvar2_g acc
 	    in case VarSet.find (fn {access, def, ...} => 
 				    access = lvar andalso
 				    locFile def = sourcename
@@ -882,7 +914,7 @@ in
 	    end
 	  | ExtStr {access, usage} =>
 	    let val (acc, sourcename) = modify_path access lv
-		val lvar = get_str_lvar2 acc
+		val lvar = get_str_lvar2_g acc
 	    in case StrSet.find (fn {access, def, ...} => 
 				    access = lvar andalso
 				    locFile def = sourcename
@@ -922,15 +954,17 @@ in
 	    val ens_cons2 = ref cons
 	    val ens_str2 = ref str
 	    val ens_sig2 = ref sign
-	    val distrib = distribution (ens_var, ens_ty, ens_cons, ens_str,
-					ens_sig, !lvar_ext)
+	    val distrib = distribution (ens_var_g, ens_ty_g, ens_cons_g, 
+					ens_str_g, ens_sig_g, !lvar_ext)
 	in 
+	    (*print_all ();*)
+	    (*print_all_g ();*)
 	    ExtSet.app distrib ext;
-	    ens_var  := VarSet.union  (!ens_var,  !ens_var2);
-	    ens_ty   := TySet.union   (!ens_ty,   !ens_ty2);
-	    ens_cons := ConsSet.union (!ens_cons, !ens_cons2);
-	    ens_str  := StrSet.union  (!ens_str,  !ens_str2);
-	    ens_sig  := SigSet.union  (!ens_sig,  !ens_sig2);
+	    ens_var_g  := VarSet.union  (!ens_var_g,  !ens_var2);
+	    ens_ty_g   := TySet.union   (!ens_ty_g,   !ens_ty2);
+	    ens_cons_g := ConsSet.union (!ens_cons_g, !ens_cons2);
+	    ens_str_g  := StrSet.union  (!ens_str_g,  !ens_str2);
+	    ens_sig_g  := SigSet.union  (!ens_sig_g,  !ens_sig2);
 	    lvar_ext := LvarExtSet.union (lvarext,!lvar_ext);
             (*ens_ext := ext; should be empty anyway !! not when removing *)
 	    pid_file := PidFileSet.add
@@ -974,7 +1008,7 @@ in
 		 (fn {access = access1, def, ...} => 
 		     access1 = access_par andalso 
 		     locFile def = file)
-		 (!ens_str)
+		 (!ens_str_g)
 	 of NONE => bug "find_son"
 	  | SOME {elements = Alias a, ...} =>
 	    find_son a access_son file good_key
@@ -999,7 +1033,7 @@ in
 		case StrSet.find 
 			 (fn {access = access1, def, ...} => 
 			     access1 = access andalso locFile def = file)
-			 (!ens_str)
+			 (!ens_str_g)
 		 of NONE => bug "externalize1"
 		  | SOME {parent = SOME access_loc_parent, ...} =>
 		    let val access_lvar_parent= get_str_lvar2 access_loc_parent
@@ -1010,7 +1044,7 @@ in
 					   access_lvar_parent = access andalso 
 					   locFile def = file
 				       )
-				       (!ens_str)
+				       (!ens_str_g)
 			       of NONE => bug "externalize2"
 				| SOME {elements = Alias a, ...} => true
 				| _ => false
@@ -1051,7 +1085,7 @@ in
 	    case VarSet.find (fn {access = access1, def, ...} => 
 				 access1 = access andalso 
 				 locFile def = file)
-			     (!ens_var)
+			     (!ens_var_g)
 	     of NONE => bug "externalize_var"
 	      | SOME {parent, ...} => 
 		A.PATH (externalize_str parent file, 
@@ -1116,19 +1150,20 @@ in
 		      ()
 		 )
 	    )
-	    (!ens_var);
-	ens_var := VarSet.filter 
-		       ( fn {usage, def, ...} => 
-			    if locFile def = file then 
-				false
-			    else (
-				usage := List.filter 
-					     (fn (x, _, _)=> locFile x <> file)
-					     (!usage);
-				true
-				)
-		       )
-		       (!ens_var);
+	    (!ens_var_g);
+	ens_var_g := 
+	VarSet.filter 
+	    ( fn {usage, def, ...} => 
+		 if locFile def = file then 
+		     false
+		 else (
+		     usage := List.filter 
+				  (fn (x, _, _)=> locFile x <> file)
+				  (!usage);
+		     true
+		     )
+	    )
+	    (!ens_var_g);
 	StrSet.app
 	    ( fn {access, def, usage, ...} => 
 		 (if locFile def = file then 
@@ -1153,8 +1188,8 @@ in
 		      ()
 		 )
 	    )
-	    (!ens_str);
-	ens_str := StrSet.filter 
+	    (!ens_str_g);
+	ens_str_g := StrSet.filter 
 		       ( fn {usage, def, ...} => 
 			    if locFile def = file then 
 				false
@@ -1165,7 +1200,7 @@ in
 				true
 				)
 		       )
-		       (!ens_str)
+		       (!ens_str_g)
     (*     
      let val pid = get_pid file in
 	 lvar_ext := LvarExtSet.filter 
