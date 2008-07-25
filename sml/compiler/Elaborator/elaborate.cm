@@ -51,16 +51,16 @@ Group
 	structure PPVal
 	structure PPAst
 
-	signature ENS_VAR2
-	structure Ens_var2
-	structure Ens_types2
-	signature ENS_PRINT2
-	structure Ens_print2
-	structure Ens_absyn
-	structure TyToString
-	structure StringToTy
-	signature TYTOSTRING
-	signature STRINGTOTY
+	signature DATABASE
+	structure Database
+	structure DBTypes
+	signature DBPRINT
+	structure DBPrint
+	structure AbsynScan
+	signature SERIALIZE_DB
+	signature UNSERIALIZE_DB
+	structure SerializeDB
+	structure UnSerializeDB
 	structure Conversion
 	signature CONVERSION
 	structure Queries
@@ -124,13 +124,17 @@ is
 	$smlnj/smlnj-lib/controls-lib.cm
 	$smlnj/basis/basis.cm
 
-	srcinfo/ens_var2.sml
-	srcinfo/ens_types2.sml
-        srcinfo/ens_print2.sml
-	srcinfo/absyn_scan.sml
-	srcinfo/stringtoty.sml
-	srcinfo/tytostring.sml
-	srcinfo/tytostring.sig
+
+	srcinfo/database.sml
+	srcinfo/database.sig
+	srcinfo/dbtypes.sml
+	srcinfo/dbprint.sml
+	srcinfo/dbprint.sig
+	srcinfo/absynscan.sml
+	srcinfo/serializedb.sml
+	srcinfo/serializedb.sig
+	srcinfo/unserializedb.sml
+	srcinfo/unserializedb.sig
 	srcinfo/conversion.sml
 	srcinfo/query.sml
 	srcinfo/srcinfo.sml

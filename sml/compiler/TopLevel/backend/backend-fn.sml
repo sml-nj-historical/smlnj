@@ -61,7 +61,7 @@ functor BackendFn (structure M : CODEGENERATOR
 		      fun up_context _ = m
 		      val () = 
 			  if !Control.Elab.infodebugging then
-			      Ens_var2.clear_lvar ()
+			      Database.clear_lvar ()
 			  else
 			      ()
 		      val { hash, pickle, exportLvars, hasExports } = 
@@ -71,8 +71,8 @@ functor BackendFn (structure M : CODEGENERATOR
 			  UnpickMod.unpickleEnv up_context (pid, pickle)
 		      val () = 
 			  if !Control.Elab.infodebugging then
-			      ( Ens_var2.pickling_over ();
-				Ens_var2.set_pid pid
+			      ( Database.pickling_over ();
+				Database.set_pid pid
 			      )
 			  else
 			      ()

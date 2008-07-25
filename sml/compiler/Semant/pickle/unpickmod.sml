@@ -219,7 +219,7 @@ structure UnpickMod : UNPICKMOD = struct
 			     val access = lvar entier
 			     val () = 
 				 if !Control.Elab.infodebugging then
-				     Ens_var2.add_ext_acc access
+				     Database.add_ext_acc access
 				 else
 				     ()
 			 in

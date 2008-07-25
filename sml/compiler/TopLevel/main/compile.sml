@@ -155,12 +155,12 @@ struct
 
 	    val srcinfo = 
 		if !Control.Elab.infodebugging then 
-		    ( Ens_print2.maj statenv;
-		      Ens_var2.clear();
-		      Ens_var2.set_source (#longName (#source cinfo));
-		      Ens_var2.set_eri extRefInfo;
-		      Ens_absyn.scan_dec absyn;
-		      SOME (Ens_var2.get_pickle ())
+		    ( DBPrint.maj statenv;
+		      Database.clear();
+		      Database.set_source (#longName (#source cinfo));
+		      Database.set_eri extRefInfo;
+		      AbsynScan.scan_dec absyn;
+		      SOME (Database.get_pickle ())
 		    ) 
 		else 
 		    NONE	    	    

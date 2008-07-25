@@ -3,5 +3,5 @@ structure SrcInfo : sig
 end =
 struct
     fun merge { pathname, localdb } = 
-	Ens_var2.merge_pickle pathname localdb
+	Database.merge_pickle pathname localdb
 end

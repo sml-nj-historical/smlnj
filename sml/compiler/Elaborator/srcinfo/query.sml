@@ -58,7 +58,7 @@ struct
 
 structure S = Symbol
 
-open Ens_types2 Ens_var2
+open DBTypes Database
 
 type occurrence = S.symbol * location
 (*
@@ -89,6 +89,9 @@ fun findUse(loc: location, usage: varUse list) : varUse option =
     List.find (fn (loc',ty,acc) => eqLocation(loc,loc')) usage
 
 
+fun toVarOcc (s, loc) = 
+    ((Symbol.varSymbol s), loc)
+
 (* sample query functions *)
 
 (* find defining occurrence for a (variable?) applied occurrence *)
@@ -96,6 +99,8 @@ fun varDefOcc (occ : occurrence) : location option =
     case find_var (occIsVar occ) 
      of SOME{def,...} => SOME def
       | NONE => NONE
+
+val varDefOcc' = varDefOcc o toVarOcc
 
 (* find type of a (variable?) applied occurrence *)
 fun varTypOcc (occ as (sym,loc): occurrence) : ty' option = 
@@ -106,5 +111,7 @@ fun varTypOcc (occ as (sym,loc): occurrence) : ty' option =
 	    | NONE => NONE
 	)
       | NONE => NONE
+
+val varTypOcc' = varTypOcc o toVarOcc
 
 end (* structure Queries *)

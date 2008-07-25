@@ -2,18 +2,18 @@
 
 signature CONVERSION = 
 sig
-   val to_stub : Types.tycon -> Ens_types2.stub_tycon
-   val ty_to_ty' : Types.ty -> Ens_types2.ty'
+   val to_stub : Types.tycon -> DBTypes.stub_tycon
+   val ty_to_ty' : Types.ty -> DBTypes.ty'
    val tycon_to_tycon' : 
-       Types.tycon -> Stamps.stamp * InvPath.path * Ens_types2.tycon'
-   val sig_to_elem : Modules.Signature -> Ens_types2.sig_elem
+       Types.tycon -> Stamps.stamp * InvPath.path * DBTypes.tycon'
+   val sig_to_elem : Modules.Signature -> DBTypes.sig_elem
 end
 
 local
     structure T = Types
     structure M = Modules
     structure MU = ModuleUtil
-    open Ens_types2
+    open DBTypes
 in
 
 structure Conversion : CONVERSION =
@@ -32,7 +32,7 @@ struct
 	  | T.PATHtyc {path, ...} =>
 	    Path path
 	  | (T.ERRORtyc | T.FREEtyc _ | T.RECtyc _) =>
-	    ErrorMsg.impossible "Ens_types2: to_stub.1"
+	    ErrorMsg.impossible "DBTypes: to_stub.1"
 	    
     fun ty_to_ty' ty = 
 	case ty of
@@ -46,10 +46,10 @@ struct
 		   Lbound {index=index,depth=depth}
 		 | T.VARty (ref (T.UBOUND {name,...})) => Ubound name
 		 | T.VARty (ref (T.OPEN _)) => 
-		   ErrorMsg.impossible "Ens_types2: ty_to_ty'.2 OPEN"
+		   ErrorMsg.impossible "DBTypes: ty_to_ty'.2 OPEN"
 		 | T.VARty (ref (T.LITERAL _)) => 
-		   ErrorMsg.impossible "Ens_types2: ty_to_ty'.2 LITERAL"
-		 | T.VARty _ => ErrorMsg.impossible "Ens_types2: ty_to_ty'.2"
+		   ErrorMsg.impossible "DBTypes: ty_to_ty'.2 LITERAL"
+		 | T.VARty _ => ErrorMsg.impossible "DBTypes: ty_to_ty'.2"
 		 | typ => ty_to_ty' typ
 	    end
 	   | T.POLYty {tyfun = T.TYFUN {arity, body}, ...} =>
@@ -58,13 +58,13 @@ struct
 	       Conty (to_stub tycon, List.map ty_to_ty' tyl)
 	   | T.MARKty (ty, _) => ty_to_ty' ty
 	   | (T.WILDCARDty | T.UNDEFty) => 
-	       ErrorMsg.impossible "Ens_types2: ty_to_ty'.1"
+	       ErrorMsg.impossible "DBTypes: ty_to_ty'.1"
 
     fun tycon_to_tycon' tyc = 
 	case tyc of
 	    (T.ERRORtyc | T.FREEtyc _ | T.RECtyc _ | 
 	     T.PATHtyc _ | T.RECORDtyc _) =>
-	    ErrorMsg.impossible "Ens_types2: tycon_to_tycon'.1"
+	    ErrorMsg.impossible "DBTypes: tycon_to_tycon'.1"
 	  | T.DEFtyc {stamp, path, ...} =>
 	    (stamp, path, Deftyc)
 	  | T.GENtyc { kind = T.DATATYPE { index, 
@@ -98,7 +98,7 @@ struct
 		)
 	    end
 	  | _ =>
-	    ErrorMsg.impossible "Ens_types2: tycon_to_tycon'.2"
+	    ErrorMsg.impossible "DBTypes: tycon_to_tycon'.2"
 	    
 
     fun sig_to_elem (Modules.SIG {name, stamp, inferred, elements, ...}) : sig_elem = 

@@ -484,7 +484,7 @@ in
 	val op $ = PU.$ A
 	fun access (a as A.LVAR i) = 
 	    ( if !Control.Elab.infodebugging then
-		  Ens_var2.add_lvar a 
+		  Database.add_lvar a 
 	      else 
 		  ();
 	      "A" $ [lvar i])
