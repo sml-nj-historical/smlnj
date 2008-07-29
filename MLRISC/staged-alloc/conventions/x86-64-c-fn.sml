@@ -1,6 +1,6 @@
 (* x86-64-c-fn.sml
  * 
- * C function calls for the X86-64 using the System V ABI
+ * C calling convention for the X86-64 using the System V ABI
  * 
  * Register conventions:
  *   %rax            return value             (caller save)
