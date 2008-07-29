@@ -1,6 +1,8 @@
 Group
 	structure X86MLRISCGen
 	structure X86MLTree
+        structure X86Test
+	structure X86_64Test
 
 	group(../../staged-alloc/cm/sources.cm)
 	library(../../cm/MLRISC.cm)

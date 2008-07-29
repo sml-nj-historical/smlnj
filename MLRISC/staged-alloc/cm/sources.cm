@@ -7,6 +7,7 @@ Group
 
 	functor X86_64CConventionFn
 	functor X86CConventionFn
+	functor SparcCConventionFn
 
 is
 
@@ -19,3 +20,4 @@ is
 	../conventions/c-loc-kind.sml
 	../conventions/x86-64-c-fn.sml
 	../conventions/x86-c-fn.sml
+	../conventions/sparc-c-fn.sml

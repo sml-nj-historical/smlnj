@@ -1,14 +1,13 @@
 (* x86-64-svid-fn.sml
  *
- * C calling conventions for the x86-64. We use the technique of Staged Allocation (see
- * MLRISC/staged-allocation).
+ * C calling-sequence generator for x86-64.
  *
  * Mike Rainey (mrainey@cs.uchicago.edu)
  *)
 
 functor X86_64SVIDFn (
     structure T : MLTREE
-  ) = struct
+  ) : C_CALL = struct
 
     structure T = T
     structure C = AMD64Cells

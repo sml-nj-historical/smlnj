@@ -1,3 +1,10 @@
+(* x86-svid-fn.sml
+ *
+ * C calling-sequence generator for x86.
+ *
+ * Mike Rainey (mrainey@cs.uchicago.edu)
+ *)
+
 functor X86SVIDFn (
     structure T : MLTREE
     val abi : string
@@ -6,7 +13,7 @@ functor X86SVIDFn (
    * to the code generator module.
    *)
     val fast_floating_point : bool ref
-  ) (*: C_CALL*) = 
+  ) : C_CALL = 
   struct
 
     structure T = T
