@@ -22,20 +22,30 @@ sig
     (* structures *)
     val add_str_def : 
 	{name: Symbol.symbol, str: Modules.Structure, def: Absyn.strexp} -> 
+	Bindings.binding list option -> 
 	Bindings.binding list -> 
-	int*int -> 
+	int*int ->
 	Access.access option -> 
 	unit
     val add_str_alias : 
 	{name: Symbol.symbol, str: Modules.Structure, def: Absyn.strexp} -> 
 	Modules.Structure -> 
 	int*int -> 
+	int*int -> 
+	Access.access option -> 
+	unit
+    val add_str_sig_alias : 
+	{name: Symbol.symbol, str: Modules.Structure, def: Absyn.strexp} -> 
+	Modules.Structure ->
+	Bindings.binding list -> 
+	int*int -> 
+	int*int -> 
 	Access.access option -> 
 	unit
     val add_str_use : Modules.Structure -> int*int -> unit
     val print_str : unit -> unit
 
-    (* external references (variables only?) *)
+    (* external references (structures only) *)
     val add_lvar : Access.access -> unit
     val add_ext_acc : Access.access -> unit
 

@@ -4,3 +4,16 @@ srcinfo Notes
 1. SrcInfo structure is interface to srcinfo for the rest of the compiler
    (i.e. CM).
 
+2. TODO
+   - outline of the report
+   - adding queries
+   - improving the absyn analysis for structures
+   - user-interface
+      - adding pretty-pretting
+   - external user interface
+      - eclipse
+      - emacs
+   - creating occurence sets
+   - adding exception in the db
+   - handling functors
+   - function hierarchy, parent function field

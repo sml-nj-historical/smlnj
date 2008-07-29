@@ -363,8 +363,7 @@ apat'	: OP ident		(VarPat [varSymbol ident])
 					(LBRACEleft,RBRACEright)) end)
 
 plabel	: selector EQUALOP pat	((selector,pat))
-	| ID			(* (labSymbol ID), (MarkPat(VarPat ([varSymbol ID], (IDleft, IDright))))*)
-	                        (
+	| ID			(
 				 let val v = VarPat [varSymbol ID] in
 				     let val v2 = MarkPat (v, (IDleft, IDright)) in
 					 (labSymbol ID, v2)

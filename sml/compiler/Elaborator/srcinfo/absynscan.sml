@@ -138,6 +138,7 @@ struct
 			  (head ()) 
 			  s 
 			  region
+			  region (* pas defaut *)
 			  (str_par ());
 		      DB.add_str_use 
 			  s 
@@ -147,15 +148,14 @@ struct
 		case strexp of
 		    VARstr s => add s (~12, ~12)
 		  | STRstr bl => 
-		    DB.add_str_def (head ()) bl (~5, ~5) (str_par ())
+		    DB.add_str_def (head ()) NONE bl (~5, ~5) (str_par ())
 		  | APPstr _ => pop ()
 		  | LETstr (dec, strexp) => 
-		    ( scan_dec dec; 
-		      scan_strexp strexp)
-		  | MARKstr (strexp, region as (r1,r2)) => 
+		    (scan_dec dec; scan_strexp strexp)
+		  | MARKstr (strexp, region) => 
 		    ( case strexp of
 			  STRstr bl => 
-			  DB.add_str_def (head ()) bl region (str_par ())
+			  DB.add_str_def (head ()) NONE bl region (str_par ())
 			| VARstr s => 
 			  add s region
 			| _ => scan_strexp strexp
@@ -183,14 +183,55 @@ struct
 		EBgen {ident, ...} => scan_exp ident
 	      | EBdef _ => ()
 
-	and scan_strb strb = 
-	    case strb of
-		STRB (r as {def, name, str}) => 
-		(
-		 push r;
-		 scan_strexp def ;
-		 pop ()
-		)
+	and scan_strb (STRB (r as {def, name, str})) =
+	    (
+	     push r;
+	     case def of
+		 LETstr (MARKdec (SEQdec [],rRHS), MARKstr (VARstr rhs, rID))=>
+		 (* structure s2 = s *)
+		 DB.add_str_alias r rhs rID rRHS (str_par ())
+	       | LETstr
+		     (SEQdec [MARKdec (SEQdec [], rRHS), dec],
+		      MARKstr (VARstr s, rID)) =>
+		 ( case recognize_strdec dec of
+		       SOME (dec1, bl1) => 
+		       (* structure s2 : sig = s*)
+		       ( scan_dec dec1; 
+			 DB.add_str_sig_alias r s bl1 rID rRHS (str_par ())
+		       )
+		     | NONE => (scan_dec dec)
+		 )
+	       | LETstr
+		     (SEQdec [dec1, dec2],
+		      MARKstr (VARstr s, region)) =>
+		 ( case (recognize_strdec dec1, recognize_strdec dec2) of
+		       (SOME (dec1, bl1), SOME (dec2, bl2)) =>
+		       (* structure s : sig = struct end*)
+		       ( scan_dec dec1;
+			 (*scan_dec dec2; SHOULD BE CHECKED *)
+			 DB.add_str_def r (SOME bl1) bl2 region (str_par ())
+		       )
+		     | _ => (scan_dec dec1; scan_dec dec2)
+		 )
+	       | LETstr
+		     (dec, MARKstr (VARstr s, region)) =>
+		 ( case recognize_strdec dec of
+		       (* structure s = struct end *)
+		       SOME (dec1, bl1) => 
+		       ( scan_dec dec1;
+			 DB.add_str_def r NONE bl1 region (str_par ())
+		       )
+		     | NONE => scan_dec dec
+		 )
+	       | _ => scan_strexp def;
+	     pop ()
+	    )
+
+	and recognize_strdec dec = 
+	    case dec of
+		STRdec [STRB {def = LETstr (dec1, MARKstr (STRstr bl, _)),...}]
+		=> SOME (dec1, bl)
+	      | _ => NONE
 
 	and scan_fctb fctb = 
 	    case fctb of

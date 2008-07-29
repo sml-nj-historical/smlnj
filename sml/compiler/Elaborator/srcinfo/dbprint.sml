@@ -239,7 +239,7 @@ in
 			 ) el
 		)
 	      | Constraint (el, a) => 
-		( print (" constrains " ^ A.prAcc a ^ " : ");
+		( print (" is a constraint of " ^ A.prAcc a ^ " : ");
 		  List.app ( fn (x, y, z) => 
 				print ("\n\t(" ^ Int.toString x ^ "," ^
 				       stoS y ^ ","^Int.toString z ^ ")") 

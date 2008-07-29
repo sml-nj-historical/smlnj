@@ -281,10 +281,17 @@ in
       | modify (h :: q) (r1, _) = 
 	(q, (r1-1-String.size (Symbol.name h), r1-1))
 
-    (* when saying  A.x, or open A ... x, the use of A is added here*)
-    (* gives back the lvar corresponding to the structure or variable*)
+    (* when saying  A.x, or open A ... x, the use of A is added here *)
+    (* gives back the lvar corresponding to the structure or variable *)
     fun add_implicite_use (A.PATH (access, slot0)) rpath region is_str = 
-	let fun add_uses (a as A.LVAR _) _ _ = a
+	let fun add_uses (a as A.LVAR _) _ _ = 
+		let val (rpath, region) = modify rpath region in
+		    case StrSet.find (find_acc a) (!ens_str) of
+			NONE => print "pb in add_implicite_use1\n"
+		      | SOME {usage, ...} => 
+			usage := loc_reg region :: !usage;
+		    a
+		end
 	      | add_uses (a as (A.PATH (a', slot))) rpath region = 
 		let val (rpath, region) = modify rpath region
 		    val a' = add_uses a' rpath region
@@ -334,8 +341,8 @@ in
 	in
 	    case str_find a of
 		NONE => 
-		add_ext (ExtStr {access=a,
-				 usage=ref[loc_reg region]})
+		add_ext (ExtStr {access = a,
+				 usage = ref [loc_reg region]})
 	      | SOME {usage, ...} => 
 		usage := loc_reg region :: !usage;
 	    add_implicite_uses_ext a' rpath region
@@ -378,22 +385,25 @@ in
 	    ty_to_ty' typ''
 	end
 
+    fun modify' rpath (_, r2) = 
+	let (* +1 pour compenser le -1 qui aura lieu dans 
+	     * modify *)
+	    val region = (r2+1, r2+1)
+	 in modify rpath region
+	end
+
     fun add_var_use (VC.VALvar {access, path = SymPath.SPATH path, typ, ...})
 		    region
 		    (typ' : T.tyvar list) = 
 	( case is_accessible access of
-	      NONE => ()
+	      NONE => bug "add_var_use0"
 	    | SOME false =>
 	      ( case access of
 		    (A.PATH (suite, _)) => 
 		    let val rpath = rev path
 		    in
 			if is_available_rsl rpath then
-			    let val (_, r2) = region
-				(* +1 pour compenser le -1 qui aura lieu dans 
-				 * modify *)
-				val region = (r2+1, r2+1)
-				val (rpath,region) = modify rpath region
+			    let val (rpath, region) = modify' rpath region
 				val triplet = 
 				    (loc_reg region, get_ty' typ typ', access)
 			    in
@@ -411,7 +421,8 @@ in
 		  | _ => bug "add_var_use2"
 	      )
 	    | SOME true =>
-	      let val new_acc=add_implicite_use access (rev path) region false
+	      let val (rpath,region) = modify' (rev path) region
+		  val new_acc=add_implicite_use access rpath region false
 	      in
 		  case VarSet.find
 			   (fn {access, ...} => access = new_acc) 
@@ -527,6 +538,17 @@ in
 				    }
 				  )
 	end
+
+    fun add_sig_use (M.SIG {name, stamp, ...}) region = 
+	( case SigSet.find 
+		   (fn {stamp = st, ...} => Stamps.eq (stamp, st)) 
+		   (!ens_sig)
+	   of NONE => bug "add_sig_use"
+	    | SOME {usage, name, ...} => 
+	      usage := (loc_reg region, name) :: !usage
+	)
+      | add_sig_use _ _ = 
+	bug "add_sig_use2"
 	
     fun print_sig () = 
 	SigSet.app P.print_sig (!ens_sig)
@@ -537,139 +559,256 @@ in
 
 
 
-    fun add_str_def { name, 
-		      str = 
-		      M.STR { sign = (sign as M.SIG {stamp, elements, ...}), 
-			      access, ...}, 
-		      def} 
-		    bl 
-		    region 
-		    parent_acc = 
-	let 
-	    val () = add_sig_def sign region
-	    fun get_symbol (B.VALbind (VC.VALvar {path, ...})) =
-		SOME (SymPath.last path)
-	      | get_symbol (B.STRbind (M.STR {rlzn = {rpath, ...}, ...})) =
-		SOME (InvPath.last rpath)
-	      | get_symbol _ = NONE
-			       
-	    fun get_symbol' (x, _) = x
-				     
-	    fun get_acc b = 
-		let val s = get_symbol b
-		in
-		    case s of
-			NONE => NONE
-		      | SOME symbol => 
-			List.find (fn x => symbol = get_symbol' x) elements
-		end
-		
-	    fun get_trip b = 
-		case (b, get_acc b)
-		 of (B.VALbind (VC.VALvar {access, ...}), 
-		     SOME (s, M.VALspec {slot, ...})) => 
-		    SOME (slot, s, Var access)
-		  | (B.STRbind (M.STR {access, ...}), 
-		     SOME (s, M.STRspec {slot, ...})) =>
-		    SOME (slot, s, Str access)
-		  | _ => NONE
-		 
-	    val elements' = 
-		List.mapPartial get_trip bl
-		
-	    fun get_slot (A.PATH (_, s)) = s
-	      | get_slot acc = bug ("add_str_def.get_slot")
-					   
-	    val elements'' = 
-		(*case elements' of
-		    (_, _, (Var (A.PATH (acc, _))|Str (A.PATH (acc, _))))::_ =>
-		    ( case is_accessible acc of 
-			  (* et si on fait structure s = ...; structure s2 = struct open s ... end?*)
-			  NONE => bug "add_str_def.elements''"
-			| SOME true =>
-			  Constraint 
-			      ( List.map 
-				    (fn ((x, y, Var z) | (x, y, Str z)) => 
-					( print (Int.toString x ^ " " ^ Symbol.name y ^ " " ^ 
-						 A.prAcc z ^ "\n");
-					  (x, y, get_slot z)
-					)
-				    )
-				    elements',
-				acc
-			      )
-		      | SOME false => Def elements'
-		    )
-		  | _ => *)
-		    Def elements'
-		    
-	in
-	    (*en profiter pour mettre a jour le champ parent des enfants?*)
-	    ens_str := StrSet.add(!ens_str, 
-				  { name = name, 
-				    access = access,
-				    parent = parent_acc,
-				    sign = SOME stamp,
-				    def = loc_reg region,
-				    elements = elements'',
-				    usage = ref []}
-				 )
-	end
-      | add_str_def _ _ _ _ = ()
-			      
-    fun add_str_alias {name, 
-		       str = M.STR {sign = M.SIG {stamp, ...}, access, ...}, 
-		       def}
-		      (M.STR {access = access', ...}) (*structure on rhs*)
-		      region 
-		      parent_acc = 
-	ens_str := StrSet.add(!ens_str, 
-			      { name = name, 
-				access = access,
-				parent = parent_acc,
-				sign = SOME stamp,
-				def = loc_reg region,
-				elements = Alias access',
-				usage = ref []}
-			     )
-      | add_str_alias _ _ _ _ = ()
+    fun print_str () = 
+	StrSet.app P.print_str (!ens_str)
+
+    fun print_str_g () = 
+	StrSet.app P.print_str (!ens_str_g)
 
     fun get_path ({rpath = InvPath.IPATH rpath, ...}:M.strEntity) = 
 	rpath
 
     fun add_str_use (M.STR {access, rlzn, ...}) region = 
 	( case is_accessible access of
-	      SOME false => (*extern*)
+	      SOME false => 
+	      (*extern*)
 	      let val rpath = get_path rlzn
-		  (*val toplevel = List.last rpath *)
 	      in
-		  if is_available_rsl rpath then
-		      add_implicite_uses_ext access rpath region
-		  else
-		      ()
-    	          (* case !extRefInfo toplevel of
-			 NONE => () (*print ("No sourcefile for " ^ 
-					     Symbol.name toplevel ^ "\n")*)
-		       | SOME _ =>*)
+		  case access of
+		      A.PATH (suite, _) =>
+		      if is_available_rsl rpath then
+			  (* a verifier *)
+			  let val (rpath, region) = modify' rpath region in
+			      case str_find access of
+				  NONE => 
+				  add_ext (ExtStr {access = access,
+						   usage = ref [loc_reg region]
+						  }
+					  )
+				| SOME {usage, ...} => 
+				  usage := loc_reg region :: !usage;
+			      add_implicite_uses_ext suite rpath region
+			  end
+		      else
+			  ()
+		    | _ => bug "add_str_use0"
 	      end
-	    | SOME true => (*local*)
-	      let val new_acc = add_implicite_use access (get_path rlzn) 
+	    | SOME true => 
+	      (*local*)
+	      let val (rpath, region) = modify' (get_path rlzn) region
+		  val new_acc = add_implicite_use access rpath
 						  region true
 	      in
-		  case StrSet.find (fn{access, ...}=>access=new_acc) (!ens_str)
-		   of NONE => ()
+		  case StrSet.find 
+			   (fn {access, ...} => access = new_acc) 
+			   (!ens_str)
+		   of NONE => 
+		      bug ("add_str_use1 " ^ A.prAcc access ^ " " ^ 
+			   A.prAcc new_acc)
 		    | SOME {usage, ...} => usage := loc_reg region :: !usage
 	      end
-	    | NONE => (*NO_ACCESS*) ()
+	    | NONE => 
+	      (*NO_ACCESS*) 
+	      bug "add_str_use2"
 	)
-      | add_str_use _ _ = ()
-	  
-	
-    fun print_str () = 
-	StrSet.app P.print_str (!ens_str)
+      | add_str_use _ _ = 
+	bug "add_str_use"
 
-    fun print_str_g () = 
-	StrSet.app P.print_str (!ens_str_g)
+    fun binding_to_symbolkey b = 
+	case b of
+	    B.VALbind (VC.VALvar {access, path, ...}) => 
+	    (SymPath.last path, Var access)
+	  | B.STRbind (M.STR {access, rlzn = {rpath, ...}, ...}) =>
+	    (InvPath.last rpath, Str access)
+	  | _ => bug "binding_to_symbolkey : non implemente"
+          (*| B.CONbind VarCon.datacon => 
+	  | B.TYCbind Types.tycon =>
+	  | B.SIGbind Modules.Signature =>
+	  | B.FSGbind Modules.fctSig =>
+	  | B.FCTbind Modules.Functor => 
+	  | B.FIXbind Fixity.fixity =>*)
+		 
+    (*fun symbolkey_to_slotsymbolkey sig_elements (s,k as Var _) = 
+	( case List.find (fn (symbol, _) => symbol = s) sig_elements of
+	      NONE => bug "symbolkey_to_slotsymbolkey1"
+	    | SOME (_, M.VALspec {slot, ...}) =>
+	      (slot, s, k)
+	    | SOME _ => bug "symbolkey_to_slotsymbolkey1.5"
+	)
+      | symbolkey_to_slotsymbolkey sig_elements (s,k as Str a) = 
+	( case List.find (fn (symbol, _) => symbol = s) sig_elements of
+	      NONE => 
+	      ((* List.app 
+		    (fn (x, _) => print (Symbol.name x ^ ","))
+		    sig_elements;
+		print "\n";
+		bug ("symbolkey_to_slotsymbolkey2 " ^ Symbol.name s ^ 
+		     " " ^ A.prAcc a)*)
+		    (~1,s,Str a)
+	      )
+	    | SOME (_, M.STRspec {slot, ...}) =>
+	      (slot, s, k)
+	    | SOME _ => bug "symbolkey_to_slotsymbolkey2.5"
+	)
+      | symbolkey_to_slotsymbolkey _ _ = 
+	bug "symbolkey_to_slotsymbolkey: non implemente"*)
+
+    (* should work if binding lists are ordered on the slot *)
+    fun symbolkeylist_to_slotsymbolkeylist l = 
+	let fun trans ((s,k) :: q) n = 
+		(n, s, k) :: trans q (n+1)
+	      | trans [] _ = []
+	in trans l 0
+	end
+	
+    fun slotsymbolkey_to_slotsymbolkey' NONE triplet =	triplet
+      | slotsymbolkey_to_slotsymbolkey' (SOME bindings) (slot, s, Var _) =
+	( case List.find 
+		   ( fn (B.VALbind (VC.VALvar {path, ...})) =>
+			SymPath.last path = s
+		      | _ => false
+		   )
+		   bindings
+	   of NONE => bug "slotsymbolkey_to_slotsymbolkey'1"
+	    | SOME (B.VALbind (VC.VALvar {access, ...})) =>
+	      (slot, s, Var access)
+	    | SOME _ => bug "slotsymbolkey_to_slotsymbolkey'2"
+	)
+      | slotsymbolkey_to_slotsymbolkey' (SOME bindings) (slot, s, Str _) =
+	( case List.find 
+		   (fn (B.STRbind (M.STR {rlzn = {rpath, ...}, ...})) =>
+		       InvPath.last rpath = s
+		     | _ => false
+		   )
+		   bindings
+	   of NONE => bug "slotsymbolkey_to_slotsymbolkey'3"
+	    | SOME (B.STRbind (M.STR {access, ...})) =>
+	      (slot, s, Str access)
+	    | SOME _ => bug "slotsymbolkey_to_slotsymbolkey'4"
+	)
+      | slotsymbolkey_to_slotsymbolkey' _ _ = 
+	bug "slotsymbolkey_to_slotsymbolkey': non implemente"
+
+    fun add_str_def { name = name_str, 
+		      str = 
+		      M.STR { sign = (sign as M.SIG {name,stamp,elements,...}),
+			      access, ...}, 
+		      def = _} 
+		    bl1_option
+		    bl2
+		    region 
+		    parent_acc = 
+	let 
+	    val () = 
+		case name of
+		    NONE => add_sig_def sign region
+		  | SOME s => 
+		    if String.sub (Symbol.name s, 0) = #"<" then
+			(* anonymous or inferred signature *)
+			add_sig_def sign region
+		    else
+			add_sig_use sign region
+	    (*val def_elements = 
+		List.map (slotsymbolkey_to_slotsymbolkey' bl1_option o 
+			  symbolkey_to_slotsymbolkey elements o
+			  binding_to_symbolkey)	
+			 bl2*)
+	    val def_elements = 
+		List.map (slotsymbolkey_to_slotsymbolkey' bl1_option)
+		( symbolkeylist_to_slotsymbolkeylist 
+		      (List.map binding_to_symbolkey bl2)
+		)
+ 	in
+	    (*en profiter pour mettre a jour le champ parent des enfants?*)
+	    ens_str := StrSet.add(!ens_str, 
+				  { name = name_str,
+				    access = access,
+				    parent = parent_acc,
+				    sign = SOME stamp,
+				    def = loc_reg region,
+				    elements = Def def_elements,
+				    usage = ref []}
+				 )
+	end
+      | add_str_def _ _ _ _ _ = 
+	bug "add_str_def"
+
+    fun add_str_alias {name,
+		       str = M.STR {sign = M.SIG {stamp, ...}, access, ...},
+		       def = _
+		      }
+		      (rhs as M.STR {access = access', ...})
+		      region
+		      regionRHS
+		      parent_acc = 
+	( add_str_use rhs regionRHS;
+	  ens_str := StrSet.add(!ens_str, 
+				{ name = name, 
+				  access = access,
+				  parent = parent_acc,
+				  sign = SOME stamp,
+				  def = loc_reg region,
+				  elements = Alias access',
+				  usage = ref []}
+			       )
+	)
+      | add_str_alias _ _ _ _ _ = 
+	bug "add_str_alias"
+
+    fun add_str_sig_alias 
+	    {name, 
+	     str = M.STR {sign = M.SIG {stamp, elements, ...}, access, ...}, 
+	     def = _}
+	    rhs
+	    bindinglist
+	    regionID
+	    regionRHS
+	    parent_acc = 
+	let val acc = ref A.NO_ACCESS
+	    fun get_slot (A.PATH (acc', slot)) = (acc := acc'; slot)
+	      | get_slot _ = bug "add_str_sig_alias.get_slot"
+	    fun get_slot' (a, b, (Var c | Str c)) = (a, b, get_slot c)
+	      | get_slot' _ = bug "add_str_sig_alias.get_slot'"
+	    (*val def_elements = 
+		List.map (get_slot' o 
+			  symbolkey_to_slotsymbolkey elements o
+			  binding_to_symbolkey)	
+			 bindinglist*)
+	    val def_elements = 
+		List.map get_slot'
+			 ( symbolkeylist_to_slotsymbolkeylist 
+			       (List.map binding_to_symbolkey bindinglist)
+			 )
+	    val elements = 
+		case (!acc, rhs) of
+		    (A.NO_ACCESS, _) => 
+		    (* the rhs structure is empty, how to get
+		     * its access ? *)
+		    Def []
+		  | (rhs_access, M.STR {sign, access, rlzn, prim}) =>
+		       let val rhs' = 
+			       M.STR { sign = sign, 
+				       access = !acc, 
+				       rlzn = rlzn, 
+				       prim = prim
+				     } 
+		       in add_str_use rhs' regionRHS;
+			  Constraint (def_elements, rhs_access)
+		       end 
+		  | _ => bug "add_str_sig_alias1"
+	in
+	    ens_str := StrSet.add(!ens_str, 
+				  { name = name, 
+				    access = access,
+				    parent = parent_acc,
+				    sign = SOME stamp,
+				    def = loc_reg regionID,
+				    elements = elements,
+				    usage = ref []}
+				 )
+	end
+      | add_str_sig_alias _ _ _ _ _ _ = 
+	bug "add_str_sig_alias"
 
 
 
@@ -679,9 +818,7 @@ in
 	print "****** TYP : \n";print_ty ();
 	print "****** CON : \n";print_cons ();
 	print "****** SIG : \n";print_sig ();
-	print "****** EXT : \n";print_ext ();
-	print "****** LVA : \n";print_lvars ();
-        print "****** PID : \n";print_pids ()
+	print "****** EXT : \n";print_ext ()
     )
 
     fun print_all_g () = (

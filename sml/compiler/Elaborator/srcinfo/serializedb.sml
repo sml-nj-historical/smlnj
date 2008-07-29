@@ -6,7 +6,7 @@ in
 structure SerializeDB : SERIALIZE_DB = 
 struct
 
-fun bug x = ErrorMsg.impossible ("TyToString: " ^ x)
+fun bug x = ErrorMsg.impossible ("serializeDB: " ^ x)
 
 val flatten = String.concatWith " "
 

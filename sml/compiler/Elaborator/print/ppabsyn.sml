@@ -773,13 +773,16 @@ and ppStrexp (context as (env,source_opt)) ppstrm =
 	       pps "end";
 	       closeBox ppstrm)
         | ppStrexp'(MARKstr(body,(s,e)),d) =
-	      (case source_opt
+	      (*case source_opt
 		of SOME source =>
 	           (pps "MARKstr(";
 		    ppStrexp'(body,d); pps ",";
 		    prpos(ppstrm,source,s); pps ",";
 		    prpos(ppstrm,source,e); pps ")")
-	         | NONE => ppStrexp'(body,d))
+	         | NONE => ppStrexp'(body,d)*)
+	  (pps "MARKstr(";
+	   ppStrexp'(body,d); 
+	   pps ")")
 
         | ppStrexp' _ = bug "unexpected structure expression in ppStrexp'"
 

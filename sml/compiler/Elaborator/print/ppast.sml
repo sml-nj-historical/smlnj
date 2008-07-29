@@ -551,7 +551,7 @@ and ppStrExp (context as (_,source_opt)) ppstrm =
 	       closeBox ())
 
          | ppStrExp'(MarkStr(body,(s,e)),d) =
-             ppStrExp' (body,d)
+             (*ppStrExp' (body,d)*)
 (*	      (case source_opt
 		of SOME source =>
 	           (pps "MARKstr(";
@@ -560,6 +560,8 @@ and ppStrExp (context as (_,source_opt)) ppstrm =
 		      prpos(ppstrm,source,e); pps ")")
 	         | NONE => ppStrExp'(body,d))
 *)
+	   (pps "MARKstr(";
+	    ppStrExp'(body,d); pps ")")
     in
 	ppStrExp'
     end
