@@ -236,13 +236,16 @@ in
     fun add_str v = 
 	ens_str := StrSet.add (!ens_str, v)
 
-    fun find_acc acc ({access, ...}:str_elem) = acc = access
+    fun find_file_acc file acc ({access, def, ...}:str_elem) = 
+	acc = access andalso locFile def = file
+
+    fun find_acc acc = find_file_acc (!source) acc
 
 
     (* acc can be anything and we gave back an lvar *) 
-    fun get_lvar set test test2 (acc as A.PATH (a, slot)) = 
-	let val acc' = get_lvar set test2 test2 a in
-	    case StrSet.find (find_acc acc') (!set) of
+    fun get_lvar set file test test2 (acc as A.PATH (a, slot)) = 
+	let val acc' = get_lvar set file test2 test2 a in
+	    case StrSet.find (find_file_acc (!file) acc') (!set) of
 		NONE => bug ("get_lvar: " ^ A.prAcc acc)
 	      | SOME {elements = Def l, ...} => 
 		( case List.find (fn (x, _, _) => x = slot) l of
@@ -250,20 +253,20 @@ in
 		    | SOME (_, _, key) => 
 		      ( case test key of
 			    NONE => bug ("get_lvar3: " ^ A.prAcc acc)
-			  | SOME a => get_lvar set test test2 a
+			  | SOME a => get_lvar set file test test2 a
 		      )
 		)
 	      | SOME {elements = Constraint (l, acc2), ...} => 
 		( case List.find (fn (x, _, _) => x = slot) l of
 		      NONE => bug ("get_lvar4: " ^ A.prAcc acc)
 		    | SOME (_, _, slot2) => 
-		      get_lvar set test test2 (A.PATH (acc2,slot2))
+		      get_lvar set file test test2 (A.PATH (acc2,slot2))
 		)
 	      | SOME {elements = Alias a, ...} => 
-		get_lvar set test test2 (A.PATH (a,slot))
+		get_lvar set file test test2 (A.PATH (a,slot))
 	end
-      | get_lvar _ _ _ (acc as A.LVAR _) = acc
-      | get_lvar _ _ _ _ = bug "get_lvar5"
+      | get_lvar _ _ _ _ (acc as A.LVAR _) = acc
+      | get_lvar _ _ _ _ _ = bug "get_lvar5"
 		
     fun key_str (Str a) = SOME a
       | key_str _ = NONE
@@ -271,10 +274,10 @@ in
     fun key_val (Var a) = SOME a
       | key_val _ = NONE
 
-    val get_str_lvar   = get_lvar ens_str   key_str key_str
-    val get_str_lvar_g = get_lvar ens_str_g key_str key_str
-    val get_var_lvar   = get_lvar ens_str   key_val key_str
-    val get_var_lvar_g = get_lvar ens_str_g key_val key_str
+    val get_str_lvar        = get_lvar ens_str   source     key_str key_str
+    fun get_str_lvar_g file = get_lvar ens_str_g (ref file) key_str key_str
+    val get_var_lvar        = get_lvar ens_str   source     key_val key_str
+    fun get_var_lvar_g file = get_lvar ens_str_g (ref file) key_val key_str
 
     fun modify [] region = 
 	([], region)
@@ -911,7 +914,7 @@ in
 		    case modify_path access lv of
 			(pair as (A.PATH _, _)) => pair
 		      | _ => bug "distribution.ExtVar1"
-		val lvar = get_var_lvar_g acc
+		val lvar = get_var_lvar_g sourcename acc
 	    in case VarSet.find (fn {access, def, ...} => 
 				    access = lvar andalso
 				    locFile def = sourcename
@@ -923,7 +926,7 @@ in
 	    end
 	  | ExtStr {access, usage} =>
 	    let val (acc, sourcename) = modify_path access lv
-		val lvar = get_str_lvar_g acc
+		val lvar = get_str_lvar_g sourcename acc
 	    in case StrSet.find (fn {access, def, ...} => 
 				    access = lvar andalso
 				    locFile def = sourcename
