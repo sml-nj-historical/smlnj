@@ -27,8 +27,14 @@ Elaborator/elaborate/elabmod.sml
 1.3. the structure type info is encoded in 
 
     resStr : Structure (STR) =
-      this STR record needs an access value (dacc) which, however,
-      is not really relevant to a structure "expression"
+      STR{
+        sign = ...
+	rlzn = ...
+	access = dacc
+	prim = ?}
+
+This STR record needs an access value (dacc) which, however, is not
+really relevant to a structure "expression".
 
 This use of STR to express the static type info for a structure
 expression is not really appropriate, since STR is analagous to 
@@ -38,14 +44,14 @@ we have no such structure variable or binding.  (We can call the
 sign, rlzn, prim components of the STR the structure "type" for
 short.)
       
-1.4. The absyn created for the structure is a structure declaration
-STRdec([STRB ...])):
+1.4. The absyn created for the structure is a single structure
+declaration STRdec([STRB{ ...}])):
 
-    resDec = STRdec [STRB
+    resDec = STRdec [STRB{
     	     	      name = tempStrId   ("tempStr", defined in specialsyms.sml)
 		      str = resStr       (the structure type, but also
-    	     	                          providing and access for the str binding)
-		      def = LETstr (absDecl, STRstr(locations))
+    	     	                          providing and access dacc for the str binding)
+		      def = LETstr (absDecl, STRstr(locations))}
                     ]
 
 So the structure expression "struct <decl> end" is translated into 
@@ -56,9 +62,43 @@ a structure declaration as though it had been written
         in {locations}  (structure record construction)
        end
 
-2. elaborating the simple structure declaration
-"structure A = struct <decl> end"
-(elabStrbs/loop, case strb::rest, line 1197)
+2. elaborating the simple structure declaration (elabStrbs/loop, case strb::rest, line 1197)
+
+   "structure A = struct <decl> end"
 
 
+    bindStr = clone of resStr above with new access (= access2)
+
+    sb = STRB{
+           name = "A"
+	   str = bindStr
+	   def = LETstr(resDec, VARstr(resStr))
+
+Here resStr in the LETstr body contains the access dacc referring to
+the binding of tempStrId in resDec.
+
+
+Simplified version:
+
+Translate a BastStr structure expression like: struct decl end
+
+directly to a modified version of a STRstr:
+
+STRstr{
+  body = decl,
+  sign = sign,
+  rlzn = rlzn,
+  locations = locations}
+
+or, combining sign and rlzn into a "structure type",
+
+resStr' =
+STRstr{
+  body = decl,
+  strtyp = {sign = sign,rlzn = rlzn},
+  locations = locations}
+
+sb = STRB{name = "A",
+          str = STRvar{strtyp, access, path}
+          def = resStr'}
 

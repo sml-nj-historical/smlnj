@@ -135,9 +135,7 @@ struct
 	    usage : sigUse list ref
 	  }
  
-    type all = var_elem list * 
-	       type_elem list * 
-	       cons_elem list * 
-	       str_elem list * 
-	       sig_elem list
-end
+    type occurrence = S.symbol * location
+
+end (* structure DBTypes *)
+
