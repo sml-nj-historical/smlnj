@@ -453,7 +453,6 @@ and mkRep (rep, lt, name) =
   end
 
 (** converting a value of access into a lambda expression
- ** [KM???} But it is ignoring the prim argument!!! 
  ** [DBM: 5/1/07]: I've eliminated the unused prim argument.
  **)
 fun mkAccInfo (acc, getLty, nameOp) = 

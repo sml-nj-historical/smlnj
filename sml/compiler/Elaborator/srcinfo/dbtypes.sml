@@ -135,7 +135,7 @@ struct
 	    usage : sigUse list ref
 	  }
  
-    type occurrence = S.symbol * location
+    type occurrence = Symbol.symbol * location
 
 end (* structure DBTypes *)
 
