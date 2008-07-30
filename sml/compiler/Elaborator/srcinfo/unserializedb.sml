@@ -499,5 +499,17 @@ fun stringToPidOption s =
 	(v, []) => v
       | (_, rem) => (print (concat rem); print "\n"; bug "stringToPidOption")
 
+fun stringsToOccurrence (h :: sl) = 
+    let val symbol = get_symbol h
+	val (location, sl') = stringsToLocation sl
+    in
+	((symbol,location), sl')
+    end
+  | stringsToOccurrence [] = 
+    bug "stringsToOccurrence"
+
+val stringToOccurrenceList = 
+    ext_fun stringsToOccurrence "stringsToOccurrenceList"
+
 end (* structure StringToTy*)
 end (* local *)

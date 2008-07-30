@@ -238,5 +238,11 @@ fun pidOptionToStrings po =
 fun pidOptionToString po = 
     flatten (pidOptionToStrings po)
 
+fun occurrenceToStrings (symbol, location) = 
+    Symbol.symbolToString symbol :: locationToStrings location
+
+val occurrenceListToString = 
+    ext_fun occurrenceToStrings
+
 end (* structure SerializeDB *)
 end (* end local *)

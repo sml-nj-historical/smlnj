@@ -103,10 +103,9 @@ sig
     val get_str_lvar_g : string -> Access.access -> Access.access
     val get_var_lvar_g : string -> Access.access -> Access.access
 
-(*
- (*map a (charpos,filename) pair to the next symbol occurrence at that position
-  * in the file *)
- val charposToOccurrence : int * string -> DBTypes.occurrence
- *)
+    (* map a (charpos,filename) pair to the next symbol occurrence at that 
+     * position in the file *)
+    val charposToOccurrence : int * string -> DBTypes.occurrence
+
 
 end (* signature DATABASE *)

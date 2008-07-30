@@ -7,6 +7,7 @@ sig
     val stringToSig : string -> DBTypes.sig_elem list
     val stringToExt : string -> DBTypes.ext_elem list
 
+    val stringToOccurrenceList : string -> DBTypes.occurrence list
     val stringToLvarExt : string -> (Access.access * Access.access) list
     val stringToPidOption : string -> PersStamps.persstamp option
 end (* signature UNSERIALIZE_DB *)

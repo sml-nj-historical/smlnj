@@ -10,6 +10,8 @@ local
     open DBTypes
     open Conversion
 in
+    fun bug msg = ErrorMsg.impossible("Bugs in Database: "^msg);
+
     val source = ref ""
     fun set_source s = source := s
 
@@ -52,6 +54,21 @@ in
     structure OccSetG = RedBlackSetFn (OccSetKey)
     val occ_set_g = ref OccSetG.empty
 
+    fun print_occ_g () = 
+	OccSetG.app 
+	    (fn (x,y) => 
+		(print ("->"^y^" : "); OccSet.app P.print_occ x; print "\n"))
+	    (!occ_set_g)
+
+    fun charposToOccurrence (char, file) = 
+	case OccSetG.find (fn (_, f) => f = file) (!occ_set_g) of
+	    NONE => bug ("charposToOccurrence : " ^ file ^ "is not in the DB")
+	  | SOME (set, _) => 
+	    ( case OccSet.nextOrEqual (set, (Symbol.varSymbol "", ("",0,char)))
+	       of NONE => bug "charposToOccurrence : no next item"
+		| SOME occ => occ
+	    )
+
     (******)
     structure PidFileKey : ORD_KEY = 
     struct
@@ -74,10 +91,7 @@ in
     fun is_available (InvPath.IPATH rpath) = 
 	is_available_rsl rpath
 	
-    fun bug msg = ErrorMsg.impossible("Bugs in Database: "^msg);
-
     fun loc_reg (r1, r2) = ((!source, r1, r2):location)
-
 
     fun is_accessible (A.EXTERN _) = SOME false
       | is_accessible (A.NO_ACCESS) = NONE
@@ -876,7 +890,8 @@ in
 	print "****** TYP : \n";print_ty ();
 	print "****** CON : \n";print_cons ();
 	print "****** SIG : \n";print_sig ();
-	print "****** EXT : \n";print_ext ()
+	print "****** EXT : \n";print_ext ();
+	print "****** OCC : \n";print_occ ()
     )
 
     fun print_all_g () = (
@@ -887,7 +902,8 @@ in
 	print "****** SIG : \n";print_sig_g ();
 	print "****** EXT : \n";print_ext ();
 	print "****** LVA : \n";print_lvars ();
-        print "****** PID : \n";print_pids ()
+        print "****** PID : \n";print_pids ();
+	print "****** OCC : \n";print_occ_g ()
     )
 
 
@@ -910,7 +926,7 @@ in
 	  clear_lvar ()
 	)
 
-    fun get_strings (a, b, c, d, e, f, g, h) = 
+    fun get_strings (a, b, c, d, e, f, g, h, i) = 
 	( SerializeDB.varToString  (VarSet.listItems a),
 	  SerializeDB.typeToString (TypSet.listItems b),
 	  SerializeDB.consToString (ConSet.listItems c),
@@ -918,10 +934,11 @@ in
 	  SerializeDB.sigToString  (SigSet.listItems e),
 	  SerializeDB.extToString  (ExtSet.listItems f),
 	  SerializeDB.lvarExtToString (LvarExtSet.listItems g),
-	  SerializeDB.pidOptionToString h
+	  SerializeDB.pidOptionToString h,
+	  SerializeDB.occurrenceListToString (OccSet.listItems i)
 	)
 
-    fun get_sets (a, b, c, d, e, f, g, h) = 
+    fun get_sets (a, b, c, d, e, f, g, h, i) = 
 	( VarSet.fromList (UnSerializeDB.stringToVar  a),
 	  TypSet.fromList (UnSerializeDB.stringToType b),
 	  ConSet.fromList (UnSerializeDB.stringToCons c),
@@ -929,15 +946,16 @@ in
 	  SigSet.fromList (UnSerializeDB.stringToSig  e),
 	  ExtSet.fromList (UnSerializeDB.stringToExt  f),
 	  LvarExtSet.fromList (UnSerializeDB.stringToLvarExt g),
-	  UnSerializeDB.stringToPidOption h
+	  UnSerializeDB.stringToPidOption h,
+	  OccSet.fromList (UnSerializeDB.stringToOccurrenceList i)
 	)
 	
     fun get_pickle () = 
-	let val (a,b,c,d,e,f,g,h) = 
+	let val (a,b,c,d,e,f,g,h,i) = 
 		get_strings (!var_set, !typ_set, !con_set, !str_set,
-			     !sig_set, !ext_set, !lvar_ext, !pid)
+			     !sig_set, !ext_set, !lvar_ext, !pid, !occ_set)
 	in String.concat 
-	       [a,"\n",b,"\n",c,"\n",d,"\n",e,"\n",f,"\n",g,"\n",h,"\n"]
+	       [a,"\n",b,"\n",c,"\n",d,"\n",e,"\n",f,"\n",g,"\n",h,"\n",i,"\n"]
 	end
 
     fun load_return source = 
@@ -946,7 +964,7 @@ in
 	      | get_val (SOME s) = s
 	    fun gs () = get_val (TextIO.inputLine os)
 	in
-	    get_sets (gs(),gs(),gs(),gs(),gs(),gs(),gs(),gs())
+	    get_sets (gs(),gs(),gs(),gs(),gs(),gs(),gs(),gs(),gs())
 	end
 
     fun get_file e = 
@@ -1018,7 +1036,7 @@ in
       | get_hash (A.PATH (a, _)) = get_hash a
       | get_hash _ = bug "get_hash"
 
-    fun merge (var,ty,cons,str,sign,ext,lvarext,pid') sourcefile = 
+    fun merge (var,ty,cons,str,sign,ext,lvarext,pid',occ) sourcefile = 
 	let val var_set2 = ref var
 	    val typ_set2 = ref ty
 	    val con_set2 = ref cons
@@ -1028,6 +1046,7 @@ in
 					str_set_g, sig_set_g, !lvar_ext)
 	in 
 	    ExtSet.app distrib ext;
+	    occ_set_g := OccSetG.add (!occ_set_g, (occ, sourcefile));
 	    var_set_g := VarSet.union (!var_set_g, !var_set2);
 	    typ_set_g := TypSet.union (!typ_set_g, !typ_set2);
 	    con_set_g := ConSet.union (!con_set_g, !con_set2);
@@ -1056,7 +1075,8 @@ in
 
     fun merge_pickle sourcefile pickle = 
 	case String.tokens (fn x => x = #"\n") pickle of
-	    [a,b,c,d,e,f,g,h] => merge (get_sets (a,b,c,d,e,f,g,h)) sourcefile
+	    [a,b,c,d,e,f,g,h,i] => 
+	    merge (get_sets (a,b,c,d,e,f,g,h,i)) sourcefile
 	  | l => bug ("merge_pickle " ^ Int.toString (List.length l))
 
     fun load_merge sourcefile = 
@@ -1239,53 +1259,52 @@ in
 	)
 	  
     fun test () =
-	let val (a,b,c,d,e,f,g,h) = 
+	let val (a,b,c,d,e,f,g,h,i) = 
 		get_sets (get_strings (!var_set, !typ_set, !con_set, !str_set,
-				       !sig_set, !ext_set, !lvar_ext, !pid)
+				       !sig_set, !ext_set, !lvar_ext, !pid,
+				       !occ_set)
 			 )
-	    val () = 
-		if VarSet.numItems a <> VarSet.numItems (!var_set) then
-		    bug "test ().var length"
-		else
-		    ()
-	    val () = 
-		if TypSet.numItems b <> TypSet.numItems (!typ_set) then
-		    bug "test ().type length"
-		else
-		    ()
-	    val () = 
-		if ConSet.numItems c <> ConSet.numItems (!con_set) then
-		    bug "test ().cons length"
-		else
-		    ()
-	    val () = 
-		if StrSet.numItems d <> StrSet.numItems (!str_set) then
-		    bug "test ().str length"
-		else
-		    ()
-	    val () = 
-		if SigSet.numItems e <> SigSet.numItems (!sig_set) then
-		    bug "test ().sig length"
-		else
-		    ()
-	    val () = 
-		if ExtSet.numItems f <> ExtSet.numItems (!ext_set) then
-		    bug "test ().ext length"
-		else
-		    ()
-	    val () = 
-		if LvarExtSet.numItems g <>LvarExtSet.numItems (!lvar_ext) then
-		    bug "test ().lvar_ext length"
-		else
-		    ()
 	in
+	    if VarSet.numItems a <> VarSet.numItems (!var_set) then
+		bug "test ().var length"
+	    else
+		();
+	    if TypSet.numItems b <> TypSet.numItems (!typ_set) then
+		bug "test ().type length"
+	    else
+		();
+	    if ConSet.numItems c <> ConSet.numItems (!con_set) then
+		bug "test ().cons length"
+	    else
+		();
+	    if StrSet.numItems d <> StrSet.numItems (!str_set) then
+		bug "test ().str length"
+	    else
+		();
+	    if SigSet.numItems e <> SigSet.numItems (!sig_set) then
+		bug "test ().sig length"
+	    else
+		();
+	    if ExtSet.numItems f <> ExtSet.numItems (!ext_set) then
+		bug "test ().ext length"
+	    else
+		();
+	    if LvarExtSet.numItems g <>LvarExtSet.numItems (!lvar_ext) then
+		bug "test ().lvar_ext length"
+	    else
+		();
+	    if OccSet.numItems i <>OccSet.numItems (!occ_set) then
+		bug "test ().lvar_ext length"
+	    else
+		();
 	    VarSet.app P.print_var a;
 	    TypSet.app P.print_type b;
 	    ConSet.app P.print_cons c;
 	    StrSet.app P.print_str d;
 	    SigSet.app P.print_sig e;
 	    ExtSet.app P.print_ext f;
-	    print_lvars ()
+	    print_lvars ();
+	    OccSet.app P.print_occ i
 	end
 
 

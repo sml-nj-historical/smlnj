@@ -9,6 +9,7 @@ sig
     val sigToString  : DBTypes.sig_elem  list -> string
     val extToString  : DBTypes.ext_elem  list -> string
 
+    val occurrenceListToString : DBTypes.occurrence list -> string
     val lvarExtToString : (Access.access * Access.access) list -> string
     val pidOptionToString : PersStamps.persstamp option -> string
 
