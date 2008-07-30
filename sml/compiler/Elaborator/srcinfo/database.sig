@@ -49,6 +49,7 @@ sig
     val add_lvar : Access.access -> unit
     val add_ext_acc : Access.access -> unit
 
+    val compare_acc : Access.access * Access.access -> order
     val print_all : unit -> unit
     val print_all_g : unit -> unit
     val set_source : string -> unit
