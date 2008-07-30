@@ -50,9 +50,6 @@ functor AMD64Gen (
     (* label where a trap is generated -- one per cluster *)
     val trapLabel = ref (NONE: (I.instruction * Label.label) option)
 
-    (* flag floating point generation *)
-(*    val floatingPointUsed = ref false*)
-
     fun gpr (ty, r) = I.Direct (ty, r)
     val fpr = I.FDirect
     
@@ -868,8 +865,8 @@ functor AMD64Gen (
 		 (* sign-extended loads *)
 		 | T.SX (tTy, fTy, T.LOAD (_, ea, mem)) =>
 		   mark (I.MOVE {mvOp=O.loadSXOp (fTy, tTy), src=operand fTy e, dst=I.Direct(tTy, dst)},an)
-		 (* there is no movslq instruction; use movl instead but get the register types right. *)
-		 | T.ZX(64, 32, e) =>
+		 (* there is no movslq instruction, but movl suffices. *)
+		 | T.ZX(64, 32, e) => 
 		   mark (I.MOVE {mvOp=I.MOVL, src=operand 32 e, dst=I.Direct(32, dst)},an)
 		 (* zero-extended loads *)
 		 | T.ZX(tTy, fTy, e) => 
