@@ -8,7 +8,7 @@
 (* DBM: modified version for srcinfo, with added functionality: least, greatest, next, previous *)
 
 
-signature ORD_SET =
+signature SI_ORD_SET =
   sig
 
     structure Key : ORD_KEY

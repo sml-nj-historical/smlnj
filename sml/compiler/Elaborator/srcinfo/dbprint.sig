@@ -13,6 +13,7 @@ sig
 
    val print_key : DBTypes.key -> string
 
+   val print_occ : DBTypes.occurrence -> unit
    val print_var : DBTypes.var_elem -> unit
    val print_type : DBTypes.type_elem -> unit
    val print_cons : DBTypes.cons_elem -> unit

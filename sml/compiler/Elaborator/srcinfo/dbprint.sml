@@ -69,6 +69,9 @@ in
 	print ("_" ^ stoS (TypesUtil.tycName tyc))
     )*)
 
+   fun print_occ (symbol, location) = 
+       print (Symbol.symbolToString symbol ^ rtoS location ^ " ")
+
    fun print_tycon' tyc =  
        case tyc of  
 	   Datatype (b, sl) => 

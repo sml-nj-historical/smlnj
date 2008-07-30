@@ -65,6 +65,8 @@ Group
 	signature CONVERSION
 	structure Queries
 	structure SrcInfo
+	signature SI_ORD_SET
+	functor SIRedBlackSetFn
 
 is
 
@@ -138,3 +140,5 @@ is
 	srcinfo/conversion.sml
 	srcinfo/query.sml
 	srcinfo/srcinfo.sml
+	srcinfo/si-ord-set-sig.sml
+	srcinfo/si-redblack-set-fn.sml
