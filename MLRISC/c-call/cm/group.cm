@@ -1,8 +1,14 @@
 Group
+
+	signature C_CALL
+
+	functor X86_64SVIDFn
+
 	structure X86MLRISCGen
 	structure X86MLTree
         structure X86Test
 	structure X86_64Test
+	structure CType
 
 	group(../../staged-alloc/cm/sources.cm)
 	library(../../cm/MLRISC.cm)
@@ -30,7 +36,7 @@ is
 
 	../gen/c-call-sig.sml
 	../gen/c-call-fn.sml
-	../gen/c-types.sml
+	../gen/c-type.sml
 
 	../../staged-alloc/cm/sources.cm
 

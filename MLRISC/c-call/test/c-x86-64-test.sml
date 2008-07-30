@@ -105,48 +105,21 @@ structure AMD64MLTreeEval =
     val eqCCext = eq val eqSext = eq)
 
 (*
-structure AMD64PseudoOps  =
-  struct
-    structure Client =
-      struct
-        datatype pseudo_op_ext = COMM of (Label.label * int)
-        structure AsmPseudoOps = AMD64GasPseudoOps (
-			     structure T = AMD64MLTree
-			     structure MLTreeEval = AMD64MLTreeEval)
-        type pseudo_op = pseudo_op_ext        
-        fun toString (COMM(lab, sz)) = concat[         
-            "\t.comm\t"(*, P.lexpToString(P.T.LABEL lab)*),
-            ",", Int.toString sz]
-        fun emitValue {pOp, loc, emit} = raise Fail "emitValue"
-        fun sizeOf _ = 0
-        fun adjustLabels _ = false
-      end (* Client *)
-
-    structure T = AMD64MLTree
-    type pseudo_op = (T.labexp, Client.pseudo_op) PseudoOpsBasisTyp.pseudo_op
-    fun toString _ = ""
-    fun emitValue _ = ()
-    fun sizeOf _ = 0
-    fun adjustLabels _ = false
-end (* AMD64PseudoOps *)
-*)
-
-
 functor AMD64PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = AMD64GasPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
+*)
 
-(*
 functor AMD64PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = AMD64DarwinPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-*)
+
 
 structure AMD64PseudoOps = AMD64PseudoOpsFn(
             structure T = AMD64MLTree
@@ -551,11 +524,11 @@ structure ChkTy = MLTreeCheckTy(structure T = T val intTy = 64)
 		   callseq, 
 		   [T.EXT(AMD64InstrExt.LEAVE)],
 		   [T.RET []]]
-(*
+
 	val _ = List.all (fn stm => ChkTy.check stm 
 				    orelse raise Fail ("typechecking error: "^AMD64MTC.AMD64MLTreeUtils.stmToString stm))
 		stms
-*)
+
         in
 	   dumpOutput(gen (functionName, stms, result))
 	end

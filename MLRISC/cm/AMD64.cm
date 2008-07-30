@@ -7,7 +7,6 @@ Library
 
 	structure AMD64Cells
 	structure AMD64InstrExt
-	structure CSizes
 
 	functor AMD64AsmEmitter
 	functor AMD64MCEmitter
@@ -21,7 +20,6 @@ Library
 	functor AMD64Opcodes
 	functor AMD64RegAlloc
 	functor AMD64SpillInstr
-	functor AMD64SVIDFn
 	functor AMD64Jumps
 is
 	$/basis.cm
@@ -31,7 +29,6 @@ is
 	$/Lib.cm
 	$/Graphs.cm
 	$/MLTREE.cm 
-	$/SA.cm
 
 	../amd64/flowgraph/amd64GasPseudoOps.sml
 	../amd64/flowgraph/amd64-darwin-pseudo-ops.sml
@@ -54,11 +51,6 @@ is
 	(* register allocation *)
 	../amd64/ra/amd64RegAlloc.sml
 	../amd64/ra/amd64SpillInstr.sml
-
-	(* C calls using staged allocation *)
-	../amd64/staged-allocation/c-sizes.sml
-	../amd64/staged-allocation/amd64-svid-fn.sml
-        ../amd64/staged-allocation/amd64-c-conventions-fn.sml
 
 	(* backpatching *)
 	../amd64/backpatch/amd64Jumps.sml

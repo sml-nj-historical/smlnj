@@ -264,5 +264,11 @@ functor StagedAllocationFn (
 
     fun freeze (stages, (_, ob, regs)) = 
 	    {overflowBlock=ob, allocatedRegs=regs}
+
+  (* extract the kind of a location *)
+    fun kindOfLoc (REG(_, k, _)) = k
+      | kindOfLoc (BLOCK_OFFSET(_, k, _)) = k
+      | kindOfLoc (COMBINE(l1, l2)) = kindOfLoc l1
+      | kindOfLoc (NARROW(_, _, k)) = k
   
   end (* StagedAllocationFn *)

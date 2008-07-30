@@ -336,6 +336,7 @@ functor GenTestFn(
 
     fun output (strm, s) = TextIO.output(strm, s^"\n")
 
+  (* test parameter types *)
     val pty1 = [CTy.C_double, CTy.C_unsigned CTy.I_int, CTy.C_PTR, CTy.C_double, 
 		CTy.C_float, CTy.C_PTR, CTy.C_float, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR,
 		CTy.C_signed CTy.I_int, 
@@ -356,8 +357,9 @@ functor GenTestFn(
     val pty13 = [CTy.C_float, CTy.C_double]
 
     fun main _ = BackTrace.monitor (fn () => let
+      (* choose the prototype to test *)
 	val retTy = CTy.C_signed CTy.I_int
-	val paramTys = pty13
+	val paramTys = pty6
 
 	val cArgs = List.map genRandArg paramTys
 	val retVal = if retTy <> CTy.C_void then [genRandArg retTy] else []

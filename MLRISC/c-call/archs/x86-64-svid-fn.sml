@@ -140,11 +140,12 @@ functor X86_64SVIDFn (
 			(* end case *))
 
   (* convert staged allocation locations to C locations *)
-    fun locToC (SA.REG (w, GPR, r)) = CCall.C_GPR (w, r)
-      | locToC (SA.REG (w, FPR, r)) = CCall.C_FPR (w, r)
-      | locToC (SA.BLOCK_OFFSET (w, (GPR | FPR | STK | FSTK), offB)) = 
+    fun locToC (SA.NARROW (SA.REG (_, GPR, r), w, GPR)) = 
+	  CCall.C_GPR (w, r)
+      | locToC (SA.NARROW (SA.REG (_, FPR, r), w, FPR)) = 
+	  CCall.C_FPR (w, r)
+      | locToC (SA.NARROW (SA.BLOCK_OFFSET (_, (GPR | FPR | STK | FSTK), offB), w, (GPR | FPR | STK | FSTK))) = 
   	   CCall.C_STK (w, T.I.fromInt (wordTy, offB))
-      | locToC (SA.NARROW (loc, w, k)) = locToC loc
       | locToC _ = raise Fail "impossible"
 
   (* given a return type, return the locations for the return values *)

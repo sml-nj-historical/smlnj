@@ -97,4 +97,7 @@ signature STAGED_ALLOCATION =
     val freeze : (stage list * store) 
 		     -> {overflowBlock : loc option, allocatedRegs : loc list}
 
+  (* extract the kind of a location *)
+    val kindOfLoc : loc -> loc_kind
+
   end (* STAGED_ALLOCATION *)

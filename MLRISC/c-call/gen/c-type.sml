@@ -1,4 +1,4 @@
-(* c-types.sml
+(* c-type.sml
  *
  * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies
  *
@@ -7,7 +7,7 @@
  *)
 
 
-structure CTypes =
+structure CType =
   struct
 
     datatype c_type
