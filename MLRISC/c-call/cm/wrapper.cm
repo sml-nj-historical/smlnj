@@ -26,5 +26,6 @@ is
      bind:(anchor:ir.cm value:../../cm)
      bind:(anchor:SA.cm value:../../cm)
      bind:(anchor:IA32.cm value:../../cm)
+     bind:(anchor:SPARC.cm value:../../cm)
      bind:(anchor:AMD64.cm value:../../cm)
      bind:(anchor:AMD64-Peephole.cm value:../../cm))

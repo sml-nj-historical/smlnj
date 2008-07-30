@@ -2,7 +2,9 @@ Group
 
 	signature C_CALL
 
+	functor X86SVIDFn
 	functor X86_64SVIDFn
+	functor SparcCCallFn
 
 	structure X86MLRISCGen
 	structure X86MLTree
@@ -33,6 +35,7 @@ is
 	../../cm/IA32.cm
 	../../cm/AMD64.cm
 	../../cm/RTL.cm
+	../../cm/SPARC.cm
 
 	../gen/c-call-sig.sml
 	../gen/c-call-fn.sml
@@ -44,6 +47,8 @@ is
 	../archs/x86-64-c-sizes.sml
 	../archs/x86-svid-fn.sml
 	../archs/x86-c-sizes.sml
+	../archs/sparc-c-sizes.sml
+	../archs/sparc-c-call-fn.sml
 
 	../test/c-test-gen.sml
 	../test/c-x86-test.sml

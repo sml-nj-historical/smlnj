@@ -63,7 +63,7 @@ functor X86SVIDFn (
     val calleeSaveFRegs = []
     val callerSaveFRegs = []
 
-    (* classify a C type into its location kind (assuming that aggregates cannot be passed in registers) *)
+  (* assign a C type to a kind of machine location *)
     fun kindOfCTy (CTy.C_float | CTy.C_double | CTy.C_long_double) = FPR
       | kindOfCTy (CTy.C_unsigned _ | CTy.C_signed _ | CTy.C_PTR | CTy.C_ARRAY _) = GPR
 
