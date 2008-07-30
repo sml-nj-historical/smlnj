@@ -307,43 +307,52 @@ in
 
     fun find_acc acc = find_file_acc (!source) acc
 
-
-    (* acc can be anything and we gave back an lvar *) 
-    fun get_lvar set file test test2 (acc as A.PATH (a, slot)) = 
-	let val acc' = get_lvar set file test2 test2 a in
-	    case StrSet.find (find_file_acc (!file) acc') (!set) of
-		NONE => bug ("get_lvar: " ^ A.prAcc acc)
-	      | SOME {elements = Def l, ...} => 
-		( case List.find (fn (x, _, _) => x = slot) l of
-		      NONE => bug ("get_lvar2: " ^ A.prAcc acc)
-		    | SOME (_, _, key) => 
-		      ( case test key of
-			    NONE => bug ("get_lvar3: " ^ A.prAcc acc)
-			  | SOME a => get_lvar set file test test2 a
-		      )
-		)
-	      | SOME {elements = Constraint (l, acc2), ...} => 
-		( case List.find (fn (x, _, _) => x = slot) l of
-		      NONE => bug ("get_lvar4: " ^ A.prAcc acc)
-		    | SOME (_, _, slot2) => 
-		      get_lvar set file test test2 (A.PATH (acc2,slot2))
-		)
-	      | SOME {elements = Alias a, ...} => 
-		get_lvar set file test test2 (A.PATH (a,slot))
-	end
-      | get_lvar _ _ _ _ (acc as A.LVAR _) = acc
-      | get_lvar _ _ _ _ _ = bug "get_lvar5"
+    fun get_lvar0 set file test test2 (acc as A.PATH (a, slot)) = 
+	( case get_lvar0 set file test2 test2 a of
+	      NONE => NONE
+	    | SOME acc' =>
+	      case StrSet.find (find_file_acc (!file) acc') (!set) of
+		  NONE => bug ("get_lvar0: " ^ A.prAcc acc)
+		| SOME {elements = Def l, ...} => 
+		  ( case List.find (fn (x, _, _) => x = slot) l of
+			NONE => bug ("get_lvar02: " ^ A.prAcc acc)
+		      | SOME (_, _, key) => 
+			( case test key of
+			      NONE => bug ("get_lvar03: " ^ A.prAcc acc)
+			    | SOME a => get_lvar0 set file test test2 a
+			)
+		  )
+		| SOME {elements = Constraint (l, acc2), ...} => 
+		  ( case List.find (fn (x, _, _) => x = slot) l of
+			NONE => bug ("get_lvar04: " ^ A.prAcc acc)
+		      | SOME (_, _, slot2) => 
+			get_lvar0 set file test test2 (A.PATH (acc2,slot2))
+		  )
+		| SOME {elements = Alias a, ...} => 
+		  get_lvar0 set file test test2 (A.PATH (a,slot))
+	)
+      | get_lvar0 _ _ _ _ (acc as A.LVAR _) = SOME acc
+      | get_lvar0 _ _ _ _ (A.EXTERN _) = NONE
+      | get_lvar0 _ _ _ _ _ = bug "get_lvar05"
 		
+    (* acc can be anything and we gave back an lvar *) 
+    fun get_lvar a b c d acc = 
+	case get_lvar0 a b c d acc of
+	    NONE => bug "get_lvar"
+	  | SOME access => access
+
     fun key_str (Str a) = SOME a
       | key_str _ = NONE
 
     fun key_val (Var a) = SOME a
       | key_val _ = NONE
 
-    val get_str_lvar        = get_lvar str_set   source     key_str key_str
-    fun get_str_lvar_g file = get_lvar str_set_g (ref file) key_str key_str
-    val get_var_lvar        = get_lvar str_set   source     key_val key_str
-    fun get_var_lvar_g file = get_lvar str_set_g (ref file) key_val key_str
+    val get_str_lvar0       = get_lvar0 str_set   source     key_str key_str
+    val get_str_lvar        = get_lvar  str_set   source     key_str key_str
+    fun get_str_lvar_g file = get_lvar  str_set_g (ref file) key_str key_str
+    val get_var_lvar0       = get_lvar0 str_set   source     key_val key_str
+    val get_var_lvar        = get_lvar  str_set   source     key_val key_str
+    fun get_var_lvar_g file = get_lvar  str_set_g (ref file) key_val key_str
 
     fun modify [] region = 
 	([], region)
@@ -692,9 +701,49 @@ in
     fun binding_to_symbolkey b = 
 	case b of
 	    B.VALbind (VC.VALvar {access, path, ...}) => 
-	    (SymPath.last path, Var access)
+	    (* Pb : 
+	     * if you say : 
+	     *    structure A = Array; 
+	     *    structure s = struct open A end
+	     * you will think when binding the content of s that it comes
+	     * from inside the current because its access will be : 
+	     * PATH (accessA = LVAR ?, slot)
+	     * But when trying to simplify PATH ... into an LVAR, you will
+	     * arrive on EXTERN ? and raise an exception
+
+	     * solution : try to simplify in every cases and if it doesn't
+	     * work, use the access you began with
+	     *)
+
+	    let val access' = 
+		    case get_var_lvar0 access of
+			NONE => access 
+		      (* should make a distinction between  the external 
+		       * references whose source is available and the others. 
+		       * Can be done in get_lvar0, at the line that deals with 
+		       * EXTERN *)
+		      | SOME access' => access'
+	    in
+		(SymPath.last path, Var access')
+	    end
 	  | B.STRbind (M.STR {access, rlzn = {rpath, ...}, ...}) =>
-	    (InvPath.last rpath, Str access)
+	    let val access' = 
+		    case get_str_lvar0 access of
+			NONE => access
+		      | SOME access' => access'
+	    in
+		(InvPath.last rpath, Str access')
+	    end
+	    (*let val access' = 
+		    case is_accessible access of
+			NONE => bug "binding_to_symbolkey2"
+		      | SOME false => 
+			access (* should be taken care of at merging*)
+		      | SOME true => 
+			get_str_lvar access 
+	    in*)
+		(*InvPath.last rpath, Str access*)
+	    (*end*)
 	  | _ => bug "binding_to_symbolkey : non implemente"
           (*| B.CONbind VarCon.datacon => 
 	  | B.TYCbind Types.tycon =>
@@ -745,8 +794,7 @@ in
 		   )
 		   bindings
 	   of NONE => bug "slotsymbolkey_to_slotsymbolkey'1"
-	    | SOME (B.VALbind (VC.VALvar {access, ...})) =>
-	      (slot, s, Var access)
+	    | SOME (B.VALbind (VC.VALvar {access, ...})) => (slot,s,Var access)
 	    | SOME _ => bug "slotsymbolkey_to_slotsymbolkey'2"
 	)
       | slotsymbolkey_to_slotsymbolkey' (SOME bindings) (slot, s, Str _) =
@@ -757,8 +805,7 @@ in
 		   )
 		   bindings
 	   of NONE => bug "slotsymbolkey_to_slotsymbolkey'3"
-	    | SOME (B.STRbind (M.STR {access, ...})) =>
-	      (slot, s, Str access)
+	    | SOME (B.STRbind (M.STR {access, ...})) => (slot, s, Str access)
 	    | SOME _ => bug "slotsymbolkey_to_slotsymbolkey'4"
 	)
       | slotsymbolkey_to_slotsymbolkey' _ _ = 
@@ -793,16 +840,16 @@ in
 		( symbolkeylist_to_slotsymbolkeylist 
 		      (List.map binding_to_symbolkey bl2)
 		)
+
+	    val item = { name = name_str,
+			 access = access,
+			 parent = parent_acc,
+			 sign = SOME stamp,
+			 def = loc_reg region,
+			 elements = Def def_elements,
+			 usage = ref []}
  	in
-	    let val item = { name = name_str,
-			     access = access,
-			     parent = parent_acc,
-			     sign = SOME stamp,
-			     def = loc_reg region,
-			     elements = Def def_elements,
-			     usage = ref []}
-	    in str_def str_set item
-	    end
+	    str_def str_set item
 	end
       | add_str_def _ _ _ _ _ = 
 	bug "add_str_def"
