@@ -72,7 +72,7 @@ functor AMD64Opcodes (structure I : AMD64INSTR) =
       | loadZXOp (16, 32) = I.MOVZWL
       | loadZXOp (8, 64) = I.MOVZBQ
       | loadZXOp (16, 64) = I.MOVZWQ
-      | loadZXOp _ = raise Fail "impossible"
+      | loadZXOp (fTy, tTy) = raise Fail ("incompatible "^Int.toString fTy^" "^Int.toString tTy)
 
    (* fromTy, toTy *)
     fun loadSXOp (8, 64) = I.MOVSBQ
@@ -80,7 +80,7 @@ functor AMD64Opcodes (structure I : AMD64INSTR) =
       | loadSXOp (8, 32) = I.MOVSBL
       | loadSXOp (16, 32) = I.MOVSWL
       | loadSXOp (32, 64) = I.MOVSLQ
-      | loadSXOp _ = raise Fail "impossible"
+      | loadSXOp (fTy, tTy) = raise Fail ("incompatible "^Int.toString fTy^" "^Int.toString tTy)
 
     val fopcodes32 = {MOV=I.MOVSS, ADD=I.ADDSS, SUB=I.SUBSS, 
 		      MUL=I.MULSS, DIV=I.DIVSS, UCOM=I.UCOMISS}

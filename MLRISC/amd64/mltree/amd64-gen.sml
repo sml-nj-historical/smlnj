@@ -863,8 +863,8 @@ functor AMD64Gen (
 		 | T.LOAD (32, ea, mem) => genLoad (I.MOVL, ea, mem)
 		 | T.LOAD (64, ea, mem) => genLoad (I.MOVQ, ea, mem)
 		 (* sign-extended loads *)
-		 | T.SX (tTy, fTy, T.LOAD (_, ea, mem)) =>
-		   mark (I.MOVE {mvOp=O.loadSXOp (fTy, tTy), src=operand fTy e, dst=I.Direct(tTy, dst)},an)
+		 | T.SX (tTy, fTy, x) =>
+		   mark (I.MOVE {mvOp=O.loadSXOp (fTy, tTy), src=operand fTy x, dst=I.Direct(tTy, dst)},an)
 		 (* there is no movslq instruction, but movl suffices. *)
 		 | T.ZX(64, 32, e) => 
 		   mark (I.MOVE {mvOp=I.MOVL, src=operand 32 e, dst=I.Direct(32, dst)},an)
