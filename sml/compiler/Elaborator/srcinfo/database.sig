@@ -45,7 +45,7 @@ sig
     val add_str_use : Modules.Structure -> int*int -> unit
     val print_str : unit -> unit
 
-    (* external references (structures only) *)
+    (* external references (toplevel structures only) *)
     val add_lvar : Access.access -> unit
     val add_ext_acc : Access.access -> unit
 
@@ -56,15 +56,14 @@ sig
     val pickling_over : unit -> unit
     val set_eri : (Symbol.symbol -> string option) -> unit
     val set_pid : PersStamps.persstamp -> unit
-    val clear_lvar : unit -> unit
     val clear : unit -> unit
-    val clear_all : unit -> unit
-    (*val save : unit -> unit*)
-    val load_merge : string -> unit
-    val merge_pickle : string -> string -> unit
     val test : unit -> unit
+
+    (* pickling/unpickling/merging/removing functions *)
     val get_pickle : unit -> string
     val remove : string -> unit
+    val load_merge : string -> unit
+    val merge_pickle : string -> string -> unit
 
     (* query support functions *)
     val find_var : (DBTypes.var_elem -> bool) -> DBTypes.var_elem option
@@ -99,8 +98,8 @@ sig
     val filter_sig : 
 	(DBTypes.sig_elem -> bool) -> DBTypes.sig_elem list
 
-    (* access translation: from filepath and path to definition point lvar 
-     * (or lvar to itself) *)
+    (* access translation: from filepath and local path to definition point 
+     * lvar (or lvar to itself) *)
     val get_str_lvar_g : string -> Access.access -> Access.access
     val get_var_lvar_g : string -> Access.access -> Access.access
 

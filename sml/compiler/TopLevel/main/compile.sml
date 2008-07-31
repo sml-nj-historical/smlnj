@@ -156,7 +156,6 @@ struct
 	    val srcinfo = 
 		if !Control.Elab.infodebugging then 
 		    ( DBPrint.maj statenv;
-		      Database.clear();
 		      Database.set_source (#longName (#source cinfo));
 		      Database.set_eri extRefInfo;
 		      AbsynScan.scan_dec absyn;

@@ -255,14 +255,14 @@ in
    fun print_sig_usage usage = 
        ( print " and is used at :";
 	 List.app 
-	     (fn (x, y) => print ("\n\t"^(rtoS x)^" with name "^stoS y))
+	     (fn x => print ("\n\t"^(rtoS x)))
 	     (!usage);
 	 print "\n"
        )
 
-   fun print_sig ({name,stamp,inferred,def,elements,usage,alias} : sig_elem) =
+   fun print_sig ({name,stamp,inferred,def,elements,usage} : sig_elem) =
        let
-	   fun print_elem l pref = 
+	   fun print_defsig l pref = 
 	       let fun print_symbol_spec (s, spec) = 
 		       let fun print_spec (Typ tycon') = 
 			       (print "typ:"; print_tycon' tycon')
@@ -273,7 +273,7 @@ in
 			     | print_spec (NamedStr (symb, stamp)) = 
 			       print ("named:"^Symbol.name symb)
 			     | print_spec (InlineStr l) = 
-			       print_elem l (pref ^ "   ")
+			       print_defsig l (pref ^ "   ")
 		       in print (Symbol.name s ^ " : "); 
 			  print_spec spec 
 		       end
@@ -284,15 +284,16 @@ in
 		       ) 
 		       l
 	       end
+	       
+	   fun print_elem (DefSig l) pref = 
+	       print_defsig l pref
+	     | print_elem (AliasSig st) pref = 
+	       print ("\n" ^ pref ^ " is an alias of " ^ Stamps.toString st);
        in
 	   print (Stamps.toString stamp ^ " " ^ stoS name ^ 
 		  (if inferred then " (inferred)" else "") 
 		  ^ " : " ^ rtoS def);
 	   print_elem elements "   ";
-	   List.app 
-	       (fn (x, symb) => 
-		   print ("\n\thas alias "^ stoS symb ^ " " ^ (rtoS x))) 
-	       (!alias);
 	   print_sig_usage usage
        end
 

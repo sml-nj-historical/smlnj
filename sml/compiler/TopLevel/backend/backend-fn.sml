@@ -61,7 +61,7 @@ functor BackendFn (structure M : CODEGENERATOR
 		      fun up_context _ = m
 		      val () = 
 			  if !Control.Elab.infodebugging then
-			      Database.clear_lvar ()
+			      Database.clear ()
 			  else
 			      ()
 		      val { hash, pickle, exportLvars, hasExports } = 

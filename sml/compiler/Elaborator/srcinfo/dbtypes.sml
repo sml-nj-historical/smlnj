@@ -93,22 +93,27 @@ struct
 	  usage : strUse list ref
 	}
 		    
+    type sigUse = location
+
     datatype spec_sig
       = Typ of tycon'
       | Val of ty'
       | Exception of ty'
       | NamedStr of Symbol.symbol * Stamps.stamp
-      | InlineStr of (Symbol.symbol * spec_sig) list
+      | InlineStr of def_sig
 
-    type sigUse = location * Symbol.symbol
+    withtype def_sig = (Symbol.symbol * spec_sig) list
 
+    datatype elements_sig 
+      = AliasSig of Stamps.stamp
+      | DefSig of def_sig
+      
     type sig_elem
       = { name : Symbol.symbol,
 	  stamp : Stamps.stamp,
 	  inferred : bool,
 	  def : location, 
-	  elements : (Symbol.symbol * spec_sig) list,
-	  alias : (location * Symbol.symbol) list ref, 
+	  elements : elements_sig,
 	  usage : sigUse list ref
 	}
 		   

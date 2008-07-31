@@ -161,26 +161,28 @@ fun specSigToStrings (Typ tycon) =
   | specSigToStrings (NamedStr (symbol, stamp)) =
     "N" :: Symbol.name symbol :: stampToStrings stamp
   | specSigToStrings (InlineStr elements) = 
-    "I" :: elementsSigToStrings elements
+    "I" :: defSigToStrings elements
 
-and elementsSigToStrings l = 
-    listToStrings (fn (x,y) => Symbol.symbolToString x :: specSigToStrings y) l
+and defSigToStrings list = 
+    listToStrings 
+	(fn (x,y) => Symbol.symbolToString x :: specSigToStrings y)
+	list
+
+fun elementsSigToStrings (AliasSig stamp) = 
+    "a" :: stampToStrings stamp
+  | elementsSigToStrings (DefSig defsig) = 
+    "d" :: defSigToStrings defsig
 
 fun sigElemUsageToStrings usage = 
-    listToStrings (fn (x, y) => locationToStrings x @ [Symbol.name y]) (!usage)
+    listToStrings locationToStrings (!usage)
 
-fun sigElemAliasToStrings alias = 
-    sigElemUsageToStrings alias
-
-fun sigElemToStrings {name, stamp, inferred, def, elements, alias, usage} = 
+fun sigElemToStrings ({name, stamp, inferred, def, elements, usage}:sig_elem) =
     Symbol.name name ::
     stampToStrings stamp @ 
     boolToString inferred :: 
     locationToStrings def @ 
     elementsSigToStrings elements @
-    sigElemAliasToStrings alias @
     sigElemUsageToStrings usage
-
 
 val sigToString =
     ext_fun sigElemToStrings

@@ -101,13 +101,21 @@ struct
 	    bug "tycon_to_tycon'.2"
 	    
 
-    fun sig_to_elem (Modules.SIG {name, stamp, inferred, elements, ...}) : sig_elem = 
+    fun sig_to_elem (Modules.SIG {name,stamp,inferred,elements,...}):sig_elem= 
 	let
 	    fun conv_spec (M.VALspec {spec = ty, ...}) = 
 		SOME (Val (ty_to_ty' ty))
-	      | conv_spec (M.STRspec {def = NONE, sign = (sign as M.SIG {name = NONE, ...}), ...}) = 
-		SOME (InlineStr (#elements (sig_to_elem sign)))
-	      | conv_spec (M.STRspec {def = NONE, sign = (sign as M.SIG {name = SOME name, stamp, ...}), ...}) = 
+	      | conv_spec (M.STRspec {def = NONE, 
+				      sign = (sign as M.SIG {name = NONE,...}),
+				      ...}) = 
+		( case #elements (sig_to_elem sign) of
+		      AliasSig _ => bug "sig_to_elem0"
+		    | DefSig defsig => SOME (InlineStr defsig)
+		)
+	      | conv_spec (M.STRspec {def = NONE, 
+				      sign = (sign as M.SIG {name = SOME name, 
+							     stamp, ...}), 
+				      ...}) = 
 		SOME (NamedStr (name, stamp))
 	      | conv_spec _ =
 		NONE
@@ -122,9 +130,9 @@ struct
 		       | NONE => Symbol.sigSymbol "<anonymousSig>",
 	      stamp = stamp,
 	      inferred = inferred,
-	      def = ("", ~1, ~1),    (* DBM: needs to be properly defined using marked sig *)
-	      elements = List.mapPartial conv elements,
-	      alias = ref [],
+	      def = ("", ~1, ~1),    (* DBM: needs to be properly defined using
+				      * marked sig *)
+	      elements = DefSig (List.mapPartial conv elements),
 	      usage = ref []
 	    }
 	end

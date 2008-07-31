@@ -18,6 +18,8 @@ in
     val pid = ref NONE : PersStamps.persstamp option ref
     fun set_pid pid' = pid := SOME pid'
 
+    fun persstamps_eq c = PersStamps.compare c = EQUAL
+
     val lvars = ref [] : A.access list ref
     val exts = ref [] : A.access list ref
 
@@ -116,6 +118,8 @@ in
       | compare_acc (_, A.PATH _) = GREATER
       | compare_acc (A.NO_ACCESS, A.NO_ACCESS) = EQUAL
 
+    fun equal_acc acc1 acc2 =  compare_acc (acc1,acc2) = EQUAL
+
     (*mapping from PATH (... EXTERN) to LVAR*) 
     structure LvarExtKey : ORD_KEY = 
     struct
@@ -143,7 +147,12 @@ in
 	    EQUAL => compare_acc accs
 	  | ord => ord 
 
-    (* external values *)
+    fun usage_rpath f_usage usage item rpath = 
+	case rpath of
+	    [] => bug "usage_rpath"
+	  | h :: _ => f_usage usage item h
+
+    (******* external values ********)
     structure ExtKey : ORD_KEY =
     struct
         type ord_key = ext_elem
@@ -174,9 +183,36 @@ in
     (* external value set *)
     structure ExtSet = RedBlackSetFn(ExtKey)
     val ext_set = (ref ExtSet.empty)
-    val ext_set_removed = (ref ExtSet.empty)
+    val ext_set_g = (ref ExtSet.empty)
 
-    (* variables *)
+    (*add_ext*) 
+    fun ext_def ext_set item name = 
+	let val loc = 
+		case item of
+		    ExtVar {usage = ref [(loc, _, _)], ...} => loc
+		  | ExtStr {usage = ref [loc], ...} => loc
+		  | ExtType {usage = ref [loc], ...} => loc
+		  | ExtCons {usage = ref [(loc, _)], ...} => loc
+		  | ExtSig {usage = ref [loc], ...} => loc
+		  | _ => bug "ext_def"
+	in add_occ (name, loc);
+	   ext_set := ExtSet.add (!ext_set, item)
+	end
+
+    fun ext_str_pred acc ext_elem = 
+	case ext_elem of
+	    ExtStr {access, ...} => equal_acc acc access
+	  | _ => false
+
+    fun ext_var_pred acc ext_elem = 
+	case ext_elem of
+	    ExtVar {access, ...} => equal_acc acc access
+	  | _ => false
+
+    fun print_ext () = 
+	ExtSet.app P.print_ext (!ext_set)
+
+    (********* variables *********)
     structure VarKey : ORD_KEY =
     struct
         type ord_key = var_elem
@@ -198,12 +234,22 @@ in
 	( add_occ (name,loc);
 	  usage := usage_item :: !usage
 	)
+
     fun var_def var_set (item as {name, def, ...}:var_elem) = 
 	( add_occ (name,def);
 	  var_set := VarSet.add (!var_set, item)
 	)
 
-    (* structures *)
+    fun var_pred (acc,filepath) ({access, def, ...}:var_elem) = 
+	filepath = locFile def andalso equal_acc acc access
+
+    fun print_var () = 
+	VarSet.app P.print_var (!var_set)
+			  
+    fun print_var_g () = 
+	VarSet.app P.print_var (!var_set_g)
+
+    (******** structures ********)
     structure StrKey : ORD_KEY =
     struct
         type ord_key = str_elem
@@ -231,7 +277,13 @@ in
 
     fun str_usage_rpath usage usage_item rpath = 
 	case rpath of
-	    [] => str_usage' usage usage_item
+	    [] => 
+	    (* this branch should not be used for now *)
+	    (* made not to record any implicite occurrence like 
+	     * structure A = struct val x end; open A; x*)
+	    (* A is used when x is used but should not appear in the occurrence
+	     * list*)
+	    str_usage' usage usage_item 
 	  | h :: _ => str_usage usage usage_item h
 
     fun str_def str_set (item as {name, def = loc, ...}:str_elem) = 
@@ -239,7 +291,16 @@ in
 	  str_set := StrSet.add (!str_set, item)
 	)
 
-    (* types *)
+    fun str_pred (acc,file) ({access, def, ...}:str_elem) = 
+	equal_acc acc access andalso locFile def = file
+
+    fun print_str () = 
+	StrSet.app P.print_str (!str_set)
+
+    fun print_str_g () = 
+	StrSet.app P.print_str (!str_set_g)
+
+    (********** types **********)
     structure TypKey : ORD_KEY =
     struct
         type ord_key = type_elem
@@ -257,7 +318,26 @@ in
     fun exists_typ p = TypSet.exists p (!typ_set_g)
     fun filter_typ p = TypSet.listItems (TypSet.filter p (!typ_set_g))
 
-    (* constructors *)
+    fun typ_usage usage (usage_item as loc : typeUse) name = 
+	( add_occ (name,loc);
+	  usage := usage_item :: !usage
+	)
+	
+    fun typ_def typ_set (item as {name, def, ...}:type_elem) = 
+	( add_occ (name,def);
+	  typ_set := TypSet.add (!typ_set, item)
+	)
+	
+    fun typ_pred stamp' ({stamp, ...}:type_elem) = 
+	Stamps.eq (stamp',stamp)
+
+    fun print_ty () = 
+	TypSet.app P.print_type (!typ_set)
+
+    fun print_ty_g () = 
+	TypSet.app P.print_type (!typ_set_g)
+
+    (********** constructors *********)
     structure ConKey : ORD_KEY =
     struct
         type ord_key = cons_elem
@@ -277,7 +357,13 @@ in
     fun exists_cons p = ConSet.exists p (!con_set_g)
     fun filter_cons p = ConSet.listItems (ConSet.filter p (!con_set_g))
 
-    (*signature*)
+    fun print_cons () = 
+	ConSet.app P.print_cons (!con_set)
+
+    fun print_cons_g () = 
+	ConSet.app P.print_cons (!con_set_g)
+
+    (********* signature *********)
     structure SigKey : ORD_KEY =
     struct
         type ord_key = sig_elem
@@ -295,23 +381,32 @@ in
     fun exists_sig p = SigSet.exists p (!sig_set_g)
     fun filter_sig p = SigSet.listItems (SigSet.filter p (!sig_set_g))
 
+    fun sig_usage usage (item as loc : sigUse) name = 
+	( add_occ (name, loc);
+	  usage := item :: !usage
+	)
+	
+    fun sig_def sig_set (item as {name, def, ...} : sig_elem) = 
+	( add_occ (name, def);
+	  sig_set := SigSet.add (!sig_set, item)
+	)
 
-    fun add_ext v = 
-	ext_set := ExtSet.add (!ext_set, v)
+    fun sig_pred st ({stamp, ...}:sig_elem) = 
+	Stamps.eq (st, stamp)
 
-    fun add_str v = 
-	str_set := StrSet.add (!str_set, v)
+    fun print_sig () = 
+	SigSet.app P.print_sig (!sig_set)
+	
+    fun print_sig_g () = 
+	SigSet.app P.print_sig (!sig_set_g)
 
-    fun find_file_acc file acc ({access, def, ...}:str_elem) = 
-	acc = access andalso locFile def = file
-
-    fun find_acc acc = find_file_acc (!source) acc
+    (****** end of set definitions *****)
 
     fun get_lvar0 set file test test2 (acc as A.PATH (a, slot)) = 
 	( case get_lvar0 set file test2 test2 a of
 	      NONE => NONE
 	    | SOME acc' =>
-	      case StrSet.find (find_file_acc (!file) acc') (!set) of
+	      case StrSet.find (str_pred (acc', !file)) (!set) of
 		  NONE => bug ("get_lvar0: " ^ A.prAcc acc)
 		| SOME {elements = Def l, ...} => 
 		  ( case List.find (fn (x, _, _) => x = slot) l of
@@ -354,17 +449,25 @@ in
     val get_var_lvar        = get_lvar  str_set   source     key_val key_str
     fun get_var_lvar_g file = get_lvar  str_set_g (ref file) key_val key_str
 
+    (* functions to propagate a region on all the elements of a path *)
     fun modify [] region = 
 	([], region)
       | modify (h :: q) (r1, _) = 
 	(q, (r1-1-String.size (Symbol.name h), r1-1))
+
+    fun modify' rpath (_, r2) = 
+	let (* +1 pour compenser le -1 qui aura lieu dans 
+	     * modify *)
+	    val region = (r2+1, r2+1)
+	 in modify rpath region
+	end
 
     (* when saying  A.x, or open A ... x, the use of A is added here *)
     (* gives back the lvar corresponding to the structure or variable *)
     fun add_implicite_use (A.PATH (access, slot0)) rpath region is_str = 
 	let fun add_uses (a as A.LVAR _) _ _ = 
 		let val (rpath, region) = modify rpath region in
-		    case StrSet.find (find_acc a) (!str_set) of
+		    case StrSet.find (str_pred (a, !source)) (!str_set) of
 			NONE => print "pb in add_implicite_use1\n"
 		      | SOME {usage, ...} => 
 			str_usage_rpath usage (loc_reg region) rpath;
@@ -375,7 +478,7 @@ in
 		    val a' = add_uses a' rpath region
 		    val a = get_str_lvar (A.PATH (a',slot))
 		in
-		    case StrSet.find (find_acc a) (!str_set) of
+		    case StrSet.find (str_pred (a, !source)) (!str_set) of
 			NONE => print "pb in add_implicite_use1\n"
 		      | SOME {usage, ...} => 
 			str_usage_rpath usage (loc_reg region) rpath;
@@ -391,45 +494,40 @@ in
       | add_implicite_use (access as A.LVAR _) _ _ _ = access
       | add_implicite_use _ _ _ _ = bug "add_implicite_use4"
 
-    fun str_find access = 
+    fun ext_str_find access = 
 	case 
 	    ExtSet.find 
-		(fn x => 
-		    ExtKey.compare (ExtStr {access = access, usage = ref []},x)
-		    = EQUAL)
+		(ext_str_pred access)
 		(!ext_set)
 	 of NONE => NONE
 	  | SOME (ExtStr a) => SOME a
-	  | SOME _ => bug "str_find"
+	  | SOME _ => bug "ext_str_find"
 
-    fun var_find access = 
+    fun ext_var_find access = 
 	case 
 	    ExtSet.find 
-		(fn x => 
-		    ExtKey.compare (ExtVar {access = access, usage = ref []},x)
-		    = EQUAL)
+		(ext_var_pred access)
 		(!ext_set)
 	 of NONE => NONE
 	  | SOME (ExtVar a) => SOME a
-	  | SOME _ => bug "str_find"
+	  | SOME _ => bug "ext_var_find"
 
     fun add_implicite_uses_ext (A.EXTERN _) _ _ = ()
       | add_implicite_uses_ext (a as A.PATH (a', _)) rpath region =
-	let val (rpath, region) = modify rpath region
+	let val (rpath', region) = modify rpath region
 	in
-	    case str_find a of
+	    case ext_str_find a of
 		NONE => 
-		add_ext (ExtStr {access = a,
-				 usage = ref [loc_reg region]})
+		(* maybe this usage should not be recorded *)
+		let val item = ExtStr{access = a, usage = ref [loc_reg region]}
+		in usage_rpath ext_def ext_set item rpath
+		end
 	      | SOME {usage, ...} => 
-		usage := loc_reg region :: !usage;
-	    add_implicite_uses_ext a' rpath region
+		(* maybe this usage should not be recorded *)
+		usage_rpath str_usage usage (loc_reg region) rpath;
+	    add_implicite_uses_ext a' rpath' region
 	end
       | add_implicite_uses_ext _ _ _ = bug "add_implicite_uses_ext"
-
-    fun print_ext () = 
-	ExtSet.app P.print_ext (!ext_set)
-
 
     fun add_var_def var 
 		    (r1, _)
@@ -463,13 +561,6 @@ in
 	    ty_to_ty' typ''
 	end
 
-    fun modify' rpath (_, r2) = 
-	let (* +1 pour compenser le -1 qui aura lieu dans 
-	     * modify *)
-	    val region = (r2+1, r2+1)
-	 in modify rpath region
-	end
-
     fun add_var_use (VC.VALvar {access, path = SymPath.SPATH path, typ, ...})
 		    region
 		    (typ' : T.tyvar list) = 
@@ -481,17 +572,19 @@ in
 		    let val rpath = rev path
 		    in
 			if is_available_rsl rpath then
-			    let val (rpath, region) = modify' rpath region
+			    let val (rpath', region) = modify' rpath region
 				val triplet = 
 				    (loc_reg region, get_ty' typ typ', access)
 			    in
-				case var_find access of
-				    NONE => 
-				    add_ext (ExtVar {access = access,
-						     usage = ref [triplet]})
+				case ext_var_find access of
+				    NONE =>
+				    let val item = ExtVar {access=access,
+							   usage=ref [triplet]}
+				    in usage_rpath ext_def ext_set item rpath
+				    end
 				  | SOME {usage, ...} => 
-				    usage := triplet :: !usage;
-				add_implicite_uses_ext suite rpath region
+				    usage_rpath var_usage usage triplet rpath;
+				add_implicite_uses_ext suite rpath' region
 			    end
 			else
 			    ()
@@ -499,79 +592,40 @@ in
 		  | _ => bug "add_var_use2"
 	      )
 	    | SOME true =>
-	      let val (rpath,region) = modify' (rev path) region
-		  val new_acc = add_implicite_use access rpath region false
+	      let val rpath = rev path
+		  val (rpath',region) = modify' rpath region
+		  val new_acc = add_implicite_use access rpath' region false
 	      in
-		  case VarSet.find
-			   (fn {access, def, ...} => access = new_acc andalso
-						     locFile def = !source
-			   )
-			   (!var_set) 
+		  case VarSet.find (var_pred (new_acc, !source)) (!var_set) 
 		   of NONE => ()
 		    | SOME {usage, ...} => 
 		      let val item = (loc_reg region, get_ty' typ typ', access)
-		       in var_usage usage item (List.last path)
+		       in usage_rpath var_usage usage item rpath
 		      end
 	      end
 	)
       | add_var_use _ _ _ = ()
 
-    fun print_var () = 
-	VarSet.app P.print_var (!var_set)
-			  
-    fun print_var_g () = 
-	VarSet.app P.print_var (!var_set_g)
-
-
     fun add_ty_def tycon region = 
-	let val (stamp, path, tycon'(*, dcons*)) = tycon_to_tycon' tycon in
-	    typ_set := TypSet.add ( !typ_set,
-				  { tycon = tycon',
-				    name = InvPath.last path,
-				    stamp = stamp,
-				    def = loc_reg region,
-				    usage = ref []}
-				)(*;
-	    case (tycon', dcons) of
-		((Datatype (_, sl) | Abstract sl), SOME dcons) =>
-		List.foldl
-		    ( fn (x, n) => (
-			 ConSet.add 
-			     ( !con_set,
-			       { name = x, 
-				 dataty = stamp,
-				 def = loc_reg region,
-				 ty=ty_to_ty' 
-					(Option.valOf 
-					     (#domain
-						  (#dcons 
-						       (Vector.sub(members,n))
-						  )
-					     )
-					),
-				 usage = ref []
-			       }
-			     );
-			 (n+1)
-			 )
-		    )
-		    0
-		    sl
-	      | ((Deftyc | Primtyc _), _) => 0;
-	    ()*)
+	let val (stamp, path, tycon') = tycon_to_tycon' tycon 
+	    val item = { tycon = tycon',
+			 name = InvPath.last path,
+			 stamp = stamp,
+			 def = loc_reg region,
+			 usage = ref []
+		       }
+	 in typ_def typ_set item
 	end
 
     fun add_ty_use ty region = 
 	let val region = loc_reg region in
 	    case ty_to_ty' ty of
-		Conty (General (st, p), _) =>
-		( case TypSet.find 
-			   (fn {stamp, ...} => Stamps.eq (stamp,st)) 
-			   (!typ_set) 
-		   of NONE =>  (*probablement un truc primitif, mais peut etre 
-				* un type extern*)
-		      if is_available p then (* c'est a dire qu'on a le fichier
-					      * ou le type est defini*)
+		Conty (General (st, rpath as InvPath.IPATH rpath'), _) =>
+		( case TypSet.find (typ_pred st) (!typ_set) 
+		   of NONE =>  (*probablement un truc primitif, mais peut 
+				* etre un type extern *)
+		      if is_available rpath then 
+			  (* on a le fichier ou le type est defini *)
 			  (*considerer les utilisations implicites*)
 			  case ExtSet.find 
 				   (fn (ExtType {stamp, ...}) => 
@@ -579,74 +633,52 @@ in
 				     | _ => false
 				   )
 				   (!ext_set)
-			   of NONE => add_ext (ExtType {stamp = st, 
-							usage = ref [region]}
-					      )
+			   of NONE => 
+			      let val item = ExtType {stamp = st, 
+						      usage = ref [region]}
+			      in usage_rpath ext_def ext_set item rpath'
+			      end
 			    | SOME (ExtType {usage, ...}) => 
-			      usage := region :: !usage
+			      usage_rpath typ_usage usage region rpath'
 			    | SOME _ => bug "add_ty_use"
 		      else
 			  ()
-		    | SOME {usage, ...} => usage := region :: (!usage)
+		    | SOME {usage, ...} => 
+		      usage_rpath typ_usage usage region rpath'
 		)
 	      | _ => ()
 	end
 
-    fun print_ty () = 
-	TypSet.app P.print_type (!typ_set)
-
-    fun print_ty_g () = 
-	TypSet.app P.print_type (!typ_set_g)
-
-    fun print_cons () = 
-	ConSet.app P.print_cons (!con_set)
-
-    fun print_cons_g () = 
-	ConSet.app P.print_cons (!con_set_g)
 
 
     fun add_sig_def sign region = 
-	let val {name, stamp, inferred, def, elements, alias, usage} = 
-		sig_to_elem sign in
-	    sig_set := SigSet.add ( !sig_set,
-				    { name = name, 
-				      stamp = stamp,
-				      inferred = inferred,
-				      def = loc_reg region,
-				      elements = elements,
-				      alias = alias,
-				      usage = usage
-				    }
-				  )
+	let val {name, stamp, inferred, def, elements, usage} = 
+		sig_to_elem sign
+	    val item = { name = name, 
+			 stamp = stamp,
+			 inferred = inferred,
+			 def = loc_reg region,
+			 elements = elements,
+			 usage = usage
+		       }
+	in
+	    (* if the rhs is a named signature, then its use should be counted 
+	     *)
+	    sig_def sig_set item
 	end
 
-    fun add_sig_use (M.SIG {name, stamp, ...}) region = 
-	( case SigSet.find 
-		   (fn {stamp = st, ...} => Stamps.eq (stamp, st)) 
-		   (!sig_set)
+    fun add_sig_use (M.SIG {stamp, ...}) region = 
+	(* one should check where the signature is defined, and either 
+	 * ignore it, or insert it in set_sig or insert it in ext_set*)
+	( case SigSet.find (sig_pred stamp) (!sig_set)
 	   of NONE => bug "add_sig_use"
 	    | SOME {usage, name, ...} => 
-	      usage := (loc_reg region, name) :: !usage
+	      sig_usage usage (loc_reg region) name
 	)
       | add_sig_use _ _ = 
 	bug "add_sig_use2"
 	
-    fun print_sig () = 
-	SigSet.app P.print_sig (!sig_set)
-	
-    fun print_sig_g () = 
-	SigSet.app P.print_sig (!sig_set_g)
-
-
-
-
-    fun print_str () = 
-	StrSet.app P.print_str (!str_set)
-
-    fun print_str_g () = 
-	StrSet.app P.print_str (!str_set_g)
-
-    fun get_path ({rpath = InvPath.IPATH rpath, ...}:M.strEntity) = 
+     fun get_path ({rpath = InvPath.IPATH rpath, ...}:M.strEntity) = 
 	rpath
 
     fun add_str_use (M.STR {access, rlzn, ...}) region = 
@@ -659,16 +691,19 @@ in
 		      A.PATH (suite, _) =>
 		      if is_available_rsl rpath then
 			  (* a verifier *)
-			  let val (rpath, region) = modify' rpath region in
-			      case str_find access of
+			  let val (rpath', region) = modify' rpath region in
+			      case ext_str_find access of
 				  NONE => 
-				  add_ext (ExtStr {access = access,
-						   usage = ref [loc_reg region]
-						  }
-					  )
+				  let val item = 
+					  ExtStr {access = access,
+						  usage = ref [loc_reg region]}
+				      
+				  in usage_rpath ext_def ext_set item rpath
+				  end
 				| SOME {usage, ...} => 
-				  usage := loc_reg region :: !usage;
-			      add_implicite_uses_ext suite rpath region
+				  usage_rpath str_usage usage 
+					      (loc_reg region) rpath;
+			      add_implicite_uses_ext suite rpath' region
 			  end
 		      else
 			  ()
@@ -676,20 +711,17 @@ in
 	      end
 	    | SOME true => 
 	      (*local*)
-	      let val (rpath, region) = modify' (get_path rlzn) region
-		  val new_acc = add_implicite_use access rpath
+	      let val rpath = get_path rlzn
+		  val (rpath', region) = modify' rpath region
+		  val new_acc = add_implicite_use access rpath'
 						  region true
 	      in
-		  case StrSet.find 
-			   (fn {access, def, ...} => access = new_acc andalso
-						     locFile def = !source
-			   ) 
-			   (!str_set)
+		  case StrSet.find (str_pred (new_acc, !source)) (!str_set)
 		   of NONE => 
 		      bug ("add_str_use1 " ^ A.prAcc access ^ " " ^ 
 			   A.prAcc new_acc)
 		    | SOME {usage, ...} => 
-		      str_usage_rpath usage (loc_reg region) rpath
+		      usage_rpath str_usage usage (loc_reg region) rpath
 	      end
 	    | NONE => 
 	      (*NO_ACCESS*) 
@@ -706,22 +738,23 @@ in
 	     *    structure A = Array; 
 	     *    structure s = struct open A end
 	     * you will think when binding the content of s that it comes
-	     * from inside the current because its access will be : 
-	     * PATH (accessA = LVAR ?, slot)
+	     * from inside the current file because its access will be : 
+	     * PATH (accessA = LVAR _, slot)
 	     * But when trying to simplify PATH ... into an LVAR, you will
-	     * arrive on EXTERN ? and raise an exception
+	     * arrive on an EXTERN _ and raise a bug
 
 	     * solution : try to simplify in every cases and if it doesn't
 	     * work, use the access you began with
+
+	     * consequence : in Def elements of structures, accesses are either
+	     * LVAR that are defined in the same file as the structure,
+	     * or a PATH that ultimately points to an other file in any other 
+	     * cases
 	     *)
 
 	    let val access' = 
 		    case get_var_lvar0 access of
 			NONE => access 
-		      (* should make a distinction between  the external 
-		       * references whose source is available and the others. 
-		       * Can be done in get_lvar0, at the line that deals with 
-		       * EXTERN *)
 		      | SOME access' => access'
 	    in
 		(SymPath.last path, Var access')
@@ -734,16 +767,6 @@ in
 	    in
 		(InvPath.last rpath, Str access')
 	    end
-	    (*let val access' = 
-		    case is_accessible access of
-			NONE => bug "binding_to_symbolkey2"
-		      | SOME false => 
-			access (* should be taken care of at merging*)
-		      | SOME true => 
-			get_str_lvar access 
-	    in*)
-		(*InvPath.last rpath, Str access*)
-	    (*end*)
 	  | _ => bug "binding_to_symbolkey : non implemente"
           (*| B.CONbind VarCon.datacon => 
 	  | B.TYCbind Types.tycon =>
@@ -752,32 +775,8 @@ in
 	  | B.FCTbind Modules.Functor => 
 	  | B.FIXbind Fixity.fixity =>*)
 		 
-    (*fun symbolkey_to_slotsymbolkey sig_elements (s,k as Var _) = 
-	( case List.find (fn (symbol, _) => symbol = s) sig_elements of
-	      NONE => bug "symbolkey_to_slotsymbolkey1"
-	    | SOME (_, M.VALspec {slot, ...}) =>
-	      (slot, s, k)
-	    | SOME _ => bug "symbolkey_to_slotsymbolkey1.5"
-	)
-      | symbolkey_to_slotsymbolkey sig_elements (s,k as Str a) = 
-	( case List.find (fn (symbol, _) => symbol = s) sig_elements of
-	      NONE => 
-	      ((* List.app 
-		    (fn (x, _) => print (Symbol.name x ^ ","))
-		    sig_elements;
-		print "\n";
-		bug ("symbolkey_to_slotsymbolkey2 " ^ Symbol.name s ^ 
-		     " " ^ A.prAcc a)*)
-		    (~1,s,Str a)
-	      )
-	    | SOME (_, M.STRspec {slot, ...}) =>
-	      (slot, s, k)
-	    | SOME _ => bug "symbolkey_to_slotsymbolkey2.5"
-	)
-      | symbolkey_to_slotsymbolkey _ _ = 
-	bug "symbolkey_to_slotsymbolkey: non implemente"*)
-
-    (* should work if binding lists are ordered on the slot *)
+    (* assumption : the binding list (and thus the symbolkey list) are ordered 
+     * by increasing slot number, starting with 0 and without any gaps *)
     fun symbolkeylist_to_slotsymbolkeylist l = 
 	let fun trans ((s,k) :: q) n = 
 		(n, s, k) :: trans q (n+1)
@@ -789,7 +788,7 @@ in
       | slotsymbolkey_to_slotsymbolkey' (SOME bindings) (slot, s, Var _) =
 	( case List.find 
 		   ( fn (B.VALbind (VC.VALvar {path, ...})) =>
-			SymPath.last path = s
+			S.eq (SymPath.last path, s)
 		      | _ => false
 		   )
 		   bindings
@@ -800,7 +799,7 @@ in
       | slotsymbolkey_to_slotsymbolkey' (SOME bindings) (slot, s, Str _) =
 	( case List.find 
 		   (fn (B.STRbind (M.STR {rlzn = {rpath, ...}, ...})) =>
-		       InvPath.last rpath = s
+		       S.eq (InvPath.last rpath, s)
 		     | _ => false
 		   )
 		   bindings
@@ -830,11 +829,7 @@ in
 			add_sig_def sign region
 		    else
 			add_sig_use sign region
-	    (*val def_elements = 
-		List.map (slotsymbolkey_to_slotsymbolkey' bl1_option o 
-			  symbolkey_to_slotsymbolkey elements o
-			  binding_to_symbolkey)	
-			 bl2*)
+
 	    val def_elements = 
 		List.map (slotsymbolkey_to_slotsymbolkey' bl1_option)
 		( symbolkeylist_to_slotsymbolkeylist 
@@ -889,11 +884,7 @@ in
 	      | get_slot _ = bug "add_str_sig_alias.get_slot"
 	    fun get_slot' (a, b, (Var c | Str c)) = (a, b, get_slot c)
 	      | get_slot' _ = bug "add_str_sig_alias.get_slot'"
-	    (*val def_elements = 
-		List.map (get_slot' o 
-			  symbolkey_to_slotsymbolkey elements o
-			  binding_to_symbolkey)	
-			 bindinglist*)
+
 	    val def_elements = 
 		List.map get_slot'
 			 ( symbolkeylist_to_slotsymbolkeylist 
@@ -902,8 +893,12 @@ in
 	    val elements = 
 		case (!acc, rhs) of
 		    (A.NO_ACCESS, _) => 
-		    (* the rhs structure is empty, how to get
-		     * its access ? *)
+		    (* special case where the structure is match against an 
+		     * empty signature
+		     * we don't have the access of the rhs signature, so we 
+		     * can't defined a Constraint
+		     * so, this is considered an empty definition and 
+		     * the rhs is not considered as being used *)
 		    Def []
 		  | (rhs_access, M.STR {sign, access, rlzn, prim}) =>
 		       let val rhs' = 
@@ -955,6 +950,7 @@ in
 
 
     fun clear () = (
+	clear_lvar ();
 	var_set := VarSet.empty;
 	typ_set := TypSet.empty;
 	con_set := ConSet.empty;
@@ -965,13 +961,6 @@ in
 	source := "";
 	extRefInfo := (fn _ => NONE)
     )
-
-    (* is it necessary to split this function in two now that there is local 
-     * sets and global sets ? *)
-    fun clear_all () = 
-	( clear ();
-	  clear_lvar ()
-	)
 
     fun get_strings (a, b, c, d, e, f, g, h, i) = 
 	( SerializeDB.varToString  (VarSet.listItems a),
@@ -1001,8 +990,11 @@ in
 	let val (a,b,c,d,e,f,g,h,i) = 
 		get_strings (!var_set, !typ_set, !con_set, !str_set,
 			     !sig_set, !ext_set, !lvar_ext, !pid, !occ_set)
-	in String.concat 
-	       [a,"\n",b,"\n",c,"\n",d,"\n",e,"\n",f,"\n",g,"\n",h,"\n",i,"\n"]
+	    fun insert s [] = 
+		[]
+	      | insert s (h :: q) = 
+		h :: s :: insert s q
+	in String.concat (insert "\n" [a,b,c,d,e,f,g,h,i])
 	end
 
     fun load_return source = 
@@ -1015,12 +1007,14 @@ in
 	end
 
     fun get_file e = 
-	case PidFileSet.find (fn (pid, _) => pid = e) (!pid_file) of
-	    NONE => bug "get_file"
+	case PidFileSet.find 
+		 (fn (pid, _) => persstamps_eq (pid,e)) 
+		 (!pid_file) 
+	 of NONE => bug "get_file"
 	  | SOME (_, filename) => filename
 
     fun modify_path (a as A.PATH (A.EXTERN e, _)) lv = 
-	( case LvarExtSet.find (fn (ext_acc, _) => ext_acc = a) lv of
+	( case LvarExtSet.find (fn (ext_acc, _) => equal_acc a ext_acc) lv of
 	      NONE => bug ("modify_path2 " ^ A.prAcc a)
 	    | SOME (_, loc_acc) => (loc_acc, get_file e)
 	)
@@ -1038,10 +1032,7 @@ in
 			(pair as (A.PATH _, _)) => pair
 		      | _ => bug "distribution.ExtVar1"
 		val lvar = get_var_lvar_g sourcename acc
-	    in case VarSet.find (fn {access, def, ...} => 
-				    access = lvar andalso
-				    locFile def = sourcename
-				) (!va)
+	    in case VarSet.find (var_pred (lvar,sourcename)) (!va)
 		of NONE => bug ("distribution.ExtVar: " ^ A.prAcc access ^ 
 				" " ^ sourcename)
 		 | SOME {usage = u, name, ...} => 
@@ -1050,10 +1041,7 @@ in
 	  | ExtStr {access, usage} =>
 	    let val (acc, sourcename) = modify_path access lv
 		val lvar = get_str_lvar_g sourcename acc
-	    in case StrSet.find (fn {access, def, ...} => 
-				    access = lvar andalso
-				    locFile def = sourcename
-				) (!st) of
+	    in case StrSet.find (str_pred (lvar,sourcename)) (!st) of
 		   NONE => bug ("distribution.ExtStr " ^ A.prAcc access ^ " " ^
 				A.prAcc lvar)
 		 | SOME {usage = u, ...} => u := !usage @ !u
@@ -1093,6 +1081,10 @@ in
 					str_set_g, sig_set_g, !lvar_ext)
 	in 
 	    ExtSet.app distrib ext;
+	    (* ICI, IL FAUT SIMPLIFIER STR_SET2 EN REGARDANT LES DEFINITIONS
+	     *  EXTERIEURES (C'EST A DIRE PATH (_) CAR LES AUTRES ONT ETE 
+	     * SIMPLIFIEES EN LVAR) ET EN LES REMPLACANT SOMEHOW PAR UN COUPLE
+	     * (LVAR, FILEPATH) *)
 	    occ_set_g := OccSetG.add (!occ_set_g, (occ, sourcefile));
 	    var_set_g := VarSet.union (!var_set_g, !var_set2);
 	    typ_set_g := TypSet.union (!typ_set_g, !typ_set2);
@@ -1110,13 +1102,13 @@ in
 	    let val pid = get_pid sourcefile
 		val (to_be_added, others) = 
 		    ExtSet.partition 
-			(fn ExtStr {access, ...} => get_hash access = pid
-			  | ExtVar {access, ...} => get_hash access = pid
+			(fn (ExtStr {access, ...}|ExtVar {access, ...}) => 
+			    persstamps_eq (get_hash access, pid)
 			  | _ => false)
-			(!ext_set_removed)
+			(!ext_set_g)
 	    in
 		ExtSet.app distrib to_be_added;
-		ext_set_removed := others
+		ext_set_g := others
 	    end
 	end
 
@@ -1137,11 +1129,7 @@ in
 	end
 	
     fun find_son access_par access_son file good_key = 
-	case StrSet.find 
-		 (fn {access = access1, def, ...} => 
-		     access1 = access_par andalso 
-		     locFile def = file)
-		 (!str_set_g)
+	case StrSet.find (str_pred (access_par, file)) (!str_set_g)
 	 of NONE => bug "find_son"
 	  | SOME {elements = Alias a, ...} =>
 	    find_son a access_son file good_key
@@ -1161,22 +1149,16 @@ in
 	    
     fun externalize_str access file = 
 	let fun find_son2 x y = 
-		find_son x y file (fn (Str a,a2) => a = a2 | _ => false)
+		find_son x y file (fn(Str a,a2) => equal_acc a a2 | _ => false)
 	    fun str access = 
-		case StrSet.find 
-			 (fn {access = access1, def, ...} => 
-			     access1 = access andalso locFile def = file)
-			 (!str_set_g)
+		case StrSet.find (str_pred (access, file)) (!str_set_g)
 		 of NONE => bug "externalize1"
 		  | SOME {parent = SOME access_loc_parent, ...} =>
 		    let val access_lvar_parent= get_str_lvar access_loc_parent
 			val access_ext_parent = str access_lvar_parent
 			val is_alias = 
 			    ( case StrSet.find 
-				       (fn {access, def, ...} => 
-					   access_lvar_parent = access andalso 
-					   locFile def = file
-				       )
+				       (str_pred (access_lvar_parent, file))
 				       (!str_set_g)
 			       of NONE => bug "externalize2"
 				| SOME {elements = Alias a, ...} => true
@@ -1194,8 +1176,8 @@ in
 		    let val pid = get_pid file in
 		    case LvarExtSet.find 
 			     (fn (A.PATH (A.EXTERN e, _), y) => 
-				 e = pid andalso
-				 y = access
+				 persstamps_eq (e,pid) andalso
+				 equal_acc y access
 			       | _ => bug "externalize 4"
 			     )
 			     (!lvar_ext)
@@ -1213,12 +1195,9 @@ in
 	A.PATH (externalize_str access file, slot)
       | externalize_var (access as A.LVAR _) file =
 	let fun find_son2 x y = 
-		find_son x y file (fn (Var a, a2) => a = a2 | _ => false)
+		find_son x y file (fn (Var a, a2)=> equal_acc a a2 | _ =>false)
 	in 
-	    case VarSet.find (fn {access = access1, def, ...} => 
-				 access1 = access andalso 
-				 locFile def = file)
-			     (!var_set_g)
+	    case VarSet.find (var_pred (access,file)) (!var_set_g)
 	     of NONE => bug "externalize_var"
 	      | SOME {parent, ...} => 
 		A.PATH (externalize_str parent file, 
@@ -1237,9 +1216,9 @@ in
 				    (!usage)
 			in
 			    if not (List.null usage) then
-				ext_set_removed := 
+				ext_set_g := 
 				ExtSet.add 
-				    ( !ext_set_removed,
+				    ( !ext_set_g,
 				      ExtVar {access = 
 					      externalize_var access 
 							      file, 
@@ -1275,9 +1254,9 @@ in
 				    (!usage)
 			in
 			    if not (List.null usage) then
-				ext_set_removed := 
+				ext_set_g := 
 				ExtSet.add 
-				    ( !ext_set_removed,
+				    ( !ext_set_g,
 				      ExtStr {access = 
 					      externalize_str access 
 							      file, 
