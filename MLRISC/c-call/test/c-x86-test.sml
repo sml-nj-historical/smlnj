@@ -108,22 +108,21 @@ structure X86MLTreeEval =
 structure X86GasPseudoOps = 
    X86GasPseudoOps(structure T=X86MLTree
 		   structure MLTreeEval=X86MLTreeEval)
-
+(*
 functor X86PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = X86GasPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-
-(*
+*)
 functor X86PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = X86DarwinPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-*)
+
 structure X86PseudoOps = X86PseudoOpsFn(
             structure T = X86MLTree
             structure MLTreeEval = X86MLTreeEval)
@@ -405,6 +404,7 @@ structure X86MLRISCGen =
 	           callComment=NONE,
 	           proto=proto,
 	           args=args}
+
 	fun wordLit i = T.LI (T.I.fromInt (wordTy, i))
 	val stms = List.concat [
 		   [T.EXT(X86InstrExt.PUSHL(T.REG(32, C.ebp))),

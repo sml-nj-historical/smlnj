@@ -61,24 +61,27 @@ functor SparcCConventionFn (
     fun fpr r = (64, FPR, r)
     fun fprs rs = List.map fpr rs
 
-    val useRegs = #2 o SA.useRegs
-
-  (* conventions for calling a C function *)
+  (* convention for calling a C function *)
+    val (cParam, paramRegs) = SA.useRegs (List.map gpr [r8, r9, r10, r12, r13])
     val cStack = SA.freshCounter()
     val params = [
 	  SA.WIDEN (fn w => Int.max(32, w)),
-	  useRegs (List.map gpr [r8, r9, r10, r12, r13]),
+	  paramRegs,
 	  SA.OVERFLOW{counter=cStack, blockDirection=SA.UP, maxAlign=8}
 	]
 
-  (* rules for returning values *)
-    val returns = [
+  (* convention for returning values *)
+    val (cFRet, retFlt) = SA.useRegs (List.map fpr [f0, f1])
+    val (cRet, retGpr) = SA.useRegs (List.map gpr [r8])
+    val return = [
 	  SA.WIDEN (fn w => Int.max(32, w)),
 	  SA.CHOICE [
-	    (fn (w, k, store) => k = FPR, useRegs (List.map fpr [f0, f1])),
-	    (fn (w, k, store) => true, useRegs (List.map gpr [r8]))
+	    (fn (w, k, store) => k = FPR, retFlt),
+	    (fn (w, k, store) => true, retGpr)
 	  ]
 	]
 
+  (* initial store *)
+    val store0 = SA.init[cStack, cParam, cFRet, cRet]
 
   end

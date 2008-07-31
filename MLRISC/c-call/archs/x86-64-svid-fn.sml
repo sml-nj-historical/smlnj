@@ -28,21 +28,21 @@ functor X86_64SVIDFn (
     fun offSp 0 = spReg
       | offSp offset = T.ADD (wordTy, spReg, T.LI offset)
 
-    structure CCall = CCallFn (
-		        structure T = T
-			structure C = C
-			val wordTy = wordTy
-			val offSp = offSp)
-
-    datatype c_arg = datatype CCall.c_arg
-    datatype arg_location = datatype CCall.arg_location
-
     datatype loc_kind = datatype CLocKind.loc_kind
 
     structure SA = StagedAllocationFn (
                          type reg_id = T.reg
                          datatype loc_kind = datatype loc_kind
 			 val memSize = 8 (* bytes *))
+
+    structure CCall = CCallFn (
+		        structure T = T
+			structure C = C
+			val wordTy = wordTy
+			val offSp = offSp
+			structure SA = SA)
+
+    datatype c_arg = datatype CCall.c_arg
 
     structure CCs = X86_64CConventionFn (
 		      structure SA = SA
@@ -139,33 +139,22 @@ functor X86_64SVIDFn (
 			   | _ => raise Fail "malformed C type"
 			(* end case *))
 
-  (* convert staged allocation locations to C locations *)
-    fun locToC (SA.NARROW (SA.REG (_, GPR, r), w, GPR)) = 
-	  CCall.C_GPR (w, r)
-      | locToC (SA.NARROW (SA.REG (_, FPR, r), w, FPR)) = 
-	  CCall.C_FPR (w, r)
-      | locToC (SA.NARROW (SA.BLOCK_OFFSET (_, (GPR | FPR | STK | FSTK), offB), w, (GPR | FPR | STK | FSTK))) = 
-  	   CCall.C_STK (w, T.I.fromInt (wordTy, offB))
-      | locToC _ = raise Fail "impossible"
-
   (* given a return type, return the locations for the return values *)
     fun layoutReturn retTy = (case retTy
  	    of CTy.C_void => ([], NONE, CCs.store0)
+	     | retTy as CTy.C_STRUCT _ => raise Fail "todo"
 	     | retTy => let
 		   val (locs, store) = SA.allocateSeq CCs.returns (reqsOfCTy retTy, CCs.store0)
-		   val {sz, align} = CSizes.sizeOfTy retTy
 	           in
-		      (List.map locToC locs, SOME {szb=sz, align=align}, store)
+		      (locs, NONE, store)
 	           end
             (* end case *))
 
   (* given a store and some parameters, return the C locations for those parameters *)
     fun layoutCall (store, paramTys) = let
 	   val paramReqs = List.map reqsOfCTy paramTys
-	   val (paramLocss, store) = SA.allocateSeqs CCs.params (paramReqs, store)
-	   val paramCLocss = List.map (List.map locToC) paramLocss 
            in
-	      (paramCLocss, store)
+	      SA.allocateSeqs CCs.params (paramReqs, store)
            end
 
     fun layout {conv, retTy, paramTys} = let
@@ -178,30 +167,13 @@ functor X86_64SVIDFn (
 	      {argLocs=paramLocss, argMem=argMem, structRetLoc=structRetLoc, resLocs=resLocs}
 	   end
 
-  (* copy the return value into the result location *)
-    fun returnVals resLocs = (case resLocs
-         of [] => ([], [])
-	  | [CCall.C_GPR (ty, r)] => let
-		val resReg = C.newReg ()
-	    in
-		([T.GPR (T.REG (ty, resReg))],	 
-		 [T.COPY (ty, [resReg], [r])])
-	    end
-	  | [CCall.C_FPR (ty, r)] => let
-		val resReg = C.newFreg ()
-	    in
-		([T.FPR (T.FREG (ty, resReg))],
-		 [T.FCOPY (ty, [resReg], [r])])
-	    end
-         (* end case *))
-
     fun genCall {name, proto, paramAlloc, structRet, saveRestoreDedicated, callComment, args} = let
-	val {argLocs, argMem, resLocs, structRetLoc} = layout(proto)
-	val argAlloc = if ((#szb argMem = 0) orelse paramAlloc argMem)
+	val {argLocs, argMem, resLocs, structRetLoc} = layout proto
+	val argAlloc = if (#szb argMem = 0 orelse paramAlloc argMem)
 			then []
 			else [T.MV (wordTy, C.rsp, T.SUB (wordTy, spReg, 
 			      T.LI (T.I.fromInt (wordTy, #szb argMem))))]
-	val (copyArgs, gprUses, fprUses) = CCall.copyArgs(args, argLocs)
+	val (copyArgs, gprUses, fprUses) = CCall.writeLocs(args, argLocs)
        (* the defined registers of the call depend on the calling convention *)
  	val defs = (case #conv proto
             of "ccall" => List.map (gpr o #2) callerSaveRegs' @ List.map fpr callerSaveFRegs'
@@ -212,7 +184,7 @@ functor X86_64SVIDFn (
             (* end case *))
 	val uses = List.map gpr gprUses @ List.map fpr fprUses
 	val callStm = T.CALL {funct=name, targets=[], defs=defs, uses=uses, region=mem, pops=0}
-	val (resultRegs, copyResult) = returnVals(resLocs)
+	val (resultRegs, copyResult) = CCall.readLocs resLocs
 	val callSeq = argAlloc @ copyArgs @ [callStm] @ copyResult
         in
           {callseq=callSeq, result=resultRegs}

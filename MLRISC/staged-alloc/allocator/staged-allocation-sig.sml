@@ -64,6 +64,9 @@ signature STAGED_ALLOCATION =
 
     exception StagedAlloc of string
 
+  (* bit width of a machine location *)
+    val width : loc -> int
+
   (* Create a counter. *)
     val freshCounter : unit -> counter
 

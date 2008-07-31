@@ -3,7 +3,16 @@ functor CCallFn (
     structure C : CELLS
     val offSp : T.I.machine_int -> T.rexp
     val wordTy : int
+		 
+    structure SA : STAGED_ALLOCATION
+          where type reg_id = T.reg
+          where type loc_kind = CLocKind.loc_kind
+
   ) = struct
+
+    structure K = CLocKind
+
+    fun concatMap f ls = List.concat(List.map f ls)
 
     datatype c_arg 
       = ARG of T.rexp	
@@ -13,15 +22,6 @@ functor CCallFn (
 	   *)
       | FARG of T.fexp
 	  (* fexp specifies floating-point argument *)
-
-    (* An arg_location specifies the location of arguments/parameters
-     * for a C call.  Offsets are given with respect to the low end 
-     * of the parameter area. *)
-    datatype arg_location =
-	C_GPR  of (T.ty * T.reg) (* integer/pointer argument in register *)
-      | C_FPR  of (T.fty * T.reg) (* floating-point argument in register *)
-      | C_STK  of (T.ty * T.I.machine_int)  (* integer/pointer argument on the call stack *)
-      | C_FSTK of (T.fty * T.I.machine_int) (* floating-point argument on the call stack *)
 
     fun copyToReg (mty, r, e) = let
 	val tmp = C.newReg ()
@@ -37,55 +37,167 @@ functor CCallFn (
 
     val stack = T.Region.stack
 
-    fun lit i = T.LI (T.I.fromInt (32, i))
+    fun litInt i = T.I.fromInt(wordTy, i)
+    val lit = T.LI o litInt
+    val offSp = offSp o litInt
 
-    (* generate MLRISC statements for copying a C argument to a parameter / return location *)
-    fun copyLoc arg (i, loc, (stms, gprs, fprs)) = (case (arg, loc)
-          (* GPR arguments *)
-         of (ARG (e as T.REG _), C_STK (mty, offset)) =>
-	    (T.STORE (wordTy, offSp offset, e, stack) :: stms, gprs, fprs)
-	  | (ARG (T.LOAD (ty, e, rgn)), C_GPR (mty, r)) =>
-	    (copyToReg(mty, r, T.LOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) @ stms, r :: gprs, fprs)
-	  | (ARG (T.LOAD (ty, e, rgn)), C_STK (mty, offset)) => let
-	    val tmp = C.newReg ()
-	    in
-		(T.STORE (ty, offSp offset, T.REG (ty, tmp), stack) :: 
-		 T.MV (ty, tmp, T.LOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) :: stms, gprs, fprs)
-	    end
-	  | (ARG e, C_STK (mty, offset)) => let
-	     val tmp = C.newReg ()
-	     in
-		(T.STORE (wordTy, offSp offset, T.REG (wordTy, tmp), stack) ::T.MV (wordTy, tmp, e) :: stms, gprs, fprs)
-	      end
-	  | (ARG e, C_GPR (mty, r)) => (copyToReg(mty, r, e) @ stms, r :: gprs, fprs)
-          (* floating-point arguments *)
-	  | (FARG (e as T.FREG _), C_STK (mty, offset)) =>
-	    (T.FSTORE (mty, offSp offset, e, stack) :: stms, gprs, fprs)
-	  | (ARG (T.LOAD (ty, e, rgn)), C_FPR (mty, r)) =>
-	    (copyToFReg(mty, r, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) @ stms, gprs, (mty, r) :: fprs)
-	  | (FARG (T.FLOAD (ty, e, rgn)), C_FSTK (mty, offset)) => let
-	    val tmp = C.newFreg ()
-	    in
-		(T.FSTORE (mty, offSp offset, T.FREG (mty, tmp), stack) :: 
-		 T.FMV (mty, tmp, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) :: stms, gprs, fprs)
-	    end
-	  | (FARG e, C_FSTK (mty, offset)) => let
-	    val tmp = C.newFreg ()
-	    in
-		(T.FSTORE (mty, offSp offset, T.FREG (mty, tmp), stack) :: T.FMV (mty, tmp, e) :: stms, gprs, fprs)
-	    end
-	  | (FARG e, C_FPR (mty, r)) => (copyToFReg(mty, r, e) @ stms, gprs, (mty, r) :: fprs)
-	  | _ => raise Fail "invalid arg / location combination"
+  (* returns any general-purpose register IDs used in a machine location *)
+    fun gprsOfLoc (SA.REG (_, K.GPR, r)) = [r]
+      | gprsOfLoc (SA.COMBINE (l1, l2)) = gprsOfLoc l1 @ gprsOfLoc l2
+      | gprsOfLoc (SA.NARROW (l, _, K.GPR)) = gprsOfLoc l
+      | gprsOfLoc _ = []
+
+  (* returns any floating-point register IDs used in a machine location *)
+    fun fprsOfLoc (SA.REG (w, K.FPR, r)) = [(w, r)]
+      | fprsOfLoc (SA.COMBINE (l1, l2)) = fprsOfLoc l1 @ fprsOfLoc l2
+      | fprsOfLoc (SA.NARROW (l, _, K.FPR)) = fprsOfLoc l
+      | fprsOfLoc _ = []
+
+  (* eliminate redundant narrows, i.e., narrow.32(r1.32) == r1.32 *)
+    fun elimNarrow (loc as SA.NARROW(SA.REG(wr, kr, r), wn, kn)) =
+	  if kr = kn andalso wr = wn
+	     then SA.REG(wr, kr, r)
+	  else loc
+      | elimNarrow (loc as SA.NARROW(SA.BLOCK_OFFSET(wb, kb, offset), wn, kn)) =
+	  if kb = kn andalso wb = wn
+	     then SA.BLOCK_OFFSET(wb, kb, offset)
+	  else loc
+      | elimNarrow (SA.COMBINE(l1, l2)) = SA.COMBINE(elimNarrow l1, elimNarrow l2)
+      | elimNarrow loc = loc
+
+    (* write argument data to a machine location
+     *   - arg is the argument data
+     *   - i is an offset into the argument data (i.e., to access a member of a struct)
+     *   - loc is the machine location
+     *   - stms is the accumulator of machine instructions
+     *)
+    fun writeLoc arg (i, loc, stms) = (
+	  case (arg, loc)
+	   of (ARG (e as T.REG _), SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset)) =>
+	      (* register to stack (gpr) *)
+	      T.STORE(wordTy, offSp offset, e, stack) :: stms
+	    | (ARG (e as T.REG _), SA.NARROW(SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset), w', (K.GPR | K.STK))) =>
+	      (* register to stack with width conversion (gpr) *)
+	      T.STORE(w, offSp offset, T.SX(w, w', e), stack) :: stms
+	    | (ARG (T.LOAD (ty, e, rgn)), SA.REG (w, K.GPR, r)) =>
+	      (* memory to register (gpr) *)
+	      copyToReg(w, r, T.LOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) @ stms
+	    | (ARG (T.LOAD (ty, e, rgn)), SA.NARROW(SA.REG (w, K.GPR, r), w', K.GPR)) =>
+	      (* memory to register with conversion (gpr) *)
+	      copyToReg(w, r, T.SX(w, w', T.LOAD (w', T.ADD(wordTy, e, lit (i*8)), rgn))) @ stms
+	    | (ARG (T.LOAD (ty, e, rgn)), SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset)) => let
+	      (* memory to stack (gpr) *)
+		val tmp = C.newReg ()
+	        in
+		  T.STORE (ty, offSp offset, T.REG (ty, tmp), stack) :: 
+		  T.MV (ty, tmp, T.LOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) :: stms
+	        end
+	    | (ARG (T.LOAD (ty, e, rgn)), SA.NARROW(SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset), w', K.GPR)) => let
+	      (* memory to stack with conversion (gpr) *)
+		val tmp = C.newReg ()
+	        in
+		  T.STORE (w, offSp offset, T.REG (w, tmp), stack) :: 
+		  T.MV (w, tmp, T.SX(w, w', T.LOAD (w', T.ADD(wordTy, e, lit (i*8)), rgn))) :: stms
+	        end
+	    | (ARG e, SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset)) => let
+	      (* expression to stack (gpr) *)
+		val tmp = C.newReg ()
+	        in
+		  T.STORE (w, offSp offset, T.REG (w, tmp), stack) :: T.MV (w, tmp, e) :: stms
+	        end
+	    | (ARG e, SA.NARROW(SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset), w', K.GPR)) => let
+	      (* expression to stack with conversion (gpr) *)
+		val tmp = C.newReg ()
+	        in
+		  T.STORE (w, offSp offset, T.REG (w, tmp), stack) :: T.MV (w, tmp, T.SX(w, w', e)) :: stms
+	        end
+	    | (FARG (e as T.FREG _), SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) =>
+	      (* register to stack (fpr) *)
+	      T.FSTORE (w, offSp offset, e, stack) :: stms
+	    | (ARG (T.LOAD (ty, e, rgn)), SA.REG(w, K.FPR, r)) =>
+	      (* memory to register (fpr) *)
+	      copyToFReg(w, r, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) @ stms
+	    | (FARG (T.FLOAD (ty, e, rgn)), SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) => let
+              (* memory to stack (fpr) *)
+		val tmp = C.newFreg ()
+	        in
+		  T.FSTORE (w, offSp offset, T.FREG (w, tmp), stack) :: 
+		  T.FMV (w, tmp, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) :: stms
+	        end
+	    | (FARG e, SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) => let
+              (* expression to stack (fpr) *)
+		val tmp = C.newFreg ()
+	        in
+		  T.FSTORE (w, offSp offset, T.FREG (w, tmp), stack) :: T.FMV (w, tmp, e) :: stms
+	        end
+	    | (FARG e, SA.REG(w, K.FPR, r)) => 
+	      (* expression to register (fpr) *)
+	      copyToFReg(w, r, e) @ stms
+	    | _ => raise Fail "invalid arg / loc pair"
+          (* end case *))
+
+  (* write a C argument to some parameter locations *)
+    fun writeLocs' (arg, locs, stms) = let
+	  val locs = List.map elimNarrow locs
+          in
+	     ListPair.foldl (writeLoc arg) stms (List.tabulate(List.length locs, fn i => i), locs)
+          end
+
+  (* write C arguments to parameter locations; also return any used GPRs or FPRs *)
+    fun writeLocs (args, argLocs) = let
+	  val gprs = concatMap gprsOfLoc (List.concat argLocs)
+	  val fprs = concatMap fprsOfLoc (List.concat argLocs)
+	  val instrs = ListPair.foldl writeLocs' [] (args, argLocs)
+          in
+	     (List.rev instrs, gprs, fprs)
+          end
+
+  (* read from a machine location *)
+    fun readLoc (loc, (resultRegs, copyResult)) = (
+	  case elimNarrow loc
+	   of SA.REG(w, K.GPR, r) => let
+                (* register (gpr) *)
+		val tmpR = C.newReg()
+	        in
+		  (T.GPR(T.REG(w, tmpR)) :: resultRegs, T.COPY(w, [tmpR], [r]) :: copyResult)
+	        end
+	    | SA.NARROW(loc, w', K.GPR) => let
+                (* conversion (gpr) *)
+		val ([resultReg as T.GPR(T.REG(_, tmp))], copyResult') = readLoc(loc, ([], []))
+		val w = SA.width loc
+	        in
+		  (resultReg :: resultRegs, T.MV(w, tmp, T.ZX(w, w', T.REG (w', tmp))) :: copyResult' @ copyResult)
+	        end
+	    | SA.REG(w, K.FPR, r) => let
+		val resReg = C.newFreg()
+	        in
+		   (T.FPR(T.FREG(w, resReg)) :: resultRegs, T.FCOPY(w, [resReg], [r]) :: copyResult)
+	        end
+	    | SA.NARROW(loc, w', K.FPR) => let
+                (* conversion (fpr) *)
+		val ([resultReg as T.FPR(T.FREG(_, tmp))], copyResult') = readLoc(loc, ([], []))
+		val w = SA.width loc
+	        in
+		   (resultReg :: resultRegs, T.FMV(w', tmp, T.CVTF2F(w', w, T.FREG(w, tmp))) :: copyResult' @ copyResult)
+	        end
+	    | SA.COMBINE (l1, l2) => (
+	        case (readLoc (l1, ([], [])), readLoc (l2, ([], [])))
+		 of ( ([T.GPR e1], instrs1), ([T.GPR e2], instrs2) ) => let
+			val w = SA.width loc
+			val w' = SA.width l2
+			val tmp = C.newReg()
+		        in
+			   (T.GPR(T.REG(w, tmp)) :: resultRegs, T.MV(w, tmp, T.ADD(w, T.SLL(w, lit w', e1), e2)) :: instrs1 @ instrs2 @ copyResult)
+			end
+ 	        (* end case *))
+	    | _ => raise Fail "bogus read location"
          (* end case *))
 
-    fun copyArgLocs (arg, locs, (stms, gprs, fprs)) = 
-	ListPair.foldl (copyLoc arg) (stms, gprs, fprs) (List.tabulate(List.length locs, fn i => i), locs)
-
-    (* copy C arguments into parameter locations *)
-    fun copyArgs (args, argLocs) = let
-	val (stms, gprs, fprs) = ListPair.foldl copyArgLocs ([], [], []) (args, argLocs)
-        in
-	    (List.rev stms, gprs, fprs)
-        end
+  (* read from some machine locations *)
+    fun readLocs locs = let
+	  val (resultRegs, copyResult) = List.foldl readLoc ([], []) locs
+          in
+	      (List.rev resultRegs, List.rev copyResult)
+	  end
 
   end (* CCallFn *)

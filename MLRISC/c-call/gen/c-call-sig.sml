@@ -2,6 +2,7 @@ signature C_CALL =
   sig
 
     structure T : MLTREE
+    structure SA : STAGED_ALLOCATION
 
     datatype c_arg 
       = ARG of T.rexp	
@@ -12,21 +13,12 @@ signature C_CALL =
       | FARG of T.fexp
 	  (* fexp specifies floating-point argument *)
 
-    (* An arg_location specifies the location of arguments/parameters
-     * for a C call.  Offsets are given with respect to the low end 
-     * of the parameter area. *)
-    datatype arg_location =
-	C_GPR  of (T.ty * T.reg) (* integer/pointer argument in register *)
-      | C_FPR  of (T.fty * T.reg) (* floating-point argument in register *)
-      | C_STK  of (T.ty * T.I.machine_int)  (* integer/pointer argument on the call stack *)
-      | C_FSTK of (T.fty * T.I.machine_int) (* floating-point argument on the call stack *)
-
     val layout : CTypes.c_proto -> {
-	    argLocs : arg_location list list,	(* argument/parameter assignment *)
+	    argLocs : SA.loc list list,	        (* argument/parameter assignment; nested lists are for passing structs *)
 	    argMem : {szb : int, align : int},	(* memory requirements for stack-allocated *)
 						(* arguments; this value can be passed to *)
 						(* the paramAlloc callback. *)
-	    resLocs : arg_location list,	(* result location; NONE for void functions *)
+	    resLocs : SA.loc list,	        (* result location *)
 	    structRetLoc : {szb : int, align : int} option
 	  }
 

@@ -89,6 +89,12 @@ functor StagedAllocationFn (
         end
     end (* local *)
 
+  (* bit width of a machine location *)
+    fun width (REG (w, _, _)) = w
+      | width (BLOCK_OFFSET (w, _, _)) = w
+      | width (COMBINE (l1, l2)) = width l1 + width l2
+      | width (NARROW (_, w, _)) = w
+
     fun useRegs rs = let
 	val c = freshCounter ()
         in
@@ -145,7 +151,9 @@ functor StagedAllocationFn (
 	           if (w <= f w) 
 		      then let
 			val (SOME loc, store') = step stages ((f w, k, al), store)
-			val loc' = NARROW(loc, w, k)
+			val loc' = if w = f w 
+				   then loc   (* eliminate unnecessary narrowed locations *)
+				   else NARROW(loc, w, k)
 		        in
 			   (SOME loc', store')
 			end

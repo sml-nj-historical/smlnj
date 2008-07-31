@@ -35,20 +35,20 @@ functor X86SVIDFn (
 
     datatype loc_kind = datatype CLocKind.loc_kind
 
+    structure SA = StagedAllocationFn (
+                    type reg_id = T.reg
+		    datatype loc_kind = datatype loc_kind
+		    val memSize = 8)
+
     structure CCall = CCallFn(
              structure T = T
 	     structure C = C
 	     val wordTy = wordTy
 	     fun offSp 0 = spReg
-	       | offSp offset = T.ADD (32, spReg, T.LI offset))
-		
-    datatype c_arg = datatype CCall.c_arg
-    datatype arg_location = datatype CCall.arg_location
+	       | offSp offset = T.ADD (32, spReg, T.LI offset)
+	     structure SA = SA)
 
-    structure SA = StagedAllocationFn (
-                    type reg_id = T.reg
-		    datatype loc_kind = datatype loc_kind
-		    val memSize = 8)
+    datatype c_arg = datatype CCall.c_arg
 
     structure CCs = X86CConventionFn (
 		      type reg_id = T.reg
@@ -90,31 +90,23 @@ functor X86SVIDFn (
 	    | _ => reqs
         end
 
-  (* convert staged-allocation locations to C locations *)
-    fun saLocToCLoc (SA.REG(ty, GPR, r)) = CCall.C_GPR(ty, r)
-      | saLocToCLoc (SA.REG(ty, FPR, r)) = CCall.C_FPR(ty, r)
-      | saLocToCLoc (SA.BLOCK_OFFSET (ty, GPR, offB)) = CCall.C_STK(ty, T.I.fromInt (32, offB))
-      | saLocToCLoc (SA.BLOCK_OFFSET (ty, FPR, offB)) = CCall.C_FSTK(ty, T.I.fromInt (32, offB))
-      | saLocToCLoc (SA.NARROW(loc, ty, k)) = saLocToCLoc loc
-
   (* compute the parameter passing and return for a given C call *)
     fun layout {conv, retTy, paramTys} = let
 	(* lay out the return parameters *)
 	val (resLocs, structRetLoc, store) = (case retTy
             of CTy.C_void => ([], NONE, CCs.store0)
+	     | retTy as CTy.C_STRUCT _ => raise Fail ""
 	     | retTy => let
 	       val {sz, align} = X86CSizes.sizeOfTy retTy
 	       val (locs, store) = SA.allocateSeq CCs.returns (cTyToReqs retTy, CCs.store0)
-	       val nBytesAllocated = SA.find(store, CCs.cStack)
 	       in
-		   (List.map saLocToCLoc locs, SOME {szb=sz, align=align}, store)
+		   (locs, NONE, store)
                end
             (* end case *))
 
       (* lay out the parameters *)
 	val paramReqss = List.map cTyToReqs paramTys
 	val (paramLocss, store) = SA.allocateSeqs CCs.params (paramReqss, store)
-	val argLocs = List.map (List.map saLocToCLoc) paramLocss
 
 	(* number of bytes allocated for the call *)
 	val cStkSzB = let
@@ -125,7 +117,7 @@ functor X86SVIDFn (
                    else n
              end
 	in
-	   {argLocs=argLocs, argMem={szb=cStkSzB, align=4}, structRetLoc=structRetLoc, resLocs=resLocs}
+	   {argLocs=paramLocss, argMem={szb=cStkSzB, align=4}, structRetLoc=structRetLoc, resLocs=resLocs}
         end (* layout *)
 
     val callerSaveRegs' = List.map gpr calleeSaveRegs
@@ -183,13 +175,13 @@ functor X86SVIDFn (
 	 * explicit arguments.
 	 *)
 	  val (args, argLocs, explicitArgSzB) = (case structRetLoc
-		 of SOME pos =>
-		      (ARG(structRet pos)::args, [CCall.C_STK(wordTy, T.I.fromInt (wordTy, 0))]::argLocs, #szb argMem)
+		 of SOME pos => 
+		      (ARG(structRet pos)::args, [SA.BLOCK_OFFSET(wordTy, GPR, 0)]::argLocs, #szb argMem)
 		  | NONE => (args, argLocs, #szb argMem)
 		(* end case *))
 
 	(* instruction to allocate space for arguments *)
-	  val argAlloc = if ((#szb argMem = 0) orelse paramAlloc argMem)
+	  val argAlloc = if (#szb argMem = 0 orelse paramAlloc argMem)
 	        then []
                 else if abi = "Darwin"	
 		      then let
@@ -199,7 +191,7 @@ functor X86SVIDFn (
 			  [T.MV(wordTy, C.esp, T.SUB(wordTy, spReg, T.LI(IntInf.fromInt szb)))]
 			end
 		else [T.MV(wordTy, C.esp, T.SUB(wordTy, spReg, T.LI(IntInf.fromInt(#szb argMem))))]
-	  val (copyArgs, gprUses, fprUses) = CCall.copyArgs(args, argLocs)
+	  val (copyArgs, gprUses, fprUses) = CCall.writeLocs(args, argLocs)
 
 	(* the SVID specifies that the caller pops arguments, but the callee
 	 * pops the arguments in a stdcall on Windows.  I'm not sure what other
@@ -218,28 +210,9 @@ functor X86SVIDFn (
 		then []
 		else [T.MV(wordTy, C.esp, T.ADD(wordTy, spReg, T.LI(IntInf.fromInt explicitArgSzB)))]
 
-	(* code to copy the result into fresh pseudo registers *)
-	  val (resultRegs, copyResult) = (case resLocs
-		 of [] => ([], [])
-		  | [CCall.C_GPR(ty, r)] => let
-		      val resReg = C.newReg()
-		      in
-			([T.GPR(T.REG(ty, resReg))], [T.COPY(ty, [resReg], [r])])
-		      end
-		  | [CCall.C_FPR(ty, r)] => let
-		      val resReg = C.newFreg()
-		      val res = [T.FPR(T.FREG(ty, resReg))]
-		      in
-        	      (* If we are using fast floating point mode then do NOT 
-        	       * generate FSTP.
-        	       * --- Allen 
-        	       *)
-			if !fast_floating_point
-			  then (res, [T.FCOPY(ty, [resReg], [r])])
-			  else (res, [fstp(ty, T.FREG(ty, resReg))])
-		      end
-		  | _ => raise Fail "bogus result location"
-		(* end case *))
+        (* FIXME: support fast floating point *)
+	(* read return values *) 
+	  val (resultRegs, copyResult) = CCall.readLocs resLocs
 
 	  val defs = definedRegs(#retTy proto)
 	  val { save, restore } = saveRestoreDedicated defs

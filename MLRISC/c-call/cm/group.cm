@@ -10,6 +10,7 @@ Group
 	structure X86MLTree
         structure X86Test
 	structure X86_64Test
+	structure SparcTest
 	structure CType
 
 	group(../../staged-alloc/cm/sources.cm)
@@ -53,3 +54,4 @@ is
 	../test/c-test-gen.sml
 	../test/c-x86-test.sml
 	../test/c-x86-64-test.sml
+	../test/c-sparc-test.sml
