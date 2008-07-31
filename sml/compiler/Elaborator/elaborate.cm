@@ -63,7 +63,8 @@ Group
 	structure UnSerializeDB
 	structure Conversion
 	signature CONVERSION
-	structure Queries
+        structure QueryUtil
+	structure Query
 	structure SrcInfo
 	signature SI_ORD_SET
 	functor SIRedBlackSetFn
@@ -138,6 +139,7 @@ is
 	srcinfo/unserializedb.sml
 	srcinfo/unserializedb.sig
 	srcinfo/conversion.sml
+        srcinfo/queryutil.sml
 	srcinfo/query.sml
 	srcinfo/srcinfo.sml
 	srcinfo/si-ord-set-sig.sml

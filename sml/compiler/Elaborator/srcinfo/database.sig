@@ -65,6 +65,8 @@ sig
     val merge_pickle : string -> string -> unit
 
     (* query support functions *)
+    val localize_access : Access.access -> Access.access * string
+
     val find_var : (DBTypes.var_elem -> bool) -> DBTypes.var_elem option
     val exists_var : 
 	(DBTypes.var_elem -> bool) -> bool
@@ -105,6 +107,5 @@ sig
     (* map a (charpos,filename) pair to the next symbol occurrence at that 
      * position in the file *)
     val charposToOccurrence : int * string -> DBTypes.occurrence
-
 
 end (* signature DATABASE *)

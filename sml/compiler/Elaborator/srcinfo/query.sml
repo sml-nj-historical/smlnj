@@ -83,12 +83,12 @@ a file name (designating the compilation unit), or possibly a CM library.
 
 *)
 
-structure Queries =
+structure Query =
 struct
 
 structure S = Symbol
 
-open DBTypes Database
+open DBTypes Database QueryUtil
 
 (* type occurrence = S.symbol * location -- now defined in DBTypes *)
 (*
@@ -112,19 +112,7 @@ needed database functions:
 fun bug s = raise Fail s
 fun error () = raise Fail "error"
 
-(* query utility functions *)
 
-(* test whether an occurrence is a use of a variable given by a var_elem 
- * -- this assumes that the occurrence argument is an applied occurrence *)
-fun occIsVar (occ as (sym,loc): occurrence) ({name,usage,...} : var_elem) : bool =
-    S.eq (sym,name) andalso List.exists (fn (loc',_,_) => eqLocation(loc', loc)) (!usage)
-
-fun findUse(loc: location, usage: varUse list) : varUse option =
-    List.find (fn (loc',ty,acc) => eqLocation(loc,loc')) usage
-
-
-fun toVarOcc (s, loc) = 
-    ((Symbol.varSymbol s), loc)
 
 (* sample query functions *)
 
@@ -152,108 +140,7 @@ fun varTypOcc (occ as (sym,loc): occurrence) : ty' option =
 
 val varTypOcc' = varTypOcc o toVarOcc
 
-type str_context = str_elem -> bool
 
-fun search(sym, []) = NONE
-  | search(sym, (_,sym',key)::rest) = 
-    if S.eq(sym,sym') then SOME key else search(sym,rest)
-
-fun str_has_key (acc,filepath) ({access,...}:str_elem) = 
-    case compare_acc (acc,access)
-     of EQUAL => true
-      | _ => false
-
-fun var_has_key (acc,filepath) ({access,...}:var_elem) = 
-    case compare_acc (acc,access)
-     of EQUAL => true
-      | _ => false
-
-fun type_has_key s ({stamp,...}: type_elem) = 
-    Stamps.eq (s,stamp)
-
-fun cons_has_key (stamp,sym) ({name,dataty,...}:cons_elem) = 
-    Stamps.eq (stamp,dataty) andalso S.eq (sym,name)
-
-fun sig_has_key s ({stamp,...}: sig_elem) = 
-    Stamps.eq (s, stamp)
-
-fun fileOf ({def,...}: str_elem) = locFile def
-
-fun getSlotElements (Def elems, slot) : key =
-      #3(List.nth(elems,slot))
-  | getSlotElements (Constraint(elems,acc), slot) =
-      let val (_,_,slot') = List.nth(elems,slot)
-      in case find_str(str_has_key (acc,"???"))
-	  of SOME {elements,...} => getSlotElements(elements,slot')
-	   | NONE => bug ""
-      end
-  | getSlotElements (Alias acc, slot) =
-    (case find_str(str_has_key (acc,"???"))
-      of SOME {elements,...} => getSlotElements(elements,slot)
-       | NONE => bug "")
-
-fun find(strelem,rest,filepath) : location option =
-    let val {elements,def,...} = strelem
-    in  case rest
-	 of [] => SOME def
-	  | [last] => 
-	    (case elements
-	      of Def elems =>
-		 (case search(last,elems)
-		   of SOME key =>
-		      (case key
-			of Str acc =>
-			   (case find_str(str_has_key (acc, "???"))
-			     of SOME{def,...} => SOME def
-			      | NONE => NONE)
-			 | Var acc =>
-			   (case find_var(var_has_key (acc, "???"))
-			     of SOME{def,...} => SOME def
-			      | NONE => NONE)
-			 | Type stamp =>
-			   (case find_typ(type_has_key (stamp))
-			     of SOME{def,...} => SOME def
-			      | NONE => NONE)
-			 | Cons (stamp,name) =>
-			   (case find_cons(cons_has_key (stamp,name))
-			     of SOME{def,...} => SOME def
-			      | NONE => NONE)
-			 | Sig stamp =>
-			   (case find_sig(sig_has_key (stamp))
-			     of SOME{def,...} => SOME def
-			      | NONE => NONE)
-		      )
-		    | NONE => NONE)
-	       | Constraint _ => NONE
-	       | Alias _ => NONE)
-	  | next::rest' =>
-	    (case elements
-	      of Def elems => 
-		 (case search(next,elems)
-		   of SOME (Str acc) => 
-		      (case find_str(str_has_key (acc,filepath))
-			of SOME strelem' =>
-			   find (strelem',rest',"???")
-			 | NONE => error())
-		    | _ => bug "")
-	       | Constraint (elems,acc) => 
-		 (case search(next,elems)
-		   of SOME slot =>
-		      (case find_str(str_has_key (acc,"???"))
-			of SOME{elements,...} =>
-			   let val Str acc' = getSlotElements (elements,slot)
-			   in (case find_str(str_has_key (acc',filepath))
-				of SOME strelem' =>
-				   find (strelem',rest',"???")
-				 | NONE => error())
-			   end
-			 | NONE => NONE)
-		    | NONE => NONE)
-	       | Alias acc => 
-		 (case find_str(str_has_key (acc,filepath))
-		   of SOME strelem'' => find(strelem'',rest,"???")
-		    | NONE => error()))
-    end
 
 fun getStrElemName(sym: S.symbol, context: str_context) =
     filter_str (fn (elem as {name,...}: str_elem) => S.eq(sym,name) andalso context elem)
@@ -270,4 +157,4 @@ fun pathDefOcc(path: S.symbol list, context) : location option =
            | [strelem] => find(strelem,rest,fileOf(strelem))
     end
 
-end (* structure Queries *)
+end (* structure Query *)

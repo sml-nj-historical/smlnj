@@ -111,10 +111,10 @@ in
 	
     fun loc_reg (r1, r2) = ((!source, r1, r2):location)
 
-    fun is_accessible (A.EXTERN _) = SOME false
-      | is_accessible (A.NO_ACCESS) = NONE
+    fun is_accessible (A.EXTERN _) = false
+      | is_accessible (A.NO_ACCESS) = bug "is_accessible"
       | is_accessible (A.PATH (s, _)) = is_accessible s
-      | is_accessible (A.LVAR _) = SOME true
+      | is_accessible (A.LVAR _) = true
 
     (******)
 
@@ -454,41 +454,41 @@ in
 	extRefInfo := (fn _ => NONE)
     )
 
-    (***********************)
-
-    fun get_lvar0 set file test test2 (acc as A.PATH (a, slot)) = 
-	( case get_lvar0 set file test2 test2 a of
-	      NONE => NONE
-	    | SOME acc' =>
-	      case StrSet.find (str_pred (acc', !file)) (!set) of
-		  NONE => bug ("get_lvar0: " ^ A.prAcc acc)
-		| SOME {elements = Def l, ...} => 
-		  ( case List.find (fn (x, _, _) => x = slot) l of
-			NONE => bug ("get_lvar02: " ^ A.prAcc acc)
-		      | SOME (_, _, key) => 
-			( case test key of
-			      NONE => bug ("get_lvar03: " ^ A.prAcc acc)
+    fun get_lvar0 set file test test2 (acc as A.PATH (a, slot)): A.access = 
+	let val acc' = get_lvar0 set file test2 test2 a
+	 in if is_accessible acc'
+	    then case StrSet.find (str_pred (acc', !file)) (!set)
+		  of NONE => bug ("get_lvar0: " ^ A.prAcc acc)
+		   | SOME {elements = Def l, ...} => 
+		     ( case List.find (fn (x, _, _) => x = slot) l
+			 of NONE => bug ("get_lvar02: " ^ A.prAcc acc)
+			  | SOME (_, _, key) => 
+			( case test key
+			   of NONE => bug ("get_lvar03: " ^ A.prAcc acc)
 			    | SOME a => get_lvar0 set file test test2 a
 			)
-		  )
-		| SOME {elements = Constraint (l, acc2), ...} => 
-		  ( case List.find (fn (x, _, _) => x = slot) l of
-			NONE => bug ("get_lvar04: " ^ A.prAcc acc)
-		      | SOME (_, _, slot2) => 
-			get_lvar0 set file test test2 (A.PATH (acc2,slot2))
-		  )
-		| SOME {elements = Alias a, ...} => 
-		  get_lvar0 set file test test2 (A.PATH (a,slot))
-	)
-      | get_lvar0 _ _ _ _ (acc as A.LVAR _) = SOME acc
-      | get_lvar0 _ _ _ _ (A.EXTERN _) = NONE
+		     )
+		   | SOME {elements = Constraint (l, acc2), ...} => 
+		     ( case List.find (fn (x, _, _) => x = slot) l
+			 of NONE => bug ("get_lvar04: " ^ A.prAcc acc)
+			  | SOME (_, _, slot2) => 
+			    get_lvar0 set file test test2 (A.PATH (acc2,slot2))
+		     )
+		   | SOME {elements = Alias a, ...} => 
+		     get_lvar0 set file test test2 (A.PATH (a,slot))
+	    else A.PATH(acc',slot)
+	end
+      | get_lvar0 _ _ _ _ (acc as A.LVAR _) = acc
+      | get_lvar0 _ _ _ _ (acc as (A.EXTERN _)) = acc
       | get_lvar0 _ _ _ _ _ = bug "get_lvar05"
 		
-    (* acc can be anything and we gave back an lvar *) 
-    fun get_lvar a b c d acc = 
-	case get_lvar0 a b c d acc of
-	    NONE => bug "get_lvar"
-	  | SOME access => access
+    (* acc can be anything and we give back an lvar *) 
+    (* ASSERT: acc is a local access (LVAR or LVAR rooted path) *)
+    fun get_lvar a b c d acc : A.access = 
+	let val acc' =  get_lvar0 a b c d acc
+	in if is_accessible acc' then acc'
+	   else bug "get_lvar"
+	end
 
     fun key_str (Str a) = SOME a
       | key_str _ = NONE
@@ -618,10 +618,20 @@ in
     fun add_var_use (VC.VALvar {access, path = SymPath.SPATH path, typ, ...})
 		    region
 		    (typ' : T.tyvar list) = 
-	( case is_accessible access of
-	      NONE => bug "add_var_use0"
-	    | SOME false =>
-	      ( case access of
+	if is_accessible access
+	then
+	      let val rpath = rev path
+		  val (rpath',region) = modify' rpath region
+		  val new_acc = add_implicite_use access rpath' region false
+	      in
+		  case VarSet.find (var_pred (new_acc, !source)) (!var_set) 
+		   of NONE => ()
+		    | SOME {usage, ...} => 
+		      let val item = (loc_reg region, get_ty' typ typ', access)
+		       in usage_rpath var_usage usage item rpath
+		      end
+	      end
+	else ( case access of
 		    (A.PATH (suite, _)) => 
 		    let val rpath = rev path
 		    in
@@ -645,19 +655,6 @@ in
 		    end
 		  | _ => bug "add_var_use2"
 	      )
-	    | SOME true =>
-	      let val rpath = rev path
-		  val (rpath',region) = modify' rpath region
-		  val new_acc = add_implicite_use access rpath' region false
-	      in
-		  case VarSet.find (var_pred (new_acc, !source)) (!var_set) 
-		   of NONE => ()
-		    | SOME {usage, ...} => 
-		      let val item = (loc_reg region, get_ty' typ typ', access)
-		       in usage_rpath var_usage usage item rpath
-		      end
-	      end
-	)
       | add_var_use _ _ _ = ()
 
     fun add_ty_def tycon region = 
@@ -736,9 +733,22 @@ in
 	rpath
 
     fun add_str_use (M.STR {access, rlzn, ...}) region = 
-	( case is_accessible access of
-	      SOME false => 
-	      (*extern*)
+	if is_accessible access
+	then
+	      (*local*)
+	      let val rpath = get_path rlzn
+		  val (rpath', region) = modify' rpath region
+		  val new_acc = add_implicite_use access rpath'
+						  region true
+	      in
+		  case StrSet.find (str_pred (new_acc, !source)) (!str_set)
+		   of NONE => 
+		      bug ("add_str_use1 " ^ A.prAcc access ^ " " ^ 
+			   A.prAcc new_acc)
+		    | SOME {usage, ...} => 
+		      usage_rpath str_usage usage (loc_reg region) rpath
+	      end
+	else	      (*extern*)
 	      let val rpath = get_path rlzn
 	      in
 		  case access of
@@ -763,24 +773,6 @@ in
 			  ()
 		    | _ => bug "add_str_use0"
 	      end
-	    | SOME true => 
-	      (*local*)
-	      let val rpath = get_path rlzn
-		  val (rpath', region) = modify' rpath region
-		  val new_acc = add_implicite_use access rpath'
-						  region true
-	      in
-		  case StrSet.find (str_pred (new_acc, !source)) (!str_set)
-		   of NONE => 
-		      bug ("add_str_use1 " ^ A.prAcc access ^ " " ^ 
-			   A.prAcc new_acc)
-		    | SOME {usage, ...} => 
-		      usage_rpath str_usage usage (loc_reg region) rpath
-	      end
-	    | NONE => 
-	      (*NO_ACCESS*) 
-	      bug "add_str_use2"
-	)
       | add_str_use _ _ = 
 	bug "add_str_use"
 
@@ -806,18 +798,12 @@ in
 	     * cases
 	     *)
 
-	    let val access' = 
-		    case get_var_lvar0 access of
-			NONE => access 
-		      | SOME access' => access'
+	    let val access' = get_var_lvar0 access
 	    in
 		(SymPath.last path, Var access')
 	    end
 	  | B.STRbind (M.STR {access, rlzn = {rpath, ...}, ...}) =>
-	    let val access' = 
-		    case get_str_lvar0 access of
-			NONE => access
-		      | SOME access' => access'
+	    let val access' = get_str_lvar0 access
 	    in
 		(InvPath.last rpath, Str access')
 	    end
@@ -1028,57 +1014,65 @@ in
 
     (***** merging functions ******)
 
+
+    (* localize_access : A.access -> A.access * string *)
+    (* translate an extern-routed access path to a corresponding local
+     * access and the filepath for the file that it is local to. *)
     (* takes an extern path and gives back a filepath and its non simplified 
      * local access in that file *
      * PATH (PATH (EXTERN _), 1), 0) -> (PATH (LVAR _, 0),"file.sml")
      *)
-    fun modify_path (a as A.PATH (A.EXTERN e, _)) lv = 
-	( case LvarExtSet.find (fn (ext_acc, _) => equal_acc a ext_acc) lv of
-	      NONE => bug ("modify_path2 " ^ A.prAcc a)
+    (* ASSERT: argument access is a PATH routed at an EXTERN *)
+    fun localize_access (a as A.PATH (A.EXTERN e, _)) = 
+	( case LvarExtSet.find (fn (ext_acc, _) => equal_acc a ext_acc) (!lvar_ext) of
+	      NONE => bug ("localize_access2 " ^ A.prAcc a)
 	    | SOME (_, loc_acc) => (loc_acc, get_file e)
 	)
-      | modify_path (A.PATH (a, slot)) lv = 
-	let val (a', file) = modify_path a lv in
+      | localize_access (A.PATH (a, slot)) = 
+	let val (a', file) = localize_access a in
 	    (A.PATH (a', slot), file)
 	end
-      | modify_path _ _ = bug "modify_path1"
+      | localize_access (A.LVAR i) = bug "localize_access1: LVAR"
+      | localize_access A.NO_ACCESS = bug "localize_access1: NO_ACCESS"
+      | localize_access (A.EXTERN e) = bug "localize_access1: EXTERN"
 		
+
     (* takes the uses referenced in ext and distributes them to their 
      * definition points *)
-    fun distribution (va,ty,co,st,si,lv) ext = 
+    fun distribution ext = 
 	case ext of
 	    ExtVar {access, usage} =>
 	    let val (acc, sourcename) = 
-		    case modify_path access lv of
+		    case localize_access access of
 			(pair as (A.PATH _, _)) => pair
 		      | _ => bug "distribution.ExtVar1"
 		val lvar = get_var_lvar_g sourcename acc
-	    in case VarSet.find (var_pred (lvar,sourcename)) (!va)
+	    in case VarSet.find (var_pred (lvar,sourcename)) (!var_set_g)
 		of NONE => bug ("distribution.ExtVar: " ^ A.prAcc access ^ 
 				" " ^ sourcename)
 		 | SOME {usage = u, name, ...} => 
 		   u := !usage @ !u
 	    end
 	  | ExtStr {access, usage} =>
-	    let val (acc, sourcename) = modify_path access lv
+	    let val (acc, sourcename) = localize_access access
 		val lvar = get_str_lvar_g sourcename acc
-	    in case StrSet.find (str_pred (lvar,sourcename)) (!st) of
+	    in case StrSet.find (str_pred (lvar,sourcename)) (!str_set_g) of
 		   NONE => bug ("distribution.ExtStr " ^ A.prAcc access ^ " " ^
 				A.prAcc lvar)
 		 | SOME {usage = u, ...} => u := !usage @ !u
 	    end
 	  | ExtType {stamp, usage} => ()
-	    (* case TypSet.find () (!ty) of
+	    (* case TypSet.find () (!typ_set_g) of
 		  NONE => bug "distribution.ExtType"
 		| SOME {usage = u, ...} => u := !usage @ !u
 	    *)
 	  | ExtCons {stamp, name, usage} => ()
-	    (* case ConSet.find () (!co) of
+	    (* case ConSet.find () (!con_set_g) of
 		  NONE => bug "distribution.ExtCons"
 		| SOME {usage = u, ...} => u := !usage @ !u
 	    *)
 	  | ExtSig {stamp, usage} => ()
-	    (* case SigSet.find () (!si) of
+	    (* case SigSet.find () (!sig_set_g) of
 		  NONE => bug "distribution.ExtSig"
 		| SOME {usage = u, ...} => u := !usage @ !u
 	    *)
@@ -1090,10 +1084,8 @@ in
 	    val con_set2 = ref cons
 	    val str_set2 = ref str
 	    val sig_set2 = ref sign
-	    val distrib = distribution (var_set_g, typ_set_g, con_set_g, 
-					str_set_g, sig_set_g, !lvar_ext)
 	in 
-	    ExtSet.app distrib ext;
+	    ExtSet.app distribution ext;
 	    (*  SIMPLIFIER STR_SET2 EN REGARDANT LES DEFINITIONS
 	     *  EXTERIEURES (C'EST A DIRE PATH (_) CAR LES AUTRES ONT ETE 
 	     * SIMPLIFIEES EN LVAR) ET EN LES REMPLACANT SOMEHOW PAR UN COUPLE
@@ -1124,7 +1116,7 @@ in
 			  | _ => false)
 			(!ext_set_g)
 	    in
-		ExtSet.app distrib to_be_added;
+		ExtSet.app distribution to_be_added;
 		ext_set_g := others
 	    end
 	end
