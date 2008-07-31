@@ -57,7 +57,6 @@ sig
     val set_eri : (Symbol.symbol -> string option) -> unit
     val set_pid : PersStamps.persstamp -> unit
     val clear : unit -> unit
-    val test : unit -> unit
 
     (* pickling/unpickling/merging/removing functions *)
     val get_pickle : unit -> string

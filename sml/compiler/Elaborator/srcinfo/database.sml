@@ -31,6 +31,9 @@ in
     fun set_eri eri = 
 	(extRefInfo := eri)
 
+    fun get_hash (A.EXTERN e) = e
+      | get_hash (A.PATH (a, _)) = get_hash a
+      | get_hash _ = bug "get_hash"
 
     (* faire un redblacktree autour pour les differents fichiers + serializer*)
     structure OccurrenceKey : ORD_KEY = 
@@ -78,13 +81,26 @@ in
 	fun compare ((pid1, _), (pid2, _))= PersStamps.compare (pid1, pid2)
     end
     structure PidFileSet = RedBlackSetFn (PidFileKey)
+
     val pid_file = ref PidFileSet.empty
+
     fun print_pids () = 
 	( PidFileSet.app 
 	      (fn (x,y) => print (PersStamps.toHex x ^ "->" ^ y ^ ", "))
 	      (!pid_file);
 	  print "\n"
 	)
+
+    fun get_pid file = 
+	case PidFileSet.find (fn (_,x) => file = x) (!pid_file) of
+	    NONE => bug ("get_pid" ^ file)
+	  | SOME (x, _) => x
+
+    fun get_file e = 
+	case PidFileSet.find (fn (pid, _) => persstamps_eq (pid,e)) (!pid_file)
+	 of NONE => bug "get_file"
+	  | SOME (_, filename) => filename
+
     (******)
 
     fun is_available_rsl rev_symbol_list = 
@@ -401,6 +417,44 @@ in
 	SigSet.app P.print_sig (!sig_set_g)
 
     (****** end of set definitions *****)
+
+    fun print_all () = (
+	print "****** VAR : \n";print_var ();
+	print "****** STR : \n";print_str ();
+	print "****** TYP : \n";print_ty ();
+	print "****** CON : \n";print_cons ();
+	print "****** SIG : \n";print_sig ();
+	print "****** EXT : \n";print_ext ();
+	print "****** OCC : \n";print_occ ()
+    )
+
+    fun print_all_g () = (
+	print "****** VAR : \n";print_var_g ();
+	print "****** STR : \n";print_str_g ();
+	print "****** TYP : \n";print_ty_g ();
+	print "****** CON : \n";print_cons_g ();
+	print "****** SIG : \n";print_sig_g ();
+	print "****** EXT : \n";print_ext ();
+	print "****** LVA : \n";print_lvars ();
+        print "****** PID : \n";print_pids ();
+	print "****** OCC : \n";print_occ_g ()
+    )
+
+
+    fun clear () = (
+	clear_lvar ();
+	var_set := VarSet.empty;
+	typ_set := TypSet.empty;
+	con_set := ConSet.empty;
+	str_set := StrSet.empty;
+	sig_set := SigSet.empty;
+	ext_set := ExtSet.empty;
+	occ_set := OccSet.empty;
+	source := "";
+	extRefInfo := (fn _ => NONE)
+    )
+
+    (***********************)
 
     fun get_lvar0 set file test test2 (acc as A.PATH (a, slot)) = 
 	( case get_lvar0 set file test2 test2 a of
@@ -926,42 +980,7 @@ in
 
 
 
-    fun print_all () = (
-	print "****** VAR : \n";print_var ();
-	print "****** STR : \n";print_str ();
-	print "****** TYP : \n";print_ty ();
-	print "****** CON : \n";print_cons ();
-	print "****** SIG : \n";print_sig ();
-	print "****** EXT : \n";print_ext ();
-	print "****** OCC : \n";print_occ ()
-    )
-
-    fun print_all_g () = (
-	print "****** VAR : \n";print_var_g ();
-	print "****** STR : \n";print_str_g ();
-	print "****** TYP : \n";print_ty_g ();
-	print "****** CON : \n";print_cons_g ();
-	print "****** SIG : \n";print_sig_g ();
-	print "****** EXT : \n";print_ext ();
-	print "****** LVA : \n";print_lvars ();
-        print "****** PID : \n";print_pids ();
-	print "****** OCC : \n";print_occ_g ()
-    )
-
-
-    fun clear () = (
-	clear_lvar ();
-	var_set := VarSet.empty;
-	typ_set := TypSet.empty;
-	con_set := ConSet.empty;
-	str_set := StrSet.empty;
-	sig_set := SigSet.empty;
-	ext_set := ExtSet.empty;
-	occ_set := OccSet.empty;
-	source := "";
-	extRefInfo := (fn _ => NONE)
-    )
-
+    (***** pickling/unpickling function *****)
     fun get_strings (a, b, c, d, e, f, g, h, i) = 
 	( SerializeDB.varToString  (VarSet.listItems a),
 	  SerializeDB.typeToString (TypSet.listItems b),
@@ -997,6 +1016,7 @@ in
 	in String.concat (insert "\n" [a,b,c,d,e,f,g,h,i])
 	end
 
+    (* directly reads from a file instead of loading when called by CM *)
     fun load_return source = 
 	let val os = TextIO.openIn source
 	    fun get_val NONE = bug ("sourcefile " ^ source ^ ":unexpected EOF")
@@ -1006,13 +1026,12 @@ in
 	    get_sets (gs(),gs(),gs(),gs(),gs(),gs(),gs(),gs(),gs())
 	end
 
-    fun get_file e = 
-	case PidFileSet.find 
-		 (fn (pid, _) => persstamps_eq (pid,e)) 
-		 (!pid_file) 
-	 of NONE => bug "get_file"
-	  | SOME (_, filename) => filename
+    (***** merging functions ******)
 
+    (* takes an extern path and gives back a filepath and its non simplified 
+     * local access in that file *
+     * PATH (PATH (EXTERN _), 1), 0) -> (PATH (LVAR _, 0),"file.sml")
+     *)
     fun modify_path (a as A.PATH (A.EXTERN e, _)) lv = 
 	( case LvarExtSet.find (fn (ext_acc, _) => equal_acc a ext_acc) lv of
 	      NONE => bug ("modify_path2 " ^ A.prAcc a)
@@ -1024,6 +1043,8 @@ in
 	end
       | modify_path _ _ = bug "modify_path1"
 		
+    (* takes the uses referenced in ext and distributes them to their 
+     * definition points *)
     fun distribution (va,ty,co,st,si,lv) ext = 
 	case ext of
 	    ExtVar {access, usage} =>
@@ -1062,15 +1083,7 @@ in
 		| SOME {usage = u, ...} => u := !usage @ !u
 	    *)
 
-    fun get_pid file = 
-	case PidFileSet.find (fn (_,x) => file = x) (!pid_file) of
-	    NONE => bug ("get_pid" ^ file)
-	  | SOME (x, _) => x
-
-    fun get_hash (A.EXTERN e) = e
-      | get_hash (A.PATH (a, _)) = get_hash a
-      | get_hash _ = bug "get_hash"
-
+    (* merges the given sets into the global database *)
     fun merge (var,ty,cons,str,sign,ext,lvarext,pid',occ) sourcefile = 
 	let val var_set2 = ref var
 	    val typ_set2 = ref ty
@@ -1081,10 +1094,10 @@ in
 					str_set_g, sig_set_g, !lvar_ext)
 	in 
 	    ExtSet.app distrib ext;
-	    (* ICI, IL FAUT SIMPLIFIER STR_SET2 EN REGARDANT LES DEFINITIONS
+	    (*  SIMPLIFIER STR_SET2 EN REGARDANT LES DEFINITIONS
 	     *  EXTERIEURES (C'EST A DIRE PATH (_) CAR LES AUTRES ONT ETE 
 	     * SIMPLIFIEES EN LVAR) ET EN LES REMPLACANT SOMEHOW PAR UN COUPLE
-	     * (LVAR, FILEPATH) *)
+	     * (LVAR, FILEPATH) ? *)
 	    occ_set_g := OccSetG.add (!occ_set_g, (occ, sourcefile));
 	    var_set_g := VarSet.union (!var_set_g, !var_set2);
 	    typ_set_g := TypSet.union (!typ_set_g, !typ_set2);
@@ -1099,6 +1112,10 @@ in
 				 NONE => bug "merge"
 			       | SOME pid'' => (pid'', sourcefile)
 			    );
+	    (* we may be merging a file that was removed before, but did not 
+	     * provoked recompilation of files using it
+	     * in that case, there are links to that files in the set that have
+	     * to be taken care of *)
 	    let val pid = get_pid sourcefile
 		val (to_be_added, others) = 
 		    ExtSet.partition 
@@ -1112,12 +1129,15 @@ in
 	    end
 	end
 
+    (* merge the given pickle in the global database
+     * called by CM via the srcInfo module*)
     fun merge_pickle sourcefile pickle = 
 	case String.tokens (fn x => x = #"\n") pickle of
 	    [a,b,c,d,e,f,g,h,i] => 
 	    merge (get_sets (a,b,c,d,e,f,g,h,i)) sourcefile
 	  | l => bug ("merge_pickle " ^ Int.toString (List.length l))
 
+    (* loading and merging manually a file *)
     fun load_merge sourcefile = 
 	let val sl = String.tokens (fn x => x = #"/") sourcefile
 	    fun modi [a] = [".cm","INFO",a]
@@ -1128,6 +1148,10 @@ in
 	    merge (load_return sourcefile2) sourcefile
 	end
 	
+
+    (**** funtions to remove a file from the database  *****)
+
+    (* gives back the slot of the access_son in the access_parent structure *)
     fun find_son access_par access_son file good_key = 
 	case StrSet.find (str_pred (access_par, file)) (!str_set_g)
 	 of NONE => bug "find_son"
@@ -1156,21 +1180,8 @@ in
 		  | SOME {parent = SOME access_loc_parent, ...} =>
 		    let val access_lvar_parent= get_str_lvar access_loc_parent
 			val access_ext_parent = str access_lvar_parent
-			val is_alias = 
-			    ( case StrSet.find 
-				       (str_pred (access_lvar_parent, file))
-				       (!str_set_g)
-			       of NONE => bug "externalize2"
-				| SOME {elements = Alias a, ...} => true
-				| _ => false
-			    )
-		    in
-			if is_alias then
-			    access_ext_parent
-			else
-			    let val slot = find_son2 access_lvar_parent access
-			    in (A.PATH (access_ext_parent, slot))
-			    end
+			val slot = find_son2 access_lvar_parent access
+		    in  A.PATH (access_ext_parent, slot)
 		    end
 		  | SOME {parent = NONE, ...} => 
 		    let val pid = get_pid file in
@@ -1284,55 +1295,5 @@ in
 			   (!str_set_g)
 	)
 	  
-    fun test () =
-	let val (a,b,c,d,e,f,g,h,i) = 
-		get_sets (get_strings (!var_set, !typ_set, !con_set, !str_set,
-				       !sig_set, !ext_set, !lvar_ext, !pid,
-				       !occ_set)
-			 )
-	in
-	    if VarSet.numItems a <> VarSet.numItems (!var_set) then
-		bug "test ().var length"
-	    else
-		();
-	    if TypSet.numItems b <> TypSet.numItems (!typ_set) then
-		bug "test ().type length"
-	    else
-		();
-	    if ConSet.numItems c <> ConSet.numItems (!con_set) then
-		bug "test ().cons length"
-	    else
-		();
-	    if StrSet.numItems d <> StrSet.numItems (!str_set) then
-		bug "test ().str length"
-	    else
-		();
-	    if SigSet.numItems e <> SigSet.numItems (!sig_set) then
-		bug "test ().sig length"
-	    else
-		();
-	    if ExtSet.numItems f <> ExtSet.numItems (!ext_set) then
-		bug "test ().ext length"
-	    else
-		();
-	    if LvarExtSet.numItems g <>LvarExtSet.numItems (!lvar_ext) then
-		bug "test ().lvar_ext length"
-	    else
-		();
-	    if OccSet.numItems i <>OccSet.numItems (!occ_set) then
-		bug "test ().lvar_ext length"
-	    else
-		();
-	    VarSet.app P.print_var a;
-	    TypSet.app P.print_type b;
-	    ConSet.app P.print_cons c;
-	    StrSet.app P.print_str d;
-	    SigSet.app P.print_sig e;
-	    ExtSet.app P.print_ext f;
-	    print_lvars ();
-	    OccSet.app P.print_occ i
-	end
-
-
 end (*end local*)
 end (*structure Database *)
