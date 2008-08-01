@@ -1,9 +1,18 @@
+(* gen-fn.sml
+ *
+ * Generate the interpreter loop.
+ *) 
+
 functor GenFn (
     structure T : MLTREE
+  (* general-purpose registers used for passing or returning arguments *)
     val gprs : T.reg list
+  (* floating-point registers used for passing or returning arguments *)
     val fprs : T.reg list
+  (* possible widths *)
     val gprWidths : T.ty list
     val fprWidths : T.ty list
+  (* stack pointer register *)
     val spReg : T.rexp
     val defaultWidth : T.ty
     val callerSaves : T.reg list
@@ -16,6 +25,10 @@ functor GenFn (
   end = struct
 
     structure Consts = VarargConstants
+    structure SA = StagedAllocation(
+		     type reg_id = T.reg
+		     datatype loc_kind = datatype CLocKind.loc_kind
+		     val memSize = 4)
 
     datatype loc 
       = REG_LOC of T.reg
@@ -100,6 +113,7 @@ functor GenFn (
   (* load a floating-point argument into a register *)
     fun loadFPR larg ty r = T.FMV(ty, r, offLocdArgF(ty, larg, Consts.argOffB))
 
+  (* are the width and narrowing legal for kind of location? *)
     fun widthOK (k, w, narrowing) = let
 	    val ws = (case k
 		       of (GPR | STK) => gprWidths
@@ -110,13 +124,20 @@ functor GenFn (
 
   (* generate code that places the argument *)
     fun loc {larg, k, width, narrowing, loc} = let
+          (* offset into the argument (only nonzero if the argument has an aggregate type) *)
+	    val argMembOff = offLocdArg(ty, larg, Consts.offsetOffB)
+          (* narrow the location if necessary *)
+	    fun narrow loc = if width = narrowing then loc
+			     else SA.NARROW(loc, k, loc)
 (* FIXME: handle narrowing and offsets *)
 	    val ldInstrs = (
 		case (k, loc, widthOK(k, width, narrowing))
 		 of (GPR, REG_LOC r, true) => 
-		    [loadGPR larg width r]
+		    CCall.writeLoc (offLocdArg(ty, larg, Consts.argOffB)) (argMembOff, narrow(SA.REG(ty, GPR, r)), [])
+(* [loadGPR larg width r] *)
 		  | (FPR, REG_LOC r, true) =>
-  		    [loadFPR larg width r]
+		    CCall.writeLoc (offLocdArgF(ty, larg, Consts.argOffB)) (argMembOff, narrow(SA.REG(ty, FPR, r)), [])
+(*  		    [loadFPR larg width r]*)
 		  | (STK, STK_LOC, true) =>
 		    [storeSTK larg width]
 		  | (FSTK, STK_LOC, true) =>

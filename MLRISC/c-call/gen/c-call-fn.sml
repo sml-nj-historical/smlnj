@@ -65,13 +65,13 @@ functor CCallFn (
       | elimNarrow (SA.COMBINE(l1, l2)) = SA.COMBINE(elimNarrow l1, elimNarrow l2)
       | elimNarrow loc = loc
 
-    (* write argument data to a machine location
+    (* write a C argument (non aggregate) to a machine location
      *   - arg is the argument data
-     *   - i is an offset into the argument data (i.e., to access a member of a struct)
+     *   - off is an offset into the argument data
      *   - loc is the machine location
      *   - stms is the accumulator of machine instructions
      *)
-    fun writeLoc arg (i, loc, stms) = (
+    fun writeLoc arg (off, loc, stms) = (
 	  case (arg, loc)
 	   of (ARG (e as T.REG _), SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset)) =>
 	      (* register to stack (gpr) *)
@@ -81,23 +81,23 @@ functor CCallFn (
 	      T.STORE(w, offSp offset, T.SX(w, w', e), stack) :: stms
 	    | (ARG (T.LOAD (ty, e, rgn)), SA.REG (w, K.GPR, r)) =>
 	      (* memory to register (gpr) *)
-	      copyToReg(w, r, T.LOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) @ stms
+	      copyToReg(w, r, T.LOAD (ty, T.ADD(wordTy, e, off), rgn)) @ stms
 	    | (ARG (T.LOAD (ty, e, rgn)), SA.NARROW(SA.REG (w, K.GPR, r), w', K.GPR)) =>
 	      (* memory to register with conversion (gpr) *)
-	      copyToReg(w, r, T.SX(w, w', T.LOAD (w', T.ADD(wordTy, e, lit (i*8)), rgn))) @ stms
+	      copyToReg(w, r, T.SX(w, w', T.LOAD (w', T.ADD(wordTy, e, off), rgn))) @ stms
 	    | (ARG (T.LOAD (ty, e, rgn)), SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset)) => let
 	      (* memory to stack (gpr) *)
 		val tmp = C.newReg ()
 	        in
 		  T.STORE (ty, offSp offset, T.REG (ty, tmp), stack) :: 
-		  T.MV (ty, tmp, T.LOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) :: stms
+		  T.MV (ty, tmp, T.LOAD (ty, T.ADD(wordTy, e, off), rgn)) :: stms
 	        end
 	    | (ARG (T.LOAD (ty, e, rgn)), SA.NARROW(SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset), w', K.GPR)) => let
 	      (* memory to stack with conversion (gpr) *)
 		val tmp = C.newReg ()
 	        in
 		  T.STORE (w, offSp offset, T.REG (w, tmp), stack) :: 
-		  T.MV (w, tmp, T.SX(w, w', T.LOAD (w', T.ADD(wordTy, e, lit (i*8)), rgn))) :: stms
+		  T.MV (w, tmp, T.SX(w, w', T.LOAD (w', T.ADD(wordTy, e, off), rgn))) :: stms
 	        end
 	    | (ARG e, SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset)) => let
 	      (* expression to stack (gpr) *)
@@ -116,13 +116,13 @@ functor CCallFn (
 	      T.FSTORE (w, offSp offset, e, stack) :: stms
 	    | (ARG (T.LOAD (ty, e, rgn)), SA.REG(w, K.FPR, r)) =>
 	      (* memory to register (fpr) *)
-	      copyToFReg(w, r, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) @ stms
+	      copyToFReg(w, r, T.FLOAD (ty, T.ADD(wordTy, e, off), rgn)) @ stms
 	    | (FARG (T.FLOAD (ty, e, rgn)), SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) => let
               (* memory to stack (fpr) *)
 		val tmp = C.newFreg ()
 	        in
 		  T.FSTORE (w, offSp offset, T.FREG (w, tmp), stack) :: 
-		  T.FMV (w, tmp, T.FLOAD (ty, T.ADD(wordTy, e, lit (i*8)), rgn)) :: stms
+		  T.FMV (w, tmp, T.FLOAD (ty, T.ADD(wordTy, e, off), rgn)) :: stms
 	        end
 	    | (FARG e, SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) => let
               (* expression to stack (fpr) *)
@@ -136,11 +136,13 @@ functor CCallFn (
 	    | _ => raise Fail "invalid arg / loc pair"
           (* end case *))
 
-  (* write a C argument to some parameter locations *)
+  (* write a C argument (possibly an aggregate) to some parameter locations *)
     fun writeLocs' (arg, locs, stms) = let
 	  val locs = List.map elimNarrow locs
+        (* offsets of the members of the struct *)
+	  val membOffs = List.tabulate(List.length locs, fn i => lit(i*8))
           in
-	     ListPair.foldl (writeLoc arg) stms (List.tabulate(List.length locs, fn i => i), locs)
+	     ListPair.foldl (writeLoc arg) stms (membOffs, locs)
           end
 
   (* write C arguments to parameter locations; also return any used GPRs or FPRs *)

@@ -83,41 +83,6 @@ structure SparcMLTree =
     structure Region    = UserRegion
     structure Extension = UserExtension)
 
-(*
- * This module controls how we handle user extensions.  Since we don't
- * have any yet.  This is just a bunch of dummy routines.
- *)
-functor SparcMLTreeExtComp
-   (structure T : MLTREE 
-   		where Extension = UserExtension
-    structure I : SPARCINSTR
-    		where T = T
-    structure Stream : MLTREE_STREAM
-                where T = I.T
-    structure CFG : CONTROL_FLOW_GRAPH 
-    		where I = I
-                  and P = Stream.S.P
-   ) : MLTREE_EXTENSION_COMP =
-struct
-   structure TS = Stream
-   structure I = I
-   structure T = I.T
-   structure C = I.C
-   structure Ext = UserExtension
-   structure CFG = CFG
-   structure SparcCompInstrExt = 
-     SparcCompInstrExt(structure I = I structure CFG = CFG structure TS=Stream)
-
-   type reducer = 
-     (I.instruction,C.cellset,I.operand,I.addressing_mode, CFG.cfg) TS.reducer
-
-   fun unimplemented _ = MLRiscErrorMsg.impossible "SparcMLTreeExtComp" 
-
-   val compileSext  = SparcCompInstrExt.compileSext
-   val compileRext  = unimplemented
-   val compileCCext = unimplemented
-   val compileFext  = unimplemented
-end
 
 (*---------------------------------------------------------------------------
  * Backend specific stuff.  You'll need one instance of these things 
@@ -172,30 +137,28 @@ structure PseudoOps =
     structure PseudoOps = PseudoOps (structure Client = Client)
   end
 
-structure Stream = InstructionStream(PseudoOps.PseudoOps)
+structure SparcStream = InstructionStream(PseudoOps.PseudoOps)
+structure SparcMLTreeStream = 
+    MLTreeStream
+      (structure T = SparcMLTree
+       structure S = SparcStream)
 
 (*
  * The assembler 
  *) 
 structure SparcAsm = SparcAsmEmitter
    (structure Instr = SparcInstr
-    structure Stream = Stream
+    structure Stream = SparcStream
     structure Shuffle = SparcShuffle
-    structure S = Stream
+    structure S = SparcStream
     structure MLTreeEval = SparcMLTreeEval
     val V9 = false  (* we'll generate V8 instructions for now *)
    )
 
-(*
- * Because of various Sparc related ugliness.  Pseudo instructions 
- * related to integer multiplication/division are handled via callbacks.  
- * Here we can decide what actual code to generate.  Here we only
- * handle a subset of of the pseudo instructions.
- *)
-structure SparcPseudoInstrs =
+structure SparcPseudoInstrs : SPARC_PSEUDO_INSTR = 
 struct
   structure I = SparcInstr
-  structure C = SparcInstr.C
+  structure C = I.C
 
   type format1 =
        {r:CellsBasis.cell, i:I.operand, d:CellsBasis.cell} *
@@ -207,38 +170,113 @@ struct
 
   fun error msg = MLRiscErrorMsg.impossible ("SparcPseudoInstrs."^msg)
 
-  fun umul32({r, i, d}, reduceOpnd) = [I.ARITH{a=I.UMUL,r=r,i=i,d=d}]
-  fun smul32({r, i, d}, reduceOpnd) = [I.ARITH{a=I.SMUL,r=r,i=i,d=d}]
-  fun udiv32({r,i,d},reduceOpnd) = 
-      [I.WRY{r=C.r0,i=I.REG(C.r0)},I.ARITH{a=I.UDIV,r=r,i=i,d=d}]
+  val delta = 0 (*SparcSpec.framesize*)	(* initial value of %fp - %sp *)
 
-  fun sdiv32({r,i,d},reduceOpnd) =
-  let val t1 = C.newReg()
-  in  [I.SHIFT{s=I.SRA,r=r,i=I.IMMED 31,d=t1},
-       I.WRY{r=t1,i=I.REG(C.r0)},
-       I.ARITH{a=I.SDIV,r=r,i=i,d=d}
+  (* runtime system dependent; the numbers are relative to %sp but
+   * we need offsets relative to %fp, hence the adjustment by delta *)
+  val floatTmpOffset = I.IMMED (88 - delta)
+  val umulOffset = I.IMMED (80 - delta)
+  val smulOffset = I.IMMED (72 - delta)
+  val udivOffset = I.IMMED (84 - delta)
+  val sdivOffset = I.IMMED (76 - delta)
+
+  val stack = () (*CPSRegions.stack*)
+
+  val native = true  (* use native versions of the instructions? *)
+
+  fun umul_native({r, i, d}, reduceOpnd) =
+      [I.arith{a=I.UMUL,r=r,i=i,d=d}]
+
+  val TNE = I.ticc{t=I.BNE,cc=I.ICC,r=C.r0,i=I.IMMED 7}
+  val TVS = I.ticc{t=I.BVS,cc=I.ICC,r=C.r0,i=I.IMMED 7}
+
+      (* overflows iff Y != (d ~>> 31) *)
+  fun smult_native({r, i, d}, reduceOpnd) =
+      let val t1 = C.newReg()
+          val t2 = C.newReg()
+      in  [I.arith{a=I.SMUL,r=r,i=i,d=d},
+           I.shift{s=I.SRA,r=d,i=I.IMMED 31,d=t1},
+           I.rdy{d=t2},
+           I.arith{a=I.SUBCC,r=t1,i=I.REG t2,d=C.r0},
+           TNE
+          ] 
+      end
+
+  fun smul_native({r, i, d}, reduceOpnd) =
+      [I.arith{a=I.SMUL,r=r,i=i,d=d}]
+
+  fun udiv_native({r,i,d},reduceOpnd) = 
+      [I.wry{r=C.r0,i=I.REG C.r0},
+       I.arith{a=I.UDIV,r=r,i=i,d=d}]
+
+   (* May overflow if MININT div -1 *)
+  fun sdivt_native({r,i,d},reduceOpnd) = 
+      let val t1 = C.newReg()
+      in  [I.shift{s=I.SRA,r=r,i=I.IMMED 31,d=t1},
+           I.wry{r=t1,i=I.REG C.r0},
+           I.arith{a=I.SDIVCC,r=r,i=i,d=d},
+           TVS
+          ]
+      end
+
+  fun sdiv_native({r,i,d},reduceOpnd) =
+      let val t1 = C.newReg()
+      in  [I.shift{s=I.SRA,r=r,i=I.IMMED 31,d=t1},
+           I.wry{r=t1,i=I.REG C.r0},
+           I.arith{a=I.SDIV,r=r,i=i,d=d}
+          ]
+      end
+
+  (* 
+   * Registers %o2, %o3 are used to pass arguments to ml_mul and ml_div 
+   * Result is returned in %o2.
+   *)
+  val r10 = C.GPReg 10
+  val r11 = C.GPReg 11
+
+  fun callRoutine(offset,reduceOpnd,r,i,d) =   
+  let val addr = C.newReg()
+      val defs = C.addReg(r10,C.empty) 
+      val uses = C.addReg(r10,C.addReg(r11,C.empty))
+      fun copy{dst, src, tmp} = 
+	  I.COPY{k=CellsBasis.GP, sz=32, dst=dst, src=src, tmp=tmp}
+  in
+      [copy{src=[r,reduceOpnd i],dst=[r10,r11],tmp=SOME(I.Direct(C.newReg()))},
+       I.load{l=I.LD,r=C.frameptrR,i=offset,d=addr,mem=stack},
+       I.jmpl{r=addr,i=I.IMMED 0,d=C.linkReg,defs=defs,uses=uses,
+              cutsTo=[],nop=true,mem=stack},
+       copy{src=[r10],dst=[d],tmp=NONE}
       ]
   end
 
-  fun cvti2d({i,d},reduceOpnd) = error "cvti2d"
-    (* There is no data path between integer and floating point registers.
-       So we actually have to use some memory location for temporary
-       This is commented out for now.
-     *)
-    (* 
-      [I.STORE{s=I.ST,r=C.stackptrR,i=floatTmpOffset,d=reduceOpnd i,mem=stack},
-       I.FLOAD{l=I.LDF,r=C.stackptrR,i=floatTmpOffset,d=d,mem=stack},
-       I.FPop1{a=I.FiTOd,r=d,d=d}
+  fun umul({r, i, d}, reduceOpnd) = callRoutine(umulOffset,reduceOpnd,r,i,d)
+  fun smultrap({r, i, d}, reduceOpnd) = callRoutine(smulOffset,reduceOpnd,r,i,d)
+  fun udiv({r, i, d}, reduceOpnd) = callRoutine(udivOffset,reduceOpnd,r,i,d)
+  fun sdivtrap({r, i, d}, reduceOpnd) = callRoutine(sdivOffset,reduceOpnd,r,i,d)
+
+  fun cvti2d({i, d}, reduceOpnd) = 
+      [I.store{s=I.ST,r=C.frameptrR,i=floatTmpOffset,d=reduceOpnd i,mem=stack},
+       I.fload{l=I.LDF,r=C.frameptrR,i=floatTmpOffset,d=d,mem=stack},
+       I.fpop1{a=I.FiTOd,r=d,d=d}
       ]
-    *)
   fun cvti2s _ = error "cvti2s"
   fun cvti2q _ = error "cvti2q"
 
-  fun smul32trap _ = error "smul32trap"
-  fun sdiv32trap _ = error "sdiv32trap"
+     (* Generate native versions of the instructions *)
+  val umul32 = if native then umul_native else umul
+  val smul32 : format1 =
+      if native then smul_native else (fn _ => error "smul32")
+  val smul32trap = if native then smult_native else smultrap
+  val udiv32 = if native then udiv_native else udiv
+  val sdiv32 : format1 =
+      if native then sdiv_native else (fn _ => error "sdiv32")
+  val sdiv32trap = if native then sdivt_native else sdivtrap
 
-  val overflowtrap32 = [] (* not needed *)
+  val overflowtrap32 = (* tvs 0x7 *)
+                       [I.ticc{t=I.BVS,cc=I.ICC,r=C.r0,i=I.IMMED 7}]
   val overflowtrap64 = [] (* not needed *)
+
+
 end
 
 structure SparcMLTreeHash = 
@@ -257,7 +295,7 @@ structure SparcProps =
 structure SparcAsmEmitter = 
   SparcAsmEmitter(structure Instr=SparcInstr
 		  structure Shuffle=SparcShuffle
-                  structure S = Stream
+                  structure S = SparcStream
 		  structure MLTreeEval=SparcMLTreeEval
                   val V9 = false)
 
@@ -270,17 +308,53 @@ structure SparcCFG =
       structure InsnProps = SparcProps
       structure Asm = SparcAsmEmitter)
 
+structure SparcFlowGraph = BuildFlowgraph 
+	    (structure Props = SparcProps
+             structure Stream = SparcStream
+	     structure CFG = SparcCFG)
+
+structure SparcExpand = CFGExpandCopies (structure CFG=SparcCFG
+                                         structure Shuffle = SparcShuffle)
+structure SparcBlockPlacement = DefaultBlockPlacement(SparcCFG)
+
+structure SparcEmit = CFGEmit (
+             structure CFG = SparcCFG
+             structure E = SparcAsmEmitter) 
+
+structure SparcCCall = SparcCCallFn (
+		         structure T = SparcMLTree
+			 fun ix x = raise Fail "")
+
 (*
+ * This module controls how we handle user extensions.  Since we don't
+ * have any yet.  This is just a bunch of dummy routines.
+ *)
+structure SparcMLTreeExtComp : MLTREE_EXTENSION_COMP =
+struct
+   structure TS = SparcMLTreeStream
+   structure I = SparcInstr
+   structure T = SparcMLTree
+   structure C = I.C
+   structure Ext = UserExtension
+   structure CFG = SparcCFG
+   structure SparcCompInstrExt = 
+     SparcCompInstrExt(structure I = I structure CFG = CFG structure TS=SparcMLTreeStream)
+
+   type reducer = 
+     (I.instruction,C.cellset,I.operand,I.addressing_mode, CFG.cfg) TS.reducer
+   fun unimplemented _ = MLRiscErrorMsg.impossible "SparcMLTreeExtComp" 
+
+   val compileSext  = SparcCompInstrExt.compileSext
+   val compileRext  = unimplemented
+   val compileCCext = unimplemented
+   val compileFext  = unimplemented
+end
+
     structure MLTreeComp=
        Sparc(structure SparcInstr = SparcInstr
              structure SparcMLTree = SparcMLTree
              structure PseudoInstrs = SparcPseudoInstrs
              structure ExtensionComp = SparcMLTreeExtComp
-               (structure I = SparcInstr
-                structure T = SparcMLTree
-                structure Stream = Stream
-		structure CFG = SparcCFG
-               )
              val V9 = false
              val muluCost = ref 5
              val multCost = ref 3
@@ -289,104 +363,172 @@ structure SparcCFG =
              val registerwindow = ref false
              val useBR = ref false
             )
-*)
-(*
-(*---------------------------------------------------------------------------
- * Okay.  Finally, we can tie the front-end and back-end together.
- *---------------------------------------------------------------------------*)
-structure SparcBackEnd = 
-   BackEnd
-   (structure Flowgraph  = SparcFlowGraph
-    structure MLTreeComp = SparcMLTreeComp
-    structure Asm        = SparcAsm
 
-    structure RA =
-      RISC_RA 
-      (structure I         = SparcInstr
-       structure Flowgraph = Flowgraph
-       structure Asm       = Asm
-       structure InsnProps = InsnProps
-       structure Spill     = RASpill(structure Asm = Asm
-                                     structure InsnProps = InsnProps)
-       structure Rewrite   = SparcRewrite(SparcInstr)
-       structure SpillHeur = ChaitinSpillHeur
-       structure C         = I.C
- 
-       val sp = C.stackptrR
-       val spill = UserRegion.spill 
 
-       structure SpillTable = SpillTable
-           (val initialSpillOffset = 0 (* This is probably wrong!!!!! *)
+    structure InsnProps = SparcProps
+
+    structure RA = 
+       RISC_RA
+         (structure I         = SparcInstr
+       structure C         = CellsBasis
+       structure T = SparcMLTree
+          structure CFG       = SparcCFG
+          structure InsnProps = InsnProps 
+          structure Rewrite   = SparcRewrite(SparcInstr)
+	  structure SpillInstr= SparcSpillInstr(SparcInstr)
+          structure Asm       = SparcAsmEmitter
+          structure SpillHeur = ChaitinSpillHeur
+          structure Spill     = RASpill(structure InsnProps = InsnProps
+                                        structure Asm = SparcAsmEmitter)
+
+          structure SpillTable = SpillTable(val initialSpillOffset = 0 (* This is probably wrong!!!!! *)
             val spillAreaSz = 4000
-            val architecture = "Sparc" 
-           )
-       open SpillTable
-   
-       fun pure(I.ANNOTATION{i,...}) = pure i
-         | pure(I.LOAD _) = true
-         | pure(I.FLOAD _) = true
-         | pure(I.SETHI _) = true
-         | pure(I.SHIFT _) = true
-         | pure(I.FPop1 _) = true
-         | pure(I.FPop2 _) = true
-         | pure _ = false
-   
-       (* I'm assuming only r0 and the stack pointer is dedicated *)
-       structure Int =
-       struct
-           val dedicated  = [I.C.stackptrR, I.C.GPReg 0]
-           val avail = 
-             C.SortedCells.return
+            val architecture = "Sparc" )
+          val fp = I.C.frameptrR
+          val spill = UserRegion.spill
+	  datatype spillOperandKind = SPILL_LOC | CONST_VAL
+	  type spill_info = unit
+          fun beforeRA _ = SpillTable.beginRA()
+
+          val architecture = "Sparc"
+         
+          fun pure(I.ANNOTATION{i,...}) = pure i
+            | pure(I.INSTR(I.LOAD _)) = true
+            | pure(I.INSTR(I.FLOAD _)) = true
+            | pure(I.INSTR(I.SETHI _)) = true
+            | pure(I.INSTR(I.SHIFT _)) = true
+            | pure(I.INSTR(I.FPop1 _)) = true
+            | pure(I.INSTR(I.FPop2 _)) = true
+            | pure _ = false
+
+          (* make copy *) 
+          structure Int = 
+          struct
+	               val dedicated = [I.C.stackptrR, I.C.GPReg 0]
+             val avail     = 
+		 C.SortedCells.return
               (C.SortedCells.difference(
                 C.SortedCells.uniq(
-                  C.Regs C.GP {from=0, to=31, step=1}),
+                   SparcCells.Regs C.GP {from=0, to=31, step=1}),
                 C.SortedCells.uniq dedicated)
               )
 
-          fun copy((rds as [_], rss as [_]), _) =
-              I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
-            | copy((rds, rss), I.COPY{tmp, ...}) =
-              I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
+	     fun mkDisp loc = T.LI(T.I.fromInt(32, SpillTable.get loc))
+             fun spillLoc{info, an, cell, id} = 
+		  {opnd=I.Displace{base=fp, disp=mkDisp(RAGraph.FRAME id), mem=spill},
+		   kind=SPILL_LOC}
 
-          (* spill copy temp *)
-          fun spillCopyTmp(_,I.COPY{dst,src,tmp,impl},loc) =
-              I.COPY{dst=dst, src=src, impl=impl,
-                     tmp=SOME(I.Displace{base=sp, disp=get loc})}
-       
-          (* spill register *)
-           fun spillInstr{an,src,spilledCell,spillLoc} =
-               [I.STORE{s=I.ST, r=sp, i=I.IMMED(get spillLoc), d=src, 
-                      mem=spill}]
-           
-          (* reload register *)
-           fun reloadInstr{an,dst,spilledCell,spillLoc} =
-                [I.LOAD{l=I.LD, r=sp, i=I.IMMED(get spillLoc), d=dst, 
-                      mem=spill}]
+             val mode = RACore.NO_OPTIMIZATION
+          end
+
+          structure Float = 
+          struct
+      fun fromto(n, m, inc) = if n>m then [] else n :: fromto(n+inc, m, inc)
+	  val avail =  SparcCells.Regs C.FP {from=0, to=30, step=2}
+	  val dedicated = []
+
+	      fun mkDisp loc = T.LI(T.I.fromInt(32, SpillTable.getF loc))
+
+             fun spillLoc(S, an, loc) = 
+		I.Displace{base=fp, disp=mkDisp(RAGraph.FRAME loc), mem=spill}
+
+             val mode = RACore.NO_OPTIMIZATION
+          end
+         )
+
+structure Cells = SparcInstr.C
+structure T = SparcMLTree
+structure CFG = SparcCFG
+structure FlowGraph = SparcFlowGraph
+    val wordTy = 32
+
+    fun gen (functionName, stms, result) = let
+           val insnStrm = FlowGraph.build()
+	   val stream as SparcStream.STREAM
+           { beginCluster,  (* start a cluster *)
+             endCluster,    (* end a cluster *)
+             emit,          (* emit MLTREE stm *)
+             defineLabel,   (* define a local label *)
+             entryLabel,    (* define an external entry *)
+             exitBlock,     (* mark the end of a procedure *)
+             pseudoOp,      (* emit a pseudo op *)
+             annotation,    (* add an annotation *)
+             ... } =
+             MLTreeComp.selectInstructions insnStrm
+	fun doit () = (
+	    beginCluster 0;      (* start a new cluster *)
+            pseudoOp PseudoOpsBasisTyp.TEXT;		  
+	    pseudoOp (PseudoOpsBasisTyp.EXPORT [functionName]);    
+            entryLabel functionName; (* define the entry label *)
+            List.app emit stms; (* emit all the statements *)
+            exitBlock result;
+            endCluster [])
+	val cfg = doit ()
+	val cfg = RA.run cfg
+	val cfg = SparcExpand.run cfg
+        in  
+         (cfg, stream)        (* end the cluster *)
        end
 
-       structure Float = 
-       struct
-          val dedicated = []
-          val avail     = C.Regs C.FP {from=0, to=31, step=2}
+    fun dumpOutput (cfg, stream) = let
+	val (cfg as Graph.GRAPH graph, blocks) = 
+		SparcBlockPlacement.blockPlacement cfg
+	val CFG.INFO{annotations=an, data, decls, ...} = #graph_info graph
+	in
+	  SparcEmit.asmEmit (cfg, blocks)
+	end (* dumpOutput *)
+
    
-          fun copy((fds as [_], fss as [_]), _) =
-              I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
-            | copy((fds, fss), I.FCOPY{tmp, ...}) =
-              I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
-   
-          fun spillCopyTmp(_,I.FCOPY{dst,src,tmp,impl},loc) =
-              I.FCOPY{dst=dst, src=src, impl=impl,
-                      tmp=SOME(I.Displace{base=sp, disp=getF loc})}
-   
-          fun spillInstr(_, d,loc) =
-              [I.FSTORE{s=I.STDF, r=sp, i=I.IMMED(getF loc), d=d, mem=spill}]
-   
-          fun reloadInstr(_,d,loc) =
-              [I.FLOAD{l=I.LDDF, r=sp, i=I.IMMED(getF loc), d=d, mem=spill}]
-       end
-      )
-   )
+    fun codegen (functionName, target, proto, initStms, args) = let 
+        val _ = Label.reset()
+
+	val [functionName, target] = List.map Label.global [functionName, target]
+
+	(* construct the C call *)
+	val {result, callseq} = SparcCCall.genCall {
+	           name=T.LABEL target,
+	           paramAlloc=fn _ => false,
+(* FIXME *)
+	           structRet=fn _ => T.REG(32, SparcCells.GPReg 0),
+	           saveRestoreDedicated=fn _ => {save=[], restore=[]},
+	           callComment=NONE,
+	           proto=proto,
+	           args=args}
+
+	fun wordLit i = T.LI (T.I.fromInt (wordTy, i))
+
+	val stms = List.concat [
+		   initStms,
+		   callseq, 
+		   [T.RET []]]
+
+(*	val _ = List.all (fn stm => ChkTy.check stm 
+				    orelse raise Fail ("typechecking error: "^SparcMTC.SparcMLTreeUtils.stmToString stm))
+		stms
 *)
+
+        in
+	   dumpOutput(gen (functionName, stms, result))
+	end
+
+    val GP = SparcCells.GPReg
+    val FP = SparcCells.FPReg
+
+    fun greg r = GP r
+    fun oreg r = GP (r + 8)
+    fun ireg r = GP (r + 24)
+    fun freg r = FP r
+    fun reg32 r = T.REG (32, r)
+    fun freg64 r = T.FREG (64, r)
+    fun LI i = T.LI (T.I.fromInt (32, i))
+
+
 in
-structure SparcTest = struct end
+structure SparcTest = GenTestFn (
+		  structure T = SparcMLTree
+		  structure CCall = SparcCCall
+		  structure Cells = SparcCells
+		  val codegen = codegen
+		  val param0 = reg32(oreg 0)
+		  val wordTy = 32)
 end

@@ -55,3 +55,4 @@ is
 	../test/c-x86-test.sml
 	../test/c-x86-64-test.sml
 	../test/c-sparc-test.sml
+	../test/spill-table.sml
