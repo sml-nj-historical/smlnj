@@ -864,13 +864,13 @@ functor AMD64Gen (
 		 | T.LOAD (64, ea, mem) => genLoad (I.MOVQ, ea, mem)
 		 (* sign-extended loads *)
 		 | T.SX (tTy, fTy, x) =>
-		   mark (I.MOVE {mvOp=O.loadSXOp (fTy, tTy), src=operand fTy x, dst=I.Direct(tTy, dst)},an)
+		   mark (I.MOVE {mvOp=O.loadSXOp (fTy, tTy), src=regOrMem(fTy, operand fTy x), dst=I.Direct(tTy, dst)},an)
 		 (* there is no movslq instruction, but movl suffices. *)
 		 | T.ZX(64, 32, e) => 
 		   mark (I.MOVE {mvOp=I.MOVL, src=operand 32 e, dst=I.Direct(32, dst)},an)
 		 (* zero-extended loads *)
 		 | T.ZX(tTy, fTy, e) => 
-		   mark (I.MOVE {mvOp=O.loadZXOp (fTy, tTy), src=operand fTy e, dst=I.Direct(tTy, dst)},an)
+		   mark (I.MOVE {mvOp=O.loadZXOp (fTy, tTy), src=regOrMem(fTy, operand fTy e), dst=I.Direct(tTy, dst)},an)
 		 | T.CVTF2I (ty, roundingMd, fty, fExp) => let
 		  (* FIXME: handle the rounding mode *)
                    val mvOp = (case (fty, ty)
