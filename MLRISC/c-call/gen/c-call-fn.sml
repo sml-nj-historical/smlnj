@@ -216,7 +216,7 @@ functor CCallFn (
 		val ([resultReg as T.FPR(T.FREG(_, tmp))], copyResult') = readLoc(loc, ([], []))
 		val w = SA.width loc
 	        in
-		   (resultReg :: resultRegs, T.FMV(w', tmp, T.CVTF2F(w', w, T.FREG(w, tmp))) :: copyResult' @ copyResult)
+		   (resultReg :: resultRegs, T.FMV(w, tmp, T.CVTF2F(w, w', T.FREG(w', tmp))) :: copyResult' @ copyResult)
 	        end
 	    | SA.COMBINE (l1, l2) => (
 	        case (readLoc (l1, ([], [])), readLoc (l2, ([], [])))
