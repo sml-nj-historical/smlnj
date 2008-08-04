@@ -85,6 +85,12 @@ functor CCallFn (
 	    | (ARG (T.LOAD (ty, e, rgn)), SA.NARROW(SA.REG (w, K.GPR, r), w', K.GPR)) =>
 	      (* memory to register with conversion (gpr) *)
 	      copyToReg(w, r, T.SX(w, w', T.LOAD (w', T.ADD(wordTy, e, off), rgn))) @ stms
+	    | (ARG e, SA.REG (w, K.GPR, r)) =>
+	      (* expression to register *)
+	      copyToReg(w, r, e) @ stms
+	    | (ARG e, SA.NARROW (SA.REG(w, K.GPR, r), w', K.GPR)) => 
+	      (* expression to register with conversion *)
+	      copyToReg(w, r, T.SX(w, w', e)) @ stms
 	    | (ARG (T.LOAD (ty, e, rgn)), SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset)) => let
 	      (* memory to stack (gpr) *)
 		val tmp = C.newReg ()
@@ -114,15 +120,42 @@ functor CCallFn (
 	    | (FARG (e as T.FREG _), SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) =>
 	      (* register to stack (fpr) *)
 	      T.FSTORE (w, offSp offset, e, stack) :: stms
+	    | (FARG e, SA.REG(w, K.FPR, r)) => 
+	      (* expression to register (fpr) *)
+	      copyToFReg(w, r, e) @ stms
+	    | (FARG e, SA.NARROW(SA.REG(w, K.FPR, r), w', K.FPR)) => 
+	      (* expression to register with conversion (fpr) *)
+	      copyToFReg(w, r, T.CVTF2F(w, w', e)) @ stms
 	    | (ARG (T.LOAD (ty, e, rgn)), SA.REG(w, K.FPR, r)) =>
 	      (* memory to register (fpr) *)
 	      copyToFReg(w, r, T.FLOAD (ty, T.ADD(wordTy, e, off), rgn)) @ stms
-	    | (FARG (T.FLOAD (ty, e, rgn)), SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) => let
+	    | (ARG (T.LOAD (ty, e, rgn)), SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) => let
               (* memory to stack (fpr) *)
 		val tmp = C.newFreg ()
 	        in
 		  T.FSTORE (w, offSp offset, T.FREG (w, tmp), stack) :: 
 		  T.FMV (w, tmp, T.FLOAD (ty, T.ADD(wordTy, e, off), rgn)) :: stms
+	        end
+	    | (ARG (T.LOAD (ty, e, rgn)), SA.NARROW(SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset), w', K.FPR)) => let
+              (* memory to stack with conversion (fpr) *)
+		val tmp = C.newFreg ()
+	        in
+		  T.FSTORE (w, offSp offset, T.FREG (w, tmp), stack) :: 
+		  T.FMV (w, tmp, T.CVTF2F(w, w', T.FLOAD (w', T.ADD(wordTy, e, off), rgn))) :: stms
+	        end
+	    | (FARG (T.FLOAD (ty, e, rgn)), SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) => let
+              (* memory to stack (fpr) *)
+		val tmp = C.newFreg ()
+	        in
+		  T.FSTORE (w, offSp offset, T.FREG (w, tmp), stack) :: 
+		  T.FMV (w, tmp, T.FLOAD (w, T.ADD(wordTy, e, off), rgn)) :: stms
+	        end
+	    | (FARG (T.FLOAD (ty, e, rgn)), SA.NARROW(SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset), w', K.FPR)) => let
+              (* memory to stack with conversion (fpr) *)
+		val tmp = C.newFreg ()
+	        in
+		  T.FSTORE (w, offSp offset, T.FREG (w, tmp), stack) :: 
+		  T.FMV (w, tmp, T.CVTF2F(w, w', T.FLOAD (w, T.ADD(wordTy, e, off), rgn))) :: stms
 	        end
 	    | (FARG e, SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) => let
               (* expression to stack (fpr) *)
@@ -130,9 +163,12 @@ functor CCallFn (
 	        in
 		  T.FSTORE (w, offSp offset, T.FREG (w, tmp), stack) :: T.FMV (w, tmp, e) :: stms
 	        end
-	    | (FARG e, SA.REG(w, K.FPR, r)) => 
-	      (* expression to register (fpr) *)
-	      copyToFReg(w, r, e) @ stms
+	    | (FARG e, SA.NARROW(SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset), w', K.FPR)) => let
+              (* expression to stack (fpr) *)
+		val tmp = C.newFreg ()
+	        in
+		  T.FSTORE (w, offSp offset, T.CVTF2F (w, w', T.FREG (w, tmp)), stack) :: T.FMV (w, tmp, e) :: stms
+	        end
 	    | _ => raise Fail "invalid arg / loc pair"
           (* end case *))
 
