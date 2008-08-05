@@ -425,18 +425,17 @@ struct
            emit_label label; 
            emit_nop nop )
        | I.JMP{r, i, labs, nop} => 
-         ( emit "jmp\t["; 
+         ( emit "jmp\t"; 
            emitCell r; 
            emit "+"; 
            emit_operand i; 
-           emit "]"; 
            emit_nop nop )
        | I.JMPL{r, i, d, defs, uses, cutsTo, nop, mem} => 
-         ( emit "jmpl\t["; 
+         ( emit "jmpl\t"; 
            emitCell r; 
            emit "+"; 
            emit_operand i; 
-           emit "], "; 
+           emit ", "; 
            emitCell d; 
            emit_region mem; 
            emit_defs defs; 

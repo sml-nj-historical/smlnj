@@ -7,4 +7,7 @@
 structure SparcInstrExt = struct
     datatype ('s, 'r, 'f, 'c) sext =
 	UNIMP of int
+      | SAVE of ('r * 'r * 'r)
+      | RESTORE of ('r * 'r * 'r)
+
 end
