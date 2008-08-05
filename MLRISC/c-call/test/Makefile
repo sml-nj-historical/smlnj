@@ -1,7 +1,8 @@
 ML_BUILD_FLAGS =	-Ctdp.instrument=true \$$smlnj-tdp/back-trace.cm
 
 build-sparc:
-	ml-build $(ML_BUILD_FLAGS) ../cm/wrapper.cm SparcTest.main test-main
+#no TDP for sparc
+	ml-build ../cm/wrapper.cm SparcTest.main test-main
 	sml @SMLcmdname=test-main @SMLload=test-main
 	gcc -g -c mlrisc.s
 	gcc -g  -c glue.c
@@ -11,7 +12,7 @@ build-sparc:
 	gcc -g  mlrisc.o glue.o main.o -o main
 	./main > main.out
 	./sanity > sanity.out
-	diff -Naur main.out sanity.out
+	diff main.out sanity.out
 
 build-x86-64:
 	ml-build $(ML_BUILD_FLAGS) ../cm/wrapper.cm X86_64Test.main test-main

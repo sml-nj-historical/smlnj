@@ -372,7 +372,7 @@ structure X86MLRISCGen =
              X86.selectInstructions insnStrm
    	fun doit () = (
 	    beginCluster 0;      (* start a new cluster *)
-            pseudoOp PseudoOpsBasisTyp.TEXT;		  
+            pseudoOp PseudoOpsBasisTyp.TEXT;
 	    pseudoOp (PseudoOpsBasisTyp.EXPORT [functionName]);    
             entryLabel functionName; (* define the entry label *)
             List.app emit stms; (* emit all the statements *)

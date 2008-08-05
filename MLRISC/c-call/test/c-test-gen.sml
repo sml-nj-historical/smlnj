@@ -356,10 +356,10 @@ functor GenTestFn(
     val pty12 = [CTy.C_STRUCT [CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR]]
     val pty13 = [CTy.C_float, CTy.C_double]
 
-    fun main _ = BackTrace.monitor (fn () => let
+    fun main _ = (*BackTrace.monitor (fn () => *) (let
       (* choose the prototype to test *)
-	val retTy = CTy.C_signed CTy.I_int
-	val paramTys = pty6
+	val retTy = CTy.C_void
+	val paramTys = pty10
 
 	val cArgs = List.map genRandArg paramTys
 	val retVal = if retTy <> CTy.C_void then [genRandArg retTy] else []
@@ -391,7 +391,7 @@ functor GenTestFn(
 	val szB = Int.max(wordSzB, maxSzOfProto proto)
 	val (_, glueArgs) = List.foldl (genGlueArg szB tmpR) (0, []) paramTys
 	val asmOutStrm = TextIO.openOut "mlrisc.s"
-	fun doit () = codegen(mlriscGlue, target, proto, [T.MV(wordTy, tmpReg, param0)], List.rev glueArgs)
+	fun doit () = codegen(mlriscGlue, target, proto, [T.MV(32, tmpReg, param0)], List.rev glueArgs)
 	val _ = AsmStream.withStream asmOutStrm doit ()
 	val _ = TextIO.closeOut asmOutStrm
 	in          

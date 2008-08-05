@@ -13,9 +13,9 @@ local
  *)
 structure UserConst =
 struct
-   type const = unit
-   fun toString() = ""  
-   fun hash() = 0w0  
+   type const = int
+   val toString = Int.toString
+   fun hash _ = 0w0  
    fun valueOf _ = 0
    fun == _ = true  
 end
@@ -155,7 +155,7 @@ structure SparcAsm = SparcAsmEmitter
     val V9 = false  (* we'll generate V8 instructions for now *)
    )
 
-structure SparcPseudoInstrs : SPARC_PSEUDO_INSTR = 
+structure SparcPseudoInstrs = 
 struct
   structure I = SparcInstr
   structure C = I.C
@@ -276,6 +276,8 @@ struct
                        [I.ticc{t=I.BVS,cc=I.ICC,r=C.r0,i=I.IMMED 7}]
   val overflowtrap64 = [] (* not needed *)
 
+  fun save (r, opnd :SparcInstr.operand, d) = [I.save{r=r, i=opnd, d=d}]
+  fun restore (r, opnd :SparcInstr.operand, d) = [I.restore{r=r, i=opnd, d=d}]
 
 end
 
@@ -478,6 +480,16 @@ structure FlowGraph = SparcFlowGraph
 	  SparcEmit.asmEmit (cfg, blocks)
 	end (* dumpOutput *)
 
+    val GP = SparcCells.GPReg
+    val FP = SparcCells.FPReg
+    fun greg r = GP r
+    fun oreg r = GP (r + 8)
+    fun ireg r = GP (r + 24)
+    fun freg r = FP r
+    fun reg32 r = T.REG (32, r)
+    fun freg64 r = T.FREG (64, r)
+    fun LI i = T.LI (T.I.fromInt (32, i))
+    val sp = oreg 6
    
     fun codegen (functionName, target, proto, initStms, args) = let 
         val _ = Label.reset()
@@ -497,10 +509,15 @@ structure FlowGraph = SparcFlowGraph
 
 	fun wordLit i = T.LI (T.I.fromInt (wordTy, i))
 
+	fun offfp i = T.ADD(32, T.REG (32, ireg 6), LI i)
+
 	val stms = List.concat [
+		   [T.EXT(SparcInstrExt.SAVE(T.REG(32, sp), LI(~112), T.REG(32, sp)))],
 		   initStms,
 		   callseq, 
-		   [T.RET []]]
+		   [T.EXT(SparcInstrExt.RESTORE(T.REG(32, greg 0), T.REG(32, greg 0), T.REG(32, greg 0)))],
+		   [T.JMP(T.ADD(32, T.REG(32, oreg 7), LI 8), [])]
+		   ]
 
 (*	val _ = List.all (fn stm => ChkTy.check stm 
 				    orelse raise Fail ("typechecking error: "^SparcMTC.SparcMLTreeUtils.stmToString stm))
@@ -529,6 +546,6 @@ structure SparcTest = GenTestFn (
 		  structure CCall = SparcCCall
 		  structure Cells = SparcCells
 		  val codegen = codegen
-		  val param0 = reg32(oreg 0)
+		  val param0 = reg32(ireg 0)
 		  val wordTy = 32)
 end
