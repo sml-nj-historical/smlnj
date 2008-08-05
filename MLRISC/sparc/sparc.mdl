@@ -724,7 +724,7 @@ struct
    |  BP of {b:branch, p:prediction, cc:cc, a:bool, label:Label.label,nop:bool}
         asm: ``bp<b><a><p>\t%<emit(if cc = I.ICC then "i" else "x")>cc, <label><nop>''
    |  JMP  of { r: $GP, i:operand, labs : Label.label list, nop:bool}
-        asm: ``jmp\t[<r>+<i>]<nop>'' 
+        asm: ``jmp\t<r>+<i><nop>'' 
         mc:  (jmp{r,i}; delay{nop})
 	rtl: ``JMP''
         padding: nop = true
@@ -735,7 +735,7 @@ struct
                 defs: $cellset, uses: $cellset, 
                 cutsTo : Label.label list, nop:bool, mem:Region.region
               }
-        asm: ``jmpl\t[<r>+<i>], <d><mem><emit_defs defs><emit_uses uses><emit_cutsTo cutsTo><nop>'' 
+        asm: ``jmpl\t<r>+<i>, <d><mem><emit_defs defs><emit_uses uses><emit_cutsTo cutsTo><nop>'' 
         mc:  (jmpl{r,i,d}; delay{nop})
 	rtl: ``JMPL''
         padding: nop = true
