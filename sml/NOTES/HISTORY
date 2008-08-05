@@ -15,6 +15,13 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/08/05
+Description:
+
+Added build support for OpenBSD (thanks to Brian O'Hanlon).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2008/07/12
 Description:
 

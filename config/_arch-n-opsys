@@ -128,6 +128,14 @@ case `uname -s` in
       *) exit 1;;
     esac
     ;;
+  OpenBSD)
+    OPSYS=openbsd
+    HEAP_OPSYS=bsd;;
+    case `uname -m` in
+      *86) ARCH=x86;;
+      *) exit 1;;
+    esac
+    ;;
   Windows_NT)
     OPSYS=win32
     case `uname -m` in
