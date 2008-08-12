@@ -14,6 +14,15 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name Aaron TUron (turon@ccs.neu.edu)
+Date 2008/08/11
+Description:
+
+Minor fix to ml-ulex backend for regexps that match any character
+and perform a single action.  Previously the emitted code would 
+not allow the regexps to match any character at all.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2008/08/05
 Description:
