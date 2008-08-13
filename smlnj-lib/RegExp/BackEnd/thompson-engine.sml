@@ -94,17 +94,11 @@ structure ThompsonEngine : REGEXP_ENGINE =
 		      end
 		  | RE.Concat[] => raise Fail "empty concatenation"
 		  | RE.Concat[re] => reComp re
-		  | RE.Concat(re::rest) => let
-		      val f1 = reComp re
-		      val f2 = reComp(RE.Concat rest)
-		      in
-			setOuts (f1, #start f2);
-			{start = #start f1, out = #out f2}
-		      end
+		  | RE.Concat(re::rest) => cat (re, RE.Concat rest)
 		  | RE.Interval(re, 0, SOME 1) => option re
 		  | RE.Interval(re, 0, NONE) => closure re
 		  | RE.Interval(re, 1, NONE) => posClosure re
-		  | RE.Interval(re, i, optn) => raise Fail "Interval"
+		  | RE.Interval(re, i, SOME j) => raise Fail "unimplemented"
 		  | RE.Option re => option re
 		  | RE.Star re => closure re
 		  | RE.Plus re => posClosure re
@@ -130,6 +124,14 @@ structure ThompsonEngine : REGEXP_ENGINE =
 		      end
 		  | RE.End => raise Fail "End"
 		(* end case *))
+	(* compile re1 . re2 *)
+	  and cat (re1, re2) = let
+		val f1 = reComp re1
+		val f2 = reComp re2
+		in
+		  setOuts (f1, #start f2);
+		  {start = #start f1, out = #out f2}
+		end
 	(* compile re? *)
 	  and option re = let
 		val f = reComp re
@@ -167,8 +169,28 @@ structure ThompsonEngine : REGEXP_ENGINE =
 	    RE{ start = idOf(#start frag), states = Vector.fromList states }
 	  end
 
-  (* scan the stream for the first occurence of the regular expression *)
-    fun scan (RE{start, states}, getc : (char,'a) StringCvt.reader, isFirst, strm : 'a) = let
+(* +DEBUG *)
+    fun stateToString (CHR(c, out)) =
+	  concat["CHR (#\"", Char.toString c, "\", ", Int.toString out, ")"]
+      | stateToString (CSET(cs, out)) = concat["CSET (-, ", Int.toString out, ")"]
+      | stateToString (NCSET(cs, out)) = concat["NCSET (-, ", Int.toString out, ")"]
+      | stateToString (SPLIT(out1, out2)) =
+	  concat["SPLIT (", Int.toString out1, ", ", Int.toString out2, ")"]
+      | stateToString (BOL out) = concat["BOL ", Int.toString out]
+      | stateToString (EOL out) = concat["EOL ", Int.toString out]
+      | stateToString FINAL = "FINAL"
+    fun dump (RE{start, states}) = let
+	  fun prState st = print(stateToString st)
+	  in
+	    print(concat["start = ", Int.toString start, "\n"]);
+	    Vector.appi (fn (i, st) => (print(Int.toString i ^ ": "); prState st; print "\n"))
+	      states
+	  end
+(* -DEBUG *)
+
+  (* scan the stream for the first occurrence of the regular expression *)
+    fun scan (RE{start, states}, getc : (char,'a) StringCvt.reader) = let
+(*val _ = dump (RE{start=start, states=states})*)
 	(* to make elimination of duplicates in a state set cheap, we map state IDs
 	 * to a stamp of the last set that they were added to.
 	 *)
@@ -184,11 +206,17 @@ structure ThompsonEngine : REGEXP_ENGINE =
 			  addState (stamp', addState (stamp', stateList, out1), out2)
 		      | state => state :: stateList
 		    (* end case *))
-	  fun startState () = addState(!stamp, [], start)
+	  fun startState () = let
+		val stamp' = !stamp
+		in
+		  stamp := stamp' + 0w1;
+		  addState (stamp', [], start)
+		end
 	  fun isMatch stamp' = (Array.sub(lastStamp, 0) = stamp')
-	  fun find' startPos = let
-		fun scan (_, _, lastAccepting, []) = lastAccepting
-		  | scan (n, strm, lastAccepting, nfaState) = (case getc strm
+	(* attempt to match the RE starting with the stream startPos *)
+	  fun find' (isFirst, startPos) = let
+		fun scan (_, _, _, lastAccepting, []) = lastAccepting
+		  | scan (isFirst, n, strm, lastAccepting, nfaState) = (case getc strm
 		       of NONE => if isMatch (!stamp)
 			    then SOME(n, startPos)
 			    else lastAccepting
@@ -196,50 +224,57 @@ structure ThompsonEngine : REGEXP_ENGINE =
 			    val stamp' = !stamp
 			    val _ = (stamp := stamp' + 0w1)
 			    fun test ([], nextStates) = nextStates
-			      | test (s::r, nextStates) = (case s
-				   of CHR(c', out) => if (c = c')
-					then addState (stamp', nextStates, out)
-					else nextStates
-				    | CSET(cset, out) => if CSet.member(cset, c)
-					then addState (stamp', nextStates, out)
-					else nextStates
-				    | NCSET(cset, out) => if CSet.member(cset, c)
-					then nextStates
-					else addState (stamp', nextStates, out)
-				    | BOL out => if isFirst
-					then addState (stamp', nextStates, out)
-					else nextStates
-				    | EOL out => raise Fail "end-of-line not supported yet"
-				    | _ => nextStates
-				  (* end case *))
+			      | test (s::r, nextStates) = let
+				  fun continue nextStates = test(r, nextStates)
+				  fun add out = continue(addState (stamp', nextStates, out))
+				  in
+				    case s
+				     of CHR(c', out) => if (c = c')
+					  then add out
+					  else continue nextStates
+				      | CSET(cset, out) => if CSet.member(cset, c)
+					  then add out
+					  else continue nextStates
+				      | NCSET(cset, out) => if CSet.member(cset, c)
+					  then continue nextStates
+					  else add out
+				      | BOL out => if isFirst
+					  then test(Vector.sub(states, out)::r, nextStates)
+					  else continue nextStates
+				      | EOL out => raise Fail "end-of-line not supported yet"
+				      | _ => continue nextStates
+				    (* end case *)
+				  end
 			    val nextNfaState = test (nfaState, [])
 			    val lastAccepting = if isMatch stamp'
 				  then SOME(n+1, startPos)
 				  else lastAccepting
 			    in
-			      scan (n+1, strm', lastAccepting, nextNfaState)
+(*
+print(concat[
+"{", String.concatWith "," (List.map stateToString nfaState), "} -- ",
+"#\"", Char.toString c, "\" --> {",
+String.concatWith "," (List.map stateToString nextNfaState), "}\n"]);
+*)
+			      scan ((c = #"\n"), n+1, strm', lastAccepting, nextNfaState)
 			    end
 		      (* end case *))
 		in
-		  case scan (0, startPos, NONE, startState())
-		   of NONE => (case getc startPos
-			 of SOME(_, strm) => find' strm
-			  | NONE => NONE
-			(* end case *))
+		  case scan (isFirst, 0, startPos, NONE, startState())
+		   of NONE => NONE
 		    | SOME(n, strm) => SOME(M.Match({pos=startPos, len=n}, []), strm)
 		  (* end case *)
 		end
 	  in
-	    find' strm
+	    find'
 	  end
 
 	fun find re getc stream = let
-(* FIXME: we need to reset isFirst on a newline; we also need to add an isLast
- * flag to scan to support the EOL assertion.
- *)
-	      fun loop (isFirst, s) = (case (scan (re, getc, isFirst, s))
+	      val scan = scan (re, getc)
+	      fun loop (isFirst, s) = (case (scan (isFirst, s))
 		     of NONE => (case (getc s)
-			   of SOME(_, s') => loop (false, s')
+			   of SOME(#"\n", s') => loop (true, s')
+			    | SOME(_, s') => loop (false, s')
 			    | NONE => NONE
 			  (* end case *))
 		      | SOME v => SOME v
@@ -248,7 +283,7 @@ structure ThompsonEngine : REGEXP_ENGINE =
 		loop (true, stream)
 	      end
 
-	fun prefix re getc strm = scan (re, getc, true, strm)
+	fun prefix re getc strm = scan (re, getc) (true, strm)
 
 	fun match [] = (fn getc => fn strm => NONE)
 	  | match l = let
@@ -257,7 +292,7 @@ structure ThompsonEngine : REGEXP_ENGINE =
 	      fun match' getc strm = let
 		  (* find the longest SOME *)
 		    fun loop ([], max, _) = max
-		      | loop ((re, act)::r, max, maxLen) = (case scan(re, getc, true, strm)
+		      | loop ((re, act)::r, max, maxLen) = (case scan(re, getc) (true, strm)
 			   of NONE => loop (r, max, maxLen)
 			    | SOME(m as MatchTree.Match({len, ...}, _), cs) =>
 				if (len > maxLen) 
@@ -273,4 +308,5 @@ structure ThompsonEngine : REGEXP_ENGINE =
 	      in
 		match'
 	      end
+
   end
