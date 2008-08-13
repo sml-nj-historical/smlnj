@@ -2,6 +2,12 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2008-06-11]
+	Added support for begin marks to Thompson engine.
+
+[2008-05-12]
+	Added parsing support to JSON library.
+
 [2008-04-18]
 	First commit of JSON Library.  Printing works, but parsing still needs
 	to be implemented.
