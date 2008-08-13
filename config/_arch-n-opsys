@@ -130,7 +130,7 @@ case `uname -s` in
     ;;
   OpenBSD)
     OPSYS=openbsd
-    HEAP_OPSYS=bsd;;
+    HEAP_OPSYS=bsd
     case `uname -m` in
       *86) ARCH=x86;;
       *) exit 1;;
