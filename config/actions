@@ -117,8 +117,8 @@ mlrisc libanchor IA32.cm    SMLNJ-MLRISC
 mlrisc libanchor AMD64.cm   SMLNJ-MLRISC
 mlrisc libanchor SA.cm	    SMLNJ-MLRISC
 mlrisc libanchor StagedAlloc.cm SMLNJ-MLRISC
-#mlrisc libanchor CCall.cm SMLNJ-MLRISC
 mlrisc anchor Peephole.cm MLRISC/cm
+mlrisc anchor StagedAlloc.cm MLRISC/cm
 mlrisc lib OTHER-MLRISC RA.cm             MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC Peephole.cm       MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC IA32-Peephole.cm  MLRISC/cm SMLNJ-MLRISC
