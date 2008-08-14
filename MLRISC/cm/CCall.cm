@@ -22,6 +22,10 @@ is
 	$/Graphs.cm
 	$/MLTREE.cm
 	$/StagedAlloc.cm
+	$/RA.cm
+	$/AMD64.cm
+	$/SPARC.cm
+	$/IA32.cm
 #else
 	basis.cm
 	smlnj-lib.cm
