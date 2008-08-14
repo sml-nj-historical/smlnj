@@ -112,7 +112,7 @@ mlrisc libanchor MLTREE.cm  SMLNJ-MLRISC
 mlrisc libanchor Graphs.cm  SMLNJ-MLRISC
 mlrisc libanchor IA32.cm    SMLNJ-MLRISC
 mlrisc libanchor AMD64.cm   SMLNJ-MLRISC
-mlrisc libanchor SA.cm	    SMLNJ-MLRSIC
+mlrisc libanchor SA.cm	    SMLNJ-MLRISC
 mlrisc anchor Peephole.cm MLRISC/cm
 mlrisc lib OTHER-MLRISC RA.cm            MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC Peephole.cm      MLRISC/cm SMLNJ-MLRISC
