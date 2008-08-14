@@ -1,5 +1,8 @@
 (* wrapper.cm
  *
+ * COPYRIGHT (c) 2008 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * This is a wrapper around group.cm.  It rebinds the MLRisc anchors so that
  * the MLRisc Library agrees about where things are located.
  *)
