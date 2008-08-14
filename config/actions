@@ -17,6 +17,46 @@
 #	<module> dprog ...
 #	<module> src
 #
+# Short explanation:
+#
+# "lib" (library) and "ulib" (library for Unix-like systems only):
+#   <a>: "anchor" -- the anchor name currently used by the library
+#           to be registered for compilation
+#   <aa>: "alternative anchor" -- optional alternative anchor name which is
+#           to be used once the library is in its final location
+#           (this must be used if "anchor" is already bound
+#           and used for other libraries which come from the
+#           bootfile bundle),
+#   <r>: "relative name" -- path to library's .cm file relative to anchor
+#           (standard syntax)
+#   <d>: "dir" -- directory name that anchor should be bound to,
+#           name is relative to smlnjroot and in standard syntax
+#
+# "anchor" (assign path name to anchor) and
+# "libanchor" (assign path name relative to lib dir to anchor)
+#   <a>: "anchor" -- the anchor name to be defined
+#   <p>: "path" -- the path name that is the value
+#
+# "prog" (install "standalone" program, e.g., ml-yacc, etc.) and
+# "dprog" (install standalone program, but defer this action until all
+#          libraries are installed)
+#   These have 0, 1, 2, or 3 arguments:
+#     {prog|dprog} <t> <h> <d>
+#  <t>: "target" -- name of program; this is the same as the basename
+#      of the heap image to be generated as well as the
+#      final arc of the source tree's directory name
+#      if <t> is not given, it is taken to be identical to the module name
+#  <h>: "optional heap directory" -- optional subdirectory where the
+#      build command drops the heap image; default is "-", which means
+#      no subdirectory is given (i.e., the heap image winds up
+#      in the toplevel directory of the respective program's source tree)
+#  <d>: "dir" -- directory relative to installation root where source
+#     tree for this program resides; by default, this is taken to be
+#     identical to the module name
+#
+# "src" (register a source package that needs to be unpacked but requires
+#        no further action)
+#
 
 # modules that don't require installer actions other than
 # unpacking their respectivesource trees:
