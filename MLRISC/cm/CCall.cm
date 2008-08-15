@@ -17,25 +17,21 @@ is
 #else
 	basis.cm
 	smlnj-lib.cm
-	controls-lib.cm
-	pp-lib.cm
 	Control.cm
 	Lib.cm
 	MLRISC.cm
 	Graphs.cm
 	MLTREE.cm
-	RA.cm
+	StagedAlloc.cm
 #endif
 #else
 	smlnj-lib.cm
-	controls-lib.cm
-	pp-lib.cm
 	Control.cm
 	Lib.cm
 	MLRISC.cm
 	Graphs.cm
 	MLTREE.cm
-	RA.cm
+	StagedAlloc.cm
 #endif
 	../c-call/gen/c-call-sig.sml
 	../c-call/gen/c-call-fn.sml

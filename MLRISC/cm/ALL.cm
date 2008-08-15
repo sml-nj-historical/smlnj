@@ -105,6 +105,13 @@ CCall-vararg:
 *)
 
 CCall-x86-64.cm:
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	MLRISC.cm
+	Graphs.cm
+	MLTREE.cm
+	StagedAlloc.cm
 	CCall.cm
 	AMD64.cm
 
@@ -112,6 +119,13 @@ CCall-x86-64.cm:
 	../c-call/archs/x86-64-c-sizes.sml
 
 CCall-x86.cm:
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	MLRISC.cm
+	Graphs.cm
+	MLTREE.cm
+	StagedAlloc.cm
 	CCall.cm
 	IA32.cm
 
@@ -119,6 +133,13 @@ CCall-x86.cm:
 	../c-call/archs/x86-c-sizes.sml
 
 CCall-sparc.cm:
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	MLRISC.cm
+	Graphs.cm
+	MLTREE.cm
+	StagedAlloc.cm
 	CCall.cm
 	SPARC.cm
 
