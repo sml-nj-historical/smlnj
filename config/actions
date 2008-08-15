@@ -69,13 +69,14 @@ smlnj-c		src
 cm		src
 system		src
 
-# Components of the SML/NJ library:
+# Components of the SML/NJ library that are not used by the compiler:
 #    (unix-lib.cm is installed only on Unix-like systems)
 smlnj-lib ulib unix-lib.cm      unix-lib.cm      smlnj-lib/Unix
 smlnj-lib  lib inet-lib.cm      inet-lib.cm      smlnj-lib/INet
 smlnj-lib  lib regexp-lib.cm    regexp-lib.cm    smlnj-lib/RegExp
 smlnj-lib  lib reactive-lib.cm  reactive-lib.cm  smlnj-lib/Reactive
 smlnj-lib  lib hash-cons-lib.cm hash-cons-lib.cm smlnj-lib/HashCons
+smlnj-lib  lib json-lib.cm      json-lib.cm      smlnj-lib/JSON
 
 # Concurrent ML:
 cml lib cml core-cml.cm     cml/src
@@ -129,7 +130,7 @@ mlrisc lib OTHER-MLRISC Peephole.cm       MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC IA32-Peephole.cm  MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC AMD64-Peephole.cm MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC SPARC.cm          MLRISC/cm SMLNJ-MLRISC
-mlrisc lib OTHER-MLRISC StagedAlloc.cm          MLRISC/cm SMLNJ-MLRISC
+mlrisc lib OTHER-MLRISC StagedAlloc.cm    MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC CCall.cm          MLRISC/cm SMLNJ-MLRISC
 
 # libraries supporting MLRISC tools:
