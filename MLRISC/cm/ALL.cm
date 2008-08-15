@@ -79,7 +79,6 @@ ALPHA-SSA.cm:
 
 CCall.cm:
 	smlnj-lib.cm
-	pp-lib.cm
 	Control.cm
 	Lib.cm
 	MLRISC.cm

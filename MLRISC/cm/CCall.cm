@@ -8,7 +8,6 @@ is
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/pp-lib.cm
 	$/Control.cm
 	$/Lib.cm
 	$/MLRISC.cm
