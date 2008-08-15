@@ -14,6 +14,6 @@ is
 #else
 	CCall.cm
 #endif
-	AMD64.CM
+	AMD64.cm
 	../c-call/archs/x86-64-svid-fn.sml
 	../c-call/archs/x86-64-c-sizes.sml

@@ -107,7 +107,7 @@ CCall-vararg:
 
 CCall-x86-64.cm:
 	CCall.cm
-	AMD64.CM
+	AMD64.cm
 
 	../c-call/archs/x86-64-svid-fn.sml
 	../c-call/archs/x86-64-c-sizes.sml
