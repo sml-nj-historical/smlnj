@@ -15,7 +15,7 @@ functor AMD64GenInterpFn (
     structure T = T
     structure C = AMD64Cells
     structure CB = CellsBasis
-    structure CTy = CTypes
+    structure CTy = CType
     structure CCall = AMD64SVIDFn(structure T = T)
     structure GenInterp = GenInterpFn(
 			      structure T = T

@@ -60,13 +60,13 @@ functor GenTestFn(
 	structure Cells : CELLS
 	structure CCall : C_CALL
                 where T = T
-	val codegen : (string * string * CTypes.c_proto * T.stm list * CCall.c_arg list) -> unit
+	val codegen : (string * string * CType.c_proto * T.stm list * CCall.c_arg list) -> unit
 	val param0 : T.rexp
 	val wordTy : int
   ) =
   struct
 
-    structure CTy = CTypes
+    structure CTy = CType
 
     val retValVar = "retVal"
 
