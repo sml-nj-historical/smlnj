@@ -79,38 +79,23 @@ ALPHA-SSA.cm:
 
 CCall.cm:
 	smlnj-lib.cm
-	controls-lib.cm
 	pp-lib.cm
 	Control.cm
 	Lib.cm
 	MLRISC.cm
 	Graphs.cm
 	MLTREE.cm
-(*	RA.cm
-	Visual.cm
-	Peephole.cm
-	IA32.cm
-	AMD64.cm
-	RTL.cm
-	SPARC.cm
-*) 
-(*	StagedAlloc.cm*) 
-(*	c/c.cm
-	smlnj/init/init.cmi : cm
-	c/internals/c-int.cm
-*)
+	StagedAlloc.cm
 
 	../c-call/gen/c-call-sig.sml
 	../c-call/gen/c-call-fn.sml
 	../c-call/gen/c-type.sml
 
-	../c-call/archs/x86-64-svid-fn.sml
-	../c-call/archs/x86-64-c-sizes.sml
-	../c-call/archs/x86-svid-fn.sml
-	../c-call/archs/x86-c-sizes.sml
-	../c-call/archs/sparc-c-sizes.sml
-	../c-call/archs/sparc-c-call-fn.sml
 (*
+CCall-vararg:
+	c/c.cm
+	smlnj/init/init.cmi : cm
+	c/internals/c-int.cm
 	../c-call/varargs/call/vararg-constants.sml
 	../c-call/varargs/call/smlnj-prim-c-call.sml
 	../c-call/varargs/call/marshal.sml
@@ -119,6 +104,28 @@ CCall.cm:
 	../c-call/varargs/call/vararg-call-fn.sml
 	../c-call/varargs/call/vararg-call.sml
 *)
+
+CCall-x86-64.cm:
+	CCall.cm
+	AMD64.CM
+
+	../c-call/archs/x86-64-svid-fn.sml
+	../c-call/archs/x86-64-c-sizes.sml
+
+CCall-x86.cm:
+	CCall.cm
+	IA32.cm
+
+	../c-call/archs/x86-svid-fn.sml
+	../c-call/archs/x86-c-sizes.sml
+
+CCall-sparc.cm:
+	CCall.cm
+	SPARC.cm
+
+	../c-call/archs/sparc-c-sizes.sml
+	../c-call/archs/sparc-c-call-fn.sml
+
 Control.cm:
 
         ../control/mlriscErrormsg.sml
