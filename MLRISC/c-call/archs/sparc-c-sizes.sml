@@ -1,7 +1,7 @@
 structure SparcCSizes =
   struct
 
-    structure Ty = CTypes
+    structure Ty = CType
 
     fun roundup (i, a) = a * ((i + a - 1) div a)
 

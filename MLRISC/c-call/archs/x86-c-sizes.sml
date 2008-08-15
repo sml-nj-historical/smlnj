@@ -1,7 +1,7 @@
 structure X86CSizes =
   struct
 
-    structure Ty = CTypes
+    structure Ty = CType
 
   (* align the address to the given alignment, which must be a power of 2 *)
     fun alignAddr (addr, align) = let

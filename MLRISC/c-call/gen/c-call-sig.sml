@@ -13,7 +13,7 @@ signature C_CALL =
       | FARG of T.fexp
 	  (* fexp specifies floating-point argument *)
 
-    val layout : CTypes.c_proto -> {
+    val layout : CType.c_proto -> {
 	    argLocs : SA.loc list list,	        (* argument/parameter assignment; nested lists are for passing structs *)
 	    argMem : {szb : int, align : int},	(* memory requirements for stack-allocated *)
 						(* arguments; this value can be passed to *)
@@ -71,7 +71,7 @@ signature C_CALL =
    *)
     val genCall : {
 	    name  : T.rexp,
-            proto : CTypes.c_proto,
+            proto : CType.c_proto,
 	    paramAlloc : {szb : int, align : int} -> bool,
             structRet : {szb : int, align : int} -> T.rexp,
 	    saveRestoreDedicated :

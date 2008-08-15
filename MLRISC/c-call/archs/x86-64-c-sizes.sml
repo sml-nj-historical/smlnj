@@ -6,7 +6,7 @@
 structure CSizes =
   struct
 
-    structure CTy = CTypes
+    structure CTy = CType
 
     (* size and natural alignment for integer types. *)
     fun sizeOfInt CTy.I_char = {ty = 8, sz = 1, align = 1}

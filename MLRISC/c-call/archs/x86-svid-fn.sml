@@ -19,7 +19,7 @@ functor X86SVIDFn (
     structure T = T
     structure C = X86Cells
     structure CB = CellsBasis
-    structure CTy = CTypes
+    structure CTy = CType
     structure IX = X86InstrExt
 
     val wordTy = 32

@@ -11,10 +11,10 @@ functor SparcCCallFn (
   ) : C_CALL = struct
 
     structure T = T
-    structure Ty = CTypes
+    structure Ty = CType
     structure C = SparcCells
     structure IX = SparcInstrExt
-    structure CTy = CTypes
+    structure CTy = CType
 
     val wordTy = 32
 

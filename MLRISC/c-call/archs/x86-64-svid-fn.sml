@@ -12,7 +12,7 @@ functor X86_64SVIDFn (
     structure T = T
     structure C = AMD64Cells
     structure CB = CellsBasis
-    structure CTy = CTypes
+    structure CTy = CType
 
     val wordTy = 64
     val mem = T.Region.memory
@@ -95,7 +95,7 @@ functor X86_64SVIDFn (
 	    end
 
   (* convert a C type into its eight bytes *)
-    fun eightBytesOfCTy cTy = eightBytesOfCTys (CTypes.flattenCTy cTy, [], [])
+    fun eightBytesOfCTy cTy = eightBytesOfCTys (CType.flattenCTy cTy, [], [])
 
   (* classify a C type into its location kind (assuming that aggregates cannot be passed in registers) *)
     fun kindOfCTy (CTy.C_float | CTy.C_double | CTy.C_long_double) = FPR
