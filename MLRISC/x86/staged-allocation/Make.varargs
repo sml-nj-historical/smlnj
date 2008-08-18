@@ -1,6 +1,0 @@
-CFLAGS=-std=gnu99 -m32 -march=i686 -g3
-
-build:
-	gcc $(CFLAGS) -c mlrisc.s
-	gcc $(CFLAGS) -c test-varargs.c
-	gcc $(CFLAGS) -o test-varargs mlrisc.o test-varargs.o

@@ -8,7 +8,6 @@ Library
 	signature X86SHUFFLE
 	structure X86Cells
 	structure X86InstrExt
-        structure IA32CSizes
 
 	functor IA32SVID_CCalls
 	functor X86
@@ -28,8 +27,6 @@ Library
 	functor X86Shuffle
         functor X86SpillInstr
 
-        (* staged allocation *)
-	functor IA32SVIDFn
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -40,8 +37,6 @@ is
 	$/Lib.cm
 	$/Graphs.cm
 	$/MLTREE.cm
-	$/SA.cm
-
 #else
 	basis.cm
 	smlnj-lib.cm
@@ -79,11 +74,6 @@ is
 	../x86/ra/x86SpillInstr.sml
 	../x86/backpatch/x86Jumps.sml 
 	../x86/mltree/x86.sml
-
-	(* C calls using staged allocation *)
-	../x86/staged-allocation/c-sizes.sml
-	../x86/staged-allocation/ia32-svid-fn.sml
-	../x86/staged-allocation/ia32-c-conventions-fn.sml
 
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION < 11042
 	../x86/mltree/orig-x86-fp.sml
