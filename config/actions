@@ -117,7 +117,6 @@ mlrisc libanchor Graphs.cm  SMLNJ-MLRISC
 mlrisc libanchor IA32.cm    SMLNJ-MLRISC
 mlrisc libanchor AMD64.cm   SMLNJ-MLRISC
 mlrisc libanchor SPARC.cm   SMLNJ-MLRISC
-mlrisc libanchor SA.cm	    SMLNJ-MLRISC
 mlrisc libanchor StagedAlloc.cm SMLNJ-MLRISC
 mlrisc libanchor CCall.cm SMLNJ-MLRISC
 mlrisc libanchor CCall-x86-64.cm SMLNJ-MLRISC
