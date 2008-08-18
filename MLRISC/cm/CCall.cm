@@ -7,11 +7,7 @@ is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
-	$/smlnj-lib.cm
-	$/Control.cm
-	$/Lib.cm
 	$/MLRISC.cm
-	$/Graphs.cm
 	$/MLTREE.cm
 	$/StagedAlloc.cm
 #else

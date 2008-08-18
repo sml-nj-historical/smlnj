@@ -13,5 +13,4 @@ paper by Olinsky et. al.
 
 Our library consists of two parts: 
  * allocator - follows the operational semantics given in the paper
- * cm - CM files for building the library
  * conventions - several calling conventions

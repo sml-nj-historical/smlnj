@@ -1,8 +1,17 @@
+(* c-call-fn.sml
+ *
+ * Generate MLRISC code for moving arguments to and from machine locations.
+ *)
+
 functor CCallFn (
     structure T : MLTREE
     structure C : CELLS
+  (* given an offset constant, return an expression that gives an offset from
+   * the run-time stack pointer 
+   *)
     val offSp : T.I.machine_int -> T.rexp
-    val wordTy : int
+  (* we assume that the address width is the same *)
+    val wordTy : int   
 		 
     structure SA : STAGED_ALLOCATION
           where type reg_id = T.reg
@@ -225,7 +234,9 @@ functor CCallFn (
 			val w' = SA.width l2
 			val tmp = C.newReg()
 		        in
-			   (T.GPR(T.REG(w, tmp)) :: resultRegs, T.MV(w, tmp, T.ADD(w, T.SLL(w, lit w', e1), e2)) :: instrs1 @ instrs2 @ copyResult)
+			   (T.GPR(T.REG(w, tmp)) :: resultRegs, 
+			    T.MV(w, tmp, T.ADD(w, T.SLL(w, lit w', e1), e2)) :: 
+			    instrs1 @ instrs2 @ copyResult)
 			end
  	        (* end case *))
 	    | _ => raise Fail "bogus read location"

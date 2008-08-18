@@ -14,7 +14,6 @@ out the calling sequence. Our ML Workshop paper contains the specifics.
 Layout:
 
  * archs - support for different architectures and operating systems
- * cm - CM files for building the library
  * gen - architecture-independent code
  * test - testing infrastructure
  * varargs - variable arity C calls

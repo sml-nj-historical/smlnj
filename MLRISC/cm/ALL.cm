@@ -78,11 +78,7 @@ ALPHA-SSA.cm:
 	../alpha/SSA/alphaSSAProps.sml
 
 CCall.cm:
-	smlnj-lib.cm
-	Control.cm
-	Lib.cm
 	MLRISC.cm
-	Graphs.cm
 	MLTREE.cm
 	StagedAlloc.cm
 
