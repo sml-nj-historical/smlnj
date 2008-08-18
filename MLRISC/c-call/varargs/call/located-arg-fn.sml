@@ -1,3 +1,8 @@
+(* located-arg-fn.sml
+ *
+ * Create located arguments.
+ *)
+
 functor LocatedArgFn (
     structure SA : STAGED_ALLOCATION
 	where type reg_id = int

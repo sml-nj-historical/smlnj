@@ -1,3 +1,8 @@
+(* marshal.sml
+ *
+ * Marshaling for located arguments.
+ *)
+
 structure Marshal =
   struct
 

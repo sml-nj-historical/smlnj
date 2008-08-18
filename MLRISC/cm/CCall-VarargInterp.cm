@@ -1,0 +1,28 @@
+Library
+
+	structure X86Gen
+	functor X86_64Gen
+	structure SparcGen 
+
+is
+
+	$/basis.cm
+	$/MLRISC.cm
+	$/MLTREE.cm
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+	$/StagedAlloc.cm
+	$/CCall.cm
+	$smlnj-tdp/plugins.cm
+	$c/c.cm
+	$smlnj/init/init.cmi : cm
+	$c/internals/c-int.cm
+
+	../c-call/varargs/call/vararg-constants.sml
+	../c-call/varargs/call/vararg.sml
+	
+	../c-call/varargs/interp/gen-fn.sml
+	../c-call/varargs/interp/x86-gen.sml
+	../c-call/varargs/interp/x86-64-gen-fn.sml
+	../c-call/varargs/interp/sparc-gen.sml

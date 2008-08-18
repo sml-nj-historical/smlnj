@@ -86,20 +86,6 @@ CCall.cm:
 	../c-call/gen/c-call-fn.sml
 	../c-call/gen/c-type.sml
 
-(*
-CCall-vararg:
-	c/c.cm
-	smlnj/init/init.cmi : cm
-	c/internals/c-int.cm
-	../c-call/varargs/call/vararg-constants.sml
-	../c-call/varargs/call/smlnj-prim-c-call.sml
-	../c-call/varargs/call/marshal.sml
-	../c-call/varargs/call/vararg.sml
-	../c-call/varargs/call/located-arg-fn.sml
-	../c-call/varargs/call/vararg-call-fn.sml
-	../c-call/varargs/call/vararg-call.sml
-*)
-
 CCall-x86-64.cm:
 	smlnj-lib.cm
 	Control.cm

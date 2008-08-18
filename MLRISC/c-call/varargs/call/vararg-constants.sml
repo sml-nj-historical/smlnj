@@ -1,3 +1,8 @@
+(* vararg-constants.sml
+ *
+ * Constants shared between calling coded and the interpreter generator.
+ *)
+
 structure VarargConstants =
   struct
 

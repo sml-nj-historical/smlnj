@@ -1,3 +1,8 @@
+(* x86-gen.sml
+ *
+ * X86-specific portion of the interpreter.
+ *)
+
 structure X86Gen =
   struct
 
@@ -30,7 +35,7 @@ structure X86Gen =
     fun getArg i = 
 	    T.LOAD(defTy, T.ADD(defTy, T.REG(defTy, C.ebp), lit (4*i+8)), T.Region.memory)
 
-  (* generate the x86 vararg interpreter *)
+  (* MLRISC code for the x86 vararg interpreter *)
     fun gen () = let
 	   val largsReg = C.newReg()
          (* we align the frame to a 16-bytes to support Mac OS. *)

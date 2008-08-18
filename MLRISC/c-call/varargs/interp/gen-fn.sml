@@ -107,12 +107,6 @@ functor GenFn (
 	    T.FSTORE(ty, T.ADD (defTy, spReg, offLocdArg(defTy, larg, Consts.locOffB)), 
 		    offLocdArgF(ty, larg, Consts.argOffB), mem)
 
-  (* load an integer argument into a register *)
-    fun loadGPR larg ty r = T.MV(ty, r, offLocdArg(ty, larg, Consts.argOffB))
-
-  (* load a floating-point argument into a register *)
-    fun loadFPR larg ty r = T.FMV(ty, r, offLocdArgF(ty, larg, Consts.argOffB))
-
   (* are the width and narrowing legal for kind of location? *)
     fun widthOK (k, w, narrowing) = let
 	    val ws = (case k
@@ -129,15 +123,12 @@ functor GenFn (
           (* narrow the location if necessary *)
 	    fun narrow loc = if width = narrowing then loc
 			     else SA.NARROW(loc, k, loc)
-(* FIXME: handle narrowing and offsets *)
-	    val ldInstrs = (
+	    val writeArgInstrs = (
 		case (k, loc, widthOK(k, width, narrowing))
 		 of (GPR, REG_LOC r, true) => 
 		    CCall.writeLoc (offLocdArg(ty, larg, Consts.argOffB)) (argMembOff, narrow(SA.REG(ty, GPR, r)), [])
-(* [loadGPR larg width r] *)
 		  | (FPR, REG_LOC r, true) =>
 		    CCall.writeLoc (offLocdArgF(ty, larg, Consts.argOffB)) (argMembOff, narrow(SA.REG(ty, FPR, r)), [])
-(*  		    [loadFPR larg width r]*)
 		  | (STK, STK_LOC, true) =>
 		    [storeSTK larg width]
 		  | (FSTK, STK_LOC, true) =>
@@ -145,8 +136,8 @@ functor GenFn (
 		  | _ => [T.JMP (T.LABEL errLab, [])]
                (* end case *))
             in
-		 (* place the argument *)
-		   ldInstrs @
+		 (* instructions to write the argument to the location *)
+		   writeArgInstrs @
 		 (* return to the interpreter loop *)
 		   [T.JMP (T.LABEL interpLab, [])]
 	    end
