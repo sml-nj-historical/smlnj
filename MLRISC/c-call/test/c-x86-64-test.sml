@@ -104,22 +104,22 @@ structure AMD64MLTreeEval =
     val eqRext = eq val eqFext = eq
     val eqCCext = eq val eqSext = eq)
 
-(*
+
 functor AMD64PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = AMD64GasPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-*)
 
+(*
 functor AMD64PseudoOpsFn (
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL where T = T
   ) : PSEUDO_OPS_BASIS = AMD64DarwinPseudoOps (
     structure T = T
     structure MLTreeEval = MLTreeEval)
-
+*)
 
 structure AMD64PseudoOps = AMD64PseudoOpsFn(
             structure T = AMD64MLTree
@@ -525,9 +525,10 @@ structure ChkTy = MLTreeCheckTy(structure T = T val intTy = 64)
 		   [T.EXT(AMD64InstrExt.LEAVE)],
 		   [T.RET []]]
 
-	val _ = List.all (fn stm => ChkTy.check stm 
+(*	val _ = List.all (fn stm => ChkTy.check stm 
 				    orelse raise Fail ("typechecking error: "^AMD64MTC.AMD64MLTreeUtils.stmToString stm))
 		stms
+*)
 
         in
 	   dumpOutput(gen (functionName, stms, result))

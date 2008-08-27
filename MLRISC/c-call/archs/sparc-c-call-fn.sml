@@ -57,6 +57,9 @@ functor SparcCCallFn (
 	     val wordTy = wordTy
 	     fun offSp 0 = spReg
 	       | offSp offset = T.ADD (32, spReg, T.LI offset)
+	     fun lobits {e, nBits, width} = e
+	     fun sx {fromWidth, toWidth, e} = T.SX(toWidth, fromWidth, e)
+	     fun f2f {fromWidth, toWidth, e} = e
 	     structure SA = SA)
 
     datatype c_arg = datatype CCall.c_arg

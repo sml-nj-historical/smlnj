@@ -11,7 +11,13 @@ functor CCallFn (
    *)
     val offSp : T.I.machine_int -> T.rexp
   (* we assume that the address width is the same *)
-    val wordTy : int   
+    val wordTy : int
+  (* extract least significant bits *)
+    val lobits : {nBits : int, width : int, e : T.rexp} -> T.rexp
+  (* sign extend the expression *)
+    val sx : {fromWidth : int, toWidth : int, e : T.rexp} -> T.rexp
+  (* float to float conversion (change width) *)
+    val f2f : {fromWidth : int, toWidth : int, e : T.fexp} -> T.fexp
 		 
     structure SA : STAGED_ALLOCATION
           where type reg_id = T.reg
@@ -87,19 +93,19 @@ functor CCallFn (
 	      T.STORE(wordTy, offSp offset, e, stack) :: stms
 	    | (ARG (e as T.REG _), SA.NARROW(SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset), w', (K.GPR | K.STK))) =>
 	      (* register to stack with width conversion (gpr) *)
-	      T.STORE(w, offSp offset, T.SX(w, w', e), stack) :: stms
+	      T.STORE(w, offSp offset, sx{fromWidth=w', toWidth=w, e=e}, stack) :: stms
 	    | (ARG (T.LOAD (ty, e, rgn)), SA.REG (w, K.GPR, r)) =>
 	      (* memory to register (gpr) *)
 	      copyToReg(w, r, T.LOAD (ty, T.ADD(wordTy, e, off), rgn)) @ stms
 	    | (ARG (T.LOAD (ty, e, rgn)), SA.NARROW(SA.REG (w, K.GPR, r), w', K.GPR)) =>
 	      (* memory to register with conversion (gpr) *)
-	      copyToReg(w, r, T.SX(w, w', T.LOAD (w', T.ADD(wordTy, e, off), rgn))) @ stms
+	      copyToReg(w, r, sx{fromWidth=w', toWidth=w, e=T.LOAD (w', T.ADD(wordTy, e, off), rgn)}) @ stms
 	    | (ARG e, SA.REG (w, K.GPR, r)) =>
 	      (* expression to register *)
 	      copyToReg(w, r, e) @ stms
 	    | (ARG e, SA.NARROW (SA.REG(w, K.GPR, r), w', K.GPR)) => 
 	      (* expression to register with conversion *)
-	      copyToReg(w, r, T.SX(w, w', e)) @ stms
+	      copyToReg(w, r, sx{fromWidth=w', toWidth=w, e=e}) @ stms
 	    | (ARG (T.LOAD (ty, e, rgn)), SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset)) => let
 	      (* memory to stack (gpr) *)
 		val tmp = C.newReg ()
@@ -112,7 +118,7 @@ functor CCallFn (
 		val tmp = C.newReg ()
 	        in
 		  T.STORE (w, offSp offset, T.REG (w, tmp), stack) :: 
-		  T.MV (w, tmp, T.SX(w, w', T.LOAD (w', T.ADD(wordTy, e, off), rgn))) :: stms
+		  T.MV (w, tmp, sx{fromWidth=w', toWidth=w, e=T.LOAD (w', T.ADD(wordTy, e, off), rgn)}) :: stms
 	        end
 	    | (ARG e, SA.BLOCK_OFFSET(w, (K.GPR | K.STK), offset)) => let
 	      (* expression to stack (gpr) *)
@@ -124,7 +130,7 @@ functor CCallFn (
 	      (* expression to stack with conversion (gpr) *)
 		val tmp = C.newReg ()
 	        in
-		  T.STORE (w, offSp offset, T.REG (w, tmp), stack) :: T.MV (w, tmp, T.SX(w, w', e)) :: stms
+		  T.STORE (w, offSp offset, T.REG (w, tmp), stack) :: T.MV (w, tmp, sx{fromWidth=w', toWidth=w, e=e}) :: stms
 	        end
 	    | (FARG (e as T.FREG _), SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) =>
 	      (* register to stack (fpr) *)
@@ -134,7 +140,7 @@ functor CCallFn (
 	      copyToFReg(w, r, e) @ stms
 	    | (FARG e, SA.NARROW(SA.REG(w, K.FPR, r), w', K.FPR)) => 
 	      (* expression to register with conversion (fpr) *)
-	      copyToFReg(w, r, T.CVTF2F(w, w', e)) @ stms
+	      copyToFReg(w', r, f2f{fromWidth=w, toWidth=w', e=e}) @ stms
 	    | (ARG (T.LOAD (ty, e, rgn)), SA.REG(w, K.FPR, r)) =>
 	      (* memory to register (fpr) *)
 	      copyToFReg(w, r, T.FLOAD (ty, T.ADD(wordTy, e, off), rgn)) @ stms
@@ -150,7 +156,7 @@ functor CCallFn (
 		val tmp = C.newFreg ()
 	        in
 		  T.FSTORE (w, offSp offset, T.FREG (w, tmp), stack) :: 
-		  T.FMV (w, tmp, T.CVTF2F(w, w', T.FLOAD (w', T.ADD(wordTy, e, off), rgn))) :: stms
+		  T.FMV (w', tmp, f2f{fromWidth=w, toWidth=w', e=T.FLOAD (w', T.ADD(wordTy, e, off), rgn)}) :: stms
 	        end
 	    | (FARG (T.FLOAD (ty, e, rgn)), SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) => let
               (* memory to stack (fpr) *)
@@ -164,7 +170,7 @@ functor CCallFn (
 		val tmp = C.newFreg ()
 	        in
 		  T.FSTORE (w, offSp offset, T.FREG (w, tmp), stack) :: 
-		  T.FMV (w, tmp, T.CVTF2F(w, w', T.FLOAD (w, T.ADD(wordTy, e, off), rgn))) :: stms
+		  T.FMV (w', tmp, f2f{fromWidth=w, toWidth=w', e=T.FLOAD (w, T.ADD(wordTy, e, off), rgn)}) :: stms
 	        end
 	    | (FARG e, SA.BLOCK_OFFSET(w, (K.FPR | K.FSTK), offset)) => let
               (* expression to stack (fpr) *)
@@ -176,8 +182,10 @@ functor CCallFn (
               (* expression to stack (fpr) *)
 		val tmp = C.newFreg ()
 	        in
-		  T.FSTORE (w, offSp offset, T.CVTF2F (w, w', T.FREG (w, tmp)), stack) :: T.FMV (w, tmp, e) :: stms
+		  T.FSTORE (w', offSp offset, f2f{fromWidth=w, toWidth=w', e=T.FREG (w, tmp)}, stack) :: T.FMV (w, tmp, e) :: stms
 	        end
+	    | (FARG _, SA.COMBINE _) => 
+	      raise Fail ""
 	    | _ => raise Fail "invalid arg / loc pair"
           (* end case *))
 
@@ -213,7 +221,8 @@ functor CCallFn (
 		val ([resultReg as T.GPR(T.REG(_, tmp))], copyResult') = readLoc(loc, ([], []))
 		val w = SA.width loc
 	        in
-		  (resultReg :: resultRegs, T.MV(w, tmp, T.ZX(w, w', T.REG (w', tmp))) :: copyResult' @ copyResult)
+		  (T.GPR(T.REG(w', tmp)) :: resultRegs, 
+		   T.MV(w, tmp, lobits{nBits=w', width=w, e=T.REG (w', tmp)}) :: copyResult' @ copyResult)
 	        end
 	    | SA.REG(w, K.FPR, r) => let
 		val resReg = C.newFreg()
@@ -225,7 +234,8 @@ functor CCallFn (
 		val ([resultReg as T.FPR(T.FREG(_, tmp))], copyResult') = readLoc(loc, ([], []))
 		val w = SA.width loc
 	        in
-		   (resultReg :: resultRegs, T.FMV(w, tmp, T.CVTF2F(w, w', T.FREG(w', tmp))) :: copyResult' @ copyResult)
+		   (T.FPR(T.FREG(w', tmp)) :: resultRegs, 
+		    T.FMV(w', tmp, f2f{fromWidth=w, toWidth=w', e=T.FREG(w', tmp)}) :: copyResult' @ copyResult)
 	        end
 	    | SA.COMBINE (l1, l2) => (
 	        case (readLoc (l1, ([], [])), readLoc (l2, ([], [])))

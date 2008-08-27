@@ -1,0 +1,37 @@
+Group
+
+  structure X86_64Test
+  structure X86Test
+  structure SparcTest
+
+is
+
+  $/basis.cm
+
+  $/smlnj-lib.cm
+  $/controls-lib.cm
+  $/pp-lib.cm
+
+  ../../cm/Control.cm
+  ../../cm/Lib.cm
+  ../../cm/MLRISC.cm
+  ../../cm/Graphs.cm
+  ../../cm/MLTREE.cm
+  ../../cm/RA.cm
+  ../../cm/Visual.cm
+  ../../cm/Peephole.cm
+  ../../cm/IA32.cm
+  ../../cm/AMD64.cm
+  ../../cm/AMD64-Peephole.cm
+  ../../cm/SPARC.cm
+  ../../cm/StagedAlloc.cm
+  ../../cm/CCall.cm
+  ../../cm/CCall-x86.cm
+  ../../cm/CCall-x86-64.cm
+  ../../cm/CCall-sparc.cm
+
+  c-x86-64-test.sml
+  c-x86-test.sml
+  c-sparc-test.sml
+  c-test-gen.sml
+  spill-table.sml

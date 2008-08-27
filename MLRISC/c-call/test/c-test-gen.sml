@@ -349,6 +349,8 @@ functor GenTestFn(
     val pty5 = [CTy.C_double, CTy.C_unsigned CTy.I_int, CTy.C_PTR]
     val pty6 = [CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR, CTy.C_PTR]
     val pty7 = [CTy.C_float]
+    val pty7 = [CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float]
+
     val pty8 = [CTy.C_PTR]
     val pty9 = [CTy.C_signed CTy.I_int]
     val pty10 = [CTy.C_signed CTy.I_int, CTy.C_signed CTy.I_int]
@@ -359,7 +361,7 @@ functor GenTestFn(
     fun main _ = (*BackTrace.monitor (fn () => *) (let
       (* choose the prototype to test *)
 	val retTy = CTy.C_void
-	val paramTys = pty10
+	val paramTys = pty7
 
 	val cArgs = List.map genRandArg paramTys
 	val retVal = if retTy <> CTy.C_void then [genRandArg retTy] else []

@@ -2,7 +2,7 @@ ML_BUILD_FLAGS =	-Ctdp.instrument=true \$$smlnj-tdp/back-trace.cm
 
 build-sparc:
 #no TDP for sparc
-	ml-build ../cm/wrapper.cm SparcTest.main test-main
+	ml-build sources.cm SparcTest.main test-main
 	sml @SMLcmdname=test-main @SMLload=test-main
 	gcc -g -c mlrisc.s
 	gcc -g  -c glue.c
@@ -15,7 +15,7 @@ build-sparc:
 	diff main.out sanity.out
 
 build-x86-64:
-	ml-build $(ML_BUILD_FLAGS) ../cm/wrapper.cm X86_64Test.main test-main
+	ml-build $(ML_BUILD_FLAGS) sources.cm X86_64Test.main test-main
 	sml @SMLcmdname=test-main @SMLload=test-main
 	gcc -g -m64 -c mlrisc.s
 	gcc -g  -m64 -c glue.c
@@ -30,7 +30,7 @@ build-x86-64:
 X86_FLAGS=-m32 -march=i686 -g
 
 build-x86:
-	ml-build $(ML_BUILD_FLAGS) ../cm/wrapper.cm X86Test.main test-main
+	ml-build $(ML_BUILD_FLAGS) sources.cm X86Test.main test-main
 	sml @SMLcmdname=test-main @SMLload=test-main
 	gcc $(X86_FLAGS)  -c mlrisc.s
 	gcc $(X86_FLAGS)   -c glue.c

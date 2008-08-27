@@ -40,7 +40,11 @@ functor X86_64SVIDFn (
 			structure C = C
 			val wordTy = wordTy
 			val offSp = offSp
-			structure SA = SA)
+			structure SA = SA
+			fun lobits {e, nBits, width} = e
+			fun sx {fromWidth, toWidth, e} = T.SX(toWidth, fromWidth, e)
+			fun f2f {fromWidth, toWidth, e} = e
+		      )
 
     datatype c_arg = datatype CCall.c_arg
 
