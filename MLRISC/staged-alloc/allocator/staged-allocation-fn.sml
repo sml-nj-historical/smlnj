@@ -207,19 +207,21 @@ functor StagedAllocationFn (
                                in
                                   (SOME loc, store)
                                end
- 		            else let (* some of the arg's bits fit into the regs *)
-			      val store = insert (store, c, n + w')
-			      val loc = REG r
-			      val store = addReg(store, loc)
-			      val (SOME loc', store) =
-				      step (REGS_BY_BITS (c, rs) :: stages) ((w - w', k, al), store)
-			      val store = addReg(store, loc')
-			      val loc'' = COMBINE (loc, loc')
-			      val n' = find(store, c)
-			      val store = insert(store, c, n' - w')
-			      in
-				 (SOME loc'', store)
-		              end
+ 		            else if w' < w
+				then let (* some of the arg's bits fit into the regs *)
+				  val store = insert (store, c, n + w')
+				  val loc = REG r
+				  val store = addReg(store, loc)
+				  val (SOME loc', store) =
+					  step (REGS_BY_BITS (c, rs) :: stages) ((w - w', k, al), store)
+				  val store = addReg(store, loc')
+				  val loc'' = COMBINE (loc, loc')
+				  val n' = find(store, c)
+				  val store = insert(store, c, n' - w')
+				  in
+				     (SOME loc'', store)
+				  end
+			    else raise Fail "incorrect number of bits"
 		   end
 	     | BITCOUNTER c :: stages => let
 		   val (SOME loc, store) = step stages ((w, k, al), store)

@@ -93,7 +93,7 @@ functor X86_64CConventionFn (
 
   (* rules for passing arguments *)
     val params = [ 
-	  SA.WIDEN (fn w => Int.max (64, w)),
+          SA.WIDEN (fn w => Int.max (64, w)),
 	  SA.CHOICE [
 	    (fn (w, k, store) => (k = GPR), SA.SEQ [
 		SA.BITCOUNTER cCallGpr,
