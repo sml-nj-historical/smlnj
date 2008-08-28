@@ -222,7 +222,7 @@ functor CCallFn (
 		val w = SA.width loc
 	        in
 		  (T.GPR(T.REG(w', tmp)) :: resultRegs, 
-		   T.MV(w, tmp, lobits{nBits=w', width=w, e=T.REG (w', tmp)}) :: copyResult' @ copyResult)
+		   T.MV(w, tmp, lobits{nBits=w', width=w, e=T.REG (w, tmp)}) :: copyResult' @ copyResult)
 	        end
 	    | SA.REG(w, K.FPR, r) => let
 		val resReg = C.newFreg()
