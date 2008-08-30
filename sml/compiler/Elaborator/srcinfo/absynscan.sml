@@ -1,26 +1,37 @@
-structure AbsynScan = 
+(* module used to go through the absyn and get the information needed 
+ * now that we are working after the elaboration is complete, this could be done
+ * in a more functional way, insted of having references everywhere here and in
+ * Database
+ *)
+
+structure AbsynScan =
 struct
-    local 
+    local
 	open Absyn
 	structure DB = Database
     in
-        val ref_str = 
-	    (ref [] : {def:strexp, 
-		       name:Symbol.symbol, 
+        (* a pile of the parent structures *)
+        val ref_str =
+	    (ref [] : {def:strexp,
+		       name:Symbol.symbol,
 		       str:Modules.Structure} list ref)
-	    
+
 	fun bug x = ErrorMsg.impossible ("AbsynScan: " ^ x)
 
+        (* when we enter a structure, we push its definition on the pile *)
 	fun push str = ref_str := str :: !ref_str
-	fun pop () = 
+        (* when we leave a structure, we remove it from the pile *)
+	fun pop () =
 	    case !ref_str of
 		[] => bug "pop"
 	      | _::q => ref_str := q
-	fun head () = 
+        (* give back the parent structure for variable *)
+	fun head () =
 	    case !ref_str of
 		[] => bug "head"
 	      | h::_ => h
-	fun str_par () = 
+        (* give back the parent structure for structure *)
+	fun str_par () =
 	    case !ref_str of
 		[] => bug "str_par"
 	      | [_] => NONE
@@ -28,8 +39,8 @@ struct
 	      | _ => bug "str_par2"
 
 
-        fun scan_exp exp = 
-	    case exp of 
+        fun scan_exp exp =
+	    case exp of
 		VARexp _ => ()
 	      | CONexp _ => ()
 	      | INTexp _ => ()
@@ -42,16 +53,16 @@ struct
 	      | VECTORexp (expl, _) => List.app scan_exp expl
 	      | PACKexp (exp, _, _) => scan_exp exp
 	      | APPexp (e1, e2) => (scan_exp e1;scan_exp e2)
-	      | HANDLEexp (exp, fnrules) => 
+	      | HANDLEexp (exp, fnrules) =>
 		( scan_exp exp;
 		  List.app scan_rule (#1 fnrules)
 		)
 	      | RAISEexp (exp, _) => scan_exp exp
-	      | CASEexp (exp, rulel, _) => 
-		( scan_exp exp; 
+	      | CASEexp (exp, rulel, _) =>
+		( scan_exp exp;
 		  List.app scan_rule rulel
 		)
-	      | IFexp {test = e1, thenCase = e2, elseCase = e3} => 
+	      | IFexp {test = e1, thenCase = e2, elseCase = e3} =>
 		(scan_exp e1; scan_exp e2; scan_exp e3)
 	      | ANDALSOexp (e1, e2) => (scan_exp e1;scan_exp e2)
 	      | ORELSEexp (e1, e2) => (scan_exp e1;scan_exp e2)
@@ -59,25 +70,27 @@ struct
 	      | FNexp fnrules => List.app scan_rule (#1 fnrules)
 	      | LETexp (dec, exp) => (scan_dec dec; scan_exp exp)
 	      | SEQexp expl => List.app scan_exp expl
-	      | CONSTRAINTexp (exp, ty) => 
+	      | CONSTRAINTexp (exp, ty) =>
 		(DB.add_ty_use ty (~1, ~1); scan_exp exp)
-	      | MARKexp (exp, region) => 
-		( case exp of 
-		      VARexp (ref var, tyvarl) => 
+	      | MARKexp (exp, region) =>
+		( case exp of
+		      VARexp (ref var, tyvarl) =>
 		      DB.add_var_use var region tyvarl
 		    | _ => ();
 		  scan_exp exp
 		)
-		
-	and scan_rule rule = 
+
+	and scan_rule rule =
 	    case rule of
 		RULE (pat, exp) => (
-		case pat of 
-		    VARpat var => DB.add_var_def var (~1, ~1) (head ())
+		case pat of
+		    VARpat var => 
+                    (* dummy locations since there are no marks on patterns *)
+                    DB.add_var_def var (~1, ~1) (head ())
 		  | _ => ();
 		scan_pat pat; scan_exp exp)
-			  
-	and scan_pat pat = 
+
+	and scan_pat pat =
 	    case pat of
 		WILDpat => ()
 	      | VARpat var => ()
@@ -95,7 +108,7 @@ struct
 	      | VECTORpat (patl, _) => List.app scan_pat patl
 	      | NOpat => ()
 
-	and scan_markedtycon (MARKtyc (tycon, region)) = 
+	and scan_markedtycon (MARKtyc (tycon, region)) =
 	    DB.add_ty_def tycon region
 
 	and scan_dec dec =
@@ -103,11 +116,11 @@ struct
 		VALdec vbl => List.app scan_vb vbl
 	      | VALRECdec rvbl => List.app scan_rvb rvbl
 	      | TYPEdec tl => List.app scan_markedtycon tl
-	      | DATATYPEdec {datatycs, withtycs} => 
+	      | DATATYPEdec {datatycs, withtycs} =>
 		( List.app scan_markedtycon withtycs;
 		  List.app scan_markedtycon datatycs
 		)
-	      | ABSTYPEdec {body, abstycs, withtycs} => 
+	      | ABSTYPEdec {body, abstycs, withtycs} =>
 		( List.app scan_markedtycon withtycs;
 		  List.app scan_markedtycon abstycs;
 		  scan_dec body
@@ -116,7 +129,7 @@ struct
 	      | STRdec strbl => List.app scan_strb strbl
 	      | ABSdec strbl => List.app scan_strb strbl
 	      | FCTdec fctbl => List.app scan_fctb fctbl
-	      | SIGdec sigl => 
+	      | SIGdec sigl =>
 		List.app (fn x => DB.add_sig_def x (~1, ~1)) sigl
 	      | FSIGdec _ => ()
 	      | OPENdec _ => ()
@@ -124,44 +137,46 @@ struct
 	      | SEQdec decl => List.app scan_dec decl
 	      | OVLDdec _ => ()
 	      | FIXdec _ => ()
-	      | MARKdec (dec, region) => 
+	      | MARKdec (dec, region) =>
 		( case dec of
-		      VALdec [VB {pat = VARpat var, ...}] => 
+		      VALdec [VB {pat = VARpat var, ...}] =>
 		      DB.add_var_def var region (head ())
 		    | _ => ();
 		  scan_dec dec
 		)
-			     
+
 	and scan_strexp strexp =
-	    let fun add s region = 
-		    ( DB.add_str_alias 
-			  (head ()) 
-			  s 
+            (* in common cases, structure definition and uses should not be 
+             * added by these functions *)
+	    let fun add s region =
+		    ( DB.add_str_alias
+			  (head ())
+			  s
 			  region
-			  region (* pas defaut *)
+			  region
 			  (str_par ());
-		      DB.add_str_use 
-			  s 
+		      DB.add_str_use
+			  s
 			  region
 		    )
 	    in
 		case strexp of
 		    VARstr s => add s (~12, ~12)
-		  | STRstr bl => 
+		  | STRstr bl =>
 		    DB.add_str_def (head ()) NONE bl (~5, ~5) (str_par ())
 		  | APPstr _ => pop ()
-		  | LETstr (dec, strexp) => 
+		  | LETstr (dec, strexp) =>
 		    (scan_dec dec; scan_strexp strexp)
-		  | MARKstr (strexp, region) => 
+		  | MARKstr (strexp, region) =>
 		    ( case strexp of
-			  STRstr bl => 
+			  STRstr bl =>
 			  DB.add_str_def (head ()) NONE bl region (str_par ())
-			| VARstr s => 
+			| VARstr s =>
 			  add s region
 			| _ => scan_strexp strexp
 		    )
 	    end
-				 
+
 	and scan_fctexp fctexp =
 	    case fctexp of
 		VARfct _ => ()
@@ -169,20 +184,23 @@ struct
 	      | LETfct (dec, fctexp) => (scan_dec dec; scan_fctexp fctexp)
 	      | MARKfct (fctexp, _) => scan_fctexp fctexp
 
-	and scan_vb vb = 
+	and scan_vb vb =
 	    case vb of
 		VB {pat, exp, ...} => (scan_pat pat; scan_exp exp)
 
-				 
-	and scan_rvb rvb = 
+
+	and scan_rvb rvb =
 	    case rvb of
 		RVB {exp, ...} => scan_exp exp
 
-	and scan_eb eb = 
-	    case eb of 
+	and scan_eb eb =
+	    case eb of
 		EBgen {ident, ...} => scan_exp ident
 	      | EBdef _ => ()
 
+        (* this function is trying to reconstitute the original form for 
+         * structure definition
+         * very fragile pattern matching *)
 	and scan_strb (STRB (r as {def, name, str})) =
 	    (
 	     push r;
@@ -194,9 +212,9 @@ struct
 		     (SEQdec [MARKdec (SEQdec [], rRHS), dec],
 		      MARKstr (VARstr s, rID)) =>
 		 ( case recognize_strdec dec of
-		       SOME (dec1, bl1) => 
+		       SOME (dec1, bl1) =>
 		       (* structure s2 : sig = s*)
-		       ( scan_dec dec1; 
+		       ( scan_dec dec1;
 			 DB.add_str_sig_alias r s bl1 rID rRHS (str_par ())
 		       )
 		     | NONE => (scan_dec dec)
@@ -217,7 +235,7 @@ struct
 		     (dec, MARKstr (VARstr s, region)) =>
 		 ( case recognize_strdec dec of
 		       (* structure s = struct end *)
-		       SOME (dec1, bl1) => 
+		       SOME (dec1, bl1) =>
 		       ( scan_dec dec1;
 			 DB.add_str_def r NONE bl1 region (str_par ())
 		       )
@@ -227,13 +245,13 @@ struct
 	     pop ()
 	    )
 
-	and recognize_strdec dec = 
+	and recognize_strdec dec =
 	    case dec of
 		STRdec [STRB {def = LETstr (dec1, MARKstr (STRstr bl, _)),...}]
 		=> SOME (dec1, bl)
 	      | _ => NONE
 
-	and scan_fctb fctb = 
+	and scan_fctb fctb =
 	    case fctb of
 		FCTB {def, ...} => scan_fctexp def
     end

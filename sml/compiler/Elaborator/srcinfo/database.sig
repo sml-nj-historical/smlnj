@@ -1,10 +1,10 @@
-signature DATABASE = 
+signature DATABASE =
 sig
     (* variables *)
-    val add_var_def : 
-	VarCon.var -> 
-	int*int -> 
-	{name: Symbol.symbol, str: Modules.Structure, def: Absyn.strexp} -> 
+    val add_var_def :
+	VarCon.var ->
+	int*int ->
+	{name: Symbol.symbol, str: Modules.Structure, def: Absyn.strexp} ->
 	unit
     val add_var_use : VarCon.var -> int*int -> Types.tyvar list -> unit
     val print_var : unit -> unit
@@ -20,27 +20,27 @@ sig
     val print_sig : unit -> unit
 
     (* structures *)
-    val add_str_def : 
-	{name: Symbol.symbol, str: Modules.Structure, def: Absyn.strexp} -> 
-	Bindings.binding list option -> 
-	Bindings.binding list -> 
+    val add_str_def :
+	{name: Symbol.symbol, str: Modules.Structure, def: Absyn.strexp} ->
+	Bindings.binding list option ->
+	Bindings.binding list ->
 	int*int ->
-	Access.access option -> 
+	Access.access option ->
 	unit
-    val add_str_alias : 
-	{name: Symbol.symbol, str: Modules.Structure, def: Absyn.strexp} -> 
-	Modules.Structure -> 
-	int*int -> 
-	int*int -> 
-	Access.access option -> 
-	unit
-    val add_str_sig_alias : 
-	{name: Symbol.symbol, str: Modules.Structure, def: Absyn.strexp} -> 
+    val add_str_alias :
+	{name: Symbol.symbol, str: Modules.Structure, def: Absyn.strexp} ->
 	Modules.Structure ->
-	Bindings.binding list -> 
-	int*int -> 
-	int*int -> 
-	Access.access option -> 
+	int*int ->
+	int*int ->
+	Access.access option ->
+	unit
+    val add_str_sig_alias :
+	{name: Symbol.symbol, str: Modules.Structure, def: Absyn.strexp} ->
+	Modules.Structure ->
+	Bindings.binding list ->
+	int*int ->
+	int*int ->
+	Access.access option ->
 	unit
     val add_str_use : Modules.Structure -> int*int -> unit
     val print_str : unit -> unit
@@ -61,51 +61,54 @@ sig
     (* pickling/unpickling/merging/removing functions *)
     val get_pickle : unit -> string
     val remove : string -> unit
-    val load_merge : string -> unit
+    val load_merge : string -> string -> unit
     val merge_pickle : string -> string -> unit
 
     (* query support functions *)
-    val localize_access : Access.access -> Access.access * string
-
     val find_var : (DBTypes.var_elem -> bool) -> DBTypes.var_elem option
-    val exists_var : 
+    val exists_var :
 	(DBTypes.var_elem -> bool) -> bool
-    val filter_var : 
+    val filter_var :
 	(DBTypes.var_elem -> bool) -> DBTypes.var_elem list
 
     val find_str : (DBTypes.str_elem -> bool) -> DBTypes.str_elem option
-    val exists_str : 
+    val exists_str :
 	(DBTypes.str_elem -> bool) -> bool
-    val filter_str : 
+    val filter_str :
 	(DBTypes.str_elem -> bool) -> DBTypes.str_elem list
 
-    val find_typ : 
+    val find_typ :
 	(DBTypes.type_elem -> bool) -> DBTypes.type_elem option
-    val exists_typ : 
+    val exists_typ :
 	(DBTypes.type_elem -> bool) -> bool
-    val filter_typ : 
+    val filter_typ :
 	(DBTypes.type_elem -> bool) -> DBTypes.type_elem list
 
-    val find_cons : 
+    val find_cons :
 	(DBTypes.cons_elem -> bool) -> DBTypes.cons_elem option
-    val exists_cons : 
+    val exists_cons :
 	(DBTypes.cons_elem -> bool) -> bool
-    val filter_cons : 
+    val filter_cons :
 	(DBTypes.cons_elem -> bool) -> DBTypes.cons_elem list
 
     val find_sig : (DBTypes.sig_elem -> bool) -> DBTypes.sig_elem option
-    val exists_sig : 
+    val exists_sig :
 	(DBTypes.sig_elem -> bool) -> bool
-    val filter_sig : 
+    val filter_sig :
 	(DBTypes.sig_elem -> bool) -> DBTypes.sig_elem list
 
-    (* access translation: from filepath and local path to definition point 
+    (* access translation: from filepath and local path to definition point
      * lvar (or lvar to itself) *)
     val get_str_lvar_g : string -> Access.access -> Access.access
     val get_var_lvar_g : string -> Access.access -> Access.access
 
-    (* map a (charpos,filename) pair to the next symbol occurrence at that 
-     * position in the file *)
+
+    val localize_access : Access.access -> Access.access * string
+
+    (* map a (charpos,filename) pair to the next symbol occurrence at that
+     * position in the file
+     * raises an exception is the file is not database or if there is no symbol
+     * after the given position *)
     val charposToOccurrence : int * string -> DBTypes.occurrence
 
 end (* signature DATABASE *)
