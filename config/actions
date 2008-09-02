@@ -126,13 +126,17 @@ mlrisc anchor RA.cm MLRISC/cm
 mlrisc anchor SPARC.cm MLRISC/cm
 mlrisc anchor Peephole.cm MLRISC/cm
 mlrisc anchor StagedAlloc.cm MLRISC/cm
+mlrisc anchor IA32.cm MLRISC/cm
+mlrisc anchor AMD64.cm MLRISC/cm
 mlrisc anchor CCall.cm MLRISC/cm
 mlrisc anchor CCall-x86-64.cm MLRISC/cm
 mlrisc anchor CCall-x86.cm MLRISC/cm
 mlrisc anchor CCall-sparc.cm MLRISC/cm
 mlrisc lib OTHER-MLRISC RA.cm             MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC Peephole.cm       MLRISC/cm SMLNJ-MLRISC
+mlrisc lib OTHER-MLRISC IA32.cm  MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC IA32-Peephole.cm  MLRISC/cm SMLNJ-MLRISC
+mlrisc lib OTHER-MLRISC AMD64.cm MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC AMD64-Peephole.cm MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC SPARC.cm          MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC StagedAlloc.cm    MLRISC/cm SMLNJ-MLRISC
