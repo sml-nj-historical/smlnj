@@ -8,7 +8,7 @@
    representative
    (and therefore we need to compute the FLINT kinds)
 
-   Datatype bindings should must be accounted for in Tycpath computations 
+   Datatype bindings must be accounted for in Tycpath computations 
    because they will be represented as TP_TYC(...).  
 *)
 

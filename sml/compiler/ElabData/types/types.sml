@@ -39,7 +39,7 @@ and tvKind
      {kind: litKind, region: SourceMap.region}
   | SCHEME of bool (* overloaded operator type scheme variable
 		   * arg is true if must be instantiated to equality type *)
-  | LBOUND 
+  | LBOUND of (int * int) option
      (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
       * associated with polymorphic bindings (including val bindings and
       * functor parameter bindings). The depth is depth of type lambda bindings,

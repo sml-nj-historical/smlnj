@@ -301,12 +301,12 @@ and toTyc (fm : flexmap) d t =
         end
 
       and h (INSTANTIATED t) = g t
-        | h (LBOUND{depth,index}) =
+        | h (LBOUND(SOME(depth,index))) =
              LT.tcc_var(DI.calc(d, depth), index)
         | h (UBOUND _) = LT.tcc_void
-            (* dbm: should this have been converted to an LBOUND before
+            (* DBM: should this have been converted to an LBOUND before
              * being passed to toTyc? 
-	     * gk: Doesn't seem to experimentally *)
+	     * GK: Doesn't seem to experimentally *)
         | h (OPEN _) = LT.tcc_void
         | h _ = bug "toTyc:h" (* LITERAL and SCHEME should not occur *)
 
@@ -500,7 +500,7 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
 		     
 	    val _ = debugmsg (">>fctRlznLty calling evalApp nd "^DI.dp_print nd)
             val bodyRlzn = 
-                EV.evalApp(rlzn, argRlzn, nd, EPC.initContext,
+                EV.evalApp(rlzn, argRlzn, EPC.initContext,
                            IP.empty, compInfo)
 	    val _ = if !debugging
 		    then (debugmsg "==================";

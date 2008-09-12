@@ -46,9 +46,7 @@ local structure SM = SigMatch
       structure ES = ElabSig
       structure B  = Bindings
       structure LU = Lookup
-      (* structure SM = SigMatch *)
       structure INS = Instantiate
-      (* structure II = InlInfo *)
       structure SE = StaticEnv
       structure EM = ErrorMsg
       structure PP = PrettyPrint
@@ -214,7 +212,7 @@ and mapEPC(epc, sign as SIG { elements, ... }, rlzn: M.strEntity, flex) =
  *         DEFtyc refers to tycons occurring after itself. 
  *)
 fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) = 
-      let fun stripPath path =
+    let fun stripPath path =
 	    let val namePath = IP.IPATH[IP.last path]
 	        val prefix = IP.lastPrefix path
 	        val _ = if IP.equal(rpath,prefix) then ()
@@ -224,10 +222,10 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
 	     in namePath
 	    end
 
-	  val vizty = (fn ty => #1(MU.relativizeType epctxt ty))
-	  val viztc = (fn tc => #1(MU.relativizeTyc epctxt tc))
+	val vizty = (fn ty => #1(MU.relativizeType epctxt ty))
+	val viztc = (fn tc => #1(MU.relativizeTyc epctxt tc))
            (* this is ok because epContext has state; a bit ugly *)
-          val ndtycs =
+        val ndtycs =
             (case dtycs
 	      of (T.GENtyc { kind, ... } :: _) =>
 		 (case kind
@@ -238,43 +236,43 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
 			  val nstamps = Vector.map (fn _ => mkStamp()) stamps
 
 			  fun newdt (dt as T.GENtyc {kind,arity,eq,path,...})=
-			      (case kind of
-				   T.DATATYPE{index=i,...} =>
-				   let val (ev, rtev) = 
-					   if i=0 then (rootev, NONE)
-					   else (mkStamp(), rtevOp)
+			      (case kind
+				 of T.DATATYPE{index=i,...} =>
+				    let val (ev, rtev) = 
+					    if i=0 then (rootev, NONE)
+					    else (mkStamp(), rtevOp)
 
-                                       val nkind = 
-					   T.DATATYPE{index=i, stamps=nstamps,
-						      freetycs=nfreetycs,
-						      root=rtev,
-						      family=family}
-                                       (* the rtev field in DATATYPE indicates
-					* how to discover the new stamps when 
-					* such datatypes get evalent-ed *)
+					val nkind = 
+					    T.DATATYPE{index=i, stamps=nstamps,
+						       freetycs=nfreetycs,
+						       root=rtev,
+						       family=family}
+					(* the rtev field in DATATYPE indicates
+					 * how to discover the new stamps when 
+					 * such datatypes get evalent-ed *)
 
-                                       val ndt =
-					   T.GENtyc{arity=arity, eq=eq,
-						    kind=nkind,
-						    path=stripPath path, 
-						    stamp=
-						      Vector.sub(nstamps,i),
-						    stub=NONE}
+					val ndt =
+					    T.GENtyc{arity=arity, eq=eq,
+						     kind=nkind,
+						     path=stripPath path, 
+						     stamp=
+						       Vector.sub(nstamps,i),
+						     stub=NONE}
 
-                                       val _ = 
-					   EPC.bindTycEntVar(epctxt,
-							   MU.tycId dt, ev)
-				   in (ev, dt, M.FORMtyc ndt)
-				   end
+					val _ = 
+					    EPC.bindTycEntVar(epctxt,
+							    MU.tycId dt, ev)
+				     in (ev, dt, M.FORMtyc ndt)
+				    end
 				 | _ => bug "unexpected case in newdtyc (1)")
                             | newdt _ = bug "unexpected case in newdtyc (2)"
-                      in map newdt dtycs
+                       in map newdt dtycs
                       end
 		    | _ => bug "unexpected tycs in bindNewTycs (1)")
 	       | [] => []
 	       | _ => bug "unexpected tycs in bindNewTycs (2)")
 
-          val nwtycs = 
+        val nwtycs = 
             let fun newtc (tc as T.DEFtyc{stamp, tyfun=T.TYFUN{arity,body}, 
                                           strict, path}) =
                      let val ev = mkStamp()
@@ -290,14 +288,14 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
              in map newtc wtycs
             end
 
-          fun bind((ev,tc,te)::tcs, entEnv, entDecs) =
-                 bind(tcs, EE.bind(ev,M.TYCent(tc),entEnv),
-                               M.TYCdec(ev, te)::entDecs)
-            | bind(nil, entEnv, entDecs) =
-                (EE.mark(mkStamp,entEnv), seqEntDec(rev entDecs))
+        fun bind((ev,tc,te)::tcs, entEnv, entDecs) =
+            bind(tcs, EE.bind(ev,M.TYCent(tc),entEnv),
+                 M.TYCdec(ev, te)::entDecs)
+          | bind(nil, entEnv, entDecs) =
+            (EE.mark(mkStamp,entEnv), seqEntDec(rev entDecs))
 
-       in bind(ndtycs@nwtycs, EE.empty, [])
-      end
+     in bind(ndtycs@nwtycs, EE.empty, [])
+    end
 
   | bindNewTycs _ = (EE.empty, M.EMPTYdec)
 
@@ -363,7 +361,7 @@ fun extractSig (env, epContext, context,
                in (elements', entEnv, entDecl, trans', slotCount', fctflag)
               end
 
-          | B.STRbind(str as STR { sign, rlzn, ... }) =>
+          | B.STRbind(str as STR{sign, rlzn, ...}) =>
 	    let val epOp = getEpOp (EPC.lookStrEntPath, MU.strId str)  
                 val (ev, entEnv', entDecl') =
                     case epOp
@@ -467,7 +465,7 @@ fun extractSig (env, epContext, context,
       (* getDeclOrder : absyn -> symbol list 
 	 getDeclOrder returns the names of all the surface declaractions
 	 in decl. We use this function to return the signature elements
-         in the same order as the structure element decls. *)
+         in the same order as they appear in the structure body decls. *)
       fun getDeclOrder(decl) =
 	  let fun procstrbs([]) = []
 		| procstrbs((A.STRB{name,...})::rest) = name::(procstrbs rest)
@@ -591,33 +589,32 @@ fun extractSig (env, epContext, context,
  * matching should be done transparently (true) or opaquely (false).        *
  *                                                                          *
  ****************************************************************************)
-fun constrStr(transp, sign, str, strDec, strExp, entvar, entEnv, rpath, 
+fun constrStr(transp, sign, str, strDec, strExp, entvarOp, entEnv, rpath, 
               env, region, compInfo) : A.dec * M.Structure * M.strExp = 
   let val {resDec=resDec1, resStr=resStr1, resExp=resExp1} = 
-        SigMatch.matchStr{sign=sign, str=str, strExp=strExp, entvar=entvar, 
-                    entEnv=entEnv, rpath=rpath, statenv=env, 
-                    region=region, compInfo=compInfo}
+          SM.matchStr{sign=sign, str=str, strExp=strExp, entvarOp=entvarOp, 
+		      entEnv=entEnv, rpath=rpath, statenv=env, 
+		      region=region, compInfo=compInfo}
 
    in if transp then (A.SEQdec[strDec, resDec1], resStr1, resExp1)
-      else (let val {resDec=resDec2, resStr=resStr2, resExp=resExp2} = 
-                  SigMatch.packStr{sign=sign, str=resStr1, strExp=resExp1, 
-                             entEnv=entEnv, rpath=rpath, 
-                             statenv=env, region=region, compInfo=compInfo}
-             in (A.SEQdec[strDec, resDec1, resDec2], resStr2, resExp2)
-            end)
+      else let val {resDec=resDec2, resStr=resStr2, resExp=resExp2} = 
+                   SM.packStr{sign=sign, str=resStr1, strExp=resExp1, 
+                              entEnv=entEnv, rpath=rpath, 
+                              statenv=env, region=region, compInfo=compInfo}
+           in (A.SEQdec[strDec, resDec1, resDec2], resStr2, resExp2)
+           end
   end
-
 
 
 (*** elabStr: elaborate the raw structure, without signature constraint ***)
 (*** several invariants: 
       Every structure expression strexp is now elaborated into a quadruple
-       (absdec, str, exp, ee) where absdec is the corresponding abstract
-      syntax tree, str is the resulting structure, exp is the entity 
-      expressions, and ee is the delta entity environment collected while
+      (absdec, str, exp, deltaEntEnv) where absdec is the corresponding abstract
+      syntax tree, str is the resulting (static) structure, exp is the entity 
+      expression, and deltaEntEnv is the delta entity environment collected while
       elaborating the current structure expression. The deltaEntEnv is
-      designed to deal with LetStr and LetFct and to maintain the hidden
-      entity environment context.
+      designed to deal with LetStr and LetFct and to "maintain the hidden
+      entity environment context" (clarify?).
  *)
 fun elabStr
       (strexp: Ast.strexp,         
@@ -631,8 +628,10 @@ fun elabStr
        region: SourceMap.region,      
        compInfo as {mkLvar=mkv, mkStamp, error, ...}: EU.compInfo)
       : A.dec * M.Structure * M.strExp * EE.entityEnv =
-let 
-
+let
+ 
+(* name will be SOME n if the strexp is the definiens in a structure declaration.
+ * it will be NONE if strexp is an anonymous str expression *)
 val sname =  case name of SOME n => S.name n
                         | NONE => "<anonymous>"
 
@@ -647,11 +646,14 @@ fun elab (BaseStr decl, env, entEnv, region) =
 
           (* we enter the epcontext when we get into BaseStr *)
           val epContext'=EPC.enterOpen(epContext,entsv) 
+
+	  (* elaborating the body declarations *)
           val (absDecl, entDecl, env', entEnv') = 
                  elabDecl0(decl, env, entEnv, inStr context, true,
                            epContext', rpath, region, compInfo)
           val _ = debugmsg "--elab[BaseStr]: elabDecl0 done"
    
+          (* extracting a signature from the body environment *)
           val (elements, entEnv'', entDecls, locations, fctflag) =
                 extractSig(env', epContext', context, compInfo, absDecl)
           val _ = debugmsg "--elab[BaseStr]: extractSig done"
@@ -666,32 +668,30 @@ fun elab (BaseStr decl, env, entEnv, region) =
           val strExp = STRUCTURE{stamp=M.NEW, entDec=entDecLocal}
 
           val resStr = 
-            let val symbols = map #1 elements
-                val sign = 
+            let val sign = (* the inferred signature *)
                   M.SIG{stamp = mkStamp (),
 			name=NONE, closed=false, fctflag=fctflag,
                         elements=elements, 
 			properties = PropList.newHolder (),
-			(* boundeps=ref(NONE),  *)
-                        (* lambdaty=ref(NONE), *)
                         typsharing=nil, strsharing=nil,
 			stub=NONE}
  
                 val strRlzn =
-                    { stamp = mkStamp(), (* generate structure stamp *)
-		      entities=EE.mark(mkStamp,EE.atop(entEnvLocal, entEnv)),
-		      properties = PropList.newHolder (),
-		      (* lambdaty=ref NONE, *)
-		      rpath=rpath, stub = NONE}
+                    {stamp = mkStamp(), (* generate structure stamp *)
+		     entities=EE.mark(mkStamp,EE.atop(entEnvLocal, entEnv)),
+		     properties = PropList.newHolder (),
+		     rpath=rpath, stub = NONE}
 
                 val dacc = DA.namedAcc(tempStrId, mkv)
+
                 val prim = MU.strPrimElemInBinds locations
 
-            in M.STR {sign=sign, rlzn=strRlzn, access=dacc,
-		      prim=prim}
+            in M.STR {sign=sign, rlzn=strRlzn, access=dacc, prim=prim}
             end
+
           val _ = debugPrint("BaseStr after resStr  - symbols: ", ED.ppSymList,
                              ED.envSymbols env')
+
           val resDec = 
             let val body = A.LETstr(absDecl, A.STRstr(locations))
              in A.STRdec [A.STRB {name=tempStrId, str=resStr, def=body}]
@@ -738,8 +738,8 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			  of SOME ep => VARfct ep
 			   | NONE => CONSTfct fctEnt
 		    val {resDec, resStr, resExp} = 
-			SigMatch.applyFct{fct=fct, fctExp=fctExp, argStr=argStr, 
-				    argExp=argExp, entvar = entv,
+			SM.applyFct{fct=fct, fctExp=fctExp, argStr=argStr, 
+				    argExp=argExp, entvarOp = SOME entv,
 				    epc=EPC.enterOpen(epContext,entsv),
 				    statenv=env, rpath=rpath, region=region,
 				    compInfo=compInfo}
@@ -815,22 +815,23 @@ fun elab (BaseStr decl, env, entEnv, region) =
       end
 
   | elab (ConstrainedStr(strexp,constraint), env, entEnv, region) =
-      let val (csig0, transp) =
-                 (case constraint 
-                   of Transparent cSig => (cSig, true)
-                    | Opaque cSig => (cSig, false)
-                    | NoSig => bug "NoSig for ConstrainedStr in elabStr")
+      let val (csigexp,transp) =
+	      case constraint
+	       of NoSig => bug "elabStr: ConstrainedStr with no sig"
+		| Transparent sigexp => (sigexp, true)
+		| Opaque sigexp => (sigexp, false)
+
+	  val csig =
+              ES.elabSig {sigexp=csigexp, nameOp=NONE, env=env, 
+			  entEnv=entEnv, epContext=epContext,
+			  region=region, compInfo=compInfo}
 
           val entsv = mkStamp()
-
-	  val csig = ES.elabSig {sigexp=csig0, nameOp=NONE, env=env, 
-				 entEnv=entEnv, epContext=epContext,
-				 region=region, compInfo=compInfo}
 
           (** elaborating the structure body *)
           val (strAbsDec, str, exp, deltaEntEnv) = 
               elabStr(strexp, NONE, env, entEnv, context,
-                      epContext, entsv, rpath, region, compInfo)
+                      epContext, SOME entsv, rpath, region, compInfo)
 
           val resDee = 
               let val strEnt =
@@ -842,7 +843,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
           (** elaborating the signature matching *)
           val (resDec, resStr, resExp) = 
               constrStr(transp, csig, str, strAbsDec, exp, 
-                        entsv, entEnv, rpath,
+                        SOME entsv, entEnv, rpath,
                         env, region, compInfo)
 
        in (resDec, resStr, resExp, resDee)
@@ -858,7 +859,7 @@ val (resDec, resStr, resExp, resDee) = elab(strexp, env, entEnv, region)
 val _ = debugmsg "<<elabStr"
 
 in (resDec, resStr, resExp, resDee)
-end (* end of function elabStr *)
+end (* function elabStr *)
 
 
 (*** elabFct: elaborate the functor, possibly with signature constraint ***)
@@ -908,7 +909,7 @@ case fctexp
 				     region=region, compInfo=compInfo}
 
 			      val {resDec, resFct, resExp} =
-				  SigMatch.matchFct
+				  SM.matchFct
 				    {sign=fsig, fct=fct, fctExp=uncoercedExp,
 				     entEnv=entEnv, 
 				     rpath=rpath, statenv=env, region=region, 
@@ -1028,7 +1029,7 @@ case fctexp
 		| Transparent csig => SOME(csig, true) 
 		| Opaque csig => SOME(csig, false)
 
-	  val (entsv, csigOp) =
+	  val (entsvOp, csigOp) =
 	      case csigOp0
 		of NONE => (NONE, NONE)
 		 | SOME(csig0,transp) =>
@@ -1040,14 +1041,13 @@ case fctexp
 
           val _ = debugmsg "--elabFct[BaseFct]: result signature elaborated"
 
-          (* adjust the EU.context value; the depth refers to the number
-             of enclosing functor abstractions. (ZHONG) *)
+          (* adjust the EU.context value *)
           val context' = EU.INFCT{flex=flex}
 
           (* bodyDee was discarded here; however, it was not discarded when
              functor is applied. *)
           val (bodyAbsDec, bodyStr, bodyExp, bodyDee) = 
-            elabStr(body, NONE, env', entEnv', context', epContext', entsv,
+            elabStr(body, NONE, env', entEnv', context', epContext', entsvOp,
                     IP.IPATH [], region, compInfo)
           val _ = debugmsg "--elabFct[BaseFct]: body elaborated"
           val _ = showStr("--elabFct[BaseFct]: bodyStr: ",bodyStr,env)
@@ -1058,7 +1058,7 @@ case fctexp
                 of NONE => (bodyAbsDec, bodyStr, bodyExp)
                  | SOME (csig,csigTrans) =>
 		   constrStr(csigTrans, csig, bodyStr, bodyAbsDec, bodyExp,
-			     entsv, entEnv', IP.IPATH[], env', 
+			     entsvOp, entEnv', IP.IPATH[], env', 
 			     region, compInfo)
 
           val _ = debugmsg "--elabFct[BaseFct]: body constrained"
@@ -1148,11 +1148,7 @@ val _ = debugmsg ">>elabStrbs"
 
 fun loop([], decls, entDecls, env, entEnv) = 
       let val _ = debugmsg "<<elabStrbs"
-          val resDec = 
-            let val decls' = rev decls
-             in A.STRdec decls'
-            end
-
+          val resDec = A.STRdec (rev decls)
           val entDec = case entDecls of [] => M.EMPTYdec
                                       | _ => seqEntDec(rev entDecls)
        in (resDec, entDec, env, entEnv)
@@ -1171,32 +1167,35 @@ fun loop([], decls, entDecls, env, entEnv) =
 
           (* entsv is the context for evaluating the right-handside 
              of a structure declaration *)
-          val (entsv, csigOp, transp) = 
-            let fun elabConstraint x = 
-		    let val csig = 
-			    ES.elabSig {sigexp=x, nameOp=NONE, env=env0, 
-					entEnv=entEnv0, epContext=epContext,
-					region=region, compInfo=compInfo}
-		     in case csig
-			  of ERRORsig => NONE  (* if constraint doesn't elaborate
-						* pretend it didn't exist *)
-			   | _ => SOME csig
-		    end
-                val (csigOp, transp) =
-                 (case constraint 
-                   of Transparent constSig => (elabConstraint constSig, true)
-                    | Opaque constSig =>
-		       (case elabConstraint constSig
-			  of NONE => (NONE, true)
-			   | sigOp => (sigOp, false))
-                    | NoSig => (NONE, true))
+          val (entsv, evOp, csigOp) = 
+            let val csigexpOp =
+		    case constraint
+		      of NoSig => NONE
+		       | Transparent sigexp => SOME(sigexp, true)
+		       | Opaque sigexp => SOME(sigexp, false)
+		val csigOp =
+		    case csigexpOp
+		      of NONE => NONE
+	               | SOME (sigexp, transp) =>
+			 let val csig = 
+				 ES.elabSig {sigexp=sigexp, nameOp=NONE, env=env0, 
+					     entEnv=entEnv0, epContext=epContext,
+					     region=region, compInfo=compInfo}
+			  in case csig
+			       of ERRORsig => NONE
+				  (* if constraint doesn't elaborate,
+				   * pretend it didn't exist *)
+				| _ => SOME(csig, transp)
+			 end
 
                 (* the temporary anonymous structure *)
-                val entsv = 
-                  case csigOp
-                   of NONE => entv
-                    | _ => mkStamp()
-             in (entsv, csigOp, transp)
+                val (entsv, evOp) = 
+                    case csigOp
+                      of NONE => (entv, NONE)
+                       | _ => let val nentv = mkStamp()
+                               in (nentv, SOME nentv)
+                              end
+             in (entsv, evOp, csigOp)
             end  
 
           (** elaborating the structure body *)
@@ -1231,26 +1230,21 @@ fun loop([], decls, entDecls, env, entEnv) =
               caught by the post sig-matching "mapPaths" function call. *)
           val (resDec, resStr, resExp) = 
               case csigOp
-	       of NONE => 
-		    (if transp then ()
-		     else (error region' EM.COMPLAIN
-			   "missing signature in abstraction declaration"
-			    EM.nullErrorBody);
-		     (strAbsDec, str, exp))
-		| SOME csig => 
+	       of NONE => (strAbsDec, str, exp)
+		| SOME (csig,transp) => 
                     constrStr(transp, csig, str, strAbsDec, exp, 
-                              entsv, entEnv0, IP.IPATH[name], 
+                              evOp, entEnv0, IP.IPATH[name], 
                               StaticEnv.atop(env,env0), region, compInfo)
 
           val deltaEntEnv = 
-              case csigOp
-               of NONE => deltaEntEnv
-                | SOME _ =>
+              case (evOp, csigOp)
+               of (NONE, NONE) => deltaEntEnv
+                | (SOME ev, SOME _) =>
                     (case str 
                       of M.STR { rlzn, ... } =>
-                          EE.bind(entsv, M.STRent rlzn, deltaEntEnv)
+                          EE.bind(ev, M.STRent rlzn, deltaEntEnv)
                        | _ =>
-                          EE.bind(entsv, M.STRent M.bogusStrEntity, deltaEntEnv))
+                          EE.bind(ev, M.STRent M.bogusStrEntity, deltaEntEnv))
                 | _ => bug "unexpected case in elabStrbs: deltaEntEnv"
 
           val _ = debugmsg "--elabStrbs: constrain done" 
@@ -1267,14 +1261,18 @@ fun loop([], decls, entDecls, env, entEnv) =
           val (bindStr, strEnt) = 
             case resStr
              of STR { rlzn, sign, access, prim } =>
-                (STR{rlzn = rlzn, sign = sign,
-		     access = DA.namedAcc(name, mkv),prim = prim},
-                 M.STRent rlzn)
+		let val access2 = DA.namedAcc(name, mkv)
+		    val str = STR{rlzn = rlzn, sign = sign, access = access2,
+				  prim = prim}
+		in
+		    (str, M.STRent rlzn)
+		end
               | _ => (resStr, M.STRent M.bogusStrEntity)
 
           val _ = showStr("--elabStrbs: bindStr: ",bindStr,env)
 
-          val sb = A.STRB{name = name, str = bindStr, 
+          val sb = A.STRB{name = name,
+			  str = bindStr, 
                           def = A.LETstr(resDec, A.VARstr resStr)}
           val decls' = sb :: decls
 
@@ -1315,7 +1313,7 @@ fun loop([], decls, entDecls, env, entEnv) =
 
  in loop(strbs, [], [], SE.empty, EE.empty)
       handle EE.Unbound => 
-       (debugmsg("$elabStrbs0: " ^ (if transp then "StrDec" else "AbsDec")); 
+       (debugmsg("$elabStrbs0: StrDec");
         raise EE.Unbound)
 
 end (* end of function elabStrbs *)
@@ -1337,7 +1335,7 @@ and elabDecl0
 
 (case decl
   of StrDec strbs =>
-       elabStrbs(strbs, true, env0, entEnv0, context, epContext, 
+       elabStrbs(strbs, env0, entEnv0, context, epContext, 
                  rpath, region, compInfo)
 
    | OpenDec paths =>

@@ -2,6 +2,7 @@ Types:
 
 ModuleId:  (ElabData/modules/moduleid.sml)
 static identifiers (collectively called statIds)
+Used for statenv pickle isolation
 
 tycId
   stamp
@@ -13,6 +14,7 @@ fctId
   { paramsig: stamp, bodysig: stamp, rlzn: stamp }
 envId
   stamp
+
 tmap -- maps from identifiers to static representations of corresponding entity
   { m_tyc: T.gtrec StampM.map,
     m_sig: M.sigrec StampM.map,
@@ -26,22 +28,22 @@ EntPath (ElabData/modules/entpath.sml)
     entVar   -- entity variable 
       stamp
     entPath  -- entity path
-      entVar list
+      entVar list  ==  stamp list
     rEntPath -- reverse entity path
       entVar list (reverse order)
 
 EntPathContext: (ElabData/modules/epcontext.sml)
-    pathmap -- mapping from statids to reverse entpaths
+    pathmap -- mapping from statIds to reverse entpaths
       EP.rEntPath MI.umap
-    epContext -- "environment" for mapping statids to relative entity paths
+    epContext -- "environment" for mapping statIds to relative entity paths
 	datatype context
 	  = EMPTY
 	  | LAYER of {locals: pathmap ref, 
-			    lookContext: EP.entPath,
-			    bindContext: EP.rEntPath,
-			    outer: context}
+		      lookContext: EP.entPath,
+		      bindContext: EP.rEntPath,
+		      outer: context}
 
-epContexts maintain a mapping from statids to reverse entity paths.
+epContexts maintain a mapping from statIds to reverse entity paths.
 It maintains a local pathmap for each closed structure scope (where closed
 means a functor body that won't have any references from outside the scope).
 It also maintains an entity path (lookContext) telling the entity path to the

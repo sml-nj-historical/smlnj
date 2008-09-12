@@ -130,7 +130,7 @@ fun tyvarPrintname (tyvar) = let
 	    annotate(litKindPrintName kind,"L",NONE)
 	  | SCHEME eq =>
 	    tvHead(eq,annotate(metaTyvarName tyvar,"S",NONE))
-	  | LBOUND=> "<LBD>"
+	  | LBOUND _ => "<LBD>"
 in
     prKind (!tyvar)
 end

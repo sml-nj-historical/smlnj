@@ -561,16 +561,16 @@ fun compareTypes (spec : ty, actual: ty): bool =
 
 exception WILDCARDmatch
 
-fun indexBoundTyvars ([]: tyvar list) : unit = ()
-  | indexBoundTyvars (lboundtvs) =
-    let fun setbtvs (i, []) = ()
-          | setbtvs (i, (tv as ref (OPEN _))::rest) =
-	     (tv := LBOUND;
-	      setbtvs (i+1, rest))
-          | setbtvs (i, (tv as ref (LBOUND))::res) =
-             bug ("unexpected tyvar LBOUND in indexBoundTyvars")
-          | setbtvs _ = bug "unexpected tyvar INSTANTIATED in mkPE"
-     in setbtvs(0, lboundtvs)
+fun indexBoundTyvars (lboundtvs: tyvar list) =
+    let fun setbtvs (tv as ref (tvkind)) =
+            (case tvkind
+	      of OPEN _ => tv := LBOUND NONE
+               | LBOUND _ =>
+		 bug "unexpected tyvar LBOUND in indexBoundTyvars"
+               | INSTANTIATED _ =>
+		 bug "unexpected tyvar INSTANTIATED in indexBoundTyvars"
+               | _ => bug "unexpected tyvar in indexBoundTyvars")
+     in List.app setbtvs lboundtvs
     end
 
 (* matchInstTypes: bool * ty * ty -> (tyvar list * tyvar list) option
@@ -624,11 +624,20 @@ fun matchInstTypes(doExpandAbstract,specTy,actualTy) =
               else (debugmsg' "INSTANTIATED"; raise CompareTypes)
 	  (* GK: Does this make sense? matchInstTypes should not apply
 		 as is if all the metavariables have been translated 
-	         into LBOUNDs *)
-	  | match'(ty1, ty2 as VARty(tv' as (ref(LBOUND)))) = 
+	         into LBOUNDs.
+	     DBM: This should never happen, because the actualTy should
+	         in the primop case be a closed polymorphic type (the
+                 intrinsic type of the primop. In the signature matching
+	         case, the actualTy should also be closed because it is
+                 the type of a structure component that cannot be embedded
+                 within the scope of a let or lambda binding. *)
+	  | match'(ty1, ty2 as VARty(tv' as (ref(LBOUND _)))) = 
+	      bug "matchInstTypes: LBOUND in actualTy"
+(*
               if equalType(ty1,ty2) then ()
               else (debugmsg' "matchInstTypes: matching and LBOUND tyvar";
                     raise CompareTypes)
+*)
 	  | match'(CONty(tycon1, args1), CONty(tycon2, args2)) =
 	      if eqTycon(tycon1,tycon2)
 	      then ListPair.app match (args1,args2)

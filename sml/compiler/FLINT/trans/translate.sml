@@ -1059,7 +1059,7 @@ fun mkVE (fm : TT.flexmap, e as V.VALvar { typ, prim = PrimOpId.Prim p, ... },
 	  val _ = debugmsg ">>mkVE: before matchInstTypes"
 	  val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
-              case (TU.matchInstTypes(true, d, occurrenceTy, intrinsicType)
+              case (TU.matchInstTypes(true, occurrenceTy, intrinsicType)
                       : (TP.tyvar list * TP.tyvar list) option )
                 of SOME(_, tvs) => 
 		   (if !debugging then
@@ -1201,9 +1201,10 @@ fun mkPE (fm : TT.flexmap, exp, d, []) = mkExp(fm, exp, d)
              * by the restore function below *)
 
           fun setbtvs (i, []) = ()
-            | setbtvs (i, (tv as ref (TP.OPEN _))::rest) =
-	        (tv := TP.LBOUND {depth=d,index=i};
+            | setbtvs (i, (tv as ref (TP.LBOUND(NONE)))::rest) =
+	        (tv := TP.LBOUND(SOME(d,i));
 		 setbtvs (i+1, rest))
+(*
             | setbtvs (i, (tv as ref (TP.LBOUND{depth=d',index=i'}))::rest) =
                 (if !debugging
                  then (if d <> d' then say ("### setbtvs: d = "^(Int.toString d)^
@@ -1215,6 +1216,7 @@ fun mkPE (fm : TT.flexmap, exp, d, []) = mkExp(fm, exp, d)
                  else ();
                  tv := TP.LBOUND {depth=d,index=i};  (* reset with local values *)
 		 setbtvs (i+1, rest))
+*)
             | setbtvs _ = bug "unexpected tyvar INSTANTIATED in mkPE"
 
           val _ = setbtvs(0, boundtvs)
