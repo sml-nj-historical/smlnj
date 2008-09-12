@@ -526,7 +526,6 @@ fun extractSig (env, epContext, context,
 	       | A.ABSTYPEdec{abstycs,withtycs,body} =>
 		   (proctycs abstycs)@(proctycs withtycs)@(getDeclOrder body)
 	       | A.EXCEPTIONdec(ebs) => procebs ebs
-	      (* | A.ABSdec(strbs) => procstrbs strbs *)
 	       | A.FCTdec(fctbs) => procfctbs fctbs
 	       | A.OPENdec(pathstrs) => 
 		   foldl (fn (str,names) => (rev (procstr str))@names) [] 

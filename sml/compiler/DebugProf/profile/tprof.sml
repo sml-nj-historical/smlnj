@@ -216,9 +216,6 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
        | instrdec(sp, STRdec strbl) = 
            STRdec (map (fn strb => instrstrb(sp,strb)) strbl)
 
-(*       | instrdec(sp, ABSdec strbl) = 
-           ABSdec (map (fn strb => instrstrb(sp,strb)) strbl)*)
-
        | instrdec(sp, FCTdec fctbl) = 
            FCTdec (map (fn fctb => instrfctb(sp,fctb)) fctbl)
      

@@ -1556,7 +1556,6 @@ and mkDec (fm0 : flexmap, dec : Absyn.dec, d : DI.depth)
 				^Int.toString(FTM.numItems fm'))
 	  in (fm', mkStrbs(fm', sbs, d))
 	  end
-(*         | g (ABSdec sbs) = mkStrbs(sbs, d) *)
         | g (fm, FCTdec fbs) = 
 	  let val fm' = mkFctbsFlexmap(fm, fbs, d)
 	      val _ = debugmsg ("--mkDec[FCTdec] fm' "
