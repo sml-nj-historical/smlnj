@@ -122,6 +122,9 @@ mlrisc libanchor CCall.cm SMLNJ-MLRISC
 mlrisc libanchor CCall-x86-64.cm SMLNJ-MLRISC
 mlrisc libanchor CCall-x86.cm SMLNJ-MLRISC
 mlrisc libanchor CCall-sparc.cm SMLNJ-MLRISC
+mlrisc libanchor CCall-Vararg.cm SMLNJ-MLRISC
+mlrisc libanchor CCall-VarargCall.cm SMLNJ-MLRISC
+mlrisc libanchor CCall-VarargInterp.cm SMLNJ-MLRISC
 mlrisc anchor RA.cm MLRISC/cm
 mlrisc anchor SPARC.cm MLRISC/cm
 mlrisc anchor Peephole.cm MLRISC/cm
@@ -132,6 +135,9 @@ mlrisc anchor CCall.cm MLRISC/cm
 mlrisc anchor CCall-x86-64.cm MLRISC/cm
 mlrisc anchor CCall-x86.cm MLRISC/cm
 mlrisc anchor CCall-sparc.cm MLRISC/cm
+mlrisc anchor CCall-Vararg.cm MLRISC/cm
+mlrisc anchor CCall-VarargCall.cm MLRISC/cm
+mlrisc anchor CCall-VarargInterp.cm MLRISC/cm
 mlrisc lib OTHER-MLRISC RA.cm             MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC Peephole.cm       MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC IA32.cm  MLRISC/cm SMLNJ-MLRISC
@@ -144,6 +150,7 @@ mlrisc lib OTHER-MLRISC CCall.cm          MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC CCall-x86-64.cm          MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC CCall-x86.cm          MLRISC/cm SMLNJ-MLRISC
 mlrisc lib OTHER-MLRISC CCall-sparc.cm          MLRISC/cm SMLNJ-MLRISC
+mlrisc lib OTHER-MLRISC CCall-Vararg.cm          MLRISC/cm SMLNJ-MLRISC
 
 # libraries supporting MLRISC tools:
 mlrisc-tools lib mlrisc-tools pp.cm             MLRISC/Tools
