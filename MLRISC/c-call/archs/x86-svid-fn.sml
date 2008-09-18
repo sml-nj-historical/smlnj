@@ -5,6 +5,7 @@
  * Mike Rainey (mrainey@cs.uchicago.edu)
  *)
 
+
 functor X86SVIDFn (
     structure T : MLTREE
     val abi : string
@@ -38,9 +39,9 @@ functor X86SVIDFn (
     structure SA = StagedAllocationFn (
                     type reg_id = T.reg
 		    datatype loc_kind = datatype loc_kind
-		    val memSize = 8)
+		    val memSize = 4)
 
-    structure CCall = CCallFn(
+    structure Gen = CCallGenFn(
              structure T = T
 	     structure C = C
 	     val wordTy = wordTy
@@ -49,9 +50,9 @@ functor X86SVIDFn (
 	     fun lobits {e, nBits, width} = e
 	     fun sx {fromWidth, toWidth, e} = T.SX(toWidth, fromWidth, e)
 	     fun f2f {fromWidth, toWidth, e} = e
-	     structure SA = SA)
+	     structure SA = SA)    
 
-    datatype c_arg = datatype CCall.c_arg
+    datatype c_arg = datatype Gen.c_arg
 
     structure CCs = X86CConventionFn (
 		      type reg_id = T.reg
@@ -194,7 +195,7 @@ functor X86SVIDFn (
 			  [T.MV(wordTy, C.esp, T.SUB(wordTy, spReg, T.LI(IntInf.fromInt szb)))]
 			end
 		else [T.MV(wordTy, C.esp, T.SUB(wordTy, spReg, T.LI(IntInf.fromInt(#szb argMem))))]
-	  val (copyArgs, gprUses, fprUses) = CCall.writeLocs(args, argLocs)
+	  val (copyArgs, gprUses, fprUses) = Gen.writeLocs(args, argLocs)
 
 	(* the SVID specifies that the caller pops arguments, but the callee
 	 * pops the arguments in a stdcall on Windows.  I'm not sure what other
@@ -215,7 +216,7 @@ functor X86SVIDFn (
 
         (* FIXME: support fast floating point *)
 	(* read return values *) 
-	  val (resultRegs, copyResult) = CCall.readLocs resLocs
+	  val (resultRegs, copyResult) = Gen.readLocs resLocs
 
 	  val defs = definedRegs(#retTy proto)
 	  val { save, restore } = saveRestoreDedicated defs

@@ -403,7 +403,6 @@ structure X86MLRISCGen =
 	           callComment=NONE,
 	           proto=proto,
 	           args=args}
-
 	fun wordLit i = T.LI (T.I.fromInt (wordTy, i))
 	val stms = List.concat [
 		   [T.EXT(X86InstrExt.PUSHL(T.REG(32, C.ebp))),
@@ -418,6 +417,7 @@ structure X86MLRISCGen =
 
   end
 
+structure X86CCall = CCall
 structure X86Test = GenTestFn (
 		 structure T = X86MLTree
 		 structure CCall = CCall

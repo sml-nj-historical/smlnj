@@ -7,7 +7,7 @@
 
 functor X86_64SVIDFn (
     structure T : MLTREE
-  ) : C_CALL = struct
+  ) = struct
 
     structure T = T
     structure C = AMD64Cells
@@ -35,7 +35,7 @@ functor X86_64SVIDFn (
                          datatype loc_kind = datatype loc_kind
 			 val memSize = 8 (* bytes *))
 
-    structure CCall = CCallFn (
+    structure Gen = CCallGenFn (
 		        structure T = T
 			structure C = C
 			val wordTy = wordTy
@@ -46,7 +46,7 @@ functor X86_64SVIDFn (
 			fun f2f {fromWidth, toWidth, e} = e
 		      )
 
-    datatype c_arg = datatype CCall.c_arg
+    datatype c_arg = datatype Gen.c_arg
 
     structure CCs = X86_64CConventionFn (
 		      structure SA = SA
@@ -177,7 +177,7 @@ functor X86_64SVIDFn (
 			then []
 			else [T.MV (wordTy, C.rsp, T.SUB (wordTy, spReg, 
 			      T.LI (T.I.fromInt (wordTy, #szb argMem))))]
-	val (copyArgs, gprUses, fprUses) = CCall.writeLocs(args, argLocs)
+	val (copyArgs, gprUses, fprUses) = Gen.writeLocs(args, argLocs)
        (* the defined registers of the call depend on the calling convention *)
  	val defs = (case #conv proto
             of "ccall" => List.map (gpr o #2) callerSaveRegs' @ List.map fpr callerSaveFRegs'
@@ -188,7 +188,7 @@ functor X86_64SVIDFn (
             (* end case *))
 	val uses = List.map gpr gprUses @ List.map fpr fprUses
 	val callStm = T.CALL {funct=name, targets=[], defs=defs, uses=uses, region=mem, pops=0}
-	val (resultRegs, copyResult) = CCall.readLocs resLocs
+	val (resultRegs, copyResult) = Gen.readLocs resLocs
 	val callSeq = argAlloc @ copyArgs @ [callStm] @ copyResult
         in
           {callseq=callSeq, result=resultRegs}

@@ -5,6 +5,8 @@
 
 functor GenFn (
     structure T : MLTREE
+    structure CCallGen : C_CALL_GEN
+      where T = T
   (* general-purpose registers used for passing or returning arguments *)
     val gprs : T.reg list
   (* floating-point registers used for passing or returning arguments *)
@@ -24,11 +26,9 @@ functor GenFn (
 
   end = struct
 
+    structure T = CCallGen.T
     structure Consts = VarargConstants
-    structure SA = StagedAllocation(
-		     type reg_id = T.reg
-		     datatype loc_kind = datatype CLocKind.loc_kind
-		     val memSize = 4)
+    structure SA = CCallGen.SA
 
     datatype loc 
       = REG_LOC of T.reg
@@ -53,7 +53,7 @@ functor GenFn (
 	val instLabels = ref ([] : (string * Label.label) list)
 	fun newLabel s = (case List.find (fn (s', _) => s' = s) (!instLabels)
                 of NONE => let
-	           val l = Label.label s ()
+	           val l = Label.label (s^"L") ()
 		   in
 		       instLabels := (s, l) :: !instLabels;
 		       l
@@ -117,18 +117,20 @@ functor GenFn (
 	    end
 
   (* generate code that places the argument *)
-    fun loc {larg, k, width, narrowing, loc} = let
+    fun loc {larg, k : CLocKind.loc_kind, width, narrowing, loc} = let
           (* offset into the argument (only nonzero if the argument has an aggregate type) *)
-	    val argMembOff = offLocdArg(ty, larg, Consts.offsetOffB)
+	    val argMembOff = offLocdArg(width, larg, Consts.offsetOffB)
           (* narrow the location if necessary *)
 	    fun narrow loc = if width = narrowing then loc
-			     else SA.NARROW(loc, k, loc)
+			     else SA.NARROW(loc, width, k)
 	    val writeArgInstrs = (
 		case (k, loc, widthOK(k, width, narrowing))
 		 of (GPR, REG_LOC r, true) => 
-		    CCall.writeLoc (offLocdArg(ty, larg, Consts.argOffB)) (argMembOff, narrow(SA.REG(ty, GPR, r)), [])
+		    CCallGen.writeLoc (CCallGen.ARG (offLocdArg(width, larg, Consts.argOffB)))
+				      (argMembOff, narrow(SA.REG(width, GPR, r)), [])
 		  | (FPR, REG_LOC r, true) =>
-		    CCall.writeLoc (offLocdArgF(ty, larg, Consts.argOffB)) (argMembOff, narrow(SA.REG(ty, FPR, r)), [])
+		    CCallGen.writeLoc (CCallGen.FARG (offLocdArgF(width, larg, Consts.argOffB)))
+				      (argMembOff, narrow(SA.REG(width, FPR, r)), [])
 		  | (STK, STK_LOC, true) =>
 		    [storeSTK larg width]
 		  | (FSTK, STK_LOC, true) =>
@@ -216,15 +218,28 @@ functor GenFn (
 	    {larg=larg, k=k, width=width, narrowing=narrowing, loc=loc} :: 
 	      locInstrs {larg=larg, k=k, width=width, narrowing=narrowing, locs=locs}
 
+    fun widthOK ((STK | GPR), width) = List.exists (fn width' => width' = width) gprWidths
+      | widthOK ((FSTK | FPR), width) = List.exists (fn width' => width' = width) fprWidths
+
     fun narrowingInstrs {larg, k, width, narrowings=[], locs} = []
-      | narrowingInstrs {larg, k, width, narrowings=narrowing::narrowings, locs} =
-	    {larg=larg, k=k, width=width, narrowing=narrowing, locs=locs} :: 
-	      narrowingInstrs {larg=larg, k=k, width=width, narrowings=narrowings, locs=locs}
+      | narrowingInstrs {larg, k, width, narrowings=narrowing::narrowings, locs} = let
+	    val instrs = narrowingInstrs {larg=larg, k=k, width=width, narrowings=narrowings, locs=locs}
+	    in
+	      if widthOK(k, narrowing)
+	         then {larg=larg, k=k, width=width, narrowing=narrowing, locs=locs} :: instrs
+	      else instrs
+	    end
+	      
 
     fun widthInstrs {larg, k, widths=[], narrowings, locs} = []
-      | widthInstrs {larg, k, widths=width::widths, narrowings, locs} = 
-	    {larg=larg, k=k, width=width, narrowings=narrowings, locs=locs} :: 
-	      widthInstrs {larg=larg, k=k, widths=widths, narrowings=narrowings, locs=locs}
+      | widthInstrs {larg, k, widths=width::widths, narrowings, locs} = let
+	    val instrs = widthInstrs {larg=larg, k=k, widths=widths, narrowings=narrowings, locs=locs}
+	    in
+              if widthOK(k, width)
+	      then 
+		{larg=larg, k=k, width=width, narrowings=narrowings, locs=locs} :: instrs
+	      else instrs
+            end		
 
     fun kindInstrs {larg, ks=[], widths, narrowings, locs} = []
       | kindInstrs {larg, ks=k::ks, widths, narrowings, locs} = 

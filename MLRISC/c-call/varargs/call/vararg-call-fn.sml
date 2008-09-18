@@ -66,6 +66,7 @@ functor VarargCallFn (
 	    val reqs = List.map argToReq args
 	    val (locs, store) = SA.allocateSeq params (reqs, store0)
 	    val locdArgs = LocatedArgs.mkLocatedArgs (args, locs)
+(*val _ = print ((String.concatWith " " (List.map LocatedArgs.toString locdArgs))^"\n")*)
 	    val nLocdArgs = List.length locdArgs
 	    val {startLocdArgs, endLocdArgs} = Marshal.marshalLocdArgs locdArgs
             in

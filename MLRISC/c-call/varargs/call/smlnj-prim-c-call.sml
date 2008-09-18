@@ -6,7 +6,7 @@ structure SMLNJPrimCCall =
 
     fun dynLink s = let
 	val lh = DL.open_lib
-		     { name = "../interp/vararg", global = true, lazy = true }
+		     { name = "./vararg", global = true, lazy = true }
         in 
 	    DL.lib_symbol (lh, s)
         end

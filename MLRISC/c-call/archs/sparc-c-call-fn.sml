@@ -49,9 +49,9 @@ functor SparcCCallFn (
     structure SA = StagedAllocationFn (
                     type reg_id = T.reg
 		    datatype loc_kind = datatype loc_kind
-		    val memSize = 8)
+		    val memSize = 4)
 
-    structure CCall = CCallFn(
+    structure Gen = CCallGenFn(
              structure T = T
 	     structure C = C
 	     val wordTy = wordTy
@@ -62,7 +62,7 @@ functor SparcCCallFn (
 	     fun f2f {fromWidth, toWidth, e} = e
 	     structure SA = SA)
 
-    datatype c_arg = datatype CCall.c_arg
+    datatype c_arg = datatype Gen.c_arg
 
     structure CCs = SparcCConventionFn (
 		      type reg_id = T.reg
@@ -112,17 +112,25 @@ functor SparcCCallFn (
 	     {argLocs=List.map singleton paramLocs, argMem=argMem, structRetLoc=NONE, resLocs=resLoc}
 	  end
 
-(* FIXME *)
-    val callerSaveRegs = []
+    local
+    val g_regs = List.map greg [1, 2, 3, 4, 5, 6, 7]
+    val a_regs = List.map oreg [0, 1, 2, 3, 4, 5]
+    val l_reg = oreg 7
+    val f_regs = List.map freg
+		     [0, 2, 4, 6, 8, 10, 12, 14,
+		      16, 18, 20, 22, 24, 26, 28, 30]
+    in
+    val callerSaveRegs = l_reg :: g_regs @ a_regs
     val calleeSaveRegs = []
-    val callerSaveFRegs = []
+    val callerSaveFRegs = f_regs
     val calleeSaveFRegs = []
+    end
 
     fun genCall {name, proto as {retTy, ...}, paramAlloc, structRet, saveRestoreDedicated, callComment, args} = let
 	  val {argLocs, argMem, resLocs, structRetLoc} = layout proto
 	  val argAlloc = []
-	  val (copyArgs, gprUses, fprUses) = CCall.writeLocs(args, argLocs)
-	  val (resultRegs, copyResult) = CCall.readLocs resLocs
+	  val (copyArgs, gprUses, fprUses) = Gen.writeLocs(args, argLocs)
+	  val (resultRegs, copyResult) = Gen.readLocs resLocs
 
         (* bytes to allocate on the stack for returning structs *)
 	  val res_szal =

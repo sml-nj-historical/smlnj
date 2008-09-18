@@ -30,5 +30,9 @@ is
      bind:(anchor:CCall.cm value:../../cm)
      bind:(anchor:CCall-sparc.cm value:../../cm)
      bind:(anchor:CCall-x86.cm value:../../cm)
-     bind:(anchor:CCall-x86-64.cm value:../../cm))
+     bind:(anchor:CCall-x86-64.cm value:../../cm)
+     bind:(anchor:CCall-Vararg.cm value:../../cm)
+     bind:(anchor:CCall-VarargCall.cm value:../../cm)
+     bind:(anchor:CCall-VarargInterp.cm value:../../cm)
+     )
 

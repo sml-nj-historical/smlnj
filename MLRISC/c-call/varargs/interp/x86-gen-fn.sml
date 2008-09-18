@@ -1,25 +1,28 @@
-(* x86-gen.sml
+(* x86-gen-fn.sml
  *
  * X86-specific portion of the interpreter.
  *)
 
-structure X86Gen =
-  struct
+functor X86GenFn (
+	structure Gen : C_CALL_GEN
+	structure MLRISCGen : MLRISC_GEN
+          where T = Gen.T
+	val push : MLRISCGen.T.rexp -> MLRISCGen.T.stm
+	val leave : MLRISCGen.T.stm
+  ) = struct
 
     val defTy = 32
 
-    structure T = X86MLTree
+    structure T = MLRISCGen.T
     structure C = X86Cells
     structure CB = CellsBasis
     structure Consts = VarargConstants
 
     fun gpr r = T.GPR(T.REG(32, r))
     val calleeSaveRegs = List.map gpr [C.ebx, C.esi, C.edi]
-    fun push e = T.EXT(X86InstrExt.PUSHL e)
-    val leave = T.EXT X86InstrExt.LEAVE
 
-    structure Gen = GenFn (
-	structure T = T
+    structure InterpGen = GenFn (
+	structure T = Gen.T
 	val gprs = []
 	val fprs = []
 	val gprWidths = [8, 16, 32]
@@ -27,7 +30,9 @@ structure X86Gen =
 	val spReg = T.REG(32, C.esp)
 	val defaultWidth = 32
 	val callerSaves = [C.eax, C.ecx, C.edx]
-	val callerSavesF = [])
+	val callerSavesF = []
+	structure CCallGen = Gen
+	structure SA = Gen.SA)
 
     fun lit i = T.LI (T.I.fromInt (defTy, i))
 
@@ -51,7 +56,7 @@ structure X86Gen =
 		   [T.MV(defTy, largsReg, getArg 1)],
 		 (* allocate stack space for the arguments *)
 		   [T.MV(defTy, C.esp, T.SUB(defTy, T.REG(defTy, C.esp), lit frameSzB))],
-	           Gen.gen {interpFunPtr=interpFunPtr, largsReg=largsReg, endOfLargs=endOfLargs},
+	           InterpGen.gen {interpFunPtr=interpFunPtr, largsReg=largsReg, endOfLargs=endOfLargs},
 		   [leave],
 	           [T.LIVE calleeSaveRegs],
 		   [T.RET []]
@@ -64,7 +69,7 @@ structure X86Gen =
 	   val stms = gen()
 	   val asmOutStrm = TextIO.openOut "vararg-interp-x86-linux.s"
 	   val _ = TextIO.output(asmOutStrm, Consts.header^"\n")
-	   fun doit () = X86MLRISCGen.dumpOutput(X86MLRISCGen.codegen'(lab, stms, [T.GPR (T.REG (defTy, C.eax))]))
+	   fun doit () = MLRISCGen.gen(lab, stms, [T.GPR (T.REG (defTy, C.eax))])
 	   val _ = AsmStream.withStream asmOutStrm doit ()
 	   val _ = TextIO.closeOut asmOutStrm
            in

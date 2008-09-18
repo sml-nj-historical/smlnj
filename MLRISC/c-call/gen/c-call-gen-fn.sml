@@ -1,9 +1,9 @@
-(* c-call-fn.sml
+(* c-call-gen-fn.sml
  *
  * Generate MLRISC code for moving arguments to and from machine locations.
  *)
 
-functor CCallFn (
+functor CCallGenFn (
     structure T : MLTREE
     structure C : CELLS
   (* given an offset constant, return an expression that gives an offset from
@@ -23,9 +23,12 @@ functor CCallFn (
           where type reg_id = T.reg
           where type loc_kind = CLocKind.loc_kind
 
-  ) = struct
+  ) : C_CALL_GEN = struct
 
     structure K = CLocKind
+    structure T = T
+    structure C = C
+    structure SA = SA
 
     fun concatMap f ls = List.concat(List.map f ls)
 
@@ -198,7 +201,7 @@ functor CCallFn (
 	     ListPair.foldl (writeLoc arg) stms (membOffs, locs)
           end
 
-  (* write C arguments to parameter locations; also return any used GPRs or FPRs *)
+  (* write C arguments to parameter locations; also return any used GPRs and FPRs *)
     fun writeLocs (args, argLocs) = let
 	  val gprs = concatMap gprsOfLoc (List.concat argLocs)
 	  val fprs = concatMap fprsOfLoc (List.concat argLocs)
@@ -259,4 +262,4 @@ functor CCallFn (
 	      (List.rev resultRegs, List.rev copyResult)
 	  end
 
-  end (* CCallFn *)
+  end (* CCallGenFn *)

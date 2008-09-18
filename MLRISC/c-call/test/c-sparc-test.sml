@@ -444,6 +444,28 @@ structure CFG = SparcCFG
 structure FlowGraph = SparcFlowGraph
     val wordTy = 32
 
+
+    val GP = SparcCells.GPReg
+    val FP = SparcCells.FPReg
+
+    fun greg r = GP r
+    fun oreg r = GP (r + 8)
+    fun ireg r = GP (r + 24)
+    fun freg r = FP r
+    fun reg32 r = T.REG (32, r)
+    fun freg64 r = T.FREG (64, r)
+    fun LI i = T.LI (T.I.fromInt (32, i))
+
+
+
+in
+
+structure SparcMLTree = SparcMLTree
+structure SparcCCall = SparcCCall
+
+structure SparcMLRISCGen =
+  struct
+
     fun gen (functionName, stms, result) = let
            val insnStrm = FlowGraph.build()
 	   val stream as SparcStream.STREAM
@@ -509,7 +531,7 @@ structure FlowGraph = SparcFlowGraph
 
 	fun wordLit i = T.LI (T.I.fromInt (wordTy, i))
 
-	fun offfp i = T.ADD(32, T.REG (32, ireg 6), LI i)
+	fun offp i = T.ADD(32, T.REG (32, ireg 6), LI i)
 
 	val stms = List.concat [
 		   [T.EXT(SparcInstrExt.SAVE(T.REG(32, sp), LI(~112), T.REG(32, sp)))],
@@ -528,24 +550,13 @@ structure FlowGraph = SparcFlowGraph
 	   dumpOutput(gen (functionName, stms, result))
 	end
 
-    val GP = SparcCells.GPReg
-    val FP = SparcCells.FPReg
+  end
 
-    fun greg r = GP r
-    fun oreg r = GP (r + 8)
-    fun ireg r = GP (r + 24)
-    fun freg r = FP r
-    fun reg32 r = T.REG (32, r)
-    fun freg64 r = T.FREG (64, r)
-    fun LI i = T.LI (T.I.fromInt (32, i))
-
-
-in
 structure SparcTest = GenTestFn (
 		  structure T = SparcMLTree
 		  structure CCall = SparcCCall
 		  structure Cells = SparcCells
-		  val codegen = codegen
+		  val codegen = SparcMLRISCGen.codegen
 		  val param0 = reg32(ireg 0)
 		  val wordTy = 32)
 end

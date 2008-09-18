@@ -9,7 +9,7 @@ generate MLRISC instructions for the calling sequence. For the variable-arity ca
 use more elaborate techniques. The basic idea is to use an interpreter at runtime to carry 
 out the calling sequence. Our ML Workshop paper contains the specifics.
 
- * Calling variadic functions from a strongly typed language - http://cs.uchicago.edu/~mrainey/variadic08.pdf
+ * Calling variadic functions from a strongly typed language - http://cs.uchicago.edu/~mrainey/ml-varargs.pdf
 
 Layout:
 

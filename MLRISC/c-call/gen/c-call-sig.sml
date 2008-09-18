@@ -2,23 +2,17 @@ signature C_CALL =
   sig
 
     structure T : MLTREE
-    structure SA : STAGED_ALLOCATION
+    structure Gen : C_CALL_GEN
+      where T = T
 
-    datatype c_arg 
-      = ARG of T.rexp	
-	  (* rexp specifies integer or pointer; if the 
-           * corresponding parameter is a C struct, then 
-	   * this argument is the address of the struct. 
-	   *)
-      | FARG of T.fexp
-	  (* fexp specifies floating-point argument *)
+    datatype c_arg = datatype Gen.c_arg
 
     val layout : CType.c_proto -> {
-	    argLocs : SA.loc list list,	        (* argument/parameter assignment; nested lists are for passing structs *)
-	    argMem : {szb : int, align : int},	(* memory requirements for stack-allocated *)
-						(* arguments; this value can be passed to *)
-						(* the paramAlloc callback. *)
-	    resLocs : SA.loc list,	        (* result location *)
+	    argLocs : Gen.SA.loc list list,	        (* argument/parameter assignment; nested lists are for passing structs *)
+	    argMem : {szb : int, align : int},	        (* memory requirements for stack-allocated *)
+						        (* arguments; this value can be passed to *)
+						        (* the paramAlloc callback. *)
+	    resLocs : Gen.SA.loc list,	                (* result location *)
 	    structRetLoc : {szb : int, align : int} option
 	  }
 
@@ -70,27 +64,27 @@ signature C_CALL =
    * handle allocating space for the parameter area (i.e., return true).
    *)
     val genCall : {
-	    name  : T.rexp,
+	    name  : Gen.T.rexp,
             proto : CType.c_proto,
 	    paramAlloc : {szb : int, align : int} -> bool,
-            structRet : {szb : int, align : int} -> T.rexp,
+            structRet : {szb : int, align : int} -> Gen.T.rexp,
 	    saveRestoreDedicated :
-	      T.mlrisc list -> {save: T.stm list, restore: T.stm list},
+	      Gen.T.mlrisc list -> {save: Gen.T.stm list, restore: Gen.T.stm list},
 	    callComment : string option, 
-            args : c_arg list
+            args : Gen.c_arg list
 	  } -> {
-	    callseq : T.stm list,
-	    result: T.mlrisc list
+	    callseq : Gen.T.stm list,
+	    result: Gen.T.mlrisc list
 	  }
 
   (* Callee-save registers as defined in the C calling convention.  Note that
    * these do not include special registers (e.g., stack and frame-pointers)
    * that are preserved across calls.
    *)
-    val calleeSaveRegs : T.reg list	(* C callee-save registers *)
-    val calleeSaveFRegs : T.reg list	(* C callee-save floating-point registers *)
+    val calleeSaveRegs : Gen.T.reg list	(* C callee-save registers *)
+    val calleeSaveFRegs : Gen.T.reg list	(* C callee-save floating-point registers *)
 
-    val callerSaveRegs : T.reg list	(* C caller-save registers *)
-    val callerSaveFRegs : T.reg list	(* C caller-save floating-point registers *)
+    val callerSaveRegs : Gen.T.reg list	(* C caller-save registers *)
+    val callerSaveFRegs : Gen.T.reg list	(* C caller-save floating-point registers *)
 
   end (* C_CALL *)

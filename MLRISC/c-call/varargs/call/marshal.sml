@@ -89,7 +89,7 @@ structure Marshal =
     fun marshalLocdArg ({arg, k, width, narrowing, loc, offset}, locdArgsArr) = (
 	    set(locdArgsArr, Consts.kindOffB, Consts.kind k);
 	    set(locdArgsArr, Consts.widthOffB, W.fromInt width);
-	    set(locdArgsArr, Consts.narrowingOffB, W.fromInt (Option.getOpt(narrowing, 0)));
+	    set(locdArgsArr, Consts.narrowingOffB, W.fromInt (Option.getOpt(narrowing, width)));
 	    set(locdArgsArr, Consts.locOffB, W.fromInt loc);
 	    set(locdArgsArr, Consts.offsetOffB, W.fromInt offset);
 	    marshalArg(locdArgsArr, arg);

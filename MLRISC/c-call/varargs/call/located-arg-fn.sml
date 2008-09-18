@@ -21,6 +21,8 @@ functor LocatedArgFn (
   (* converts a sequence of arguments and staged allocation locations to located arguments *)
     val mkLocatedArgs : (Vararg.arg list * SA.loc list) -> located_arg list
 
+    val toString : located_arg -> string
+
   end = struct
 
     structure V = Vararg
@@ -69,5 +71,14 @@ functor LocatedArgFn (
 
   (* converts a sequence of arguments and staged allocation locations to located arguments *)
     val mkLocatedArgs = List.concat o ListPair.mapEq mkLocatedArg
+
+    fun k2s CK.GPR = "GPR"
+      | k2s CK.FPR = "FPR"
+      | k2s CK.STK = "STK"
+      | k2s CK.FSTK = "FSTK"
+    val i2s = Int.toString
+
+    fun toString {k, width, narrowing, offset, arg, loc} =
+	"{k="^k2s k^",width="^i2s width^",narrowing="^i2s (Option.getOpt(narrowing, width))^",offset="^i2s offset^",loc="^i2s loc^"}"
 
   end

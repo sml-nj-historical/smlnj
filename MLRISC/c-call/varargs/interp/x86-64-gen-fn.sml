@@ -3,7 +3,7 @@
  * X86-64-specific portion of the interpreter.
  *)
 
-functor X86_64Gen (
+functor X86_64GenFn (
     structure T : MLTREE
     val push : T.rexp -> T.stm
     val leave : T.stm

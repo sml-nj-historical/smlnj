@@ -82,8 +82,8 @@ structure VarargCall =
                          type reg_id = int
 			 datatype loc_kind = datatype CLocKind.loc_kind
 			 val memSize = 4)
-    val GP = regNum o C.GPReg
-    val FP = regNum o C.FPReg
+    val GP = regNum o SparcCells.GPReg
+    val FP = regNum o SparcCells.FPReg
     fun freg r = FP r
     fun oreg r = GP (r + 8)
     structure SparcConvention = SparcCConventionFn(
@@ -112,18 +112,5 @@ structure VarargCall =
 				  structure SA = SparcSA
 			      )
     end (* sparc *)
-
-  (* simple examples *)
-    local
-	structure V = Vararg
-	structure DL = DynLinkage
-	fun main's s = DL.lib_symbol (DL.main_lib, s)
-	val printf_h = main's "printf"
-	fun call args = X86VarargCall.dispatchLowlevelCall(printf_h, args)
-    in
-    fun ex1 () = call [V.STRING_ARG "test123\n"]
-    fun ex2 () = call [V.STRING_ARG "%d %s\n", V.SINT_ARG 1024, V.STRING_ARG "xxx"]
-    fun ex3 () = call [V.STRING_ARG "%d %s %d\n", V.SINT_ARG 1024, V.STRING_ARG "xxx", V.SINT_ARG 222333]
-    end
 
   end
