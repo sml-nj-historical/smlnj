@@ -769,3 +769,81 @@ Sending        compiler/CodeGen/amd64/amd64CG.sml
 Sending        runtime/objs
 Transmitting file data ..
 Committed revision 2931.
+
+======================================================================
+13.merge from trunk to primop3 (2931:3228)
+
+exmoor:~/wc/smlnj/primop3-consolidate/base gkuan$ svn up
+At revision 3228.
+exmoor:~/wc/smlnj/primop3-consolidate/base gkuan$ svn merge -r 2931:HEAD https://smlnj-gforge.cs.uchicago.edu/svn/smlnj/sml/trunk 
+U    cm/compile/compile.sml
+U    cm/compile/link.sml
+Skipped 'READMES/110.68-README.html'
+U    runtime/c-libs/smlnj-prof/setpref.c
+U    runtime/c-libs/smlnj-prof/setptimer.c
+Skipped 'runtime/c-libs/win32/win32-config.c'
+U    runtime/c-libs/win32/cfun-list.h
+Skipped 'runtime/c-libs/win32/win32-dde.c'
+U    runtime/c-libs/win32/makefile.win32
+Skipped 'runtime/c-libs/win32/win32-reg.c'
+U    runtime/c-libs/win32-process/win32-process.c
+U    runtime/c-libs/win32-process/cfun-list.h
+U    runtime/objs/makefile.win32
+U    runtime/mach-dep/SPARC.prim.asm
+U    system/smlnj/MLRISC/IA32.cm
+U    system/Basis/basis.cm
+U    system/Basis/Implementation/sources.cm
+U    system/Basis/Implementation/int64.sml
+Skipped 'system/Basis/Implementation/Win32/windows-reg.sig'
+Skipped 'system/Basis/Implementation/Win32/windows-reg.sml'
+Skipped 'system/Basis/Implementation/Win32/windows-key.sig'
+Skipped 'system/Basis/Implementation/Win32/windows-dde.sig'
+Skipped 'system/Basis/Implementation/Win32/windows-key.sml'
+Skipped 'system/Basis/Implementation/Win32/windows.sig'
+Skipped 'system/Basis/Implementation/Win32/windows-dde.sml'
+Skipped 'system/Basis/Implementation/Win32/windows-config.sig'
+Skipped 'system/Basis/Implementation/Win32/windows.sml'
+Skipped 'system/Basis/Implementation/Win32/windows-config.sml'
+Skipped 'system/Basis/Implementation/Win32/windows-status.sig'
+Skipped 'system/Basis/Implementation/Win32/windows-status.sml'
+U    NOTES/HISTORY
+Skipped 'NOTES/branches'
+U    compiler/DebugProf/profile/sprof.sml
+U    compiler/DebugProf/profile/tprof.sml
+U    compiler/DebugProf/profile/tdp-instrument.sml
+U    compiler/Semant/pickle/pickmod.sml
+U    compiler/Semant/pickle/unpickmod.sml
+Skipped 'compiler/DEVNOTES/temi-revisions'
+Skipped 'compiler/DEVNOTES/valbind.txt'
+U    compiler/MiscUtil/print/ppdec.sml
+U    compiler/Elaborator/basics/elabcontrol.sig
+C    compiler/Elaborator/basics/debindex.sml
+U    compiler/Elaborator/types/basictypes.sml
+U    compiler/Elaborator/types/eqtypes.sml
+U    compiler/Elaborator/types/unify.sml
+U    compiler/Elaborator/types/overload.sml
+C    compiler/Elaborator/types/typecheck.sml
+U    compiler/Elaborator/types/overloadlit.sml
+U    compiler/Elaborator/modules/sigmatch.sml
+U    compiler/Elaborator/print/ppmod.sml
+C    compiler/Elaborator/print/pptype.sml
+U    compiler/Elaborator/print/ppval.sml
+U    compiler/Elaborator/elaborate/elabtype.sml
+U    compiler/Elaborator/elaborate/elabutil.sig
+U    compiler/Elaborator/elaborate/elabcore.sml
+U    compiler/Elaborator/elaborate/elabutil.sml
+U    compiler/ElabData/main/edcontrol.sml
+U    compiler/ElabData/main/edcontrol.sig
+C    compiler/ElabData/types/types.sig
+C    compiler/ElabData/types/typesutil.sml
+C    compiler/ElabData/types/types.sml
+U    compiler/ElabData/syntax/varcon.sml
+U    compiler/ElabData/syntax/varcon.sig
+U    compiler/ElabData/modules/moduleutil.sml
+U    compiler/CodeGen/sparc/sparcCpsRegs.sml
+Skipped missing target: 'compiler/FLINT/kernel/ltydef.sml'
+U    compiler/FLINT/opt/recover.sml
+U    compiler/FLINT/trans/pequal.sml
+C    compiler/FLINT/trans/transtypes.sml
+C    compiler/FLINT/trans/translate.sml
+U    compiler/FLINT/trans/tempexpn.sml

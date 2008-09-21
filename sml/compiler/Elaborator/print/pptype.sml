@@ -130,7 +130,12 @@ fun tyvarPrintname (tyvar) = let
 	    annotate(litKindPrintName kind,"L",NONE)
 	  | SCHEME eq =>
 	    tvHead(eq,annotate(metaTyvarName tyvar,"S",NONE))
-	  | LBOUND _ => "<LBD>"
+	  | LBOUND lbRecOp => 
+	      (case lbRecOp 
+		of NONE => "<LBD>"
+		 | SOME {depth, index, eq} => 
+		   (if eq then "<LBDeq" else "<LBD")^Int.toString depth^"."
+		   ^Int.toString index^">")
 in
     prKind (!tyvar)
 end
@@ -217,6 +222,7 @@ fun strength(ty) =
 	       | RECORDtyc (_::_) =>  (* excepting type unit *)
 		 if Tuples.isTUPLEtyc(tycon) then 1 else 2
 	       | _ => 2)
+       | MARKty(ty, region) => strength ty
        | _ => 2
 
 fun ppEqProp ppstrm p =
@@ -438,6 +444,7 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
                          pps "]";
                          closeBox())
                    else ppType1 env ppstrm (body,sign, membersOp)
+	       | MARKty(ty, region) => prty ty
 	       | WILDCARDty => pps "_"
 	       | UNDEFty => pps "undef"
 

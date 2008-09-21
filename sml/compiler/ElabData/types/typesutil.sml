@@ -25,7 +25,7 @@ val --> = CoreBasicTypes.-->
 infix -->
 
 val say = Control_Print.say
-val debugging = ref false
+val debugging = ElabDataControl.tudebugging
 fun debugmsg msg = if !debugging then say ("TypesUtil: " ^ msg ^ "\n") else ()
 fun bug msg = EM.impossible("TypesUtil: "^msg)
 
@@ -152,7 +152,8 @@ fun eqTycon (GENtyc g, GENtyc g') = Stamps.eq (#stamp g, #stamp g')
       Stamps.eq(s1,s2)
   | eqTycon _ = false
 
-fun prune(VARty(tv as ref(INSTANTIATED ty))) : ty =
+fun prune(VARty(tv as ref(INSTANTIATED ty)) |
+          MARKty(VARty(tv as ref(INSTANTIATED ty)),_)) : ty =
       let val pruned = prune ty
       in tv := INSTANTIATED pruned; pruned
       end
@@ -198,6 +199,7 @@ fun applyTyfun(TYFUN{arity,body}, args: ty list) =
   let fun subst(IBOUND n) = List.nth(args,n)
         | subst(CONty(tyc,args)) = CONty(tyc, shareMap subst args)
         | subst(VARty(ref(INSTANTIATED ty))) = subst ty
+	| subst(MARKty(ty,_)) = subst ty
         | subst _ = raise SHARE
    in if arity <> length args
         then (say ("$$$ applyTyfun: arity = "^(Int.toString arity)^
@@ -222,6 +224,7 @@ fun mapTypeFull f =
 	       | POLYty {sign, tyfun=TYFUN{arity, body}} =>
 		  POLYty{sign=sign, tyfun=TYFUN{arity=arity,body=mapTy body}}
 	       | VARty(ref(INSTANTIATED ty)) => mapTy ty
+               | MARKty(ty, region) => mapTy ty
 	       | _ => ty
      in mapTy
     end
@@ -232,6 +235,7 @@ fun appTypeFull f =
 	      of CONty (tc, tl) => (f tc;  app appTy tl)
 	       | POLYty {sign, tyfun=TYFUN{arity, body}} => appTy body
 	       | VARty(ref(INSTANTIATED ty)) => appTy ty
+               | MARKty(ty, region) => appTy ty
 	       | _ => ()
      in appTy
     end
@@ -242,6 +246,7 @@ exception ReduceType
 fun reduceType(CONty(DEFtyc{tyfun,...}, args)) = applyTyfun(tyfun,args)
   | reduceType(POLYty{sign=[],tyfun=TYFUN{arity=0,body}}) = body
   | reduceType(VARty(ref(INSTANTIATED ty))) = ty
+  | reduceType(MARKty(ty, region)) = reduceType ty
   | reduceType _ = raise ReduceType
 
 fun headReduceType ty = headReduceType(reduceType ty) handle ReduceType => ty
@@ -284,6 +289,8 @@ fun equalType(ty: ty,ty': ty) : bool =
 	       handle ReduceType => false)
 	  | eq(WILDCARDty,_) = true
 	  | eq(_,WILDCARDty) = true
+          | eq(ty1, MARKty(ty, region)) = eq(ty1, ty)
+          | eq(MARKty(ty, region), ty2) = eq(ty, ty2)
 	  | eq _ = false
      in eq(prune ty, prune ty')
     end
@@ -361,6 +368,7 @@ fun dconTyc(DATACON{typ,const,name,...}) =
         fun f (POLYty{tyfun=TYFUN{body,...},...},b) = f (body,b)
 	  | f (CONty(tyc,_),true) = tyc
 	  | f (CONty(_,[_,CONty(tyc,_)]),false) = tyc
+          | f (MARKty(ty, region), b) = f(ty, b)
 	  | f _ = bug "dconTyc"
      in f (typ,const)
     end
@@ -409,6 +417,9 @@ fun matchScheme (TYFUN{arity,body}: tyfun, target: ty) : ty =
 			   (match(scheme, reduceType pt)
 			    handle ReduceType =>
 			      bug "matchScheme, match -- tycons "))
+               | (MARKty(ty1,region1), MARKty(ty2,region2)) => match(ty1,ty2)
+               | (MARKty(ty1,region1), ty2) => match(ty1,ty2)
+               | (ty1, MARKty(ty2,region2)) => match(ty1,ty2)
 	       | _ => bug "matchScheme, match"
      in case prune target
 	  of POLYty{sign,tyfun=TYFUN{arity=arity',body=body'}} =>
@@ -494,6 +505,10 @@ fun checkEqTySig(ty, sign: polysign) =
 fun checkEqTyInst(ty) =
     let fun eqty(VARty(ref(INSTANTIATED ty))) = eqty ty
           | eqty(VARty(ref(OPEN{eq,...}))) = if eq then () else raise CHECKEQ
+	  | eqty(VARty(ref(LBOUND lbRecOp))) = 
+	    (case lbRecOp 
+	      of SOME {eq,...} => if eq then () else raise CHECKEQ
+	       | NONE => ()) (* Assume that if NONE then if was checked *) 
 	  | eqty(CONty(DEFtyc{tyfun,...}, args)) =
 	      eqty(applyTyfun(tyfun,args))
 	  | eqty(CONty(GENtyc { eq, ... }, args)) =
@@ -561,6 +576,7 @@ fun compareTypes (spec : ty, actual: ty): bool =
 
 exception WILDCARDmatch
 
+ 
 fun indexBoundTyvars (lboundtvs: tyvar list) =
     let fun setbtvs (tv as ref (tvkind)) =
             (case tvkind
@@ -572,13 +588,25 @@ fun indexBoundTyvars (lboundtvs: tyvar list) =
                | _ => bug "unexpected tyvar in indexBoundTyvars")
      in List.app setbtvs lboundtvs
     end
+(* fun indexBoundTyvars (tdepth : int, []: tyvar list) : unit = ()
+  | indexBoundTyvars (tdepth, lboundtvs) =
+    let fun setbtvs (i, []) = ()
+          | setbtvs (i, (tv as ref (OPEN{eq,...}))::rest) =
+	     (tv := LBOUND(SOME{depth=tdepth,eq=eq,index=i});
+	      setbtvs (i+1, rest))
+          | setbtvs (i, (tv as ref (LBOUND _))::res) =
+             bug ("unexpected tyvar LBOUND in indexBoundTyvars")
+          | setbtvs _ = bug "unexpected tyvar INSTANTIATED in mkPE"
+     in setbtvs(0, lboundtvs)
+    end
+ *)
 
 (* matchInstTypes: bool * ty * ty -> (tyvar list * tyvar list) option
  * The first argument tells matchInstTypes to ignore the abstract property
  * of abstract types, i.e., this call is being used in FLINT where
  * we can look into abstract types.  
- * The second argument is a spec type (e.g. from a signature spec),
- * while the third is a potentially more general actual type. The
+ * The third argument is a spec type (e.g. from a signature spec),
+ * while the fourth is a potentially more general actual type. The
  * two types are instantiated (if they are polymorphic), and a one-way
  * match is performed on their generic instantiations. 
  * [Note that the match cannot succeed if spec is polymorphic while
@@ -602,6 +630,8 @@ fun matchInstTypes(doExpandAbstract,specTy,actualTy) =
 					 to match valspec and vals mentioning
 					 that missing type. *)
 	  | match'(_, WILDCARDty) = ()
+	  | match'(MARKty (t, _), t') = match'(t, t')
+	  | match'(t, MARKty (t', _)) = match'(t, t')
 	  | match'(ty1, ty2 as VARty(tv as ref(OPEN{kind=META,eq,...}))) =
               (* If we're told to ignore abstract, then we can't 
 		 check for equality types because the original GENtyc
@@ -664,7 +694,7 @@ fun matchInstTypes(doExpandAbstract,specTy,actualTy) =
         and match(ty1,ty2) = match'(headReduceType ty1, headReduceType ty2)
         val (actinst, actParamTvs) = instantiatePoly actualTy
         val (specinst, specGenericTvs) = instantiatePoly specTy
-        val _ = indexBoundTyvars(specGenericTvs)
+	val _ = indexBoundTyvars(specGenericTvs)
 	val _ = debugmsg' "Instantiated both\n"
     in match(specinst, actinst);
        debugmsg' "matched\n";

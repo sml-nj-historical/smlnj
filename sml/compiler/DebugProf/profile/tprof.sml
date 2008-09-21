@@ -91,7 +91,7 @@ val addop =
 fun tmpvar(str,ty,mkv) = 
     let val sym = S.varSymbol str
      in VALvar{access=A.namedAcc(sym, mkv), prim=PrimOpId.NonPrim,
-               path=SP.SPATH[sym], typ=ref ty}
+               path=SP.SPATH[sym], btvs = ref [], typ=ref ty}
     end
 
 fun varexp(v as VALvar{typ=ref ty,path,...}) =

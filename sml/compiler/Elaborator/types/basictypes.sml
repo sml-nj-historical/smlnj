@@ -45,10 +45,13 @@ fun t1 --> t2 = CONty(arrowTycon,[t1,t2])
 *)
 fun isArrowType(CONty(GENtyc { stamp, ... }, _)) = Stamps.eq(stamp, arrowStamp)
   | isArrowType(VARty(ref(INSTANTIATED ty))) = isArrowType ty
+  | isArrowType(MARKty(tyc, region)) = isArrowType tyc
   | isArrowType _ = false
 fun domain(CONty(_,[ty,_])) = ty
+  | domain(MARKty(ty, region)) = domain ty
   | domain _ = bug "domain"
 fun range(CONty(_,[_,ty])) = ty
+  | range(MARKty(ty, region)) = range ty
   | range _ = bug "range"
 
 
@@ -142,6 +145,7 @@ fun tupleTy(tys: ty list) : ty =
 *)
 
 fun getFields (CONty(RECORDtyc _, fl)) = SOME fl
+  | getFields(MARKty(tyc, region)) = getFields tyc
   | getFields (VARty(ref(INSTANTIATED ty))) = getFields ty
   | getFields _ = NONE
 

@@ -162,6 +162,7 @@ let val tycons = ref StampMap.empty
   		            end
   		         | _ => app eqty args)
                   end
+	      | eqty (MARKty(tyc, region)) = eqty tyc
 	      | eqty _ = ()
 	    fun eqdcon{domain=SOME ty',name,rep} = eqty ty'
 	      | eqdcon _ = ()
@@ -420,6 +421,7 @@ let val names = map TU.tycName datatycs
 			      | UNDEF => 
 				bug ("defineEqTycon.eqty: UNDEF - " ^
 				     Symbol.name(TU.tycName tyc))))
+		    | eqty (MARKty (tyc, region)) = eqty tyc
 		    | eqty _ = YES
 
 		  and eqtylist(tys) =
@@ -484,6 +486,7 @@ fun isEqType ty =
 		  | (NO | ABS | IND) => raise CHECKEQ
 		  | _ => bug "isEqType")
 	  | eqty(CONty(RECORDtyc _, args)) = app eqty args
+	  | eqty (MARKty (tyc, region)) = eqty tyc
 	  | eqty _ = ()
      in eqty ty; true
     end

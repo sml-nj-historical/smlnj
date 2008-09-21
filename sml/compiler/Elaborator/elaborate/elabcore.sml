@@ -340,28 +340,29 @@ let
 			       ("variable " ^ S.name x ^
 			        " does not occur in all branches of or-pattern")
 			       EM.nullErrorBody
-		       fun insFn (id, access, ty) =
-			   (ins(id, (access, ty, 1)); (access,ty))
-		       fun bumpFn (id, access0, ty0) =
-			   (let val (access, ty, n) = look id
-			     in ins (id, (access, ty, n+1)); (access,ty)
+		       fun insFn (id, access, tyref) =
+			   (ins(id, (access, tyref, 1)); (access,tyref))
+		       fun bumpFn (id, access0, tyref0) =
+			   (let val (access, tyref, n) = look id
+			     in ins (id, (access, tyref, n+1)); (access,tyref)
 			    end
 			    handle FreeOrVars => 
-				    (errorMsg id; (access0,ty0)))
-		       fun checkFn (id, access0, ty0) = 
-                           (let val (access, ty, _) = look id 
-                             in (access, ty) 
+				    (errorMsg id; (access0,tyref0)))
+		       fun checkFn (id, access0, tyref0) = 
+                           (let val (access, tyref, _) = look id 
+                             in (access, tyref) 
                             end
 			    handle FreeOrVars => 
-				   (errorMsg id; (access0, ty0)))
+				   (errorMsg id; (access0, tyref0)))
 		       fun doPat(insFn: (S.symbol*access*ty ref)
                                           ->access*ty ref) =
 			   let fun doPat' (VARpat(VALvar{access, prim, path, 
-                                                         typ})) =
+                                                         btvs, typ})) =
 				     let val (access,typ) = 
 					 insFn(SymPath.first path,access,typ)
 				      in VARpat(VALvar{access=access, 
                                                        path=path,prim=prim,
+						       btvs = btvs,
 						       typ=typ})
 				     end
 				 | doPat' (RECORDpat{fields, flex, typ}) =
@@ -387,7 +388,7 @@ let
 		       fun checkComplete m (id, (_, _, n:int)) =
 			   if (n = m) then () else (errorMsg id)
 		       val pats = (doPat insFn pat) :: 
-                                      (map (doPat bumpFn) pats)
+                                     (map (doPat bumpFn) pats)
 		    in Tbl.appi (checkComplete (length pats)) tbl;
 		       pats
 		   end (* freeOrVars *)
@@ -767,18 +768,22 @@ let
         end 
 
     (****  VALUE DECLARATIONS ****)
+    (* elabVB : Ast.vb * tyvar list * staticEnv * region
+                ->  ... *)
     and elabVB (MarkVb(vb,region),etvs,env,_) =
-	let val (d, tvs, u) = elabVB(vb,etvs,env,region)
-	    val d' = cMARKdec (d, region)
-	in
-	    (d', tvs, u)
-	end
+          (* pass through MarkVb, updating region parameter *)
+          let val (d, tvs, u) = elabVB(vb,etvs,env,region)
+              val d' = cMARKdec (d, region)
+           in (d', tvs, u)
+          end
       | elabVB (Vb{pat,exp,lazyp},etvs,env,region) =
 	  let val (pat,pv) = elabPat(pat, env, region)
 	      val (exp,ev,updtExp) = elabExp(exp,env,region)
 	      val exp = if lazyp  (* LAZY *)
 		        then delayExp(forceExp exp)
 			else exp
+
+              (* tracking user (or "explicit") type variables *)
 	      val tvref = ref []
 	      fun updt tv: unit =
 		let fun a++b = union(a,b,error region)
@@ -791,78 +796,77 @@ let
 		 in tvref := TS.elements localtyvars; updtExp downtyvars
 	        end
 
-              (* 
-               * WARNING: the following code is trying to propagate the 
-               * PRIMOP access through simple value binding. It is a old
-               * hack and should be cleaned up in the future. (ZHONG)
-	       * This won't apply if lazyp=true. (DBM)
+              (* The following code propagates a PRIMOP access
+               * through a simple aliasing value binding.
+               * WARNING [ZHONG] This is an old hack and should be
+               * replaced. 
+	       * [DBM] This won't apply if lazyp=true.
                *)
 	      val pat = 
 		case stripExpAbs exp
 		 of VARexp(ref(VALvar{prim,...}),_) =>
                       (case prim
                          of PrimOpId.Prim _ => 
-		        (case pat
-			  of CONSTRAINTpat(VARpat(VALvar{path,typ,
-                                                         access,...}), ty) =>
-			      CONSTRAINTpat(VARpat(
-                                   VALvar{path=path, typ=typ, access=access,
-                                          prim=prim}), ty)
-			   | VARpat(VALvar{path, typ, access, ...}) =>
-			      VARpat(VALvar{path=path, typ=typ, access=access,
-                                            prim=prim})
-			   | _ => pat)
-                       | PrimOpId.NonPrim => pat)
+		            (case pat
+			      of CONSTRAINTpat(VARpat(VALvar{path,typ,btvs,
+                                                             access,...}), ty) =>
+			         CONSTRAINTpat(
+                                   VARpat(
+                                     VALvar{path=path, typ=typ, access=access,
+                                            btvs = btvs, prim=prim}),
+                                   ty)
+			       | VARpat(VALvar{path, typ, btvs, access, ...}) =>
+			         VARpat(VALvar{path=path, typ=typ,
+				 	       btvs = btvs, access=access,
+                                               prim=prim})
+			       | _ => pat)
+                          | PrimOpId.NonPrim => pat)
 		  | _ => pat
 
-	      (* DBM: The first two cases (single variable pattern)
-               * are guaranteed to produce SOME. So bindpat could just
-               * as well return a boolean, since the following case does
-               * not use the value carried by SOME. *)
-              fun bindpat(VARpat(VALvar{access=acc, ...})) = A.accLvar acc
-                | bindpat(CONSTRAINTpat(VARpat(VALvar{access=acc, ...}),_)) = 
-                      A.accLvar acc
-                | bindpat _ = NONE
-
-	   in case bindpat(pat) 
-               of NONE => (* DBM: pattern is not a variable? *)
-		(let val (newpat,oldvars,newvars) = patproc(pat, compInfo)
-		         (* this is the only call of patproc *)
-                     val b = map (fn v => VARexp(ref v,[])) newvars 
-		     val r = RULE(newpat, TUPLEexp(b))
-                     val newexp = CASEexp(exp, completeBind[r], false)
-
-                  in case oldvars
-                      of [] => 
-                           (let val nvb = VB{exp=newexp, tyvars=tvref,
-                                             pat=WILDpat, boundtvs=[]}
-                             in (VALdec [nvb], [], updt)
-                            end)
-                       | _ => 
-                           (let val nv = newVALvar internalSym
-                                val nvpat = VARpat(nv)
-                                val nvexp = VARexp(ref nv, [])
-
-                                val nvdec = 
-                                  VALdec([VB{exp=newexp, tyvars=tvref, 
-                                             pat=nvpat, boundtvs=[]}])
-
-                                fun h([], _, d) =  
-                                      LOCALdec(nvdec, SEQdec(rev d))
-                                  | h(vp::r, i, d) = 
-                                      let val nvb = VB{exp=TPSELexp(nvexp,i),
-                                                       pat=vp, boundtvs=[],
-                                                       tyvars=ref[]}
-
-                                       in h(r, i+1, VALdec([nvb])::d)
-                                      end
-
-                             in (h(oldvars, 1, []), oldvars, updt)
-                            end)
-                 end)
-               | SOME _ => 
+	   in (VALdec([VB{exp=exp, tyvars=tvref, pat=pat, boundtvs=[]}]), [pat], updt) 
+(* old version
+             case pat
+               of (VARpat _ | CONSTRAINTpat(VARpat _,_)) => (* variable pattern *)
                    (VALdec([VB{exp=exp, tyvars=tvref, pat=pat, boundtvs=[]}]),
                     [pat], updt) 
+                | _ => (* Nonvariable pattern binding will be "normalized"
+                        * into a more complex declaration using only
+                        * simple variable valbinds. See DEVNOTE/valbind.txt. *)
+		   let val (newpat,oldvars,newvars) = aconvertPat(pat, compInfo)
+		         (* this is the only call of aconvertPat *)
+                       val newVarExps = map (fn v => VARexp(ref v,[])) newvars 
+		       val r = RULE(newpat, TUPLEexp(newVarExps))
+                       val newexp = CASEexp(exp, completeBind[r], false)
+
+                    in case oldvars
+                        of [] => 
+                             let val nvb = VB{exp=newexp, tyvars=tvref,
+                                              pat=WILDpat, boundtvs=[]}
+                              in (VALdec [nvb], [], updt)
+                             end
+                         | _ => 
+                             let val newVar = newVALvar internalSym
+                                 val newVarPat = VARpat(newVar)
+                                 val newVarExp = VARexp(ref newVar, [])
+
+                                 val newVarDec = 
+                                     VALdec([VB{exp=newexp, tyvars=tvref, 
+                                                pat=newVarPat, boundtvs=[]}])
+
+                                 fun buildDec([], _, d) =  
+                                     LOCALdec(newVarDec, SEQdec(rev d))
+                                   | buildDec(vp::r, i, d) = 
+                                     let val nvb = VB{exp=TPSELexp(newVarExp,i),
+                                                      pat=vp, boundtvs=[],
+                                                      tyvars=ref[]}
+
+                                      in buildDec(r, i+1, VALdec([nvb])::d)
+                                     end
+
+                              in (buildDec(oldvars, 1, []), oldvars, updt)
+                             end
+                   end
+*)
 	  end
 
     and elabVALdec(vb,etvs,env,rpath,region) =

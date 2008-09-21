@@ -39,21 +39,14 @@ and tvKind
      {kind: litKind, region: SourceMap.region}
   | SCHEME of bool (* overloaded operator type scheme variable
 		   * arg is true if must be instantiated to equality type *)
-  | LBOUND of (int * int) option
+  | LBOUND of {depth: int, index: int, eq: bool} option
      (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
       * associated with polymorphic bindings (including val bindings and
       * functor parameter bindings). The depth is depth of type lambda bindings,
-      * (1-based), and the index is the index within a sequence of type variables
-      * bound at a given binding site. *)
-
-(* 
- and tycpath (* FLINT!!! *)
-  = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: pkind }
-  | TP_TYC of tycon
-  | TP_FCT of tycpath list * tycpath list
-  | TP_APP of tycpath * tycpath list
-  | TP_SEL of tycpath * int
- *)
+      * (1-based), and the index is the index within a sequence of 
+      * type variables bound at a given binding site. LBOUNDs must carry 
+      * equality type information for signature matching because the OPENs
+      * are turned into LBOUNDs before equality type information is matched. *)
 
 and tyckind
   = PRIMITIVE of int
@@ -91,6 +84,7 @@ and ty
   | POLYty of {sign: polysign, tyfun: tyfun}
   | WILDCARDty
   | UNDEFty
+  | MARKty of ty * SourceMap.region
 
 and tyfun 
   = TYFUN of {arity: int, body: ty}

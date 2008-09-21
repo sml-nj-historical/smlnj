@@ -74,8 +74,9 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	fun tmpvar (n, t) = let
 	    val sy = Symbol.varSymbol n
 	in
-	    VC.VALvar { access = Access.namedAcc (sy, mkv), prim = PrimOpId.NonPrim,
-			path = SP.SPATH [sy], typ = ref t }
+	    VC.VALvar { access = Access.namedAcc (sy, mkv),
+	    		prim = PrimOpId.NonPrim,
+			path = SP.SPATH [sy], typ = ref t, btvs = ref []}
 	end
 
 (*

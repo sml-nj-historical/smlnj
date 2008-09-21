@@ -173,7 +173,8 @@ and instrexp(line,names) =
      and etaexpand(e as CONexp(_,t)) = 
 	 let val v = VALvar{access=LVAR(mkLvar()), 
                             path=SP.SPATH [xsym], 
-	                    typ=ref Types.UNDEFty}
+	                    typ=ref Types.UNDEFty,
+			    btvs = ref []}
 	  in FNexp([RULE(VARpat v, 
 			 enter(line,names,APPexp(e,VARexp(ref v, []))))],
 		   Types.UNDEFty)
@@ -185,6 +186,7 @@ and instrexp(line,names) =
 
 val derefop = VALvar{path = SP.SPATH [Symbol.varSymbol "!"],
 		     access = PRIMOP P.DEREF,
+		     btvs = ref [],
 		     typ = ref(POLYty{sign=[false],
 				      tyfun = TYFUN{arity=1,
 						    body=

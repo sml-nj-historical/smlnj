@@ -43,7 +43,7 @@ and tvKind
     (* representing a type variable in the type scheme of an overloaded
      * operator. Must be eliminated by overloading resolution, cannot be
      * generalized *)
-  | LBOUND of (int * int) option
+  | LBOUND of {depth: int, index:int, eq: bool} option
     (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
      * associated with polymorphic bindings (including val bindings and
      * functor parameter bindings). The depth is depth of type lambda bindings,
@@ -51,16 +51,19 @@ and tvKind
      * bound at a given binding site. Replaces older TV_MARK constructor.
      * LBOUND are assigned to residual type variables in types embedded in
      * the abstract syntax of a definiens, after they have been generalized
-     * away in the type computed by the type checker for the defined variable. *)
-
-(* 
-  and tycpath
-  = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: pkind }
-  | TP_TYC of tycon
-  | TP_FCT of tycpath list * tycpath list
-  | TP_APP of tycpath * tycpath list
-  | TP_SEL of tycpath * int 
- *)
+     * away in the type computed by the type checker for the defined variable. 
+     * LBOUNDs must carry equality type information for signature matching 
+     * because the OPENs are turned into LBOUNDs before equality type 
+     * information is matched.
+     *)
+  (* for marking a type variable so that it can be easily identified
+   * (A type variable's ref cell provides an identity already, but
+   * since ref cells are unordered, this is not enough for efficient
+   * data structure lookups (binary trees...).  TV_MARK is really
+   * a hack for the benefit of later translation phases (FLINT),
+   * but unlike the old "LBOUND" thing, it does not need to know about
+   * specific types used by those phases. In any case, we should figure
+   * out how to get rid of it altogether.) *)
 
 and tyckind
   = PRIMITIVE of int		(* primitive kinds are abstractly numbered *)
@@ -95,6 +98,7 @@ and ty
   | IBOUND of int
   | CONty of tycon * ty list
   | POLYty of {sign: polysign, tyfun: tyfun}
+  | MARKty of ty * SourceMap.region
   | WILDCARDty
   | UNDEFty
 

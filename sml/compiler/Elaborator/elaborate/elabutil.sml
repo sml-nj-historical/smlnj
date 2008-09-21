@@ -7,7 +7,6 @@ struct
 local structure SP = SymPath
       structure LU = Lookup
       structure A = Access
-      (* structure II = InlInfo *)
       structure B  = Bindings
       structure SE = StaticEnv
       structure EE = EntityEnv
@@ -140,52 +139,6 @@ fun isPrimPat (VARpat{info, ...}) = II.isPrimInfo(info)
   | isPrimPat _ = false
 *)
 
-(* patproc:
- *   "alpha convert" a pattern, replacing old variables by
- *   new ones, with new LVAR accesses.
- *   Returns the converted pattern, the list of old variables (VARpats)
- *   and the list of new variables (VALvars).
- * called only once, in elabVB in elabcore.sml *)
-
-fun patproc (pp, compInfo as {mkLvar=mkv, ...} : compInfo) =
-    let val oldnew : (Absyn.pat * var) list ref = ref nil
-
-	fun f (p as VARpat(VALvar{access=acc,prim,typ=ref typ',path})) =
-              let fun find ((VARpat(VALvar{access=acc',...}), x)::rest, v) = 
-		        (case (A.accLvar acc') (* DBM: can this return NONE? *)
-                          of SOME w => if v=w then x else find(rest, v)
-			               (* DBM: can the true branch happen?
-					  ie. two variables with same lvar
-					  in a pattern? *)
-                           | _ => find(rest, v))
-                    | find (_::rest, v) = find(rest, v)
-		    | find (nil, v) = (* DBM: assert this rule always applies ? *)
-		        let val x = VALvar{access=A.dupAcc(v,mkv), prim=prim,
-                                           typ=ref typ', path=path}
-			 in oldnew := (p,x):: !oldnew; x
-			end
-
-	       in (case A.accLvar(acc)
-                    of SOME v => VARpat(find(!oldnew, v))
-                     | _ => bug "unexpected access in patproc")
-	      end
-	  | f (RECORDpat{fields,flex,typ}) =
-		RECORDpat{fields=map (fn(l,p)=>(l,f p)) fields,
-                          flex=flex, typ=typ}
-	  | f (VECTORpat(pats,t)) = VECTORpat(map f pats, t)
-	  | f (APPpat(d,c,p)) = APPpat(d,c,f p)
-	  | f (ORpat(a,b)) = ORpat(f a, f b)
-	  | f (CONSTRAINTpat(p,t)) = CONSTRAINTpat(f p, t)
-	  | f (LAYEREDpat(p,q)) = LAYEREDpat(f p, f q)
-	  | f p = p
-
-        val np = f pp
-
-        fun h((a,b)::r, x, y) = h(r, a::x, b::y)
-          | h([], x, y) = (np, x, y)
-
-     in h (!oldnew, [], [])
-    end
 
 (* sort the labels in a record the order is redefined to take the usual 
    ordering on numbers expressed by strings (tuples) *)
@@ -239,14 +192,15 @@ fun completeMatch'' rule [r as RULE(pat,MARKexp(_,(_,right)))] =
   | completeMatch'' rule (a::r) = a :: completeMatch'' rule r
   | completeMatch'' _ _ = bug "completeMatch''"
 
+(* used in handleExp *)
 fun completeMatch' (RULE(p,e)) =
     completeMatch'' (fn marker => RULE(p,marker e))
 
-fun completeMatch(env,name) =
+fun completeMatch(env,exnName: string) =
     completeMatch'' 
       (fn marker =>
           RULE(WILDpat, 
-	       marker(RAISEexp(CONexp(CoreAccess.getExn env [name],[]),
+	       marker(RAISEexp(CONexp(CoreAccess.getExn env [exnName],[]),
 			       UNDEFty))))
 (** Updated to the ty option type - GK *)
 
@@ -448,7 +402,8 @@ fun calc_strictness (arity, body) =
               (case tycon
                  of DEFtyc _ => search(headReduceType ty)
                   | _ => app search args)
-	  | search _ = ()	(* for now... *)
+	  | search(MARKty(ty,_)) = search ty
+	  | search _ = (print "#### calc_strictness ####\n")	(* for now... ???? *)
      in search body;
 	Array.foldr (op ::) nil argument_found
     end

@@ -25,8 +25,8 @@ struct
       val baseptr0	= REG(27) (* %i3 *)
       val limitptr0	= REG(4)  (* %g4 *)
       val varptr0	= REG(29) (* %i5 *)
-      val storeptr0	= REG(5)  (* %g5 *)
-      val exnptr0	= REG(7)  (* %g7 *)
+      val storeptr0	= REG(21)  (* %l5 *)
+      val exnptr0	= REG(22)  (* %l6 *)
       val gcLink0	= T.REG(32,returnPtr) 
       val frameptr0     = REG(30)
   in
@@ -43,7 +43,7 @@ struct
       fun varptr _	= varptr0
       val exhausted	= SOME(T.CC(T.GTU,C.psr))  (* %psr *) 
       fun storeptr _	= storeptr0
-      val allocptr	= REG(6)  (* %g6 *)
+      val allocptr	= REG(23)  (* %l7 *)
       fun exnptr _	= exnptr0
 
       fun gcLink _	= gcLink0
@@ -56,7 +56,7 @@ struct
 	  map REG
               [2, 3,				(* %g2-%g3 *)
 	       8, 9,				(* %o0-%o1 *)
-	       16, 17, 18, 19, 20, 21, 22, 23,  (* %l0-%l7 *)
+	       16, 17, 18, 19, 20,              (* %l0-%l4 *)
 	       28, 31,				(* %i4, %i6, %i7 *)
 	       11, 12, 13]			(* %o3-%o5 *)
       val calleesave = Array.fromList miscregs

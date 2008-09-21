@@ -151,8 +151,9 @@ and multiInstantiatePatexp(nil, env) = nil
   | multiInstantiatePatexp(pat::rest, env) = 
 	  (instantiatePatexp(pat, env))::(multiInstantiatePatexp(rest, env))
 
-fun instance (VARpat (VALvar {path, typ, prim, ...})) =
-      VARsimp (VALvar{access=LVAR (mkLvar()), path=path, typ=typ, prim=prim})
+fun instance (VARpat (VALvar {path, typ, prim, btvs, ...})) =
+      VARsimp (VALvar{access=LVAR (mkLvar()),
+      	path=path, btvs = btvs, typ=typ, prim=prim})
   | instance (VARpat _) = impossible "bad variabel in match"
   | instance (RECORDpat{fields,...}) = 
 	       RECORDsimp(map (fn(lab,pat)=>(lab,instance pat)) fields)
@@ -233,11 +234,11 @@ and multiMatchTrivpat (nil, nil) = (nil, nil, nil)
 
 fun newVars (RECORDsimp labsimps, env) = 
 	  multiNewVars(map #2 labsimps, env)
-  | newVars (VARsimp (v as VALvar {path, typ, prim, ...}), env) =
+  | newVars (VARsimp (v as VALvar {path, typ, btvs, prim, ...}), env) =
 	  ((lookup(v, env); env) 
          handle Lookup => 
            ((v,VALvar{path=path, typ=typ,access=LVAR (mkLvar()),
-                      prim=prim})::env))
+                      btvs=btvs,prim=prim})::env))
   | newVars (VARsimp _, _) = impossible "bad instance call to newVars"
 and multiNewVars(nil, env) = env
   | multiNewVars(simp::rest, env) = multiNewVars(rest, newVars(simp, env))

@@ -205,6 +205,14 @@ Group
 	signature WIN32
 
 	structure Win32
+
+	signature WINDOWS_KEY
+	signature WINDOWS_REG
+	signature WINDOWS_CONFIG
+	signature WINDOWS_DDE
+	signature WINDOWS
+
+	structure Windows
 #endif
 
 is
@@ -442,6 +450,20 @@ is
 	Win32/win32-text-prim-io.sml
 	Win32/win32-bin-io.sml
 	Win32/win32-text-io.sml
+
+	Win32/windows-key.sig
+	Win32/windows-key.sml
+	Win32/windows-reg.sig
+	Win32/windows-reg.sml
+	Win32/windows-config.sig
+	Win32/windows-config.sml
+	Win32/windows-dde.sig
+	Win32/windows-dde.sml
+	Win32/windows-status.sig
+	Win32/windows-status.sml
+
+	Win32/windows.sig
+	Win32/windows.sml
 #else
 # error OS not supported for this system
 #endif

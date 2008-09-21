@@ -33,6 +33,7 @@ local structure B  = Bindings
       structure PU = PPUtilNew
       structure S  = Symbol
       structure SP = SymPath
+      structure VC = VarCon
       structure LN = LiteralToNum
       structure TT = TransTypes
       structure TP = Types
@@ -86,6 +87,7 @@ val unitLexp = RECORD []
 fun getNameOp p = if SP.null p then NONE else SOME(SP.last p)
 
 type pid = PersStamps.persstamp
+type compInfo = Absyn.dec CompInfo.compInfo
 
 (** old-style fold for cases where it is partially applied *)
 fun fold f l init = foldr f init l
@@ -120,6 +122,54 @@ fun instPoly(ty: TP.ty, tys : TP.ty list) : TP.ty =
          (case ty
             of TP.POLYty _ => TU.applyPoly(ty, tys)
              | _ => bug "instPoly: non-polytype with inst parameters")
+
+(* aconvertPat:
+ *   "alpha convert" a pattern with respect to the lvar access values
+ *   of the pattern variables. Old variables are replaced by
+ *   new ones, with fresh LVAR accesses and new refs for the typ field.
+ *   Returns the converted pattern, the list of the original pattern
+ *   variables (VALvars), and the list of new variables (VALvars).
+ *   Called only once, in mkVB inside mkVBs below. *)
+
+fun aconvertPat (pat, {mkLvar=mkv, ...} : compInfo)
+    : Absyn.pat * VC.var list * VC.var list =
+    let val varmap : (VC.var * VC.var) list ref = ref nil
+            (* association list mapping old vars to new *)
+        (* ASSERT: any VARpat/VALvar will have an LVAR access. *)
+	fun mappat (VARpat(oldvar as VC.VALvar{access=DA.LVAR(oldlvar),
+                                            typ=ref oldtyp,prim,btvs,path})) =
+              let fun find ((VC.VALvar{access=DA.LVAR(lv),...}, newvar)::rest) =
+                        if lv=oldlvar then newvar else find rest
+			(* a variable could occur multiple times because
+                           repetition in OR patterns *)
+                    | find (_::rest) = bug "aconvertPat: bad varmap key"
+		    | find nil =
+		        let val (newtyp,_) = TypesUtil.instantiatePoly oldtyp
+			    val newvar =
+                                VC.VALvar{access=DA.dupAcc(oldlvar,mkv), prim=prim,
+					  typ=ref newtyp, path=path, btvs = btvs}
+			 in varmap := (oldvar,newvar)::(!varmap); newvar
+			end
+	       in VARpat(find(!varmap))
+	      end
+	  | mappat (VARpat _) = bug "aconvertPat: bad variable"
+	  | mappat (RECORDpat{fields,flex,typ}) =
+		RECORDpat{fields=map (fn(l,p)=>(l,mappat p)) fields,
+                          flex=flex, typ=typ}
+	  | mappat (VECTORpat(pats,t)) = VECTORpat(map mappat pats, t)
+	  | mappat (APPpat(d,c,p)) = APPpat(d,c,mappat p)
+	  | mappat (ORpat(a,b)) = ORpat(mappat a, mappat b)
+	  | mappat (CONSTRAINTpat(p,t)) = CONSTRAINTpat(mappat p, t)
+	  | mappat (LAYEREDpat(p,q)) = LAYEREDpat(mappat p, mappat q)
+	  | mappat p = p
+
+        val newpat = mappat pat
+
+        val (oldvars,newvars) = ListPair.unzip (!varmap)
+
+     in (newpat,oldvars,newvars)
+    end (* aconvertPat *)
+
 
 (****************************************************************************
  *                          MAIN FUNCTION                                   *
@@ -435,8 +485,7 @@ fun fillPat(fm : TT.flexmap, pat, d) =
             RECORDpat{fields = map (fn (lab, p) => (lab, fill p)) fields,
                       typ = typ, flex = false}
         | fill (pat as RECORDpat {fields, flex=true, typ}) =
-            let exception DontBother
-                val fields' = map (fn (l,p) => (l, fill p)) fields
+            let val fields' = map (fn (l,p) => (l, fill p)) fields
 
                 fun find (t as TP.CONty(TP.RECORDtyc labels, _)) = 
                              (typ := t; labels)
@@ -452,7 +501,6 @@ fun fillPat(fm : TT.flexmap, pat, d) =
              in RECORDpat{fields = merge(fields', 
                                          find(TU.headReduceType (!typ))),
                           flex = false, typ = typ}
-                handle DontBother => WILDpat
             end
         | fill (VECTORpat(pats,ty)) = VECTORpat(map fill pats, ty)
         | fill (ORpat(p1, p2)) = ORpat(fill p1, fill p2)
@@ -1039,7 +1087,7 @@ end
  *                                                                         *
  ***************************************************************************)
 (* [KM???] mkVar is calling mkAccInfo, which just drops the prim!!! *)
-fun mkVar (fm : TT.flexmap, v as V.VALvar{access, prim, typ, path}, d) = 
+fun mkVar (fm : TT.flexmap, v as V.VALvar{access, prim, typ, path, ...}, d) = 
       mkAccInfo(access, fn () => toLty fm d (!typ), getNameOp path)
   | mkVar _ = bug "unexpected vars in mkVar"
 
@@ -1200,12 +1248,15 @@ fun mkPE (fm : TT.flexmap, exp, d, []) = mkExp(fm, exp, d)
             (* save original contents of boundtvs for later restoration
              * by the restore function below *)
 
+    (* LBOUND equality property probably does not matter at this point
+       because typechecking and signature matching already completed.
+       [GK 2/24/08] *)
           fun setbtvs (i, []) = ()
             | setbtvs (i, (tv as ref (TP.LBOUND(NONE)))::rest) =
-	        (tv := TP.LBOUND(SOME(d,i));
+	        (tv := TP.LBOUND(SOME{depth=d,index=i,eq=false});
 		 setbtvs (i+1, rest))
 (*
-            | setbtvs (i, (tv as ref (TP.LBOUND{depth=d',index=i'}))::rest) =
+            | setbtvs (i, (tv as ref(TP.LBOUND(SOME{depth=d',index=i',...})))::rest) =
                 (if !debugging
                  then (if d <> d' then say ("### setbtvs: d = "^(Int.toString d)^
                                             ", d' = "^(Int.toString d')^"\n")
@@ -1214,7 +1265,8 @@ fun mkPE (fm : TT.flexmap, exp, d, []) = mkExp(fm, exp, d)
                                             ", i' = "^(Int.toString i')^"\n")
                        else ())
                  else ();
-                 tv := TP.LBOUND {depth=d,index=i};  (* reset with local values *)
+                 tv := TP.LBOUND {depth=d,eq=false,index=i};  
+		    (* reset with local values *)
 		 setbtvs (i+1, rest))
 *)
             | setbtvs _ = bug "unexpected tyvar INSTANTIATED in mkPE"
@@ -1246,22 +1298,29 @@ fun mkPE (fm : TT.flexmap, exp, d, []) = mkExp(fm, exp, d)
       end
 
 and mkVBs (fm : TT.flexmap, vbs, d) =
-  let fun mkVB (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
-                   exp as VARexp _, boundtvs=btvs, ...},
-                body: lexp) = 
+  let fun mkVB (VB{pat=(VARpat(V.VALvar{access=DA.LVAR v, ...}) |
+                        CONSTRAINTpat(VARpat(V.VALvar{access=DA.LVAR v, ...}),_)),
+                   exp, boundtvs=btvs, ...},
+                body) =
             (* We uniformly call mkPE in the case of simple variable bindings,
              * No special case for primops, or for the case wher btvs = ptvs
              * [dbm: 5/1/07] *)
-           LET(v, mkPE(fm, exp, d, btvs), body)
-
-        | mkVB (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
-                   exp, boundtvs=btvs, ...}, body) =
+            (* simple variable pattern: No special case needed for primops [dbm: 5/1/07] *)
             LET(v, mkPE(fm, exp, d, btvs), body)
 
-        | mkVB (VB{pat=CONSTRAINTpat(VARpat(V.VALvar{access=DA.LVAR v, ...}),_),
-                   exp, boundtvs=btvs, ...}, body) =
-            LET(v, mkPE(fm, exp, d, btvs), body)
+        | mkVB (VB{pat, exp, boundtvs, ...}, body) =
+	    (* boundtvs is cumulative bound univariables for the whole pattern *)
+	    let val (newpat,oldvars,newvars) = aconvertPat(pat, compInfo)
+		  (* this is the only call of aconvertPat; it replaces pattern variables with
+		   * new versions with fresh lvar access values *)
+		val newVarExps = map (fn v => VARexp(ref v,[])) newvars 
+		val rhsTy = CoreBasicTypes.tupleTy(map (fn (VC.VALvar{typ,...}) => !typ) newvars)
+		val rule1 = RULE(newpat, EU.TUPLEexp(newVarExps))
+		val rule2 = RULE(WILDpat, 
+				 RAISEexp(CONexp(CoreAccess.getExn env ["Bind"],[]),rhsTy))
+		val newexp = CASEexp(exp, EU.completeMatch(env,"Bind")[rule1,rule2], false)
 
+(*
         | mkVB (VB{pat, exp, boundtvs=btvs, ...}, body) =
             let val ee = mkPE(fm, exp, d, btvs)
                 val rules = [(fillPat(fm, pat, d), body), (WILDpat, unitLexp)]
@@ -1270,6 +1329,45 @@ and mkVBs (fm : TT.flexmap, vbs, d) =
              in MC.bindCompile(env, rules, finish, rootv, toTcLt fm d, complain,
 			       genintinfswitch)
             end
+ *)
+	     in case oldvars
+		 of [] => (* variable-free pattern, implies boundtvs = [], hence no type abs *)
+		      LET(mkv(), mkExp(fm, newexp, d), body) (* fresh let-bound lvar doesn't occur in body *)
+		  | _ => 
+		    let val newVar = mkv() (* new local variable to be let-bound to newexp *)
+			fun lookup (tv: Types.tyvar) [] = NONE
+			  | lookup tv ((tv',k)::r) = if tv = tv' then SOME k
+						     else lookup tv r
+			fun buildDec([], i, body) = body
+			  | buildDec(bvar::rest, i, body) = 
+			    let val V.VALvar{access=DA.LVAR(lv),btvs,...} = bvar
+				val btvs = !btvs
+			        (* bound univariables for this particular pattern variable
+			           btvs is a subset of boundtvs -- possibly proper *)
+				val tvarity = length(btvs)
+			        val defn = case (boundtvs, btvs)
+					    of ([],[]) => 
+					       SELECT(i,VAR(newVar))
+					     | (_,[]) =>
+					       SELECT(i,TAPP(VAR(newVar),
+							     map (fn _ => LT.tcc_void) boundtvs))
+					     | _ =>
+					       let val indices = List.tabulate(tvarity, (fn x => x))
+						   (* 0-based index into bound type variable sequence *)
+						   val tvToIndex = ListPair.zip(btvs,indices)
+						   val targs = map (fn tv => case lookup tv tvToIndex
+									      of NONE => LT.tcc_void
+									       | SOME k => LT.tcc_var(1,k))
+								   boundtvs
+					       in TFN(LT.tkc_arg(tvarity),
+						      SELECT(i,TAPP(VAR(newVar),targs)))
+					       end
+			     in buildDec(rest,i+1,LET(lv, defn, body))
+			    end
+		       in LET(newVar,mkPE(fm,newexp,d,boundtvs),
+			      buildDec(oldvars, 0, body))
+		      end
+	    end
 
    in fold mkVB vbs
   end (* mkVBs *)

@@ -14,6 +14,92 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/08/13
+Description:
+
+Version bumped to 110.68.  New bootfiles.
+
+----------------------------------------------------------------------
+Name Aaron Turon (turon@ccs.neu.edu)
+Date 2008/08/11
+Description:
+
+Minor fix to ml-ulex backend for regexps that match any character
+and perform a single action.  Previously the emitted code would 
+not allow the regexps to match any character at all.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/08/05
+Description:
+
+Added build support for OpenBSD (thanks to Brian O'Hanlon).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/07/12
+Description:
+
+Fixed Int64.fromString to use base-10.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/04/12
+Description:
+
+Various updates to the ml-lpt tree.  The documentation has been updated;
+bugs in the parsing of negation and character classes in ml-ulex have
+been fixed; and changes have been made to make the ml-lpt tools more
+compatible with MLton (and other SML implementations).  Thanks to
+Matthew Fluet and Aaron Turon for their patches.
+
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/20/04
+Description:
+
+Implemented timer-based profiling on Windows, with behavior as close
+to the *nix ITIMER-based profiling as possible.
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/07/04
+Description:
+
+Finished off the Windows subset of the basis library. Added process
+support and various configuration and system identification utils.
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/03/18
+Description:
+
+Major changes to the RegExp library: see smlnj-lib/CHANGES for details.
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/02/14
+Description:
+
+Added the Windows Status structure
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/02/14
+Description:
+
+Added the Windows DDE structure
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/02/05
+Description:
+
+Added the Windows Config structure
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/01/31
+Description:
+
+Added outline of the Windows basis library and the basic registry
+functionality.
+----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
 Date: 2008/01/23
 Description:
