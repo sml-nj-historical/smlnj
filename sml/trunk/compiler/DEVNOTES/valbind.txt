@@ -1,0 +1,55 @@
+Note on "Normalization" of val bindings.
+
+FLINT developers "normalized" all val bindings so that the lhs pattern
+was always a single variable.  This had the unfortunate effect of
+making type error messages less accurate because the original source
+had been transformed before type checking.
+
+Our objective is to undo this premature normalization and handle it in
+the translation to plambda.  Below is an explanation of the
+normalization transformation.
+
+The code involved is the elabVB function in elabcore.sml and the
+aconvertPat function in elabutil.sml (formerly named procpat).
+
+Consider a typical val binding:
+
+    val p(x,y) = e
+
+where p(x,y) indicates some pattern that contains pattern variables x
+and y (and no others) (x and y are VARpat(VALvar _)).
+
+elabVB first applies aconvertPat to p(x,y) to produce an
+"alpha-converted" pattern p(x',y') where x' and y' are copies of
+x and y with fresh lvars for the access fields and fresh refs for
+the typ fields (but the contents of the type fields, which at this
+point are unification type variables, are unchanged and are therefore
+shared with x and y (?!). 
+
+A new expression (newexp) is defined
+
+    e' == case e of p(x',y') => (x',y')
+
+a fresh VALvar, call it u, is created, and the original val decl is
+then replaced by
+
+    local
+
+      val u = case e of p(x',y') => (x',y')
+
+    in
+
+      val x = #1 u
+      val y = #2 u
+
+    end
+
+This modified declaration has the property that the val bindings all
+have simple single variable patterns.
+
+One question that needs to be carefully investigated is why this
+normal form for val bindings is important to FLINT. Is it because
+of the need to turn definitions of polymophic variables into
+explicitly type abstracted plambda terms?
+
+
