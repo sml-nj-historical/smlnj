@@ -463,6 +463,12 @@ structure FlowGraph = AMD64FlowGraph
 structure ChkTy = MLTreeCheckTy(structure T = T val intTy = 64)
     val wordTy = 64
 
+structure MC = AMD64MCFn(
+	         structure Instr = AMD64Instr
+		 structure Shuffle = AMD64Shuffle
+		 structure MLTreeEval = AMD64MLTreeEval
+	       )
+
     fun gen (functionName, stms, result) = let
            val insnStrm = FlowGraph.build()
 	   val stream as AMD64Stream.STREAM

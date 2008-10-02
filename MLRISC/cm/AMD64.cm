@@ -10,6 +10,7 @@ Library
 
 	functor AMD64AsmEmitter
 	functor AMD64MCEmitter
+	functor AMD64MCFn
 	functor AMD64Instr
 	functor AMD64Shuffle
 	functor AMD64CompInstrExt
@@ -35,6 +36,7 @@ is
 
 	../amd64/emit/amd64Asm.sml
 	../amd64/amd64MC.sml
+	../amd64/amd64MCFn.sml
 
 	(* machine properties *)
 	../amd64/instructions/amd64Cells.sml
