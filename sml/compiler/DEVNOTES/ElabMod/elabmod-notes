@@ -50,12 +50,15 @@ It also maintains an entity path (lookContext) telling the entity path to the
 current structure node, and a memoized reverse version of that path in bindContext.
 
 To relativize an entity path to the current structure scope, we remove the longest
-common prefix of the path and the current lookContext path.
+common prefix of that path and the current lookContext path.
 
 Question: When is NONE passed to enterOpen? (entsv param of elabStr)
   1. if elaborating the body of a functor with no result signature contraint
 
 
 ElabStr
-  Why could we have a ConstrainedStr(strexp,constraint) where constraint is NoSig?
+
+Q: How could we have a ConstrainedStr(strexp,constraint) where constraint is NoSig?
+A: This should not happen.  ConstrainedStr is constructed in the parser only when
+there is a constraint signature.  
 
