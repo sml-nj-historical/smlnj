@@ -16,9 +16,11 @@ structure JSONParser : sig
     structure T = JSONTokens
     structure J = JSON
 
-    fun error msg = raise Fail msg
-
     fun parse' (srcMap, inStrm) = let
+	  fun error (pos, msg, tok) = raise Fail(concat[
+		  "error ", AntlrStreamPos.spanToString srcMap pos, ": ",
+		  msg, ", found '", JSONTokens.toString tok, "'"
+		])
 	  val lexer = Lex.lex srcMap
 	  fun parseValue (strm : Lex.strm) = let
 		val (tok, pos, strm) = lexer strm
@@ -32,7 +34,7 @@ structure JSONParser : sig
 		    | T.INT n => (strm, J.INT n)
 		    | T.FLOAT f => (strm, J.FLOAT f)
 		    | T.STRING s => (strm, J.STRING s)
-		    | _ => error "error parsing value"
+		    | _ => error (pos, "parsing value", tok)
 		  (* end case *)
 		end
 	  and parseArray (strm : Lex.strm) = (case lexer strm
@@ -46,7 +48,7 @@ structure JSONParser : sig
 			      case tok
 			       of T.RB => (strm, v::items)
 				| T.COMMA => loop (strm, v::items)
-				| _ => error "error parsing array"
+				| _ => error (pos, "parsing array", tok)
 			      (* end case *)
 			    end
 		      val (strm, items) = loop (strm, [])
@@ -62,7 +64,7 @@ structure JSONParser : sig
 				  in
 				    SOME(strm, (s, v))
 				  end
-			      | _ => error "error parsing field"
+			      | (tok, pos, _) => error (pos, "parsing field", tok)
 			    (* end case *))
 			| _ => NONE
 		      (* end case *))
@@ -72,7 +74,7 @@ structure JSONParser : sig
 			    case lexer strm
 			     of (T.RCB, pos, strm) => (strm, fld::flds)
 			      | (T.COMMA, pos, strm) => loop (strm, fld::flds)
-			      | _ => error "error parsing object"
+			      | (tok, pos, _) => error (pos, "parsing object", tok)
 			    (* end case *))
 			| NONE => (strm, flds)
 		      (* end case *))
