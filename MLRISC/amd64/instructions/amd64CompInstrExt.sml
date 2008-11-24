@@ -109,6 +109,10 @@ struct
 	      src=operand src,
 	      dst=operand dst
 	    }, an)
+      | X.PAUSE => emit(I.pause, an)
+      | X.MFENCE => emit(I.mfence, an)
+      | X.LFENCE => emit(I.lfence, an)
+      | X.SFENCE => emit(I.sfence, an)
     (* end case *)
   end
 end

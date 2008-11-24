@@ -37,5 +37,18 @@ structure AMD64InstrExt =
      *)
         | LOCK_XCHGL of ('r * 'r)	(* 32-bit exchange *)
         | LOCK_XCHGQ of ('r * 'r)	(* 64-bit exchange *)
+	| PAUSE                         (* improves performance of spin-wait loops *) 
+    (* performs a serializing operation on all load-from-memory and store-to-memory 
+     * operations issued prior to the mfence instruction.
+     *)
+	| MFENCE
+    (* performs a serializing operation on all load-to-memory operations issued prior to
+     * the lfence instruction.
+     *)
+	| LFENCE
+    (* performs a serializing operation on all store-to-memory operations issued prior to
+     * the sfence instruction.
+     *)
+	| SFENCE
 
   end (* AMD64InstrExt *)

@@ -357,6 +357,8 @@ functor AMD64Props (
 	   (* esac *))
 	 | I.XADD {sz, ...} => szToInt sz
 	 | I.CMPXCHG {sz, ...} => szToInt sz
+	 | I.PAUSE => 64
+	 | (I.MFENCE | I.SFENCE | I.LFENCE) => 64
 	 | _ => raise Fail "" (*64*)
       (* esac *))
 

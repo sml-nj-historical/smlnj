@@ -663,7 +663,6 @@ architecture AMD64 =
 	asm: ``ret<case option of NONE => () 
                                 | SOME e => (emit "\t"; emit_operand e)>''
 
-   (* integer *)
     | MOVE of {mvOp:move, src:operand, dst:operand}
 	asm: ``<mvOp>\t<src>, <dst>''
 	rtl: ``<mvOp>'' 
@@ -721,39 +720,6 @@ architecture AMD64 =
         asm: (case count of (* must be %ecx if it is a register *)
                 I.Direct (ty, ecx) => ``<shiftOp>\t<src>, <dst>''
               | _            => ``<shiftOp>\t<src>, <count>, <dst>''
-             )
-
-    | XCHG of {lock:bool, sz:isize, src: operand, dst:operand}
-	asm: (if lock then ``lock\n\t'' else ();
-              ``xchg'';
-              case sz of
-                I.I8 => ``b''
-              | I.I16 => ``w''
-              | I.I32 => ``l''
-	      | I.I64 => ``q'';
-              ``\t<src>, <dst>''
-             )
-
-    | CMPXCHG of {lock:bool, sz:isize, src: operand, dst:operand}
-	asm: (if lock then ``lock\n\t'' else ();
-              ``cmpxchg'';
-              case sz of
-                I.I8 => ``b''
-              | I.I16 => ``w''
-              | I.I32 => ``l''
-	      | I.I64 => ``q'';
-              ``\t<src>, <dst>''
-             )
-
-    | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
-       asm: (if lock then ``lock\n\t'' else ();
-              ``xadd'';
-              case sz of
-                I.I8 => ``b''
-              | I.I16 => ``w''
-              | I.I32 => ``l''
-	      | I.I64 => ``q'';
-              ``\t<src>, <dst>''
              )
 
     | MULTDIV of {multDivOp:multDivOp, src:operand}
@@ -835,6 +801,67 @@ architecture AMD64 =
    (* misc *)
     | SAHF        (* %flags -> %ah *)
 	``sahf''
+
+  (*** concurrency operations ****)
+
+      (* performs a serializing operation on all load-to-memory operations issued prior to
+       * the lfence instruction.
+       *)
+    | LFENCE
+        asm: ``lfence''
+        rtl:  ``LFENCE''
+
+      (* performs a serializing operation on all load-from-memory and store-to-memory 
+       * operations issued prior to the mfence instruction.
+       *)
+    | MFENCE
+        asm: ``mfence''
+        rtl: ``MFENCE''
+
+      (* performs a serializing operation on all store-to-memory operations issued prior to
+       * the sfence instruction.
+       *)
+    | SFENCE
+        asm: ``sfence''
+        rtl:  ``SFENCE''
+
+      (* improves performance of spin-wait loops *) 
+    | PAUSE
+        asm: ``pause''
+        rtl: ``PAUSE''
+
+    | XCHG of {lock:bool, sz:isize, src: operand, dst:operand}
+	asm: (if lock then ``lock\n\t'' else ();
+              ``xchg'';
+              case sz of
+                I.I8 => ``b''
+              | I.I16 => ``w''
+              | I.I32 => ``l''
+	      | I.I64 => ``q'';
+              ``\t<src>, <dst>''
+             )
+
+    | CMPXCHG of {lock:bool, sz:isize, src: operand, dst:operand}
+	asm: (if lock then ``lock\n\t'' else ();
+              ``cmpxchg'';
+              case sz of
+                I.I8 => ``b''
+              | I.I16 => ``w''
+              | I.I32 => ``l''
+	      | I.I64 => ``q'';
+              ``\t<src>, <dst>''
+             )
+
+    | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
+       asm: (if lock then ``lock\n\t'' else ();
+              ``xadd'';
+              case sz of
+                I.I8 => ``b''
+              | I.I16 => ``w''
+              | I.I32 => ``l''
+	      | I.I64 => ``q'';
+              ``\t<src>, <dst>''
+             )
 
     | LAHF	  (* %ah -> %flags *)
 	``lahf''

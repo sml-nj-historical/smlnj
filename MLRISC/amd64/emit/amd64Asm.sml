@@ -552,57 +552,6 @@ struct
              emit ", "; 
              emit_dst dst )
          )
-       | I.XCHG{lock, sz, src, dst} => 
-         ( (if lock
-              then (emit "lock\n\t")
-              else ()); 
-           emit "xchg"; 
-           
-           (case sz of
-             I.I8 => emit "b"
-           | I.I16 => emit "w"
-           | I.I32 => emit "l"
-           | I.I64 => emit "q"
-           ); 
-           
-           ( emit "\t"; 
-             emit_src src; 
-             emit ", "; 
-             emit_dst dst ) )
-       | I.CMPXCHG{lock, sz, src, dst} => 
-         ( (if lock
-              then (emit "lock\n\t")
-              else ()); 
-           emit "cmpxchg"; 
-           
-           (case sz of
-             I.I8 => emit "b"
-           | I.I16 => emit "w"
-           | I.I32 => emit "l"
-           | I.I64 => emit "q"
-           ); 
-           
-           ( emit "\t"; 
-             emit_src src; 
-             emit ", "; 
-             emit_dst dst ) )
-       | I.XADD{lock, sz, src, dst} => 
-         ( (if lock
-              then (emit "lock\n\t")
-              else ()); 
-           emit "xadd"; 
-           
-           (case sz of
-             I.I8 => emit "b"
-           | I.I16 => emit "w"
-           | I.I32 => emit "l"
-           | I.I64 => emit "q"
-           ); 
-           
-           ( emit "\t"; 
-             emit_src src; 
-             emit ", "; 
-             emit_dst dst ) )
        | I.MULTDIV{multDivOp, src} => 
          ( emit_multDivOp multDivOp; 
            emit "\t"; 
@@ -685,6 +634,61 @@ struct
            emit ", "; 
            emit_dst dst )
        | I.SAHF => emit "sahf"
+       | I.LFENCE => emit "lfence"
+       | I.MFENCE => emit "mfence"
+       | I.SFENCE => emit "sfence"
+       | I.PAUSE => emit "pause"
+       | I.XCHG{lock, sz, src, dst} => 
+         ( (if lock
+              then (emit "lock\n\t")
+              else ()); 
+           emit "xchg"; 
+           
+           (case sz of
+             I.I8 => emit "b"
+           | I.I16 => emit "w"
+           | I.I32 => emit "l"
+           | I.I64 => emit "q"
+           ); 
+           
+           ( emit "\t"; 
+             emit_src src; 
+             emit ", "; 
+             emit_dst dst ) )
+       | I.CMPXCHG{lock, sz, src, dst} => 
+         ( (if lock
+              then (emit "lock\n\t")
+              else ()); 
+           emit "cmpxchg"; 
+           
+           (case sz of
+             I.I8 => emit "b"
+           | I.I16 => emit "w"
+           | I.I32 => emit "l"
+           | I.I64 => emit "q"
+           ); 
+           
+           ( emit "\t"; 
+             emit_src src; 
+             emit ", "; 
+             emit_dst dst ) )
+       | I.XADD{lock, sz, src, dst} => 
+         ( (if lock
+              then (emit "lock\n\t")
+              else ()); 
+           emit "xadd"; 
+           
+           (case sz of
+             I.I8 => emit "b"
+           | I.I16 => emit "w"
+           | I.I32 => emit "l"
+           | I.I64 => emit "q"
+           ); 
+           
+           ( emit "\t"; 
+             emit_src src; 
+             emit ", "; 
+             emit_dst dst ) )
        | I.LAHF => emit "lahf"
        | I.SOURCE{} => emit "source"
        | I.SINK{} => emit "sink"

@@ -245,9 +245,6 @@ sig
    | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
    | SHIFT of {shiftOp:shiftOp, src:operand, dst:operand, count:operand}
-   | XCHG of {lock:bool, sz:isize, src:operand, dst:operand}
-   | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
-   | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
    | MUL3 of {dst:CellsBasis.cell, src2:Int32.int, src1:operand}
    | MULQ3 of {dst:CellsBasis.cell, src2:Int32.int, src1:operand}
@@ -269,6 +266,13 @@ sig
    | FSQRTS of {dst:operand, src:operand}
    | FSQRTD of {dst:operand, src:operand}
    | SAHF
+   | LFENCE
+   | MFENCE
+   | SFENCE
+   | PAUSE
+   | XCHG of {lock:bool, sz:isize, src:operand, dst:operand}
+   | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
+   | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
    | LAHF
    | SOURCE of {}
    | SINK of {}
@@ -307,9 +311,6 @@ sig
    val bitop : {bitOp:bitOp, lsrc:operand, rsrc:operand} -> instruction
    val binary : {binOp:binaryOp, src:operand, dst:operand} -> instruction
    val shift : {shiftOp:shiftOp, src:operand, dst:operand, count:operand} -> instruction
-   val xchg : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
-   val cmpxchg : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
-   val xadd : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
    val multdiv : {multDivOp:multDivOp, src:operand} -> instruction
    val mul3 : {dst:CellsBasis.cell, src2:Int32.int, src1:operand} -> instruction
    val mulq3 : {dst:CellsBasis.cell, src2:Int32.int, src1:operand} -> instruction
@@ -331,6 +332,13 @@ sig
    val fsqrts : {dst:operand, src:operand} -> instruction
    val fsqrtd : {dst:operand, src:operand} -> instruction
    val sahf : instruction
+   val lfence : instruction
+   val mfence : instruction
+   val sfence : instruction
+   val pause : instruction
+   val xchg : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
+   val cmpxchg : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
+   val xadd : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
    val lahf : instruction
    val source : {} -> instruction
    val sink : {} -> instruction
@@ -576,9 +584,6 @@ struct
    | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
    | SHIFT of {shiftOp:shiftOp, src:operand, dst:operand, count:operand}
-   | XCHG of {lock:bool, sz:isize, src:operand, dst:operand}
-   | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
-   | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
    | MUL3 of {dst:CellsBasis.cell, src2:Int32.int, src1:operand}
    | MULQ3 of {dst:CellsBasis.cell, src2:Int32.int, src1:operand}
@@ -600,6 +605,13 @@ struct
    | FSQRTS of {dst:operand, src:operand}
    | FSQRTD of {dst:operand, src:operand}
    | SAHF
+   | LFENCE
+   | MFENCE
+   | SFENCE
+   | PAUSE
+   | XCHG of {lock:bool, sz:isize, src:operand, dst:operand}
+   | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
+   | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
    | LAHF
    | SOURCE of {}
    | SINK of {}
@@ -636,9 +648,6 @@ struct
    and bitop = INSTR o BITOP
    and binary = INSTR o BINARY
    and shift = INSTR o SHIFT
-   and xchg = INSTR o XCHG
-   and cmpxchg = INSTR o CMPXCHG
-   and xadd = INSTR o XADD
    and multdiv = INSTR o MULTDIV
    and mul3 = INSTR o MUL3
    and mulq3 = INSTR o MULQ3
@@ -660,6 +669,13 @@ struct
    and fsqrts = INSTR o FSQRTS
    and fsqrtd = INSTR o FSQRTD
    and sahf = INSTR SAHF
+   and lfence = INSTR LFENCE
+   and mfence = INSTR MFENCE
+   and sfence = INSTR SFENCE
+   and pause = INSTR PAUSE
+   and xchg = INSTR o XCHG
+   and cmpxchg = INSTR o CMPXCHG
+   and xadd = INSTR o XADD
    and lahf = INSTR LAHF
    and source = INSTR o SOURCE
    and sink = INSTR o SINK
