@@ -15,6 +15,13 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/12/02
+Description:
+
+Added makefile for building runtime on OpenBSD.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2008/08/13
 Description:
 
