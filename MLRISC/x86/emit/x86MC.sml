@@ -263,6 +263,10 @@ struct
      | emitInstr (I.FUNOP{fsize, unOp, src, dst}) = error "FUNOP"
      | emitInstr (I.FCMP{i, fsize, lsrc, rsrc}) = error "FCMP"
      | emitInstr (I.SAHF) = error "SAHF"
+     | emitInstr (I.LFENCE) = error "LFENCE"
+     | emitInstr (I.MFENCE) = error "MFENCE"
+     | emitInstr (I.SFENCE) = error "SFENCE"
+     | emitInstr (I.PAUSE) = error "PAUSE"
      | emitInstr (I.LAHF) = error "LAHF"
      | emitInstr (I.SOURCE{}) = ()
      | emitInstr (I.SINK{}) = ()

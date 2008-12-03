@@ -746,6 +746,10 @@ struct
              emit ", "; 
              emit_rsrc rsrc ) )
        | I.SAHF => emit "sahf"
+       | I.LFENCE => emit "lfence"
+       | I.MFENCE => emit "mfence"
+       | I.SFENCE => emit "sfence"
+       | I.PAUSE => emit "pause"
        | I.LAHF => emit "lahf"
        | I.SOURCE{} => emit "source"
        | I.SINK{} => emit "sink"

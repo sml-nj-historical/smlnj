@@ -919,6 +919,34 @@ struct
     | SAHF        (* %flags -> %ah *)
 	``sahf''
 
+  (*** concurrency operations ****)
+
+      (* performs a serializing operation on all load-to-memory operations issued prior to
+       * the lfence instruction.
+       *)
+    | LFENCE
+        asm: ``lfence''
+        rtl:  ``LFENCE''
+
+      (* performs a serializing operation on all load-from-memory and store-to-memory 
+       * operations issued prior to the mfence instruction.
+       *)
+    | MFENCE
+        asm: ``mfence''
+        rtl: ``MFENCE''
+
+      (* performs a serializing operation on all store-to-memory operations issued prior to
+       * the sfence instruction.
+       *)
+    | SFENCE
+        asm: ``sfence''
+        rtl:  ``SFENCE''
+
+      (* improves performance of spin-wait loops *) 
+    | PAUSE
+        asm: ``pause''
+        rtl: ``PAUSE''
+
     | LAHF	  (* %ah -> %flags *)
 	``lahf''
 

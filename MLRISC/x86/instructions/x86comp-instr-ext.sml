@@ -80,5 +80,10 @@ struct
        emit(I.cmpxchg{lock=true,sz=I.I32, 
                       src=I.Direct(reduceOperand(operand src)), 
                       dst=operand dst},an)
+     | X.PAUSE => emit(I.pause, an)
+     | X.MFENCE => emit(I.mfence, an)
+     | X.LFENCE => emit(I.lfence, an)
+     | X.SFENCE => emit(I.sfence, an)
+
   end
 end

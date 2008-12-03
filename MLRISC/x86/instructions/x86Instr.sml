@@ -299,6 +299,10 @@ sig
    | FUNOP of {fsize:fsize, unOp:funOp, src:operand, dst:operand}
    | FCMP of {i:bool, fsize:fsize, lsrc:operand, rsrc:operand}
    | SAHF
+   | LFENCE
+   | MFENCE
+   | SFENCE
+   | PAUSE
    | LAHF
    | SOURCE of {}
    | SINK of {}
@@ -385,6 +389,10 @@ sig
    val funop : {fsize:fsize, unOp:funOp, src:operand, dst:operand} -> instruction
    val fcmp : {i:bool, fsize:fsize, lsrc:operand, rsrc:operand} -> instruction
    val sahf : instruction
+   val lfence : instruction
+   val mfence : instruction
+   val sfence : instruction
+   val pause : instruction
    val lahf : instruction
    val source : {} -> instruction
    val sink : {} -> instruction
@@ -684,6 +692,10 @@ struct
    | FUNOP of {fsize:fsize, unOp:funOp, src:operand, dst:operand}
    | FCMP of {i:bool, fsize:fsize, lsrc:operand, rsrc:operand}
    | SAHF
+   | LFENCE
+   | MFENCE
+   | SFENCE
+   | PAUSE
    | LAHF
    | SOURCE of {}
    | SINK of {}
@@ -769,6 +781,10 @@ struct
    and funop = INSTR o FUNOP
    and fcmp = INSTR o FCMP
    and sahf = INSTR SAHF
+   and lfence = INSTR LFENCE
+   and mfence = INSTR MFENCE
+   and sfence = INSTR SFENCE
+   and pause = INSTR PAUSE
    and lahf = INSTR LAHF
    and source = INSTR o SOURCE
    and sink = INSTR o SINK
