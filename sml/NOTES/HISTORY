@@ -14,6 +14,18 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2008/12/03
+Description:
+
+New concurrency-related instructions for x86 and amd64 code 
+generators.
+  - PAUSE: Notify the CPU that the program is spin waiting.
+  - MFENCE: memory fence for reads and writes.
+  - SFENCE: memory fence for writes.
+  - LFENCE: memory fence for reads.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2008/12/02
 Description:
