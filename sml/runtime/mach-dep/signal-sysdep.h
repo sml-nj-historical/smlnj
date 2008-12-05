@@ -478,6 +478,20 @@ extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
 #    define SIG_SetPC(scp, addr)	{ _UC_MACHINE_SET_PC(scp, ((long) (addr))); }
 #    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
 
+#  elif defined(OPSYS_OPENBSD)
+    /** x86, OpenBSD **/
+#    define SIG_FAULT1		SIGFPE
+#    define SIG_FAULT2		SIGBUS
+#    define INT_DIVZERO(s, c)	0
+#    define INT_OVFLW(s, c)	(((s) == SIGFPE) || ((s) == SIGBUS))
+
+#    define SIG_GetCode(info, scp)	(info)
+#    define SIG_GetPC(scp)		((scp)->sc_pc)
+#    define SIG_SetPC(scp, addr)	{ (scp)->sc_pc = (long)(addr); }
+#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+
+     typedef void SigReturn_t;
+
 #  elif defined(OPSYS_SOLARIS)
      /** x86, Solaris */
 
