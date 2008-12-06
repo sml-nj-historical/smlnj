@@ -14,6 +14,15 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/12/06
+Description:
+
+Re-enabled some CPS optimizations (first_contract and eta).  The most
+important effect of this change is to make uses of SMLofNJ.Cont.capture
+be properly tail recursive.
+
+----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
 Date: 2008/12/03
 Description:
@@ -30,7 +39,7 @@ Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2008/12/02
 Description:
 
-Added makefile for building runtime on OpenBSD.
+Added makefile and other support for building runtime on OpenBSD.
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
