@@ -1,3 +1,4 @@
+B
 This is the HISTORY file for the SML/NJ repository.
 
 An entry should be made for _every_ commit to the repository.
@@ -12,6 +13,13 @@ Name: Your Name (web page or e-mail)
 Date: yyyy/mm/dd hh:mm:ss
 Tag: cvs-tag-for-this-change
 Description:
+
+----------------------------------------------------------------------
+Name: Jon Riehl (http://www.jonriehl.com/)
+Date: 2008/12/22
+Description:
+
+Version bumped to 110.69.  New bootfiles.
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
