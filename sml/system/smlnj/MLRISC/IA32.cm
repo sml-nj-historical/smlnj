@@ -26,5 +26,4 @@ is
 		 bind:(anchor:Graphs.cm value:$SMLNJ-MLRISC)
 		 bind:(anchor:Visual.cm value:$SMLNJ-MLRISC)
                  bind:(anchor:MLRISC.cm value:$SMLNJ-MLRISC)
-		 bind:(anchor:MLTREE.cm value:$SMLNJ-MLRISC)
-		 bind:(anchor:SA.cm value:$SMLNJ-MLRISC))
+		 bind:(anchor:MLTREE.cm value:$SMLNJ-MLRISC))
