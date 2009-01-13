@@ -366,8 +366,10 @@ struct
 			    case SymbolMap.find (exports, sy) of
 				SOME (nth, _, _) =>
 				  (case nth () of
-				       (_, DG.SB_BNODE (_, x, _)) =>
-				       StabModmap.addEnv (#statenv x ())
+				       (_, DG.SB_BNODE (DG.BNODE bn, x, _)) =>
+				         (StabModmap.addEnv (#statenv x ()),
+					  fn () => BinInfo.describe
+						       (#bininfo bn))
 				     | _ => raise Format)
 			      | NONE => raise Format
 			end

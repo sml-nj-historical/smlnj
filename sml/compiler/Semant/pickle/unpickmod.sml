@@ -22,7 +22,9 @@
 
 signature UNPICKMOD = sig
 
-    type context = (int * Symbol.symbol) option -> ModuleId.tmap
+    type context = (int * Symbol.symbol) option ->
+		   ModuleId.tmap *
+		   (unit -> string) (* destription of module for debugging *)
 
     val unpickleEnv : context ->
 		      PersStamps.persstamp * Word8Vector.vector ->
@@ -46,7 +48,8 @@ end
 
 structure UnpickMod : UNPICKMOD = struct
 
-    type context = (int * Symbol.symbol) option -> ModuleId.tmap
+    type context = (int * Symbol.symbol) option ->
+		   ModuleId.tmap * (unit -> string)
 
     structure A = Access
     structure DI = DebIndex
@@ -376,22 +379,24 @@ structure UnpickMod : UNPICKMOD = struct
 	val { session, stringlist } = sessionInfo
 
 	local
-	    fun look msg lk (m, i) =
-		case lk (context m, i) of
-		    SOME x => x
-		  | NONE =>
-		      (ErrorMsg.impossible
-			   (concat ["UnpickMod: stub lookup failed for ",
-				    msg,
-				    ": m = ",
-				    case m of
-					NONE => "NONE"
-				      | SOME (x, sy) =>
-					  "(" ^ Int.toString x ^
-					  ", " ^
-					  Symbol.describe sy ^ ")",
-				    ", i = <moduleId>\n"]);
-		       raise Format)
+	    fun look what lk (m, i) =
+		let val (mapping, descr) = context m
+		in case lk (mapping, i) of
+		       SOME x => x
+		     | NONE =>
+		         (ErrorMsg.impossible
+			      (concat ["UnpickMod: stub lookup failed for ",
+				       what, " in ", descr (),
+				       ": m = ",
+				       case m of
+					   NONE => "NONE"
+					 | SOME (x, sy) =>
+					   "(" ^ Int.toString x ^
+					   ", " ^
+					   Symbol.describe sy ^ ")",
+				       ", i = <moduleId>\n"]);
+			  raise Format)
+		end
 	in
 	    val lookTyc = look "type constructor" MI.lookTyc
 	    val lookSig = look "signature" MI.lookSig
