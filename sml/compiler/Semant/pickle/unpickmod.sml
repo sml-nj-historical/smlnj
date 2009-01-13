@@ -376,18 +376,28 @@ structure UnpickMod : UNPICKMOD = struct
 	val { session, stringlist } = sessionInfo
 
 	local
-	    fun look lk (m, i) =
+	    fun look msg lk (m, i) =
 		case lk (context m, i) of
 		    SOME x => x
 		  | NONE =>
-		    (ErrorMsg.impossible "UnpickMod: stub lookup failed";
-		     raise Format)
+		      (ErrorMsg.impossible
+			   (concat ["UnpickMod: stub lookup failed for ",
+				    msg,
+				    ": m = ",
+				    case m of
+					NONE => "NONE"
+				      | SOME (x, sy) =>
+					  "(" ^ Int.toString x ^
+					  ", " ^
+					  Symbol.describe sy ^ ")",
+				    ", i = <moduleId>\n"]);
+		       raise Format)
 	in
-	    val lookTyc = look MI.lookTyc
-	    val lookSig = look MI.lookSig
-	    val lookStr = look MI.lookStr
-	    val lookFct = look MI.lookFct
-	    val lookEnv = look MI.lookEnv
+	    val lookTyc = look "type constructor" MI.lookTyc
+	    val lookSig = look "signature" MI.lookSig
+	    val lookStr = look "structure" MI.lookStr
+	    val lookFct = look "functor" MI.lookFct
+	    val lookEnv = look "environment" MI.lookEnv
 	end
 
 	fun list m r = UU.r_list session m r
