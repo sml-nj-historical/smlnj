@@ -8,4 +8,4 @@ REM caspol -q -machine -addgroup 1 -url file://z:/* FullTrust -name "Z Drive"
 %SCRIPTDIR%\GenerateWixFile.exe %SMLNJ_HOME%\lib
 %SCRIPTDIR%\candle.exe lib.wxs %SCRIPTDIR%\smlnj.wxs
 @if ERRORLEVEL 1 (echo Candle failed & goto :EOF)
-%SCRIPTDIR%\light.exe -out smlnj.msi lib.wixobj smlnj.wixobj %SCRIPTDIR%\wixui.wixlib -loc %SCRIPTDIR%\WixUI_en-us.wxl c:\wix\sca.wixlib
+%SCRIPTDIR%\light.exe -out smlnj.msi lib.wixobj smlnj.wixobj %SCRIPTDIR%\wixui.wixlib -loc %SCRIPTDIR%\WixUI_en-us.wxl %SCRIPTDIR%\sca.wixlib
