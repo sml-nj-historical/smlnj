@@ -41,7 +41,7 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
     fun registerStdShellCmdTool args = let
 	val { tool, class, cmdStdPath,
 	      extensionStyle, template, dflopts } = args
-	val template = getOpt (template, "\"%c\" \"%u\" \"%s\"")
+	val template = getOpt (template, "\"%c\" %u \"%s\"")
 	fun err m = raise ToolError { tool = tool, msg = m }
 	fun rule { spec, context, native2pathmaker, defaultClassOf, sysinfo } = let
 	    val { name, mkpath, opts = oto, derived, ... } : spec = spec
