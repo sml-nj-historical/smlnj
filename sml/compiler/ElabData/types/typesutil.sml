@@ -660,14 +660,22 @@ fun matchInstTypes(doExpandAbstract,specTy,actualTy) =
                  intrinsic type of the primop. In the signature matching
 	         case, the actualTy should also be closed because it is
                  the type of a structure component that cannot be embedded
-                 within the scope of a let or lambda binding. *)
+                 within the scope of a let or lambda binding. 
+             GK: When the metavariables in the specinst of a polymorphic type
+                 are indexed as LBOUNDs, then a polymorphic actinst will be 
+                 matched against LBOUNDs. In that case, we want to 
+                 instantiate the metavariables in actinst to the same LBOUNDs.
+                 We may try to match LBOUNDs in the actinst when we encounter 
+                 metavariables previously instantiated to LBOUNDs. 
+                 Example: 
+                    specty: 'a -> 'a   actty: 'a -> 'a
+                    specinst: X -> X   actinst: Y -> Y
+                 indexed specinst: LBD0 -> LBD0
+                 matched actinst: LBD0 -> LBD0 *)
 	  | match'(ty1, ty2 as VARty(tv' as (ref(LBOUND _)))) = 
-	      bug "matchInstTypes: LBOUND in actualTy"
-(*
               if equalType(ty1,ty2) then ()
               else (debugmsg' "matchInstTypes: matching and LBOUND tyvar";
                     raise CompareTypes)
-*)
 	  | match'(CONty(tycon1, args1), CONty(tycon2, args2)) =
 	      if eqTycon(tycon1,tycon2)
 	      then ListPair.app match (args1,args2)
