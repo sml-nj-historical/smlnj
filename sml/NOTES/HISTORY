@@ -15,6 +15,13 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name Aaron Turon (turon@ccs.neu.edu)
+Date 2009/02/21
+Description:
+
+Fixed bugs in how ml-antlr parsed ML types in %tokens specifications.
+
+----------------------------------------------------------------------
 Name: Jon Riehl (http://www.jonriehl.com/)
 Date: 2009/01/13
 Description:
