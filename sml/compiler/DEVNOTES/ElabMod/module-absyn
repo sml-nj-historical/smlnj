@@ -1,20 +1,20 @@
-Abstract syntax structures for modules
+oAbstract syntax structures for modules
 (constructed in elabmod.sml and sigmatch.sml)
 
 Structures
-1. Basic (elabStr)
+
+1. Basic (elabStr) (L643)
 
 A basic structure expression
 
   struct <decls> end 
 
-
 is translated into a structure declaration
 
   structure tempStrId = let <decls> in structure<locations> end
 
-where <locations> is a list of bindings returned by extractSig
-applied to the elaborated body decls.
+where <locations> is a list of bindings returned by extractSig (L657)
+applied to the elaborated body decls. The data structure is:
 
   STRdec [
      STRB{name = tempStrId,
@@ -22,12 +22,13 @@ applied to the elaborated body decls.
 	  str = resStr}
   ]
 
-where 
-
-  resStr = STR{sign,rlzn,access,prim}
+where
+ 
+  absDecl is abstract syntax of body declaration (elabDecl0, L650)
+  resStr = STR{sign,rlzn,access,prim} (L669)
 
 where sign and rlzn are constructed from results of extractSig, and
-access is a fresh lvar.
+access is a fresh lvar (L684).
 
 The <locations> bindings are the bindings for the identifiers declared
 in <decls> that are exported as components of the structure. The only
@@ -36,11 +37,12 @@ fields (for variables, exception constrs, structures and functors).
 Type components are not represented in <locations>.  So it mignt be
 possible to strip <locations> down to a list of lvars.
 
-The main translation info in the resStr STR is the access.  This access
-info probably should be a direct element of the STRB data structure.
-Then the STR would be only a "type" description for the structure.
-This would make structure declarations more analagous to val declarations,
-where a VALbind contains an access and a type as separate properties.
+The main translation info in the resStr STR is the access.  This
+access info probably should be a direct element of the STRB data
+structure.  Then the STR would be only a "type" description (sign and
+rlzn) for the structure.  This would make structure declarations more
+analagous to value variables, where a VALvar contains an access and
+a type as separate properties.
 
 2. AppStr(I)
 3. VarStr
@@ -48,6 +50,6 @@ where a VALbind contains an access and a type as separate properties.
 5. LetStr
 
 
-Structure Declarations (elabStrbs)
+Structure Declarations (elabStrbs, L1135)
 
-entv - fresh entitiy variable for current str binding
+entv - fresh entitiy variable for current str binding (L1165)

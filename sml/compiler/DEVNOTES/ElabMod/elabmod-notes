@@ -26,11 +26,11 @@ tmap -- maps from identifiers to static representations of corresponding entity
 
 EntPath (ElabData/modules/entpath.sml)
     entVar   -- entity variable 
-      stamp
+      == stamp
     entPath  -- entity path
-      entVar list  ==  stamp list
+      == entVar list  ==  stamp list
     rEntPath -- reverse entity path
-      entVar list (reverse order)
+      == entVar list (reverse order)
 
 EntPathContext: (ElabData/modules/epcontext.sml)
     pathmap -- mapping from statIds to reverse entpaths
@@ -45,7 +45,7 @@ EntPathContext: (ElabData/modules/epcontext.sml)
 
 epContexts maintain a mapping from statIds to reverse entity paths.
 It maintains a local pathmap for each closed structure scope (where closed
-means a functor body that won't have any references from outside the scope).
+means a functor body whose entities won't be referenced from outside the scope).
 It also maintains an entity path (lookContext) telling the entity path to the
 current structure node, and a memoized reverse version of that path in bindContext.
 
@@ -53,7 +53,7 @@ To relativize an entity path to the current structure scope, we remove the longe
 common prefix of that path and the current lookContext path.
 
 Question: When is NONE passed to enterOpen? (entsv param of elabStr)
-  1. if elaborating the body of a functor with no result signature contraint
+  1. when elaborating the body of a functor with no result signature contraint
 
 
 ElabStr
