@@ -1,0 +1,18 @@
+Entity Paths and Entity Path Context
+
+An entity variable (entVar) is an internal variable bound to a module
+element. (ev, entv, entsv: entVar).  Entity variables are stamps.
+
+An entity path (entPath) is a list of entity variables (entVars, i.e. stamps).
+The entity variables are ordered by outermost binding first (in
+correspondence with symbolic paths).
+
+A reverse entity path (rEntPath) an entity path in reverse order.
+
+An entity path context (epcontext, or epc) is a datastructure used for
+computing relative enity paths while elaborating a module.
+
+An epcontext is a pair of lists of entvars
+  1. an epcontext list
+  2. a reverse epcontext list
+
