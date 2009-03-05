@@ -436,7 +436,7 @@ architecture AMD64 =
          Kill $cellset[defs] || 
          Use $cellset[uses] 
      rtl CALLQ{opnd,defs,uses} =
-         Call(long opnd) ||
+         Call(qword opnd) ||
          Kill $cellset[defs] || 
          Use $cellset[uses] 
 
