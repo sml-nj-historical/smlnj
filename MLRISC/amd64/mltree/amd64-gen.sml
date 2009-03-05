@@ -1046,10 +1046,17 @@ functor AMD64Gen (
 	        of SOME r => return(CB.CellSet.add(r, set), an)
 		 | NONE => return(set, an)
 		(* end case *))
+	    val dst = (case ea
+		   of T.LABEL lab => I.ImmedLabel ea
+		    | T.LABEXP le => I.ImmedLabel le
+		    | _ => operand 64 ea
+		  (* end case *))
 	    in
-	      mark(I.CALL{opnd=operand 64 ea,defs=cellset def,uses=cellset use,
-			  return=return (C.empty,an),cutsTo=cutsTo,mem=mem,
-			  pops=pops},an)
+	      mark(I.CALL{
+		  opnd=dst, defs=cellset def, uses=cellset use,
+		  return=return (C.empty, an), cutsTo=cutsTo, mem=mem,
+		  pops=pops
+		}, an)
 	    end (* call *)
 
 	and jmp (lexp as T.LABEL lab, labs, an) = 
