@@ -42,11 +42,9 @@ functor TestFn (
 	  test ("10", "^.*foo@bar\\.com$", "foo@bar.com");
 	  test ("11", "(abc)","abc");
 	  test ("12", "\\(abc\\)","(abc)");
-(* this syntax is not yet supported
 	  test ("13", "(abc){2,4}$", "abcabc");
 	  test ("14", "(abc){2,4}$", "abcabcabc");
 	  test ("15", "(abc){2,4}$", "abcabcabcabc");
-*)
 	  print "** tests done\n")
 
   end
