@@ -1,1 +1,1 @@
-functor F() = G() 
+functor F = G 
