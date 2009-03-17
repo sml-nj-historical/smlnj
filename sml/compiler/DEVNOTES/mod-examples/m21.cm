@@ -1,9 +1,11 @@
+(* Comes from ppcgen *)
 Group
-	functor PPC'
-	signature PPCINSTR'
+	functor G
+	signature S
 
-	functor F
+	functor F 
 
 is
-	m21-1.sml
+
 	m21.sml
+	m21-1.sml 

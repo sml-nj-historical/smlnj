@@ -1,18 +1,19 @@
-
-functor MLTreeMult'(type instr) (val addv   : unit  -> instr list)   =
-struct
- 
-end
-
-
-signature PPCINSTR' =
+signature S =
 sig
-    type instr 
+    type t
 end
 
-functor PPC'(PPCInstr : PPCINSTR') = 
+functor H(X:S) (Y:sig val f : X.t end)   =
 struct
-  functor Multiply32 = MLTreeMult'(PPCInstr)
  
 end
 
+functor G() = 
+struct
+functor I = H(struct type t = int end) 
+   (* structure M = H(struct type t = int end) (struct val f = 1 end) *)
+
+ 
+end
+
+structure M = G()
