@@ -15,6 +15,14 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name John Reppy (http://cs.uchicago.edu/~jhr)
+Date 2009/03/21
+Description:
+
+Fixed bug in Int32.fmt when the argument was the minimum int and the
+radix was something other than DEC.
+
+----------------------------------------------------------------------
 Name Aaron Turon (turon@ccs.neu.edu)
 Date 2009/02/21
 Description:
