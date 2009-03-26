@@ -1,22 +1,15 @@
 (* bug 587.sml *)
 (* Compiler bug: ModuleUtil: Instantiate:getSigPos.2<Argument> *)
 
-(* bug 587.sml *)
-(* Compiler bug: ModuleUtil: Instantiate:getSigPos.2<Argument> *)
+signature S1 = sig end;
 
-signature SEQUENCE =
+signature S2 = 
   sig
+    type t1
+    type t2
+    val f : t2 -> t2 -> unit
   end;
 
-signature SEMANTIC_VALUE = 
-  sig
-    type semantic_type  
-    type semantic_value
-    val add_semantic_value : semantic_value -> semantic_value -> unit
-  end;
+funsig SF (X : S1) = S2;
 
-funsig MK_SEMANTIC_VALUE (Sequence : SEQUENCE) = SEMANTIC_VALUE;
-
-functor MkWhole (functor MkSemanticValue : MK_SEMANTIC_VALUE) =
-  struct
-  end;
+functor F (functor XF : SF) = struct end;

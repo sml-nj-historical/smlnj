@@ -1,13 +1,8 @@
-signature S =
-sig
-    type t
-end
+signature S = sig type t end
 
-functor H(X:S) (Y:sig val f : X.t end)   =
+functor H(X:S) (Y:sig val f : X.t end) =
 struct
- 
 end
 
-functor G = 
-   H(struct type t = int end) 
+functor G = H(struct type t = int end) 
 
