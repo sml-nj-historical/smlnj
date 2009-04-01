@@ -103,7 +103,7 @@ and stampExp
   | NEW                (* generate a new stamp *)
 
 and tycExp (* expression evaluating to a TYCentity *)
-  = VARtyc of EP.entPath    (* selection from cur-EE *)
+  = VARtyc of EP.entPath    (* selection from current entityEnv *)
   | CONSTtyc of T.tycon     (* actual tycon *)
   | FORMtyc of T.tycon      (* formal tycon *)
 

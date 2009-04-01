@@ -246,10 +246,6 @@ fun ppStructure ppstrm (str,env,depth) =
 			newline();
 			pps "prim:";
 			break {nsp=1,offset=2};
-			(* GK: This should be cleaned up soon so as to use a 
-			   ppStrInfo that is an actual pretty printer conforming
-			   to the pattern of the other pretty printers. 
-			PrimOpId.ppStrInfo prim; *)
 			PPPrim.ppStrPrimInfo ppstrm prim;
 		       closeBox();
 		      closeBox())

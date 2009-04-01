@@ -5,14 +5,37 @@ element. (ev, entv, entsv: entVar).  Entity variables are stamps.
 
 An entity path (entPath) is a list of entity variables (entVars, i.e. stamps).
 The entity variables are ordered by outermost binding first (in
-correspondence with symbolic paths).
+correspondence with direct symbolic paths).
 
 A reverse entity path (rEntPath) an entity path in reverse order.
 
 An entity path context (epcontext, or epc) is a datastructure used for
 computing relative enity paths while elaborating a module.
 
-An epcontext is a pair of lists of entvars
-  1. an epcontext list
-  2. a reverse epcontext list
+An epcontext is either EMPTY or it is a LAYER
+A LAYER consists of 
+  1. lookContext: an entity path 
+  2. bindContext: a reverse entity path
+  3. locals: a pathmap ref
+  4. outer: a link to an outer context
 
+A structure body (struct decls end) is "closed" if it is a functor
+body structure. The idea is that the elements of a closed structure are
+not directly referenced from outside the structure, so the pathmap
+local to the closed structure can be discarded after the structure
+body is elaborated. Each "closed" structure body pushes a new layer.
+
+A pathmap maps "statId" (stamps or stamp records uniquely identifying
+a static entity like a type, structure, or functor) to full reverse
+entPaths relative to the current functor context. It is represented as
+a ModuleId.umap, a generalized map consisting of a record of maps for
+the different kinds of statId (tycId, sigId, strId, fctId, envId).
+
+INVARIANT: bindContext is the reverse of lookContext.
+(both forms are only included for convenience)
+
+NOTE! We don't need the redundancy of having both the lookContext
+entity path and its reverse form bindContext.  The pathmaps should
+map to entityPaths, instead of reverse entity paths, since the look
+function is having to reverse (rep2ep) the reverse path anyway.
+-- fixed epcontext

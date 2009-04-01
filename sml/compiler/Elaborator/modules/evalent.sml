@@ -27,11 +27,8 @@ local (* structure DI = DebIndex *)
       structure EU = ElabUtil
       structure MI = ModuleId
       structure MU = ModuleUtil
-      structure I = Instantiate
       open Modules 
-in 
-
-structure Instantiate = I
+in
 
 (* debugging *)
 val say = Control_Print.say
@@ -51,6 +48,10 @@ val returnId = Symbol.strSymbol "<returnStr>"
 
 val defaultError =
     ErrorMsg.errorNoFile(ErrorMsg.defaultConsumer(),ref false) (0,0)
+
+(* local "conditional" variant of EntPathContext.enterOpen *)
+fun enterOpen(epc: EPC.context, NONE: EntPath.entVar option) = epc
+  | enterOpen(epc, SOME entv) = EPC.enterOpen(epc,entv)
 
 fun evalTyc (entv, tycExp, entEnv, epc, rpath, 
              compInfo as {mkStamp,...}: EU.compInfo) =
@@ -105,7 +106,7 @@ fun evalTyc (entv, tycExp, entEnv, epc, rpath,
 	     EE.lookTycEP(entEnv,entPath))
         | _ => bug "unexpected tycExp in evalTyc"
 
-and evalStr(strExp, epc, entsv, entEnv, rpath, 
+and evalStr(strExp, epc, entsvOp, entEnv, rpath, 
             compInfo as {mkStamp,...}: EU.compInfo) =
      (debugmsg ("[Inside EvalStr ......");
       case strExp
@@ -116,7 +117,7 @@ and evalStr(strExp, epc, entsv, entEnv, rpath,
         | CONSTstr strEnt => (strEnt, entEnv)
 
         | STRUCTURE {stamp, entDec} =>
-            let val epc = EPC.enterOpen(epc, entsv)
+            let val epc = enterOpen(epc, entsvOp)
                 val stp = evalStp(stamp,  epc, entEnv, compInfo) 
                 val env = evalDec(entDec,  epc, entEnv, rpath, compInfo)
 	    in
@@ -131,9 +132,9 @@ and evalStr(strExp, epc, entsv, entEnv, rpath,
 	    let val (fctRlzn, entEnv1) = 
                   evalFct(fctExp,  epc, entEnv, compInfo)
 	        val (argRlzn, entEnv2) = 
-                  evalStr(strExp,  epc, entsv, entEnv1, 
+                  evalStr(strExp,  epc, entsvOp, entEnv1, 
                           IP.empty, compInfo)
-                val epc = EPC.enterOpen(epc, entsv)
+                val epc = enterOpen(epc, entsvOp)
              in (evalApp(fctRlzn, argRlzn, epc, rpath, compInfo),
                  entEnv2)
             end
@@ -142,7 +143,7 @@ and evalStr(strExp, epc, entsv, entEnv, rpath,
             let val entEnv1 = evalDec(entDec,  epc,
                                       entEnv, rpath, compInfo)
                 val (strEnt, entEnv2) = 
-                  evalStr(strExp,  epc, entsv, entEnv1, 
+                  evalStr(strExp,  epc, entsvOp, entEnv1, 
                           rpath, compInfo)
 
  	     in (strEnt, entEnv2)
@@ -150,7 +151,7 @@ and evalStr(strExp, epc, entsv, entEnv, rpath,
 
         | ABSstr (sign, strExp) => 
 	    let val (srcRlzn, entEnv1) = 
-                  evalStr(strExp,  epc, entsv, entEnv, rpath, compInfo)
+                  evalStr(strExp,  epc, entsvOp, entEnv, rpath, compInfo)
                 val {rlzn=rlzn, abstycs=abstycs, tyceps=tyceps} = 
                   Instantiate.instAbstr{sign=sign, entEnv=entEnv, srcRlzn=srcRlzn,
                               rpath=rpath, 
@@ -159,7 +160,7 @@ and evalStr(strExp, epc, entsv, entEnv, rpath,
                 (* because the abstraction creates a bunch of new stamps,
                    we have to bind them to the epcontext.
                  *)
-                val epc = EPC.enterOpen(epc, entsv)
+                val epc = enterOpen(epc, entsvOp)
                 fun h (T.GENtyc gt, ep) =
 		    EPC.bindTycEntPath (epc, MI.tycId gt, ep)
                   | h _ = ()
@@ -173,9 +174,8 @@ and evalStr(strExp, epc, entsv, entEnv, rpath,
                   evalStr(raw,  epc, SOME boundvar,
                           entEnv, rpath, compInfo)
                 val entEnv2 = EE.bind(boundvar, STRent rawEnt, entEnv1)
-            (*  val entEnv' = EE.bind(boundvar, STRent rawEnt, entEnv) *)
                 val (strEnt, entEnv3) = 
- 	          evalStr(coercion,  epc, entsv, 
+ 	          evalStr(coercion,  epc, entsvOp, 
                           entEnv2, IP.empty, compInfo)
                 
              in (strEnt, entEnv3)
@@ -200,7 +200,6 @@ and evalFct (fctExp,  epc, entEnv,
 		  bodyRlzn = bogusStrEntity,
 		  closure=clos,
 		  properties = PropList.newHolder (),
-		  (*lambdaty=ref NONE,*)
 		  rpath=IP.IPATH[anonFctSym],
 		  stub=NONE},
 		 entEnv)
@@ -221,31 +220,16 @@ and evalFct (fctExp,  epc, entEnv,
 					   rpath=rpath', 
 					   region=S.nullRegion, 
 					   compInfo=compInfo}
-					   
-		(* val tps = 
-                  let val entEnv' = 
-                        EE.mark(mkStamp, EE.bind(param, STRent paramEnt, 
-                                                 entEnv))
-                      val (bodyRlzn,_) = 
-                        evalStr(body, DebIndex.next depth, epc, NONE,
-                                entEnv', IP.empty, compInfo)
-                      val bodyTps = 
-                        Instantiate.getTycPaths{sign=bodysig, rlzn=bodyRlzn, 
-                                      entEnv=entEnv', compInfo=compInfo}
-                   in T.TP_FCT(paramTps, bodyTps)
-                  end *)
-
              in ({stamp = mkStamp(),
 		  paramRlzn = paramRlzn,
 		  bodyRlzn = bodyRlzn,
 		  closure=clos,
 		  properties = PropList.newHolder (),
-		  (* lambdaty=ref NONE, *)
 		  rpath=IP.IPATH[anonFctSym],
 		  stub = NONE},
 		 entEnv)
             end
-
+					   
         | LETfct (entDec, fctExp) =>
             let val entEnv1 = evalDec(entDec,  epc,
                                       entEnv, IP.empty, compInfo)

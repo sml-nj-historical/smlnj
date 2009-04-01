@@ -8,7 +8,7 @@ sig
 
   val initContext : context
   val isEmpty : context -> bool
-  val enterOpen : context * EntPath.entVar option -> context
+  val enterOpen : context * EntPath.entVar -> context
   val enterClosed : context -> context
   val lookTycEntPath : context * ModuleId.tycId -> EntPath.entPath option
   val lookStrEntPath : context * ModuleId.strId -> EntPath.entPath option
@@ -17,11 +17,6 @@ sig
   val bindStrEntVar : context * ModuleId.strId * EntPath.entVar -> unit
   val bindFctEntVar : context * ModuleId.fctId * EntPath.entVar -> unit
   val bindTycEntPath : context * ModuleId.tycId * EntPath.entPath -> unit
-(*
-  val bindStrEntPath : context * ModuleId.strId * EntPath.entPath -> unit
-  val bindFctEntPath : context * ModuleId.fctId * EntPath.entPath -> unit
-*)
-(* bindStrEntPath and bindFctEntPath not used -- should remove *)
 
 end  (* signature ENT_PATH_CONTEXT *)
 
@@ -34,7 +29,7 @@ local structure ST = Stamps
       structure MI = ModuleId
 in
 
-type pathmap = EP.rEntPath MI.umap
+type pathmap = EP.entPath MI.umap
 val emptyPathMap = MI.emptyUmap
 
 (* 
@@ -52,8 +47,7 @@ val emptyPathMap = MI.emptyUmap
 datatype context
   = EMPTY
   | LAYER of {locals: pathmap ref, 
-              lookContext: EP.entPath,
-              bindContext: EP.rEntPath,
+              context: EP.entPath,
               outer: context}
 
 val initContext : context = EMPTY
@@ -67,36 +61,35 @@ fun isEmpty(EMPTY : context) = true
  * be accessed from outside (hence the null bindContext) 
  *)
 fun enterClosed epc = 
-  LAYER {locals=ref(emptyPathMap), lookContext=EP.epnil,
-         bindContext=EP.repnil, outer=epc}
+    LAYER {locals=ref(emptyPathMap), context=EP.epnil, outer=epc}
 
 (*
- * enterOpen : context * entVar option -> context
+ * enterOpen : context * entVar -> context
  * called on entering an open structure scope (claim: this is always an
  * unconstrained structure decl body), where ev is the entVar of the
- * structure being elaborated (if second arg is SOME(ev)). But under
- * what circumstances is the second argument NONE?
+ * structure being elaborated.
+ * The second argument is NONE only in the case where the body structure
+ * of a functor is being elaborated and there is no explicit result signature.
+ * This only affects the BaseStr and AppStrI cases of elabStr.
  *)
-fun enterOpen (EMPTY, _) = EMPTY
-  | enterOpen (epc, NONE) = epc
-  | enterOpen (LAYER{locals,lookContext,bindContext,outer}, SOME ev) = 
-      LAYER{locals=locals, lookContext=lookContext@[ev],
-            bindContext=EP.repcons (ev, bindContext), outer=outer}
+fun enterOpen (EMPTY, _) = EMPTY  (* not in a functor *)
+  | enterOpen (LAYER{locals,context,outer}, ev) = 
+      LAYER{locals=locals, context=context@[ev], outer=outer}
 
 (* relative: entPath * entPath -> entPath *)
-(* relative(path,ctx) - subtract common prefix of a path and a lookContext
+(* relative(path,ctx) - subtract common prefix of a path and a context
  * path from the path *)
 fun relative([],_) = []
   | relative(ep,[]) = ep
   | relative(p as (x::rest),y::rest') = 
       if EP.eqEntVar(x,y) then relative(rest,rest') else p
 
-(* lookPath: (pathmap * 'a -> rEntPath option) -> (context * 'a) *)
+(* lookPath: (pathmap * 'a -> rEntPath option) -> (context * 'a) -> entPath option *)
 fun lookPath look (EMPTY, _) = NONE
-  | lookPath look (LAYER { locals, lookContext, bindContext, outer }, id) =
-    (case look (!locals, id) of
-	 NONE => lookPath look (outer, id)
-       | SOME rp => SOME (relative (EP.rep2ep rp, lookContext)))
+  | lookPath look (LAYER { locals, context, outer }, id) =
+    (case look (!locals, id)
+       of NONE => lookPath look (outer, id)
+	| SOME ep => SOME (relative (ep, context)))
 
 val lookTycEntPath : context * MI.tycId -> EP.entPath option = 
       lookPath MI.uLookTyc
@@ -109,28 +102,28 @@ val lookFctEntPath : context * MI.fctId -> EP.entPath option =
 (* probe(ctx,s) checks whether a statId is bound in the context *)
 fun probe look (EMPTY, s) = false
   | probe look (LAYER{locals, outer, ...}, s) = 
-      (case look(!locals, s) of
-	   NONE => probe look (outer, s)
+      (case look(!locals, s)
+	of NONE => probe look (outer, s)
          | _ => true)
 
-(* bindPath: (pathmap * 'a -> rEntPath option) * (pathmap * 'a * rEntPath -> bool)
+(* bindPath: (pathmap * 'a -> entPath option) * (pathmap * 'a * entPath -> bool)
              -> (context * 'a * entVar) -> unit *)
 fun bindEntVar (look, insert) (EMPTY, _, _) = ()  (* should this be an exception? *)
-  | bindEntVar (look, insert) (xx as LAYER { locals, bindContext, ...}, s, ev) =
+  | bindEntVar (look, insert) (xx as LAYER { locals, context, ...}, s, ev) =
     if probe look (xx, s) then ()
-    else (locals := insert (!locals, s, EP.repcons (ev, bindContext)))
+    else locals := insert (!locals, s, context@[ev])
 
 val bindTycEntVar = bindEntVar (MI.uLookTyc, MI.uInsertTyc)
 val bindStrEntVar = bindEntVar (MI.uLookStr, MI.uInsertStr)
 val bindFctEntVar = bindEntVar (MI.uLookFct, MI.uInsertFct)
 
-(* bindLongPath: (pathmap * 'a -> rEntPath option) * (pathmap * 'a * rEntPath -> bool)
+(* bindLongPath: (pathmap * 'a -> entPath option) * (pathmap * 'a * entPath -> bool)
                  -> (context * 'a * entPath) -> unit *)
 fun bindEntPath (look, insert) (EMPTY, _, _) = ()
   | bindEntPath (look, insert)
-		 (xx as LAYER { locals, bindContext, ... }, s, ep) =
+		 (xx as LAYER { locals, context, ... }, s, ep) =
     if probe look (xx, s) then ()
-    else (locals := insert (!locals, s, EP.ep2rep (ep, bindContext)))
+    else locals := insert (!locals, s, context@ep)
 
 val bindTycEntPath = bindEntPath (MI.uLookTyc, MI.uInsertTyc)
 (* not used:
