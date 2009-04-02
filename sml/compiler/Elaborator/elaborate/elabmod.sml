@@ -63,7 +63,9 @@ in
 
 (* debugging *)
 val say = Control_Print.say
-val debugging = ElabControl.emdebugging (* ref false *)
+val debugging =  ElabControl.emdebugging (* ref false *)
+val _ = debugging := true
+
 fun debugmsg (msg: string) =
       if !debugging then (say msg; say "\n") else ()
 
@@ -607,7 +609,7 @@ fun constrStr(transp, sign, str, strDec, strExp, entvar, entEnv, rpath,
 
 (*** elabStr: elaborate the raw structure, without signature constraint ***)
 (*** several invariants: 
-      Every structure expression strexp is now elaborated into a quadruple
+      Every structure expression strexp is elaborated into a quadruple
       (absdec, str, exp, deltaEntEnv) where absdec is the corresponding abstract
       syntax tree, str is the resulting (static) structure, exp is the entity 
       expression, and deltaEntEnv is the delta entity environment collected while
@@ -718,7 +720,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
           val _ = debugmsg "--elab[AppStr-one]: functor lookup done"
           val _ = showFct("--elab[AppStr]: functor ",fct,env)
 
-          val entv = mkStamp()   (* ev for the uncoerced argument *)
+          val entv = mkStamp()   (* entVar for the uncoerced argument *)
           val (argDec, argStr, argExp, argDee) = 
 	      elabStr(arg, NONE, env, entEnv, context, epContext,
 		      SOME entv, IP.IPATH[], region, compInfo)
@@ -955,10 +957,16 @@ case fctexp
   (* uncurried functor *)
   | BaseFct{params=[(paramNameOp,paramSigExp)],body,constraint} =>
       let val _ = debugmsg ">>elabFct[BaseFct]"
-	  val body = if curried then body 
+	  val body = if curried then body
+	               (* body has already been transformed in curried case
+			  of elabFct below, and is a BaseStr containing a
+			  single functor declaration *)
 		     else BaseStr(StrDec[Strb{name=resultId, def=body,
 					      constraint=constraint}])
 	  val constraint = if curried then constraint else NoSig
+              (* if curried=true, then constraint = NoSig !!!
+               * -- the result signature (if any) will always be delegated
+	       * to a declaration (StrDec or FctDec) within a body wrapper. *)
           val flex =
             case context
              of EU.INFCT {flex} => flex
@@ -986,7 +994,7 @@ case fctexp
 
 	  val _ = case paramSig
 		    of ERRORsig => raise EM.Error
-		        (* bail out -- not attempting to recover *)
+		        (* bail out -- not attempting to recover from bad signature *)
 		     | _ => ()
 
 	  (* now know that paramSig is defined *)
@@ -1024,6 +1032,9 @@ case fctexp
           val _ = EPC.bindStrEntVar(epContext',MU.strId paramStr,paramEntVar)
           val _ = debugmsg "--elabFct[BaseFct]: epContext initialized"
 
+          (* this code is redundant, since constraint will always be NoSig, 
+           * so csigExpOp, csigOp, and entsvOp will all be NONE *)
+(*
           (* must elaborate result signature before the body is elaborated
 	     so that epContext' is not changed *)
 	  val csigExpOp =
@@ -1041,6 +1052,9 @@ case fctexp
 				    entEnv=entEnv', epContext=epContext', 
 				    region=region, compInfo=compInfo},
 			 transp))
+*)
+          val entsvOp = NONE
+	  val csigOp = NONE
 
           val _ = debugmsg "--elabFct[BaseFct]: result signature elaborated"
 
@@ -1055,6 +1069,7 @@ case fctexp
           val _ = debugmsg "--elabFct[BaseFct]: body elaborated"
           val _ = showStr("--elabFct[BaseFct]: bodyStr: ",bodyStr,env)
 
+(* -- redundant, since csigOp and entsvOp are both NONE, no constraint coercion needed
           (* constrain by result signature, either transparent or opaque *)
           val (bodyAbsDec', bodyStr', bodyExp') = 
               case (csigOp, entsvOp)
@@ -1066,34 +1081,33 @@ case fctexp
 		 | _ => bug "result constraint in elabFct"
 
           val _ = debugmsg "--elabFct[BaseFct]: body constrained"
-
+*)
+          val (bodyAbsDec', bodyStr', bodyExp') = (bodyAbsDec, bodyStr, bodyExp)
 	  
           val fctExp = M.LAMBDA{param=paramEntVar,paramRlzn= paramRlzn,
 				body=bodyExp'}
 
           val resFct = 
-            let val (bodySig',bodyRlzn) = 
+            let val (bodySig,bodyRlzn) = 
 		    case bodyStr' 
-		     of STR { sign, rlzn=bodyRlzn, ... } => 
-			(sign, bodyRlzn)
+		     of STR { sign, rlzn, ... } => (sign, rlzn)
 		      | _ => (ERRORsig, bogusStrEntity)
 
                 val fctSig = 
-                  M.FSIG{kind=NONE, paramsig=paramSig, 
-                         bodysig=bodySig', paramvar=paramEntVar, 
-                         paramsym=paramNameOp}
+                    M.FSIG{kind=NONE, paramsig=paramSig, 
+                           bodysig=bodySig, paramvar=paramEntVar, 
+                           paramsym=paramNameOp}
 
-                val rlzn = { stamp = mkStamp(),
-			     paramRlzn = paramRlzn,
-			     bodyRlzn = bodyRlzn,
-			     closure=M.CLOSURE{param=paramEntVar,
-					       body=bodyExp',
-					       env=entEnv},
+                val rlzn = {stamp = mkStamp(),
+			    paramRlzn = paramRlzn,
+			    bodyRlzn = bodyRlzn,
+			    closure = M.CLOSURE{param=paramEntVar,
+						body=bodyExp',
+						env=entEnv},
 		(* Closure: Using the old entity environment !! *)
-			     properties = PropList.newHolder (),
-			     (* lambdaty=ref NONE, *)
-			     rpath=rpath,
-			     stub = NONE}
+			    properties = PropList.newHolder (),
+			    rpath = rpath,
+			    stub = NONE}
 
                 val dacc = DA.namedAcc(name, mkv)
 

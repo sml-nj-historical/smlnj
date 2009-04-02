@@ -40,11 +40,12 @@ open ElabDebug
 
 val debugPrint = (fn x => debugPrint debugging x)  (* Value Restriction *)
 fun bug msg = ErrorMsg.impossible ("EvalEntity: " ^ msg);
-val anonFctSym = Symbol.fctSymbol "AnonFct"
-val paramSym = Symbol.strSymbol "<FsigParamInst>"
-val anonStrSym = Symbol.strSymbol "<AnonStr>"
-val resultId = Symbol.strSymbol "<resultStr>"
-val returnId = Symbol.strSymbol "<returnStr>"
+
+(* special symbols *)
+val resultId = SpecialSymbols.resultId
+val returnId = SpecialSymbols.returnId
+val anonFctSym = SpecialSymbols.anonFctSym
+val paramSym = SpecialSymbols.paramSym
 
 val defaultError =
     ErrorMsg.errorNoFile(ErrorMsg.defaultConsumer(),ref false) (0,0)

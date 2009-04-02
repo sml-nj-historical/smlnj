@@ -628,7 +628,7 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
 
       (* push a local epContext environment to be used to relativize the
          datacon types and bodies of withtype defns within this declaration *)
-      val epContext = EPC.enterClosed(epContext)
+      val epContext = EPC.enterClosed epContext
 
       fun isFree (T.PATHtyc _) = true
         | isFree tc =

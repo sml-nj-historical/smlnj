@@ -2,7 +2,8 @@
  *
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
-structure SpecialSymbols = struct
+structure SpecialSymbols =
+struct
   local
     structure S = Symbol
   in
@@ -16,5 +17,9 @@ structure SpecialSymbols = struct
     val resultId = S.strSymbol "<resultStr>"
     val returnId = S.strSymbol "<returnStr>"
     val internalVarId = S.varSymbol "<InternalVar>"
+
+    (* for EvalEntity (evalent.sml) *)
+    val anonFctSym = Symbol.fctSymbol "<anonFct>"
+    val paramSym = Symbol.strSymbol "<fsigParamInst>"
   end
-end
+end (* structure SpecialSymbols *)

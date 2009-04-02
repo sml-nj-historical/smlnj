@@ -718,6 +718,8 @@ and ppDec (context as (env,source_opt)) ppstrm =
 
 and ppStrexp (context as (_,source_opt)) ppstrm =
   let val pps = PP.string ppstrm
+      val dummySym = Symbol.varSymbol "x"
+      val dummyEnv = StaticEnv.empty
       fun ppStrexp'(_,0) = pps "<strexp>"
 
 	| ppStrexp'(VARstr (M.STR { access, ... }), d) = ppAccess ppstrm access
@@ -732,8 +734,9 @@ and ppStrexp (context as (_,source_opt)) ppstrm =
                (* ppBinding not yet undefined *)
                  ppSequence ppstrm
                    {sep=newline,
-                    pr=(fn ppstrm => fn (B.VALbind v) => ppVar ppstrm v | b => pps "#"),
-                          (*ppBinding context ppstrm (b,d-1)),*)
+                    pr=(fn ppstrm => fn (B.VALbind v) => ppVar ppstrm v 
+				      | b => (* pps "#" *)
+					PPModules.ppBinding ppstrm (dummySym,b,dummyEnv,d-1)),
                     style=CONSISTENT}
                  bindings;
                pps "end";

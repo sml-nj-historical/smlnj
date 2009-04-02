@@ -60,7 +60,7 @@ structure ElabControl = struct
     val instantiateSigs = onew ("instantiate-sigs", "?", true)
         (* ElabMod, Control_MC *)
 
-    val internals = onew ("internals", "?", false)
+    val internals = onew ("internals", "?", true)
 
     val markabsyn = onew ("markabsyn", "?", true)
         (* ElabCore, ElabTop, ElabUtil, Control_MC *)                    

@@ -362,22 +362,21 @@ fun fctId2(sign, rlzn : fctEntity) = MI.fctId2 (sign, rlzn)
  * otherwise, this DEFtyc must be a rigid tycon.
  *)
 fun relativizeTyc epContext : T.tycon -> T.tycon * bool = 
-    let fun stamped tyc = let
-	    val tyc_id = MI.tycId' tyc
-	in
-	    (* debugmsg ("mapTyc: "^ModuleId.idToString tyc_id); *)
-	    case EPC.lookTycEntPath(epContext,tyc_id)
-	     of NONE => (debugmsg "tyc not mapped 1"; (tyc,false))
-	      | SOME entPath =>
-		let val tyc' = T.PATHtyc{arity=TU.tyconArity tyc,
-					 entPath=entPath,
-					 path=TU.tycPath tyc}
-		in
-		    debugmsg("tyc mapped: "^
-			     Symbol.name(TypesUtil.tycName tyc'));
-		    (tyc',true)
-		end
-	end
+    let fun stamped tyc =
+	    let val tyc_id = MI.tycId' tyc
+	    in (* debugmsg ("mapTyc: "^ModuleId.idToString tyc_id); *)
+		case EPC.lookTycEntPath(epContext,tyc_id)
+		 of NONE => (debugmsg "tyc not mapped 1"; (tyc,false))
+		  | SOME entPath =>
+		    let val tyc' = T.PATHtyc{arity=TU.tyconArity tyc,
+					     entPath=entPath,
+					     path=TU.tycPath tyc}
+		    in
+			debugmsg("tyc mapped: "^
+				 Symbol.name(TypesUtil.tycName tyc'));
+			(tyc',true)
+		    end
+	    end
 
 	fun mapTyc (tyc as (T.GENtyc _ | T.DEFtyc _)) = stamped tyc
 	  | mapTyc(tyc as T.PATHtyc _) =

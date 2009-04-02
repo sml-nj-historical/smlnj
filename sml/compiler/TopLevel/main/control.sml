@@ -249,7 +249,7 @@ struct
 
     val debugging = new ("debugging", "?", false)
     val printAst = new ("printAst", "?", false)
-    val printAbsyn = new ("printAbsyn", "?", false)
+    val printAbsyn = new ("printAbsyn", "?", true)
     val interp = new ("interp", "?", false)
 
     val progressMsgs = new ("progressMsgs", "?", false)
