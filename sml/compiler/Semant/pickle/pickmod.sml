@@ -1253,7 +1253,7 @@ in
 
 	and shStrEntity id = share (STRs id) strEntity
 
-        and fctEntity { stamp = s, paramRlzn = e, bodyRlzn = b,
+        and fctEntity { stamp = s, paramRlzn = e, bodyRlzn = b, (* DELETE *)
 			closure, properties, (* tycpath,*) rpath, stub } =
 	    let val op $ = PU.$ FEN
 	    in

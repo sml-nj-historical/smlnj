@@ -1084,7 +1084,7 @@ case fctexp
 *)
           val (bodyAbsDec', bodyStr', bodyExp') = (bodyAbsDec, bodyStr, bodyExp)
 	  
-          val fctExp = M.LAMBDA{param=paramEntVar,paramRlzn= paramRlzn,
+          val fctExp = M.LAMBDA{param=paramEntVar,paramRlzn=paramRlzn,
 				body=bodyExp'}
 
           val resFct = 
@@ -1100,7 +1100,7 @@ case fctexp
 
                 val rlzn = {stamp = mkStamp(),
 			    paramRlzn = paramRlzn,
-			    bodyRlzn = bodyRlzn,
+			    bodyRlzn = M.bogusStrEntity, (* DELETE *)
 			    closure = M.CLOSURE{param=paramEntVar,
 						body=bodyExp',
 						env=entEnv},

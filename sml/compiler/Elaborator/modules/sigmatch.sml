@@ -1158,10 +1158,10 @@ val srcFctExp = M.VARfct [uncoerced]
 val paramSym = case paramsym of SOME x => x 
                               | NONE => paramSym
 
-(*** parameter signature instantiation ***)
+(*** parameter signature instantiation for the functor signature being matched ***)
 val fsigParEnt = 
-  INS.instParam{sign=fsigParamSig, entEnv=entEnv,
-                rpath=IP.IPATH[paramSym], region=region, compInfo=compInfo}
+    INS.instParam{sign=fsigParamSig, entEnv=entEnv,
+                  rpath=IP.IPATH[paramSym], region=region, compInfo=compInfo}
 
 val fsigParInst = 
   let val fsigParDacc = DA.newAcc(mkv)
@@ -1196,45 +1196,44 @@ val {resDec=resDec2, resStr=resStr2, resExp=resExp2} =
       INS.getTycPaths{sign=sign, rlzn=rlzn, entEnv=fsigBodySigEnv, 
                       compInfo=compInfo}
     | _ => [] *)
+(*
 val bodyRlzn = 
     case resStr2
      of M.STR { rlzn, ...} => rlzn
       | _ => bogusStrEntity
-
+*)
 (*** the resulting coerced functor ***)
 val resFct =
-  let val resExp3 = M.LETstr(M.FCTdec(uncoerced, M.CONSTfct fctRlzn), 
-                             resExp2)
-      val resClosure = CLOSURE{param=paramId, body=resExp3, env=entEnv}
-      (* val tps = T.TP_FCT(paramTps, resTps) *)
+    let val resExp3 = M.LETstr(M.FCTdec(uncoerced, M.CONSTfct fctRlzn), 
+			       resExp2)
+	val resClosure = CLOSURE{param=paramId, body=resExp3, env=entEnv}
+	(* val tps = T.TP_FCT(paramTps, resTps) *)
 
-      val resRlzn = {stamp = #stamp fctRlzn, (*** DAVE ? ***)
-		     paramRlzn = fsigParEnt,
-		     bodyRlzn = bodyRlzn,
-		     closure = resClosure, rpath=rpath,
-		     (* tycpath=SOME tps, *)
-		     properties = PropList.newHolder (),
-		     (* lambdaty=ref NONE, *)
-		     stub = NONE}
+	val resRlzn = {stamp = #stamp fctRlzn, (*** DAVE ? ***)
+		       paramRlzn = fsigParEnt,
+		       bodyRlzn = bogusStrEntity, (* DELETE *)
+		       closure = resClosure, rpath=rpath,
+		       stub = NONE,
+		       properties = PropList.newHolder ()}
 
-   in M.FCT{sign = specSig, rlzn = resRlzn,
-            access = DA.newAcc(mkv), prim = []}
-  end
+     in M.FCT{sign = specSig, rlzn = resRlzn,
+	      access = DA.newAcc(mkv), prim = []}
+    end
 
 (*** the resulting functor absyn ***)
 val fdec = 
-  let val bodyAbs = A.LETstr(A.SEQdec [resDec1, resDec2], A.VARstr resStr2)
-      val fctexp = A.FCTfct {param=fsigParInst, (* argtycs=paramTps,*) def=bodyAbs}
-   in A.FCTdec [A.FCTB {name=anonFsym, fct=resFct, def=fctexp}]
-  end
+    let val bodyAbs = A.LETstr(A.SEQdec [resDec1, resDec2], A.VARstr resStr2)
+	val fctexp = A.FCTfct {param=fsigParInst, (* argtycs=paramTps,*) def=bodyAbs}
+     in A.FCTdec [A.FCTB {name=anonFsym, fct=resFct, def=fctexp}]
+    end
 
 (*** the functor entity expression ***)
 val fctExp = 
-  M.LETfct(M.FCTdec(uncoerced, uncoercedFct), 
-           M.LAMBDA_TP{param = paramId, body = resExp2, sign=specSig})
+    M.LETfct(M.FCTdec(uncoerced, uncoercedFct), 
+             M.LAMBDA{param = paramId, body = resExp2, paramRlzn=fsigParEnt})
+    (* ??? is fsigParEnt the correct realization to use here? *)
 
-in 
-   (fdec, resFct, fctExp)
+in  (fdec, resFct, fctExp)
 
 end handle Match => (A.SEQdec [], ERRORfct, bogusFctExp))
      (* 

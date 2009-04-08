@@ -656,7 +656,7 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
 	     (case kind of
 		  T.DATATYPE{index=0,family,freetycs, stamps, root} =>
 		  let (* MAJOR GROSS HACK: use the stamp of the type as its 
-                       * entVar. This makes possible to reconstruct the
+                       * entVar. This makes it possible to reconstruct the
 		       * entPath associated with a RECty when translating the
 		       * types of domains in elabDATArepl.  See >>HACK<< signs.
                        *)

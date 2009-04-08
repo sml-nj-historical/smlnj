@@ -12,6 +12,11 @@
    because they will be represented as TP_TYC(...).  
 *)
 
+(* DBM [4/7/09]
+ * all references to bodyRlzn need to be removed, and functor closures should
+ * be used instead.
+ *)
+
 signature REPTYCPROPS = 
 sig
    val procDec : Absyn.dec * DebIndex.index 
@@ -317,9 +322,11 @@ in
 			 (* Use this when PK eliminated from front-end:
 	                    (LT.tkc_int arity)::loop(eps, pfsigs) *)
 			 (buildKind arity)::loop(eps, fsigs, eenv)
-		       | M.FCTent{paramRlzn, bodyRlzn, 
+		       | M.FCTent{paramRlzn, bodyRlzn (* DELETE *), 
 				  closure=M.CLOSURE{env, ...}, 
 				  ...} =>
+                         (* This should be using closure and paramRlzn --
+			  * bodyRlzn is being deleted *)
 			 (case fsigs 
 			   of [] => bug "kinds.1"
 			    | fsig::rest => 
@@ -360,9 +367,10 @@ in
 			 (* Use this when PK eliminated from front-end:
 	                    (LT.tkc_int arity)::loop(eps, pfsigs) *)
 			 (buildKind arity)::loopkind(eps, fsigs, eenv)
-		       | M.FCTent{paramRlzn, bodyRlzn, 
+		       | M.FCTent{paramRlzn, bodyRlzn (* DELETE *), 
 				  closure=M.CLOSURE{env, ...}, 
 				  ...} =>
+                         (* this should be using closure and paramRlzn *)
 			 (case fsigs 
 			   of [] => bug "kinds.1"
 			    | fsig::rest => 
@@ -557,9 +565,10 @@ in
 			      in loop(insertMap(ftmap, ev, tp),
 				      tp::tps, entenv, rest, i+1, fs)
 		              end))
-		       | M.FCTent {stamp, paramRlzn, bodyRlzn, 
+		       | M.FCTent {stamp, paramRlzn, bodyRlzn (* DELETE *), 
 				   closure=M.CLOSURE{env=closenv,...},...} => 
 			   (debugmsg "--primaryCompInStruct[FCTent SOME]";
+                           (* this should be using closure and paramRlzn *)
 			    ( case fs
 			      of [] => bug "primaryCompInStruct.1"
 			       | (fsig as M.FSIG{bodysig=bsig as M.SIG bsr,
@@ -634,6 +643,7 @@ in
 						paramsym=NONE,
 						bodysig=M.SIG psr}
 				     val bsig = M.SIG psr *)
+			       (* BOGUS! bodyRlzn is being DELETED *)
 				     val (ftmap2,bodytps) = 
 					 formalBody(ftmap1, #entities bodyRlzn,
 						    argtps, bsig, 
@@ -732,7 +742,7 @@ in
 				            as M.SIG{elements,...},
 			rlzn=argRlzn as {entities,...},...}, ...}) => 
 		     let val {paramRlzn=dummyRlzn,
-			      bodyRlzn, 
+			      bodyRlzn, (* DELETED *)
 			      closure=M.CLOSURE{body,param=fclparam,
 						env=fclenv},
 			      stamp=fstmp,
@@ -754,7 +764,7 @@ in
 				     debugmsg "\n===bodysig===\n";
 				     ppSig bodysig;
 				     debugmsg "===bodyRlzn===\n";
-				     ppEnt (M.STRent bodyRlzn)) 
+				     ppEnt (M.STRent bodyRlzn))  (* DELETED *)
 				 else () 
 			 val _ = debugmsg "--procStrexp[APPstr] param/arg"
 			 val (ftmap', argtycs') = 
@@ -767,6 +777,7 @@ in
 			    to the free instantiation should be replaced
 			    by references to the argRlzn. 
 			  *)
+                  (* BOGUS! bodyRlzn is going away *)
 			 val(ftmap2, _) = 
 			    primaryCompInStruct(ftmap', bodyRlzn, bodyRlzn, 
 						bodysig, d) 
@@ -778,7 +789,7 @@ in
 				       body=body'}
 			 val fctRlzn' = 
 			     {paramRlzn=dummyRlzn,
-			      bodyRlzn=bodyRlzn,
+			      bodyRlzn=Modules.bogusStrEntity, (* DELETE *)
 			      stamp=fstmp,
 			      properties=fprops,
 			      rpath=frp,
@@ -836,7 +847,7 @@ in
 			 (b as FCTB{fct=fct 
 				as M.FCT{sign=M.FSIG{paramsig=paramsig'
 			as M.SIG fsr,paramvar,bodysig,...},
-			rlzn={paramRlzn,bodyRlzn,...}, ...}, def, name})::rest,
+			rlzn={paramRlzn,bodyRlzn (* DELETE *),...}, ...}, def, name})::rest,
 			 d) =
 		let val _ = debugmsg ("--fctBinds d="^DI.dp_print d)
 		    val paramEnts = #entities paramRlzn

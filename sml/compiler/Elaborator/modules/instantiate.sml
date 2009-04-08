@@ -1540,7 +1540,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			      in FCTent {stamp = stamp,
 					 rpath=path,
 					 paramRlzn = paramRlzn,
-					 bodyRlzn = bodyRlzn,
+					 bodyRlzn = bogusStrEntity, (* DELETE *)
 					 closure=cl,
 					 properties = PropList.newHolder (),
 					 stub=NONE}

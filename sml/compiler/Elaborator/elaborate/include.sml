@@ -173,8 +173,8 @@ and adjustElem tycmap (sym,spec) =
 fun addElem((name,nspec: M.spec), env, elems, slot) =
   case nspec
    of TYCspec{entVar=ev, info=RegTycSpec{spec=tc, repl=r, scope=s}} =>
-      (let val (oev,otc,or,os) =
-	       case MU.getSpec(elems,name) of
+      (let val (oev,otc,or,os) =  (* BUG? os defined but not used *)
+	       case MU.getSpec(elems,name) of (* the old spec for this elem name *)
 		   TYCspec{entVar,info=RegTycSpec{spec,repl,scope}} =>
                       (entVar,spec,repl,scope)
 		 | _ => bug "addElem:TYCspec"
@@ -189,7 +189,9 @@ fun addElem((name,nspec: M.spec), env, elems, slot) =
                   let val ntc = adjustTyc(tc, getMap())
                       val nspec' = TYCspec{entVar=oev,
                                            info=RegTycSpec{spec=ntc,repl=or,scope=s}}
-                                          (*???*)
+                                          (* replication property inherited from
+					   * old spec, while scope is inherited from
+					   * new spec???*)
                       val elems' = substElem((name,nspec'),elems)
 
                       val ntc = PATHtyc{arity=TU.tyconArity ntc,

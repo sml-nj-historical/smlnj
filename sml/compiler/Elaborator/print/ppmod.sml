@@ -565,7 +565,7 @@ and ppStrEntity ppstrm (e,env,depth) =
     end
 
 and ppFctEntity ppstrm (e, env, depth) =
-    let val {stamp,paramRlzn,bodyRlzn,closure,properties,rpath,stub} = e
+    let val {stamp,paramRlzn,bodyRlzn (*DELETE*),closure,properties,rpath,stub} = e
 	val {openHVBox,openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
     in if depth <= 1 
 	then pps "<functor entity>"
@@ -583,10 +583,12 @@ and ppFctEntity ppstrm (e, env, depth) =
 		break{nsp=1,offset=2};
 		ppStrEntity ppstrm (paramRlzn,env,depth-1);
 		newline();
+(* bodyRlzn field to be deleted
 		pps "bodyRlzn: ";
 		break{nsp=1,offset=2};
 		ppStrEntity ppstrm (bodyRlzn,env,depth-1);
 		newline();
+*)
 		pps "closure:";
 		break{nsp=1,offset=2};
 		ppClosure ppstrm (closure,depth-1);

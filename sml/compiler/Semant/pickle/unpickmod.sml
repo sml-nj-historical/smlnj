@@ -1213,12 +1213,10 @@ structure UnpickMod : UNPICKMOD = struct
 		in
 		    ({ stamp = s,
 		       paramRlzn = e,
-		       bodyRlzn = b,
+		       bodyRlzn = b, (* DELETE *)
 		       closure = c,
 		       rpath = ipath (),
 		       properties = PropList.newHolder (),
-		       (* lambdaty = ref NONE, *)
-		       (* tycpath = NONE, *)
 		       stub = SOME { owner = if lib then pid ()
 					     else globalPid (),
 				     tree = ctr,
