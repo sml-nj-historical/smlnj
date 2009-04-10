@@ -734,6 +734,9 @@ and ppStrexp (context as (_,source_opt)) ppstrm =
                (* ppBinding not yet undefined *)
                  ppSequence ppstrm
                    {sep=newline,
+(*                    pr= (fn ppstrm => fn (B.VALbind v) => ppVar ppstrm v | b => (* pps "#"), *) 
+                          (* PPModules.ppBinding context ppstrm (b,d-1)), *)
+			PPModules.ppBinding ppstrm (Symbol.varSymbol "*",b,StaticEnv.empty,d-1)), *)
                     pr=(fn ppstrm => fn (B.VALbind v) => ppVar ppstrm v 
 				      | b => (* pps "#" *)
 					PPModules.ppBinding ppstrm (dummySym,b,dummyEnv,d-1)),

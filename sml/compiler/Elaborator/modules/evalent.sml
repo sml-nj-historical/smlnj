@@ -108,7 +108,7 @@ fun evalTyc (entv, tycExp, entEnv, epc, rpath,
 
 and evalStr(strExp, epc, entsvOp, entEnv, rpath, 
             compInfo as {mkStamp,...}: EU.compInfo)
-         : strEntity * entEnv =
+         : strEntity * entityEnv =
      (debugmsg ("[Inside EvalStr ......");
       case strExp
        of VARstr entPath =>
@@ -277,7 +277,7 @@ and evalApp(fctRlzn : Modules.fctEntity, argRlzn, epc, rpath,
       end
 
 and evalDec(dec, epc, entEnv, rpath,
-            compInfo as {mkStamp,...}: EU.compInfo): entEnv =
+            compInfo as {mkStamp,...}: EU.compInfo): entityEnv =
      (debugmsg ("[Inside EvalDec ......");
       case dec
        of TYCdec (entVar, tycExp) => 
