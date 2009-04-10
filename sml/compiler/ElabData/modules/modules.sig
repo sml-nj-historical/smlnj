@@ -101,7 +101,6 @@ and fctExp
   = VARfct of EntPath.entPath 
   | CONSTfct of fctEntity
   | LAMBDA of {param : EntPath.entVar, paramRlzn : strEntity, body : strExp}
-  | LAMBDA_TP of {param : EntPath.entVar, body : strExp, sign : fctSig}
   | LETfct of entityDec * fctExp
 
 and entityExp 
