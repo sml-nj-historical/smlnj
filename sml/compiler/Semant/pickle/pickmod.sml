@@ -1197,8 +1197,6 @@ in
 	      | fe (M.CONSTfct e) = "p" $ [fctEntity e]
 	      | fe (M.LAMBDA { param, paramRlzn, body }) =
 		"q" $ [entVar param, strEntity paramRlzn, strExp body]
-	      | fe (M.LAMBDA_TP { param, body, sign }) =
-		"r" $ [entVar param, strExp body, fctSig sign]
 	      | fe (M.LETfct (e, f)) = "s" $ [entityDec e, fctExp f]
 	in
 	    fe arg

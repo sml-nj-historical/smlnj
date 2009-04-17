@@ -197,6 +197,28 @@ and sigrec =
      stub       : stubinfo option,
      properties : PropList.holder} (* FLINT: (entpath * tkind) list option *)
 
+(* strEntity and fctEntity
+ * realizations: the essential static descriptions for structures and functors
+ * relative to corresponding signatures. This is the "statically volatile
+ * information that varies between different instantiations of the signatures *)
+
+and strEntity =
+    {stamp    : ST.stamp,         (* structure stamp *)
+     entities : entityEnv,        (* the realizations of the static elements
+				   * specified in the structure signature *)
+     rpath    : IP.path,          (* reverse symbolic path of structure *)
+     stub     : stubinfo option,  (* for pickling isolation *)
+     properties: PropList.holder} (* FLINT: lambdaty memoization *)
+
+and fctEntity =
+    {stamp    : ST.stamp,
+     paramRlzn: strEntity,      (* an instantiation of the param signature *)
+     bodyRlzn : strEntity,      (* body realization -- THIS FIELD WILL BE DELETED *)
+     closure  : fctClosure,     (* used to compute result rlzn in functor application *)
+     rpath    : IP.path,        (* reverse symbolic path name of the functor *)
+     stub     : stubinfo option, (* for pickling isolation *)
+     properties: PropList.holder} (* FLINT: lambdaty memoization *)
+
 (* contents of a STR.  named because also used in modtree/STRNODE *)
 and strrec =
     {sign   : Signature,
@@ -221,28 +243,6 @@ and envrec =
     {stamp : ST.stamp,
      env   : entityEnv,
      stub  : stubinfo option}
-
-(* strEntity and fctEntity
- * realizations: the essential static descriptions for structures and functors
- * relative to corresponding signatures. This is the "statically volatile
- * information that varies between different instantiations of the signatures *)
-
-and strEntity =
-    {stamp    : ST.stamp,         (* structure stamp *)
-     entities : entityEnv,        (* the realizations of the static elements
-				   * specified in the structure signature *)
-     rpath    : IP.path,          (* reverse symbolic path of structure *)
-     stub     : stubinfo option,  (* for pickling isolation *)
-     properties: PropList.holder} (* FLINT: lambdaty memoization *)
-
-and fctEntity =
-    {stamp    : ST.stamp,
-     paramRlzn: strEntity,      (* an instantiation of the param signature *)
-     bodyRlzn : strEntity,      (* body realization -- THIS FIELD WILL BE DELETED *)
-     closure  : fctClosure,     (* used to compute result rlzn in functor application *)
-     rpath    : IP.path,        (* reverse symbolic path name of the functor *)
-     stub     : stubinfo option, (* for pickling isolation *)
-     properties: PropList.holder} (* FLINT: lambdaty memoization *)
 
 (* a tycEntity is just a tycon. The stamp and arity of the tycon are critical. *)  
 and tycEntity = T.tycon

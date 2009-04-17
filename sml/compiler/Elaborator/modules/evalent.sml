@@ -204,32 +204,6 @@ and evalFct (fctExp,  epc, entEnv,
 		 entEnv)
             end
 
-(* LAMBDA_TP constructor deleted
-        | LAMBDA_TP{param, body, sign as FSIG{paramsig, bodysig, ...}} =>
-            let val clos = CLOSURE{param=param, body=body, env=entEnv} 
-                val rpath' = IP.IPATH [paramSym]
-                val paramRlzn as {entities=paramEntenv,...} =
-                    Instantiate.instParam{sign=paramsig, entEnv=entEnv, 
-					  rpath=rpath',
-					  region=S.nullRegion, compInfo=compInfo}
-		val {rlzn=bodyRlzn,...} = 
-		    Instantiate.instFmBody{sign=bodysig, 
-					   entEnv=EE.bind(param,
-							  STRent paramRlzn,
-							  entEnv),
-					   rpath=rpath', 
-					   region=S.nullRegion, 
-					   compInfo=compInfo}
-             in ({stamp = mkStamp(),
-		  paramRlzn = paramRlzn,
-		  bodyRlzn = bodyRlzn,
-		  closure=clos,
-		  properties = PropList.newHolder (),
-		  rpath=IP.IPATH[anonFctSym],
-		  stub = NONE},
-		 entEnv)
-            end
-*)					   
         | LETfct (entDec, fctExp) =>
             let val entEnv1 = evalDec(entDec,  epc,
                                       entEnv, IP.empty, compInfo)
@@ -237,8 +211,6 @@ and evalFct (fctExp,  epc, entEnv,
                   evalFct(fctExp,  epc, entEnv1, compInfo) 
              in (fctEnt, entEnv2)
             end
-
-        | _ => bug "unexpected cases in evalFct"
 
 and evalApp(fctRlzn : Modules.fctEntity, argRlzn, epc, rpath,
             compInfo as {mkStamp, ...} : EU.compInfo) = 

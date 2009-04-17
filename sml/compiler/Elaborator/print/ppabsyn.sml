@@ -30,11 +30,16 @@ structure PPAbsyn: PPABSYN =
 struct
 
 local structure EM = ErrorMsg
+      structure T = Types
       structure M = Modules
       structure B = Bindings
       structure S = Symbol
       structure PP = PrettyPrintNew
       structure PU = PPUtilNew
+
+      structure SE = StaticEnv
+      structure B = Bindings
+      structure PPM = PPModules
 
       open Absyn Tuples Fixity VarCon Types PrettyPrintNew PPUtilNew PPType PPVal
 in
@@ -69,7 +74,23 @@ fun prpos(ppstrm: PP.stream,
       end
     else PU.ppi ppstrm charpos
 
+val defaultName = S.varSymbol "<symbol>"
 
+fun bindingName(B.VALbind(VALvar{path,...})) = SymPath.last path
+  | bindingName(B.CONbind(DATACON{name,...})) = name
+  | bindingName(B.TYCbind tyc) = TypesUtil.tycName tyc
+  | bindingName(B.SIGbind sg) = 
+      (case sg
+	 of M.SIG{name=SOME name,...} => name
+          | _ => S.sigSymbol "<anonsig>")
+  | bindingName(B.STRbind str) = InvPath.last(ModuleUtil.getStrName str)
+  | bindingName(B.FSGbind fsig) = S.fsigSymbol "<fctsig>"
+  | bindingName(B.FCTbind fct) =
+      (case fct
+	 of M.FCT{rlzn={rpath,...},...} => InvPath.last(rpath)
+          | _ => defaultName)
+  | bindingName _ = defaultName
+  
 fun checkpat (n,nil) = true
   | checkpat (n, (sym,_)::fields) = 
     S.eq(sym, numlabel n) andalso checkpat(n+1,fields)
@@ -285,14 +306,6 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 		     style=INCONSISTENT}
 		    exps
 	      end
-          (*| ppExp'(PACKexp (e, t, tcs),atom,d) = 
-        	      if !internals then
-        		 (openHOVBox 0;
-        		  pps "<PACK: "; ppExp'(e,false,d); pps "; ";
-        		  break ppstrm {nsp=1,offset=2};
-        		  ppType env ppstrm t; pps ">";
-        		  closeBox ())
-        	      else ppExp'(e,atom,d)*)
 	  | ppExp'(SEQexp exps,_,d) =
 	      ppClosedSequence ppstrm
 	        {front=(C PP.string "("),
@@ -609,7 +622,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
 		  (ppSym ppstrm name;
 		   ppAccess ppstrm access;
 		   pps " = ";
-		   break ppstrm {nsp=1,offset=2};
+		   newline ppstrm;
 		   ppStrexp context ppstrm (def,d-1))
 		| f _ _ = bug "ppDec:STRdec:STRB"
 	  in
@@ -622,8 +635,10 @@ and ppDec (context as (env,source_opt)) ppstrm =
                   (ppSym ppstrm fname;
 		   ppAccess ppstrm access;
 		   pps " = "; 
-		   break ppstrm {nsp=1,offset= 2}; 
-		   ppFctexp context ppstrm (def,d-1))
+		   break ppstrm {nsp=1,offset=0};
+		   openHVBox 0;
+		    ppFctexp context ppstrm (def,d-1);
+		   closeBox ())
 		| f _ _ = bug "ppDec':FCTdec"
 	  in
 	      openHVBox 0;
@@ -718,30 +733,33 @@ and ppDec (context as (env,source_opt)) ppstrm =
 
 and ppStrexp (context as (_,source_opt)) ppstrm =
   let val pps = PP.string ppstrm
-      val dummySym = Symbol.varSymbol "x"
-      val dummyEnv = StaticEnv.empty
       fun ppStrexp'(_,0) = pps "<strexp>"
 
-	| ppStrexp'(VARstr (M.STR { access, ... }), d) = ppAccess ppstrm access
-
+	| ppStrexp'(VARstr (M.STR { access, rlzn={rpath, ...}, ... }), d) =
+           (pps "VARstr(";
+	    ppSymPath ppstrm (ConvertPaths.invertIPath rpath);
+	    pps ",";
+	    ppAccess ppstrm access;
+	    pps ")")
+			
 	| ppStrexp'(APPstr{oper=M.FCT { access = fa, ... },
 			   arg=M.STR { access = sa, ... }, ...}, d) =
 	      (ppAccess ppstrm fa; pps"("; ppAccess ppstrm sa; pps")")
         | ppStrexp'(STRstr bindings, d) =
               (openHVBox ppstrm (Rel 0);
-               pps "struct"; nl_indent ppstrm 2;
-(*               pps "..."; *)
-               (* ppBinding not yet undefined *)
+               pps "struct[STRstr]";
+	       case bindings
+	         of nil => newline ppstrm
+                  | _ =>
+	       (nl_indent ppstrm 2;
                  ppSequence ppstrm
                    {sep=newline,
-(*                    pr= (fn ppstrm => fn (B.VALbind v) => ppVar ppstrm v | b => (* pps "#"), *) 
-                          (* PPModules.ppBinding context ppstrm (b,d-1)), *)
-			PPModules.ppBinding ppstrm (Symbol.varSymbol "*",b,StaticEnv.empty,d-1)), *)
-                    pr=(fn ppstrm => fn (B.VALbind v) => ppVar ppstrm v 
-				      | b => (* pps "#" *)
-					PPModules.ppBinding ppstrm (dummySym,b,dummyEnv,d-1)),
+		    pr= (fn ppstrm => (fn b => 
+					  PPM.ppBinding ppstrm
+					    (bindingName b, b, SE.empty, 0))),
                     style=CONSISTENT}
                  bindings;
+	       newline ppstrm);
                pps "end";
                closeBox ppstrm)
 	| ppStrexp'(LETstr(dec,body),d) =
@@ -769,10 +787,15 @@ and ppFctexp (context as (_,source_opt)) ppstrm =
   let val pps = PP.string ppstrm
 
       fun ppFctexp'(_, 0) = pps "<fctexp>"
-        | ppFctexp'(VARfct (M.FCT { access, ... }), d) = ppAccess ppstrm access
+        | ppFctexp'(VARfct(M.FCT{access, rlzn={rpath,...},...}), d) =
+           (pps "VARfct(";
+	    ppSymPath ppstrm (ConvertPaths.invertIPath rpath);
+	    pps ",";
+	    ppAccess ppstrm access;
+	    pps ")")
 
         | ppFctexp'(FCTfct{param=M.STR { access, ... }, def, ...}, d) =
-            (pps " FCT("; 
+            (pps "FCT("; 
 	     ppAccess ppstrm access;
 	     pps ") => "; newline ppstrm;
  	     ppStrexp context ppstrm (def,d-1))

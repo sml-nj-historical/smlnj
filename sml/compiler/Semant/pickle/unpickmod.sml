@@ -1074,14 +1074,6 @@ structure UnpickMod : UNPICKMOD = struct
 		in
 		    (M.LAMBDA { param = p, paramRlzn = e, body = b }, btr)
 		end
-	      | fe #"r" =
-		let val p = entVar ()
-		    val (b, btr) = strExp' ()
-		    val (s, str) = fctSig' ()
-		in
-		    (M.LAMBDA_TP { param = p, body = b, sign = s },
-		     branch [btr, str])
-		end
 	      | fe #"s" =
 		let val (d, dtr) = entityDec' ()
 		    val (f, ftr) = fctExp' ()

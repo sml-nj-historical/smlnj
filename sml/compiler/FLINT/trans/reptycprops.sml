@@ -717,8 +717,7 @@ in
 	   | M.CONSTfct _ => fe
 	   | M.LAMBDA{body,param,paramRlzn} => 
 	     M.LAMBDA{param=param, body=procCloSE body, paramRlzn=paramRlzn}
-	   | M.LETfct(entDec, fexp) => M.LETfct(entDec, procCloFE fexp)
-	   | M.LAMBDA_TP _ => bug "procCloFE bug LAMBDA_TP")
+	   | M.LETfct(entDec, fexp) => M.LETfct(entDec, procCloFE fexp))
 
     (* dec * DebIndex.depth -> 
 	     dec with tycpaths and memoized ep * tkind lists 
