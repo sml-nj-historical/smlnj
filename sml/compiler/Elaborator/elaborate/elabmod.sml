@@ -122,11 +122,11 @@ fun stripMarkStrb(MarkStrb(strb',region'),region) =
 fun inStr (EU.TOP) = EU.INSTR
   | inStr z = z 
 
-(* 
+(* mapPaths
  * Add statId to entPath mappings for all appropriate elements of a structure
- * that has just been elaborated.  If epc is the empty context (rigid), then
- * this is an expensive no-op, so we test epc first. But, would this be
- * equivalent to context=INFCT _ ?
+ * that has just been elaborated or created by signature instantiation.
+ * If epc is the empty context (rigid), then this is an expensive no-op,
+ * so we test epc first. But, would this be equivalent to context=INFCT _ ?
  * 
  * epc is the EntPathContext for the interior of the structure -- i.e.
  * the structure binding's entVar has been added to the bindContext 
@@ -967,17 +967,20 @@ case fctexp
               (* if curried=true, then constraint = NoSig !!!
                * -- the result signature (if any) will always be delegated
 	       * to a declaration (StrDec or FctDec) within a body wrapper. *)
+
           val flex =
-            case context
-             of EU.INFCT {flex} => flex
-              | _ => (*** Entering functor for first time ***) 
-		(* any stamps generated hereafter considered flexible *)
-                 let val base = mkStamp() 
-                     fun h s = (case Stamps.compare(base,s)
-                                 of LESS => true
-                                  | _ => false)
-                  in h
-                 end
+	      case context
+	       of EU.INFCT {flex} => flex
+                   (* already in body of a parent functor -- we don't differentiate
+		    * flex tycons according to depth of functor abstractions *)
+		| _ => (*** Entering functor for first time ***) 
+		  (* any stamps generated hereafter considered flexible *)
+		   let val base = mkStamp() 
+		    in (fn s => (case Stamps.compare(base,s)
+				   of LESS => true
+				    | _ => false))
+		   end
+
           val paramName = case paramNameOp of NONE => paramId
                                             | SOME n => n
 
@@ -987,9 +990,9 @@ case fctexp
 			    EP.entVarToString paramEntVar)
 
           val paramSig = 
-            ES.elabSig {sigexp=paramSigExp, nameOp=NONE, env=env, 
-                        entEnv=entEnv, epContext=epContext, 
-                        region=region, compInfo=compInfo}
+              ES.elabSig {sigexp=paramSigExp, nameOp=NONE, env=env, 
+                          entEnv=entEnv, epContext=epContext, 
+                          region=region, compInfo=compInfo}
           val _ = debugmsg "--elabFct[BaseFct]: paramSig defined"
 
 	  val _ = case paramSig
@@ -997,16 +1000,21 @@ case fctexp
 		        (* bail out -- not attempting to recover from bad signature *)
 		     | _ => ()
 
-	  (* now know that paramSig is defined *)
-          (* this creates new stamps, but we don't bother to update the
-             epcontext, we do it later through mapPaths *)
-          val paramRlzn =
-                INS.instParam
-                  {sign=paramSig, entEnv=entEnv, region=region,
-		   rpath=IP.IPATH(case paramNameOp
-				   of NONE => []
-				    | _ => [paramName]),
-		   compInfo=compInfo}
+	  (* now we can assume that paramSig is defined *)
+          (* we instantiate the paramSig to get a realization (paramRlzn).
+           * This creates new stamps, but we don't bother to add them to the
+           * epcontext while instantiating, we do it below using mapPaths.
+	   * All fresh stamps created during this instantiation will be considered
+	   * flexible/formal.
+	   *)
+          val {rlzn = paramRlzn, ...} =
+              INS.instFormal
+                {sign=paramSig, entEnv=entEnv, region=region,
+		 rpath=IP.IPATH(case paramNameOp
+				 of NONE => []
+				  | _ => [paramName]),
+		 compInfo=compInfo}
+
           val paramStr = 
               M.STR{sign=paramSig, rlzn=paramRlzn, 
                     access=DA.namedAcc(paramName, mkv), prim=[]}
@@ -1014,21 +1022,25 @@ case fctexp
           val _ = debugmsg "--elabFct[BaseFct]: param instantiated"
           val _ = showStr("--elabFct[BaseFct]: paramStr: ",paramStr,env)
 
+          (* bind parameter entity to paramEntVar in entity env *)
           val entEnv' = 
-               EE.mark(mkStamp,EE.bind(paramEntVar,M.STRent paramRlzn,entEnv))
+              EE.mark(mkStamp,EE.bind(paramEntVar,M.STRent paramRlzn,entEnv))
           val _ = debugmsg "--elabFct[BaseFct]: param EE.bind"
 
 	  val _ = debugmsg "--elabFct[BaseFct]: elabmod before env'\n"
           val env' =
-            case paramNameOp 
-             of NONE => MU.openStructure(env,paramStr)
-              | SOME _ => SE.bind(paramName, B.STRbind paramStr, env)
+              case paramNameOp 
+               of NONE => MU.openStructure(env,paramStr)
+		| SOME _ => SE.bind(paramName, B.STRbind paramStr, env)
           val _ = debugmsg "--elabFct[BaseFct]: param bound/opened"
 
+          (* push a functor abstraction layer onto epContext *)
           val epContext' = EPC.enterClosed epContext 
+          (* add parameEntVar to context of epContext *)
+          val epContext' = EPC.enterOpen(epContext', paramEntVar) 
 
           (* fill in pathEnv with paths for elements of paramStr *)
-          val _ = mapPaths(EPC.enterOpen(epContext', paramEntVar),paramStr,flex)
+          val _ = mapPaths(epContext',paramStr,flex)
           val _ = EPC.bindStrEntVar(epContext',MU.strId paramStr,paramEntVar)
           val _ = debugmsg "--elabFct[BaseFct]: epContext initialized"
 
@@ -1453,7 +1465,7 @@ and elabDecl0
                               * but only if there have been no earlier errors *)
 			if !ElabControl.instantiateSigs
                            andalso not(!(#anyErrors compInfo))
-			then (INS.instParam
+			then (INS.instFormal
 			        {sign=s,entEnv=EE.empty,
 				 rpath=InvPath.empty,region=region',
 				 compInfo=compInfo};

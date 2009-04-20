@@ -41,7 +41,7 @@ open ElabDebug
 val debugPrint = (fn x => debugPrint debugging x)  (* Value Restriction *)
 fun bug msg = ErrorMsg.impossible ("EvalEntity: " ^ msg);
 
-(* special symbols *)
+(* special symbols -- defined in SpecialSymbols *)
 val resultId = SpecialSymbols.resultId
 val returnId = SpecialSymbols.returnId
 val anonFctSym = SpecialSymbols.anonFctSym
@@ -154,16 +154,17 @@ and evalStr(strExp, epc, entsvOp, entEnv, rpath,
                     evalStr(strExp,  epc, entsvOp, entEnv, rpath, compInfo)
                 val {rlzn, abstycs, tyceps} = 
                     Instantiate.instAbstr{sign=sign, entEnv=entEnv, srcRlzn=srcRlzn,
-					  rpath=rpath, region=S.nullRegion, compInfo=compInfo}
+					  rpath=rpath, region=S.nullRegion,
+					  compInfo=compInfo}
 
                 (* because the abstraction creates a bunch of new stamps,
                    we have to bind them to the epcontext.
                  *)
                 val epc = enterOpen(epc, entsvOp)
-                fun h (T.GENtyc gt, ep) =
+                fun bindEp (T.GENtyc gt, ep) =
 		    EPC.bindTycEntPath (epc, MI.tycId gt, ep)
-                  | h _ = ()
-                val _ = ListPair.app h (abstycs, tyceps)
+                  | bindEp _ = ()
+                val _ = ListPair.app bindEp (abstycs, tyceps)
 	     in (rlzn, entEnv1)
 	    end
 
@@ -219,31 +220,31 @@ and evalApp(fctRlzn : Modules.fctEntity, argRlzn, epc, rpath,
           val  _ = debugmsg ("[Inside EvalAPP] ......")
        in case body
            of (FORMstr(FSIG{paramsig, bodysig, ...})) => 
-               let 
-                   (** failing to add the stamps into the epcontext is
+               let (** failing to add the stamps into the epcontext is
                        a potential bug here. Will fix this in the
-                       future.  ZHONG **)
+                       future.  ZHONG. -- ??? doesn't bindEp below 
+		       do this? DBM **)
 
-                   val {rlzn=rlzn, abstycs=abstycs, tyceps=tyceps} = 
-                     Instantiate.instFmBody {sign=bodysig, entEnv=nenv,
-                                   rpath=rpath, region=S.nullRegion,
-                                   compInfo=compInfo}
+                   val {rlzn, abstycs, tyceps} = 
+                       Instantiate.instFormal {sign=bodysig, entEnv=nenv,
+					       rpath=rpath, region=S.nullRegion,
+					       compInfo=compInfo}
 
-                   fun h (T.GENtyc gt, ep) = 
+                   fun bindEp (T.GENtyc gt, ep) = 
                        EPC.bindTycEntPath (epc, MI.tycId gt, ep)
-                     | h _ = ()
-                   val _ = ListPair.app h (abstycs, tyceps)
+                     | bindEp _ = ()
+                   val _ = ListPair.app bindEp (abstycs, tyceps)
                 in rlzn
                end
             | _ => 
-               let val (strEnt, deltaEE)
-                     = evalStr(body,  epc, NONE, nenv, rpath, compInfo)
-                   (* invariant: deltaEE should always be same as nenv
-                      if the body of an functor is always a BaseStr. Notice 
-                      functor body is constructed either in the source 
-                      programs (ml.grm) or in the elabmod.sml when dealing 
-                      with curried functor applications.
-                    *)
+               let val (strEnt, deltaEE) =
+                       evalStr(body,  epc, NONE, nenv, rpath, compInfo)
+		       (* invariant: deltaEE should always be same as nenv
+			  if the body of an functor is always a BaseStr. Notice 
+			  functor body is constructed either in the source 
+			  programs (ml.grm) or in the elabmod.sml when dealing 
+			  with curried functor applications.
+			*)
                 in strEnt
                end
       end

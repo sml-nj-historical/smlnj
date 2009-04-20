@@ -1159,9 +1159,9 @@ val paramSym = case paramsym of SOME x => x
                               | NONE => paramSym
 
 (*** parameter signature instantiation for the functor signature being matched ***)
-val fsigParEnt = 
-    INS.instParam{sign=fsigParamSig, entEnv=entEnv,
-                  rpath=IP.IPATH[paramSym], region=region, compInfo=compInfo}
+val {rlzn=fsigParEnt,...} = 
+    INS.instFormal{sign=fsigParamSig, entEnv=entEnv,
+                   rpath=IP.IPATH[paramSym], region=region, compInfo=compInfo}
 
 val fsigParInst = 
   let val fsigParDacc = DA.newAcc(mkv)
@@ -1517,9 +1517,9 @@ and packFct1(specSig as FSIG{paramsig, paramvar, bodysig, ...}, resFctRlzn,
 
 let
 
-val paramEnt = 
-  INS.instParam{sign=paramsig, entEnv=entEnv,
-                rpath=IP.IPATH[paramSym], region=region, compInfo=compInfo}
+val {rlzn=paramEnt,...} = 
+    INS.instFormal{sign=paramsig, entEnv=entEnv,
+                   rpath=IP.IPATH[paramSym], region=region, compInfo=compInfo}
 
 val paramStr = 
   let val paramDacc = DA.newAcc(mkv)
@@ -1528,10 +1528,10 @@ val paramStr =
   end
 
 val {resDec=rdec1, resStr=bodyStr, resExp=_} =
-  applyFct{fct=srcFct, fctExp=CONSTfct srcFctRlzn, argStr=paramStr, 
-           argExp=CONSTstr paramEnt, entvar=mkStamp(),
-           epc=EPC.initContext (* ? ZHONG *), statenv=statenv, 
-           rpath=IP.empty, region=region, compInfo=compInfo}
+    applyFct{fct=srcFct, fctExp=CONSTfct srcFctRlzn, argStr=paramStr, 
+             argExp=CONSTstr paramEnt, entvar=mkStamp(),
+             epc=EPC.initContext (* ? ZHONG *), statenv=statenv, 
+             rpath=IP.empty, region=region, compInfo=compInfo}
 
 (* val bodyRlzn = EV.evalApp(srcFctRlzn, paramEnt, epc, compInfo) *)
 val bodyRlzn = 

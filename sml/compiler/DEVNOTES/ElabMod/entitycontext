@@ -3,6 +3,26 @@ Entity Paths and Entity Path Context
 An entity variable (entVar) is an internal variable bound to a module
 element. (ev, entv, entsv: entVar).  Entity variables are stamps.
 
+Entity Path Contexts
+
+Structure EntPathContext
+File: compiler/ElabData/modules/epcontext.sml
+
+  type context
+
+  val initContext : context
+  val isEmpty : context -> bool
+  val enterOpen : context * EntPath.entVar -> context
+  val enterClosed : context -> context
+  val lookTycEntPath : context * ModuleId.tycId -> EntPath.entPath option
+  val lookStrEntPath : context * ModuleId.strId -> EntPath.entPath option
+  val lookFctEntPath : context * ModuleId.fctId -> EntPath.entPath option
+  val bindTycEntVar : context * ModuleId.tycId * EntPath.entVar -> unit
+  val bindStrEntVar : context * ModuleId.strId * EntPath.entVar -> unit
+  val bindFctEntVar : context * ModuleId.fctId * EntPath.entVar -> unit
+  val bindTycEntPath : context * ModuleId.tycId * EntPath.entPath -> unit
+
+
 An entity path (entPath) is a list of entity variables (entVars, i.e. stamps).
 The entity variables are ordered by outermost binding first (in
 correspondence with direct symbolic paths).
@@ -14,28 +34,52 @@ computing relative enity paths while elaborating a module.
 
 An epcontext is either EMPTY or it is a LAYER
 A LAYER consists of 
-  1. lookContext: an entity path 
-  2. bindContext: a reverse entity path
-  3. locals: a pathmap ref
-  4. outer: a link to an outer context
+  1. context: an entity path 
+  2. locals: a pathmap ref
+  3. outer: a link to an outer context
+
+    datatype context
+      = EMPTY  (* outside of any functor *)
+      | LAYER of {locals: pathmap ref, 
+		  context: EP.entPath,
+		  outer: context}
+	(* inside of at least one functor *)
+
+A pathmap maps "statId" (stamps or stamp records uniquely identifying
+a static entity like a type, structure, or functor) to full
+entPaths relative to the current functor context. It is represented as
+a ModuleId.umap, a generalized map consisting of a record of maps for
+the different kinds of statId (tycId, sigId, strId, fctId, envId).
 
 A structure body (struct decls end) is "closed" if it is a functor
 body structure. The idea is that the elements of a closed structure are
 not directly referenced from outside the structure, so the pathmap
 local to the closed structure can be discarded after the structure
 body is elaborated. Each "closed" structure body pushes a new layer.
+When elaborating a functor body, we create a new epcontext by calling
+enterClosed:
 
-A pathmap maps "statId" (stamps or stamp records uniquely identifying
-a static entity like a type, structure, or functor) to full reverse
-entPaths relative to the current functor context. It is represented as
-a ModuleId.umap, a generalized map consisting of a record of maps for
-the different kinds of statId (tycId, sigId, strId, fctId, envId).
+    val enterClosed: context -> context
 
-INVARIANT: bindContext is the reverse of lookContext.
-(both forms are only included for convenience)
+This creates a new layer with initially empty pathmap and empty context path.
+Immediately after this new layer is created, it is "loaded" with the
+entVar of the parameter by a call of enterOpen:
 
-NOTE! We don't need the redundancy of having both the lookContext
-entity path and its reverse form bindContext.  The pathmaps should
-map to entityPaths, instead of reverse entity paths, since the look
-function is having to reverse (rep2ep) the reverse path anyway.
--- fixed epcontext
+    val enterOpen : context * EntPath.entVar -> context
+
+In this case the second argument is the paramEntVar and it is 
+added to the end of the (empty) context, so the context becomes
+[paramEntVar]. EnterOpen does not affect the locals.
+
+
+---------
+Changes:
+
+Formerly there were two versions of context: lookContext (a direct
+entity path) and bindContext, the reverse of lookContext.  The redundant
+bindContext has been eliminated.  pathmaps formerly mapped to reverse
+entity paths, now they map to direct paths.
+
+Formerly enterOpen took an entVar option as its second parameter, and
+had no effect when that argument was NONE.  We now simply don't call
+enterOpen in such cases.

@@ -9,7 +9,7 @@ A basic structure expression
 
   struct <decls> end 
 
-is translated into a structure _declaration_
+is translated into a structure _declaration_:
 
   structure tempStrId = let <decls> in structure<locations> end
 

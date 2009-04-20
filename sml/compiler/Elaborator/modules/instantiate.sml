@@ -34,35 +34,28 @@
 signature INSTANTIATE =
 sig
 
-  (*** instantiation of the functor parameter signatures ***)
-  val instParam : 
+  (*** instantiation of the formal functor parameter and body signatures ***)
+  val instFormal :
          {sign     : Modules.Signature,
           entEnv   : Modules.entityEnv,
           rpath    : InvPath.path,
           region   : SourceMap.region,
-          compInfo : ElabUtil.compInfo} -> Modules.strEntity
-                                           
-
-  (*** instantiation of the formal functor body signatures ***)
-  val instFmBody : 
-         {sign     : Modules.Signature,
-          entEnv   : Modules.entityEnv,
-          rpath    : InvPath.path,
-          region   : SourceMap.region,
-          compInfo : ElabUtil.compInfo} -> {rlzn: Modules.strEntity,
-					    abstycs: Types.tycon list,
-                                            tyceps: EntPath.entPath list}
+          compInfo : ElabUtil.compInfo}
+	 -> {rlzn: Modules.strEntity,
+	     abstycs: Types.tycon list,
+             tyceps: EntPath.entPath list}
 
   (*** instantiation of the structure abstractions ***)
   val instAbstr : 
          {sign     : Modules.Signature,
           entEnv   : Modules.entityEnv,
           srcRlzn  : Modules.strEntity, 
-          rpath    : InvPath.path,
+          rpath    : InvPath.path,      (* rlzn of structure being abstracted *)
           region   : SourceMap.region,
-          compInfo : ElabUtil.compInfo} -> {rlzn: Modules.strEntity,  
-					    abstycs: Types.tycon list,
-                                            tyceps: EntPath.entPath list}
+          compInfo : ElabUtil.compInfo}
+	 -> {rlzn: Modules.strEntity,  
+	     abstycs: Types.tycon list,
+             tyceps: EntPath.entPath list}
 
   val debugging : bool ref
 
@@ -144,9 +137,8 @@ fun signName (SIG { name, ... }) = getOpt (Option.map S.name name, "Anonymous")
  * the different kinds of instantiations 
  *)
 datatype instKind 
-  = INST_ABSTR of M.strEntity     (* ??? *)
-  | INST_FMBD                     (* result sig of a functor sig *)
-  | INST_PARAM                    (* functor parameter sig *)
+  = INST_ABSTR of M.strEntity     (* a sealed signature ascription *)
+  | INST_FORMAL  (* instantiating a functor param sig or formal functor result sig *)
 
 (* datatype stampInfo 
  * encodes an instruction about how to get a stamp for a new entity
@@ -994,15 +986,6 @@ fun buildTycClass (cnt, this_slot, instKind, rpath, mkStamp, err) =
 	    of InitialTyc{path,...} => ConvertPaths.invertIPath path
 	     | _ => bug "buildTycClass: this_slot not InitialTyc"
 
-      (* [GK] TODO cleanup this and its call sites *)
-      val newTycKind = 
-        case instKind
-         of INST_ABSTR {entities,...} =>
-	    (fn ep => T.ABSTRACT(EE.lookTycEP (entities, ep)))
-          | INST_PARAM => 
-              (fn _ => T.FORMAL)
-          | INST_FMBD => (fn _ => T.FORMAL)
- 
       fun addInst (slot,depth)=
 	  (minDepth := Int.min(!minDepth, depth);
 	   case !slot
@@ -1174,7 +1157,11 @@ fun buildTycClass (cnt, this_slot, instKind, rpath, mkStamp, err) =
 	       of GENtyc {kind,arity,eq,path,...} =>
 		  (case kind
 		    of FORMAL =>
-		       let val knd = newTycKind epath
+		       let val knd =
+			       case instKind
+				of INST_ABSTR {entities,...} =>
+				   T.ABSTRACT(EE.lookTycEP (entities, epath))
+				 | INST_FORMAL => T.FORMAL
 			   val tyc = GENtyc{stamp=mkStamp(), arity=arity,
 					    path=IP.append(rpath,path),
 					    kind=knd, eq=ref(eqprop),
@@ -1244,7 +1231,7 @@ val buildTycClass = wrap "buildTycClass" buildTycClass
 *)
 
 fun sigToInst (ERRORsig, instKind, rpath, err, compInfo) = 
-      (ErrorStr,[],[],0)
+      (ErrorStr,[],[])
   | sigToInst (sign, instKind, rpath, err,
 	       compInfo as {mkStamp,...}: EU.compInfo) = 
   let val flextycs : T.tycon list ref = ref [] (* the "abstract" tycons *)
@@ -1312,7 +1299,7 @@ fun sigToInst (ERRORsig, instKind, rpath, err, compInfo) =
       val strInst = !baseSlot
       val _ = expand strInst
 
-   in (strInst, !flextycs, !flexeps, !cnt)
+   in (strInst, !flextycs, !flexeps)
   end (* fun sigToInst *)
 
 exception Get_Origin  (* who is going to catch it? *)
@@ -1364,28 +1351,6 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 				stamp := STAMP s; s
 			    end
 		  end
-
-		val newFctBody = 
-		  (case instKind
-		    of INST_ABSTR {entities,...} =>
-		       let fun f (sign as FSIG{paramvar,bodysig,...},ep,_,_) =
-			       let val fctEnt = EE.lookFctEP (entities, ep)
-				   val bodyExp = 
-				       M.ABSstr (bodysig,
-						 APPLY(CONSTfct fctEnt, 
-						       VARstr [paramvar]))
-			       in bodyExp
-			       end
-			     | f _ = bug "newFctBody:INST_ABSTR"
-		       in
-			   f
-		       end
-		     | INST_FMBD =>
-		       (fn (sign, _, _, _) => M.FORMstr sign)
-
-		     | INST_PARAM => 
-		       (fn (sign, ep, rp, nenv) => 
-			  M.FORMstr sign))
 
 		fun instToTyc(ref(INST tycon),_) = tycon 
 		      (* already instantiated *)
@@ -1517,22 +1482,29 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			    | NONE =>
 			      let val stamp = mkStamp()
 				  val (bodyExp) =
-				      newFctBody(sign, epath, path, entEnv)
-				  val (paramRlzn, _, _, _) =
+				      case instKind
+				       of INST_ABSTR {entities,...} =>
+					  let val fctEnt = EE.lookFctEP (entities, epath)
+					   in M.ABSstr (bodysig,
+							APPLY(CONSTfct fctEnt, 
+							      VARstr [paramvar]))
+					  end
+					| INST_FORMAL => M.FORMstr sign
+				  val (paramRlzn, _, _) =
 				      instGeneric{sign=paramsig, entEnv=entEnv, 
 	                                          rpath=path, 
 						  region=SourceMap.nullRegion,
-	                                          instKind=INST_PARAM, 
+	                                          instKind=INST_FORMAL, 
 					          compInfo=compInfo}
 				  val nenv = EE.mark(mkStamp, 
 						     EE.bind(paramvar, 
 							     STRent paramRlzn,
 							     entEnv))
-				  val (bodyRlzn : strEntity,_,_,_) = 
+				  val (bodyRlzn : strEntity, _, _) = 
 				      instGeneric{sign=bodysig, entEnv=nenv,
 						  rpath=path,
 						  region=SourceMap.nullRegion,
-						  instKind=INST_FMBD,
+						  instKind=INST_FORMAL,
 					          compInfo=compInfo}
 				  val cl = CLOSURE{param=paramvar,
 						   body=bodyExp,
@@ -1659,47 +1631,39 @@ end (* fun instToStr *)
    region: SourceMap.region -- soure region for error messages
    compInfo : compInfo  -- for mkStamp and error
 ->
-   strEnt : structure entity
+   strEnt : strEntity (str realization)
    abs_tycs : tycon list  -- tycs introduced by instantiation
-   all_eps : entpath list -- collected in sigToInst + instToStr
    tyceps :  entpath list -- the initial segment of all_eps
-     collected in sigToInst
+                             collected in sigToInst
 *)
 and instGeneric{sign, entEnv, instKind, rpath, region, 
                 compInfo as {mkStamp,error,...} : EU.compInfo} =
   let val _ = debugmsg (">>instantiate: "^signName sign)
       val _ = error_found := false
       fun err sev msg = (error_found := true; error region sev msg)
+
+      (* what was this supposed to do???
       val baseStamp = mkStamp()
- 
-      val (inst, abstycs, tyceps, cnt) = 
+      *)
+
+      val (inst, abstycs, tyceps) = 
           sigToInst(sign, instKind, rpath, err, compInfo)
-
-      val counter = ref cnt
-      fun cntf x = 
-        let val k = !counter
-            val _ = (counter := k + 1)
-         in k
-        end
-
-      val alleps = ref (tyceps)
 
       val strEnt = 
           instToStr(inst,entEnv,instKind,rpath,err,compInfo)
 
-      val (abs_tycs, all_eps) = 
-          (rev abstycs, rev(!alleps))
+      val tyceps = rev tyceps
 
-      (* let's memoize the resulting boundeps list *)
+      (* let's memoize the resulting bound tycon entity paths, tyceps *)
       val _ = case sign 
-               of M.SIG sr =>
-		  (case ModPropList.sigBoundeps sr of
-		       NONE => ModPropList.setSigBoundeps (sr, SOME all_eps)
-		     | _ => ())
+               of M.SIG sigrec =>
+		  (case ModPropList.sigBoundeps sigrec
+		     of NONE => ModPropList.setSigBoundeps (sigrec, SOME tyceps)
+		      | _ => ())
 		| _ => ()
 
       val _ = debugmsg "<<instantiate"
-   in (strEnt, abs_tycs, all_eps, rev tyceps)
+   in (strEnt, rev abstycs, tyceps)
   end
 
 (* debugging wrappers
@@ -1708,37 +1672,38 @@ val instToStr = wrap "instToStr" instToStr
 val instGeneric = wrap "instantiate" instGeneric
 *)
 
+(* The exported instantiation functions: instFormal and instAbstr *)
+
+(* instFormal and instAbstr when called in EvalEntity will use the
+ * abstycs and tyceps fields of the returned record to augment
+ * an entity path context.
+ * instFormal when called in ElabMod will only use the rlzn field.
+ * instFmBody is called in ElabMod and EvalEntity, while instAbstr
+ * is called in SigMatch and EvalEntity.
+ * In SigMatch, the tyceps field returned by instAbstr is not used.
+ * instFormal replaces the former instParam and instFmBody.
+ *)
+
 (*** instantiation of the formal functor body signatures ***)
-fun instFmBody{sign, entEnv, rpath, region, compInfo} =
-  let val (rlzn, abstycs, _, tyceps)
-        = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_FMBD,
+fun instFormal{sign, entEnv, rpath, region, compInfo} =
+  let val (rlzn, abstycs, tyceps)
+        = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_FORMAL,
                       rpath=rpath, region=region, compInfo=compInfo}
    in {rlzn=rlzn, abstycs=abstycs, tyceps=tyceps}
   end
 
 (*** instantiation of the structure abstractions **)
 fun instAbstr{sign, entEnv, srcRlzn, rpath, region, compInfo} =
-  let val (rlzn, abstycs, _, tyceps)
+  let val (rlzn, abstycs, tyceps)
         = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_ABSTR srcRlzn,
                       rpath=rpath, region=region, compInfo=compInfo}
    in {rlzn=rlzn, abstycs=abstycs, tyceps=tyceps}
   end
 
-(*** instantiation of the functor parameter signatures ***)
-fun instParam{sign, entEnv, rpath, region, compInfo} =
-  let val (rlzn, _, _, _) 
-        = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_PARAM,
-                      rpath=rpath, region=region, compInfo=compInfo}
-   in rlzn
-  end
-
-val instParam = 
-  Stats.doPhase (Stats.makePhase "Compiler 032 instparam") instParam
+val instFormal = 
+  Stats.doPhase (Stats.makePhase "Compiler 032 instformal") instFormal
 
 (*
-val instFmBody = 
-  Stats.doPhase (Stats.makePhase "Compiler 032 2-instFmBody") instFmBody
-
 val instAbstr = 
   Stats.doPhase (Stats.makePhase "Compiler 032 3-instAbstr") instAbstr
 
