@@ -1001,7 +1001,7 @@ case fctexp
 		     | _ => ()
 
 	  (* now we can assume that paramSig is defined *)
-          (* we instantiate the paramSig to get a realization (paramRlzn).
+          (* we formally instantiate the paramSig to get a realization (paramRlzn).
            * This creates new stamps, but we don't bother to add them to the
            * epcontext while instantiating, we do it below using mapPaths.
 	   * All fresh stamps created during this instantiation will be considered
@@ -1034,18 +1034,21 @@ case fctexp
 		| SOME _ => SE.bind(paramName, B.STRbind paramStr, env)
           val _ = debugmsg "--elabFct[BaseFct]: param bound/opened"
 
-          (* push a functor abstraction layer onto epContext *)
+          (* push a functor abstraction layer onto epContext, with a new,
+	   * empty pathMap and an empty context path. *)
           val epContext' = EPC.enterClosed epContext 
           (* add parameEntVar to context of epContext *)
           val epContext' = EPC.enterOpen(epContext', paramEntVar) 
 
-          (* fill in pathEnv with paths for elements of paramStr *)
+          (* extend the pathMap of the epcontext' with paths for elements of paramStr *)
           val _ = mapPaths(epContext',paramStr,flex)
           val _ = EPC.bindStrEntVar(epContext',MU.strId paramStr,paramEntVar)
           val _ = debugmsg "--elabFct[BaseFct]: epContext initialized"
 
           (* this code is redundant, since constraint will always be NoSig, 
-           * so csigExpOp, csigOp, and entsvOp will all be NONE *)
+           * so csigExpOp, csigOp, and entsvOp will all be NONE. any result
+           * signature coercion has been delegated to the result structure
+	   * wrapper. *)
 (*
           (* must elaborate result signature before the body is elaborated
 	     so that epContext' is not changed *)
@@ -1070,7 +1073,8 @@ case fctexp
 
           val _ = debugmsg "--elabFct[BaseFct]: result signature elaborated"
 
-          (* adjust the EU.context value *)
+          (* adjust the EU.context value. Note that context' = context if
+	   * we were already inside a functor. *)
           val context' = EU.INFCT{flex=flex}
 
           (* bodyDee was discarded here; however, it was not discarded when
@@ -1094,14 +1098,14 @@ case fctexp
 
           val _ = debugmsg "--elabFct[BaseFct]: body constrained"
 *)
-          val (bodyAbsDec', bodyStr', bodyExp') = (bodyAbsDec, bodyStr, bodyExp)
-	  
-          val fctExp = M.LAMBDA{param=paramEntVar,paramRlzn=paramRlzn,
-				body=bodyExp'}
+(*          val (bodyAbsDec', bodyStr', bodyExp') = (bodyAbsDec, bodyStr, bodyExp)
+*)	  
+          val fctExp = M.LAMBDA{param=paramEntVar, paramRlzn=paramRlzn,
+				body=bodyExp}
 
           val resFct = 
             let val (bodySig,bodyRlzn) = 
-		    case bodyStr' 
+		    case bodyStr 
 		     of STR { sign, rlzn, ... } => (sign, rlzn)
 		      | _ => (ERRORsig, bogusStrEntity)
 
@@ -1114,7 +1118,7 @@ case fctexp
 			    paramRlzn = paramRlzn,
 			    bodyRlzn = M.bogusStrEntity, (* DELETE *)
 			    closure = M.CLOSURE{param=paramEntVar,
-						body=bodyExp',
+						body=bodyExp,
 						env=entEnv},
 		(* Closure: Using the old entity environment !! *)
 			    properties = PropList.newHolder (),
@@ -1130,7 +1134,7 @@ case fctexp
 
           val resDec =
             let val fctdef = A.FCTfct{param=paramStr,
-                                      def=A.LETstr(bodyAbsDec',A.VARstr bodyStr')}
+                                      def=A.LETstr(bodyAbsDec,A.VARstr bodyStr)}
              in A.FCTdec [A.FCTB {name=name, fct=resFct, def=fctdef}]
             end
 
