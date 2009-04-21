@@ -81,7 +81,7 @@ fun eqTycon(x : tycon, y : tycon) =
 (* applyTyfun : Types.tyfun * TypesTP.ty list -> TypesTP.ty *)
 (* MU.transType *)
 (* BT.isArrowType *)
-(* BT.--> *)
+(* BT.--> *) 
 end (* local *)
 
 end (* struct *)

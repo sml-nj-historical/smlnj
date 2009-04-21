@@ -57,3 +57,29 @@ where n = length(btvs), the polymorphically bound tyvars.
 
 mkVE takes care of calculating the type instantiation parameters for
 primops relative to their intrinsic types.
+
+
+========================================
+
+RepTycProps
+
+In order to translate functors into FLINT type abstractions, the
+compiler needs to identify the primary type components that 
+need to be translated into PLambda types. 
+
+Tycpaths encode the higher-order kind information for the 
+primary type components of functors. This information is 
+transmitted throughout Translate by a flextycmap which is 
+a map from stamps to tycpaths. 
+
+Translate currently uses this functionality in three places. 
+1. TransTypes uses RepTycProps.getTk to compute primary type 
+component information which in turn is used to obtain 
+PLambda kinds in TransTypes.fctRlznLty.
+2. In Translate.mkStrexp we compute tycpaths for the arguments 
+in an APPstr. These tycpaths can be translated into PLambda types tycs
+for the PLambda/FLINT-level type application APP(TAPP(e1, tycs), e2).
+3. In Translate.mkFctexp we compute tycpaths for the primary 
+formal parameters in the FCTfct case in order to obtain the kinds knds
+for use in the PLambda/FLINT-level type abstraction: 
+TFN(knds, FN(v, ...))

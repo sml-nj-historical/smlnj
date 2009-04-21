@@ -42,7 +42,7 @@ local structure BT = BasicTypes
       structure TP = TypesTP
       structure FTM = FlexTycMap
 
-      open AbsynTP Types Modules ElabDebug
+      open Types Modules ElabDebug
 in
 
 type flexmap = TypesTP.tycpath FlexTycMap.map 
