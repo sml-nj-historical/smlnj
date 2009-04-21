@@ -52,4 +52,57 @@ a type as separate properties.
 
 Structure Declarations (elabStrbs, L1135)
 
+* two entity variables
 entv - fresh entitiy variable for current str binding (L1165)
+entsv - if no constraint coercion, same as entv, but if there is
+        a constraint, this will be the entVar for the intermediate
+        raw structure before coercion.
+
+* resStr vs bindStr
+
+There are two levels of bindings
+
+    structure A = strexp
+
+is elaborated into the equivalent of:
+
+    structure A =			  [static defStr = resStr]
+       let structure <tempStr> = strexp
+	in <tempStr>  (resStr)
+       end
+
+represented as:
+
+    STRB{name = A,
+	 str = bindStr,
+	 def = LETstr(STRB(name = <tempStr>, str = resStr, ...),
+		      VARstr resStr)}
+
+where bindStr and resStr are naturally the same, because A and <tempStr>
+are essentially the same structure (same static desc), but they will have
+to have different access values.
+
+If there is a constraint, as in
+
+    structure A: SIG = strexp
+
+Then the elaboration produces a declaration sequence for the constrained 
+rhs definition:
+
+structure A =                             [static bindStr]
+  let
+    structure <tempStr> = strexp          [static defStr]
+    structure <anonStr> =                 [static resStr]
+       let <sigmatch coercion decls>
+	in STRstr(bindings)
+       end
+   in <anonStr> (resStr)
+  end
+
+represented as:
+
+    STRB{name = A,
+	 str = bindStr,
+	 def = LETstr(SEQdec[STRB(name = <tempStr>, str = defStr, ...),
+	                     STRB(name = <anonStr>, str = resStr, ...)],
+		      VARstr resStr)

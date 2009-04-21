@@ -1054,14 +1054,12 @@ let
               val resStr =
                 let val strEnt = {stamp = strStamp,
                                   entities = resultEntEnv, 
-                                  properties = PropList.newHolder (),
-                                  (* lambdaty = ref NONE, *)
                                   rpath=rpath,
-                                  stub = NONE}
+                                  stub = NONE,
+                                  properties = PropList.newHolder ()}
                     val dacc = DA.newAcc(mkv)
                     val dinfo = MU.strPrimElemInBinds bindings
-                in M.STR {sign=specSig, rlzn=strEnt, access=dacc,
-                          prim=dinfo}
+                in M.STR {sign=specSig, rlzn=strEnt, access=dacc, prim=dinfo}
                 end
 
               val resDec = 
@@ -1085,6 +1083,8 @@ in
    But completely turning this off is a bit too expensive, so 
    we add a fctflag in the signature to indicate whether it 
    contains functor components. 
+   DBM: but we are no longer calculating tycpath information
+   here. Do we still need the fctflag?
 *)
     if (ST.eq(sigStamp, strSigStamp)) andalso closed andalso (not fctflag)
     then (A.SEQdec [], str, M.VARstr (rev epath))    (* short-cut matching *)

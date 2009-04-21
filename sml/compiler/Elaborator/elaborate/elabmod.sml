@@ -583,25 +583,29 @@ fun extractSig (env, epContext, context,
 
 
 (****************************************************************************
- * constrStr : bool * Signature * Structure * strDec * entVar * ...         *
- * The constrStr function is used to carry out the signature matching       *
- * on structure declarations with signature constraints. The first argument *
- * "transp" is a boolean flag; it is used to indicate whether the signature *
- * matching should be done transparently (true) or opaquely (false).        *
- *                                                                          *
+ * constrStr : bool * strDec * Signature * Structure * entVar * ...
+ * The constrStr function is used to carry out the signature matching
+ * on structure declarations with signature constraints.
+ * The first argument "transp" is a boolean flag; it is used to indicate
+ * whether the signature matching should be done transparently (true) or
+ * opaquely (false).
+ * strDec is a dummy (e.g. <tempStr>) declaration form of the the structure
+ * being matched.  entVar is the binding entVar for strDec, and it is 
+ * passed to sigMatch.
+ * The rest of the arguments are passed to sigMatch.
  ****************************************************************************)
-fun constrStr(transp, sign, str, strDec, strExp, entvar, entEnv, rpath, 
-              env, region, compInfo) : A.dec * M.Structure * M.strExp = 
+fun constrStr(transp, strDec, sign, str, strExp, entvar, entEnv, rpath, 
+              statenv, region, compInfo) : A.dec * M.Structure * M.strExp = 
   let val {resDec=resDec1, resStr=resStr1, resExp=resExp1} = 
           SM.matchStr{sign=sign, str=str, strExp=strExp, entvar=entvar, 
-		      entEnv=entEnv, rpath=rpath, statenv=env, 
+		      entEnv=entEnv, rpath=rpath, statenv=statenv, 
 		      region=region, compInfo=compInfo}
 
    in if transp then (A.SEQdec[strDec, resDec1], resStr1, resExp1)
       else let val {resDec=resDec2, resStr=resStr2, resExp=resExp2} = 
                    SM.packStr{sign=sign, str=resStr1, strExp=resExp1, 
                               entEnv=entEnv, rpath=rpath, 
-                              statenv=env, region=region, compInfo=compInfo}
+                              statenv=statenv, region=region, compInfo=compInfo}
            in (A.SEQdec[strDec, resDec1, resDec2], resStr2, resExp2)
            end
   end
@@ -847,9 +851,8 @@ fun elab (BaseStr decl, env, entEnv, region) =
 
           (** elaborating the signature matching *)
           val (resDec, resStr, resExp) = 
-              constrStr(transp, csig, str, strAbsDec, exp, 
-                        entsv, entEnv, rpath,
-                        env, region, compInfo)
+              constrStr(transp, strAbsDec, csig, str, exp, entsv,
+                        entEnv, rpath, env, region, compInfo)
 
        in (resDec, resStr, resExp, resDee)
       end
@@ -1067,9 +1070,10 @@ case fctexp
 				    entEnv=entEnv', epContext=epContext', 
 				    region=region, compInfo=compInfo},
 			 transp))
-*)
+      These are equivalent to:
           val entsvOp = NONE
 	  val csigOp = NONE
+*)
 
           val _ = debugmsg "--elabFct[BaseFct]: result signature elaborated"
 
@@ -1080,7 +1084,7 @@ case fctexp
           (* bodyDee was discarded here; however, it was not discarded when
              functor is applied. *)
           val (bodyAbsDec, bodyStr, bodyExp, bodyDee) = 
-              elabStr(body, NONE, env', entEnv', context', epContext', entsvOp,
+              elabStr(body, NONE, env', entEnv', context', epContext', NONE,
                       IP.IPATH [], region, compInfo)
           val _ = debugmsg "--elabFct[BaseFct]: body elaborated"
           val _ = showStr("--elabFct[BaseFct]: bodyStr: ",bodyStr,env)
@@ -1091,7 +1095,7 @@ case fctexp
               case (csigOp, entsvOp)
                 of (NONE,_) => (bodyAbsDec, bodyStr, bodyExp)
                  | (SOME (csig,csigTrans), SOME entsv) =>
-		   constrStr(csigTrans, csig, bodyStr, bodyAbsDec, bodyExp,
+		   constrStr(csigTrans, bodyAbsDec, csig, bodyStr, bodyExp,
 			     entsv, entEnv', IP.IPATH[], env', 
 			     region, compInfo)
 		 | _ => bug "result constraint in elabFct"
@@ -1197,9 +1201,6 @@ fun loop([], decls, entDecls, env, entEnv) =
                  | _ => bug "non structure bindings in elabStrbs"
           val _ = debugmsg("--elabStrbs: structure "^S.name name)
 
-          (* make up an entity variable for the current str declaration *)
-          val entv = mkStamp()   (* we don't always have to do this *)
-
           (* entsv is the context for evaluating the right-handside 
              of a structure declaration *)
           val csigexpOp =
@@ -1222,37 +1223,24 @@ fun loop([], decls, entDecls, env, entEnv) =
 		       | _ => SOME(csig, transp)
 		  end
 
-          (* the temporary anonymous structure *)
+          (* create an entity variable for the current str declaration *)
+          val entv = mkStamp()   (* we don't always have to do this *)
+          (* create a second entVar for the intermediate structure when
+	   * there is a signature constraint *)
           val entsv = 
               case csigOp
-               of NONE => entv
+               of NONE => entv  (* no constraint => entsv = entv *)
                 | _ => mkStamp()
 
-          (** elaborating the structure body *)
-          val (strAbsDec, str, exp, deltaEntEnv) = 
-            elabStr(def, SOME name, env0, entEnv0, context, epContext,
-                    SOME entsv, IP.extend(rpath,name), region', compInfo)
-
-	  (** check for partially applied curried functor *)
-	  val str = if S.eq(name,returnId) then
-	            (* str should be functor application wrapper structure
-		     * with single structure component "resultStr" *)
-                       if (case str
-                             of ERRORstr => true
-                              | _ => (case MU.getStrSymbols str
-                                        of [sym] => S.eq(sym,resultId)
-                                         | _ => false))
-                       then str
-                       else (error region' EM.COMPLAIN
-                             ("structure " ^ S.name(IP.last rpath) ^
-                              " defined by partially applied functor")
-                             EM.nullErrorBody;
-                             ERRORstr)
-		    else str
+          (** elaborating the structure body.
+           *  defAbsDec with be a binding of the actual structure to <tempStr> *)
+          val (defAbsDec, defStr, defExp, deltaEntEnv) =
+              elabStr(def, SOME name, env0, entEnv0, context, epContext,
+                      SOME entsv, IP.extend(rpath,name), region', compInfo)
 
           val _ = debugmsg "--elabStrbs: elabStr done"
 (*
-	  val _ = showStr("unconstrained structure: ",str,env)
+	  val _ = showStr("unconstrained structure: ",defStr,env)
 *)
           (** elaborating the signature matching: notice that we did
               introduce stamps during the abstraction matching, but
@@ -1260,9 +1248,9 @@ fun loop([], decls, entDecls, env, entEnv) =
               caught by the post sig-matching "mapPaths" function call. *)
           val (resDec, resStr, resExp) = 
               case csigOp
-	       of NONE => (strAbsDec, str, exp)
+	       of NONE => (defAbsDec, defStr, defExp)
 		| SOME (csig,transp) => 
-                    constrStr(transp, csig, str, strAbsDec, exp, 
+                    constrStr(transp, defAbsDec, csig, defStr, defExp, 
                               entsv, entEnv0, IP.IPATH[name], 
                               StaticEnv.atop(env,env0), region, compInfo)
 
@@ -1270,7 +1258,7 @@ fun loop([], decls, entDecls, env, entEnv) =
               case csigOp
                of NONE => deltaEntEnv
                 | SOME _ =>
-                    (case str 
+                    (case defStr
                       of M.STR { rlzn, ... } =>
                           EE.bind(entsv, M.STRent rlzn, deltaEntEnv)
                        | _ =>
@@ -1279,14 +1267,19 @@ fun loop([], decls, entDecls, env, entEnv) =
           val _ = debugmsg "--elabStrbs: constrain done" 
            
           val _ = showStr("--elabStrbs: resStr: ",resStr,env)
-          (*
+
+          (* We create a second copy of resStr, named bindStr, that differs only
+           * in that it has a different lvar as its access.  This is required because
+           * the binding is double layered (see definition of bindAbs below),
+	   * where bindStr is associated with the outer binding to name, while
+	   * resStr is associated with the inner binding in resDec (e.g. to
+	   * <tempStr>).
            * WARNING: bindStr modifies the access field of resStr; this
            * may create structures with same modIds but different dynamic
            * accesses --- BUT, we assume that before or during the pickling, 
            * both the dynamic access and the inl_info will be updated 
            * completely and replaced with proper persistent accesses (ZHONG)
            *)
-          (* [KM ???] What is the purpose of changing the dynamic access? *)
           val (bindStr, strEnt) = 
             case resStr
              of STR { rlzn, sign, access, prim } =>
@@ -1300,10 +1293,12 @@ fun loop([], decls, entDecls, env, entEnv) =
 
           val _ = showStr("--elabStrbs: bindStr: ",bindStr,env)
 
-          val sb = A.STRB{name = name,
-			  str = bindStr, 
-                          def = A.LETstr(resDec, A.VARstr resStr)}
-          val decls' = sb :: decls
+          (* this is a two-layer binding, with the outer binding to name and
+	   * an inner binding in resDec for the rhs strexp *)
+          val bindAbs = A.STRB{name = name,
+			       str = bindStr, 
+                               def = A.LETstr(resDec, A.VARstr resStr)}
+          val decls' = bindAbs :: decls
 
           val (entEnv', entDecls') = 
             case context
