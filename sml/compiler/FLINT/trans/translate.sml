@@ -194,8 +194,6 @@ val mkv = LambdaVar.mkLvar
 fun mkvN NONE = mkv()
   | mkvN (SOME s) = LambdaVar.namedLvar s
 *)
-(* val (rootdec', ftmap) = RepTycProps.procDec(rootdec, DebIndex.top) *)
-(* val ftmap = FlexTycMap.empty*)
 
 val mkvN = #mkLvar compInfo
 fun mkv () = mkvN NONE
@@ -204,12 +202,6 @@ fun mkv () = mkvN NONE
 (** generate the set of ML-to-FLINT type translation functions *)
 val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty} =
     TT.genTT()
-(* fun tpsKnd x = tpsKnd' x handle _ => bug "tpsKnd"
-fun tpsTyc x = tpsTyc' x handle _ => bug "tpsTyc"
-fun toTyc x = toTyc' x handle _ => bug "toTyc"
-fun toLty x = toLty' x handle _ => bug "toLty"
-fun strLty x = strLty' x handle _ => bug "strLty"
-fun fctLty x = fctLty' x handle _ => bug "fctLty" *)
 
 fun toTcLt fm d = (toTyc fm d, toLty fm d) 
 
@@ -1460,38 +1452,7 @@ and mkStrexp (ftmap0, se, d) =
   end
 
 and mkFctexp (ftmap0, fe, d) : flexmap * lexp = 
-  let (* fun getFctKnds(M.SIG{elements,...}) =
-	let (* Tyc Kinds precede all Functor Kinds, 
-	       so they are computed separately *)
-	    fun getFct((_,spec)::rest) =
-		(case spec
-		   of M.FCTspec{entVar, sign=M.FSIG{paramsig,bodysig,...}, ...} => 
-		      LT.tkc_fun(getFctKnds paramsig,
-				 LT.tkc_seq 
-				     (getFctKnds bodysig))::getFct(rest)
-		    | _ => getFct rest)
-	      | getFct([]) = []
-	    fun getTyc((_,spec)::rest) =
-		(case spec 
-		   of M.TYCspec{entVar, info=M.RegTycSpec{spec=tycon,...}} => 
-		      (case tycon (* Only want PLam kind of "representative" tycs 
-				     which should be a GENtyc of kind FLEXTYC
-				     processed in instantiate *)
-			 of TP.GENtyc {kind=TP.FORMAL,arity,...} =>
-		            LT.tkc_int(arity)::getTyc(rest)
-			  | TP.GENtyc {kind=_,...} => 
-			    (* FIXME?? Datatypes shouldn't be dropped *)
-			    getTyc rest
-			  | TP.DEFtyc{tyfun=TP.TYFUN{arity,...},...} =>
-		            getTyc(rest)
-			  | _ => bug "getFctKnds 1")
-		    | M.STRspec{entVar, sign, def, ...} => 
-		        getFctKnds(sign)@getTyc(rest)
-		    | _ => getTyc rest)
-	       | getTyc([]) = []
-	in (getTyc elements)@(getFct elements)
-	end 
-	| getFctKnds(_) = bug "getFctKnds 2" *)
+  let 
       fun g (fm, fe) = 
 	  case fe
 	   of (VARfct f) => (fm, mkFct(fm, f, d))
@@ -1508,11 +1469,7 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
 						       rlzn, sign, d)
 		   
 		   val knds = map tpsKnd argtycs
-		     (* Old way of obtaining kinds from INST *)
-		   (* val knds = getFctKnds sign *) (* Computing kinds directly *)
-		   (*val _ = print ("tpsKnd: "^Int.toString (length knds)^"\n")
-		   val _ = app (fn k => (ppTKind k; print " ")) knds
-		   *)val _ = debugmsg ("--getFctKnds: "^
+		   val _ = debugmsg ("--getFctKnds: "^
 				       Int.toString (length knds))
 		   val _ = if !debugging then 
 			       (app (fn k => (ppTKind k; print " ")) knds; 
