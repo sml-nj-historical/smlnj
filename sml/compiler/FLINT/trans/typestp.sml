@@ -1,6 +1,9 @@
 structure TypesTP =
 struct
 
+local
+  structure LT = LtyExtern
+in 
 (* tycpaths: an intermediate representation of FLINT types that will be
  * translated into true FLINT types in translate. *)
 
@@ -10,6 +13,7 @@ datatype tycpath (* (instantiated) functor type parameter path *)
   | TP_FCT of tycpath list * tycpath list
   | TP_APP of tycpath * tycpath list
   | TP_SEL of tycpath * int
+end (* local *)
 
 end (* structure TypesTP *)
 
