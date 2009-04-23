@@ -35,8 +35,8 @@ struct
 	
 local
       structure M = Modules
-      structure TP = Types
-      structure T = TypesTP
+      structure T = Types
+      structure TP = TypesTP
       structure EE = EntityEnv
       structure EP = EntPath
       structure SE = StaticEnv
@@ -122,63 +122,6 @@ in
 					print "\n")))
 
       end (* local ElabDebug, PPModules *)
- (*
-      fun eqTycon(T.NoTP tc, T.NoTP tc') = TU.equalTycon(tc,tc')
-	| eqTycon _ = raise Fail "Unimplemented"
-
-      fun eqTycPath(T.TP_VAR x, T.TP_VAR x') = 
-	  (case (x, x')
-	    of (v1 as {tdepth, num, kind}, 
-		v2 as {tdepth=tdepth', num=num', kind=kind'}) =>
-	       if DI.eq(tdepth,tdepth') andalso 
-		  num = num' andalso LT.tk_eqv(kind, kind') 
-	       then true
-	       else let fun printTPVar({tdepth, num, kind}) = 
-			    (print ("\nTP_VAR("^DI.di_print tdepth^ 
-				    ", "^Int.toString num^", "); 
-			     (* PP.with_default_pp 
-				 (fn ppstrm => PPLty.ppTKind 20 ppstrm kind); *)
-				 print ")")
-		    in if !debugging 
-		       then 
-			   (print "\n===eqTycPath TP_VAR unequal===\n";
-			    printTPVar v1; print "\n"; printTPVar v2)
-		       else (); 
-	               false
-		    end)
-        | eqTycPath(T.TP_TYC tyc, T.TP_TYC tyc') = 
-            (debugmsg "--eqTycPath Tycon"; eqTycon(tyc, tyc')) 
-	    (* typeutils eqTycon only compares DEFtyc stamps. equalTycon 
-	       resolves DEFtycs. Unfortunately, it appears that the tycs
-	       this module obtains are reduced forms of the ones 
-	       Instantiate produces. 
-	     *)
-        | eqTycPath(T.TP_FCT(partps, bodytps), T.TP_FCT(partps',bodytps')) =
-		ListPair.allEq eqTycPath (partps, partps') andalso
-		ListPair.allEq eqTycPath (bodytps, bodytps')
-	| eqTycPath(T.TP_APP(tp, argtps), T.TP_APP(tp',argtps')) =
-		eqTycPath(tp,tp') 
-		andalso ListPair.allEq eqTycPath (argtps, argtps')
-  	| eqTycPath(T.TP_SEL(tp, i), T.TP_SEL(tp', i')) = 
-	 	eqTycPath(tp,tp') andalso i = i'
-	| eqTycPath _ = (debugmsg "--eqTycPath other"; false)
-		
-    fun checkTycPath(tp, tp') =
-	if eqTycPath (tp, tp')
-	then true
-	else (print "\n===TycPath unequal===\nPrecomputed:\n";
-	      ppTP tp; print "\nComputed on-the-fly:\n";
-	      ppTP tp'; print "\n\n";
-	      false)
-	
-    fun checkTycPaths(tps, tps') =
-	if length tps = length tps' andalso ListPair.allEq eqTycPath (tps, tps')
-	then true
-	else (print "\n===TycPaths unequal===\nOld:";
-	      List.app ppTP tps; print "\nNew:";
-	      List.app ppTP tps'; print "\n\n";
-	      false)
-  *)
 
     (* Processing *)	
     (* entpaths gets all the entspaths from a list of elements 
@@ -218,7 +161,7 @@ in
 	
     (* repEPs : ep list * EntityEnv -> ep list 
        return the first EPs for each representative TYCent or FCTent 
-       only for FORMAL and FLEXTYC though 
+       only for FORMAL though.
 
        Instantiate should have eliminated any seemingly FORMAL tycs 
        (that were actually constrained by a where or structure definition
@@ -257,14 +200,14 @@ in
 			   (* If the rlzn says the entity contains a 
 			      DATATYPE or a DEFtyc, then we ignore. 
 			      Otherwise, we keep it as representative
-			      (presumably a FORMAL or FLEXTYC) *)
+			      (presumably a FORMAL) *)
 			(case tyc 
-			   of TP.GENtyc{stamp=s,kind,...} =>
+			   of T.GENtyc{stamp=s,kind,...} =>
 				(case kind 
-				   of TP.DATATYPE _ => 
+				   of T.DATATYPE _ => 
 				        loop(rest, env, renv, stmpseen)
 				    | _ => proc s)
-			    | TP.DEFtyc _ => loop(rest,env, renv, stmpseen)
+			    | T.DEFtyc _ => loop(rest,env, renv, stmpseen)
 			    | _ => bug "repEPs 0")
 		      | M.STRent _ => bug "repEPs 1"
 		      | M.ERRORent => (* in MLRISC/ra/risc-ra.sml this actually happens *)
@@ -315,9 +258,9 @@ in
 			  handle EE.Unbound => 
 				 bug ("kinds Unbound "^
 				      EP.entPathToString ep)
-		      of M.TYCent(TP.GENtyc{kind=TP.DATATYPE _, ...}) =>
+		      of M.TYCent(T.GENtyc{kind=T.DATATYPE _, ...}) =>
 			 loop(eps, fsigs, eenv)
-		       | M.TYCent(TP.GENtyc{kind, arity, ...}) =>
+		       | M.TYCent(T.GENtyc{kind, arity, ...}) =>
 			 (* Use this when PK eliminated from front-end:
 	                    (LT.tkc_int arity)::loop(eps, pfsigs) *)
 			 (buildKind arity)::loop(eps, fsigs, eenv)
@@ -360,9 +303,9 @@ in
 			  handle EE.Unbound => 
 				 bug ("kinds Unbound "^
 				      EP.entPathToString ep)
-		      of M.TYCent(TP.GENtyc{kind=TP.DATATYPE _, ...}) =>
+		      of M.TYCent(T.GENtyc{kind=T.DATATYPE _, ...}) =>
 			 loopkind(eps, fsigs, eenv)
-		       | M.TYCent(TP.GENtyc{kind, arity, ...}) =>
+		       | M.TYCent(T.GENtyc{kind, arity, ...}) =>
 			 (* Use this when PK eliminated from front-end:
 	                    (LT.tkc_int arity)::loop(eps, pfsigs) *)
 			 (buildKind arity)::loopkind(eps, fsigs, eenv)
@@ -397,7 +340,7 @@ in
 
 		val kind = LT.tkc_fun(paramtk, LT.tkc_seq bodytk)
 		    (* kinds(paramEnts, bodyEnts, fsig) *)
-		val fctvar = T.TP_VAR{tdepth=d, num=i, kind=kind}
+		val fctvar = TP.TP_VAR{tdepth=d, num=i, kind=kind}
 		val _ = (debugmsg ("--formalBody elements ");
 			 if !debugging then ppSig msig else ())
 	
@@ -406,13 +349,13 @@ in
 		fun loop(ftmap, eenv, [], i, tps) = (ftmap, rev tps)
 		  | loop(ftmap, eenv, ep::rest, i, tps) = 
 		    (case EE.lookEP(eenv, ep)
-		      of M.TYCent(TP.GENtyc{kind=TP.DATATYPE _, stamp, ...}) =>
+		      of M.TYCent(T.GENtyc{kind=T.DATATYPE _, stamp, ...}) =>
 			 let val _ = debugmsg ("--formalBody DATATYPE "^
 					       Stamps.toShortString stamp)
 			 in loop(ftmap, eenv, rest, i, tps) 
 			 end
-		       | M.TYCent(TP.GENtyc{stamp, kind, arity, ...}) =>
-			 let val tp = T.TP_SEL(T.TP_APP(fctvar, argTps), i)
+		       | M.TYCent(T.GENtyc{stamp, kind, arity, ...}) =>
+			 let val tp = TP.TP_SEL(TP.TP_APP(fctvar, argTps), i)
 			     val _ = debugmsg ("--formalBody "^
 					       Stamps.toShortString stamp^
 					       " is index "^
@@ -475,7 +418,7 @@ in
 			fun flatten((stamp, M.STRent{entities,...})::rest) =
 			    (map (fn ep => stamp::ep) 
 				(flatten(EE.toList entities))) @ flatten(rest)
-			  | flatten((stamp, M.TYCent(TP.GENtyc _))::rest) =
+			  | flatten((stamp, M.TYCent(T.GENtyc _))::rest) =
 			    [stamp]::flatten(rest)
 			  | flatten((stamp, (M.FCTent _))::rest) =
 			    [stamp]::flatten(rest)
@@ -508,35 +451,35 @@ in
 			  handle EntityEnv.Unbound =>
 				 (print "\npri for Unbound\n";
 				  raise EntityEnv.Unbound)
-		      of M.TYCent(tyc as TP.GENtyc{kind=TP.DATATYPE _, stamp,...}) =>
-			   let val tp = T.TP_TYC(T.NoTP tyc)
+		      of M.TYCent(tyc as T.GENtyc{kind=T.DATATYPE _, stamp,...}) =>
+			   let val tp = TP.TP_TYC(tyc)
 			       (* val _ = debugmsg "TYCent DATATYPE" *)
 			   in (loop(insertMap(ftmap, stamp, tp), 
 				    tp::tps, entenv, rest, i+1, fs))
 			   end
 			   (* Datatypes should be represented directly in the 
 			      tycpath *)
-		       | M.TYCent(TP.GENtyc{kind=TP.ABSTRACT(tyc),stamp=s1,...}) =>
+		       | M.TYCent(T.GENtyc{kind=T.ABSTRACT(tyc),stamp=s1,...}) =>
 			   let val (tp,s) = 
 				    (case tyc 
-			     of TP.GENtyc{kind=TP.DATATYPE _,stamp,...} =>
-				(T.TP_TYC(T.NoTP tyc), stamp)
-			      | TP.GENtyc{kind=TP.FORMAL, arity, stamp, ...} => 
+			     of T.GENtyc{kind=T.DATATYPE _,stamp,...} =>
+				(TP.TP_TYC(tyc), stamp)
+			      | T.GENtyc{kind=T.FORMAL, arity, stamp, ...} => 
 				(case FTM.find(ftmap, stamp)
 				  of SOME tp' => (tp', stamp)
 				   | NONE => 
 				     (debugmsg ("--eps VAR depth "^DI.dp_print d);
-				      (T.TP_VAR{tdepth=d,num=i,
+				      (TP.TP_VAR{tdepth=d,num=i,
 					 kind=buildKind arity}, stamp)))
 			      | _ => 
 				(debugmsg "--pri[GEN] nonformal/data abstract";
-				 (T.TP_TYC(T.NoTP tyc), s1)))
+				 (TP.TP_TYC( tyc), s1)))
 			    in 
 			       loop(insertMap(ftmap, s, tp), 
 				    tp::tps, entenv,rest,i+1,fs)
 			    end
 		      
-		       | M.TYCent(TP.GENtyc{kind, arity, stamp, ...}) =>
+		       | M.TYCent(T.GENtyc{kind, arity, stamp, ...}) =>
 			 let val _ = debugmsg "--primaryCompInStruct[TYCent GENtyc]"
 			     val kind = buildKind arity
 	                     (* Check if stamp is previously defined. 
@@ -552,7 +495,7 @@ in
 				       tp')
 				    | NONE => 
 				      (debugmsg ("--primaryCompInStruct[TYCent GENtyc] generating "^Stamps.toShortString stamp^" depth="^DI.dp_print d); 
-				       T.TP_VAR {tdepth=d,num=i, kind=kind}))
+				       TP.TP_VAR {tdepth=d,num=i, kind=kind}))
 			       (* val _ = checkTycPath(tp, tp') *)
 			   in 
 			     loop(insertMap(ftmap, stamp, tp'),
@@ -560,7 +503,7 @@ in
 			   end
 		       | M.TYCent tyc => 
 			    (debugmsg "--primaryCompInStruct[TYCent]";
-			     (let val tp = T.TP_TYC(T.NoTP tyc)
+			     (let val tp = TP.TP_TYC(tyc)
 			      in loop(insertMap(ftmap, ev, tp),
 				      tp::tps, entenv, rest, i+1, fs)
 		              end))
@@ -646,13 +589,13 @@ in
 				     val (ftmap2,bodytps) = 
 					 formalBody(ftmap1, #entities bodyRlzn,
 						    argtps, bsig, 
-						    (* T.TP_VAR{tdepth=d, 
+						    (* TP.TP_VAR{tdepth=d, 
 							     num=i,
 							     kind=knds
 							     } *)
 						    paramEnts,
 						    fsig, d, i)
-				     val tp' = T.TP_FCT(argtps, bodytps)
+				     val tp' = TP.TP_FCT(argtps, bodytps)
 				(* val _ = checkTycPath(tp, tp') *)
 				 in 
 				    loop(ftmap2,

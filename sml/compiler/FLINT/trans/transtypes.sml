@@ -138,7 +138,7 @@ fun tpsTyc (fm : flexmap) d tp =
 		if finaldepth < 0 then bug "Invalid depth calculation"
 		else LT.tcc_var(finaldepth, num)
 	    end
-        | h (TP.TP_TYC tc, cur) = tycTyc(fm, TP.tycStripTP tc, cur)
+        | h (TP.TP_TYC tc, cur) = tycTyc(fm, tc, cur)
         | h (TP.TP_SEL (tp, i), cur) = LT.tcc_proj(h(tp, cur), i)
         | h (TP.TP_APP (tp, ps), cur) = 
               LT.tcc_app(h(tp, cur), map (fn x => h(x, cur)) ps)

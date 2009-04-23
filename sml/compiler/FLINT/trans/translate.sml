@@ -40,16 +40,12 @@ local structure B  = Bindings
       structure TU = TypesUtil
       structure V  = VarCon
       structure EU = ElabUtil
-      structure TTP = TypesTP
       structure FTM = FlexTycMap
 
       structure IIMap = RedBlackMapFn (type ord_key = IntInf.int
 					val compare = IntInf.compare)
 
       open Absyn PLambda 
-      (* open AbsynTP (* TODO: Should just qualify pats or split out,
-		      counting on correct shadowing is fragile
-		      and dangerous. *) *)
 in 
 
 type flexmap = TypesTP.tycpath FlexTycMap.map 
@@ -1499,7 +1495,7 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
       fun g (fm, fe) = 
 	  case fe
 	   of (VARfct f) => (fm, mkFct(fm, f, d))
-        | (FCTfct {param as M.STR { sign, access, rlzn, ... }, def }) =>
+            | (FCTfct {param as M.STR { sign, access, rlzn, ... }, def }) =>
 	  (case access of
 	       DA.LVAR v =>
                let 
