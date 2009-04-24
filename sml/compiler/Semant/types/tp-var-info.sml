@@ -2,7 +2,9 @@
  *
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
-structure TVI = struct
+
+structure TVI =
+struct
 local
     exception TP_VAR_INFO of { tdepth: DebIndex.depth,
 			       num: int, kind: PLambdaType.tkind }
@@ -11,4 +13,5 @@ in
     fun fromExn (TP_VAR_INFO x) = x
       | fromExn _ = ErrorMsg.impossible "TVI.fromExn"
 end
-end
+
+end (* structure TVI *)
