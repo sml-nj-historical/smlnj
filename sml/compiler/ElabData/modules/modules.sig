@@ -159,9 +159,9 @@ and envrec =
 and strEntity =
     {stamp    : Stamps.stamp,
      entities : entityEnv,
-     properties: PropList.holder, (* lambdaty *)
      rpath    : InvPath.path,
-     stub     : stubinfo option}
+     stub     : stubinfo option,
+     properties: PropList.holder} (* FLINT lambdaty memoization *)
 
 and strrec =
     {sign   : Signature,
@@ -172,11 +172,10 @@ and strrec =
 and fctEntity =
     {stamp    : Stamps.stamp,
      paramRlzn: strEntity,
-     bodyRlzn:  strEntity, 
      closure  : fctClosure,
-     properties: PropList.holder, (* lambdaty *)
      rpath    : InvPath.path,
-     stub     : stubinfo option}
+     stub     : stubinfo option,
+     properties: PropList.holder}  (* FLINT lambdaty memoization *)
 
 and fctrec =
     {sign   : fctSig,

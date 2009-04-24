@@ -252,66 +252,6 @@ fun (* ppkind env ppstrm (FLEXTYC tp) =
         (*  | FLEXTYC _ => bug "ppkind" *) | ABSTRACT _ => "A"
 	  | DATATYPE _ => "D" | TEMP => "T")
 
-(* and ppTycpath env ppstrm tp =
-    let val {openHVBox,openHOVBox,closeBox,pps,break,...} = en_pp ppstrm
-    in case tp
-	of TP_VAR{tdepth, num, kind} =>
-	   (openHOVBox 1;
-	    pps "TP_VAR(";
-	    ppi ppstrm (DebIndex.dp_toint tdepth);
-	    pps ", ";
-	    ppi ppstrm num;
-	    pps ", ";
-	    ppfctpkind env ppstrm kind;
-	    pps ")";
-	    closeBox())
-	 | TP_TYC tc =>
-	   (openHOVBox 1;
-	    pps "TP_TYC(";
-	    ppTycon env ppstrm tc;
-	    pps ")";
-	    closeBox())
-	 | TP_FCT(tps, tps') =>
-	   (openHOVBox 1;
-	    pps "TP_FCT((";
-	    ppSequence ppstrm
-		       {sep = fn ppstrm => (PP.break ppstrm {nsp=1,offset=0};
-				    PP.string ppstrm "* "),
-			style = INCONSISTENT,
-			pr = (fn _ => fn tp' => ppTycpath env ppstrm tp')}
-		        tps;
-	    pps "), (";
-	    ppSequence ppstrm
-	               {sep = fn ppstrm => (PP.break ppstrm {nsp=1,offset=0};
-					    PP.string ppstrm "* "),
-			style = INCONSISTENT,
-			pr = (fn _ => fn tp' => ppTycpath env ppstrm tp')}
-		        tps';
-	    pps "))";
-	    closeBox())
-	 | TP_APP(optp, argtps) =>
-	   (openHOVBox 1;
-	    pps "TP_APP(";
-	    ppTycpath env ppstrm optp;
-	    pps ", ";
-	    ppSequence ppstrm
-	               {sep = fn ppstrm => (PP.break ppstrm {nsp=1,offset=0};
-					    PP.string ppstrm "* "),
-			style = INCONSISTENT,
-			pr = (fn _ => fn tp' => ppTycpath env ppstrm tp')}
-		       argtps;
-	    pps ")";
-	    closeBox())
-	 | TP_SEL(tp', i) =>
-	   (openHOVBox 1;
-	    pps "TP_SEL(";
-	    ppTycpath env ppstrm tp';
-	    pps ", ";
-	    ppi ppstrm i;
-	    pps ")";
-	    closeBox())
-    end (* ppTycpath *)
- *)
 
 and ppTycon1 env ppstrm membersOp =
     let val {openHVBox,openHOVBox,closeBox,pps,break,...} = en_pp ppstrm

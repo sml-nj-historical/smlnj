@@ -492,7 +492,7 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
     case (sign, ModulePropLists.fctEntityLty rlzn, rlzn) of
 	(sign, SOME (lt, od), _) => LT.lt_adj(lt, od, depth)
       | (fs as FSIG{paramsig, bodysig, ...}, _,
-         {closure as CLOSURE{env,...}, paramRlzn, bodyRlzn=bodyRlzn', ...}) =>
+         {closure as CLOSURE{env,...}, paramRlzn, ...}) =>
         let val _ = debugmsg ">>fctRlznLty[instParam]"
 	    val argRlzn = paramRlzn 
                 (* INS.instParam {sign=paramsig, entEnv=env, tdepth=depth, 
@@ -529,15 +529,10 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
                                  (fn pps => fn ee => 
                                   PPModules.ppEntity pps (ee,SE.empty,100)),
                                   (STRent paramRlzn)));
-			  withInternals(fn () =>
-                           debugPrint("bodyRlzn: ",
-                                 (fn pps => fn ee => 
-                                  PPModules.ppEntity pps (ee,SE.empty,100)),
-                                  (STRent bodyRlzn')));
 			  debugmsg "====================")
 		    else ()
 	    val _ = debugmsg ">>strRlznLty"
-            val bodyLty = strRlznLty(fm, bodysig, bodyRlzn', nd, compInfo)
+            val bodyLty = strRlznLty(fm, bodysig, (raise Fail "bodyRlzn'"), nd, compInfo)
 	    val _ = debugmsg "<<strRlznLty"
             val lt = LT.ltc_poly(ks, [LT.ltc_fct([paramLty],[bodyLty])])
         in

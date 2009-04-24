@@ -1205,7 +1205,6 @@ structure UnpickMod : UNPICKMOD = struct
 		in
 		    ({ stamp = s,
 		       paramRlzn = e,
-		       bodyRlzn = b, (* DELETE *)
 		       closure = c,
 		       rpath = ipath (),
 		       properties = PropList.newHolder (),

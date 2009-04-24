@@ -14,7 +14,7 @@
 *)
 
 (* DBM [4/7/09]
- * all references to bodyRlzn need to be removed, and functor closures should
+ * all references to bodyRlzn have been removed, and functor closures should
  * be used instead.
  *)
 
@@ -264,16 +264,14 @@ in
 			 (* Use this when PK eliminated from front-end:
 	                    (LT.tkc_int arity)::loop(eps, pfsigs) *)
 			 (buildKind arity)::loop(eps, fsigs, eenv)
-		       | M.FCTent{paramRlzn, bodyRlzn (* DELETE *), 
-				  closure=M.CLOSURE{env, ...}, 
-				  ...} =>
+		       | M.FCTent{paramRlzn, closure=M.CLOSURE{env, ...}, ...} =>
                          (* This should be using closure and paramRlzn --
-			  * bodyRlzn is being deleted *)
+			  * bodyRlzn has been deleted *)
 			 (case fsigs 
 			   of [] => bug "kinds.1"
 			    | fsig::rest => 
 			      kinds(#entities paramRlzn, 
-				    #entities bodyRlzn, fsig)::
+				    (raise Fail "#entities bodyRlzn"), fsig)::
 			      loop(eps, rest, eenv))
 		       | _ => bug "kinds.0")
 
@@ -309,15 +307,13 @@ in
 			 (* Use this when PK eliminated from front-end:
 	                    (LT.tkc_int arity)::loop(eps, pfsigs) *)
 			 (buildKind arity)::loopkind(eps, fsigs, eenv)
-		       | M.FCTent{paramRlzn, bodyRlzn (* DELETE *), 
-				  closure=M.CLOSURE{env, ...}, 
-				  ...} =>
+		       | M.FCTent{paramRlzn, closure=M.CLOSURE{env, ...}, ...} =>
                          (* this should be using closure and paramRlzn *)
 			 (case fsigs 
 			   of [] => bug "kinds.1"
 			    | fsig::rest => 
 			      kinds(#entities paramRlzn, 
-				    #entities bodyRlzn, fsig)::
+				    (raise Fail "#entities bodyRlzn"), fsig)::
 			      loopkind(eps, rest, eenv))
 		       | _ => bug "kinds.0")
 
@@ -507,7 +503,7 @@ in
 			      in loop(insertMap(ftmap, ev, tp),
 				      tp::tps, entenv, rest, i+1, fs)
 		              end))
-		       | M.FCTent {stamp, paramRlzn, bodyRlzn (* DELETE *), 
+		       | M.FCTent {stamp, paramRlzn,
 				   closure=M.CLOSURE{env=closenv,...},...} => 
 			   (debugmsg "--primaryCompInStruct[FCTent SOME]";
                            (* this should be using closure and paramRlzn *)
@@ -526,7 +522,7 @@ in
 					original functor before partial 
 					application *)
 				     val paramEnts = #entities paramRlzn
-				     val bodyEnts = #entities bodyRlzn
+				     val bodyEnts = raise Fail "#entities bodyRlzn"
 				     val _ = 
 					 if !debugging then 
 					     (print "\n===FCTent paramEnts===\n";
@@ -587,7 +583,7 @@ in
 				     val bsig = M.SIG psr *)
 			       (* BOGUS! bodyRlzn is being DELETED *)
 				     val (ftmap2,bodytps) = 
-					 formalBody(ftmap1, #entities bodyRlzn,
+					 formalBody(ftmap1, (raise Fail "#entities bodyRlzn"),
 						    argtps, bsig, 
 						    (* TP.TP_VAR{tdepth=d, 
 							     num=i,

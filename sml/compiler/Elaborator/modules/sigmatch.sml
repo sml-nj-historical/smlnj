@@ -1189,29 +1189,14 @@ val {resDec=resDec2, resStr=resStr2, resExp=resExp2} =
                statenv=statenv, region=region, compInfo=compInfo}
   end
 
-(*** constructing the tycpath for the resulting functor ***)
-(* val resTps = 
-  case resStr2 
-   of M.STR { sign, rlzn, ... } =>
-      INS.getTycPaths{sign=sign, rlzn=rlzn, entEnv=fsigBodySigEnv, 
-                      compInfo=compInfo}
-    | _ => [] *)
-(*
-val bodyRlzn = 
-    case resStr2
-     of M.STR { rlzn, ...} => rlzn
-      | _ => bogusStrEntity
-*)
 (*** the resulting coerced functor ***)
 val resFct =
     let val resExp3 = M.LETstr(M.FCTdec(uncoerced, M.CONSTfct fctRlzn), 
 			       resExp2)
 	val resClosure = CLOSURE{param=paramId, body=resExp3, env=entEnv}
-	(* val tps = T.TP_FCT(paramTps, resTps) *)
 
 	val resRlzn = {stamp = #stamp fctRlzn, (*** DAVE ? ***)
 		       paramRlzn = fsigParEnt,
-		       bodyRlzn = bogusStrEntity, (* DELETE *)
 		       closure = resClosure, rpath=rpath,
 		       stub = NONE,
 		       properties = PropList.newHolder ()}
@@ -1533,7 +1518,6 @@ val {resDec=rdec1, resStr=bodyStr, resExp=_} =
              epc=EPC.initContext (* ? ZHONG *), statenv=statenv, 
              rpath=IP.empty, region=region, compInfo=compInfo}
 
-(* val bodyRlzn = EV.evalApp(srcFctRlzn, paramEnt, epc, compInfo) *)
 val bodyRlzn = 
   case bodyStr of M.STR { rlzn, ... } => rlzn
                 | _ => M.bogusStrEntity

@@ -13,11 +13,10 @@ sig
 
 end (* signature EVALENTITY *)
 
-(* functorized to factor out dependencies on FLINT... *)
 structure EvalEntity : EVALENTITY =
 struct
 
-local (* structure DI = DebIndex *)
+local 
       structure EP = EntPath
       structure IP = InvPath
       structure S = SourceMap
@@ -197,7 +196,6 @@ and evalFct (fctExp,  epc, entEnv,
             let val clos = CLOSURE{param=param, body=body, env=entEnv}
 	     in ({stamp = mkStamp (),
 		  paramRlzn = paramRlzn,
-		  bodyRlzn = bogusStrEntity,  (* DELETE *)
 		  closure=clos,
 		  rpath=IP.IPATH[anonFctSym],
 		  stub=NONE,

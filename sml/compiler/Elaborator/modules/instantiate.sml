@@ -61,20 +61,16 @@ sig
 
 end (* signature INSTANTIATE *)
 
-(* functorized to factor out dependencies on FLINT... *)
 structure Instantiate : INSTANTIATE =
 struct
 
 local structure A  = Access
-      (* structure DI = DebIndex *)
       structure ED = ElabDebug
       structure EE = EntityEnv
       structure EM = ErrorMsg
       structure EP = EntPath
       structure EU = ElabUtil
-      (* structure II = InlInfo *)
       structure IP = InvPath
-      (* structure LT = PLambdaType *)
       structure M  = Modules
       structure MU = ModuleUtil
       structure PU = PrintUtil
@@ -1500,19 +1496,12 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 						     EE.bind(paramvar, 
 							     STRent paramRlzn,
 							     entEnv))
-				  val (bodyRlzn : strEntity, _, _) = 
-				      instGeneric{sign=bodysig, entEnv=nenv,
-						  rpath=path,
-						  region=SourceMap.nullRegion,
-						  instKind=INST_FORMAL,
-					          compInfo=compInfo}
 				  val cl = CLOSURE{param=paramvar,
 						   body=bodyExp,
 						   env=entEnv}
 			      in FCTent {stamp = stamp,
 					 rpath=path,
 					 paramRlzn = paramRlzn,
-					 bodyRlzn = bogusStrEntity, (* DELETE *)
 					 closure=cl,
 					 properties = PropList.newHolder (),
 					 stub=NONE}

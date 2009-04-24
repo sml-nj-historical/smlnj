@@ -1251,11 +1251,11 @@ in
 
 	and shStrEntity id = share (STRs id) strEntity
 
-        and fctEntity { stamp = s, paramRlzn = e, bodyRlzn = b, (* DELETE *)
+        and fctEntity { stamp = s, paramRlzn = e,
 			closure, properties, (* tycpath,*) rpath, stub } =
 	    let val op $ = PU.$ FEN
 	    in
-		"f" $ ([stamp s, strEntity e, strEntity b, 
+		"f" $ ([stamp s, strEntity e,
 			fctClosure closure, 
 			ipath rpath]
 		       @ libPid (stub: M.stubinfo option, #owner)) 

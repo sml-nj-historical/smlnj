@@ -29,7 +29,6 @@ local open Array List Types VarCon BasicTypes TypesUtil Unify Absyn
 	   ErrorMsg PrettyPrintNew PPUtilNew PPType PPAbsyn
 
   structure SE = StaticEnv
-  structure DI = DebIndex
   structure DA = Access
   structure EU = ElabUtil
   structure ED = ElabDebug

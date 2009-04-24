@@ -52,7 +52,6 @@ local structure SM = SigMatch
       structure PP = PrettyPrint
       structure A  = Absyn
       structure DA = Access
-      structure DI = DebIndex
       structure PPU = PPUtil
       structure ED = ElabDebug
       structure ST = RedBlackSetFn(type ord_key = S.symbol
@@ -1120,7 +1119,6 @@ case fctexp
 
                 val rlzn = {stamp = mkStamp(),
 			    paramRlzn = paramRlzn,
-			    bodyRlzn = M.bogusStrEntity, (* DELETE *)
 			    closure = M.CLOSURE{param=paramEntVar,
 						body=bodyExp,
 						env=entEnv},

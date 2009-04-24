@@ -213,7 +213,6 @@ and strEntity =
 and fctEntity =
     {stamp    : ST.stamp,
      paramRlzn: strEntity,      (* an instantiation of the param signature *)
-     bodyRlzn : strEntity,      (* body realization -- THIS FIELD WILL BE DELETED *)
      closure  : fctClosure,     (* used to compute result rlzn in functor application *)
      rpath    : IP.path,        (* reverse symbolic path name of the functor *)
      stub     : stubinfo option, (* for pickling isolation *)
@@ -258,29 +257,27 @@ val bogusRpath = IP.IPATH[S.strSymbol "Bogus"]
 val bogusStrEntity : strEntity =
     { stamp = bogusStrStamp, 
       entities = ERReenv,
-      properties = PropList.newHolder (), (* lambdaty = ref NONE *)
       rpath = bogusRpath,
-      stub = NONE}
+      stub = NONE,
+      properties = PropList.newHolder ()}
 
 val bogusSig : Signature = 
     SIG {stamp = bogusSigStamp,
 	 name=NONE, closed=true, fctflag=false,
 	 elements=[],
-	 properties = PropList.newHolder (),
-	 (* boundeps=ref NONE, lambdaty=ref NONE *)
 	 typsharing=[], strsharing=[],
-	 stub = NONE}
+	 stub = NONE,
+	 properties = PropList.newHolder ()}
 
 val bogusFctEntity : fctEntity =
     {stamp = bogusFctStamp,
      paramRlzn = bogusStrEntity,
-     bodyRlzn = bogusStrEntity,
      closure = CLOSURE{param=EP.bogusEntVar,
 		       body= CONSTstr bogusStrEntity,
 		       env=NILeenv},
-     properties = PropList.newHolder (), (* lambdaty = ref NONE *)
      rpath = bogusRpath,
-     stub = NONE}
+     stub = NONE,
+     properties = PropList.newHolder ()}
 
 end (* local *)
 end (* structure Modules *)

@@ -538,7 +538,7 @@ and ppFunsig ppstrm (sign,env,depth) =
     end
 
 and ppStrEntity ppstrm (e,env,depth) =
-    let val {stamp,entities,properties,rpath,stub} = e
+    let val {stamp,entities,rpath,stub,properties} = e
 	val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} =
             en_pp ppstrm
      in if depth <= 1 
@@ -556,16 +556,12 @@ and ppStrEntity ppstrm (e,env,depth) =
 		pps "entities:";
 		nl_indent ppstrm 2;
 		ppEntityEnv ppstrm (entities,env,depth-1);
-		newline();
-		pps "lambdaty:";
-		nl_indent ppstrm 2;
-		ppLty ppstrm ( (* ModulePropLists.strEntityLty e,depth-1 *) );
 	       closeBox ();
 	      closeBox ())
     end
 
 and ppFctEntity ppstrm (e, env, depth) =
-    let val {stamp,paramRlzn,bodyRlzn (*DELETE*),closure,properties,rpath,stub} = e
+    let val {stamp,paramRlzn,closure,rpath,stub,properties} = e
 	val {openHVBox,openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
     in if depth <= 1 
 	then pps "<functor entity>"
@@ -583,25 +579,10 @@ and ppFctEntity ppstrm (e, env, depth) =
 		break{nsp=1,offset=2};
 		ppStrEntity ppstrm (paramRlzn,env,depth-1);
 		newline();
-(* bodyRlzn field to be deleted
-		pps "bodyRlzn: ";
-		break{nsp=1,offset=2};
-		ppStrEntity ppstrm (bodyRlzn,env,depth-1);
-		newline();
-*)
 		pps "closure:";
 		break{nsp=1,offset=2};
 		ppClosure ppstrm (closure,depth-1);
 		newline();
-		pps "lambdaty:";
-		break{nsp=1,offset=2};
-		ppLty ppstrm ( (* ModulePropLists.fctEntityLty e,depth-1 *) );
-	(*	newline();
-		pps "tycpath:";
-		break{nsp=1,offset=2};
-		(case tycpath 
-		  of SOME(tp) => PPType.ppTycpath env ppstrm tp
-		   | NONE => pps "no tycpath"); *)
 	       closeBox ();
 	      closeBox ())
     end

@@ -157,7 +157,6 @@ TopLevel/main/pptable.sml
 
 (* Semantic analysis (elaborator) specialized for SML/NJ. *)
 
-Semant/modules/module-plists.sml
 
 Semant/pickle/pickle-sym-pid.sml
 Semant/pickle/pickmod.sml
@@ -261,6 +260,7 @@ FLINT/trans/pequal.sml
 FLINT/trans/tempexpn.sml
 FLINT/trans/primopmap.sml
 FLINT/trans/translate.sml
+FLINT/trans/module-plists.sml
 FLINT/trans/transtypes.sml
 FLINT/trans/typestp.sml
 FLINT/trans/flextycmap.sml
