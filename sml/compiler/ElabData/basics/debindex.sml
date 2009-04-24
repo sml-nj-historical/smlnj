@@ -15,6 +15,23 @@
  * it is made to be unaware of such middle-end specifics.
  * (08/2001 Blume) *)
 
+(* Basic PLambda type variables are pairs of
+ * indices: (index, count)
+ * where index (the deBruijn index) is the normal lambda binding distance
+ * from the current type variable to its binder, starting with 1 to reference
+ * the innermost binder.  Each binder binds a tuple of variables, and
+ * and the count is used to select from this tuple. The count is zero-based.
+ *
+ * depth is used to represent absolute type abstraction depth, with the top-level
+ * being 0. The deBruijn index is calculated as the current abstraction depth
+ * minus the abstraction depth of the binder of the type variable in question.
+ *
+ * At an abstraction, the binder depth is the then current depth (e.g. the outermost
+ * binder will have depth=0), and the current depth is incremented when entering the
+ * the scope of an abstraction. So the index of any bound type variable occurrence
+ * is >= 1.
+*)
+
 structure DebIndex : DEB_INDEX = 
 struct
 
@@ -23,8 +40,9 @@ in
 
 fun bug s = EM.impossible ("DebIndex: " ^ s)
 
-type depth = int
-type index = int
+type depth = int  (* depth of type abstractions INVARIANT: 0 <= depth *)
+type index = int  (* position within the sequence of type variables bound by
+                     an abstraction INVARIANT: 1 <= index *)
 
 val top = 0
 
