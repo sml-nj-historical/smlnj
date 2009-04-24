@@ -20,8 +20,7 @@
 
 signature REPTYCPROPS = 
 sig
-   val getTk : Modules.fctSig * Modules.strEntity * Modules.strEntity 
-	       * DebIndex.depth 
+   val getTk : Modules.fctSig * Modules.strEntity * DebIndex.depth 
 	       -> (TypesTP.tycpath list * TypesTP.tycpath FlexTycMap.map)  
    val primaryCompInStruct : TypesTP.tycpath FlexTycMap.map * Modules.strEntity
 			     * Modules.strEntity * Modules.Signature 
@@ -615,13 +614,12 @@ in
 	    let *)
 		
 
-	fun getTk(M.FSIG{paramsig=paramsig as M.SIG ps, ...}, dummyRlzn, 
-		  argRlzn, 
+	fun getTk(M.FSIG{paramsig=paramsig as M.SIG ps, ...}, argRlzn, 
 		  d) =
 	    let 
 		val _ = debugmsg ">>getTk"
 		val (ftmap, argtycs') = 
-		    primaryCompInStruct(FTM.empty, dummyRlzn, argRlzn, 
+		    primaryCompInStruct(FTM.empty, argRlzn, argRlzn, 
 					paramsig, d)
 		val _ = debugmsg "<<getTk"
 	    in (argtycs', ftmap)

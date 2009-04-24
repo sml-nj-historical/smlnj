@@ -494,31 +494,30 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
       | (fs as FSIG{paramsig, bodysig, ...}, _,
          {closure as CLOSURE{env,...}, paramRlzn, ...}) =>
         let val _ = debugmsg ">>fctRlznLty[instParam]"
-	    val argRlzn = paramRlzn 
-                (* INS.instParam {sign=paramsig, entEnv=env, tdepth=depth, 
+	    (* val argRlzn = 
+                INS.instParam {sign=paramsig, entEnv=env, tdepth=depth, 
                                rpath=InvPath.IPATH[], compInfo=compInfo,
                                region=SourceMap.nullRegion}   *)
             val nd = DI.next depth
             (* val ks = map tpsKnd tycpaths *)
-	    val (tps, ftmap1) = RepTycProps.getTk(fs, paramRlzn, 
-					 argRlzn, depth)
+	    val (tps, ftmap1) = RepTycProps.getTk(fs, paramRlzn, depth)
 	    val fm = FTM.unionWith (fn(tp1,tp2)=> tp1) (fm, ftmap1)
 	    val _ = debugmsg ">>tpsKnd"
 	    val ks = map tpsKnd tps
 	    val _ = debugmsg ">>strMetaLty"
-            val paramLty = strMetaLty(fm, paramsig, argRlzn, nd, compInfo)
+            val paramLty = strMetaLty(fm, paramsig, paramRlzn, nd, compInfo)
 		     
 	    val _ = debugmsg (">>fctRlznLty calling evalApp nd "^DI.dp_print nd)
             val bodyRlzn = 
-                EV.evalApp(rlzn, argRlzn, EPC.initContext,
+                EV.evalApp(rlzn, paramRlzn, EPC.initContext,
                            IP.empty, compInfo)
 	    val _ = if !debugging
 		    then (debugmsg "==================";
-			  withInternals(fn () =>
+			  (* withInternals(fn () =>
                            debugPrint("argRlzn: ",
                                  (fn pps => fn ee => 
                                   PPModules.ppEntity pps (ee,SE.empty,100)),
-                                  (STRent argRlzn)));
+                                  (STRent argRlzn))); *)
 			  withInternals(fn () =>
                            debugPrint("evalApp: ",
                                  (fn pps => fn ee => 
