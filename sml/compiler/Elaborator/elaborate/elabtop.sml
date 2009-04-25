@@ -11,7 +11,6 @@ sig
 end (* signature ELABTOP *)
 
 
-(* functorized to factor out dependencies on FLINT... *)
 structure ElabTop : ELABTOP =
 struct
 

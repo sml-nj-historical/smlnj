@@ -22,7 +22,6 @@ sig
 end (* signature ELABMOD *)
 
 
-(* functorized to factor out dependencies on FLINT... *)
 structure ElabMod : ELABMOD =
 struct
 

@@ -1,4 +1,4 @@
-(*
+(* Semant/types/cproto.sml (should be moved to FLINT/trans?)
  * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies
  *
  * An ad-hoc encoding of CTypes.c_proto (from MLRISC) in ML types.
@@ -6,6 +6,9 @@
  * it is used just for communicating the function call protocol to
  * the backend. All actual ML arguments are passed as Int32.int,
  * Word32.word, and real.)
+ *
+ * Used in: CodeGen/cpscompile/cps-c-calls.sml
+ *          FLINT/trans/translate.sml
  *
  * author: Matthias Blume
  *)

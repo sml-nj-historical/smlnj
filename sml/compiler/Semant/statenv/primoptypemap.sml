@@ -3,13 +3,15 @@
 
 (* The module PrimOpTypeMap provides a table mapping all the primops formerly
  * defined in the InLine structure to their intrinsic types. The table is
- * indexed by the primop names defined used in InLine.
+ * indexed by the primop names used in InLine.
  * The table is given in the form of the primopTypeMap function, which maps
  * a primop name to the "intrinsic" type (the type formerly used for
  * the primop in InLine).
  *
  * The translate phase will use this table to lookup names in the primId field
  * of variables when translating variables.
+ * 
+ * PrimOpTypeMap is used in Semant/statenv/prim.sml and FLINT/trans/translate.sml.
  *)
 
 signature PRIMOP_TYPE_MAP =

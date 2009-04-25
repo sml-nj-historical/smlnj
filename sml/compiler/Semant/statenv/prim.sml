@@ -1,6 +1,12 @@
 (* Copyright 1996 by AT&T Bell Laboratories *)
 (* prim.sml *)
 
+(* defines the primitive static environment, primEnv, used to start the environment
+ * bootstrap process.
+ * Used in: Elaborator/elaborate/elabcore.sml
+ *          TopLevel/environ/environ.sml
+ *)
+
 signature PRIM_ENV = 
 sig 
   val primEnv : StaticEnv.staticEnv
