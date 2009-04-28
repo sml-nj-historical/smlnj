@@ -44,7 +44,6 @@ local
       structure LT = LtyExtern
       structure TU = TypesUtil
       structure S = Symbol
-(*      structure AT = AbsynTP *)
       structure V = VarCon
       structure FTM = FlexTycMap
 

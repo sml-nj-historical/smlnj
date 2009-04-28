@@ -1584,44 +1584,43 @@ and applyFct{fct as FCT {sign=FSIG{paramsig, bodysig, ...},
              fctExp, argStr, argExp, entvar, epc,
              statenv, rpath, region,
              compInfo as {mkStamp, mkLvar=mkv, ...}} =
-  let val {closure=CLOSURE {env=fctEntEnv, ... }, ... } = fctRlzn
-      val _ = debugmsg ">>applyFct"
+    let val {closure=CLOSURE {env=fctEntEnv, ... }, ... } = fctRlzn
+	val _ = debugmsg ">>applyFct"
 
-      (*** step #1: match the argument structure against paramSig ***)
-      val {resDec=argDec1, resStr=argStr1, resExp=argExp1} =  
-        matchStr {sign=paramsig, str=argStr, strExp=argExp, entvar=entvar, 
-                  entEnv=fctEntEnv, rpath=IP.IPATH[] (* ?DAVE *), 
-                  statenv=statenv, region=region, compInfo=compInfo}
+	(*** step #1: match the argument structure against paramSig ***)
+	val {resDec=argDec1, resStr=argStr1, resExp=argExp1} =  
+	    matchStr {sign=paramsig, str=argStr, strExp=argExp, entvar=entvar, 
+		      entEnv=fctEntEnv, rpath=IP.IPATH[] (* ?DAVE *), 
+		      statenv=statenv, region=region, compInfo=compInfo}
 
-      (*** step #2: do the functor application ***)
-      val argRlzn = case argStr1 of M.STR { rlzn, ... } => rlzn
-                                  | _ => M.bogusStrEntity 
-      val bodyRlzn = EvalEntity.evalApp(fctRlzn, argRlzn, epc, rpath, compInfo)
+	(*** step #2: do the functor application ***)
+	val argRlzn = case argStr1 of M.STR { rlzn, ... } => rlzn
+				    | _ => M.bogusStrEntity 
+	val bodyRlzn = EvalEntity.evalApp(fctRlzn, argRlzn, epc, rpath, compInfo)
 
-      val resStr = 
-        let val bodyDacc = DA.namedAcc(anonSym,mkv)
-         in M.STR {sign=bodysig, rlzn=bodyRlzn,
-		   access=bodyDacc, prim=[]}
-        end
+	val resStr = 
+	    let val bodyDacc = DA.namedAcc(anonSym,mkv)
+	     in M.STR {sign=bodysig, rlzn=bodyRlzn,
+		      access=bodyDacc, prim=[]}
+	    end
 
-      val resDec = 
-        let (* val argtycs = INS.getTycPaths{sign=paramsig, rlzn=argRlzn, 
-                                          entEnv=fctEntEnv, compInfo=compInfo} *)
-            val body = A.APPstr{oper=fct, arg=argStr1(* , argtycs=argtycs *)}
-            val resAbs = A.LETstr(argDec1, body)
+	val resDec = 
+	    let (* val argtycs = INS.getTycPaths{sign=paramsig, rlzn=argRlzn, 
+						 entEnv=fctEntEnv, compInfo=compInfo} *)
+		val body = A.APPstr{oper=fct, arg=argStr1(* , argtycs=argtycs *)}
+		val resAbs = A.LETstr(argDec1, body)
+	     in A.STRdec [A.STRB{name=anonSym, str=resStr, def=resAbs}]
+	    end
 
-         in A.STRdec [A.STRB{name=anonSym, str=resStr, def=resAbs}]
-        end
+	val resExp = M.APPLY(fctExp, argExp1)
+	val _ = debugmsg "<<applyFct"
 
-      val resExp = M.APPLY(fctExp, argExp1)
-      val _ = debugmsg "<<applyFct"
-
-   in {resDec=resDec, resStr=resStr, resExp=resExp}
-  end
-| applyFct {fct=ERRORfct, ...} = 
+     in {resDec=resDec, resStr=resStr, resExp=resExp}
+    end
+  | applyFct {fct=ERRORfct, ...} = 
       {resDec=A.STRdec [], resStr=M.ERRORstr, 
        resExp=M.CONSTstr M.bogusStrEntity}
-| applyFct _ = bug "applyFct:bad functor"
+  | applyFct _ = bug "applyFct:bad functor"
 
 (*** top leve wrappers: used for profiling the compilation time *)
 (*

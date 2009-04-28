@@ -49,8 +49,8 @@ sig
   val instAbstr : 
          {sign     : Modules.Signature,
           entEnv   : Modules.entityEnv,
-          srcRlzn  : Modules.strEntity, 
-          rpath    : InvPath.path,      (* rlzn of structure being abstracted *)
+          srcRlzn  : Modules.strEntity,   (* rlzn of structure being abstracted *)
+          rpath    : InvPath.path,
           region   : SourceMap.region,
           compInfo : ElabUtil.compInfo}
 	 -> {rlzn: Modules.strEntity,  
@@ -1695,9 +1695,6 @@ val instFormal =
 (*
 val instAbstr = 
   Stats.doPhase (Stats.makePhase "Compiler 032 3-instAbstr") instAbstr
-
-val getTycPaths = 
-  Stats.doPhase (Stats.makePhase "Compiler 032 4-getTycPaths") getTycPaths
 *)
 
 end (* local *)

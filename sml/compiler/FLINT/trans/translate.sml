@@ -1416,7 +1416,7 @@ and mkStrexp (ftmap0, se, d) =
 		  val (ftmap1, argtycs) = 
 		      (case (oper, arg)
 			of (M.FCT{sign=M.FSIG{paramsig, ...}, 
-				rlzn=fctRlzn, ...}, 
+				  rlzn=fctRlzn, ...}, 
 			    M.STR{rlzn, ...}) =>
 			   RepTycProps.primaryCompInStruct(fm, 
 							  #paramRlzn fctRlzn,
@@ -1428,11 +1428,10 @@ and mkStrexp (ftmap0, se, d) =
                in (ftmap1, APP(TAPP(e1, tycs), e2))
               end
 	   | (MARKstr (b, reg)) => withRegion reg g (fm, b)
-	   | (LETstr (dec, b)) => 
-	     let 
-		 val (fm1, dec') = mkDec (fm, dec, d) 
-		 val (fm2, b') = g (fm1, b)
-	     in (fm2, dec' b')
+	   | (LETstr (dec, body)) => 
+	     let val (fm1, dec') = mkDec (fm, dec, d) 
+		 val (fm2, body') = g (fm1, body)
+	     in (fm2, dec' body')
 	     end
 	   | _ => let 
 		      val le = 
@@ -1457,8 +1456,8 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
 	  case fe
 	   of (VARfct f) => (fm, mkFct(fm, f, d))
             | (FCTfct {param as M.STR { sign, access, rlzn, ... }, def }) =>
-	  (case access of
-	       DA.LVAR v =>
+	      (case access of
+	         of DA.LVAR v =>
                let 
 		   val _ = debugmsg ("--mkFctexp[FCTfct] depth "^
 				     DI.dp_print d^" fm "
@@ -1476,7 +1475,7 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
 				print "\n";
 				with_pp (fn s => 
 					    PPModules.ppStructure s 
-								  (param, StaticEnv.empty, 100));
+					      (param, StaticEnv.empty, 100));
 				print "\n")
 			   else ()
                    val nd = DI.next d  (* reflecting type abstraction *)
