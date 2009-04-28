@@ -217,13 +217,16 @@ and ppExp (context as (env, source_opt)) ppstrm =
 	| ppExp' (FnExp nil,_,d) = pps "<function>"
 	| ppExp' (FnExp rules,_,d)=	
 		let fun pr _ pat = ppRule context ppstrm(pat, d-1)
-		in ppSequence ppstrm
-		   {sep=(fn ppstrm => (PP.string ppstrm "|";break ppstrm {nsp=0,offset=0})),
-	 	    pr=pr,
-		    style=INCONSISTENT}
-		   rules
+		in
+                    pps "fn"; break ppstrm {nsp=1,offset=0};
+                    ppSequence ppstrm
+		               {sep=(fn ppstrm => 
+                                        (PP.string ppstrm "|";
+                                         break ppstrm {nsp=0,offset=0})),
+	 	                pr=pr,
+		                style=INCONSISTENT}
+		               rules
 		end
-
 	| ppExp' (FlatAppExp fap,_,d) = 
 		let fun pr _ {item,fixity,region} = ppExp'(item,true, d)		
 		in ppSequence ppstrm
@@ -260,6 +263,7 @@ and ppExp (context as (env, source_opt)) ppstrm =
 		break ppstrm {nsp=1,offset=0};
 		pps "end";
 	       closeBox ())
+        | ppExp'(SeqExp [expr],_,d) = ppExp'(expr,false,d-1)
  	| ppExp'(SeqExp exps,_,d) =
 	      ppClosedSequence ppstrm
 	        {front=(C PP.string "("),
@@ -318,7 +322,6 @@ and ppExp (context as (env, source_opt)) ppstrm =
 	      (openHVBox 0;
 	        lpcond(atom);
 	        pps "#"; ppSym ppstrm name;
-	        pps ">";
 		rpcond(atom);
 	       closeBox ())
 	| ppExp' (ConstraintExp {expr,constraint},atom,d) = 
@@ -506,8 +509,9 @@ and ppStrExp (context as (_,source_opt)) ppstrm =
 	       (pps "struct"; nbSpace ppstrm 1; pps "end")
            | ppStrExp'(BaseStr de, d) =
                (openVBox ppstrm (Rel 0);
-                pps "stuct";  PU.nl_indent ppstrm 2;
+                pps "struct";  PU.nl_indent ppstrm 2;
                 ppDec context ppstrm (de, d-1);
+                break ppstrm {nsp=1, offset=0};
                 pps "end";
                 PP.closeBox ppstrm)
 	   | ppStrExp'(ConstrainedStr (stre, constraint), d) =
@@ -1187,7 +1191,7 @@ and ppStrb (context as (_,source_opt)) ppstrm =
 	fun ppStrb'(_,0)= pps "<Strb>"
 	  | ppStrb'(Strb{name,def,constraint},d) = 
 	     (openHVBox ppstrm (PP.Rel 0);
-	      ppSym ppstrm name; PP.string ppstrm " :";
+	      ppSym ppstrm name; PP.string ppstrm " =";
 	      break ppstrm {nsp=1,offset=2}; ppStrExp context ppstrm (def,d-1);
 	      closeBox ppstrm)
 	  | ppStrb'(MarkStrb (t,r),d) = ppStrb context ppstrm (t,d)
@@ -1327,3 +1331,24 @@ and ppTy (context as (env, source_opt)) ppstrm =
 
 end (* top-level local *)
 end (* structure PPAst *)
+
+(* 4/28/2009: Fixed some "bugs" in the pretty printer that were making
+   "round trips" fail ((pp o parse o pp o parse) s != (pp o parse) s).
+   Specifically:
+
+   - The "fn" was not being prepended to FnExp's.
+
+   - Removed parenthesis for sequence expressions of one
+     subexpression.  (Iteratively sending this back to the parser kept
+     adding nested parenthesis.)
+
+   - A ">" was being appended after selector expressions ("#x" would
+     pretty print as "#x>").
+
+   - Fixed spelling error (was "stuct") and added whitespace between the
+     structure body and the "end" keyword for BaseStr's.
+
+   - Changed ":" to "=" for Strb's (note that constraints were not and
+     are still not handled).
+
+   Jon Riehl *)
