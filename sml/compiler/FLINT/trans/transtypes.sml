@@ -451,11 +451,15 @@ and signLty (sign, depth, compInfo) =
    rlzn is argRlzn
  *) 
 and strMetaLty (fm : flexmap, sign, rlzn as { entities, ... }: strEntity, 
-		depth, compInfo) =
+		depth, compInfo, envop) =
     case (sign, ModulePropLists.strEntityLty rlzn) of
 	(_, SOME (lt, od)) => LT.lt_adj(lt, od, depth)
       | (SIG { elements, ... }, NONE) => 
-	let val ltys = specLty (fm, elements, entities, depth, compInfo)
+	let val entenv' = (case envop 
+			    of NONE => entities
+			     | SOME env => EE.atop(entities, env))
+	    val ltys = specLty (fm, elements, entities, depth, 
+				compInfo)
             val lt = (* case ltys of [] => LT.ltc_int
                                    | _ => *) LT.ltc_str(ltys)
         in
@@ -486,7 +490,7 @@ and strRlznLty (fm : flexmap, sign, rlzn : strEntity, depth, compInfo) =
              end
 *)
       | _ => (debugmsg ">>strRlznLty[strEntityLty NONE]";
-	      strMetaLty(fm, sign, rlzn, depth, compInfo))
+	      strMetaLty(fm, sign, rlzn, depth, compInfo, NONE))
 
 and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) = 
     case (sign, ModulePropLists.fctEntityLty rlzn, rlzn) of
@@ -500,12 +504,19 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
                                region=SourceMap.nullRegion}   *)
             val nd = DI.next depth
             (* val ks = map tpsKnd tycpaths *)
+
+	    (* [GK 4/24/09] We must somehow account for the closure 
+	       environment env. It contains important realization 
+	       information such as parameter information from 
+               partially applied curried functors *)
 	    val (tps, ftmap1) = RepTycProps.getTk(fs, paramRlzn, depth)
 	    val fm = FTM.unionWith (fn(tp1,tp2)=> tp1) (fm, ftmap1)
 	    val _ = debugmsg ">>tpsKnd"
 	    val ks = map tpsKnd tps
 	    val _ = debugmsg ">>strMetaLty"
-            val paramLty = strMetaLty(fm, paramsig, paramRlzn, nd, compInfo)
+            val paramLty = strMetaLty(fm, paramsig, paramRlzn, nd, compInfo,
+				     SOME env)
+		handle _ => bug "fctRlznLty 2"
 		     
 	    val _ = debugmsg (">>fctRlznLty calling evalApp nd "^DI.dp_print nd)
             val bodyRlzn = 
