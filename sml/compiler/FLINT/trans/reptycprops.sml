@@ -180,11 +180,11 @@ in
 			      (debugmsg ("--repEPs add stamp "^
 					 Stamps.toShortString s'^
 					 " to stmpseen");
-			       (case (EPMap.find(renv, s),
+			       (case (FTM.find(renv, s),
 				     StampSet.member(stmpseen,s')) 
 				of ((_, false) | (NONE, _)) => 
 				   ep::loop(rest, env, 
-					    EPMap.insert(renv,s,ep),
+					    FTM.insert(renv,s,ep),
 					    StampSet.add(stmpseen,s'))
 				 | _ => loop(rest, env, renv, stmpseen)))))
 		in
@@ -213,7 +213,7 @@ in
 		   handle EE.Unbound => bug ("repEPs Unbound"^
 					     EP.entPathToString ep)
 		end
-	in loop(eps, env, EPMap.empty, StampSet.empty)	
+	in loop(eps, env, FTM.empty, StampSet.empty)	
 	end (* fun repEPs *)
 
     local

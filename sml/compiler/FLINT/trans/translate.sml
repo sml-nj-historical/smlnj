@@ -1456,7 +1456,7 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
 	  case fe
 	   of (VARfct f) => (fm, mkFct(fm, f, d))
             | (FCTfct {param as M.STR { sign, access, rlzn, ... }, def }) =>
-	      (case access of
+	      (case access
 	         of DA.LVAR v =>
                let 
 		   val _ = debugmsg ("--mkFctexp[FCTfct] depth "^
