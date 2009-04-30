@@ -47,9 +47,6 @@ local
       structure V = VarCon
       structure FTM = FlexTycMap
 
-      (* A map from entity TYC or FCT stamps to the first corresponding EP *)
-      structure EPMap = RedBlackMapFn (type ord_key = Stamps.stamp
-				       val compare = Stamps.compare)
       (* A StampSet ADT to keep track of unique stamps (embedded in different
 	 structures) we have seen *)
       structure StampSet = RedBlackSetFn (type ord_key = Stamps.stamp
