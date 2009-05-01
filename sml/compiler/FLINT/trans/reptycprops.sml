@@ -330,51 +330,41 @@ in
 		val _ = debugmsg "--formalBody bodytk computed"
 
 		val kind = LT.tkc_fun(paramtk, LT.tkc_seq bodytk)
-		    (* kinds(paramEnts, bodyEnts, fsig) *)
-		val fctvar = TP.TP_VAR{tdepth=d, num=i, kind=kind}
 		val _ = (debugmsg ("--formalBody elements ");
 			 if !debugging then ppSig msig else ())
 	
 		val eps = entpaths(elements)
 		val _ = debugmsg ("--formalBody eps "^Int.toString (length eps))
-		fun loop(ftmap, eenv, [], i, tps) = (ftmap, rev tps)
-		  | loop(ftmap, eenv, ep::rest, i, tps) = 
+		fun loop(ftmap, eenv, [], j, tps) = (ftmap, rev tps)
+		  | loop(ftmap, eenv, ep::rest, j, tps) = 
 		    (case EE.lookEP(eenv, ep)
 		      of M.TYCent(T.GENtyc{kind=T.DATATYPE _, stamp, ...}) =>
 			 let val _ = debugmsg ("--formalBody DATATYPE "^
 					       Stamps.toShortString stamp)
-			 in loop(ftmap, eenv, rest, i, tps) 
+			 in loop(ftmap, eenv, rest, j, tps) 
 			 end
-		       | M.TYCent(T.GENtyc{stamp, kind, arity, ...}) =>
-			 let val tp = TP.TP_SEL(TP.TP_APP(fctvar, argTps), i)
+		       | M.TYCent(T.GENtyc{stamp, ...}) =>
+			 let val fctvar = TP.TP_VAR{tdepth=d, num=i, kind=kind}
+			     val tp = TP.TP_SEL(TP.TP_APP(fctvar, argTps), j)
 			     val _ = debugmsg ("--formalBody "^
 					       Stamps.toShortString stamp^
 					       " is index "^
-					       Int.toString i)
+					       Int.toString j)
 			 in case FTM.find(ftmap, stamp)
-			     of SOME _ => loop(ftmap, eenv, rest, i, tps)
+			     of SOME _ => loop(ftmap, eenv, rest, j, tps)
 			      | NONE => loop(insertMap(ftmap, stamp, tp),
 					     eenv,
-				 rest, i+1, tp::tps)
+				 rest, j+1, tp::tps)
 			 end
 		       | M.TYCent _ => 
 			 (debugmsg "--formalBody other TYCent GEN";
-			  loop(ftmap, eenv, rest, i, tps))
+			  loop(ftmap, eenv, rest, j, tps))
 		       | M.FCTent _ =>
 			 (debugmsg "--formalBody FCTent";
-			  loop(ftmap, eenv, rest, i, tps))
-		       (* | M.STRent{entities,...} =>
-			 (debugmsg "--formalBody STRent";
-			  loop(ftmap, eenv,  
-			       (#2 (ListPair.unzip (EE.toList entities)))@rest,
-			       i, tps)) *)
+			  loop(ftmap, eenv, rest, j, tps))
 		       | _ => (debugmsg "--formalBody other ent";
-			       loop(ftmap, eenv, rest, i, tps)))
-		(* val bodyentsflat = #2 (ListPair.unzip (EE.toList bodyEnts)) *)
+			       loop(ftmap, eenv, rest, j, tps)))
 		    val (ftmap1, tps) = loop(ftmap0, bodyEnts, beps, 0, [])
-		(* val _ = debugmsg ("--formalBody bodyents "^
-				  Int.toString(length bodyentsflat))*)
-		(* val (ftmap1, tps) = loop(ftmap0, bodyentsflat, 0, []) *)
 	    in (ftmap1, tps)
 	    end
 	  | formalBody _ = bug "Unexpected signature in formalBody"
@@ -403,33 +393,7 @@ in
 				   Int.toString (length fsigs)
 				   ^" depth "^DI.dp_print d)
 		val entenv = #entities rlzn
-		val eps = repEPs(entpaths(#elements sign), #entities freerlzn) 
-		(* val eps' = 
-		    let 
-			fun flatten((stamp, M.STRent{entities,...})::rest) =
-			    (map (fn ep => stamp::ep) 
-				(flatten(EE.toList entities))) @ flatten(rest)
-			  | flatten((stamp, M.TYCent(T.GENtyc _))::rest) =
-			    [stamp]::flatten(rest)
-			  | flatten((stamp, (M.FCTent _))::rest) =
-			    [stamp]::flatten(rest)
-			  | flatten(_::rest) =
-			    flatten(rest)
-			  | flatten [] = []
-		    in flatten (EE.toList (#entities freerlzn))
-		    end 
-		val _ = (debugmsg "---pri selected eps";
-			 if !debugging 
-			 then (app (fn x => print((EP.entPathToString x)^";")) 
-				  eps; print "\n")
-			 else ();
-			 debugmsg "\n---pri selected eps'";
-			 if !debugging 
-			 then (app (fn x => print ((EP.entPathToString x)^";"))
-			          eps'; print "\n")
-			 else ()) *)
-		(* val eps = eps' *)
-		
+		val eps = repEPs(entpaths(#elements sign), #entities freerlzn) 		
 		val _ = debugmsg ("--primaryCompInStruct eps "^
 				  Int.toString (length eps)^
 				  " d="^DI.dp_print d)
@@ -444,7 +408,6 @@ in
 				  raise EntityEnv.Unbound)
 		      of M.TYCent(tyc as T.GENtyc{kind=T.DATATYPE _, stamp,...}) =>
 			   let val tp = TP.TP_TYC(tyc)
-			       (* val _ = debugmsg "TYCent DATATYPE" *)
 			   in (loop(insertMap(ftmap, stamp, tp), 
 				    tp::tps, entenv, rest, i+1, fs))
 			   end
@@ -524,27 +487,15 @@ in
 					      ppEntities paramEnts;
 					      print "\n===FCTent bodyEnts===\n";
 					      ppEntities bodyEnts;
-					      (* print "\n===FCTent eenv===\n";
-					      ppEntities entenv; *)
 					      print "\n===FCTent closenv===\n";
 					      ppEntities closenv;
 					      print "\n--kinds[FCTent] Funsig\n"
-					      (* ; ppFunsig fsig; 
-					      (* print "\n===FCTent sign===\n";
-					      ppSig (M.SIG sign); *)print "\n"*)
 					      )
 					 else ()
 
 				     val argRepEPs = 
 					 repEPs(entpaths(#elements psr),
 						#entities paramRlzn)
-				     (* val psr = {stamp = Stamps.special "bogusSig",
-	 name=NONE, closed=true, fctflag=false,
-	 elements=[],
-	 properties = PropList.newHolder (),
-	 (* boundeps=ref NONE, lambdaty=ref NONE *)
-	 typsharing=[], strsharing=[],
-	 stub = NONE} *)
 				     val (ftmap1, argtps) = 
 					 primaryCompInStruct(ftmap,
 							     paramRlzn,
@@ -556,10 +507,6 @@ in
                                      (* [TODO] Replace free instantiation
 				        components with actual argument 
 					realization components. *)
-				     (*val knds = kinds(paramEnts, 
-						      #entities bodyRlzn,
-						      fsig)    
-				     val _ = debugmsg "<<kinds done\n" *)
 
 				     (* Can't do normal flextyc tycpath 
 				        construction here because actual 
@@ -569,25 +516,13 @@ in
 					for each FORMAL GENtyc *)
 				     val _ = debugmsg ("pri[FCT]TP_VAR depth "^
 						       DI.dp_print d)
-				     (* val fsig = 
-					 M.FSIG{kind=NONE,
-						paramsig=M.SIG psr,
-						paramvar=Stamps.special "bogusP",
-						paramsym=NONE,
-						bodysig=M.SIG psr}
-				     val bsig = M.SIG psr *)
 			       (* BOGUS! bodyRlzn is being DELETED *)
 				     val (ftmap2,bodytps) = 
 					 formalBody(ftmap1, (raise Fail "#entities bodyRlzn"),
 						    argtps, bsig, 
-						    (* TP.TP_VAR{tdepth=d, 
-							     num=i,
-							     kind=knds
-							     } *)
 						    paramEnts,
 						    fsig, d, i)
 				     val tp' = TP.TP_FCT(argtps, bodytps)
-				(* val _ = checkTycPath(tp, tp') *)
 				 in 
 				    loop(ftmap2,
 					 tp'::tps, entenv, rest, i+1, srest)
