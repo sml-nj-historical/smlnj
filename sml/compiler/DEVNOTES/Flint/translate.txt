@@ -83,3 +83,7 @@ for the PLambda/FLINT-level type application APP(TAPP(e1, tycs), e2).
 formal parameters in the FCTfct case in order to obtain the kinds knds
 for use in the PLambda/FLINT-level type abstraction: 
 TFN(knds, FN(v, ...))
+
+TransTypes translates tycons into Lty.tyc. This is done directly,
+hence the only information we have is in the tycon (e.g.,
+GENtyc{stamp, arity, path, ...}). 
