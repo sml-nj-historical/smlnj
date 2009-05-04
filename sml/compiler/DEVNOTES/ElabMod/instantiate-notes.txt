@@ -1,0 +1,4 @@
+
+Instantiate produces a free instantiation of a signature given a current entity environment. It does so by way of a linear unification algorithm. 
+
+The goal is to produce a realization of the signature that incorporates all the necessary type sharing but no more. The target of linear unification are these "structure instances" which represent equivalence classes of structures and functor instances. Equivalence classes are represented as association lists of entity variables and "slots" (structure instances that are nodes on this graph). 
