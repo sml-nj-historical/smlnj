@@ -49,7 +49,7 @@ type flexmap = TypesTP.tycpath FlexTycMap.map
 
 fun bug msg = ErrorMsg.impossible ("TransTypes: " ^ msg)
 val say = Control.Print.say 
-val debugging = FLINT_Control.tmdebugging
+val debugging = FLINT_Control.tmdebugging (* ref true *)
 fun debugmsg (msg: string) =
   if !debugging then (say msg; say "\n") else ()
 val debugPrint = (fn x => debugPrint debugging x)
@@ -341,9 +341,9 @@ and toTyc (fm : flexmap) d t =
                           * toLty (see below). *)
 	| g (MARKty (t, _)) = g t
         | g (POLYty _) = bug "unexpected poly-type in toTyc"
-	| g (UNDEFty) = bug "unexpected undef-type in toTyc"
-        (* (* mkVB kluge!!! *) LT.tcc_void
-	    (* bug "unexpected undef-type in toTyc" *) *)
+	| g (UNDEFty) = 
+          (* mkVB kluge!!! *) LT.tcc_void
+	  (* bug "unexpected undef-type in toTyc" *)
         | g (WILDCARDty) = bug "unexpected wildcard-type in toTyc"      
 
    in g t
@@ -505,14 +505,35 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
             val nd = DI.next depth
             (* val ks = map tpsKnd tycpaths *)
 
-	    (* [GK 4/24/09] We must somehow account for the closure 
+	    (* [GK 4/30/09] Closure environments map entity paths to 
+               types that have no connection to the stamps of the formal 
+               types they map. 
+               
+               [GK 4/24/09] We must somehow account for the closure 
 	       environment env. It contains important realization 
 	       information such as parameter information from 
-               partially applied curried functors *)
+               partially applied curried functors. 
+             *)
 	    val (tps, ftmap1) = RepTycProps.getTk(fs, paramRlzn, depth)
 	    val fm = FTM.unionWith (fn(tp1,tp2)=> tp1) (fm, ftmap1)
 	    val _ = debugmsg ">>tpsKnd"
 	    val ks = map tpsKnd tps
+
+	    val _ = if !debugging 
+		    then (debugmsg "====================";
+			  withInternals(fn () =>
+			    debugPrint("paramRlzn: ",
+				       (fn pps => fn ee =>
+					PPModules.ppEntity pps (ee,SE.empty,100)),
+				       (STRent paramRlzn)));
+			  withInternals(fn () =>
+			    debugPrint("closure: ",
+				       (fn pps => fn env =>
+					PPModules.ppEntityEnv pps (env,SE.empty,100)),
+				       env));
+			  debugmsg "====================")
+		    else ()
+
 	    val _ = debugmsg ">>strMetaLty"
             val paramLty = strMetaLty(fm, paramsig, paramRlzn, nd, compInfo,
 				     SOME env)
@@ -542,7 +563,9 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
 			  debugmsg "====================")
 		    else ()
 	    val _ = debugmsg ">>strRlznLty"
-            val bodyLty = strRlznLty(fm, bodysig, (raise Fail "bodyRlzn'"), nd, compInfo)
+	    (* [GK 5/5/09] Ideally, we want to be able to compute this 
+	       without having to appeal to EV.evalApp to get bodyRlzn *)
+            val bodyLty = strRlznLty(fm, bodysig, bodyRlzn, nd, compInfo)
 	    val _ = debugmsg "<<strRlznLty"
             val lt = LT.ltc_poly(ks, [LT.ltc_fct([paramLty],[bodyLty])])
         in
