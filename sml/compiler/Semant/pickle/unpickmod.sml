@@ -1200,7 +1200,6 @@ structure UnpickMod : UNPICKMOD = struct
 	    fun f #"f" =
 		let val s = stamp ()
 		    val (e, etr) = strEntity'()
-		    val (b, btr) = strEntity'()
 		    val (c, ctr) = fctClosure' ()
 		in
 		    ({ stamp = s,
@@ -1212,7 +1211,7 @@ structure UnpickMod : UNPICKMOD = struct
 					     else globalPid (),
 				     tree = ctr,
 				     lib = lib } },
-		     branch [etr,btr,ctr])
+		     branch [etr,ctr])
 		end
 	      | f _ = raise Format
 	in
