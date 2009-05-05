@@ -989,7 +989,7 @@ case fctexp
 
 	  val _ = debugmsg (">>elabFct[BaseFct]: paramEntVar = "^
 			    EP.entVarToString paramEntVar)
-
+			     
           val paramSig = 
               ES.elabSig {sigexp=paramSigExp, nameOp=NONE, env=env, 
                           entEnv=entEnv, epContext=epContext, 
@@ -1039,10 +1039,10 @@ case fctexp
 	   * empty pathMap and an empty context path. *)
           val epContext' = EPC.enterClosed epContext 
           (* add parameEntVar to context of epContext *)
-          val epContext' = EPC.enterOpen(epContext', paramEntVar) 
+          val epContext'' = EPC.enterOpen(epContext', paramEntVar) 
 
           (* extend the pathMap of the epcontext' with paths for elements of paramStr *)
-          val _ = mapPaths(epContext',paramStr,flex)
+          val _ = mapPaths(epContext'',paramStr,flex)
           val _ = EPC.bindStrEntVar(epContext',MU.strId paramStr,paramEntVar)
           val _ = debugmsg "--elabFct[BaseFct]: epContext initialized"
 
