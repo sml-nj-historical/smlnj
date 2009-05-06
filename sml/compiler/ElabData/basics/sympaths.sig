@@ -19,6 +19,7 @@ end
 
 signature INVPATH =
 sig
+  exception InvPath
   datatype path = IPATH of Symbol.symbol list
   val empty : path
   val null : path -> bool
