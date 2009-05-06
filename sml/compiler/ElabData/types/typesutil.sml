@@ -85,14 +85,15 @@ fun mkMETAty() = mkMETAtyBounded infinity
 
 (*************** primitive operations on tycons ***************)
 fun bugTyc (s: string, tyc) =
-  case tyc
+  (print "[bugTyc]";
+   case tyc
    of GENtyc { path, ... } => bug (s ^ " GENtyc " ^ S.name (IP.last path))
     | DEFtyc {path,...} => bug (s ^ " DEFtyc " ^ S.name(IP.last path))
     | RECORDtyc _ => bug (s ^ " RECORDtyc")
     | PATHtyc{path,...} => bug (s ^ " PATHtyc " ^ S.name(IP.last path))
     | RECtyc _ => bug (s ^ " RECtyc")
     | FREEtyc _ => bug (s ^ " FREEtyc")
-    | ERRORtyc => bug (s ^ " ERRORtyc")
+    | ERRORtyc => bug (s ^ " ERRORtyc"))
 
 (* short (single symbol) name of tycon *)
 fun tycName (GENtyc { path, ... } | DEFtyc{path,...} | PATHtyc{path,...}) =
