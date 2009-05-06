@@ -83,11 +83,11 @@ fun bindingName(B.VALbind(VALvar{path,...})) = SymPath.last path
       (case sg
 	 of M.SIG{name=SOME name,...} => name
           | _ => S.sigSymbol "<anonsig>")
-  | bindingName(B.STRbind str) = InvPath.last(ModuleUtil.getStrName str)
+  | bindingName(B.STRbind str) = (InvPath.last(ModuleUtil.getStrName str) handle InvPath.InvPath => bug "ppabsyn:bindingName")
   | bindingName(B.FSGbind fsig) = S.fsigSymbol "<fctsig>"
   | bindingName(B.FCTbind fct) =
       (case fct
-	 of M.FCT{rlzn={rpath,...},...} => InvPath.last(rpath)
+	 of M.FCT{rlzn={rpath,...},...} => (if InvPath.null(rpath) then S.sigSymbol "<null>" else InvPath.last(rpath) handle InvPath.InvPath => bug "ppabsyn:bindingName 2")
           | _ => defaultName)
   | bindingName _ = defaultName
   
@@ -557,7 +557,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
 		     | 1 => (pps "'a ")
 		     | n => (ppTuple ppstrm PP.string (typeFormals n); 
                              pps " ");
-		   ppSym ppstrm (InvPath.last path);
+		   ppSym ppstrm (InvPath.last path handle InvPath.InvPath => bug "ppabsyn:ppDec");
 		   pps " = "; ppType env ppstrm body)
 		| f _ _ = bug "ppDec'(TYPEdec)"
 	  in
@@ -574,7 +574,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
 			  | 1 => (pps "'a ")
 			  | n => (ppTuple ppstrm PP.string (typeFormals n); 
 				  pps " ");
-			ppSym ppstrm (InvPath.last path); pps " = ..."(*;
+			ppSym ppstrm (InvPath.last path handle InvPath.InvPath => bug "ppabsyn:ppDec' 2"); pps " = ..."(*;
 		        ppSequence ppstrm
 			{sep=(fn ppstrm => (PP.string ppstrm " |";
 					    break ppstrm {nsp=1,offset=0})),
@@ -590,7 +590,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
 		     | 1 => (pps "'a ")
 		     | n => (ppTuple ppstrm PP.string (typeFormals n); 
                              pps " ");
-		   ppSym ppstrm (InvPath.last path);
+		   ppSym ppstrm (InvPath.last path handle InvPath.InvPath => bug "ppabsyn:ppWITH");
 		   pps " = "; ppType env ppstrm body)
 		| ppWITH _ _ = bug "ppDec'(DATATYPEdec) 2"
 	  in

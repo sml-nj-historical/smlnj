@@ -40,6 +40,10 @@ sig
                     -> Modules.entityEnv * StaticEnv.staticEnv * int
                     -> unit
 
+  val ppEPC : PrettyPrintNew.stream
+	      -> EntPathContext.context * int 
+	      -> unit
+
 end (* signature PPMOD *)
 
 
@@ -132,7 +136,7 @@ fun is_ppable_ConBinding (T.DATACON{rep=A.EXN _, ...}, _) = true
 		 in (TU.equalTycon
 		      (LU.lookTyc
 			 (env,
-			  SP.SPATH[IP.last(TU.tycPath tyc)],
+			  SP.SPATH[IP.last(TU.tycPath tyc) handle InvPath.InvPath => bug "ppmod:is_ppable_Consbinding"],
 			  fn _ => raise Hidden),
 		       tyc)
 		       handle Hidden => false)
@@ -160,6 +164,19 @@ fun ppEntPath ppstrm entPath =
        style=INCONSISTENT,
        pr=ppEntVar}
 *)
+
+local
+   open EntPathContext
+in
+fun ppEPC ppstrm (context, d) =
+    (case context
+      of EMPTY => pps ppstrm "[<empty>]"
+       | LAYER{locals, context, outer} =>
+	   (pps ppstrm "[LAYER ";
+	    ppEntPath ppstrm context;
+	    ppEPC ppstrm (outer, d);
+	    pps ppstrm "]"))
+end
 
 fun ppTycExp ppstrm (tycExp,depth) =
     if depth <= 0 then pps ppstrm "<tycExp>" else
@@ -670,7 +687,7 @@ and ppTycBind ppstrm (tyc,env) =
 		      pps "type";
 		      ppFormals ppstrm arity; 
 		      pps " ";
-		      ppSym ppstrm (IP.last path);
+		      ppSym ppstrm (IP.last path handle InvPath.InvPath => bug "ppmod:ppTycBind");
 		      closeBox())
 		   | (_, T.DATATYPE{index,family={members,...},...}) =>
 		     (* ordinary datatype *)
@@ -682,7 +699,7 @@ and ppTycBind ppstrm (tyc,env) =
 			 pps "datatype";
 			 ppFormals ppstrm arity;
 			 pps " ";
-			 ppSym ppstrm (IP.last path);
+			 ppSym ppstrm (IP.last path handle InvPath.InvPath => bug "ppmod:ppTycBind 2");
 			 case visdcons
 			   of nil => pps " = ..."
 			    | first :: rest =>
@@ -705,14 +722,14 @@ and ppTycBind ppstrm (tyc,env) =
 		      else pps "type";
 		      ppFormals ppstrm arity; 
 		      pps " ";
-		      ppSym ppstrm (IP.last path);
+		      ppSym ppstrm (IP.last path handle IP.InvPath => bug "ppmod:ppTycBind 3");
 		      closeBox()))
 	      | T.DEFtyc{path,tyfun=T.TYFUN{arity,body},...} =>
 		(openHOVBox 2;
 		 pps "type"; 
 		 ppFormals ppstrm arity; 
 		 break{nsp=1,offset=0};
-		 ppSym ppstrm (InvPath.last path); 
+		 ppSym ppstrm (InvPath.last path handle InvPath.InvPath => bug "ppmod:ppTycBind 2"); 
 		 pps " ="; 
 		 break{nsp=1,offset=0};
 		 ppType env ppstrm body;
@@ -738,7 +755,7 @@ and ppReplBind ppstrm =
 	      replication tycs are GENtycs after elaboration *)
 	   (openHOVBox 2;
             pps "datatype"; break{nsp=1,offset=0};
-            ppSym ppstrm (IP.last path);
+            ppSym ppstrm (IP.last path handle InvPath.InvPath => bug "ppmod:ppReplBind");
             pps " ="; break{nsp=1,offset=0};
             pps "datatype"; break{nsp=1,offset=0};
             ppTycon env ppstrm rightTyc;
@@ -746,7 +763,7 @@ and ppReplBind ppstrm =
 	 | (tyc as T.GENtyc{stamp, arity, eq, kind, path, stub}, env) =>
 	   (openHOVBox 2;
 	    pps "datatype"; break{nsp=1,offset=0};
-	    ppSym ppstrm (IP.last path);
+	    ppSym ppstrm (IP.last path handle InvPath.InvPath => bug "ppmod:ppReplBind 2");
 	    pps " ="; break{nsp=1,offset=0};
 	    ppTycBind ppstrm (tyc, env);
 	    closeBox()) 
