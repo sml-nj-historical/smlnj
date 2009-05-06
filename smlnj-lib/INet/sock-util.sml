@@ -113,8 +113,7 @@ structure SockUtil : SOCK_UTIL =
   (* send the complete contents of a vector *)
     fun sendVec (sock, vec) = let
 	  val len = Word8Vector.length vec
-	  fun send i = Socket.sendVec (sock,
-				       Word8VectorSlice.slice (vec, i, NONE))
+	  fun send i = Socket.sendVec (sock, Word8VectorSlice.slice (vec, i, NONE))
 	  fun put i = if (i < len)
 		then put(i + send i)
 		else ()
@@ -127,8 +126,7 @@ structure SockUtil : SOCK_UTIL =
   (* send the complete contents of an array *)
     fun sendArr (sock, arr) = let
 	  val len = Word8Array.length arr
-	  fun send i = Socket.sendArr (sock,
-				       Word8ArraySlice.slice (arr, i, NONE))
+	  fun send i = Socket.sendArr (sock, Word8ArraySlice.slice (arr, i, NONE))
 	  fun put i = if (i < len)
 		then put(i + send i)
 		else ()
