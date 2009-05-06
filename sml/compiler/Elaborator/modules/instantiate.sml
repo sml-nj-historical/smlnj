@@ -1562,7 +1562,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
                             val baseEntC = 
                               (MARKeenv{stamp = mkStamp(),
 					env = entEnv,
-					stub = NONE },
+					stub = NONE},
 			       failuresSoFar)
                             val (ee, fc) = mkEntEnv(baseEntC)
                          in (ee, fc)
@@ -1571,9 +1571,9 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 		 val strEnt={stamp =getStamp instance,
 			     rpath=rpath,
 			     entities=entEnv',
-			     properties = PropList.newHolder (),
-			     (* lambdaty=ref NONE, *)
-			     stub=NONE}
+			     stub=NONE,
+			     properties = PropList.newHolder ()}
+
 		 val _ = debugmsg (String.concat["--instToStr': failuresSoFar = ",
 						 Int.toString failuresSoFar,
 						 ", failCount = ",

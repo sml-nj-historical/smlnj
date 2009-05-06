@@ -974,7 +974,7 @@ case fctexp
                    (* already in body of a parent functor -- we don't differentiate
 		    * flex tycons according to depth of functor abstractions *)
 		| _ => (*** Entering functor for first time ***) 
-		  (* any stamps generated hereafter considered flexible *)
+		  (* any stamps generated "hereafter" considered flexible *)
 		   let val base = mkStamp() 
 		    in (fn s => (case Stamps.compare(base,s)
 				   of LESS => true
@@ -1037,42 +1037,21 @@ case fctexp
           (* push a functor abstraction layer onto epContext, with a new,
 	   * empty pathMap and an empty context path. *)
           val epContext' = EPC.enterClosed epContext 
-          (* add parameEntVar to context of epContext *)
-          val epContext'' = EPC.enterOpen(epContext', paramEntVar) 
 
-          (* extend the pathMap of the epcontext' with paths for elements of paramStr *)
-          val _ = mapPaths(epContext'',paramStr,flex)
-          val _ = EPC.bindStrEntVar(epContext',MU.strId paramStr,paramEntVar)
+	  (* add parameEntVar to context of epContext for purpose of updating
+	   * locals pathmap with elements of paramStr. The context path of
+	   * epContextParam is [paramEntVar].
+	   * Then extend the locals pathmap of the epcontextParam, which is the same
+	   * as the locals of epContext', with paths for elements of paramStr *)
+          val _ = let val epContextParam = EPC.enterOpen(epContext', paramEntVar) 
+		   in mapPaths(epContextParam, paramStr, flex)
+		  end
+
+          (* add mapping from the paramStr to the locals pathmap.  The strId
+           * of paramStr will be mapped to the path [paramEntVar] since the
+           * context path of epContext' is [] *)
+          val _ = EPC.bindStrEntVar(epContext', MU.strId paramStr, paramEntVar)
           val _ = debugmsg "--elabFct[BaseFct]: epContext initialized"
-
-          (* this code is redundant, since constraint will always be NoSig, 
-           * so csigExpOp, csigOp, and entsvOp will all be NONE. any result
-           * signature coercion has been delegated to the result structure
-	   * wrapper. *)
-(*
-          (* must elaborate result signature before the body is elaborated
-	     so that epContext' is not changed *)
-	  val csigExpOp =
-	      case constraint
-	       of NoSig => NONE
-		| Transparent csig => SOME(csig, true) 
-		| Opaque csig => SOME(csig, false)
-
-	  val (entsvOp, csigOp) =
-	      case csigExpOp
-		of NONE => (NONE, NONE)
-		 | SOME(csig0,transp) =>
-		   (SOME(mkStamp()),
-		    SOME(ES.elabSig{sigexp=csig0, nameOp=NONE, env=env', 
-				    entEnv=entEnv', epContext=epContext', 
-				    region=region, compInfo=compInfo},
-			 transp))
-      These are equivalent to:
-          val entsvOp = NONE
-	  val csigOp = NONE
-*)
-
-          val _ = debugmsg "--elabFct[BaseFct]: result signature elaborated"
 
           (* adjust the EU.context value. Note that context' = context if
 	   * we were already inside a functor. *)
@@ -1086,21 +1065,6 @@ case fctexp
           val _ = debugmsg "--elabFct[BaseFct]: body elaborated"
           val _ = showStr("--elabFct[BaseFct]: bodyStr: ",bodyStr,env)
 
-(* -- redundant, since csigOp and entsvOp are both NONE, no constraint coercion needed
-          (* constrain by result signature, either transparent or opaque *)
-          val (bodyAbsDec', bodyStr', bodyExp') = 
-              case (csigOp, entsvOp)
-                of (NONE,_) => (bodyAbsDec, bodyStr, bodyExp)
-                 | (SOME (csig,csigTrans), SOME entsv) =>
-		   constrStr(csigTrans, bodyAbsDec, csig, bodyStr, bodyExp,
-			     entsv, entEnv', IP.IPATH[], env', 
-			     region, compInfo)
-		 | _ => bug "result constraint in elabFct"
-
-          val _ = debugmsg "--elabFct[BaseFct]: body constrained"
-*)
-(*          val (bodyAbsDec', bodyStr', bodyExp') = (bodyAbsDec, bodyStr, bodyExp)
-*)	  
           val fctExp = M.LAMBDA{param=paramEntVar, paramRlzn=paramRlzn,
 				body=bodyExp}
 
