@@ -49,7 +49,7 @@ type flexmap = TypesTP.tycpath FlexTycMap.map
 
 fun bug msg = ErrorMsg.impossible ("TransTypes: " ^ msg)
 val say = Control.Print.say 
-val debugging = FLINT_Control.tmdebugging (* ref true *)
+val debugging = (* FLINT_Control.tmdebugging *) ref true
 fun debugmsg (msg: string) =
   if !debugging then (say msg; say "\n") else ()
 val debugPrint = (fn x => debugPrint debugging x)
@@ -498,12 +498,7 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
       | (fs as FSIG{paramsig, bodysig, ...}, _,
          {closure as CLOSURE{env,...}, paramRlzn, ...}) =>
         let val _ = debugmsg ">>fctRlznLty[instParam]"
-	    (* val argRlzn = 
-                INS.instParam {sign=paramsig, entEnv=env, tdepth=depth, 
-                               rpath=InvPath.IPATH[], compInfo=compInfo,
-                               region=SourceMap.nullRegion}   *)
             val nd = DI.next depth
-            (* val ks = map tpsKnd tycpaths *)
 
 	    (* [GK 4/30/09] Closure environments map entity paths to 
                types that have no connection to the stamps of the formal 
@@ -545,11 +540,6 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
                            IP.empty, compInfo)
 	    val _ = if !debugging
 		    then (debugmsg "==================";
-			  (* withInternals(fn () =>
-                           debugPrint("argRlzn: ",
-                                 (fn pps => fn ee => 
-                                  PPModules.ppEntity pps (ee,SE.empty,100)),
-                                  (STRent argRlzn))); *)
 			  withInternals(fn () =>
                            debugPrint("evalApp: ",
                                  (fn pps => fn ee => 

@@ -54,7 +54,7 @@ type flexmap = TypesTP.tycpath FlexTycMap.map
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *
  ****************************************************************************)
 
-val debugging = FLINT_Control.trdebugging
+val debugging = FLINT_Control.trdebugging (* ref true *)
 fun bug msg = EM.impossible("Translate: " ^ msg)
 val say = Control.Print.say
 fun warn s = say ("*** WARNING: " ^ s ^ "\n")
@@ -1194,9 +1194,13 @@ fun mkStr (fm : TT.flexmap, s as M.STR { access, prim, ... }, d) =
   | mkStr _ = bug "unexpected structures in mkStr"
 
 fun mkFct (fm : TT.flexmap, f as M.FCT { access, prim, ...}, d) =
-    mkAccInfo(access, 
+    let val _ = debugmsg ">>mkFct"
+	val res = 
+	    mkAccInfo(access, 
 	      fn () => fctLty(fm, f, d, compInfo),
 	      NONE) 
+    in debugmsg "<<mkFct"; res
+    end
   | mkFct _ = bug "unexpected functors in mkFct"
 
 fun mkBnd (fm:TT.flexmap, d) =
@@ -1468,8 +1472,6 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
 						       rlzn, sign, d)
 		   
 		   val knds = map tpsKnd argtycs
-		   val _ = debugmsg ("--getFctKnds: "^
-				       Int.toString (length knds))
 		   val _ = if !debugging then 
 			       (app (fn k => (ppTKind k; print " ")) knds; 
 				print "\n";

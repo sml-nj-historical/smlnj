@@ -61,7 +61,7 @@ in
 
 (* debugging *)
 val say = Control_Print.say
-val debugging =  ElabControl.emdebugging (* ref false *)
+val debugging = (* ElabControl.emdebugging *) ref true
 
 fun debugmsg (msg: string) =
       if !debugging then (say msg; say "\n") else ()
@@ -737,6 +737,12 @@ fun elab (BaseStr decl, env, entEnv, region) =
 	       let val resDee =
 		       EE.mark(mkStamp, EE.bind(entv, M.STRent argEnt, argDee))
 		        (* the argument structure should be bound to entv *)
+		   val _ = debugPrint("--elab[AppStr]: epContext = ",
+				   fn ppstrm => 
+			       fn ctx => 
+				  PPModules.ppEPC ppstrm (ctx, 100),
+			     epContext)
+
 		    val fctExp = 
 			case EPC.lookFctEntPath(epContext, MU.fctId fct)
 			  of SOME ep => VARfct ep
@@ -744,6 +750,12 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		    val epc = case entVarOp
 			       of NONE => epContext
 				| SOME ev => EPC.enterOpen(epContext, ev)
+		   val _ = debugPrint("--elab[AppStr]: epc = ",
+				   fn ppstrm => 
+			       fn ctx => 
+				  PPModules.ppEPC ppstrm (ctx, 100),
+			     epc)
+
 		    val {resDec, resStr, resExp} = 
 			SM.applyFct{fct=fct, fctExp=fctExp, argStr=argStr, 
 				    argExp=argExp, entvar = entv, epc=epc,
@@ -889,16 +901,19 @@ in
 
 case fctexp
  of VarFct(spath,constraintExpOp) =>
-      let val fct = LU.lookFct(env,SP.SPATH spath,error region)
+      let val _ = debugmsg "--elabFct[VarFct]"
+	  val fct = LU.lookFct(env,SP.SPATH spath,error region)
        in case fct
 	    of ERRORfct =>
 		(A.SEQdec [], fct, CONSTfct(M.bogusFctEntity), EE.empty)
 	     | _ =>
 		let val uncoercedExp = 
 		        (case EPC.lookFctEntPath(epContext, MU.fctId fct)
-			   of SOME ep => VARfct ep
+			   of SOME ep => (debugmsg "--elabFct[VarFct] VARfct";
+					  VARfct ep)
 			    | NONE =>
-			       let val rlzn = case fct of FCT ft => #rlzn ft
+			       let val _ = debugmsg "--elabFct[VarFct] CONSTfct"
+				   val rlzn = case fct of FCT ft => #rlzn ft
 							| _ => M.bogusFctEntity
 			        in CONSTfct rlzn
 			       end)
@@ -946,7 +961,8 @@ case fctexp
       end
 
   | AppFct(spath,larg,constraint) =>
-      let val fctexp' = LetFct(StrDec[Strb{name=hiddenId,constraint=NoSig,
+      let val _ = debugmsg "--elabFct[AppFct]"
+	  val fctexp' = LetFct(StrDec[Strb{name=hiddenId,constraint=NoSig,
                                            def=AppStrI(spath,larg)}],
                                VarFct([hiddenId,functorId],constraint))
 
@@ -988,7 +1004,12 @@ case fctexp
 
 	  val _ = debugmsg (">>elabFct[BaseFct]: paramEntVar = "^
 			    EP.entVarToString paramEntVar)
-			     
+	  val _ = debugPrint("--elabFct[BaseFct]: epContext = ",
+			     fn ppstrm => 
+			       fn ctx => 
+				  PPModules.ppEPC ppstrm (ctx, 100),
+			     epContext)
+		     
           val paramSig = 
               ES.elabSig {sigexp=paramSigExp, nameOp=NONE, env=env, 
                           entEnv=entEnv, epContext=epContext, 
@@ -1041,9 +1062,11 @@ case fctexp
 	  (* add parameEntVar to context of epContext for purpose of updating
 	   * locals pathmap with elements of paramStr. The context path of
 	   * epContextParam is [paramEntVar].
-	   * Then extend the locals pathmap of the epcontextParam, which is the same
-	   * as the locals of epContext', with paths for elements of paramStr *)
-          val _ = let val epContextParam = EPC.enterOpen(epContext', paramEntVar) 
+	   * Then extend the locals pathmap of the epcontextParam, which is the
+	   * same as the locals of epContext', with paths for elements of
+           * paramStr *)
+          val _ = let val epContextParam = 
+			  EPC.enterOpen(epContext', paramEntVar) 
 		   in mapPaths(epContextParam, paramStr, flex)
 		  end
 
@@ -1110,7 +1133,8 @@ case fctexp
 
   (* curried functor *)
   | BaseFct{params=param :: lparam,body,constraint} =>
-      let val fctexp' = 
+      let val _ = debugmsg "--elabFct[BaseFct] curried"
+	  val fctexp' = 
             BaseFct{params=[param],
 		    body=BaseStr(
                            FctDec[Fctb{name=functorId,

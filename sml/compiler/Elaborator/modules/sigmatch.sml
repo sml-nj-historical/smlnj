@@ -1579,8 +1579,8 @@ end (* function packFct1 *)
  * functor closure; this is where the paramsig must be interpreted.        *
  *                                                                         *
  ***************************************************************************)
-and applyFct{fct as FCT {sign=FSIG{paramsig, bodysig, ...},
-			 rlzn = fctRlzn, ... },
+and applyFct{fct as FCT {sign=FSIG (fsgn as {paramsig, bodysig, ...}),
+			 rlzn = fctRlzn, access, prim},
              fctExp, argStr, argExp, entvar, epc,
              statenv, rpath, region,
              compInfo as {mkStamp, mkLvar=mkv, ...}} =
@@ -1604,10 +1604,26 @@ and applyFct{fct as FCT {sign=FSIG{paramsig, bodysig, ...},
 		      access=bodyDacc, prim=[]}
 	    end
 
+	(* [5/6/09 GK Experimental] The parameter realization must be 
+	   updated with the precise shape of argument during application
+	   in order for the correct parameter realization to be pickled 
+	   and unpickled. *) 
+	
+	val fct' =
+	    let
+		val fctRlzn' = {stamp=(#stamp fctRlzn),
+				paramRlzn=argRlzn,
+				closure=(#closure fctRlzn),
+				rpath=(#rpath fctRlzn),
+				stub=(#stub fctRlzn),
+				properties=(#properties fctRlzn)}
+	    in 
+		FCT{sign=FSIG fsgn, rlzn = fctRlzn', access=access, prim=prim}
+	    end
+
 	val resDec = 
-	    let (* val argtycs = INS.getTycPaths{sign=paramsig, rlzn=argRlzn, 
-						 entEnv=fctEntEnv, compInfo=compInfo} *)
-		val body = A.APPstr{oper=fct, arg=argStr1(* , argtycs=argtycs *)}
+	    let 
+		val body = A.APPstr{oper=fct, arg=argStr1}
 		val resAbs = A.LETstr(argDec1, body)
 	     in A.STRdec [A.STRB{name=anonSym, str=resStr, def=resAbs}]
 	    end
