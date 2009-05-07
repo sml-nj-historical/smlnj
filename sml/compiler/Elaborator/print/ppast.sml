@@ -263,9 +263,8 @@ and ppExp (context as (env, source_opt)) ppstrm =
 		break ppstrm {nsp=1,offset=0};
 		pps "end";
 	       closeBox ())
-        | ppExp'(SeqExp [expr],_,d) = ppExp'(expr,false,d-1)
  	| ppExp'(SeqExp exps,_,d) =
-	      ppClosedSequence ppstrm
+                let fun parenThunk () = ppClosedSequence ppstrm
 	        {front=(C PP.string "("),
 		 sep=(fn ppstrm => (PP.string ppstrm ";";
 				    break ppstrm {nsp=1,offset=0})),
@@ -273,6 +272,15 @@ and ppExp (context as (env, source_opt)) ppstrm =
 		 pr=(fn _ => fn exp => ppExp'(exp,false,d-1)),
 		 style=INCONSISTENT}
 		exps
+                    fun subExpCount (MarkExp (expr, _)) = subExpCount expr
+                      | subExpCount (FlatAppExp subexps) = length subexps
+                      | subExpCount _ = 1
+                in case exps
+                    of [expr] => if (subExpCount expr) < 2 
+                                 then ppExp'(expr,false,d-1)
+                                 else parenThunk()
+                     | _ => parenThunk()
+                end
 	| ppExp' (IntExp i,_,_) = pps (IntInf.toString i)
 	| ppExp' (WordExp w,_,_) = pps (IntInf.toString w)
 	| ppExp' (RealExp r,_,_) = pps r
