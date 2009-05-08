@@ -1,4 +1,6 @@
-structure TypesTP =
+(* tycpath.sml *)
+
+structure TycPath =
 struct
 
 local
@@ -15,7 +17,6 @@ datatype tycpath (* (instantiated) functor type parameter path *)
   | TP_SEL of tycpath * int
 end (* local *)
 
-end (* structure TypesTP *)
+end (* structure TycPath *)
 
-(* structure should be renamed "TycPaths" and then eliminated by directly
- * constructing FLINT types. *)
+(* TycPath structure be eliminated in favor of directly constructing FLINT types. *)

@@ -112,7 +112,7 @@ Group
 
 	(* export of structures required to use FLINT directly *)
 	structure Translate
-	structure TypesTP 
+	structure TycPath
 	structure FlexTycMap
 	structure RepTycProps
 	structure Lty
@@ -262,7 +262,7 @@ FLINT/trans/primopmap.sml
 FLINT/trans/translate.sml
 FLINT/trans/module-plists.sml
 FLINT/trans/transtypes.sml
-FLINT/trans/typestp.sml
+FLINT/trans/tycpath.sml
 FLINT/trans/flextycmap.sml
 FLINT/trans/reptycprops.sml
 

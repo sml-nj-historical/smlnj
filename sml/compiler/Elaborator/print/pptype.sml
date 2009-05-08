@@ -140,14 +140,6 @@ in
     prKind (!tyvar)
 end
 
-(*
-fun ppkind ppstrm kind =
-    pps ppstrm
-      (case kind
-	 of PRIMITIVE _ => "PRIMITIVE" | FORMAL => "FORMAL"
-          | FLEXTYC _ => "FLEXTYC" | ABSTRACT _ => "ABSTYC"
-	  | DATATYPE _ => "DATATYPE" | TEMP => "TEMP")
-*)
 fun ppkind ppstrm kind =
     pps ppstrm
       (case kind
@@ -243,15 +235,11 @@ fun ppInvPath ppstream (InvPath.IPATH path: InvPath.path) =
 fun ppBool ppstream b =
     case b of true => pps ppstream "b" | false => pps ppstream "f"
 
-fun (* ppkind env ppstrm (FLEXTYC tp) =
-    (pps ppstrm "X("; ppTycpath env ppstrm tp; pps ppstrm ")")
-  | *) ppkind _ ppstrm kind = 
+fun ppkind ppstrm kind = 
     pps ppstrm
       (case kind
-	 of PRIMITIVE _ => "P" | FORMAL => "F"
-        (*  | FLEXTYC _ => bug "ppkind" *) | ABSTRACT _ => "A"
+	 of PRIMITIVE _ => "P" | FORMAL => "F" | ABSTRACT _ => "A"
 	  | DATATYPE _ => "D" | TEMP => "T")
-
 
 and ppTycon1 env ppstrm membersOp =
     let val {openHVBox,openHOVBox,closeBox,pps,break,...} = en_pp ppstrm
@@ -260,7 +248,7 @@ and ppTycon1 env ppstrm membersOp =
 	    then (openHOVBox 1;
 		  ppInvPath ppstrm path;
 		  pps "[";
-		  pps "G"; ppkind env ppstrm kind; pps ";"; 
+		  pps "G"; ppkind ppstrm kind; pps ";"; 
 		  pps (Stamps.toShortString stamp);
 		  pps ";";
 		  ppEqProp ppstrm (!eq);

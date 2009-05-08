@@ -21,12 +21,12 @@
 signature REPTYCPROPS = 
 sig
    val getTk : Modules.fctSig * Modules.strEntity * DebIndex.depth 
-	       -> (TypesTP.tycpath list * TypesTP.tycpath FlexTycMap.map)  
-   val primaryCompInStruct : TypesTP.tycpath FlexTycMap.map * Modules.strEntity
+	       -> (TycPath.tycpath list * TycPath.tycpath FlexTycMap.map)  
+   val primaryCompInStruct : TycPath.tycpath FlexTycMap.map * Modules.strEntity
 			     * Modules.strEntity * Modules.Signature 
 			     * DebIndex.depth 
-			     -> TypesTP.tycpath FlexTycMap.map 
-				* TypesTP.tycpath list
+			     -> TycPath.tycpath FlexTycMap.map 
+				* TycPath.tycpath list
 end
 
 structure RepTycProps : REPTYCPROPS =
@@ -35,7 +35,7 @@ struct
 local
       structure M = Modules
       structure T = Types
-      structure TP = TypesTP
+      structure TP = TycPath
       structure EE = EntityEnv
       structure EP = EntPath
       structure SE = StaticEnv

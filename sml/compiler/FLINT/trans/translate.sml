@@ -48,7 +48,7 @@ local structure B  = Bindings
       open Absyn PLambda 
 in 
 
-type flexmap = TypesTP.tycpath FlexTycMap.map 
+type flexmap = TycPath.tycpath FlexTycMap.map 
 
 (****************************************************************************
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *

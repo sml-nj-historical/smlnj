@@ -4,11 +4,11 @@
 signature TRANSTYPES = 
 sig
 
-  type flexmap = TypesTP.tycpath FlexTycMap.map 
+  type flexmap = TycPath.tycpath FlexTycMap.map 
   
   val genTT  : unit
-	       -> {tpsKnd : TypesTP.tycpath -> PLambdaType.tkind,
-                   tpsTyc : flexmap -> DebIndex.depth -> TypesTP.tycpath 
+	       -> {tpsKnd : TycPath.tycpath -> PLambdaType.tkind,
+                   tpsTyc : flexmap -> DebIndex.depth -> TycPath.tycpath 
                             -> PLambdaType.tyc,
                    toTyc  : flexmap -> 
 			    DebIndex.depth -> Types.ty -> PLambdaType.tyc,
@@ -39,13 +39,13 @@ local structure BT = BasicTypes
       structure SE = StaticEnv
       structure TU = TypesUtil
       structure PP = PrettyPrintNew
-      structure TP = TypesTP
+      structure TP = TycPath
       structure FTM = FlexTycMap
 
       open Types Modules ElabDebug
 in
 
-type flexmap = TypesTP.tycpath FlexTycMap.map 
+type flexmap = TycPath.tycpath FlexTycMap.map 
 
 fun bug msg = ErrorMsg.impossible ("TransTypes: " ^ msg)
 val say = Control.Print.say 
