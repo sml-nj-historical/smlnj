@@ -7,7 +7,7 @@ A functor parameter signature will be translated into a type abstraction (TFUN) 
 
 Any nondefined functor element gets a type variable, whose kind is derived from the functor signature of that element.
 
-A tycon element is "primary', and gets a type variable, if it is _formal_, i.e. neither defined, nor a datatype.  Datatypes are viewed has having a defined structure given by the datatype spec.  The kind of the plambda type variable for a primary tycon is computed from the arity of the tycon (PLambdaType.tkc_int).  A formal tycon is a GENtyc with kind=FORMAL.
+A tycon element is "primary", and gets a type variable, if it is _formal_, i.e. neither defined, nor a datatype.  Datatypes are viewed has having a defined structure given by the datatype spec.  The kind of the plambda type variable for a primary tycon is computed from the arity of the tycon (PLambdaType.tkc_int).  A formal tycon is a GENtyc with kind=FORMAL.
 
 Only one type variable is included per sharing equivalence class of tycons (& functors?).  Hence instantiation (which determines the sharing equivalence classes and their representative elements) is naturally involved in the determination of the primary tycons and their plambda type variables.
 
@@ -22,8 +22,9 @@ How could the primary tycons of a signature be identified.
 (a) and (b) are intertranslatable from the signature representation.  I.e.  given a symbolic path for an element, we follow that path, extracting the entityVar for each spec along the way to form the corresponding entity path.  Starting with the entity path, we can search for the corresponding element in successive elements lists and capture the corresponding symbolic names to form a symbolic path.
 
 Representing a primary tycon as a flexible stamp, as in (c), is clearly relative to a particular
-instanatiation of the signature.
+instantiation of the signature.
 
+Unfortunately, because elaboration introduces tycons directly into the abstract syntax of the functor body, particularly GENtycs which can only be distinguished by their stamps, neither symbolic paths nor entity paths are adequate to identify primary types throughout the abstract syntax.  
 -----------------------
 
 Translating tycons.
@@ -39,4 +40,4 @@ and TP_SEL) have to do with functors and structures.
 ---------------------
 Determining the tkind (plambda kind) of a functor element.
 
-A functor element in a signature is translated into a type function and also into a lambda term.  The type function has a kind (tkind), which must be computible from the functor signature.
+A functor element in a signature is translated into a type function and also into a lambda term.  The type function has a kind (tkind), which must be computable from the functor signature.
