@@ -41,3 +41,10 @@ and TP_SEL) have to do with functors and structures.
 Determining the tkind (plambda kind) of a functor element.
 
 A functor element in a signature is translated into a type function and also into a lambda term.  The type function has a kind (tkind), which must be computable from the functor signature.
+
+PLambda kinds have the following forms:
+fun K ... K -> K 
+seq K ... K
+    0 ... n
+
+
