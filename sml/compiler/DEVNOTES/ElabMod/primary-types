@@ -39,6 +39,7 @@ and TP_SEL) have to do with functors and structures.
 [Q: What is the role of TP_TYC?  Shouldn't all primary tycons be represented by a TP_VAR?
 If so, are the arguments of TP_TYC secondary tycons?  In that case, what do they have to
 do with the plambda type or kind?]
+[A: TP_TYC encodes DATATYPEs, abstract GENtycs, and all other nonformals (PRIMITIVE and TEMP (which should be impossible at this point))]. 
 
 ---------------------
 Determining the tkind (plambda kind) of a functor element.
@@ -56,7 +57,49 @@ External functors and primary types in closures
 
 Because pidinfo in persistent maps contain lty information for the given pid, the lty for externally referenced functor (i.e., an occurrence of a functor name that is defined outside the compilation unit), the FLINT lty must be computed. The lty does not have to be computed before elaboration of the functor variable for local functor variables because we do not create persistent map entries for those. 
 [Q: What is a pidinfo, and where is it defined?]
+[A: pidinfo is defined in translate.sml as a list with ANON or NAMED id as elements.]
 [Q: Where in the code is the lty for an external functor computed?]
+[A: The lty for the external functor is computed by mkAccInfo using a first-class function getLty. The getLty for the mkFct invocation of mkAccInfo is defined to be fn () => fctLty(...) where fctLty is defined in transtypes.]
 
-We translate externally defined functor variables by looking up the path until we get to an EXTERN access. Then we compute the lty for that functor variable given that functor and compInfo. 
+We translate externally defined functor variables by looking through intermediate PATH accesses until we get to an EXTERN access. Then we compute the lty for that functor variable given that functor and compInfo. 
 [Q: How?  What does compinfo have to do with this?]
+[A: PATH accesses contain another access inside. Alternatively, we may end up with an LVAR but this is impossible because mkAccInfo checks that the access is indeed extern before we do this step. compinfo is pass through to support EvalEnt.evalApp. evalApp only uses the mkStamp part of compinfo.]
+
+=========================
+
+Idea: Replace paramRlzn with list of primary flexible stamps including functor stamps 
+
+=========================
+
+Primary types
+
+The following are some examples of how functor parameters translate into FLINT types. The only phenomenon not illustrated is the flattening of hierarchically nested structures in the functor parameter. 
+
+functor F(X:
+sig 
+  type 'a t0 
+  type t1 = int 
+  functor G(Y:sig 
+                type 'a u = 'a t0 
+                functor H(Z:sig end):sig end 
+              end): 
+     sig 
+       type u' = t1 
+     end 
+   type t2 
+   val a : (int t0) * t1 * t2 end) 
+= struct end;  
+
+/\([M]=>M,M,([[]=>[]]=>[]).\v1:STR([\/([]=>[]).FCT(\/[].FCT([],[]),[]), {TCAP(TV(1,0), PRIM(I)),PRIM(I),TV(1,1)})
+
+Formal type components such as t0 and t2 translate into type abstractions of the appropriate kind (may be a non-monokind, e.g., t0 is kind [M]=>M). They are indexed according to type abstraction depth and position in the formal argument list. For example, F has two formal type arguments, t0 and t2 which occur in the body as TV(1,0) and TV(1,1) respectively. The first index is the deBruijn index. The second is the position of that formal in the list of all formals up to sharing equivalence.  
+
+The formal functor G is decomposed into a type abstraction part ([[]=>[]]=>[]) and a lambda part \/([]=>[]).FCT(\/[].FCT([],[]).[]). 
+
+
+
+functor F(X:sig type t functor G(Y:sig type s val x : s * t end): sig type u end end) = ...
+
+/\(M,[M]=>[M]).\v1: STR(\/[M].FCT(STR[TYC{TV(1,0),TV(2,0)}],STR(STR([])))))
+
+
