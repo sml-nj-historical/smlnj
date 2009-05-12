@@ -502,7 +502,7 @@ in
 				     val (ftmap1, argtps) = 
 					 primaryCompInStruct(ftmap,
 							     paramRlzn,
-							     paramRlzn,
+							     NONE,
 							     paramsig,
 							     DI.next d)
 
@@ -553,7 +553,7 @@ in
 	    let 
 		val _ = debugmsg ">>getTk"
 		val (ftmap, argtycs') = 
-		    primaryCompInStruct(FTM.empty, argRlzn, argRlzn, 
+		    primaryCompInStruct(FTM.empty, argRlzn, NONE, 
 					paramsig, d)
 		val _ = debugmsg "<<getTk"
 	    in (argtycs', ftmap)

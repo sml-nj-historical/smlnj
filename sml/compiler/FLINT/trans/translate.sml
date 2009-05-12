@@ -465,7 +465,7 @@ and mkRep (rep, lt, name) =
  **)
 fun mkAccInfo (acc, getLty, nameOp) = 
   if extern acc then mkAccT(acc, getLty(), nameOp) 
-  else (getLty(); mkAcc (acc, nameOp)
+  else (getLty(); mkAcc (acc, nameOp))
 
 fun fillPat(fm : TT.flexmap, pat, d) = 
   let fun fill (CONSTRAINTpat (p,t)) = fill p
