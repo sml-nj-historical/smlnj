@@ -23,7 +23,7 @@ sig
    val getTk : Modules.fctSig * Modules.strEntity * DebIndex.depth 
 	       -> (TycPath.tycpath list * TycPath.tycpath FlexTycMap.map)  
    val primaryCompInStruct : TycPath.tycpath FlexTycMap.map * Modules.strEntity
-			     * Modules.strEntity * Modules.Signature 
+			     * Modules.strEntity option * Modules.Signature 
 			     * DebIndex.depth 
 			     -> TycPath.tycpath FlexTycMap.map 
 				* TycPath.tycpath list
@@ -386,12 +386,15 @@ in
 	   in rlzn where a component is primary if it is a representative
 	   picked by instantiate in freerlzn. *)
 	fun primaryCompInStruct(ftmap0, freerlzn : M.strEntity, 
-			    rlzn: M.strEntity, M.SIG (sign : M.sigrec), d) =
+				rlznOp: M.strEntity option, 
+				M.SIG (sign : M.sigrec), 
+				d) =
 	    let
 		val fsigs = fsigInElems(#elements sign)
 		val _  = debugmsg ("--pri num of fsigs "^
 				   Int.toString (length fsigs)
 				   ^" depth "^DI.dp_print d)
+		val rlzn = (case rlznOp of NONE => freerlzn | SOME r => r)
 		val entenv = #entities rlzn
 		val eps = repEPs(entpaths(#elements sign), #entities freerlzn) 		
 		val _ = debugmsg ("--primaryCompInStruct eps "^

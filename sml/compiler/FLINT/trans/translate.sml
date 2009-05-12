@@ -54,7 +54,7 @@ type flexmap = TycPath.tycpath FlexTycMap.map
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *
  ****************************************************************************)
 
-val debugging = FLINT_Control.trdebugging (* ref true *)
+val debugging = (* FLINT_Control.trdebugging *) ref true 
 fun bug msg = EM.impossible("Translate: " ^ msg)
 val say = Control.Print.say
 fun warn s = say ("*** WARNING: " ^ s ^ "\n")
@@ -464,7 +464,8 @@ and mkRep (rep, lt, name) =
  ** [DBM: 5/1/07]: I've eliminated the unused prim argument.
  **)
 fun mkAccInfo (acc, getLty, nameOp) = 
-  if extern acc then mkAccT(acc, getLty(), nameOp) else mkAcc (acc, nameOp)
+  if extern acc then mkAccT(acc, getLty(), nameOp) 
+  else (getLty(); mkAcc (acc, nameOp)
 
 fun fillPat(fm : TT.flexmap, pat, d) = 
   let fun fill (CONSTRAINTpat (p,t)) = fill p
@@ -1195,6 +1196,7 @@ fun mkStr (fm : TT.flexmap, s as M.STR { access, prim, ... }, d) =
 
 fun mkFct (fm : TT.flexmap, f as M.FCT { access, prim, ...}, d) =
     let val _ = debugmsg ">>mkFct"
+	val _ = debugmsg ("--mkFct fm size "^Int.toString(FTM.numItems fm))
 	val res = 
 	    mkAccInfo(access, 
 	      fn () => fctLty(fm, f, d, compInfo),
@@ -1408,12 +1410,12 @@ and mkEBs (fm : TT.flexmap, ebs, d) =
  *    val mkFctbs  : Absyn.fctb list * depth -> PLambda.lexp -> PLambda.lexp *
  *                                                                         *
  ***************************************************************************)
-and mkStrexp (ftmap0, se, d) = 
+and mkStrexp (fm0, se, d) = 
   let val _ = debugmsg ">>mkStrexp"
-      fun g(fm : flexmap, strexp : Absyn.strexp) : (flexmap * PLambda.lexp) =
+      fun g(strexp : Absyn.strexp) : PLambda.lexp =
 	(case strexp 
 	  of (APPstr {oper, arg}) =>
-              let val e1 = mkFct(fm, oper, d) 
+              let val e1 = mkFct(fm0, oper, d) 
                   (* [RepTycProps] *)
 		  val _ = debugmsg ("--mkStrexp[APPstr] depth "^
 				    DI.dp_print d)
@@ -1422,58 +1424,66 @@ and mkStrexp (ftmap0, se, d) =
 			of (M.FCT{sign=M.FSIG{paramsig, ...}, 
 				  rlzn=fctRlzn, ...}, 
 			    M.STR{rlzn, ...}) =>
-			   RepTycProps.primaryCompInStruct(fm, 
+			   RepTycProps.primaryCompInStruct(fm0, 
 							  #paramRlzn fctRlzn,
-							  rlzn,
+							  SOME rlzn,
 							  paramsig, d)
 			 | _ => bug "Unexpected APPstr")
-                  val tycs = map (tpsTyc ftmap1 d) argtycs 
-                  val e2 = mkStr(ftmap1, arg, d)
-               in (ftmap1, APP(TAPP(e1, tycs), e2))
+                  val tycs = map (tpsTyc fm0 d) argtycs 
+                  val e2 = mkStr(fm0, arg, d)
+               in APP(TAPP(e1, tycs), e2)
               end
-	   | (MARKstr (b, reg)) => withRegion reg g (fm, b)
+	   | (MARKstr (b, reg)) => withRegion reg g b
 	   | (LETstr (dec, body)) => 
-	     let val (fm1, dec') = mkDec (fm, dec, d) 
-		 val (fm2, body') = g (fm1, body)
-	     in (fm2, dec' body')
+	     let val dec' = mkDec (fm0, dec, d) 
+		 val body' = g body
+	     in dec' body'
 	     end
 	   | _ => let 
 		      val le = 
 			  (case strexp
-			    of (VARstr s) => mkStr(fm, s, d)
+			    of (VARstr s) => mkStr(fm0, s, d)
 			     | (STRstr bs) => 
-			         SRECORD (map (mkBnd (fm, d)) bs)
+			         SRECORD (map (mkBnd (fm0, d)) bs)
 			     | _ => bug "strexp pattern failed"
 			     )
-		  in (ftmap0, le)
+		  in le
 		  end)
 
-      val (ftmap, le) = g (ftmap0, se)
+      val le = g se
       val _ = debugmsg "<<mkStrexp"
    in 
-      (ftmap, le)
+      le
   end
 
-and mkFctexp (ftmap0, fe, d) : flexmap * lexp = 
+and mkFctexp (fm0, fe, d) : lexp = 
   let 
-      fun g (fm, fe) = 
+      fun g fe = 
 	  case fe
-	   of (VARfct f) => (fm, mkFct(fm, f, d))
+	   of (VARfct f) => 
+	      (debugmsg "--mkFctexp[VARfct]";
+	       ElabDebug.debugPrint debugging 
+			("functor: ", 
+			 fn ppstrm => fn fct => 
+			PPModules.ppFunctor ppstrm (fct, StaticEnv.empty, 100),
+				     f);
+	       mkFct(fm0, f, d))
             | (FCTfct {param as M.STR { sign, access, rlzn, ... }, def }) =>
 	      (case access
 	         of DA.LVAR v =>
                let 
 		   val _ = debugmsg ("--mkFctexp[FCTfct] depth "^
 				     DI.dp_print d^" fm "
-				     ^Int.toString(FTM.numItems fm))
+				     ^Int.toString(FTM.numItems fm0))
 		   (* [RepTycProps] *)
-		   val (ftmap1, argtycs) = 
-		       RepTycProps.primaryCompInStruct(fm, rlzn, 
-						       rlzn, sign, d)
+		   val (fm1, argtycs) = 
+		       RepTycProps.primaryCompInStruct(fm0, rlzn, 
+						       NONE, sign, d)
 		   
 		   val knds = map tpsKnd argtycs
 		   val _ = if !debugging then 
-			       (app (fn k => (ppTKind k; print " ")) knds; 
+			       (print "argtycs kinds: ";
+				app (fn k => (ppTKind k; print " ")) knds; 
 				print "\n";
 				with_pp (fn s => 
 					    PPModules.ppStructure s 
@@ -1482,18 +1492,15 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
 			   else ()
                    val nd = DI.next d  (* reflecting type abstraction *)
 		   val _ = debugmsg ("--mkFctexp[FCTfct] fm1 "
-				     ^Int.toString(FTM.numItems ftmap1))
-                   val (ftmap2, body) = mkStrexp (ftmap1, def, nd)
+				     ^Int.toString(FTM.numItems fm1))
+                   val body = mkStrexp (fm1, def, nd)
                    val hdr = buildHdr v
 		   val _ = debugmsg "--mkFctexp[in strLty]"
-		   val lty = strLty(ftmap2, param, nd, compInfo)
+		   val lty = strLty(fm1, param, nd, compInfo)
 		   val _ = debugmsg "--mkFctexp[done strLty]"
-		   val _ = debugmsg ("--mkFctexp[FCTfct] fm2 "
-				     ^Int.toString(FTM.numItems ftmap2))
                (* binding of all v's components *)
                in
-		   (ftmap2, 
-		    TFN(knds, FN(v, lty, hdr body)))
+		   TFN(knds, FN(v, lty, hdr body))
 		   (* [FIXME]strLty's param has a signature with GENtyc formals.
 		    * transtypes will not know how to deal with this. 
 		    * The free instantiation of this functor's parameter 
@@ -1504,32 +1511,17 @@ and mkFctexp (ftmap0, fe, d) : flexmap * lexp =
 	     | _ => bug "mkFctexp: unexpected access")
         | (LETfct (dec, b)) =>
 	  let val _ = debugmsg ">>mkFctexp[LETfct]"
-	      val (fm1, dec') = mkDec (fm, dec, d) 
-	      val (fm2, b') = g (fm1, b)
+	      val dec' = mkDec (fm0, dec, d) 
+	      val b' = g b
+	      val r = dec' b'
 	      val _ = debugmsg "<<mkFctexp[LETfct]"
-	  in (fm2, dec' b')
+	  in r 
 	  end
-        | (MARKfct (b, reg)) => withRegion reg g (fm, b)
+        | (MARKfct (b, reg)) => withRegion reg g b
         | _ => bug "unexpected functor expressions in mkFctexp"
 
-   in g (ftmap0, fe)
+   in g fe
   end (* mkFctexp *)
-
-and mkStrbsFlexmap (ftmap0, sbs, d) : flexmap =
-  let val _ = debugmsg ">>mkStrbsFlexmap"
-      fun itr(STRB{str=M.STR {access, ...}, def, ...}, fm) = 
-	  (case access of
-	       DA.LVAR v => 
-	       let val hdr = buildHdr v
-		   val (fm1, _) = mkStrexp(fm, def, d)
-	       in fm1
-	       end
-	     | _ => bug "mkStrbsFlexmap 1")
-	| itr _ = bug "mkStrbsFlexmap 2"
-      val res = fold itr sbs ftmap0
-      val _ = debugmsg "<<mkStrbsFlexmap"
-  in res
-  end
  
 and mkStrbs (ftmap0, sbs, d) =
   let fun g (STRB{str=M.STR { access, ... }, def, ... }, b) =
@@ -1537,7 +1529,7 @@ and mkStrbs (ftmap0, sbs, d) =
 	       DA.LVAR v =>
                let val hdr = buildHdr v 
                (* binding of all v's components *)
-		   val (_, def') = mkStrexp(ftmap0, def, d)
+		   val def' = mkStrexp(ftmap0, def, d)
 		   (* val _ = debugmsg("--mkStrbs fm1 "
 				    ^Int.toString(FTM.numItems fm1)
 				    ^" to fm2 "^Int.toString(FTM.numItems fm2))
@@ -1550,29 +1542,12 @@ and mkStrbs (ftmap0, sbs, d) =
   in fold g sbs
   end
 
-and mkFctbsFlexmap (fm0, fbs, d) =
-    let val _ = debugmsg ">>mkFctbsFlexmap"
-	fun itr(FCTB{fct=M.FCT{access, ...}, def, ... }, fm) =
-	    (case access of 
-		 DA.LVAR v => 
-		 let val (fm2, le) = mkFctexp(fm, def, d)
-		     val _ = debugmsg ("--mkFctbsFlexmap fm2 size "
-				       ^Int.toString(FTM.numItems fm2))
-		 in fm2
-		 end
-	       | _ => bug "mkFctbsFlexmap 1")
-	  | itr _ = bug "mkFctbsFlex 2"
-	val res = fold itr fbs fm0
-	val _ = debugmsg "<<mkFctbsFlexmap"
-    in res
-    end
-
 and mkFctbs (ftmap0, fbs, d) = 
   let fun g (FCTB{fct=M.FCT { access, ... }, def, ... }, b) =
 	  (case access of
 	       DA.LVAR v =>
                let val hdr = buildHdr v
-		   val (_, le) = mkFctexp(ftmap0, def, d)
+		   val le = mkFctexp(ftmap0, def, d)
                in
 		   LET(v, le, hdr b)
                end
@@ -1590,67 +1565,70 @@ and mkFctbs (ftmap0, fbs, d) =
  *                                                                         *
  ***************************************************************************)
 and mkDec (fm0 : flexmap, dec : Absyn.dec, d : DI.depth) 
-    : (flexmap * (PLambda.lexp -> PLambda.lexp)) = 
-  let fun g (fm, VALdec vbs) 
-	  (* : flexmap * (PLambda.lexp -> PLambda.lexp) *)
-	= (fm, (debugmsg "--mkDec[VALdec]"; 
-		mkVBs(fm, vbs, d)))
-        | g (fm, VALRECdec rvbs) = 
-	    (fm, mkRVBs(fm, rvbs, d))
-        | g (fm, ABSTYPEdec{body,...}) = g (fm, body)
-        | g (fm, EXCEPTIONdec ebs) = 
-	    (fm, mkEBs(fm, ebs, d))
-        | g (fm, STRdec sbs) = 
+    : (PLambda.lexp -> PLambda.lexp) = 
+  let fun g (VALdec vbs) 
+	  (* : (PLambda.lexp -> PLambda.lexp) *)
+	= (debugmsg "--mkDec[VALdec]"; 
+	   mkVBs(fm0, vbs, d))
+        | g (VALRECdec rvbs) = 
+	    (mkRVBs(fm0, rvbs, d))
+        | g (ABSTYPEdec{body,...}) = g body
+        | g (EXCEPTIONdec ebs) = 
+	    (mkEBs(fm0, ebs, d))
+        | g (STRdec sbs) = 
 	   (* mkStrbs traverses sbs in the opposite order
 	      of mkStrbsFlexmap *)
-	  let val fm' = mkStrbsFlexmap(fm, sbs, d)
+	  (* let val fm' = mkStrbsFlexmap(fm, sbs, d)
 	      val _ = debugmsg ("--mkDec[STRdec] fm' "
 				^Int.toString(FTM.numItems fm'))
 	  in (fm', mkStrbs(fm', sbs, d))
-	  end
-        | g (fm, FCTdec fbs) = 
-	  let val fm' = mkFctbsFlexmap(fm, fbs, d)
+	  end *)
+	  mkStrbs(fm0, sbs, d)
+        | g (FCTdec fbs) = 
+	  mkFctbs(fm0, fbs, d)
+	  (* let val fm' = mkFctbsFlexmap(fm, fbs, d)
 	      val _ = debugmsg ("--mkDec[FCTdec] fm' "
-				^Int.toString(FTM.numItems fm'))
+				^Int.toString(FTM.numItems fm')) 
 
-	  in (fm', mkFctbs(fm', fbs, d))
-	  end
-        | g (fm, LOCALdec(ld, vd)) = 
-	    let val (fm1, ld') = g (fm, ld)
-		val (fm2, vd') = g (fm, vd)
-	    in (fm2, ld' o vd')
+	  in (fm', mkFctbs(fm', fbs, d)) 
+	  end *)
+        | g (LOCALdec(ld, vd)) = 
+	    let val ld' = g ld
+		val vd' = g vd
+	    in ld' o vd'
 	    end
-        | g (fm, SEQdec ds) =  
-	    let 
-		fun loop([], fm1, fs) = (fm1, foldr (op o) ident (rev fs))
+        | g (SEQdec ds) =  
+	    (* let 
+		(* fun loop([], fm1, fs) = (fm1, foldr (op o) ident (rev fs))
 		  | loop(d::ds, fm1, fs) = 
 		    let val (fm2, f) = g (fm1, d)
 		    in loop(ds, fm2, f::fs)
 		    end
 		val (fm1, fs) = loop (ds, fm, [])
 		val _ = debugmsg ("--mkDec[SEQdec] fm1 "
-				  ^Int.toString(FTM.numItems fm1))
-	    in (* (fm1, foldr (op o) ident (map (fn d => #2 (g(fm1,d))) ds)) *)
-		(fm1, fs)
-	    end
-        | g (fm, MARKdec(x, reg)) = 
-              let val (fm1, f) = withRegion reg g (fm, x)
-               in (fm1, withRegion reg f)
+				  ^Int.toString(FTM.numItems fm1)) *)
+	    in 
+		
+	    end *)
+	  foldr (op o) ident (map g ds) 
+        | g (MARKdec(x, reg)) = 
+              let val f = withRegion reg g x
+               in (withRegion reg f)
               end 
-        | g (fm, OPENdec xs) = 
+        | g (OPENdec xs) = 
               let (* special hack to make the import tree simpler *)
                   fun mkos (_, s as M.STR { access = acc, ... }) =
                       if extern acc then 
-                          let val _ = mkAccT(acc, strLty(fm, s, d, compInfo),
+                          let val _ = mkAccT(acc, strLty(fm0, s, d, compInfo),
 					     NONE)
                           in ()
                           end
                       else ()
                     | mkos _ = ()
-               in app mkos xs; (fm, ident)
+               in app mkos xs; ident
               end 
-        | g (fm, _) = (fm, ident)
-   in g (fm0, dec)
+        | g _ = ident
+   in g dec
   end
 
 and mkExp (fm : TT.flexmap, exp, d) = 
@@ -1795,7 +1773,7 @@ and mkExp (fm : TT.flexmap, exp, d) =
 		FIX ([fv], [lt_u_u], [body], APP (VAR fv, unitLexp))
 	    end
 
-        | g (LETexp (dc, e)) = (#2 (mkDec (fm, dc, d))) (g e)
+        | g (LETexp (dc, e)) = (mkDec (fm, dc, d)) (g e)
 			       (* [RepTycProp] New primary types can't 
 				  be introduced here or occur here.*)
         | g e = 
@@ -1912,7 +1890,7 @@ val exportLexp = SRECORD (map VAR exportLvars)
 
 val _ = debugmsg ">>mkDec"
 (** translating the ML absyn into the PLambda expression *)
-val body = (#2 (mkDec (FlexTycMap.empty, rootdec, DI.top)))
+val body = (mkDec (FlexTycMap.empty, rootdec, DI.top))
 		 exportLexp
 val _ = debugmsg "<<mkDec"
 val _ = if CompInfo.anyErrors compInfo 

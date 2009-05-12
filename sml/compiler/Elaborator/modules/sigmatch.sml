@@ -96,7 +96,7 @@ in
 
 exception BadBinding
 
-val debugging = ElabControl.smdebugging
+val debugging = (* ElabControl.smdebugging *) ref true
 val showsigs = ref false
 
 val say = Control_Print.say
@@ -1608,18 +1608,30 @@ and applyFct{fct as FCT {sign=FSIG (fsgn as {paramsig, bodysig, ...}),
 	   updated with the precise shape of argument during application
 	   in order for the correct parameter realization to be pickled 
 	   and unpickled. *) 
-	
-	val fct' =
-	    let
-		val fctRlzn' = {stamp=(#stamp fctRlzn),
-				paramRlzn=argRlzn,
-				closure=(#closure fctRlzn),
-				rpath=(#rpath fctRlzn),
-				stub=(#stub fctRlzn),
-				properties=(#properties fctRlzn)}
-	    in 
-		FCT{sign=FSIG fsgn, rlzn = fctRlzn', access=access, prim=prim}
-	    end
+
+	val _ = debugPrint (debugging)
+		  ("--applyFct:paramsig=",
+		   fn pps => fn sgn => 
+			PPModules.ppSignature pps (sgn, SE.empty,100),
+		   paramsig)
+
+	val _ = debugPrint (debugging)
+		  ("--applyFct:bodysig=",
+		   fn pps => fn sgn =>
+			PPModules.ppSignature pps (sgn, SE.empty, 100),
+		   bodysig)
+
+	val _ = debugPrint (debugging) 
+			   ("--applyFct:paramRlzn=",
+			    (fn pps => fn ee =>
+				PPModules.ppEntity pps (ee,SE.empty,100)),
+			    STRent (#paramRlzn fctRlzn))
+
+	val _ = debugPrint (debugging) 
+			   ("--applyFct:argRlzn=",
+			    (fn pps => fn ee =>
+				PPModules.ppEntity pps (ee,SE.empty,100)),
+			    STRent argRlzn)
 
 	val resDec = 
 	    let 
