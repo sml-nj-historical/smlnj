@@ -4,13 +4,14 @@
  *)
 structure CompInfo = struct
 
-  type 'absyn compInfo = { mkStamp: unit -> Stamps.stamp,
-                    mkLvar: Symbol.symbol option -> Access.lvar,
-                    anyErrors: bool ref,
-                    error: ErrorMsg.errorFn,
-                    errorMatch: SourceMap.region -> string,
-                    transform: 'absyn -> 'absyn,
-                    sourceName : string }
+  type 'absyn compInfo =
+       { mkStamp: unit -> Stamps.stamp,
+         mkLvar: Symbol.symbol option -> Access.lvar,
+         anyErrors: bool ref,
+         error: ErrorMsg.errorFn,
+         errorMatch: SourceMap.region -> string,
+         transform: 'absyn -> 'absyn,
+         sourceName : string }
 
   fun mkCompInfo { source, transform : 'a -> 'a, mkMkStamp } =
       let val { error, errorMatch, anyErrors } = ErrorMsg.errors source
@@ -27,6 +28,6 @@ structure CompInfo = struct
            sourceName = #fileOpened source } : 'a compInfo
       end
 
-  fun anyErrors (ci : 'a compInfo) = ! (#anyErrors ci)
+  fun anyErrors ({anyErrors,...} : 'a compInfo) = !anyErrors
 
 end (* structure CompBasic *)
