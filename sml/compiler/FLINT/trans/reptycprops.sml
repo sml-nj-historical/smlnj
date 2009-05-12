@@ -119,7 +119,7 @@ in
       end (* local ElabDebug, PPModules *)
 
     (* Processing *)	
-    (* entpaths gets all the entspaths from a list of elements 
+    (* entpaths gets all the entpaths from a list of elements 
        We are getting the entpaths from the signature (potentially
        a functor parameter signature). The signature is generally
        untrustworthy because it does not account for external constraints
@@ -138,12 +138,13 @@ in
 	(case spec 
 	  of M.TYCspec{entVar,info} =>
 	     [entVar]::entpaths(rest)
-	   | M.STRspec{entVar, sign=M.SIG{elements,...}, def, ...} => 
-	     (map (fn ep => entVar::ep) (entpaths elements))@
-	     entpaths(rest)
 	   | M.FCTspec{entVar, sign, slot} => 
 	     [entVar]::entpaths(rest)
+	   | M.STRspec{entVar, sign=M.SIG{elements,...}, def, ...} => 
+	     (map (fn ep => entVar::ep) (entpaths elements)) @
+	     entpaths(rest)
 	   | _ => entpaths(rest))
+
     (* fsigInElems : element list -> fctSig list 
        functor signatures in parameter signature order *)
     fun fsigInElems([]) = []
@@ -223,8 +224,8 @@ in
 	 Computes the functor kind based on that functor's
 	 functor signature and the current entity env. *) 
       fun kinds(paramEnts, bodyEnts, 
-		  M.FSIG{paramsig=M.SIG{elements=pelems,...},
-			 bodysig=M.SIG{elements=belems,...},...}) = 
+		M.FSIG{paramsig=M.SIG{elements=pelems,...},
+		       bodysig=M.SIG{elements=belems,...},...}) = 
 	    let val _ = debugmsg ">>kinds\n";
 	        val _ = debugmsg "--kinds[FCTent]\n"
 		val _ = if !debugging 
