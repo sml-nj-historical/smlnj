@@ -47,4 +47,9 @@ fun K ... K -> K
 seq K ... K
     0 ... n
 
+----------------------
+External functors and primary types in closures
 
+Because pidinfo in persistent maps contain lty information for the given pid, the lty for externally referenced functor (i.e., an occurrence of a functor name that is defined outside the compilation unit), the FLINT lty must be computed. The lty does not have to be computed before elaboration of the functor variable for local functor variables because we do not create persistent map entries for those. 
+
+We translate externally defined functor variables by looking up the path until we get to an EXTERN access. Then we compute the lty for that functor variable given that functor and compInfo. 
