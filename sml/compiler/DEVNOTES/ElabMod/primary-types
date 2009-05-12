@@ -31,11 +31,14 @@ Translating tycons.
 
 Primary tycons need to be translated to the corresponding plambda type variable in the TransTypes (in toTyc).
 
-Currently tycpaths (FLINT/trans/typestp.sml) are used as an intermediate form in the translation from (frontend) types to plambda types.  It is likely that this intermediate representation can be eliminated.  
+Currently tycpaths (FLINT/trans/tycpath.sml) are used as an intermediate form in the translation from (frontend) types to plambda types.  It is likely that this intermediate representation can be eliminated.  
 
 The tycpath for a tycon is either just the tycon itself (TP_TYC tyc), or a representation of a plambda type variable, TP_VAR{tdepth,num,kind}.   Compound tycpaths (TP_FCT, TP_APP,
 and TP_SEL) have to do with functors and structures.
 
+[Q: What is the role of TP_TYC?  Shouldn't all primary tycons be represented by a TP_VAR?
+If so, are the arguments of TP_TYC secondary tycons?  In that case, what do they have to
+do with the plambda type or kind?]
 
 ---------------------
 Determining the tkind (plambda kind) of a functor element.
@@ -43,13 +46,17 @@ Determining the tkind (plambda kind) of a functor element.
 A functor element in a signature is translated into a type function and also into a lambda term.  The type function has a kind (tkind), which must be computable from the functor signature.
 
 PLambda kinds have the following forms:
-fun K ... K -> K 
-seq K ... K
-    0 ... n
+
+fun K ... K -> K      -- an n-ary type operator
+seq K ... K              -- an n-tuple of type constructors
+    0 ... n                -- a basic tycon of arity k
 
 ----------------------
 External functors and primary types in closures
 
 Because pidinfo in persistent maps contain lty information for the given pid, the lty for externally referenced functor (i.e., an occurrence of a functor name that is defined outside the compilation unit), the FLINT lty must be computed. The lty does not have to be computed before elaboration of the functor variable for local functor variables because we do not create persistent map entries for those. 
+[Q: What is a pidinfo, and where is it defined?]
+[Q: Where in the code is the lty for an external functor computed?]
 
 We translate externally defined functor variables by looking up the path until we get to an EXTERN access. Then we compute the lty for that functor variable given that functor and compInfo. 
+[Q: How?  What does compinfo have to do with this?]
