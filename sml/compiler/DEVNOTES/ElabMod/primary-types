@@ -69,6 +69,17 @@ We translate externally defined functor variables by looking through intermediat
 
 Idea: Replace paramRlzn with list of primary flexible stamps including functor stamps 
 
+For each functor we enter, translate needs to keep track of all the primary type information, i.e., a list of flexible stamps for the primary types. 
+
+[Q: What about functors? What information should we keep about formal functors?]
+
+For each stamp occurrence, we need to look up the list of flexible stamps for the given depth. Translate must traverse the list to determine the relative index of the primary type corresponding to that stamp in the list. 
+
+Regardless of the method is used for encoding the primary type information, the LAMBDA fctexp form must also carry it because entity evaluation ultimately must produce a functor entity given only the LAMBDA, epc, and current entity environment. Any approach that requires modification of the functor entity form must suffer a similar shortcoming. 
+
+[Q: How should transtypes tpsKnd be adapted to use this new primary type information?] 
+[A: tpsKnd is used by tpsTyc (for functor tycons), fctRlznLty, and the FCTfct case of mkFctexp.]
+
 =========================
 
 Primary types
@@ -102,4 +113,20 @@ functor F(X:sig type t functor G(Y:sig type s val x : s * t end): sig type u end
 
 /\(M,[M]=>[M]).\v1: STR(\/[M].FCT(STR[TYC{TV(1,0),TV(2,0)}],STR(STR([])))))
 
+functor F(X:sig type t end) = 
+struct
+  functor G(Y:sig val x : X.t end) = struct end
+end
+
+structure M = F(struct type t = int end)
+
+\v8:
+   STR([\/[M].
+         [FCT([STR([])],
+          [STR([STR([\/[].[FCT([STR([TYC(TV(2,0))])], [STR([STR([])])])])])])])]),
+                       APP(TAPP(v8[0] [PRIM(I)]), v2)
+
+functor H = M.G
+
+\v1:STR(\/[].FCT(STR(TYC(PRIM(I))),STR(STR([]))))
 
