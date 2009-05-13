@@ -20,3 +20,4 @@ For example:
 
 Here the signature of Y is considered open even though it does not depend on its context in any way.  In the future, the notion of open signature should be computed more conservatively to check for actual dependencies on context.
 
+The instantiation functions both produce secondary results.  
