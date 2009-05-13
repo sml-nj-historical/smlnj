@@ -69,13 +69,42 @@ We translate externally defined functor variables by looking through intermediat
 
 Idea: Replace paramRlzn with list of primary flexible stamps including functor stamps 
 
-For each functor we enter, translate needs to keep track of all the primary type information, i.e., a list of flexible stamps for the primary types. 
+For each functor we enter, translate needs to keep track of all the primary type information, i.e., a list of flexible stamps for the primary types of the formal instantiation of the parameter signature.  When functors are nested, this gives rise to a list of lists of flexible tycon stamps (and also stamps of formal functor elements, whose type functions will also be referenced by plambda type variables).
 
-[Q: What about functors? What information should we keep about formal functors?]
+[Q: What about functors? What information should we keep about formal functors?
+A: We should be able to compute ]
 
-For each stamp occurrence, we need to look up the list of flexible stamps for the given depth. Translate must traverse the list to determine the relative index of the primary type corresponding to that stamp in the list. 
+For each FORMAL tycon occurrence,  we need to look up the flexible stamp of that tycon
+in the list of lists of flexible stamps representing the functor abstracted tycons. This lookup,
+which should always be successful, yields two numbers: the index in the outer list gives the
+depth (of functor abstraction), which identifies the particular functor abstraction that
+introduced that formal tycon.  The position of the stamp in the corresponding inner list gives the
+number (num) with respect to primaries of that abstraction.
 
-Regardless of the method is used for encoding the primary type information, the LAMBDA fctexp form must also carry it because entity evaluation ultimately must produce a functor entity given only the LAMBDA, epc, and current entity environment. Any approach that requires modification of the functor entity form must suffer a similar shortcoming. 
+For example, looking up the flexible stamp s1 in the abstraction environment
+
+     [l1, l2, [a,b,c,s1,d,e], l4]
+
+would yield depth=2, num=4 (assuming 0-based depth and 1-based num indexing,
+which I think is being used.  [NOTE: This assumes that depth is counted from the top-level.
+If depth is counted outward from the current position as in conventional DeBruijn
+indexing, depth would be 1 instead.].
+
+As we enter each functor during translation, we need to determine the list of flexible 
+stamps of the primary tycons and functors of its parameter instantiation, and we add
+this list to the end of the abstraction environment.  [Or should it be added to the
+front of the environment list?  This depends on whether depth is  counted relative
+to top-level or relative to current abstraction depth.]
+
+Regardless of the method used for encoding the primary type information, the LAMBDA fctexp form must also carry it because entity evaluation ultimately must produce a functor entity given only the LAMBDA, epc, and current entity environment. Any approach that requires modification of the functor entity form must suffer a similar shortcoming.  [DBM: Not clear what this para means -- try to clarify.]
+
+Having determined the depth and num parts of the plambda type variable for a formal/primary element with reference to the abstraction environment, we need to also determine the tkind
+of that element in order to construct the corresponding plambda type variable.  If the item being
+translated is a FORMAL tycon, we have its arity and can immediately translate that into
+the appropriate tkind.  If the item is a formal functor, it is a FCT and we therefore have its 
+functor signature. So we need to transate its functor signature into a tkind.  
+[Q: can we translate a functor signature by itself into a tkind, or is any auxiliary
+information, e.g. an entityEnv, needed?]
 
 [Q: How should transtypes tpsKnd be adapted to use this new primary type information?] 
 [A: tpsKnd is used by tpsTyc (for functor tycons), fctRlznLty, and the FCTfct case of mkFctexp.]
@@ -98,10 +127,12 @@ sig
        type u' = t1 
      end 
    type t2 
-   val a : (int t0) * t1 * t2 end) 
+   val a : (int t0) * t1 * t2
+end) 
 = struct end;  
 
-/\([M]=>M,M,([[]=>[]]=>[]).\v1:STR([\/([]=>[]).FCT(\/[].FCT([],[]),[]), {TCAP(TV(1,0), PRIM(I)),PRIM(I),TV(1,1)})
+/\([M]=>M, M, ([[]=>[]]=>[])).   --  (t0, t2, G)  primary elements of X
+    \v1:STR([\/([]=>[]).FCT(\/[].FCT([],[]),[]), {TCAP(TV(1,0), PRIM(I)),PRIM(I),TV(1,1)})
 
 Formal type components such as t0 and t2 translate into type abstractions of the appropriate kind (may be a non-monokind, e.g., t0 is kind [M]=>M). They are indexed according to type abstraction depth and position in the formal argument list. For example, F has two formal type arguments, t0 and t2 which occur in the body as TV(1,0) and TV(1,1) respectively. The first index is the deBruijn index. The second is the position of that formal in the list of all formals up to sharing equivalence.  
 

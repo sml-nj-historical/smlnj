@@ -1,15 +1,22 @@
+Instantiate
 
-Instantiate produces a free instantiation of a signature given a current entity environment. It does so by way of a linear unification algorithm. 
+The instantiation functions instFormal and instAbstr both produce a free instantiation of a signature given a current entity environment. It does so by way of a linear unification algorithm
+to determine the sharing equivalence classes of tycon elements. [Q: How does this apply to 
+functor elements?]
 
 The goal is to produce a realization of the signature that incorporates all the necessary type sharing but no more. The target of linear unification are these "structure instances" which represent equivalence classes of structures and functor instances. Equivalence classes are represented as association lists of entity variables and "slots" (structure instances that are nodes on this graph). 
 
+Instantiation is a two-pass process, represented by the functions sigToInst and instToStr.  sigToInst performs the unification by building a graph of "instance" data structures representing
+sharing equivalence classes.  instToStr translates this graph into a realization (strEntity).
 
-instToStr also attempts to close any open realizations by incorporating the contextual entity environment. Open is defined liberally to mean any signature that is not defined at top level. 
+instToStr also closes the realization of any "open" signature by incorporating the contextual entity environment as part of the entities field of the instance realization. For this purpose, open is defined conservatively to mean any signature that is not defined at top level.
 
-functor F(X:sig type t end) = 
-struct
-  functor G(Y:sig type u end) = struct end
-end
+For example:
 
-GSIG is considered open even though it does not depend on its context in any way.  
-In the future, the notion of open signature should be computed more conservatively to check for actual dependencies on context. 
+    functor F(X:sig type t end) = 
+    struct
+      functor G(Y:sig type u end) = struct end
+    end
+
+Here the signature of Y is considered open even though it does not depend on its context in any way.  In the future, the notion of open signature should be computed more conservatively to check for actual dependencies on context.
+
