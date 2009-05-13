@@ -158,6 +158,8 @@ and evalStr(strExp, epc, entsvOp, entEnv, rpath,
 
                 (* because the abstraction creates a bunch of new stamps,
                    we have to bind them to the epcontext.
+		   But not all new stamps are represented in abstycs, only
+	           FORMALs (primaries)!
                  *)
                 val epc = enterOpen(epc, entsvOp)
                 fun bindEp (T.GENtyc gt, ep) =
