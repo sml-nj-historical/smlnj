@@ -74,12 +74,14 @@ For each functor we enter, translate needs to keep track of all the primary type
 [Q: What about functors? What information should we keep about formal functors?
 A: We should be able to compute ]
 
-For each FORMAL tycon occurrence,  we need to look up the flexible stamp of that tycon
-in the list of lists of flexible stamps representing the functor abstracted tycons. This lookup,
-which should always be successful, yields two numbers: the index in the outer list gives the
-depth (of functor abstraction), which identifies the particular functor abstraction that
-introduced that formal tycon.  The position of the stamp in the corresponding inner list gives the
-number (num) with respect to primaries of that abstraction.
+For each FORMAL tycon occurrence, we need to look up the flexible
+stamp of that tycon in the list of lists of flexible stamps
+representing the functor abstracted tycons. This lookup, which should
+always be successful, yields two numbers: the index in the outer list
+gives the depth (of functor abstraction), which identifies the
+particular functor abstraction that introduced that formal tycon.  The
+position of the stamp in the corresponding inner list gives the number
+(num) with respect to primaries of that abstraction.
 
 For example, looking up the flexible stamp s1 in the abstraction environment
 
@@ -90,22 +92,26 @@ which I think is being used.  [NOTE: This assumes that depth is counted from the
 If depth is counted outward from the current position as in conventional DeBruijn
 indexing, depth would be 1 instead.].
 
-As we enter each functor during translation, we need to determine the list of flexible 
-stamps of the primary tycons and functors of its parameter instantiation, and we add
-this list to the end of the abstraction environment.  [Or should it be added to the
-front of the environment list?  This depends on whether depth is  counted relative
+As we enter each functor during translation, we need to determine the
+list of flexible stamps of the primary tycons and functors of its
+parameter instantiation, and we add this list to the end of the
+abstraction environment.  [Or should it be added to the front of the
+environment list?  This depends on whether depth is counted relative
 to top-level or relative to current abstraction depth.]
 
-Regardless of the method used for encoding the primary type information, the LAMBDA fctexp form must also carry it because entity evaluation ultimately must produce a functor entity given only the LAMBDA, epc, and current entity environment. Any approach that requires modification of the functor entity form must suffer a similar shortcoming.  [DBM: Not clear what this para means -- try to clarify.]
+Regardless of the method used for encoding the primary type information, the LAMBDA fctexp form must also carry that information because entity evaluation ultimately must produce a functor entity given only the LAMBDA, epc, and current entity environment. Any approach that requires modification of the functor entity form must suffer a similar shortcoming. That is to say, primary type information must be propagated through the LAMBDA fctexp because entity evaluation needs that information in order to produce a well-formed fctEntity. [DBM: Not clear what this para means -- try to clarify.]
 
-Having determined the depth and num parts of the plambda type variable for a formal/primary element with reference to the abstraction environment, we need to also determine the tkind
-of that element in order to construct the corresponding plambda type variable.  If the item being
-translated is a FORMAL tycon, we have its arity and can immediately translate that into
-the appropriate tkind.  If the item is a formal functor, it is a FCT and we therefore have its 
-functor signature. So we need to transate its functor signature into a tkind.  
-[Q: can we translate a functor signature by itself into a tkind, or is any auxiliary
-information, e.g. an entityEnv, needed?]
-
+Having determined the depth and num parts of the plambda type variable
+for a formal/primary element with reference to the abstraction
+environment, we need to also determine the tkind of that element in
+order to construct the corresponding plambda type variable.  If the
+item being translated is a FORMAL tycon, we have its arity and can
+immediately translate that into the appropriate tkind.  If the item is
+a formal functor, it is a FCT and we therefore have its functor
+signature. So we need to transate its functor signature into a tkind.
+[Q: can we translate a functor signature by itself into a tkind, or is
+any auxiliary information, e.g. an entityEnv, needed?]
+[A: The functor signature alone is insufficient for computing tkinds mainly due to the presence and resolution mechanism of sharing constraints. Because functor signatures are instantiated and with them their respective functor parameter signatures, instantiation picks particular representatives or primary types. 
 [Q: How should transtypes tpsKnd be adapted to use this new primary type information?] 
 [A: tpsKnd is used by tpsTyc (for functor tycons), fctRlznLty, and the FCTfct case of mkFctexp.]
 
