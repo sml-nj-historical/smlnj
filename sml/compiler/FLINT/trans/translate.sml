@@ -1490,6 +1490,7 @@ and mkFctexp (fm0, fe, d) : lexp =
 					      (param, StaticEnv.empty, 100));
 				print "\n")
 			   else ()
+
                    val nd = DI.next d  (* reflecting type abstraction *)
 		   val _ = debugmsg ("--mkFctexp[FCTfct] fm1 "
 				     ^Int.toString(FTM.numItems fm1))

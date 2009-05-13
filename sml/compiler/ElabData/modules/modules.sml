@@ -140,7 +140,6 @@ and fctExp
        (* paramRlzn is a memoization of the instantiated functor param signature
         * used later in the translation phase.  It plays no direct role in
         * entity evaluation. *)
-(*  | LAMBDA_TP of {param : EP.entVar, body : strExp, sign : fctSig} *)
   | LETfct of entityDec * fctExp
 
 and entityExp 

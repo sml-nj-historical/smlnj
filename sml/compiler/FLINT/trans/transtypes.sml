@@ -101,12 +101,6 @@ fun freeTyc (i) =
 end (* end of recTyc and freeTyc hack *)
 
 fun tpsKnd (TP.TP_VAR{kind,...}) = kind 
-	(* let fun kindToTKind PK_MONO = LT.tkc_int 0
-	      | kindToTKind (PK_SEQ x) = LT.tkc_seq(map kindToTKind x)
-	      | kindToTKind (PK_FUN (paramks,bodyknd)) =
-		LT.tkc_fun(map kindToTKind paramks, kindToTKind bodyknd)
-	in kindToTKind kind
-	end *)
   | tpsKnd (TP.TP_FCT(argtps, bodytps)) = 
       LT.tkc_fun(map tpsKnd argtps, LT.tkc_seq (map tpsKnd bodytps))
   | tpsKnd (TP.TP_SEL(TP.TP_APP(TP.TP_VAR{kind,...}, paramtps), i)) =
@@ -124,6 +118,10 @@ fun tpsKnd (TP.TP_VAR{kind,...}) = kind
       in knd
       end
   | tpsKnd _ = bug "unexpected tycpath parameters in tpsKnd"
+
+(* primaryKnd computes the PLambda kind of a primary type given by the 
+   flexible stamp *)
+(* fun primaryKnd ( *)
 
 fun genTT() = 
   let

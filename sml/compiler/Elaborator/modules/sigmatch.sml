@@ -1604,35 +1604,6 @@ and applyFct{fct as FCT {sign=FSIG (fsgn as {paramsig, bodysig, ...}),
 		      access=bodyDacc, prim=[]}
 	    end
 
-	(* [5/6/09 GK Experimental] The parameter realization must be 
-	   updated with the precise shape of argument during application
-	   in order for the correct parameter realization to be pickled 
-	   and unpickled. *) 
-
-	val _ = debugPrint (debugging)
-		  ("--applyFct:paramsig=",
-		   fn pps => fn sgn => 
-			PPModules.ppSignature pps (sgn, SE.empty,100),
-		   paramsig)
-
-	val _ = debugPrint (debugging)
-		  ("--applyFct:bodysig=",
-		   fn pps => fn sgn =>
-			PPModules.ppSignature pps (sgn, SE.empty, 100),
-		   bodysig)
-
-	val _ = debugPrint (debugging) 
-			   ("--applyFct:paramRlzn=",
-			    (fn pps => fn ee =>
-				PPModules.ppEntity pps (ee,SE.empty,100)),
-			    STRent (#paramRlzn fctRlzn))
-
-	val _ = debugPrint (debugging) 
-			   ("--applyFct:argRlzn=",
-			    (fn pps => fn ee =>
-				PPModules.ppEntity pps (ee,SE.empty,100)),
-			    STRent argRlzn)
-
 	val resDec = 
 	    let 
 		val body = A.APPstr{oper=fct, arg=argStr1}
