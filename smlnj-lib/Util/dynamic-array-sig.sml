@@ -1,9 +1,9 @@
 (* dynamic-array-sig.sml
  *
- * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Signature for unbounded polymorphic arrays.
- *
  *)
 
 signature DYNAMIC_ARRAY =
@@ -56,7 +56,28 @@ signature DYNAMIC_ARRAY =
     val truncate : ('a array * int) -> unit
       (* truncate (a,sz) makes every entry with index > sz the default value *)
 
-(** what about iterators??? **)
+    val vector : 'a array -> 'a vector
+      (* return the array's contents as a vector *)
+
+  (* standard array iterators *)
+    val appi : (int * 'a -> unit) -> 'a array -> unit
+    val app : ('a -> unit) -> 'a array -> unit
+    val modifyi : (int * 'a -> 'a) -> 'a array -> unit
+    val modify : ('a -> 'a) -> 'a array -> unit
+    val foldli : (int * 'a * 'b -> 'b) -> 'b -> 'a array -> 'b
+    val foldri : (int * 'a * 'b -> 'b) -> 'b -> 'a array -> 'b
+    val foldl : ('a * 'b -> 'b) -> 'b -> 'a array -> 'b
+    val foldr : ('a * 'b -> 'b) -> 'b -> 'a array -> 'b
+    val findi : (int * 'a -> bool) -> 'a array -> (int * 'a) option
+    val find : ('a -> bool) -> 'a array -> 'a option
+    val exists : ('a -> bool) -> 'a array -> bool
+    val all : ('a -> bool) -> 'a array -> bool
+    val collate : ('a * 'a -> order) -> 'a array * 'a array -> order
+
+(* TODO
+    val copy : {di:int, dst:'a array, src:'a array} -> unit
+    val copyVec : {di:int, dst:'a array, src:'a vector} -> unit
+*)
 
   end (* DYNAMIC_ARRAY *)
 

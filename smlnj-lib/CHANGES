@@ -2,6 +2,9 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2009-05-13]
+	Added array iterators to DynamicArray module.
+
 [2009-03-15]
 	Added support for the interval syntax to the AWK RE syntax parser (this
 	syntax was not part of the original version of AWK, but is supported by
