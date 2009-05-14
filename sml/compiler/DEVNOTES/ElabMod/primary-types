@@ -87,32 +87,22 @@ For example, looking up the flexible stamp s1 in the abstraction environment
 
      [l1, l2, [a,b,c,s1,d,e], l4]
 
-would yield depth=2, num=4 (assuming 0-based depth and 1-based num indexing,
-which I think is being used.  [NOTE: This assumes that depth is counted from the top-level.
-If depth is counted outward from the current position as in conventional DeBruijn
-indexing, depth would be 1 instead.].
+would yield depth=2, num=4 (assuming 0-based depth and 1-based num indexing, which I think is being used.  [NOTE: This assumes that depth is counted from the top-level.  If depth is counted outward from the current position as in conventional DeBruijn indexing, depth would be 1 instead.].
 
-As we enter each functor during translation, we need to determine the
-list of flexible stamps of the primary tycons and functors of its
-parameter instantiation, and we add this list to the end of the
-abstraction environment.  [Or should it be added to the front of the
-environment list?  This depends on whether depth is counted relative
-to top-level or relative to current abstraction depth.]
+As we enter each functor during translation, we need to determine the list of flexible stamps of the primary tycons and functors of its parameter instantiation, and we add this list to the end of the abstraction environment.  [Or should it be added to the front of the environment list?  This depends on whether depth is counted relative to top-level or relative to current abstraction depth.]
 
 Regardless of the method used for encoding the primary type information, the LAMBDA fctexp form must also carry that information because entity evaluation ultimately must produce a functor entity given only the LAMBDA, epc, and current entity environment. Any approach that requires modification of the functor entity form must suffer a similar shortcoming. That is to say, primary type information must be propagated through the LAMBDA fctexp because entity evaluation needs that information in order to produce a well-formed fctEntity. [DBM: Not clear what this para means -- try to clarify.]
 
-Having determined the depth and num parts of the plambda type variable
-for a formal/primary element with reference to the abstraction
-environment, we need to also determine the tkind of that element in
-order to construct the corresponding plambda type variable.  If the
-item being translated is a FORMAL tycon, we have its arity and can
-immediately translate that into the appropriate tkind.  If the item is
-a formal functor, it is a FCT and we therefore have its functor
-signature. So we need to transate its functor signature into a tkind.
-[Q: can we translate a functor signature by itself into a tkind, or is
-any auxiliary information, e.g. an entityEnv, needed?]
-[A: The functor signature alone is insufficient for computing tkinds mainly due to the presence and resolution mechanism of sharing constraints. Because functor signatures are instantiated and with them their respective functor parameter signatures, instantiation picks particular representatives or primary types. 
-[Q: How should transtypes tpsKnd be adapted to use this new primary type information?] 
+Having determined the depth and num parts of the plambda type variable for a formal/primary element with reference to the abstraction environment, we need to also determine the tkind of that element in order to construct the corresponding plambda type variable.  If the item being translated is a FORMAL tycon, we have its arity and can immediately translate that into the appropriate tkind.  If the item is a formal functor, it is a FCT and we therefore have its functor signature. So we need to transate its functor signature into a tkind.
+
+[Q: Can we translate a functor signature by itself into a tkind, or is any auxiliary information, e.g. an entityEnv, needed?]
+[A: The functor signature alone is insufficient for computing tkinds mainly due to the presence and resolution mechanism of sharing constraints. Because functor signatures are instantiated and with them their respective functor parameter signatures, instantiation picks particular representatives or primary types.]
+[DBM: I will assume that it is ok to use signature instantiation as a tool to translate a functor
+signature into a tkind.  Whether it is important to avoid repeated instantiation of the same signature
+(i.e whether we might need to memoize instantiations) is a separate issue of performance to be
+addressed later.]
+
+[Q: How should transtypes tpsKnd be adapted to use this new primary type information?]
 [A: tpsKnd is used by tpsTyc (for functor tycons), fctRlznLty, and the FCTfct case of mkFctexp.]
 
 =========================
@@ -137,14 +127,33 @@ sig
 end) 
 = struct end;  
 
-/\([M]=>M, M, ([[]=>[]]=>[])).   --  (t0, t2, G)  primary elements of X
-    \v1:STR([\/([]=>[]).FCT(\/[].FCT([],[]),[]), {TCAP(TV(1,0), PRIM(I)),PRIM(I),TV(1,1)})
+/\([M]=>M, M, ([[]=>[]]=>[])).     --  abstraction over (t0, t2, G),  primary elements of X
+    \v1:STR([\/([]=>[]).FCT(\/[].FCT([],[]),[]), {TCAP(TV(1,0), PRIM(I)),PRIM(I),TV(1,1)}]).
+            -- abstraction over the value part of X (v1), with a structure "STR" type
+        { }   -- the empty structure body
+
+[DBM: the printing conventions here are not very clear, maybe they can be improved
+to make the terms more readable.
+
+"/\" represents capital lambda, representing type variable abstraction (followed by a tuple of kinds for the abstracted type variables).
+"\" represents ordinary value lambda abstraction, with a value variable (here "v1") annotated with
+its type.
+"STR" is presumable a value-level structure record.  Here this would be the value part of the
+parameter structure X.  In this case the structure contains two value elements, G and a.
+The type of a is expressed by {TCAP(TV(1,0), PRIM(I)),PRIM(I),TV(1,1)}, with TV(0,1) representing
+t0, TV(1,1) representing t2 (the 0th and 1st elements of the abstracted type tuple).
+The type of the G functor element must be represented by \/([]=>[]).FCT(\/[].FCT([],[]),[]).
+Does "\/" represent a polymorphic quantification?  I'm not sure how to parse this
+type expression.
+]
 
 Formal type components such as t0 and t2 translate into type abstractions of the appropriate kind (may be a non-monokind, e.g., t0 is kind [M]=>M). They are indexed according to type abstraction depth and position in the formal argument list. For example, F has two formal type arguments, t0 and t2 which occur in the body as TV(1,0) and TV(1,1) respectively. The first index is the deBruijn index. The second is the position of that formal in the list of all formals up to sharing equivalence.  
 
-The formal functor G is decomposed into a type abstraction part ([[]=>[]]=>[]) and a lambda part \/([]=>[]).FCT(\/[].FCT([],[]).[]). 
+The formal functor G is decomposed into a type abstraction part of kind ([[]=>[]]=>[]) and a lambda part of type \/([]=>[]).FCT(\/[].FCT([],[]).[]). 
 
 
+---------------
+Another example:
 
 functor F(X:sig type t functor G(Y:sig type s val x : s * t end): sig type u end end) = ...
 
