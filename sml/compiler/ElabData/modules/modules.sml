@@ -136,7 +136,8 @@ and strExp
 and fctExp
   = VARfct of EP.entPath   (* selection from current entityEnv *)
   | CONSTfct of fctEntity  (* a constant reference to an existing fct entity *)
-  | LAMBDA of {param : EP.entVar, body : strExp, paramRlzn : strEntity}
+  | LAMBDA of {param : EP.entVar, body : strExp, paramRlzn : strEntity,
+	       primaries: ST.stamp list}
        (* paramRlzn is a memoization of the instantiated functor param signature
         * used later in the translation phase.  It plays no direct role in
         * entity evaluation. *)
@@ -212,6 +213,7 @@ and strEntity =
 and fctEntity =
     {stamp    : ST.stamp,
      paramRlzn: strEntity,      (* an instantiation of the param signature *)
+     primaries: ST.stamp list,
      closure  : fctClosure,     (* used to compute result rlzn in functor application *)
      rpath    : IP.path,        (* reverse symbolic path name of the functor *)
      stub     : stubinfo option, (* for pickling isolation *)
@@ -271,6 +273,7 @@ val bogusSig : Signature =
 val bogusFctEntity : fctEntity =
     {stamp = bogusFctStamp,
      paramRlzn = bogusStrEntity,
+     primaries = [],
      closure = CLOSURE{param=EP.bogusEntVar,
 		       body= CONSTstr bogusStrEntity,
 		       env=NILeenv},

@@ -100,7 +100,8 @@ and strExp
 and fctExp
   = VARfct of EntPath.entPath 
   | CONSTfct of fctEntity
-  | LAMBDA of {param : EntPath.entVar, paramRlzn : strEntity, body : strExp}
+  | LAMBDA of {param : EntPath.entVar, paramRlzn : strEntity, 
+	       primaries : Stamps.stamp list, body : strExp}
   | LETfct of entityDec * fctExp
 
 and entityExp 
@@ -172,6 +173,7 @@ and strrec =
 and fctEntity =
     {stamp    : Stamps.stamp,
      paramRlzn: strEntity,
+     primaries: Stamps.stamp list,
      closure  : fctClosure,
      rpath    : InvPath.path,
      stub     : stubinfo option,
