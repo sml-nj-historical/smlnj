@@ -58,7 +58,7 @@ functor BackendFn (structure M : CODEGENERATOR
 
 		  fun pickUnpick { context, env = newenv, guid } = let
 		      val m = GenModIdMap.mkMap context
-		      fun up_context _ = m
+		      fun up_context _ = (m, fn () => "batch context")
 		      val { hash, pickle, exportLvars, hasExports } = 
 			  PickMod.pickleEnv (PickMod.INITIAL m) newenv
 		      val pid = Rehash.addGUID { hash = hash, guid = guid }

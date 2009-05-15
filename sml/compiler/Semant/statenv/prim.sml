@@ -573,7 +573,8 @@ val primEnv = let
     val { hash, pickle, ... } =
 	PickMod.pickleEnv (PickMod.INITIAL ModuleId.emptyTmap) primEnv
 in
-    UnpickMod.unpickleEnv (fn _ => ModuleId.emptyTmap) (hash, pickle)
+    UnpickMod.unpickleEnv (fn _ => (ModuleId.emptyTmap, fn () => "dummy"))
+			  (hash, pickle)
 end
 
 end (* local *)

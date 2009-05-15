@@ -578,7 +578,7 @@ and ppStrEntity ppstrm (e,env,depth) =
     end
 
 and ppFctEntity ppstrm (e, env, depth) =
-    let val {stamp,paramRlzn,closure,rpath,stub,properties,...} = e
+    let val {stamp,exp,closureEnv,rpath,stub,properties,...} = e
 	val {openHVBox,openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
     in if depth <= 1 
 	then pps "<functor entity>"
@@ -603,13 +603,13 @@ and ppFctEntity ppstrm (e, env, depth) =
 			  style=INCONSISTENT}
 			 primaries; *)
 	        newline();
-		pps "paramRlzn: ";
+		pps "exp:";
 		break{nsp=1,offset=2};
-		ppStrEntity ppstrm (paramRlzn,env,depth-1);
+		ppFctExp ppstrm (exp,depth-1);
 		newline();
-		pps "closure:";
+		pps "closureEnv:";
 		break{nsp=1,offset=2};
-		ppClosure ppstrm (closure,depth-1);
+		ppEntityEnv ppstrm (closureEnv,env,depth-1);
 		newline();
 	       closeBox ();
 	      closeBox ())

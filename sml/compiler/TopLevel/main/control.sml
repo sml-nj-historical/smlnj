@@ -106,8 +106,9 @@ struct
   val closureprint = new (b, "closureprint", "?", false)
   val closureStrategy = new (i, "closure-strategy", "?", 0)
   val lambdaopt = new (b, "lambdaopt", "?", true)
-  val cpsopt = new (sl, "cpsopt", "cps optimizer phases",
-                    ["zeroexpand", "last_contract"])
+  val cpsopt = new (sl, "cpsopt", "cps optimizer phases", [
+	  "first_contract", "eta", "zeroexpand", "last_contract"
+	])
   (* ["first_contract", "eta", "uncurry", "etasplit",
       "cycle_expand", "eta", "last_contract" ] *)
   val rounds = new (i, "rounds", "max # of cpsopt rounds", 10)

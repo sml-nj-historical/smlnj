@@ -847,3 +847,32 @@ U    compiler/FLINT/trans/pequal.sml
 C    compiler/FLINT/trans/transtypes.sml
 C    compiler/FLINT/trans/translate.sml
 U    compiler/FLINT/trans/tempexpn.sml
+
+======================================================================
+
+14. merge from trunk to primop3 (3228:3286)
+
+bash-3.2$ svn up
+At revision 3286.
+bash-3.2$ svn merge -r 3228:HEAD https://smlnj-gforge.cs.uchicago.edu/svn/smlnj/sml/trunk 
+U    cm/compile/compile.sml
+U    cm/tools/main/tools-fn.sml
+U    cm/stable/stabilize.sml
+Skipped 'READMES/110.69-README.html'
+U    runtime/include/machine-id.h
+U    runtime/include/ml-osdep.h
+U    runtime/include/ml-unixdep.h
+U    runtime/include/asm-base.h
+U    runtime/c-libs/smlnj-math/fp-dep.h
+Skipped 'runtime/objs/mk.x86-openbsd'
+U    runtime/mach-dep/signal-sysdep.h
+U    system/smlnj/MLRISC/AMD64.cm
+U    system/smlnj/MLRISC/IA32.cm
+U    system/Basis/Implementation/num-format.sml
+U    NOTES/HISTORY
+U    compiler/Semant/statenv/prim.sml
+U    compiler/Semant/pickle/unpickmod.sml
+U    compiler/TopLevel/main/control.sml
+U    compiler/TopLevel/backend/backend-fn.sml
+U    compiler/Elaborator/types/unify.sml
+bash-3.2$ 

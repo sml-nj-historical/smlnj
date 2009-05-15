@@ -260,7 +260,7 @@ in
 			 (* Use this when PK eliminated from front-end:
 	                    (LT.tkc_int arity)::loop(eps, pfsigs) *)
 			 (buildKind arity)::loop(eps, fsigs, eenv)
-		       | M.FCTent{paramRlzn, closure=M.CLOSURE{env, ...}, ...} =>
+		       | M.FCTent{exp=M.LAMBDA{paramRlzn,...}, closureEnv=env, ...} =>
                          (* This should be using closure and paramRlzn --
 			  * bodyRlzn has been deleted *)
 			 (case fsigs 
@@ -303,7 +303,7 @@ in
 			 (* Use this when PK eliminated from front-end:
 	                    (LT.tkc_int arity)::loop(eps, pfsigs) *)
 			 (buildKind arity)::loopkind(eps, fsigs, eenv)
-		       | M.FCTent{paramRlzn, closure=M.CLOSURE{env, ...}, ...} =>
+		       | M.FCTent{exp=M.LAMBDA{paramRlzn,...}, closureEnv=env, ...} =>
                          (* this should be using closure and paramRlzn *)
 			 (case fsigs 
 			   of [] => bug "kinds.1"
@@ -465,8 +465,8 @@ in
 			      in loop(insertMap(ftmap, ev, tp),
 				      tp::tps, entenv, rest, i+1, fs)
 		              end))
-		       | M.FCTent {stamp, paramRlzn,
-				   closure=M.CLOSURE{env=closenv,...},...} => 
+		       | M.FCTent {stamp, exp=M.LAMBDA{paramRlzn, ...},
+				   closureEnv=closenv,...} => 
 			   (debugmsg "--primaryCompInStruct[FCTent SOME]";
                            (* this should be using closure and paramRlzn *)
 			    ( case fs

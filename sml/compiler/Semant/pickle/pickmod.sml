@@ -1252,12 +1252,13 @@ in
 
 	and shStrEntity id = share (STRs id) strEntity
 
-        and fctEntity { stamp = s, primaries = t, paramRlzn = e,
-			closure, properties, (* tycpath,*) rpath, stub } =
+        and fctEntity { stamp = s, exp, 
+			closureEnv, properties, (* tycpath,*) rpath, stub } =
 	    let val op $ = PU.$ FEN
 	    in
-		"f" $ ([stamp s, list tycon t, strEntity e,
-			fctClosure closure, 
+		"f" $ ([stamp s, 
+			fctExp exp, 
+			entityEnv closureEnv, 
 			ipath rpath]
 		       @ libPid (stub: M.stubinfo option, #owner)) 
 	    end

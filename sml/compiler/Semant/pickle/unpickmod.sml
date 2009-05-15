@@ -22,7 +22,9 @@
 
 signature UNPICKMOD = sig
 
-    type context = (int * Symbol.symbol) option -> ModuleId.tmap
+    type context = (int * Symbol.symbol) option ->
+		   ModuleId.tmap *
+		   (unit -> string) (* destription of module for debugging *)
 
     val unpickleEnv : context ->
 		      PersStamps.persstamp * Word8Vector.vector ->
@@ -46,7 +48,8 @@ end
 
 structure UnpickMod : UNPICKMOD = struct
 
-    type context = (int * Symbol.symbol) option -> ModuleId.tmap
+    type context = (int * Symbol.symbol) option ->
+		   ModuleId.tmap * (unit -> string)
 
     structure A = Access
     structure DI = DebIndex
@@ -389,18 +392,30 @@ structure UnpickMod : UNPICKMOD = struct
 	val { session, stringlist } = sessionInfo
 
 	local
-	    fun look lk (m, i) =
-		case lk (context m, i) of
-		    SOME x => x
-		  | NONE =>
-		    (ErrorMsg.impossible "UnpickMod: stub lookup failed";
-		     raise Format)
+	    fun look what lk (m, i) =
+		let val (mapping, descr) = context m
+		in case lk (mapping, i) of
+		       SOME x => x
+		     | NONE =>
+		         (ErrorMsg.impossible
+			      (concat ["UnpickMod: stub lookup failed for ",
+				       what, " in ", descr (),
+				       ": m = ",
+				       case m of
+					   NONE => "NONE"
+					 | SOME (x, sy) =>
+					   "(" ^ Int.toString x ^
+					   ", " ^
+					   Symbol.describe sy ^ ")",
+				       ", i = <moduleId>\n"]);
+			  raise Format)
+		end
 	in
-	    val lookTyc = look MI.lookTyc
-	    val lookSig = look MI.lookSig
-	    val lookStr = look MI.lookStr
-	    val lookFct = look MI.lookFct
-	    val lookEnv = look MI.lookEnv
+	    val lookTyc = look "type constructor" MI.lookTyc
+	    val lookSig = look "signature" MI.lookSig
+	    val lookStr = look "structure" MI.lookStr
+	    val lookFct = look "functor" MI.lookFct
+	    val lookEnv = look "environment" MI.lookEnv
 	end
 
 	fun list m r = UU.r_list session m r
@@ -1201,14 +1216,12 @@ structure UnpickMod : UNPICKMOD = struct
 	and fctEntity' () = let
 	    fun f #"f" =
 		let val s = stamp ()
-		    val t = tyconlist()
-		    val (e, etr) = strEntity'()
-		    val (c, ctr) = fctClosure' ()
+		    val (e, etr) = fctExp'()
+		    val (c, ctr) = entityEnv' ()
 		in
 		    ({ stamp = s,
-		       primaries = t,
-		       paramRlzn = e,
-		       closure = c,
+		       exp = e,
+		       closureEnv = c,
 		       rpath = ipath (),
 		       properties = PropList.newHolder (),
 		       stub = SOME { owner = if lib then pid ()

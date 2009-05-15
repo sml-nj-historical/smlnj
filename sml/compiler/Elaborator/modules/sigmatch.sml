@@ -1057,7 +1057,7 @@ val paramSym = case paramsym of SOME x => x
                               | NONE => paramSym
 
 (*** parameter signature instantiation for the functor signature being matched ***)
-val {rlzn=fsigParEnt,...} = 
+val {rlzn=fsigParEnt,abstycs=primaries,...} = 
     INS.instFormal{sign=fsigParamSig, entEnv=entEnv,
                    rpath=IP.IPATH[paramSym], region=region, compInfo=compInfo}
 
@@ -1094,9 +1094,12 @@ val resFct =
 	val resClosure = CLOSURE{param=paramId, body=resExp3, env=entEnv}
 
 	val resRlzn = {stamp = #stamp fctRlzn, (*** DAVE ? ***)
-		       primaries = #primaries fctRlzn,
-		       paramRlzn = fsigParEnt,
-		       closure = resClosure, rpath=rpath,
+		       exp= M.LAMBDA{param=paramId,
+				   body=resExp3,
+				   primaries = primaries,
+				   paramRlzn = fsigParEnt},
+		       closureEnv = entEnv, 
+		       rpath=rpath,
 		       stub = NONE,
 		       properties = PropList.newHolder ()}
 
@@ -1107,8 +1110,7 @@ val resFct =
 (*** the resulting functor absyn ***)
 val fdec = 
     let val bodyAbs = A.LETstr(A.SEQdec [resDec1, resDec2], A.VARstr resStr2)
-	val fctexp = A.FCTfct {param=fsigParInst, primaries= #primaries fctRlzn,
-			       def=bodyAbs}
+	val fctexp = A.FCTfct {param=fsigParInst, def=bodyAbs}
      in A.FCTdec [A.FCTB {name=anonFsym, fct=resFct, def=fctexp}]
     end
 
@@ -1116,7 +1118,7 @@ val fdec =
 val fctExp = 
     M.LETfct(M.FCTdec(uncoerced, uncoercedFct), 
              M.LAMBDA{param = paramId, body = resExp2, 
-		      primaries = #primaries fctRlzn,
+		      primaries = primaries, (* [GK 5/15/09] Check this! *)
 		      paramRlzn=fsigParEnt})
     (* ??? is fsigParEnt the correct realization to use here? *)
 
@@ -1419,8 +1421,7 @@ val resFct =
 
 val resDec = 
   let val body = A.LETstr(rdec1, A.LETstr(rdec2, A.VARstr resStr))
-      val fctexp = A.FCTfct{param=paramStr, def=body, 
-	primaries= abstycs2}
+      val fctexp = A.FCTfct{param=paramStr, def=body}
    in A.FCTdec [A.FCTB {name=fctName, fct=resFct, def=fctexp}]
   end
 
@@ -1460,19 +1461,30 @@ and applyFct{fct as FCT {sign=FSIG (fsgn as {paramsig, bodysig, ...}),
              fctExp, argStr, argExp, entvar, epc,
              statenv, rpath, region,
              compInfo as {mkStamp, mkLvar=mkv, ...}} =
-    let val {closure=CLOSURE {env=fctEntEnv, ... }, ... } = fctRlzn
+    let val {closureEnv=fctEntEnv, ... } = fctRlzn
 	val _ = debugmsg ">>applyFct"
 
 	(*** step #1: match the argument structure against paramSig ***)
 	val {resDec=argDec1, resStr=argStr1, resExp=argExp1} =  
 	    matchStr {sign=paramsig, str=argStr, strExp=argExp, entvar=entvar, 
-		      entEnv=fctEntEnv, rpath=IP.IPATH[] (* ?DAVE *), 
+		      entEnv=fctEntEnv, rpath=IP.IPATH[S.strSymbol "<param>"] (* ?DAVE *), 
 		      statenv=statenv, region=region, compInfo=compInfo}
 
 	(*** step #2: do the functor application ***)
 	val argRlzn = case argStr1 of M.STR { rlzn, ... } => rlzn
 				    | _ => M.bogusStrEntity 
 	val bodyRlzn = EvalEntity.evalApp(fctRlzn, argRlzn, epc, rpath, compInfo)
+
+	val _ = debugPrint (debugging) 
+		  ("--applyFct:bodyRlzn=", 
+		   fn ppstrm => fn rlzn =>
+			PPModules.ppEntity ppstrm (rlzn,SE.empty,100),
+		   STRent bodyRlzn)
+	val _ = debugPrint (debugging)
+		  ("--applyFct:bodysig=",
+		   fn ppstrm => fn sgn =>
+			PPModules.ppSignature ppstrm (bodysig,SE.empty,100),
+		   bodysig)
 
 	val resStr = 
 	    let val bodyDacc = DA.namedAcc(anonSym,mkv)

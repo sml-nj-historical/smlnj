@@ -241,8 +241,8 @@ fun unifyTy(type1,type2) =
 	val _ = debugPPType(">>unifyTy: type2: ",type2)
 	fun unifyRaw(type1, type2) = 
 	 case (type1, type2)
-	  of (MARKty (ty, _), ty') => unifyTy(ty, ty')
-	   | (ty, MARKty (ty', _)) => unifyTy(ty, ty')
+	  of (MARKty (ty, _), ty') => unifyRaw(TU.prune ty, ty')
+	   | (ty, MARKty (ty', _)) => unifyRaw(ty, TU.prune ty')
 	      (* missing region args to unify, so MARKs are discarded *)
 	   | (VARty var1,VARty var2) =>
 	       unifyTyvars(var1,var2)  (* used to take type1 and type2 as args *)

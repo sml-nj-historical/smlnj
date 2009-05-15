@@ -1422,10 +1422,10 @@ and mkStrexp (fm0, se, d) =
 		  val (ftmap1, argtycs) = 
 		      (case (oper, arg)
 			of (M.FCT{sign=M.FSIG{paramsig, ...}, 
-				  rlzn=fctRlzn, ...}, 
+				  rlzn={exp=M.LAMBDA{paramRlzn,...},...}, ...}, 
 			    M.STR{rlzn, ...}) =>
 			   RepTycProps.primaryCompInStruct(fm0, 
-							  #paramRlzn fctRlzn,
+							  paramRlzn,
 							  SOME rlzn,
 							  paramsig, d)
 			 | _ => bug "Unexpected APPstr")
@@ -1468,8 +1468,7 @@ and mkFctexp (fm0, fe, d) : lexp =
 			PPModules.ppFunctor ppstrm (fct, StaticEnv.empty, 100),
 				     f);
 	       mkFct(fm0, f, d))
-            | (FCTfct {param as M.STR { sign, access, rlzn, ... }, def,
-	               primaries}) =>
+            | (FCTfct {param as M.STR { sign, access, rlzn, ... }, def}) =>
 	      (case access
 	         of DA.LVAR v =>
                let 
@@ -1549,7 +1548,8 @@ and mkStrbs (ftmap0, sbs, d) =
   end
 
 and mkFctbs (ftmap0, fbs, d) = 
-  let fun g (FCTB{fct=M.FCT { access, ... }, def, ... }, b) =
+  let fun g (FCTB{fct=M.FCT { access, rlzn={exp=M.LAMBDA{primaries,...}, ...},
+			      ... }, def, ... }, b) =
 	  (case access of
 	       DA.LVAR v =>
                let val hdr = buildHdr v

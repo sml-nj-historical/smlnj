@@ -212,9 +212,9 @@ and strEntity =
 
 and fctEntity =
     {stamp    : ST.stamp,
-     paramRlzn: strEntity,      (* an instantiation of the param signature *)
-     primaries: Types.tycon list,
-     closure  : fctClosure,     (* used to compute result rlzn in functor application *)
+     (* closure  : fctClosure, *)     (* used to compute result rlzn in functor application *)
+     exp : fctExp, (* INVARIANT: always a LAMBDA for recording primaries *) 
+     closureEnv : entityEnv, 
      rpath    : IP.path,        (* reverse symbolic path name of the functor *)
      stub     : stubinfo option, (* for pickling isolation *)
      properties: PropList.holder} (* FLINT: lambdaty memoization *)
@@ -272,11 +272,14 @@ val bogusSig : Signature =
 
 val bogusFctEntity : fctEntity =
     {stamp = bogusFctStamp,
-     paramRlzn = bogusStrEntity,
-     primaries = [],
-     closure = CLOSURE{param=EP.bogusEntVar,
+     exp = LAMBDA {param=EP.bogusEntVar,
+		   paramRlzn=bogusStrEntity,
+		   primaries=[],
+		   body=CONSTstr bogusStrEntity},
+     closureEnv = NILeenv,
+     (* closure = CLOSURE{param=EP.bogusEntVar,
 		       body= CONSTstr bogusStrEntity,
-		       env=NILeenv},
+		       env=NILeenv}, *)
      rpath = bogusRpath,
      stub = NONE,
      properties = PropList.newHolder ()}

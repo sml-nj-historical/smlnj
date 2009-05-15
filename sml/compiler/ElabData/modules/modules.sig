@@ -172,9 +172,9 @@ and strrec =
 
 and fctEntity =
     {stamp    : Stamps.stamp,
-     paramRlzn: strEntity,
-     primaries: Types.tycon list,
-     closure  : fctClosure,
+     (* closure  : fctClosure, *)
+     exp : fctExp, (* INVARIANT: always a LAMBDA for recording primaries *) 
+     closureEnv : entityEnv,
      rpath    : InvPath.path,
      stub     : stubinfo option,
      properties: PropList.holder}  (* FLINT lambdaty memoization *)

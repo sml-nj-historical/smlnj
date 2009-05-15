@@ -1104,11 +1104,11 @@ case fctexp
                            paramsym=paramNameOp}
 
                 val rlzn = {stamp = mkStamp(),
-			    paramRlzn = paramRlzn,
-			    primaries=primaryTycs,
-			    closure = M.CLOSURE{param=paramEntVar,
-						body=bodyExp,
-						env=entEnv},
+			    exp = LAMBDA{param=paramEntVar, 
+					 body=bodyExp,
+					 paramRlzn = paramRlzn,
+					 primaries=primaryTycs},
+			    closureEnv = entEnv, 
 		(* Closure: Using the old entity environment !! *)
 			    properties = PropList.newHolder (),
 			    rpath = rpath,
@@ -1123,8 +1123,7 @@ case fctexp
 
           val resDec =
             let val fctdef = A.FCTfct{param=paramStr,
-                                      def=A.LETstr(bodyAbsDec,A.VARstr bodyStr),
-				      primaries=primaryTycs}
+                                      def=A.LETstr(bodyAbsDec,A.VARstr bodyStr)}
              in A.FCTdec [A.FCTB {name=name, fct=resFct, def=fctdef}]
             end
 

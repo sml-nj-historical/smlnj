@@ -122,6 +122,7 @@ fun tpsKnd (TP.TP_VAR{kind,...}) = kind
 (* fun primaryKnd (GENtyc{kind=T.FORMAL,arity,...}) = 
     LT.tkc_int arity
   | primaryKnd ( *)
+
 fun genTT() = 
   let
 
@@ -493,7 +494,7 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
     case (sign, ModulePropLists.fctEntityLty rlzn, rlzn) of
 	(sign, SOME (lt, od), _) => LT.lt_adj(lt, od, depth)
       | (fs as FSIG{paramsig, bodysig, ...}, _,
-         {closure as CLOSURE{env,...}, paramRlzn, ...}) =>
+         {closureEnv=env, exp=LAMBDA{paramRlzn,...}, ...}) =>
         let val _ = debugmsg ">>fctRlznLty[instParam]"
             val nd = DI.next depth
 

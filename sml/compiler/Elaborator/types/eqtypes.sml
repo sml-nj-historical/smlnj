@@ -335,7 +335,7 @@ let val names = map TU.tycName datatycs
 	 (case (!eq, kind) of
 	      (DATA, DATATYPE { index, ... }) =>
 	      let val _ = debugmsg (">>checkTyc: "^
-				    Symbol.name(IP.last path)^" "^
+				    (Symbol.name(IP.last path))^" "^
 				    Int.toString index)
 		  fun eqtyc (GENtyc { eq = e', kind = k', path, ... }) =
 		      (case (!e', k')
@@ -471,7 +471,7 @@ let val names = map TU.tycName datatycs
        | checkTyc _ = ()
 in
     List.app checkTyc datatycs
-end
+end handle IP.InvPath => bug "eqtypes:checkTyc"
 
 fun isEqType ty =
     let fun eqty(VARty(ref(INSTANTIATED ty))) = eqty ty

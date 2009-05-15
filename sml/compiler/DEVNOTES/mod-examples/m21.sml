@@ -6,4 +6,4 @@ end
 
 functor G = H(struct type t = int end) 
 
-(* functor F = G  *)
+functor A = G 

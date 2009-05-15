@@ -31,7 +31,7 @@ in
 
 (* debugging *)
 val say = Control_Print.say
-val debugging = ElabDataControl.eedebugging
+val debugging = (* ElabDataControl.eedebugging *) ref true
 fun debugmsg (msg: string) =
     if !debugging then (say msg; say "\n") else ()
 
@@ -114,10 +114,11 @@ and evalStr(strExp, epc, entsvOp, entEnv, rpath,
 	    (debugmsg (">>evalStr[VARstr]: "^EP.entPathToString entPath);
 	     (EE.lookStrEP(entEnv,entPath), entEnv))
 
-        | CONSTstr strEnt => (strEnt, entEnv)
+        | CONSTstr strEnt => (debugmsg ("--evalStr[CONSTstr]"); (strEnt, entEnv))
 
         | STRUCTURE {stamp, entDec} =>
-            let val epc = enterOpen(epc, entsvOp)
+            let val _ = debugmsg "--evalStr[STRUCTURE]"
+		val epc = enterOpen(epc, entsvOp)
                 val stp = evalStamp(stamp, epc, entEnv, compInfo) 
                 val env = evalDec(entDec, epc, entEnv, rpath, compInfo)
 	    in
@@ -128,11 +129,21 @@ and evalStr(strExp, epc, entsvOp, entEnv, rpath,
             end
 
         | APPLY (fctExp, strExp) =>
-	    let val (fctRlzn, entEnv1) = 
+	    let val _ = debugmsg "--evalStr[APPLY]"
+		val (fctRlzn, entEnv1) = 
                     evalFct(fctExp, epc, entEnv, compInfo)
 	        val (argRlzn, entEnv2) = 
                     evalStr(strExp, epc, entsvOp, entEnv1, 
                             IP.empty, compInfo)
+		(* [GK Debug Printout] *)
+		val _ = debugPrint ("--evalStr[APPLY]:fctRlzn=",
+				    fn ppstrm => fn rlzn =>
+			PPModules.ppEntity ppstrm (rlzn,StaticEnv.empty,100),
+				    FCTent fctRlzn)
+		val _ = debugPrint ("--evalStr[APPLY]:argRlzn=", 
+				    fn ppstrm => fn rlzn =>
+			PPModules.ppEntity ppstrm (rlzn,StaticEnv.empty,100),
+				    STRent argRlzn)
                 val epc = enterOpen(epc, entsvOp)
              in (evalApp(fctRlzn, argRlzn, epc, rpath, compInfo),
                  entEnv2)
@@ -149,7 +160,8 @@ and evalStr(strExp, epc, entsvOp, entEnv, rpath,
             end
 
         | ABSstr (sign, strExp) => 
-	    let val (srcRlzn, entEnv1) =
+	    let val _ = debugmsg "--evalStr[ABSstr]"
+		val (srcRlzn, entEnv1) =
                     evalStr(strExp,  epc, entsvOp, entEnv, rpath, compInfo)
                 val {rlzn, abstycs, tyceps} = 
                     Instantiate.instAbstr{sign=sign, entEnv=entEnv, srcRlzn=srcRlzn,
@@ -187,6 +199,7 @@ and evalStr(strExp, epc, entsvOp, entEnv, rpath,
 
 and evalFct (fctExp,  epc, entEnv, 
              compInfo as {mkStamp,...}: EU.compInfo) =
+    (debugmsg "--evalFct"; 
       case fctExp
        of VARfct entPath =>
 	    (debugmsg (">>evalFct[VARfct]: "^EP.entPathToString entPath);
@@ -195,11 +208,10 @@ and evalFct (fctExp,  epc, entEnv,
         | CONSTfct fctEntity => (fctEntity, entEnv)
 
         | LAMBDA{param, body, primaries, paramRlzn} => 
-            let val clos = CLOSURE{param=param, body=body, env=entEnv}
+            let val _ = debugmsg "--evalFct[LAMBDA]"
 	     in ({stamp = mkStamp (),
-		  primaries = primaries, 
-		  paramRlzn = paramRlzn,
-		  closure=clos,
+		  exp=fctExp,
+		  closureEnv=entEnv,
 		  rpath=IP.IPATH[anonFctSym],
 		  stub=NONE,
 		  properties = PropList.newHolder ()},
@@ -212,11 +224,11 @@ and evalFct (fctExp,  epc, entEnv,
                 val (fctEnt, entEnv2) = 
                   evalFct(fctExp,  epc, entEnv1, compInfo) 
              in (fctEnt, entEnv2)
-            end
+            end)
 
 and evalApp(fctRlzn : Modules.fctEntity, argRlzn, epc, rpath,
             compInfo as {mkStamp, ...} : EU.compInfo) = 
-      let val {closure=CLOSURE{param, body, env}, ...} = fctRlzn
+      let val {closureEnv=env,exp=LAMBDA{param, body, ...}, ...} = fctRlzn
 	  val nenv = EE.mark(mkStamp, EE.bind(param, STRent argRlzn, env))
           val  _ = debugmsg ("[Inside EvalAPP] ......")
        in case body
@@ -225,7 +237,7 @@ and evalApp(fctRlzn : Modules.fctEntity, argRlzn, epc, rpath,
                        a potential bug here. Will fix this in the
                        future.  ZHONG. -- ??? doesn't bindEp below 
 		       do this? DBM **)
-
+		   val _ = debugmsg "--evalApp[FORMstr]"
                    val {rlzn, abstycs, tyceps} = 
                        Instantiate.instFormal {sign=bodysig, entEnv=nenv,
 					       rpath=rpath, region=S.nullRegion,
@@ -238,7 +250,8 @@ and evalApp(fctRlzn : Modules.fctEntity, argRlzn, epc, rpath,
                 in rlzn
                end
             | _ => 
-               let val (strEnt, deltaEE) =
+               let val _ = debugmsg "--evalApp[_]"
+		   val (strEnt, deltaEE) =
                        evalStr(body,  epc, NONE, nenv, rpath, compInfo)
 		       (* invariant: deltaEE should always be same as nenv
 			  if the body of an functor is always a BaseStr. Notice 
@@ -274,7 +287,8 @@ and evalDec(dec, epc, entEnv, rpath,
             end
 
         | FCTdec (entVar, fctExp) => 
-            let val (fctEnt, entEnv1) = 
+            let val _ = debugmsg "--evalDec[FCTdec]"
+		val (fctEnt, entEnv1) = 
                     evalFct(fctExp, epc, entEnv, compInfo)
              in EE.bind(entVar, FCTent fctEnt, entEnv1)
             end          

@@ -102,7 +102,7 @@ and strexp
  *)
 and fctexp 
   = VARfct of Functor
-  | FCTfct of {param: Structure, primaries: Types.tycon list, def: strexp}
+  | FCTfct of {param: Structure, def: strexp}
   | LETfct of dec * fctexp
   | MARKfct of fctexp * region
 

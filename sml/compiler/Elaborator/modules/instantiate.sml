@@ -1501,9 +1501,11 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 						   env=entEnv}
 			      in FCTent {stamp = stamp,
 					 rpath=path,
-					 primaries = abstycs,
-					 paramRlzn = paramRlzn,
-					 closure=cl,
+					 exp=LAMBDA{param=paramvar,
+						    body=bodyExp,
+						    primaries = abstycs,
+						    paramRlzn = paramRlzn},
+					 closureEnv=entEnv,
 					 properties = PropList.newHolder (),
 					 stub=NONE}
 			      end
