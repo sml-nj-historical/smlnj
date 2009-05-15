@@ -108,7 +108,7 @@ in
 	    fun statenv () =
 		let val mm0 = StabModmap.get ()
 		    val m = GenModIdMap.mkMap' (context_senv, mm0)
-		    fun context _ = m
+		    fun context _ = (m, fn () => "bfc2memo")
 		    val { pid, pickle } = BF.senvPickleOf bfc
 		in UnpickMod.unpickleEnv context (pid, pickle)
 		end

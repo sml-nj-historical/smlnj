@@ -23,7 +23,7 @@ structure YaccTool = struct
 		      class = "mlyacc",
 		      suffixes = ["grm", "y"],
 		      cmdStdPath = fn () => ("ml-yacc", []),
-		      template = NONE,
+		      template = SOME "",
 		      extensionStyle =
 		      Tools.EXTEND [("sig", SOME "sml", get kw_sigopts),
 				    ("sml", SOME "sml", get kw_smlopts)],
