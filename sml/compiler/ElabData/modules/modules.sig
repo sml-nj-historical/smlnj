@@ -95,7 +95,7 @@ and fctExp
   | CONSTfct of fctEntity
   | LAMBDA of {param : EntPath.entVar,
 	       body : strExp,
-	       primaries: Types.tycon list * (Stamps.stamp * fctsig) list}
+	       primaries: Types.tycon list * (Stamps.stamp * fctSig) list}
                 (* these become FLINT type variables *)
   | LETfct of entityDec * fctExp
 

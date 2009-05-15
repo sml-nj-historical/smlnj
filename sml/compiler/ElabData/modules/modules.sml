@@ -138,7 +138,7 @@ and fctExp
   | CONSTfct of fctEntity  (* a constant reference to an existing fct entity *)
   | LAMBDA of {param : EP.entVar,
 	       body : strExp,
-	       primaries: Types.tycon list * (ST.stamp * fctsig) list}
+	       primaries: Types.tycon list * (ST.stamp * fctSig) list}
                 (* these become FLINT type variables *)
   | LETfct of entityDec * fctExp
 
@@ -271,8 +271,7 @@ val bogusSig : Signature =
 val bogusFctEntity : fctEntity =
     {stamp = bogusFctStamp,
      exp = LAMBDA {param=EP.bogusEntVar,
-		   paramRlzn=bogusStrEntity,
-		   primaries=[],
+		   primaries=([],[]),
 		   body=CONSTstr bogusStrEntity},
      closureEnv = NILeenv,
      (* closure = CLOSURE{param=EP.bogusEntVar,

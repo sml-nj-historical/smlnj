@@ -163,8 +163,9 @@ and evalStr(strExp, epc, entsvOp, entEnv, rpath,
 	    let val _ = debugmsg "--evalStr[ABSstr]"
 		val (srcRlzn, entEnv1) =
                     evalStr(strExp,  epc, entsvOp, entEnv, rpath, compInfo)
-                val {rlzn, abstycs, tyceps} = 
-                    Instantiate.instAbstr{sign=sign, entEnv=entEnv, srcRlzn=srcRlzn,
+                val {rlzn, primaryTycs} = 
+                    Instantiate.instAbstr{sign=sign, entEnv=entEnv, 
+					  srcRlzn=srcRlzn,
 					  rpath=rpath, region=S.nullRegion,
 					  compInfo=compInfo}
 

@@ -42,7 +42,7 @@ sig
           region   : SourceMap.region,
           compInfo : ElabUtil.compInfo}
 	 -> {rlzn: Modules.strEntity,
-	     primaries : (Types.tycon list * (Stamps.stamp * Modules.fctsig) list)}
+	     primaries : (Types.tycon list * (Stamps.stamp * Modules.fctSig) list)}
 
   (*** instantiation of the structure abstractions ***)
   val instAbstr : 
@@ -1298,8 +1298,8 @@ fun get_stamp_info instance =
 
 fun instToStr (instance, entEnv, instKind, rpath: IP.path, err,
                compInfo as {mkStamp, ...}: EU.compInfo)
-              : (M.strEntity * (ST.stamp * M.fctsig) list) =
-let val primFcts : (Stamps.stamp, M.fctsig) list = ref []
+              : (M.strEntity * (ST.stamp * M.fctSig) list) =
+let val primFcts : (Stamps.stamp * M.fctSig) list ref = ref []
     fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 					  slotEnv,finalEnt,stamp,...}),
                     entEnv, rpath: IP.path, failuresSoFar: int)
@@ -1485,10 +1485,10 @@ let val primFcts : (Stamps.stamp, M.fctsig) list = ref []
 				  val exp = LAMBDA{param=paramvar,
 						   body=bodyExp,
 						   primaries=(primaryTycs,primaryFcts)}
-			      in primFcts := (stamp,sign)::!primFcts;
+			      in primFcts := (stamp,sign)::(!primFcts);
 				 FCTent {stamp = stamp,
 					 exp = exp,
-					 env = entEnv,
+					 closureEnv = entEnv,
 					 rpath = path,
 					 stub = NONE,
 					 properties = PropList.newHolder ()}
@@ -1593,7 +1593,7 @@ let val primFcts : (Stamps.stamp, M.fctsig) list = ref []
 		         EM.nullErrorBody;
 		      strEnt')
 	     end)
- in (loop(instToStr'(instance,entEnv,rpath,0));
+ in (loop(instToStr'(instance,entEnv,rpath,0)),
     !primFcts)
 end (* fun instToStr *)
 
