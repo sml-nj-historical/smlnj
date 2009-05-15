@@ -42,8 +42,7 @@ sig
           region   : SourceMap.region,
           compInfo : ElabUtil.compInfo}
 	 -> {rlzn: Modules.strEntity,
-	     abstycs: Types.tycon list,
-             tyceps: EntPath.entPath list}
+	     primaries : (Types.tycon list * (Stamps.stamp * Modules.fctsig) list)}
 
   (*** instantiation of the structure abstractions ***)
   val instAbstr : 
@@ -53,9 +52,8 @@ sig
           rpath    : InvPath.path,
           region   : SourceMap.region,
           compInfo : ElabUtil.compInfo}
-	 -> {rlzn: Modules.strEntity,  
-	     abstycs: Types.tycon list,
-             tyceps: EntPath.entPath list}
+	 -> {rlzn: Modules.strEntity,
+	     primaryTycs : Types.tycon list}
 
   val debugging : bool ref
 
@@ -686,7 +684,7 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
     val this_path = 
 	case !this_slot
 	  of InitialStr{path,...} => ConvertPaths.invertIPath path
-	   | _ => bug "buildTycClass: this_slot not InitialTyc"
+	   | _ => bug "buildStrClass: this_slot not InitialTyc"
 
     (* addInst(old,new,depth);
      * (1) Adds new to the current equivalence class in response to a sharing
@@ -947,7 +945,7 @@ exception INCONSISTENT_EQ
 (*************************************************************************
  * buildTycClass: int * slot * entityEnv * instKind * rpath * (unit->stamp)
  *                * EM.complainer
- *                -> (tycon * entPath) option
+ *                -> tycon option
  *
  * This function deals with exploration of type nodes in the instance
  * graph.  It is similar to the buildStrClass function above, but it is
@@ -969,7 +967,7 @@ exception INCONSISTENT_EQ
 (* ASSERT: this_slot is an InitialTyc
  * This is clearly true given that buildTycClass is only called in
  * a case branch (in expandInst) where the pattern is InitialTyc *)
-fun buildTycClass (cnt, this_slot, instKind, rpath, mkStamp, err) =
+fun buildTycClass (this_slot, instKind, rpath, mkStamp, err) =
   let val class = ref ([] : slot list)
       val classDef = ref (NONE : (tycInst * int) option)
       val minDepth = ref infinity
@@ -1162,7 +1160,7 @@ fun buildTycClass (cnt, this_slot, instKind, rpath, mkStamp, err) =
 					    path=IP.append(rpath,path),
 					    kind=knd, eq=ref(eqprop),
 					    stub = NONE}
-		       in (FinalTyc(ref(INST tyc)), SOME(tyc,epath))
+		       in (FinalTyc(ref(INST tyc)), SOME tyc)
 		       end
 		     | DATATYPE _ =>
 		       let val tyc = GENtyc{stamp=mkStamp(), kind=kind,
@@ -1172,10 +1170,10 @@ fun buildTycClass (cnt, this_slot, instKind, rpath, mkStamp, err) =
 		       (* domains of dataconstructors will be instantiated
 			* in instToTyc *)
 		       end
-		     | _ => bug "scanForRep 9")
+		     | _ => bug "scanForRep 6")
 		| ERRORtyc => (FinalTyc(ref(INST ERRORtyc)), NONE)
-		| DEFtyc _ => bug "scanForRep 6"
-		| _ => bug "scanForRep 7"
+		| DEFtyc _ => bug "scanForRep 7"
+		| _ => bug "scanForRep 8"
 	  end (* fun scanForRep *)
 
       fun getSlotEp slot =
@@ -1227,21 +1225,10 @@ val buildTycClass = wrap "buildTycClass" buildTycClass
 *)
 
 fun sigToInst (ERRORsig, instKind, rpath, err, compInfo) = 
-      (ErrorStr,[],[])
+      (ErrorStr,[])
   | sigToInst (sign, instKind, rpath, err,
 	       compInfo as {mkStamp,...}: EU.compInfo) = 
-  let val flextycs : T.tycon list ref = ref [] (* the "abstract" tycons *)
-      val flexeps : EP.entPath list ref = ref []
-          (* the tkind environment *)
-      val cnt = ref 0
-
-      (* addbt: collects tycons and entity path -> tkind bindings
-         produced by calls of buildTycClass below *)
-      fun addbt NONE = ()
-        | addbt (SOME (tyc,ep)) = 
-            (flextycs := (tyc::(!flextycs));
-             flexeps := (ep::(!flexeps));
-             cnt := ((!cnt) + 1))
+  let val primaryTycs : T.tycon list ref = ref [] (* the "primary" tycons *)
 
       fun expand ErrorStr = ()
         | expand (FinalStr {expanded=ref true,...}) = ()
@@ -1275,8 +1262,10 @@ fun sigToInst (ERRORsig, instKind, rpath, err, compInfo) =
                                    S.name sym);
                           expand inst)
                      | InitialTyc _ =>
-                         addbt(buildTycClass(!cnt, slot, instKind, 
-					     rpath, mkStamp, err))
+                         (case buildTycClass(slot, instKind,
+					    rpath, mkStamp, err)
+			    of NONE => ()
+			     | SOME tyc => primaryTycs := (tyc::(!primaryTycs)))
                      | _ => ())
 
              in debugmsg ">>expand"; expanded := true;
@@ -1295,7 +1284,7 @@ fun sigToInst (ERRORsig, instKind, rpath, err, compInfo) =
       val strInst = !baseSlot
       val _ = expand strInst
 
-   in (strInst, !flextycs, !flexeps)
+   in (strInst, rev(!primaryTycs))
   end (* fun sigToInst *)
 
 exception Get_Origin  (* who is going to catch it? *)
@@ -1309,8 +1298,9 @@ fun get_stamp_info instance =
 
 fun instToStr (instance, entEnv, instKind, rpath: IP.path, err,
                compInfo as {mkStamp, ...}: EU.compInfo)
-              : M.strEntity =
-let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
+              : (M.strEntity * (ST.stamp * M.fctsig) list) =
+let val primFcts : (Stamps.stamp, M.fctsig) list = ref []
+    fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 					  slotEnv,finalEnt,stamp,...}),
                     entEnv, rpath: IP.path, failuresSoFar: int)
               : M.strEntity * int =
@@ -1477,6 +1467,12 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 
 			    | NONE =>
 			      let val stamp = mkStamp()
+				  val (paramRlzn, primaryTycs, primaryFcts) =
+				      instGeneric{sign=paramsig, entEnv=entEnv, 
+	                                          rpath=path, 
+						  region=SourceMap.nullRegion,
+	                                          instKind=INST_FORMAL, 
+					          compInfo=compInfo}
 				  val (bodyExp) =
 				      case instKind
 				       of INST_ABSTR {entities,...} =>
@@ -1486,28 +1482,16 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 							      VARstr [paramvar]))
 					  end
 					| INST_FORMAL => M.FORMstr sign
-				  val (paramRlzn, abstycs, _) =
-				      instGeneric{sign=paramsig, entEnv=entEnv, 
-	                                          rpath=path, 
-						  region=SourceMap.nullRegion,
-	                                          instKind=INST_FORMAL, 
-					          compInfo=compInfo}
-				  val nenv = EE.mark(mkStamp, 
-						     EE.bind(paramvar, 
-							     STRent paramRlzn,
-							     entEnv))
-				  val cl = CLOSURE{param=paramvar,
+				  val exp = LAMBDA{param=paramvar,
 						   body=bodyExp,
-						   env=entEnv}
-			      in FCTent {stamp = stamp,
-					 rpath=path,
-					 exp=LAMBDA{param=paramvar,
-						    body=bodyExp,
-						    primaries = abstycs,
-						    paramRlzn = paramRlzn},
-					 closureEnv=entEnv,
-					 properties = PropList.newHolder (),
-					 stub=NONE}
+						   primaries=(primaryTycs,primaryFcts)}
+			      in primFcts := (stamp,sign)::!primFcts;
+				 FCTent {stamp = stamp,
+					 exp = exp,
+					 env = entEnv,
+					 rpath = path,
+					 stub = NONE,
+					 properties = PropList.newHolder ()}
 			      end
 
 			    | _ => bug "unexpected functor def in instToStr",
@@ -1609,7 +1593,8 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 		         EM.nullErrorBody;
 		      strEnt')
 	     end)
- in loop(instToStr'(instance,entEnv,rpath,0))
+ in (loop(instToStr'(instance,entEnv,rpath,0));
+    !primFcts)
 end (* fun instToStr *)
 
 (*** fetching the TycKind for a particular functor signature ***)
@@ -1624,9 +1609,8 @@ end (* fun instToStr *)
    compInfo : compInfo  -- for mkStamp and error
 ->
    strEnt : strEntity (str realization)
-   abs_tycs : tycon list  -- tycs introduced by instantiation
-   tyceps :  entpath list -- the initial segment of all_eps
-                             collected in sigToInst
+   primaryTycs : tycon list  -- primary tycons
+   primaryFcts : (stamp * fctsig) list  -- primary fcts
 *)
 and instGeneric{sign, entEnv, instKind, rpath, region, 
                 compInfo as {mkStamp,error,...} : EU.compInfo} =
@@ -1638,14 +1622,13 @@ and instGeneric{sign, entEnv, instKind, rpath, region,
       val baseStamp = mkStamp()
       *)
 
-      val (inst, abstycs, tyceps) = 
+      val (inst, primaryTycs) = 
           sigToInst(sign, instKind, rpath, err, compInfo)
 
-      val strEnt = 
+      val (strEnt, primaryFcts) = 
           instToStr(inst,entEnv,instKind,rpath,err,compInfo)
 
-      val tyceps = rev tyceps
-
+(*  let's not for now ...
       (* let's memoize the resulting bound tycon entity paths, tyceps *)
       val _ = case sign 
                of M.SIG sigrec =>
@@ -1653,9 +1636,9 @@ and instGeneric{sign, entEnv, instKind, rpath, region,
 		     of NONE => ModPropList.setSigBoundeps (sigrec, SOME tyceps)
 		      | _ => ())
 		| _ => ()
-
+*)
       val _ = debugmsg "<<instantiate"
-   in (strEnt, rev abstycs, tyceps)
+   in (strEnt, primaryTycs, primaryFcts)
   end
 
 (* debugging wrappers
@@ -1678,18 +1661,18 @@ val instGeneric = wrap "instantiate" instGeneric
 
 (*** instantiation of the formal functor body signatures ***)
 fun instFormal{sign, entEnv, rpath, region, compInfo} =
-  let val (rlzn, abstycs, tyceps)
+  let val (rlzn, primaryTycs, primaryFcts)
         = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_FORMAL,
                       rpath=rpath, region=region, compInfo=compInfo}
-   in {rlzn=rlzn, abstycs=abstycs, tyceps=tyceps}
+   in {rlzn=rlzn, primaries=(primaryTycs,primaryFcts)}
   end
 
 (*** instantiation of the structure abstractions **)
 fun instAbstr{sign, entEnv, srcRlzn, rpath, region, compInfo} =
-  let val (rlzn, abstycs, tyceps)
+  let val (rlzn, primaryTycs, _)
         = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_ABSTR srcRlzn,
                       rpath=rpath, region=region, compInfo=compInfo}
-   in {rlzn=rlzn, abstycs=abstycs, tyceps=tyceps}
+   in {rlzn=rlzn, primaryTycs=primaryTycs}
   end
 
 val instFormal = 
