@@ -194,9 +194,10 @@ and evalFct (fctExp,  epc, entEnv,
 
         | CONSTfct fctEntity => (fctEntity, entEnv)
 
-        | LAMBDA{param, body, paramRlzn} => 
+        | LAMBDA{param, body, primaries, paramRlzn} => 
             let val clos = CLOSURE{param=param, body=body, env=entEnv}
 	     in ({stamp = mkStamp (),
+		  primaries = primaries, 
 		  paramRlzn = paramRlzn,
 		  closure=clos,
 		  rpath=IP.IPATH[anonFctSym],

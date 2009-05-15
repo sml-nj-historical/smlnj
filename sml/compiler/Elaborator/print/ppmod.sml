@@ -578,7 +578,7 @@ and ppStrEntity ppstrm (e,env,depth) =
     end
 
 and ppFctEntity ppstrm (e, env, depth) =
-    let val {stamp,paramRlzn,closure,rpath,stub,properties} = e
+    let val {stamp,paramRlzn,closure,rpath,stub,properties,...} = e
 	val {openHVBox,openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
     in if depth <= 1 
 	then pps "<functor entity>"
@@ -592,6 +592,17 @@ and ppFctEntity ppstrm (e, env, depth) =
 		pps "stamp: ";
 		pps (Stamps.toShortString stamp);
 		newline();
+	    (*     pps "primaries: ";
+	      ppSequence ppstrm 
+			 {sep=(fn ppstrm => 
+				  (pps ", "; break{nsp=1,offset=0})),
+			  pr=fn ppstrm => fn s => 
+				let val {pps,...} = en_pp ppstrm 
+				in pps (Stamps.toShortString s)
+				end,
+			  style=INCONSISTENT}
+			 primaries; *)
+	        newline();
 		pps "paramRlzn: ";
 		break{nsp=1,offset=2};
 		ppStrEntity ppstrm (paramRlzn,env,depth-1);
@@ -879,7 +890,7 @@ and ppFctExp ppstrm (fctExp,depth) =
 	  (pps ppstrm "FE.V:"; ppEntPath ppstrm ep)
        | M.CONSTfct { rpath, ... } =>
 	  (pps ppstrm "FE.C:"; ppInvPath ppstrm rpath)
-       | M.LAMBDA {param, paramRlzn, body} =>
+       | M.LAMBDA {param, primaries, paramRlzn, body} =>
 	  (openHVBox ppstrm (PP.Rel 0);
 	    pps ppstrm "FE.L:"; break ppstrm {nsp=1,offset=1};
 	    openHVBox ppstrm (PP.Rel 0);

@@ -84,7 +84,8 @@ and strexp
 
 and fctexp 
   = VARfct of Modules.Functor
-  | FCTfct of {param: Modules.Structure, def: strexp} 
+  | FCTfct of {param: Modules.Structure, def: strexp, 
+	       primaries: Types.tycon list} 
   | LETfct of dec * fctexp
   | MARKfct of fctexp * region
 

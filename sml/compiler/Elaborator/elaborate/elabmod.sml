@@ -1028,7 +1028,7 @@ case fctexp
 	   * All fresh stamps created during this instantiation will be considered
 	   * flexible/formal.
 	   *)
-          val {rlzn = paramRlzn, ...} =
+          val {rlzn = paramRlzn, abstycs=primaryTycs, ...} =
               INS.instFormal
                 {sign=paramSig, entEnv=entEnv, region=region,
 		 rpath=IP.IPATH(case paramNameOp
@@ -1089,6 +1089,7 @@ case fctexp
           val _ = showStr("--elabFct[BaseFct]: bodyStr: ",bodyStr,env)
 
           val fctExp = M.LAMBDA{param=paramEntVar, paramRlzn=paramRlzn,
+				primaries=primaryTycs,
 				body=bodyExp}
 
           val resFct = 
@@ -1104,6 +1105,7 @@ case fctexp
 
                 val rlzn = {stamp = mkStamp(),
 			    paramRlzn = paramRlzn,
+			    primaries=primaryTycs,
 			    closure = M.CLOSURE{param=paramEntVar,
 						body=bodyExp,
 						env=entEnv},
@@ -1121,7 +1123,8 @@ case fctexp
 
           val resDec =
             let val fctdef = A.FCTfct{param=paramStr,
-                                      def=A.LETstr(bodyAbsDec,A.VARstr bodyStr)}
+                                      def=A.LETstr(bodyAbsDec,A.VARstr bodyStr),
+				      primaries=primaryTycs}
              in A.FCTdec [A.FCTB {name=name, fct=resFct, def=fctdef}]
             end
 

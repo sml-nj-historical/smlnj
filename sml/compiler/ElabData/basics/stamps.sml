@@ -29,9 +29,7 @@ struct
 
   type generator = int ref
   fun newGenerator () = ref 0
-  fun fresh r = let val i = !r in r := i + 1; 
-				  print ("Stamp "^Int.toString i^"\n"); 
-				  Fresh i end
+  fun fresh r = let val i = !r in r := i + 1; Fresh i end
   val special = Special
   val global = Global
 

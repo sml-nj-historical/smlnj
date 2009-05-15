@@ -539,16 +539,6 @@ in
 	    end (* fun primaryCompInStruct *)
 	  | primaryCompInStruct _ = bug "Unexpected error signature"
 
-        (* Get the primary components in a realization R0 but replacing any 
-	   occurrences of entities in a realization R1 with the 
-	   corresponding entities in a realization R2. *) 
-	(* fun primariesWithParamRepl(ftmap0, bodyRlzn : M.strEntity,
-				   freeRlzn : M.strEntity, 
-				   argRlzn : M.strEntity,
-				   sign : M.sigrec, d) =
-	    let *)
-		
-
 	fun getTk(M.FSIG{paramsig=paramsig as M.SIG ps, ...}, argRlzn, 
 		  d) =
 	    let 

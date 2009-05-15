@@ -119,10 +119,9 @@ fun tpsKnd (TP.TP_VAR{kind,...}) = kind
       end
   | tpsKnd _ = bug "unexpected tycpath parameters in tpsKnd"
 
-(* primaryKnd computes the PLambda kind of a primary type given by the 
-   flexible stamp *)
-(* fun primaryKnd ( *)
-
+(* fun primaryKnd (GENtyc{kind=T.FORMAL,arity,...}) = 
+    LT.tkc_int arity
+  | primaryKnd ( *)
 fun genTT() = 
   let
 

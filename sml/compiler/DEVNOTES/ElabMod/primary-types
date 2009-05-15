@@ -109,6 +109,8 @@ addressed later.]
 
 Primary types
 
+[Notation: /\ is Big Lambda, \/ is forall, \/ is the vacuous quantifier, and \ is lambda]
+
 The following are some examples of how functor parameters translate into FLINT types. The only phenomenon not illustrated is the flattening of hierarchically nested structures in the functor parameter. 
 
 functor F(X:

@@ -891,8 +891,9 @@ and decType0(decl,occ,region) : dec =
        | _ => decl
 
 and fctbType (occ,region) (FCTB{fct,def,name}) =
-      let fun fctexpType(FCTfct{param, def}) =
-  	        FCTfct{param=param, def=strexpType (occ, region) def}
+      let fun fctexpType(FCTfct{param, def, primaries}) =
+  	        FCTfct{param=param, def=strexpType (occ, region) def,
+		      primaries=primaries}
  	    | fctexpType(LETfct(dec,e)) =
 	        LETfct(decType0(dec,LetDef occ,region), fctexpType e)
 	    | fctexpType(MARKfct(f,region)) = MARKfct(fctexpType f,region)

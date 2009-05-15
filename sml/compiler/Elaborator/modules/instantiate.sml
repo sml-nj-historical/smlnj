@@ -1486,7 +1486,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 							      VARstr [paramvar]))
 					  end
 					| INST_FORMAL => M.FORMstr sign
-				  val (paramRlzn, _, _) =
+				  val (paramRlzn, abstycs, _) =
 				      instGeneric{sign=paramsig, entEnv=entEnv, 
 	                                          rpath=path, 
 						  region=SourceMap.nullRegion,
@@ -1501,6 +1501,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 						   env=entEnv}
 			      in FCTent {stamp = stamp,
 					 rpath=path,
+					 primaries = abstycs,
 					 paramRlzn = paramRlzn,
 					 closure=cl,
 					 properties = PropList.newHolder (),

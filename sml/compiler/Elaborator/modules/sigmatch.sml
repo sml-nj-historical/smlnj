@@ -1094,6 +1094,7 @@ val resFct =
 	val resClosure = CLOSURE{param=paramId, body=resExp3, env=entEnv}
 
 	val resRlzn = {stamp = #stamp fctRlzn, (*** DAVE ? ***)
+		       primaries = #primaries fctRlzn,
 		       paramRlzn = fsigParEnt,
 		       closure = resClosure, rpath=rpath,
 		       stub = NONE,
@@ -1106,14 +1107,17 @@ val resFct =
 (*** the resulting functor absyn ***)
 val fdec = 
     let val bodyAbs = A.LETstr(A.SEQdec [resDec1, resDec2], A.VARstr resStr2)
-	val fctexp = A.FCTfct {param=fsigParInst, (* argtycs=paramTps,*) def=bodyAbs}
+	val fctexp = A.FCTfct {param=fsigParInst, primaries= #primaries fctRlzn,
+			       def=bodyAbs}
      in A.FCTdec [A.FCTB {name=anonFsym, fct=resFct, def=fctexp}]
     end
 
 (*** the functor entity expression ***)
 val fctExp = 
     M.LETfct(M.FCTdec(uncoerced, uncoercedFct), 
-             M.LAMBDA{param = paramId, body = resExp2, paramRlzn=fsigParEnt})
+             M.LAMBDA{param = paramId, body = resExp2, 
+		      primaries = #primaries fctRlzn,
+		      paramRlzn=fsigParEnt})
     (* ??? is fsigParEnt the correct realization to use here? *)
 
 in  (fdec, resFct, fctExp)
@@ -1415,7 +1419,8 @@ val resFct =
 
 val resDec = 
   let val body = A.LETstr(rdec1, A.LETstr(rdec2, A.VARstr resStr))
-      val fctexp = A.FCTfct{param=paramStr, def=body}
+      val fctexp = A.FCTfct{param=paramStr, def=body, 
+	primaries= abstycs2}
    in A.FCTdec [A.FCTB {name=fctName, fct=resFct, def=fctexp}]
   end
 

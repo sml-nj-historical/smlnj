@@ -1468,18 +1468,23 @@ and mkFctexp (fm0, fe, d) : lexp =
 			PPModules.ppFunctor ppstrm (fct, StaticEnv.empty, 100),
 				     f);
 	       mkFct(fm0, f, d))
-            | (FCTfct {param as M.STR { sign, access, rlzn, ... }, def }) =>
+            | (FCTfct {param as M.STR { sign, access, rlzn, ... }, def,
+	               primaries}) =>
 	      (case access
 	         of DA.LVAR v =>
                let 
-		   val _ = debugmsg ("--mkFctexp[FCTfct] depth "^
+		   (* val _ = debugmsg ("--mkFctexp[FCTfct] depth "^
 				     DI.dp_print d^" fm "
-				     ^Int.toString(FTM.numItems fm0))
+				     ^Int.toString(FTM.numItems fm0)) *)
 		   (* [RepTycProps] *)
 		   val (fm1, argtycs) = 
 		       RepTycProps.primaryCompInStruct(fm0, rlzn, 
 						       NONE, sign, d)
-		   
+
+		   (* [GK 5/14/09] We are stuck here if all we have are 
+		      stamps. We have the parameter realization but no way 
+		      to look up the primary tycs because stamps cannot be 
+		      directly used to look up rlzn. *)
 		   val knds = map tpsKnd argtycs
 		   val _ = if !debugging then 
 			       (print "argtycs kinds: ";
@@ -1492,8 +1497,8 @@ and mkFctexp (fm0, fe, d) : lexp =
 			   else ()
 
                    val nd = DI.next d  (* reflecting type abstraction *)
-		   val _ = debugmsg ("--mkFctexp[FCTfct] fm1 "
-				     ^Int.toString(FTM.numItems fm1))
+		   (* val _ = debugmsg ("--mkFctexp[FCTfct] fm1 "
+				     ^Int.toString(FTM.numItems fm1)) *)
                    val body = mkStrexp (fm1, def, nd)
                    val hdr = buildHdr v
 		   val _ = debugmsg "--mkFctexp[in strLty]"

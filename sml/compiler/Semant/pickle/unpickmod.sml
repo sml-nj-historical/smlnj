@@ -1069,10 +1069,12 @@ structure UnpickMod : UNPICKMOD = struct
 	      | fe #"p" = & M.CONSTfct (fctEntity' ())
 	      | fe #"q" =
 		let val p = entVar ()
+		    val t = tyconlist () 
 		    val (e, etr) = strEntity' ()
 		    val (b, btr) = strExp' ()
 		in
-		    (M.LAMBDA { param = p, paramRlzn = e, body = b }, btr)
+		    (M.LAMBDA { param = p, primaries = t, 
+				paramRlzn = e, body = b }, btr)
 		end
 	      | fe #"s" =
 		let val (d, dtr) = entityDec' ()
@@ -1199,10 +1201,12 @@ structure UnpickMod : UNPICKMOD = struct
 	and fctEntity' () = let
 	    fun f #"f" =
 		let val s = stamp ()
+		    val t = tyconlist()
 		    val (e, etr) = strEntity'()
 		    val (c, ctr) = fctClosure' ()
 		in
 		    ({ stamp = s,
+		       primaries = t,
 		       paramRlzn = e,
 		       closure = c,
 		       rpath = ipath (),
