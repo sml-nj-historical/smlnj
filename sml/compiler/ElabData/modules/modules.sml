@@ -136,11 +136,10 @@ and strExp
 and fctExp
   = VARfct of EP.entPath   (* selection from current entityEnv *)
   | CONSTfct of fctEntity  (* a constant reference to an existing fct entity *)
-  | LAMBDA of {param : EP.entVar, body : strExp, paramRlzn : strEntity,
-	       primaries: Types.tycon list}
-       (* paramRlzn is a memoization of the instantiated functor param signature
-        * used later in the translation phase.  It plays no direct role in
-        * entity evaluation. *)
+  | LAMBDA of {param : EP.entVar,
+	       body : strExp,
+	       primaries: Types.tycon list * (ST.stamp * fctsig) list}
+                (* these become FLINT type variables *)
   | LETfct of entityDec * fctExp
 
 and entityExp 
@@ -212,11 +211,10 @@ and strEntity =
 
 and fctEntity =
     {stamp    : ST.stamp,
-     (* closure  : fctClosure, *)     (* used to compute result rlzn in functor application *)
-     exp : fctExp, (* INVARIANT: always a LAMBDA for recording primaries *) 
-     closureEnv : entityEnv, 
-     rpath    : IP.path,        (* reverse symbolic path name of the functor *)
-     stub     : stubinfo option, (* for pickling isolation *)
+     exp      : fctExp,  (* INVARIANT: always a LAMBDA (includes primaries) *)
+     closureEnv : entityEnv,
+     rpath    : IP.path,          (* reverse symbolic path name of the functor *)
+     stub     : stubinfo option,  (* for pickling isolation *)
      properties: PropList.holder} (* FLINT: lambdaty memoization *)
 
 (* contents of a STR.  named because also used in modtree/STRNODE *)

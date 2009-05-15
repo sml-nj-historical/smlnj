@@ -23,13 +23,6 @@ and tycSpecInfo
   = RegTycSpec of {spec : Types.tycon, repl: bool, scope: int} (* normal signature *)
   | InfTycSpec of {name: Symbol.symbol, arity: int} (* inferred signature *)
 
-(*
- * and specEnv
- *  = NILsenv 
- *  | BINDsenv of spec Env.env * specEnv
- *  | INCLsenv of int * spec Env.env * specEnv
- *)
-
 and fctSig 
   = FSIG of {kind     : Symbol.symbol option,
 	     paramsig : Signature,
@@ -100,8 +93,10 @@ and strExp
 and fctExp
   = VARfct of EntPath.entPath 
   | CONSTfct of fctEntity
-  | LAMBDA of {param : EntPath.entVar, paramRlzn : strEntity, 
-	       primaries : Types.tycon list, body : strExp}
+  | LAMBDA of {param : EntPath.entVar,
+	       body : strExp,
+	       primaries: Types.tycon list * (Stamps.stamp * fctsig) list}
+                (* these become FLINT type variables *)
   | LETfct of entityDec * fctExp
 
 and entityExp 
@@ -172,9 +167,8 @@ and strrec =
 
 and fctEntity =
     {stamp    : Stamps.stamp,
-     (* closure  : fctClosure, *)
-     exp : fctExp, (* INVARIANT: always a LAMBDA for recording primaries *) 
-     closureEnv : entityEnv,
+     exp      : fctExp, (* INVARIANT: always a LAMBDA (includes primaries) *)
+     closureEnv : entityEnv,  (* closure env for exp *)
      rpath    : InvPath.path,
      stub     : stubinfo option,
      properties: PropList.holder}  (* FLINT lambdaty memoization *)
