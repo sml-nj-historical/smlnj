@@ -140,8 +140,12 @@ Basics/
       defs: BASIC_CONTROL, BasicControl
 
 Semant/
-  Modules related to elaboration and pickling (external representation
-  of static environments)
+  Modules related to static environment initialization and pickling
+  (external persistent representation of static environments).  The
+  basics, elatorate and modules subdirectories have been deleted.
+  There are only a few files left under Semant, and perhaps these
+  can all be relocated elsewhere, allowing Semant to be eliminated.
+  At least its name is no longer appropriate, and should be changed.
 
  [#Deleted: replaced by ElabData/basics/primopid.sig,sml
   Semant/basics/
@@ -149,45 +153,6 @@ Semant/
       inlining info [FLINT]
       defs: INL_INFO, InlInfo: INL_INFO
  ]
-
-  Semant/elaborate/
-  apply functors defined in corresponding Elaborate/elaborate modules
-  [these could be in Elaborator]
-    elabmod.sml
-      module level elaboration: defines ElabMod by calling ElabModFn defined
-      in Elaborate/elaborate/elabmod.sml (should go to Elaborator)
-      see: Elaborator/elaborate/elabmod.sml
-      defs: ElabMod
-    elabtop.sml
-      top-level elaboration: defined ElabTop by calling ElabTopFn defined
-      in Elaborator/elaborate/elabtop.sml (should go to Elaborator)
-      see: Elaborator/elaborate/elabtop.sml
-      defs: ElabTop
-
-  Semant/modules/
-  support for module elaboration
-    evalent.sml
-      entity expression evaluation;
-      applies functor EvalEntityFn from Elaborator/modules/evalent.sml
-      see: Elaborator/modules/evalent.sml
-      defs: EvalEntity
-    instantiate.sml
-      apply InstantitateFn defined in Elaborator/modules/instantiate.sml
-      see: Elaborator/modules/instantiate.sml
-      defs: Instantiate
-    instantiate-param.sml
-      defines parameter passed to InstantiateFn in ./instantiate.sml
-      see: Semant/modules/instantiate.sml  (previous file)
-      defs: InstantiateParam
-    module-plists.sml [FLINT]
-      defines PropList properties for attaching FLINT Lambda types to
-      various semantic entities
-      see: smlnj-lib/Util/plist{-sig}.sml
-      defs: ModulePropLists
-    sigmatch.sml
-      apply SigmatchFn defined in Elaborator/modules/sigmatch.sml
-      see: Elaborator/modules/sigmatch.sml
-      defs: SigMatch
 
   Semant/pickle/
   pickling static environments
@@ -225,19 +190,8 @@ Semant/
     cproto.sml
       relating ML types and C types (CTypes.c_proto from MLRISC) for C call mechanism
       defs: CProto
-    tp-var-info.sml [FLINT]
-      packaging some FLINT info as an exception
-      defs: TVI
-    types-reformat.sml [FLINT]
-      FLINT-related "reformatting" of types, used to be in typesutil.sml
-      defs: TypesReformat
-   [#Deleted: type checker is no longer functorized
-    typecheck.sml [FLINT]
-      apply TypecheckFn defined in Elaborator/types/typecheck.sml (should eliminate)
-      see: Elaborator/types/typecheck.sml
-      defs: TypeCheck
-   ]
-
+      [DBM: this should be moved elsewhere and the types subdirectory can then
+       be deleted.]
 
 ElabData/
 Basic datastructures used in elaboration (including type checking)
@@ -358,7 +312,7 @@ Basic datastructures used in elaboration (including type checking)
 
   ElabData/main/
     compinfo.sml
-      elaboration context parameter
+      elaboration context parameter (lvar generator, error context, etc.)
       defs: CompInfo
     edcontrol.sig/sml
       control flags for ElabData
@@ -420,31 +374,24 @@ Elaborator/
       overloading resolution
       defs: OVERLOAD, Overload
     typecheck.sml [FLINT]
-      defines typechecking _functor_ TypecheckFn, taking some FLINT-related
-      inlining info as parameters [should make into a structure]
-      defs: TYPECHECK, TypecheckFn: _ => TYPECHECK
+      defines core ML typechecking functions
+      defs: TYPECHECK, Typecheck : TYPECHECK
 
   Elaborator/modules/
   support modules for elaborating modules
     evalent.sml
-      evaluate "entities" (module and type realizations). Defines EvalEntityFn
-      which is called to define EvalEntity structure in Semant/modules/evalent.sml
-      see: Semant/modules/evalent.sml
-      defs: EVALENTITY, EvalEntityFn : INSTANTIATE => EVALENTITY
+      evaluate "entities" (module and type realizations). Defines EvalEntity
+      defs: EVALENTITY, EvalEntity :  EVALENTITY
     expandtycon.sml
       interpret PATHtycs in entity environments
       defs: EXPAND_TYCON, ExpandTycon : EXPAND_TYCON
     instantiate.sml
-      free instantiation of signatures. defines InstantiateFn which is applied
-      to define structure Instantiate in Semant/modules/instantiate.sml
-      see: Semant/modules/instantiate.sml
+      free instantiation of signatures. defines Instantiate
       defs: INSTANTIATE_PARAM, INSTANTIATE,
-            InstantiateFn: INSTANTIATE_PARAM => INSTANTIATE
+            Instantiate : INSTANTIATE
     sigmatch.sml
-      signature matching. defines SigMatchFn, which is applied to define
-      SigMatch structure in Semant/modules/sigmatch.sml
-      see: Semant/modules/sigmatch.sml
-      defs: SIGMATCH, SigMatchFn: EVALENTITY => SIGMATCH
+      signature matching. defines SigMatch
+      defs: SIGMATCH, SigMatch : SIGMATCH
 
   Elaborator/elaborate/
   main elaboration modules, plus some supporting modules
@@ -470,10 +417,8 @@ Elaborator/
       elaborating core ML (expressions, declarations)
       defs: ELABCORE, ElabCore: ELABCORE
     elabmod.sml
-      main module elaboration. defines ElabModFn, which is called to
-      define ElabMod structure in Semant/elaborate/elabmod.sml
-      see: Semant/elaborate/elabmod.sml
-      defs: ELABMOD, ElabModFn: SIGMATCH # TYPECHECK => ELABMOD
+      main module elaboration. defines ElabMod
+      defs: ELABMOD, ElabMod: ELABMOD
     include.sml
       elaborate include specs in signatures (supports elabsig)
       defs: INCLUDE, Include: INCLUDE
@@ -481,10 +426,8 @@ Elaborator/
       elaborate signatures
       defs: ELABSIG, ElabSig : ELABSIG
     elabtop.sml
-      top-level elaboration driver. defines ElabTopFn, which is called
-      to define ElabTop structure in Semant/elaborate/elabtop.sml
-      see: Semant/elaborate/elabtop.sml
-      defs: ELABTOP, ElabTopFn : ELABMOD => ELABTOP
+      top-level elaboration driver. defines ElabTop
+      defs: ELABTOP, ElabTop : ELABTOP
 
 
 3. Miscellaneous utilities
@@ -757,12 +700,15 @@ any SML implementation.  BasicTypes adds those types that are specific
 to SML/NJ.
 
 
-2. What is the distinction between Basics and Semant?  Should these be
+2. What is the distinction between Basics and Semant? Should these be
 merged?  How about ElabData?  Some of these files (Semant/types) might
-also fit there.
+also fit there. [Probably pickling should be moved to ElabData. And
+probably Semant/statenv could also go to ElabData.  It's not clear where
+Semant/types/cproto.sml belongs.]
 
 We have Basics/*, Semant/basics, ElabData/basics, and Elaborator/basics.
 What is the rationale telling us what goes in each of these places?
+[Semant/basics is gone, which helps a bit.]
 
 This complex organization seems to be partially motivated by the goal
 of separating out any features that are SML/NJ-specific from the generic
