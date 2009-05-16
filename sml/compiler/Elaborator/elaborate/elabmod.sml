@@ -943,7 +943,7 @@ case fctexp
 	   * All fresh stamps created during this instantiation will be considered
 	   * flexible/formal.
 	   *)
-          val {rlzn = paramRlzn, abstycs=primaryTycs, ...} =
+          val {rlzn = paramRlzn, primaries=primaryTycs} =
               INS.instFormal
                 {sign=paramSig, entEnv=entEnv, region=region,
 		 rpath=IP.IPATH(case paramNameOp
@@ -1003,7 +1003,7 @@ case fctexp
           val _ = debugmsg "--elabFct[BaseFct]: body elaborated"
           val _ = showStr("--elabFct[BaseFct]: bodyStr: ",bodyStr,env)
 
-          val fctExp = M.LAMBDA{param=paramEntVar, paramRlzn=paramRlzn,
+          val fctExp = M.LAMBDA{param=paramEntVar, 
 				primaries=primaryTycs,
 				body=bodyExp}
 
@@ -1021,7 +1021,6 @@ case fctexp
                 val rlzn = {stamp = mkStamp(),
 			    exp = LAMBDA{param=paramEntVar, 
 					 body=bodyExp,
-					 paramRlzn = paramRlzn,
 					 primaries=primaryTycs},
 			    closureEnv = entEnv, 
 		(* Closure: Using the old entity environment !! *)

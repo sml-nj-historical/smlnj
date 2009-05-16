@@ -1397,7 +1397,7 @@ val bodyRlzn =
   case bodyStr of M.STR { rlzn, ... } => rlzn
                 | _ => M.bogusStrEntity
 
-val {rlzn=resRlzn, abstycs=abstycs2, tyceps=_} = 
+val {rlzn=resRlzn, primaryTycs=abstycs2} = 
   let val entEnv' = 
         EE.mark(mkStamp, EE.bind(paramvar, STRent paramEnt, entEnv))
    in INS.instAbstr {sign=bodysig, entEnv=entEnv', srcRlzn=bodyRlzn,
