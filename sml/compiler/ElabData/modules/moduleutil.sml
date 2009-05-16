@@ -519,6 +519,90 @@ in
       | STRSIG { sign, ... } => fromSig sign
       | ERRORstr => nil
 end
+
+(* mapPaths: EPC.epcontext * M.Structure * (ST.stamp -> bool) -> unit
+ * Add statId to entPath mappings for all appropriate elements of a structure
+ * that has just been elaborated or created by signature instantiation.
+ * If epc is the empty context (rigid), then this is an expensive no-op,
+ * so we test epc first. This is equivalent to context=INFCT _.
+ * 
+ * epc is the EntPathContext for the interior of the structure -- i.e.
+ * the structure binding's entVar has been added to the bindContext 
+ *
+ * mapPaths is quite heavy-weight right now; it can be simplified in 
+ * several ways, first, all tycon stamps don't have to be remapped.
+ * If new tycon stamps were mapped by Instantiate, then each mapPaths
+ * only need to deal with structures and functors; even dealing with
+ * structures and functors can be distributed into the signature matching
+ * or the instantiation process. (ZHONG)
+ *)
+(*
+val mapPathsPhase = (Stats.makePhase "Compiler 033 1-mapPaths") 
+and mapPaths x = Stats.doPhase mapPathsPhase mapPaths0 x
+*)
+
+fun mapPaths(epc, sign as SIG { elements, ... }, rlzn: M.strEntity, flex) = 
+      let val { entities, ... } = rlzn
+	  fun doElem(_,TYCspec{entVar=ev, ...}): unit =
+                (* 
+                 * bind only if tycon is flexible -- have to pass flexibility
+                 * tester  -- but wait! what about a rigid structure with a
+                 * new signature? Have to record even rigid strs and fcts in
+                 * case they have new signatures 
+                 *)
+                (case EE.look(entities,ev)
+		   of TYCent tyc =>
+		       (case tyc
+                          of T.ERRORtyc => ()
+			   | _ =>
+			      let val stamp = TU.tycStamp tyc
+			      in if flex stamp
+				 then EPC.bindTycEntVar(epc, MI.tycId' tyc, ev)
+				 else ()
+			      end)
+	            | ERRORent => ()
+		    | _ => bug "mapPaths 1")
+
+            | doElem(_,STRspec{entVar=ev,sign=s,...}) =
+                (* 
+                 * map this structure (unconditionally, because it may 
+                 * have a different signature) 
+                 *)
+	       (case s  (* don't record ERRORsig -- error tolerance *)
+		  of SIG _ =>
+		     (case EE.look(entities,ev)
+			of STRent nr =>
+			    let val i = MU.strId2(s,nr)
+			    in case EPC.lookStrEntPath (epc, i)
+				 of SOME _ => ()
+				  | _ => (EPC.bindStrEntVar (epc,i,ev);
+					  mapPaths(EPC.enterOpen(epc,ev),
+						 s,nr,flex))
+			    end
+		         | ERRORent => ()
+			 | _ => bug "mapPaths 2")
+		   | ERRORsig => ())
+
+            | doElem(_,FCTspec{entVar=ev,sign=s,...}) =
+                (* map this functor (unconditionally) *)
+	       (case s
+		  of FSIG _ =>
+		     (case EE.look(entities,ev)
+			of FCTent nr =>
+			    let val i = MU.fctId2(s,nr)
+			     in EPC.bindFctEntVar(epc,i,ev)
+			    end
+		         | ERRORent => ()
+			 | _ => bug "mapPaths 3")
+		   | ERRORfsig => ())
+
+            | doElem _ = ()
+
+       in if EPC.isEmpty epc then () else List.app doElem elements
+      end
+
+  | mapPaths _ = ()
+
+
 end (* local *)
 end (* structure ModuleUtil *)
-

@@ -351,9 +351,9 @@ Basic datastructures used in elaboration (including type checking)
       enity environments mapping entity variables
       defs: ENTITY_ENV, EntityEnv : ENTITY_ENV
     epcontext.sml
-      hairy context info used during module elaboration,
+      context info used during module elaboration,
       related to nesting of modules (ep stands for
-      "entity path"?)
+      "entity path")
       defs: ENT_PATH_CONTEXT, EntPathContext :> ENT_PATH_CONTEXT
 
   ElabData/main/

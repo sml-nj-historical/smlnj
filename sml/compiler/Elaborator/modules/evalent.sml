@@ -163,23 +163,24 @@ and evalStr(strExp, epc, entsvOp, entEnv, rpath,
 	    let val _ = debugmsg "--evalStr[ABSstr]"
 		val (srcRlzn, entEnv1) =
                     evalStr(strExp,  epc, entsvOp, entEnv, rpath, compInfo)
-                val {rlzn, primaryTycs} = 
+		val flex = let val base = mkStamp() 
+			   in (fn s => (case Stamps.compare(base,s)
+					 of LESS => true
+					  | _ => false))
+			   end
+                val {rlzn, ...} =
                     Instantiate.instAbstr{sign=sign, entEnv=entEnv, 
 					  srcRlzn=srcRlzn,
 					  rpath=rpath, region=S.nullRegion,
 					  compInfo=compInfo}
-
-                (* because the abstraction creates a bunch of new stamps,
-                   we have to bind them to the epcontext.
+                (* because the abstraction instantiation creates new tyc stamps,
+                   we have to bind them in the pathmap of the epcontext.
 		   But not all new stamps are represented in abstycs, only
 	           FORMALs (primaries)!
                  *)
                 val epc = enterOpen(epc, entsvOp)
-                fun bindEp (T.GENtyc gt, ep) =
-		    EPC.bindTycEntPath (epc, MI.tycId gt, ep)
-                  | bindEp _ = ()
-                val _ = ListPair.app bindEp (abstycs, tyceps)
-	     in (rlzn, entEnv1)
+	     in MU.mapPaths(epc, sign, rlzn, flex);
+		(rlzn, entEnv1)
 	    end
 
         | CONSTRAINstr {boundvar,raw,coercion} =>
@@ -198,7 +199,7 @@ and evalStr(strExp, epc, entsvOp, entEnv, rpath,
         | FORMstr _ => bug "unexpected FORMstr in evalStr")
 
 
-and evalFct (fctExp,  epc, entEnv, 
+and evalFct (fctExp, epc, entEnv, 
              compInfo as {mkStamp,...}: EU.compInfo) =
     (debugmsg "--evalFct"; 
       case fctExp
@@ -223,7 +224,7 @@ and evalFct (fctExp,  epc, entEnv,
             let val entEnv1 = evalDec(entDec,  epc,
                                       entEnv, IP.empty, compInfo)
                 val (fctEnt, entEnv2) = 
-                  evalFct(fctExp,  epc, entEnv1, compInfo) 
+                    evalFct(fctExp,  epc, entEnv1, compInfo) 
              in (fctEnt, entEnv2)
             end)
 
@@ -239,16 +240,17 @@ and evalApp(fctRlzn : Modules.fctEntity, argRlzn, epc, rpath,
                        future.  ZHONG. -- ??? doesn't bindEp below 
 		       do this? DBM **)
 		   val _ = debugmsg "--evalApp[FORMstr]"
-                   val {rlzn, abstycs, tyceps} = 
+		   val flex = let val base = mkStamp() 
+			      in (fn s => (case Stamps.compare(base,s)
+					    of LESS => true
+					     | _ => false))
+			      end
+                   val {rlzn, ...} =
                        Instantiate.instFormal {sign=bodysig, entEnv=nenv,
 					       rpath=rpath, region=S.nullRegion,
 					       compInfo=compInfo}
-
-                   fun bindEp (T.GENtyc gt, ep) = 
-                       EPC.bindTycEntPath (epc, MI.tycId gt, ep)
-                     | bindEp _ = ()
-                   val _ = ListPair.app bindEp (abstycs, tyceps)
-                in rlzn
+                in MU.mapPaths(epc, bodysig, rlzn, flex);
+		   rlzn
                end
             | _ => 
                let val _ = debugmsg "--evalApp[_]"

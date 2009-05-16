@@ -119,92 +119,7 @@ fun stripMarkStrb(MarkStrb(strb',region'),region) =
 fun inStr (EU.TOP) = EU.INSTR
   | inStr z = z 
 
-(* mapPaths
- * Add statId to entPath mappings for all appropriate elements of a structure
- * that has just been elaborated or created by signature instantiation.
- * If epc is the empty context (rigid), then this is an expensive no-op,
- * so we test epc first. But, would this be equivalent to context=INFCT _ ?
- * 
- * epc is the EntPathContext for the interior of the structure -- i.e.
- * the structure binding's entVar has been added to the bindContext 
- *
- * mapPaths is quite heavy weight right now; it can be simplified in 
- * several ways, first, all tycon stamps don't have to be remapped, 
- * if new tycon stamps are mapped by Instantiate, then each mapPaths
- * only need to deal with structures and functors; even dealing with
- * structures and functors can be distributed into the signature matching
- * or the instantiation process. (ZHONG)
- *)
-(*
-val mapPathsPhase = (Stats.makePhase "Compiler 033 1-mapPaths") 
-and mapPaths x = Stats.doPhase mapPathsPhase mapPaths0 x
-*)
-
-fun mapPaths(epc, STR { sign, rlzn, ... }, flex) =
-    mapEPC(epc, sign, rlzn, flex)
-  | mapPaths _ = ()
-
-and mapEPC(epc, sign as SIG { elements, ... }, rlzn: M.strEntity, flex) = 
-      let val { entities, ... } = rlzn
-	  fun doElem(_,TYCspec{entVar=ev, ...}): unit =
-                (* 
-                 * bind only if tycon is flexible -- have to pass flexibility
-                 * tester  -- but wait! what about a rigid structure with a
-                 * new signature? Have to record even rigid strs and fcts in
-                 * case they have new signatures 
-                 *)
-                (case EE.look(entities,ev)
-		   of TYCent tyc =>
-		       (case tyc
-                          of T.ERRORtyc => ()
-			   | _ =>
-			      let val stamp = TU.tycStamp tyc
-			      in if flex stamp
-				 then EPC.bindTycEntVar(epc, MI.tycId' tyc, ev)
-				 else ()
-			      end)
-	            | ERRORent => ()
-		    | _ => bug "mapEPC 1")
-
-            | doElem(_,STRspec{entVar=ev,sign=s,...}) =
-                (* 
-                 * map this structure (unconditionally, because it may 
-                 * have a different signature) 
-                 *)
-	       (case s  (* don't record ERRORsig -- error tolerance *)
-		  of SIG _ =>
-		     (case EE.look(entities,ev)
-			of STRent nr =>
-			    let val i = MU.strId2(s,nr)
-			    in case EPC.lookStrEntPath (epc, i)
-				 of SOME _ => ()
-				  | _ => (EPC.bindStrEntVar (epc,i,ev);
-					  mapEPC(EPC.enterOpen(epc,ev),
-						 s,nr,flex))
-			    end
-		         | ERRORent => ()
-			 | _ => bug "mapEPC 2")
-		   | ERRORsig => ())
-
-            | doElem(_,FCTspec{entVar=ev,sign=s,...}) =
-                (* map this functor (unconditionally) *)
-	       (case s
-		  of FSIG _ =>
-		     (case EE.look(entities,ev)
-			of FCTent nr =>
-			    let val i = MU.fctId2(s,nr)
-			     in EPC.bindFctEntVar(epc,i,ev)
-			    end
-		         | ERRORent => ()
-			 | _ => bug "mapEPC 3")
-		   | ERRORfsig => ())
-
-            | doElem _ = ()
-
-       in if EPC.isEmpty epc then () else List.app doElem elements
-      end
-
-  | mapEPC _ = ()
+(* mapPaths moved to ModuleUtil. (DBM, 5/16/09) *)
 
 (* 
  * ASSERT: order of DEFtycs in tycs respects dependencies, i.e. no
@@ -1067,7 +982,7 @@ case fctexp
            * paramStr *)
           val _ = let val epContextParam = 
 			  EPC.enterOpen(epContext', paramEntVar) 
-		   in mapPaths(epContextParam, paramStr, flex)
+		   in MU.mapPaths(epContextParam, paramSig, paramRlzn, flex)
 		  end
 
           (* add mapping from the paramStr to the locals pathmap.  The strId
@@ -1131,7 +1046,7 @@ case fctexp
           val _ = showStr("--elabFct[BaseFct]: paramStr: ",paramStr,env)
 
        in (resDec, resFct, fctExp, EE.empty)
-      end
+      end (* BaseFct - uncurried *)
 
   (* curried functor *)
   | BaseFct{params=param :: lparam,body,constraint} =>
@@ -1300,8 +1215,11 @@ fun loop([], decls, entDecls, env, entEnv) =
                         * there is no signature constraint and the
                         * defining strexp is BaseStr (DAVE).
                         *)
-		       val _ = mapPaths(EPC.enterOpen(epContext, entv),
-					bindStr, flex)
+		       val _ = case bindStr
+				of STR{sign, rlzn, ...} =>
+				   MU.mapPaths(EPC.enterOpen(epContext, entv),
+					       sign, rlzn, flex)
+				 | _ => ()
 		       val _ = debugmsg "--elabStrbs: mapPaths bindStr done"
 		       val _ = (case bindStr
 				 of STR { sign, rlzn, ... } =>

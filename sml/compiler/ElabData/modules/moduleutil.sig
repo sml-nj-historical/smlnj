@@ -4,6 +4,8 @@
 signature MODULEUTIL =
 sig
 
+val debugging : bool ref
+
 exception Unbound of Symbol.symbol
 
 val getSpec : Modules.elements * Symbol.symbol -> Modules.spec
@@ -75,9 +77,8 @@ val getSigSymbols: Modules.Signature -> Symbol.symbol list
 
 val getSignatureNames : Modules.Structure -> Symbol.symbol list
 
-val debugging : bool ref
+val mapPaths : EntPathContext.epcontext * Modules.structure * (Stamps.stamp -> bool)
+	       -> unit
 
 end (* signature MODULEUTIL *)
-
-
 

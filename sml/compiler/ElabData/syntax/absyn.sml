@@ -101,8 +101,8 @@ and strexp
  * "argtycs" field in FCTfct records the list of formal hotyc paramaters.
  *)
 and fctexp 
-  = VARfct of Functor
-  | FCTfct of {param: Structure, def: strexp}
+  = VARfct of Functor  (* a functor "variable", designating a defined functor *)
+  | FCTfct of {param: Structure, def: strexp}  (* the functor "abstraction" *)
   | LETfct of dec * fctexp
   | MARKfct of fctexp * region
 
