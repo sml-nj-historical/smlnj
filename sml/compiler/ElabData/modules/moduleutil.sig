@@ -77,7 +77,8 @@ val getSigSymbols: Modules.Signature -> Symbol.symbol list
 
 val getSignatureNames : Modules.Structure -> Symbol.symbol list
 
-val mapPaths : EntPathContext.epcontext * Modules.structure * (Stamps.stamp -> bool)
+val mapPaths : EntPathContext.context * Modules.Signature
+	       * Modules.strEntity * (Stamps.stamp -> bool)
 	       -> unit
 
 end (* signature MODULEUTIL *)

@@ -209,7 +209,7 @@ and evalFct (fctExp, epc, entEnv,
 
         | CONSTfct fctEntity => (fctEntity, entEnv)
 
-        | LAMBDA{param, body, primaries, paramRlzn} => 
+        | LAMBDA{param, body, primaries} => 
             let val _ = debugmsg "--evalFct[LAMBDA]"
 	     in ({stamp = mkStamp (),
 		  exp=fctExp,

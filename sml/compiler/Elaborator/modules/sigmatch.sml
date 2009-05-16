@@ -1057,7 +1057,7 @@ val paramSym = case paramsym of SOME x => x
                               | NONE => paramSym
 
 (*** parameter signature instantiation for the functor signature being matched ***)
-val {rlzn=fsigParEnt,abstycs=primaries,...} = 
+val {rlzn=fsigParEnt,primaries=primaries,...} = 
     INS.instFormal{sign=fsigParamSig, entEnv=entEnv,
                    rpath=IP.IPATH[paramSym], region=region, compInfo=compInfo}
 
@@ -1096,8 +1096,7 @@ val resFct =
 	val resRlzn = {stamp = #stamp fctRlzn, (*** DAVE ? ***)
 		       exp= M.LAMBDA{param=paramId,
 				   body=resExp3,
-				   primaries = primaries,
-				   paramRlzn = fsigParEnt},
+				   primaries = primaries},
 		       closureEnv = entEnv, 
 		       rpath=rpath,
 		       stub = NONE,
@@ -1118,8 +1117,7 @@ val fdec =
 val fctExp = 
     M.LETfct(M.FCTdec(uncoerced, uncoercedFct), 
              M.LAMBDA{param = paramId, body = resExp2, 
-		      primaries = primaries, (* [GK 5/15/09] Check this! *)
-		      paramRlzn=fsigParEnt})
+		      primaries = primaries (* [GK 5/15/09] Check this! *)})
     (* ??? is fsigParEnt the correct realization to use here? *)
 
 in  (fdec, resFct, fctExp)
@@ -1340,7 +1338,7 @@ and packStr {sign, str, strExp, entEnv, rpath,
              statenv, region, compInfo} = 
   let val _ = debugmsg ">>>packStr"
 
-      val {rlzn=resRlzn, abstycs=abstycs, tyceps=_} = 
+      val {rlzn=resRlzn, primaryTycs=abstycs} = 
         let val srcRlzn = case str of M.STR { rlzn, ... } => rlzn
                                     | _ => M.bogusStrEntity
          in INS.instAbstr {sign=sign, entEnv=entEnv, srcRlzn=srcRlzn,

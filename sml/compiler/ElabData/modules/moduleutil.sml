@@ -572,7 +572,7 @@ fun mapPaths(epc, sign as SIG { elements, ... }, rlzn: M.strEntity, flex) =
 		  of SIG _ =>
 		     (case EE.look(entities,ev)
 			of STRent nr =>
-			    let val i = MU.strId2(s,nr)
+			    let val i = strId2(s,nr)
 			    in case EPC.lookStrEntPath (epc, i)
 				 of SOME _ => ()
 				  | _ => (EPC.bindStrEntVar (epc,i,ev);
@@ -589,7 +589,7 @@ fun mapPaths(epc, sign as SIG { elements, ... }, rlzn: M.strEntity, flex) =
 		  of FSIG _ =>
 		     (case EE.look(entities,ev)
 			of FCTent nr =>
-			    let val i = MU.fctId2(s,nr)
+			    let val i = fctId2(s,nr)
 			     in EPC.bindFctEntVar(epc,i,ev)
 			    end
 		         | ERRORent => ()
