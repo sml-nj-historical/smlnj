@@ -481,7 +481,7 @@ MiscUtil/
     literal-to-num.sml
       Conversions from integer/word literals (which are represented as
       arbitrary precision ints) to fixed size. a hack that should be
-      replaced by a parameterized numeric types.
+      replaced by parameterized numeric types.
       size numbers
       defs: LITERAL_TO_NUM, LiteralToNum : LITERAL_TO_NUM
 

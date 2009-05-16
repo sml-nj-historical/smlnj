@@ -122,8 +122,6 @@ ElabDebug
 ELABMOD
   Elaborator/elaborate/elabmod.sml
 ElabMod
-  Semant/elaborate/elabmod.sml
-ElabModFn
   Elaborator/elaborate/elabmod.sml
 ELABSIG
   Elaborator/elaborate/elabsig.sml
@@ -131,10 +129,8 @@ ElabSig
   Elaborator/elaborate/elabsig.sml
 ELABTOP
   Elaborator/elaborate/elabtop.sml
-ElabTopFn
-  Elaborator/elaborate/elabtop.sml
 ElabTop
-  Semant/elaborate/elabtop.sml
+  Elaborator/elaborate/elabtop.sml
 ELABTYPE
   Elaborator/elaborate/elabtype.sig
 ElabType
@@ -178,8 +174,6 @@ ErrorMsg
 EVALENTITY
   Elaborator/modules/evalent.sml
 EvalEntity
-  Semant/modules/evalent.sml
-EvalEntityFn
   Elaborator/modules/evalent.sml
 EVALLOOP
   TopLevel/interact/evalloop.sig
@@ -228,11 +222,7 @@ INSTANTIATE
 INSTANTIATE_PARAM
   Elaborator/modules/instantiate.sml
 Instantiate
-  Semant/modules/instantiate.sml
-InstantiateFn
   Elaborator/modules/instantiate.sml
-InstantiateParam
-  Semant/modules/instantiate-param.sml
 IntStrMap
   Basics/miscutil/intstrmap.sml
 INVPATH
@@ -348,8 +338,6 @@ RealConst
 SIGMATCH
   Elaborator/modules/sigmatch.sml
 SigMatch
-  Semant/modules/sigmatch.sml
-SigMatchFn
   Elaborator/modules/sigmatch.sml
 SMLFILE
   Parse/main/smlfile.sml
@@ -409,9 +397,7 @@ Types
   ElabData/types/types.sml
 TYPECHECK
   Elaborator/types/typecheck.sml
-TypeCheck
-  Semant/types/typecheck.sml
-TypecheckFn
+Typecheck
   Elaborator/types/typecheck.sml
 TypesReformat
   Semant/types/types-reformat.sml
