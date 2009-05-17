@@ -114,7 +114,6 @@ Group
 	structure Translate
 	structure TycPath
 	structure FlexTycMap
-	structure RepTycProps
 	structure Lty
 	structure LtyKindChk
 	structure LtyStructure
@@ -264,7 +263,6 @@ FLINT/trans/module-plists.sml
 FLINT/trans/transtypes.sml
 FLINT/trans/tycpath.sml
 FLINT/trans/flextycmap.sml
-FLINT/trans/reptycprops.sml
 
 FLINT/lsplit/ls-inline.sml
 

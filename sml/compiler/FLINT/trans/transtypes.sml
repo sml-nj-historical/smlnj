@@ -5,9 +5,11 @@ signature TRANSTYPES =
 sig
 
   type flexmap = TycPath.tycpath FlexTycMap.map 
-  
+  datatype primary = FormalTyc of Types.tycon
+		   | FormalFct of Stamps.stamp * Modules.fctSig
+
   val genTT  : unit
-	       -> {tpsKnd : TycPath.tycpath -> PLambdaType.tkind,
+	       -> {tpsKnd : primary -> PLambdaType.tkind,
                    tpsTyc : flexmap -> DebIndex.depth -> TycPath.tycpath 
                             -> PLambdaType.tyc,
                    toTyc  : flexmap -> 
@@ -46,6 +48,9 @@ local structure BT = BasicTypes
 in
 
 type flexmap = TycPath.tycpath FlexTycMap.map 
+
+datatype primary = FormalTyc of Types.tycon
+		 | FormalFct of Stamps.stamp * fctSig
 
 fun bug msg = ErrorMsg.impossible ("TransTypes: " ^ msg)
 val say = Control.Print.say 
@@ -100,7 +105,17 @@ fun freeTyc (i) =
       end
 end (* end of recTyc and freeTyc hack *)
 
-fun tpsKnd (TP.TP_VAR{kind,...}) = kind 
+fun tpsKnd (FormalTyc(GENtyc{kind=FORMAL,arity,...})) =
+    LT.tkc_int arity
+  | tpsKnd (FormalFct(stamp, fsig as FSIG {kind,
+				   paramsig,
+				   paramvar,
+				   paramsym,
+				   bodysig})) =
+    bug "modkind" 
+  | tpsKnd _ = bug "unexpected primary in tpsKnd"
+
+(* fun tpsKnd (TP.TP_VAR{kind,...}) = kind 
   | tpsKnd (TP.TP_FCT(argtps, bodytps)) = 
       LT.tkc_fun(map tpsKnd argtps, LT.tkc_seq (map tpsKnd bodytps))
   | tpsKnd (TP.TP_SEL(TP.TP_APP(TP.TP_VAR{kind,...}, paramtps), i)) =
@@ -117,16 +132,12 @@ fun tpsKnd (TP.TP_VAR{kind,...}) = kind
 					    
       in knd
       end
-  | tpsKnd _ = bug "unexpected tycpath parameters in tpsKnd"
-
-(* fun primaryKnd (GENtyc{kind=T.FORMAL,arity,...}) = 
-    LT.tkc_int arity
-  | primaryKnd ( *)
+  | tpsKnd _ = bug "unexpected tycpath parameters in tpsKnd" *)
 
 fun genTT() = 
   let
 
-fun tpsTyc (fm : flexmap) d tp = 
+(* fun tpsTyc (fm : flexmap) d tp = 
   let fun h (TP.TP_VAR {tdepth, num, ...}, cur) =
             let val finaldepth = DI.calc(cur, tdepth)
 		val _ = debugmsg ("--tpsTyc: producing tcc_var "^
@@ -151,6 +162,7 @@ fun tpsTyc (fm : flexmap) d tp =
 
    in h(tp, d)
   end
+ *)
 
 (*
 and tycTyc = 
@@ -494,7 +506,7 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
     case (sign, ModulePropLists.fctEntityLty rlzn, rlzn) of
 	(sign, SOME (lt, od), _) => LT.lt_adj(lt, od, depth)
       | (fs as FSIG{paramsig, bodysig, ...}, _,
-         {closureEnv=env, exp=LAMBDA{paramRlzn,...}, ...}) =>
+         {closureEnv=env, exp=LAMBDA{primaries,...}, ...}) =>
         let val _ = debugmsg ">>fctRlznLty[instParam]"
             val nd = DI.next depth
 
@@ -507,18 +519,23 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
 	       information such as parameter information from 
                partially applied curried functors. 
              *)
-	    val (tps, ftmap1) = RepTycProps.getTk(fs, paramRlzn, depth)
-	    val fm = FTM.unionWith (fn(tp1,tp2)=> tp1) (fm, ftmap1)
+
+	    val {rlzn=paramRlzn, primaries=_} = 
+		INS.instFormal{sign=paramsig,entEnv=env,
+			       rpath=InvPath.IPATH[], compInfo=compInfo,
+			       region=SourceMap.nullRegion}
+	    (* val (tps, ftmap1) = RepTycProps.getTk(fs, paramRlzn, depth)
+	    val fm = FTM.unionWith (fn(tp1,tp2)=> tp1) (fm, ftmap1) *)
 	    val _ = debugmsg ">>tpsKnd"
-	    val ks = map tpsKnd tps
+	    val ks = map tpsKnd primaries
 
 	    val _ = if !debugging 
 		    then (debugmsg "====================";
-			  withInternals(fn () =>
+(*			  withInternals(fn () =>
 			    debugPrint("paramRlzn: ",
 				       (fn pps => fn ee =>
 					PPModules.ppEntity pps (ee,SE.empty,100)),
-				       (STRent paramRlzn)));
+				       (STRent paramRlzn))); *)
 			  withInternals(fn () =>
 			    debugPrint("closure: ",
 				       (fn pps => fn env =>
@@ -528,7 +545,7 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
 		    else ()
 
 	    val _ = debugmsg ">>strMetaLty"
-            val paramLty = strMetaLty(fm, paramsig, paramRlzn, nd, compInfo,
+            val paramLty = strMetaLty(fm, paramsig, primaries, nd, compInfo,
 				     SOME env)
 		handle _ => bug "fctRlznLty 2"
 		     
