@@ -5,12 +5,14 @@ signature TRANSTYPES =
 sig
 
   type flexmap = TycPath.tycpath FlexTycMap.map 
+  type primaryEnv = (Types.tycon list 
+		     * ((Stamps.stamp * Modules.fctSig) list)) list
   datatype primary = FormalTyc of Types.tycon
 		   | FormalFct of Stamps.stamp * Modules.fctSig
 
   val genTT  : unit
 	       -> {tpsKnd : primary -> PLambdaType.tkind,
-                   tpsTyc : flexmap -> DebIndex.depth -> TycPath.tycpath 
+                   tpsTyc : primaryEnv -> DebIndex.depth -> primary
                             -> PLambdaType.tyc,
                    toTyc  : flexmap -> 
 			    DebIndex.depth -> Types.ty -> PLambdaType.tyc,
@@ -48,6 +50,8 @@ local structure BT = BasicTypes
 in
 
 type flexmap = TycPath.tycpath FlexTycMap.map 
+type primaryEnv = (Types.tycon list 
+		     * ((Stamps.stamp * Modules.fctSig) list)) list
 
 datatype primary = FormalTyc of Types.tycon
 		 | FormalFct of Stamps.stamp * fctSig
@@ -163,6 +167,30 @@ fun genTT() =
    in h(tp, d)
   end
  *)
+
+fun tpsTyc (penv : primaryEnv) d p = 
+    let fun primary2tyc (primary, cur) = 
+	    (case primary 
+	      of (FormalTyc(GENtyc{stamp=s0, kind=FORMAL,arity,...})) => 
+		  let 
+		      fun findindex ((GENtyc{stamp=s1,...}::lvl,fcts)::penv, 
+				     tdepth, num) =
+			  if Stamps.eq(s1,s0) 
+			  then (tdepth, num)
+			  else findindex ((lvl,fcts)::penv, tdepth, num + 1)
+			| findindex (([],_)::penv, tdepth, num) = 
+			  findindex(penv, tdepth + 1, 0)
+			| findindex _ = bug "Malformed primary environment"
+			  
+		      val (tdepth, num) = findindex(penv, 0, 0)
+		      val finaldepth = DI.calc(cur, tdepth)
+		  in
+		      if finaldepth < 0 then bug "Invalid depth calculation"
+		      else  LT.tcc_var(finaldepth, num)
+		  end
+	       | (FormalFct _) => bug "unimplemented")
+    in primary2tyc p
+    end 
 
 (*
 and tycTyc = 
