@@ -188,6 +188,9 @@ fun tpsTyc (penv : primaryEnv) d p =
 		      if finaldepth < 0 then bug "Invalid depth calculation"
 		      else  LT.tcc_var(finaldepth, num)
 		  end
+	       | (FormalTyc(GENtyc{kind=ABSTRACT(frontEndTyc),...}) =>
+		  primary2tyc(frontEndTyc, cur)
+	       | (FormalTyc(frontEndTyc)) => tycTyc(penv, frontEndTyc, cur)
 	       | (FormalFct _) => bug "unimplemented")
     in primary2tyc p
     end 
