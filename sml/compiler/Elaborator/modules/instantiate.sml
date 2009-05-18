@@ -34,6 +34,10 @@
 signature INSTANTIATE =
 sig
 
+  datatype primary
+    = PrimaryTyc of Types.tycon
+    | PrimaryFct of Stamps.stamp * Modules.fctSig * EntPath.entPath
+
   (*** instantiation of the formal functor parameter and body signatures ***)
   val instFormal :
          {sign     : Modules.Signature,
@@ -42,7 +46,7 @@ sig
           region   : SourceMap.region,
           compInfo : ElabUtil.compInfo}
 	 -> {rlzn: Modules.strEntity,
-	     primaries : (Types.tycon list * (Stamps.stamp * Modules.fctSig) list)}
+	     primaries : primary list}
 
   (*** instantiation of the structure abstractions ***)
   val instAbstr : 
@@ -126,6 +130,11 @@ fun signName (SIG { name, ... }) = getOpt (Option.map S.name name, "Anonymous")
 
 
 (* -------------------- important data structures ------------------------ *)
+
+datatype primary
+  = PrimaryTyc of Types.tycon
+  | PrimaryFct of Stamps.stamp * Modules.fctSig * EntPath.entPath
+
 
 (*
  * the different kinds of instantiations 
@@ -385,7 +394,7 @@ fun getElemDefs (strDef,mkStamp,depth): (S.symbol * constraint) list =
      end
 
 
-(* mkElemSlots: Signature * slotEnv * IP.path * entityPath * int
+(* mkElemSlots: Signature * slotEnv * IP.path * EP.entPath * int
  *              -> slotEnv * (S.symbol * slot) list
  *
  *   create slots with initial insts for the components of the signature
@@ -1299,7 +1308,7 @@ fun get_stamp_info instance =
 fun instToStr (instance, entEnv, instKind, rpath: IP.path, err,
                compInfo as {mkStamp, ...}: EU.compInfo)
               : (M.strEntity * (ST.stamp * M.fctSig) list) =
-let val primFcts : (Stamps.stamp * M.fctSig) list ref = ref []
+let val primFcts : (Stamps.stamp * M.fctSig * EP.entPath) list ref = ref []
     fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 					  slotEnv,finalEnt,stamp,...}),
                     entEnv, rpath: IP.path, failuresSoFar: int)
@@ -1463,9 +1472,12 @@ let val primFcts : (Stamps.stamp * M.fctSig) list ref = ref []
 				 def, epath, path} =>
 			 (case !def
 			   of SOME(FCT { rlzn, ... }) => FCTent rlzn
-				(*** would this case ever occur ??? ***)
-
-			    | NONE =>
+				(*** would this case ever occur ??? 
+				 Presumably this would be a definition
+				 propagated down from an outer where
+				 structure clause.  Check that this is done.
+				 ***)
+			    | NONE =>  (* a primary functor element *)
 			      let val stamp = mkStamp()
 				  val (paramRlzn, primaryTycs, primaryFcts) =
 				      instGeneric{sign=paramsig, entEnv=entEnv, 
@@ -1485,7 +1497,7 @@ let val primFcts : (Stamps.stamp * M.fctSig) list ref = ref []
 				  val exp = LAMBDA{param=paramvar,
 						   body=bodyExp,
 						   primaries=(primaryTycs,primaryFcts)}
-			      in primFcts := (stamp,sign)::(!primFcts);
+			      in primFcts := (stamp,sign,epath)::(!primFcts);
 				 FCTent {stamp = stamp,
 					 exp = exp,
 					 closureEnv = entEnv,
@@ -1540,20 +1552,21 @@ let val primFcts : (Stamps.stamp * M.fctSig) list ref = ref []
 			   baseEntC elements
 
  	        val (entEnv',failCount) = 
-                  if closed andalso closedDef
-                  then (let val _ = debugmsg "mkEntEnv: closed"
-                            val (ee, fc) = mkEntEnv(EE.empty, 0)
-                         in (ee, fc+failuresSoFar)
-                        end)
-                  else (let val _ = debugmsg "mkEntEnv: not closed";
-                            val baseEntC = 
+                    if closed andalso closedDef
+                    then let val _ = debugmsg "mkEntEnv: closed"
+                             val (ee, fc) = mkEntEnv(EE.empty, 0)
+                          in (ee, fc+failuresSoFar)
+                         end
+                    else (* a potentiatlly open signature with external references *)
+                      let val _ = debugmsg "mkEntEnv: not closed";
+                          val baseEntC = 
                               (MARKeenv{stamp = mkStamp(),
 					env = entEnv,
 					stub = NONE},
 			       failuresSoFar)
-                            val (ee, fc) = mkEntEnv(baseEntC)
-                         in (ee, fc)
-                        end)
+                          val (ee, fc) = mkEntEnv(baseEntC)
+                       in (ee, fc)
+                      end
 
 		 val strEnt={stamp =getStamp instance,
 			     rpath=rpath,
@@ -1626,7 +1639,7 @@ and instGeneric{sign, entEnv, instKind, rpath, region,
           sigToInst(sign, instKind, rpath, err, compInfo)
 
       val (strEnt, primaryFcts) = 
-          instToStr(inst,entEnv,instKind,rpath,err,compInfo)
+          instToStr(inst, entEnv, instKind, rpath, err, compInfo)
 
 (*  let's not for now ...
       (* let's memoize the resulting bound tycon entity paths, tyceps *)
@@ -1664,7 +1677,8 @@ fun instFormal{sign, entEnv, rpath, region, compInfo} =
   let val (rlzn, primaryTycs, primaryFcts)
         = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_FORMAL,
                       rpath=rpath, region=region, compInfo=compInfo}
-   in {rlzn=rlzn, primaries=(primaryTycs,primaryFcts)}
+      val primaries = map PrimaryTycon primaryTycs @ map PrimaryFct primaryFcts
+   in {rlzn=rlzn, primaries=primaries}
   end
 
 (*** instantiation of the structure abstractions **)
