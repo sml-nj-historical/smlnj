@@ -9,6 +9,9 @@ sig
 		     * ((Stamps.stamp * Modules.fctSig) list)) list
   datatype primary = FormalTyc of Types.tycon
 		   | FormalFct of Stamps.stamp * Modules.fctSig
+  val toPrimaryEnv : Types.tycon list 
+		     * ((Stamps.stamp * Modules.fctSig) list) 
+		     -> primary list 
 
   val genTT  : unit
 	       -> {tpsKnd : primary -> PLambdaType.tkind,

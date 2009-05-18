@@ -207,7 +207,7 @@ fun toTcLt fm d = (toTyc fm d, toLty fm d)
 
 (** translating the typ field in DATACON into lty; constant datacons 
     will take ltc_unit as the argument *)
-fun toDconLty (fm : TT.flexmap) d ty =
+fun toDconLty (fm : TT.primaryEnv) d ty =
   (case ty 
     of TP.POLYty{sign, tyfun=TP.TYFUN{arity, body}} =>
        if BT.isArrowType body then toLty fm d ty
@@ -421,7 +421,7 @@ fun coreExn ids =
 fun coreExn ids =
     (case CoreAccess.getCon' (fn () => raise NoCore) oldenv ids of
 	 TP.DATACON { name, rep as DA.EXN _, typ, ... } =>
-         let val nt = toDconLty FTM.empty DI.top typ
+         let val nt = toDconLty [] DI.top typ
              val nrep = mkRep(rep, nt, name)
 	     val _ = debugmsg ">>coreExn in translate.sml: "
 	 (* val _ = PPLexp.printLexp (CON'((name, nrep, nt), [], unitLexp))
@@ -434,7 +434,7 @@ fun coreExn ids =
 and coreAcc id =
     (case CoreAccess.getVar' (fn () => raise NoCore) oldenv [id] of
 	 V.VALvar { access, typ, path, ... } =>
-	 mkAccT(access, toLty FTM.empty DI.top (!typ), getNameOp path)
+	 mkAccT(access, toLty [] DI.top (!typ), getNameOp path)
        | _ => bug "coreAcc in translate")
     handle NoCore => (warn "no Core access\n"; INT 0)
 
@@ -467,7 +467,7 @@ fun mkAccInfo (acc, getLty, nameOp) =
   if extern acc then mkAccT(acc, getLty(), nameOp) 
   else (getLty(); mkAcc (acc, nameOp))
 
-fun fillPat(fm : TT.flexmap, pat, d) = 
+fun fillPat(fm : TT.primaryEnv, pat, d) = 
   let fun fill (CONSTRAINTpat (p,t)) = fill p
         | fill (LAYEREDpat (p,q)) = LAYEREDpat(fill p, fill q)
         | fill (RECORDpat {fields, flex=false, typ}) =
@@ -525,7 +525,7 @@ val eqDict =
 	      SOME e => e
 	    | NONE => let val e =
 			      TAPP (coreAcc "polyequal",
-				    [toTyc FTM.empty DI.top BT.intinfTy])
+				    [toTyc [] DI.top BT.intinfTy])
 		      in
 			  intInfEqRef := SOME e; e
 		      end
@@ -1076,7 +1076,7 @@ end
  *                                                                         *
  ***************************************************************************)
 (* [KM???] mkVar is calling mkAccInfo, which just drops the prim!!! *)
-fun mkVar (fm : TT.flexmap, v as V.VALvar{access, prim, typ, path, ...}, d) = 
+fun mkVar (fm : TT.primaryEnv, v as V.VALvar{access, prim, typ, path, ...}, d) = 
       mkAccInfo(access, fn () => toLty fm d (!typ), getNameOp path)
   | mkVar _ = bug "unexpected vars in mkVar"
 
@@ -1085,7 +1085,7 @@ fun mkVar (fm : TT.flexmap, v as V.VALvar{access, prim, typ, path, ...}, d) =
  * In the case of a primop variable, this function reconstructs the
  * type parameters of instantiation of the intrinsic primop type relative
  * to the variable occurrence type *)
-fun mkVE (fm : TT.flexmap, e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, 
+fun mkVE (fm : TT.primaryEnv, e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, 
 	  ts, d) =
       let val occurrenceTy = instPoly(!typ, ts)
               (* compute the occurrence type of the variable *)
@@ -1174,7 +1174,7 @@ fun mkVE (fm : TT.flexmap, e as V.VALvar { typ, prim = PrimOpId.Prim p, ... },
   | mkVE _ = bug "non VALvar passed to mkVE"
 
 
-fun mkCE (fm : TT.flexmap, TP.DATACON{const, rep, name, typ, ...}, ts, apOp, 
+fun mkCE (fm : TT.primaryEnv, TP.DATACON{const, rep, name, typ, ...}, ts, apOp, 
 	  d) = 
   let val lt = toDconLty fm d typ
       val rep' = mkRep(rep, lt, name)
@@ -1190,13 +1190,13 @@ fun mkCE (fm : TT.flexmap, TP.DATACON{const, rep, name, typ, ...}, ts, apOp,
                  end)
   end 
 
-fun mkStr (fm : TT.flexmap, s as M.STR { access, prim, ... }, d) =
+fun mkStr (fm : TT.primaryEnv, s as M.STR { access, prim, ... }, d) =
     mkAccInfo(access, fn () => strLty(fm, s, d, compInfo), NONE)
   | mkStr _ = bug "unexpected structures in mkStr"
 
-fun mkFct (fm : TT.flexmap, f as M.FCT { access, prim, ...}, d) =
+fun mkFct (fm : TT.primaryEnv, f as M.FCT { access, prim, ...}, d) =
     let val _ = debugmsg ">>mkFct"
-	val _ = debugmsg ("--mkFct fm size "^Int.toString(FTM.numItems fm))
+	val _ = debugmsg ("--mkFct fm size "^Int.toString(length fm))
 	val res = 
 	    mkAccInfo(access, 
 	      fn () => fctLty(fm, f, d, compInfo),
@@ -1205,7 +1205,7 @@ fun mkFct (fm : TT.flexmap, f as M.FCT { access, prim, ...}, d) =
     end
   | mkFct _ = bug "unexpected functors in mkFct"
 
-fun mkBnd (fm:TT.flexmap, d) =
+fun mkBnd (fm:TT.primaryEnv, d) =
   let fun g (B.VALbind v) = mkVar(fm, v, d)
         | g (B.STRbind s) = mkStr(fm, s, d)
         | g (B.FCTbind f) = mkFct(fm, f, d)
@@ -1231,7 +1231,7 @@ fun mkBnd (fm:TT.flexmap, d) =
 
 (* mkPE : Absyn.exp * depth * Types.tyvar list -> PLambda.lexp
  * translate an expression with potential type parameters *)
-fun mkPE (fm : TT.flexmap, exp, d, []) = mkExp(fm, exp, d)
+fun mkPE (fm : TT.primaryEnv, exp, d, []) = mkExp(fm, exp, d)
   | mkPE (fm, exp, d, boundtvs) = 
       let 
 (* now we try to do this in the type checker (generalizePat)
@@ -1291,7 +1291,7 @@ fun mkPE (fm : TT.flexmap, exp, d, []) = mkExp(fm, exp, d)
        in TFN(LT.tkc_arg(len), exp')
       end
 
-and mkVBs (fm : TT.flexmap, vbs, d) =
+and mkVBs (fm : TT.primaryEnv, vbs, d) =
   let fun mkVB (VB{pat=(VARpat(V.VALvar{access=DA.LVAR v, ...}) |
                         CONSTRAINTpat(VARpat(V.VALvar{access=DA.LVAR v, ...}),_)),
                    exp, boundtvs=btvs, ...},
@@ -1366,7 +1366,7 @@ and mkVBs (fm : TT.flexmap, vbs, d) =
    in fold mkVB vbs
   end (* mkVBs *)
 
-and mkRVBs (fm : TT.flexmap, rvbs, d) =
+and mkRVBs (fm : TT.primaryEnv, rvbs, d) =
   let fun mkRVB (RVB{var=V.VALvar{access=DA.LVAR v, typ=ref ty, ...},
                      exp, boundtvs=btvs, ...}, (vlist, tlist, elist)) = 
             let val ee = mkExp(fm, exp, d) (* was mkPE(exp, d, btvs) *)
@@ -1381,7 +1381,7 @@ and mkRVBs (fm : TT.flexmap, rvbs, d) =
    in fn b => FIX(vlist, tlist, elist, b)
   end
 
-and mkEBs (fm : TT.flexmap, ebs, d) = 
+and mkEBs (fm : TT.primaryEnv, ebs, d) = 
   let fun g (EBgen {exn=TP.DATACON{rep=DA.EXN(DA.LVAR v), typ, ...}, 
                     ident, ...}, b) =
               let val nt = toDconLty fm d typ
@@ -1419,17 +1419,14 @@ and mkStrexp (fm0, se, d) =
                   (* [RepTycProps] *)
 		  val _ = debugmsg ("--mkStrexp[APPstr] depth "^
 				    DI.dp_print d)
-		  val (ftmap1, argtycs) = 
+		  val primaries = 
 		      (case (oper, arg)
 			of (M.FCT{sign=M.FSIG{paramsig, ...}, 
-				  rlzn={exp=M.LAMBDA{paramRlzn,...},...}, ...}, 
-			    M.STR{rlzn, ...}) =>
-			   RepTycProps.primaryCompInStruct(fm0, 
-							  paramRlzn,
-							  SOME rlzn,
-							  paramsig, d)
-			 | _ => bug "Unexpected APPstr")
-                  val tycs = map (tpsTyc fm0 d) argtycs 
+				  rlzn={exp=M.LAMBDA{primaries,...},...}, ...}, 
+			    M.STR{rlzn, ...}) => 
+			   primaries
+			 | _ => bug "Unexpected APPstr") 
+                  val tycs = map (tpsTyc fm0 d) (TT.toPrimaryEnv primaries)
                   val e2 = mkStr(fm0, arg, d)
                in APP(TAPP(e1, tycs), e2)
               end
@@ -1456,7 +1453,7 @@ and mkStrexp (fm0, se, d) =
       le
   end
 
-and mkFctexp (fm0, fe, d) : lexp = 
+and mkFctexp (fm0 : TT.primaryEnv, fe, d) : lexp = 
   let 
       fun g fe = 
 	  case fe
@@ -1476,15 +1473,15 @@ and mkFctexp (fm0, fe, d) : lexp =
 				     DI.dp_print d^" fm "
 				     ^Int.toString(FTM.numItems fm0)) *)
 		   (* [RepTycProps] *)
-		   val (fm1, argtycs) = 
+		   (* val (fm1, argtycs) = 
 		       RepTycProps.primaryCompInStruct(fm0, rlzn, 
-						       NONE, sign, d)
+						       NONE, sign, d) *)
 
 		   (* [GK 5/14/09] We are stuck here if all we have are 
 		      stamps. We have the parameter realization but no way 
 		      to look up the primary tycs because stamps cannot be 
 		      directly used to look up rlzn. *)
-		   val knds = map tpsKnd argtycs
+		   val knds = map tpsKnd (hd (map TT.toPrimaryEnv fm0))
 		   val _ = if !debugging then 
 			       (print "argtycs kinds: ";
 				app (fn k => (ppTKind k; print " ")) knds; 
@@ -1498,10 +1495,10 @@ and mkFctexp (fm0, fe, d) : lexp =
                    val nd = DI.next d  (* reflecting type abstraction *)
 		   (* val _ = debugmsg ("--mkFctexp[FCTfct] fm1 "
 				     ^Int.toString(FTM.numItems fm1)) *)
-                   val body = mkStrexp (fm1, def, nd)
+                   val body = mkStrexp (fm0, def, nd)
                    val hdr = buildHdr v
 		   val _ = debugmsg "--mkFctexp[in strLty]"
-		   val lty = strLty(fm1, param, nd, compInfo)
+		   val lty = strLty(fm0, param, nd, compInfo)
 		   val _ = debugmsg "--mkFctexp[done strLty]"
                (* binding of all v's components *)
                in
@@ -1553,7 +1550,7 @@ and mkFctbs (ftmap0, fbs, d) =
 	  (case access of
 	       DA.LVAR v =>
                let val hdr = buildHdr v
-		   val le = mkFctexp(ftmap0, def, d)
+		   val le = mkFctexp(primaries::ftmap0, def, d)
                in
 		   LET(v, le, hdr b)
                end
@@ -1570,7 +1567,7 @@ and mkFctbs (ftmap0, fbs, d) =
  *    val mkDec : A.dec * DI.depth -> PLambda.lexp -> PLambda.lexp         *
  *                                                                         *
  ***************************************************************************)
-and mkDec (fm0 : flexmap, dec : Absyn.dec, d : DI.depth) 
+and mkDec (fm0 : TT.primaryEnv, dec : Absyn.dec, d : DI.depth) 
     : (PLambda.lexp -> PLambda.lexp) = 
   let fun g (VALdec vbs) 
 	  (* : (PLambda.lexp -> PLambda.lexp) *)
@@ -1637,7 +1634,7 @@ and mkDec (fm0 : flexmap, dec : Absyn.dec, d : DI.depth)
    in g dec
   end
 
-and mkExp (fm : TT.flexmap, exp, d) = 
+and mkExp (fm : TT.primaryEnv, exp, d) = 
   let val tTyc = toTyc fm d
       val tLty = toLty fm d
 
@@ -1819,7 +1816,7 @@ and transIntInf d s =
 	fun small w =
 	    APP (coreAcc (if LN.isNegative s then "makeSmallNegInf"
 			  else "makeSmallPosInf"),
-		 mkExp (FTM.empty, WORDexp (IntInf.fromInt (Word.toIntX w), 
+		 mkExp ([], WORDexp (IntInf.fromInt (Word.toIntX w), 
 					    BT.wordTy),
 			d))
     in
@@ -1828,7 +1825,7 @@ and transIntInf d s =
 	  | [w] => small w
 	  | ws => APP (coreAcc (if LN.isNegative s then "makeNegInf"
 				else "makePosInf"),
-		       mkExp (FTM.empty, build ws, d))
+		       mkExp ([], build ws, d))
     end
 
 (* Wrap bindings for IntInf.int literals around body. *)
@@ -1896,7 +1893,7 @@ val exportLexp = SRECORD (map VAR exportLvars)
 
 val _ = debugmsg ">>mkDec"
 (** translating the ML absyn into the PLambda expression *)
-val body = (mkDec (FlexTycMap.empty, rootdec, DI.top))
+val body = (mkDec ([], rootdec, DI.top))
 		 exportLexp
 val _ = debugmsg "<<mkDec"
 val _ = if CompInfo.anyErrors compInfo 

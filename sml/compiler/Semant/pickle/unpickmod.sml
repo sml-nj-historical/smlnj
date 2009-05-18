@@ -497,6 +497,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val pidOptionM = UU.mkMap ()
 	val lmsOptM = UU.mkMap ()
 	val lmsPairM = UU.mkMap ()
+	val ltcstfsPairM = UU.mkMap ()
 
 	val { pid, string, symbol, access, conrep, consig, intoption,
 	      primop, boollist, pkind, pkindlist, tkind, tkindlist } = sharedStuff
@@ -1084,12 +1085,11 @@ structure UnpickMod : UNPICKMOD = struct
 	      | fe #"p" = & M.CONSTfct (fctEntity' ())
 	      | fe #"q" =
 		let val p = entVar ()
-		    val t = tyconlist () 
-		    val (e, etr) = strEntity' ()
+		    val t = tyconlist () stamp () fctSig' ()
 		    val (b, btr) = strExp' ()
 		in
 		    (M.LAMBDA { param = p, primaries = t, 
-				paramRlzn = e, body = b }, btr)
+				body = b }, btr)
 		end
 	      | fe #"s" =
 		let val (d, dtr) = entityDec' ()
