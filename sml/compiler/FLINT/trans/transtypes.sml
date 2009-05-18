@@ -14,14 +14,14 @@ sig
 	       -> {tpsKnd : primary -> PLambdaType.tkind,
                    tpsTyc : primaryEnv -> DebIndex.depth -> primary
                             -> PLambdaType.tyc,
-                   toTyc  : flexmap -> 
+                   toTyc  : primaryEnv -> 
 			    DebIndex.depth -> Types.ty -> PLambdaType.tyc,
-                   toLty  : flexmap -> DebIndex.depth -> Types.ty 
+                   toLty  : primaryEnv -> DebIndex.depth -> Types.ty 
 			    -> PLambdaType.lty,
-                   strLty : flexmap * Modules.Structure 
+                   strLty : primaryEnv * Modules.Structure 
 			    * DebIndex.depth 
                             * ElabUtil.compInfo -> PLambdaType.lty,
-                   fctLty : flexmap * Modules.Functor 
+                   fctLty : primaryEnv * Modules.Functor 
 			    * DebIndex.depth 
                             * ElabUtil.compInfo -> PLambdaType.lty}
 end (* signature TRANSTYPES *)
@@ -138,6 +138,10 @@ fun tpsKnd (FormalTyc(GENtyc{kind=FORMAL,arity,...})) =
       end
   | tpsKnd _ = bug "unexpected tycpath parameters in tpsKnd" *)
 
+fun toPrimaryEnv(_,[]) = []
+  | toPrimaryEnv([], fct::fcts) = (FormalFct fct)::toPrimaryEnv([], fcts)
+  | toPrimaryEnv(tc::tcs, fcts) = (FormalTyc tc)::toPrimaryEnv(tcs,fcts)
+
 fun genTT() = 
   let
 
@@ -188,11 +192,11 @@ fun tpsTyc (penv : primaryEnv) d p =
 		      if finaldepth < 0 then bug "Invalid depth calculation"
 		      else  LT.tcc_var(finaldepth, num)
 		  end
-	       | (FormalTyc(GENtyc{kind=ABSTRACT(frontEndTyc),...}) =>
-		  primary2tyc(frontEndTyc, cur)
+	       | (FormalTyc(GENtyc{kind=ABSTRACT(frontEndTyc),...})) =>
+		  primary2tyc(FormalTyc frontEndTyc, cur)
 	       | (FormalTyc(frontEndTyc)) => tycTyc(penv, frontEndTyc, cur)
 	       | (FormalFct _) => bug "unimplemented")
-    in primary2tyc p
+    in primary2tyc (p, d)
     end 
 
 (*
@@ -200,7 +204,7 @@ and tycTyc =
   Stats.doPhase(Stats.makePhase "Compiler 043 1-tycTyc") tycTyc0 x
 *)
 
-and tycTyc(fm : flexmap, tc : Types.tycon, d) = 
+and tycTyc(fm : primaryEnv, tc : Types.tycon, d) = 
   let fun dtsTyc nd ({dcons: dconDesc list, arity=i, ...} : dtmember) = 
             let val nnd = if i=0 then nd else DI.next nd
                 fun f ({domain=NONE, rep, name}, r) = (LT.tcc_unit)::r
@@ -263,8 +267,8 @@ and tycTyc(fm : flexmap, tc : Types.tycon, d) =
             end
 *)
 
-      fun h (_,PRIMITIVE pt, _) = LT.tcc_prim (PrimTyc.pt_fromint pt)
-        | h (_,DATATYPE {index, family, freetycs, stamps, root}, _) = 
+      fun h (_, _,PRIMITIVE pt, _) = LT.tcc_prim (PrimTyc.pt_fromint pt)
+        | h (_, _,DATATYPE {index, family, freetycs, stamps, root}, _) = 
               let val tc = dtsFam (freetycs, family)
                   val n = Vector.length stamps 
                   val names = Vector.map (fn ({tycname,...}: dtmember) => 
@@ -273,9 +277,9 @@ and tycTyc(fm : flexmap, tc : Types.tycon, d) =
                   (* invariant: n should be the number of family members *)
                in LT.tcc_fix((n, names, tc, (map g freetycs)), index)
               end
-        | h (_,ABSTRACT tc, 0) = (g tc) 
+        | h (_, _,ABSTRACT tc, 0) = (g tc) 
               (*>>> LT.tcc_abs(g tc) <<<*) 
-        | h (_,ABSTRACT tc, n) = (g tc) 
+        | h (_, _,ABSTRACT tc, n) = (g tc) 
               (*>>> we tempoarily turned off the use of abstract tycons in
                     the intermediate language; proper support of ML-like
                     abstract types in the IL may require changes to the
@@ -289,22 +293,18 @@ and tycTyc(fm : flexmap, tc : Types.tycon, d) =
               end
               <<<*)
         (* | h (TP.FLEXTYC tp, _) = tpsTyc d tp *)
-        | h (stmp,FORMAL, n) = 
-	  (case FTM.find(fm, stmp)
-	    of NONE => (debugmsg ("--tycTyc unable to find "^
-				  Stamps.toShortString stmp);
-			bug ("unexpected FORMAL kind in tycTyc-h"))
-	     | SOME tp => (debugmsg ("--tycTyc found "^
-				     Stamps.toShortString stmp);
-			   tpsTyc fm d tp))
-        | h (_,TEMP, _) = bug "unexpected TEMP kind in tycTyc-h"
+        | h (tycon, stmp,FORMAL, n) = 
+	    (debugmsg ("--tycTyc found "^
+		       Stamps.toShortString stmp);
+	     tpsTyc fm d (FormalTyc tycon))
+        | h (_, _,TEMP, _) = bug "unexpected TEMP kind in tycTyc-h"
 
       and g (tycon as GENtyc {stamp, arity, kind, ...}) =
 	  (case kind of
 	       k as DATATYPE _ =>
 	       if TU.eqTycon(tycon, BT.refTycon) then LT.tcc_prim(PT.ptc_ref)
-	       else h(stamp,k,arity)
-	     | k => h(stamp, k, arity))
+	       else h(tycon,stamp,k,arity)
+	     | k => h(tycon,stamp, k, arity))
 	| g (DEFtyc{tyfun, ...}) = tfTyc(fm, tyfun, d)
 	| g (RECtyc i) = recTyc i
 	| g (FREEtyc i) = freeTyc i
@@ -321,13 +321,13 @@ and tycTyc(fm : flexmap, tc : Types.tycon, d) =
    in g tc
   end
 
-and tfTyc (fm : flexmap, TYFUN{arity=0, body}, d) = toTyc fm d body
+and tfTyc (fm : primaryEnv, TYFUN{arity=0, body}, d) = toTyc fm d body
   | tfTyc (fm, TYFUN{arity, body}, d) = 
       let val ks = LT.tkc_arg arity
        in LT.tcc_fn(ks, toTyc fm (DI.next d) body)
       end
 
-and toTyc (fm : flexmap) d t = 
+and toTyc (fm : primaryEnv) d t = 
   let val m : (tyvar * LT.tyc) list ref = ref []
       fun lookTv tv = 
         let val xxx = !m
@@ -390,19 +390,19 @@ and toTyc (fm : flexmap) d t =
    in g t
   end (* toTyc *)
 
-and toLty (fm : flexmap) d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) = 
-    toLty (fm : flexmap) d body
-  | toLty (fm : flexmap) d (POLYty {tyfun=TYFUN{arity, body},...}) = 
+and toLty (fm : primaryEnv) d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) = 
+    toLty (fm : primaryEnv) d body
+  | toLty (fm : primaryEnv) d (POLYty {tyfun=TYFUN{arity, body},...}) = 
       let val ks = LT.tkc_arg arity
        in LT.ltc_poly(ks, [toLty fm (DI.next d) body])
       end
-  | toLty (fm : flexmap) d  x = LT.ltc_tyc (toTyc fm d x) 
+  | toLty (fm : primaryEnv) d  x = LT.ltc_tyc (toTyc fm d x) 
 
 (****************************************************************************
  *               TRANSLATING ML MODULES INTO FLINT TYPES                    *
  ****************************************************************************)
 
-fun specLty (fm : flexmap, elements : (Symbol.symbol * spec) list, entEnv, 
+fun specLty (fm : primaryEnv, elements : (Symbol.symbol * spec) list, entEnv, 
 	     depth, compInfo) = 
   let val _ = debugmsg ">>specLty"
       fun g ([], entEnv, ltys) = rev ltys
@@ -491,7 +491,7 @@ and signLty (sign, depth, compInfo) =
 (* sign is paramsig
    rlzn is argRlzn
  *) 
-and strMetaLty (fm : flexmap, sign, rlzn as { entities, ... }: strEntity, 
+and strMetaLty (fm : primaryEnv, sign, rlzn as { entities, ... }: strEntity, 
 		depth, compInfo, envop) =
     case (sign, ModulePropLists.strEntityLty rlzn) of
 	(_, SOME (lt, od)) => LT.lt_adj(lt, od, depth)
@@ -509,7 +509,7 @@ and strMetaLty (fm : flexmap, sign, rlzn as { entities, ... }: strEntity,
         end
       | _ => bug "unexpected sign and rlzn in strMetaLty"
 
-and strRlznLty (fm : flexmap, sign, rlzn : strEntity, depth, compInfo) =
+and strRlznLty (fm : primaryEnv, sign, rlzn : strEntity, depth, compInfo) =
     case (sign, ModulePropLists.strEntityLty rlzn) of
 	(sign, SOME (lt,od)) => LT.lt_adj(lt, od, depth)
 
@@ -533,11 +533,11 @@ and strRlznLty (fm : flexmap, sign, rlzn : strEntity, depth, compInfo) =
       | _ => (debugmsg ">>strRlznLty[strEntityLty NONE]";
 	      strMetaLty(fm, sign, rlzn, depth, compInfo, NONE))
 
-and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) = 
+and fctRlznLty (fm : primaryEnv, sign, rlzn, depth, compInfo) = 
     case (sign, ModulePropLists.fctEntityLty rlzn, rlzn) of
 	(sign, SOME (lt, od), _) => LT.lt_adj(lt, od, depth)
       | (fs as FSIG{paramsig, bodysig, ...}, _,
-         {closureEnv=env, exp=LAMBDA{primaries,...}, ...}) =>
+         {closureEnv=env, ...}) =>
         let val _ = debugmsg ">>fctRlznLty[instParam]"
             val nd = DI.next depth
 
@@ -551,14 +551,14 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
                partially applied curried functors. 
              *)
 
-	    val {rlzn=paramRlzn, primaries=_} = 
+	    val {rlzn=paramRlzn, primaries} = 
 		INS.instFormal{sign=paramsig,entEnv=env,
 			       rpath=InvPath.IPATH[], compInfo=compInfo,
 			       region=SourceMap.nullRegion}
 	    (* val (tps, ftmap1) = RepTycProps.getTk(fs, paramRlzn, depth)
 	    val fm = FTM.unionWith (fn(tp1,tp2)=> tp1) (fm, ftmap1) *)
 	    val _ = debugmsg ">>tpsKnd"
-	    val ks = map tpsKnd primaries
+	    val ks = map tpsKnd (toPrimaryEnv primaries)
 
 	    val _ = if !debugging 
 		    then (debugmsg "====================";
@@ -576,7 +576,7 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
 		    else ()
 
 	    val _ = debugmsg ">>strMetaLty"
-            val paramLty = strMetaLty(fm, paramsig, primaries, nd, compInfo,
+            val paramLty = strMetaLty(fm, paramsig, paramRlzn, nd, compInfo,
 				     SOME env)
 		handle _ => bug "fctRlznLty 2"
 		     
@@ -611,7 +611,7 @@ and fctRlznLty (fm : flexmap, sign, rlzn, depth, compInfo) =
         end 
       | _ => bug "fctRlznLty"
 
-and strLty (fm : flexmap, str as STR { sign, rlzn, ... }, depth, compInfo) =
+and strLty (fm : primaryEnv, str as STR { sign, rlzn, ... }, depth, compInfo) =
     (case ModulePropLists.strEntityLty rlzn of
 	 SOME (lt, od) => LT.lt_adj(lt, od, depth)
        | NONE =>
@@ -624,7 +624,7 @@ and strLty (fm : flexmap, str as STR { sign, rlzn, ... }, depth, compInfo) =
          end)
   | strLty _ = bug "unexpected structure in strLty"
 
-and fctLty (fm : flexmap, fct as FCT { sign, rlzn, ... }, depth, compInfo) =
+and fctLty (fm : primaryEnv, fct as FCT { sign, rlzn, ... }, depth, compInfo) =
     (debugmsg ">>fctLty";
      (case ModulePropLists.fctEntityLty rlzn of
 	 SOME (lt,od) => (debugmsg "--fctLty[proplist] "; 
