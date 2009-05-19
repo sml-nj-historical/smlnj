@@ -133,12 +133,16 @@ and strExp
        * accurate type names in functor results where the functor has
        * a result signature constraint. *)
 
+and primary
+  = PrimaryTyc of T.tycon
+  | PrimaryFct of Stamps.stamp * fctSig * EntPath.entPath
+
 and fctExp
   = VARfct of EP.entPath   (* selection from current entityEnv *)
   | CONSTfct of fctEntity  (* a constant reference to an existing fct entity *)
   | LAMBDA of {param : EP.entVar,
 	       body : strExp,
-	       primaries: Types.tycon list * (ST.stamp * fctSig) list}
+	       primaries: primary list}
                 (* these become FLINT type variables *)
   | LETfct of entityDec * fctExp
 

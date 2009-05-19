@@ -34,10 +34,6 @@
 signature INSTANTIATE =
 sig
 
-  datatype primary
-    = PrimaryTyc of Types.tycon
-    | PrimaryFct of Stamps.stamp * Modules.fctSig * EntPath.entPath
-
   (*** instantiation of the formal functor parameter and body signatures ***)
   val instFormal :
          {sign     : Modules.Signature,
@@ -46,7 +42,7 @@ sig
           region   : SourceMap.region,
           compInfo : ElabUtil.compInfo}
 	 -> {rlzn: Modules.strEntity,
-	     primaries : primary list}
+	     primaries : Modules.primary list}
 
   (*** instantiation of the structure abstractions ***)
   val instAbstr : 
@@ -130,11 +126,6 @@ fun signName (SIG { name, ... }) = getOpt (Option.map S.name name, "Anonymous")
 
 
 (* -------------------- important data structures ------------------------ *)
-
-datatype primary
-  = PrimaryTyc of Types.tycon
-  | PrimaryFct of Stamps.stamp * Modules.fctSig * EntPath.entPath
-
 
 (*
  * the different kinds of instantiations 
@@ -1494,9 +1485,11 @@ let val primFcts : (Stamps.stamp * M.fctSig * EP.entPath) list ref = ref []
 							      VARstr [paramvar]))
 					  end
 					| INST_FORMAL => M.FORMstr sign
+				  val primaries = map PrimaryTyc primaryTycs @
+						  map PrimaryFct primaryFcts
 				  val exp = LAMBDA{param=paramvar,
 						   body=bodyExp,
-						   primaries=(primaryTycs,primaryFcts)}
+						   primaries=primaries}
 			      in primFcts := (stamp,sign,epath)::(!primFcts);
 				 FCTent {stamp = stamp,
 					 exp = exp,
