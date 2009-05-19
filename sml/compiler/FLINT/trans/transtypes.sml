@@ -585,9 +585,9 @@ and fctRlznLty (penv : primaryEnv, sign, rlzn, depth, compInfo) =
 			       region=SourceMap.nullRegion}
 
 	    val _ = debugmsg ">>parameter kinds"
-	    val penv_layer = map (FctKind.primaryToKnd (compInfo, #entities paramRlzn))
-				 primaries
-	    val ks = map #2 (penv_layer)   (* extract kinds *)
+	    val primaryBindings = map (FctKind.primaryToKnd (compInfo, #entities paramRlzn))
+				      primaries
+	    val ks = map #2 (primaryBindings)   (* extract kinds *)
 
 	    val _ = if !debugging 
 		    then (debugmsg "====================";
@@ -633,23 +633,23 @@ and fctRlznLty (penv : primaryEnv, sign, rlzn, depth, compInfo) =
 	    (* [GK 5/5/09] Ideally, we want to be able to compute this 
 	       without having to appeal to EV.evalApp to get bodyRlzn.
 	       [DBM 5/19/09] This should be possible. It will require
-	       "decomping" the LAMBDA expression in the functor rlzn. *)
+	       "decompiling" the LAMBDA expression in the functor rlzn. *)
 
 	    (* add "bindings" for the primaries from the parameter
 	     * instantiation, so that references to them in the body str can be
 	     * translated into type variables. *)
-	    val penv' = penv_layer :: penv
+	    val innerPenv = primaryBindings :: penv
 
             (* [DBM: 5/19/09] Does the bodyLty have the kind that was (would be?)
 	     * calculated for the functor signature? I.e. is it a tuple of ltys
 	     * corresponding to the primaries of bodysig? *)
-	    val bodyLty = strRlznLty(penv', bodysig, bodyRlzn, nd, compInfo)
+	    val bodyLty = strRlznLty(innerPenv, bodysig, bodyRlzn, nd, compInfo)
 
 	    val _ = debugmsg "<<strRlznLty: functor body"
 
             val lt = LT.ltc_poly(ks, [LT.ltc_fct([paramLty],[bodyLty])])
         in
-	    ModulePropLists.setFctEntityLty (rlzn, SOME (lt, depth));
+	    ModulePropLists.setFctEntityLty (rlzn, SOME (lt, depth));  (* memoize *)
 	    debugmsg "<<fctRlznLty";
 	    lt
         end 
