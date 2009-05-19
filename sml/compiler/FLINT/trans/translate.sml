@@ -210,24 +210,23 @@ fun mkvN NONE = mkv()
 val mkvN = #mkLvar compInfo
 fun mkv () = mkvN NONE
 
-
 (** generate the set of ML-to-FLINT type translation functions *)
 val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty} =
     TT.genTT()
 
-fun toTcLt fm d = (toTyc fm d, toLty fm d) 
+fun toTcLt penv d = (toTyc penv d, toLty penv d) 
 
 (** translating the typ field in DATACON into lty; constant datacons 
     will take ltc_unit as the argument *)
-fun toDconLty (fm : TT.primaryEnv) d ty =
+fun toDconLty (penv : TT.primaryEnv) d ty =
   (case ty 
     of TP.POLYty{sign, tyfun=TP.TYFUN{arity, body}} =>
-       if BT.isArrowType body then toLty fm d ty
-       else toLty fm d (TP.POLYty{sign=sign, 
+       if BT.isArrowType body then toLty penv d ty
+       else toLty penv d (TP.POLYty{sign=sign, 
 			       tyfun=TP.TYFUN{arity=arity,
                                               body=BT.-->(BT.unitTy, body)}})
-     | _ => if BT.isArrowType ty then toLty fm d ty
-            else toLty fm d (BT.-->(BT.unitTy, ty)))
+     | _ => if BT.isArrowType ty then toLty penv d ty
+            else toLty penv d (BT.-->(BT.unitTy, ty)))
 
 (*
 (** the special lookup functions for the Core environment *)
@@ -415,21 +414,6 @@ fun mkAcc (p, nameOp) =
  *)
 exception NoCore
 
-(*
-fun coreExn ids =
-    (case CoreAccess.getCon' (fn () => raise NoCore) oldenv ids of
-	 TP.DATACON { name, rep as DA.EXN _, typ, ... } =>
-         let val nt = toDconLty DI.top typ
-             val nrep = mkRep(rep, nt, name)
-	     val _ = debugmsg ">>coreExn in translate.sml: "
-	     (* val _ = PPLexp.printLexp (CON'((name, nrep, nt), [], unitLexp))
-	     val _ = print "\n" *)
-         in CON'((name, nrep, nt), [], unitLexp)
-         end
-       | _ => bug "coreExn in translate")
-    handle NoCore => (say "WARNING: no Core access\n"; INT 0)
-*)
-
 fun coreExn ids =
     (case CoreAccess.getCon' (fn () => raise NoCore) oldenv ids of
 	 TP.DATACON { name, rep as DA.EXN _, typ, ... } =>
@@ -479,7 +463,7 @@ fun mkAccInfo (acc, getLty, nameOp) =
   if extern acc then mkAccT(acc, getLty(), nameOp) 
   else (getLty(); mkAcc (acc, nameOp))
 
-fun fillPat(fm : TT.primaryEnv, pat, d) = 
+fun fillPat(penv : TT.primaryEnv, pat, d) = 
   let fun fill (CONSTRAINTpat (p,t)) = fill p
         | fill (LAYEREDpat (p,q)) = LAYEREDpat(fill p, fill q)
         | fill (RECORDpat {fields, flex=false, typ}) =
@@ -507,12 +491,12 @@ fun fillPat(fm : TT.primaryEnv, pat, d) =
         | fill (ORpat(p1, p2)) = ORpat(fill p1, fill p2)
         | fill (CONpat(TP.DATACON{name,const,typ,rep,sign,lazyp}, ts)) = 
             CONpat(TP.DATACON{name=name, const=const, typ=typ, lazyp=lazyp,
-                              sign=sign,rep=mkRep(rep,toDconLty fm d typ,name)},
+                              sign=sign,rep=mkRep(rep,toDconLty penv d typ,name)},
                    ts)
         | fill (APPpat(TP.DATACON{name,const,typ,rep,sign,lazyp}, ts, pat)) = 
             APPpat(TP.DATACON{name=name, const=const, typ=typ,
                               sign=sign, lazyp=lazyp,
-                              rep=mkRep(rep, toDconLty fm d typ, name)},
+                              rep=mkRep(rep, toDconLty penv d typ, name)},
                    ts, fill pat)
         | fill xp = xp
 
@@ -1088,8 +1072,8 @@ end
  *                                                                         *
  ***************************************************************************)
 (* [KM???] mkVar is calling mkAccInfo, which just drops the prim!!! *)
-fun mkVar (fm : TT.primaryEnv, v as V.VALvar{access, prim, typ, path, ...}, d) = 
-      mkAccInfo(access, fn () => toLty fm d (!typ), getNameOp path)
+fun mkVar (penv : TT.primaryEnv, v as V.VALvar{access, prim, typ, path, ...}, d) = 
+      mkAccInfo(access, fn () => toLty penv d (!typ), getNameOp path)
   | mkVar _ = bug "unexpected vars in mkVar"
 
 (* mkVE : V.var * type list * depth -> lexp 
@@ -1097,7 +1081,7 @@ fun mkVar (fm : TT.primaryEnv, v as V.VALvar{access, prim, typ, path, ...}, d) =
  * In the case of a primop variable, this function reconstructs the
  * type parameters of instantiation of the intrinsic primop type relative
  * to the variable occurrence type *)
-fun mkVE (fm : TT.primaryEnv, e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, 
+fun mkVE (penv : TT.primaryEnv, e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, 
 	  ts, d) =
       let val occurrenceTy = instPoly(!typ, ts)
               (* compute the occurrence type of the variable *)
@@ -1148,29 +1132,29 @@ fun mkVE (fm : TT.primaryEnv, e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }
                     bug "mkVE -- NONE")))
 	  val _ = debugmsg "<<mkVE: after matchInstTypes"
        in case (primop, intrinsicParams)
-            of (PO.POLYEQL, [t]) => eqGen(intrinsicType, t, toTcLt fm d)
+            of (PO.POLYEQL, [t]) => eqGen(intrinsicType, t, toTcLt penv d)
              | (PO.POLYNEQ, [t]) =>
-               composeNOT(eqGen(intrinsicType, t, toTcLt fm d), toLty fm d t)
+               composeNOT(eqGen(intrinsicType, t, toTcLt penv d), toLty penv d t)
              | (PO.INLMKARRAY, [t]) => 
                let val dict = 
                        {default = coreAcc "mkNormArray",
                         table = [([LT.tcc_real], coreAcc "mkRealArray")]}
-                in GENOP (dict, primop, toLty fm d intrinsicType,
-                         map (toTyc fm d) intrinsicParams)
+                in GENOP (dict, primop, toLty penv d intrinsicType,
+                         map (toTyc penv d) intrinsicParams)
                end
              | (PO.RAW_CCALL NONE, [a, b, c]) =>
                let val i = SOME (CProto.decode cproto_conv
                                    { fun_ty = a, encoding = b })
                            handle CProto.BadEncoding => NONE
-               in PRIM (PO.RAW_CCALL i, toLty fm d intrinsicType,
-                        map (toTyc fm d) intrinsicParams)
+               in PRIM (PO.RAW_CCALL i, toLty penv d intrinsicType,
+                        map (toTyc penv d) intrinsicParams)
                end
              | _ => (** where do these intrinsicType originate? 
 			A: PrimOpTypeMap *)
-		    transPrim(primop, (toLty fm d intrinsicType),
-                              map (toTyc fm d) intrinsicParams)
+		    transPrim(primop, (toLty penv d intrinsicType),
+                              map (toTyc penv d) intrinsicParams)
       end
-  | mkVE (fm, v as V.VALvar{typ, prim = PrimOpId.NonPrim, path, ...}, ts, d) =
+  | mkVE (penv, v as V.VALvar{typ, prim = PrimOpId.NonPrim, path, ...}, ts, d) =
     (* non primop variable *)
       (if !debugging
        then (print "### mkVE nonprimop\n";
@@ -1180,18 +1164,18 @@ fun mkVE (fm : TT.primaryEnv, e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }
              app ppType ts; print "\n")
        else ();
        case ts
-         of [] => mkVar (fm, v, d)
-          | _ => TAPP(mkVar(fm, v, d), map (toTyc fm d) ts))
+         of [] => mkVar (penv, v, d)
+          | _ => TAPP(mkVar(penv, v, d), map (toTyc penv d) ts))
                  (* dbm: when does this second case occur? *)
   | mkVE _ = bug "non VALvar passed to mkVE"
 
 
-fun mkCE (fm : TT.primaryEnv, TP.DATACON{const, rep, name, typ, ...}, ts, apOp, 
+fun mkCE (penv : TT.primaryEnv, TP.DATACON{const, rep, name, typ, ...}, ts, apOp, 
 	  d) = 
-  let val lt = toDconLty fm d typ
+  let val lt = toDconLty penv d typ
       val rep' = mkRep(rep, lt, name)
       val dc = (name, rep', lt)
-      val ts' = map ((toTyc fm d) o TP.VARty) ts
+      val ts' = map ((toTyc penv d) o TP.VARty) ts
    in if const then CON'(dc, ts', unitLexp)
       else (case apOp
              of SOME le => CON'(dc, ts', le)
@@ -1202,27 +1186,27 @@ fun mkCE (fm : TT.primaryEnv, TP.DATACON{const, rep, name, typ, ...}, ts, apOp,
                  end)
   end 
 
-fun mkStr (fm : TT.primaryEnv, s as M.STR { access, prim, ... }, d) =
-    mkAccInfo(access, fn () => strLty(fm, s, d, compInfo), NONE)
+fun mkStr (penv : TT.primaryEnv, s as M.STR { access, prim, ... }, d) =
+    mkAccInfo(access, fn () => strLty(penv, s, d, compInfo), NONE)
   | mkStr _ = bug "unexpected structures in mkStr"
 
-fun mkFct (fm : TT.primaryEnv, f as M.FCT { access, prim, ...}, d) =
+fun mkFct (penv : TT.primaryEnv, f as M.FCT { access, prim, ...}, d) =
     let val _ = debugmsg ">>mkFct"
-	val _ = debugmsg ("--mkFct fm size "^Int.toString(length fm))
+	val _ = debugmsg ("--mkFct penv size "^Int.toString(length penv))
 	val res = 
 	    mkAccInfo(access, 
-	      fn () => fctLty(fm, f, d, compInfo),
+	      fn () => fctLty(penv, f, d, compInfo),
 	      NONE) 
     in debugmsg "<<mkFct"; res
     end
   | mkFct _ = bug "unexpected functors in mkFct"
 
-fun mkBnd (fm:TT.primaryEnv, d) =
-  let fun g (B.VALbind v) = mkVar(fm, v, d)
-        | g (B.STRbind s) = mkStr(fm, s, d)
-        | g (B.FCTbind f) = mkFct(fm, f, d)
+fun mkBnd (penv:TT.primaryEnv, d) =
+  let fun g (B.VALbind v) = mkVar(penv, v, d)
+        | g (B.STRbind s) = mkStr(penv, s, d)
+        | g (B.FCTbind f) = mkFct(penv, f, d)
         | g (B.CONbind (TP.DATACON{rep=(DA.EXN acc), name, typ, ...})) =
-          let val nt = toDconLty fm d typ
+          let val nt = toDconLty penv d typ
               val (argt,_) = LT.ltd_parrow nt
           in mkAccT (acc, LT.ltc_etag argt, SOME name)
           end
@@ -1243,8 +1227,8 @@ fun mkBnd (fm:TT.primaryEnv, d) =
 
 (* mkPE : Absyn.exp * depth * Types.tyvar list -> PLambda.lexp
  * translate an expression with potential type parameters *)
-fun mkPE (fm : TT.primaryEnv, exp, d, []) = mkExp(fm, exp, d)
-  | mkPE (fm, exp, d, boundtvs) = 
+fun mkPE (penv : TT.primaryEnv, exp, d, []) = mkExp(penv, exp, d)
+  | mkPE (penv, exp, d, boundtvs) = 
       let 
 (* now we try to do this in the type checker (generalizePat)
  * but we will do it again here and check consistencey, with he
@@ -1281,7 +1265,7 @@ fun mkPE (fm : TT.primaryEnv, exp, d, []) = mkExp(fm, exp, d)
             (* assign LBOUNDs to the boundtvs to mark them as type
              * parameter variables during translation of exp *)
 
-          val exp' = mkExp(fm, exp, DI.next d)
+          val exp' = mkExp(penv, exp, DI.next d)
             (* increase the depth to indicate that the expression is
              * going to be wrapped by a type abstraction (TFN); see body *)
 
@@ -1303,7 +1287,7 @@ fun mkPE (fm : TT.primaryEnv, exp, d, []) = mkExp(fm, exp, d)
        in TFN(LT.tkc_arg(len), exp')
       end
 
-and mkVBs (fm : TT.primaryEnv, vbs, d) =
+and mkVBs (penv : TT.primaryEnv, vbs, d) =
   let fun mkVB (VB{pat=(VARpat(V.VALvar{access=DA.LVAR v, ...}) |
                         CONSTRAINTpat(VARpat(V.VALvar{access=DA.LVAR v, ...}),_)),
                    exp, boundtvs=btvs, ...},
@@ -1312,7 +1296,7 @@ and mkVBs (fm : TT.primaryEnv, vbs, d) =
              * No special case for primops, or for the case wher btvs = ptvs
              * [dbm: 5/1/07] *)
             (* simple variable pattern: No special case needed for primops [dbm: 5/1/07] *)
-            LET(v, mkPE(fm, exp, d, btvs), body)
+            LET(v, mkPE(penv, exp, d, btvs), body)
 
         | mkVB (VB{pat, exp, boundtvs, ...}, body) =
 	    (* boundtvs is cumulative bound univariables for the whole pattern *)
@@ -1328,17 +1312,17 @@ and mkVBs (fm : TT.primaryEnv, vbs, d) =
 
 (*
         | mkVB (VB{pat, exp, boundtvs=btvs, ...}, body) =
-            let val ee = mkPE(fm, exp, d, btvs)
-                val rules = [(fillPat(fm, pat, d), body), (WILDpat, unitLexp)]
+            let val ee = mkPE(penv, exp, d, btvs)
+                val rules = [(fillPat(penv, pat, d), body), (WILDpat, unitLexp)]
                 val rootv = mkv()
                 fun finish x = LET(rootv, ee, x)
-             in MC.bindCompile(env, rules, finish, rootv, toTcLt fm d, complain,
+             in MC.bindCompile(env, rules, finish, rootv, toTcLt penv d, complain,
 			       genintinfswitch)
             end
  *)
 	     in case oldvars
 		 of [] => (* variable-free pattern, implies boundtvs = [], hence no type abs *)
-		      LET(mkv(), mkExp(fm, newexp, d), body) (* fresh let-bound lvar doesn't occur in body *)
+		      LET(mkv(), mkExp(penv, newexp, d), body) (* fresh let-bound lvar doesn't occur in body *)
 		  | _ => 
 		    let val newVar = mkv() (* new local variable to be let-bound to newexp *)
 			fun lookup (tv: Types.tyvar) [] = NONE
@@ -1370,7 +1354,7 @@ and mkVBs (fm : TT.primaryEnv, vbs, d) =
 					       end
 			     in buildDec(rest,i+1,LET(lv, defn, body))
 			    end
-		       in LET(newVar,mkPE(fm,newexp,d,boundtvs),
+		       in LET(newVar,mkPE(penv,newexp,d,boundtvs),
 			      buildDec(oldvars, 0, body))
 		      end
 	    end
@@ -1378,12 +1362,12 @@ and mkVBs (fm : TT.primaryEnv, vbs, d) =
    in fold mkVB vbs
   end (* mkVBs *)
 
-and mkRVBs (fm : TT.primaryEnv, rvbs, d) =
+and mkRVBs (penv : TT.primaryEnv, rvbs, d) =
   let fun mkRVB (RVB{var=V.VALvar{access=DA.LVAR v, typ=ref ty, ...},
                      exp, boundtvs=btvs, ...}, (vlist, tlist, elist)) = 
-            let val ee = mkExp(fm, exp, d) (* was mkPE(exp, d, btvs) *)
+            let val ee = mkExp(penv, exp, d) (* was mkPE(exp, d, btvs) *)
                 (* [ZHONG?] we no longer track type bindings at RVB anymore ! *)
-                val vt = toLty fm d ty
+                val vt = toLty penv d ty
             in (v::vlist, vt::tlist, ee::elist)
             end
         | mkRVB _ = bug "unexpected valrec bindings in mkRVBs"
@@ -1393,16 +1377,16 @@ and mkRVBs (fm : TT.primaryEnv, rvbs, d) =
    in fn b => FIX(vlist, tlist, elist, b)
   end
 
-and mkEBs (fm : TT.primaryEnv, ebs, d) = 
+and mkEBs (penv : TT.primaryEnv, ebs, d) = 
   let fun g (EBgen {exn=TP.DATACON{rep=DA.EXN(DA.LVAR v), typ, ...}, 
                     ident, ...}, b) =
-              let val nt = toDconLty fm d typ
+              let val nt = toDconLty penv d typ
                   val (argt, _) = LT.ltd_parrow nt
-               in LET(v, ETAG(mkExp(fm, ident, d), argt), b)
+               in LET(v, ETAG(mkExp(penv, ident, d), argt), b)
               end
         | g (EBdef {exn=TP.DATACON{rep=DA.EXN(DA.LVAR v), typ, name, ...},
                     edef=TP.DATACON{rep=DA.EXN(acc), ...}}, b) =
-              let val nt = toDconLty fm d typ
+              let val nt = toDconLty penv d typ
                   val (argt, _) = LT.ltd_parrow nt
                in LET(v, mkAccT(acc, LT.ltc_etag argt, SOME name), b)
               end
@@ -1422,12 +1406,12 @@ and mkEBs (fm : TT.primaryEnv, ebs, d) =
  *    val mkFctbs  : Absyn.fctb list * depth -> PLambda.lexp -> PLambda.lexp *
  *                                                                         *
  ***************************************************************************)
-and mkStrexp (fm0, se, d) = 
+and mkStrexp (penv0, se, d) = 
   let val _ = debugmsg ">>mkStrexp"
       fun g(strexp : Absyn.strexp) : PLambda.lexp =
 	(case strexp 
 	  of (APPstr {oper, arg}) =>
-              let val e1 = mkFct(fm0, oper, d) 
+              let val e1 = mkFct(penv0, oper, d) 
                   (* [RepTycProps] *)
 		  val _ = debugmsg ("--mkStrexp[APPstr] depth "^
 				    DI.dp_print d)
@@ -1438,22 +1422,22 @@ and mkStrexp (fm0, se, d) =
 			    M.STR{rlzn, ...}) => 
 			   primaries
 			 | _ => bug "Unexpected APPstr") 
-                  val tycs = map (tpsTyc fm0 d) (TT.toPrimaryEnv primaries)
-                  val e2 = mkStr(fm0, arg, d)
+                  val tycs = map (tpsTyc penv0 d) (TT.toPrimaryEnv primaries)
+                  val e2 = mkStr(penv0, arg, d)
                in APP(TAPP(e1, tycs), e2)
               end
 	   | (MARKstr (b, reg)) => withRegion reg g b
 	   | (LETstr (dec, body)) => 
-	     let val dec' = mkDec (fm0, dec, d) 
+	     let val dec' = mkDec (penv0, dec, d) 
 		 val body' = g body
 	     in dec' body'
 	     end
 	   | _ => let 
 		      val le = 
 			  (case strexp
-			    of (VARstr s) => mkStr(fm0, s, d)
+			    of (VARstr s) => mkStr(penv0, s, d)
 			     | (STRstr bs) => 
-			         SRECORD (map (mkBnd (fm0, d)) bs)
+			         SRECORD (map (mkBnd (penv0, d)) bs)
 			     | _ => bug "strexp pattern failed"
 			     )
 		  in le
@@ -1465,7 +1449,7 @@ and mkStrexp (fm0, se, d) =
       le
   end
 
-and mkFctexp (fm0 : TT.primaryEnv, fe, d) : lexp = 
+and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp = 
   let 
       fun g fe = 
 	  case fe
@@ -1476,26 +1460,33 @@ and mkFctexp (fm0 : TT.primaryEnv, fe, d) : lexp =
 			 fn ppstrm => fn fct => 
 			PPModules.ppFunctor ppstrm (fct, StaticEnv.empty, 100),
 				     f);
-	       mkFct(fm0, f, d))
+	       mkFct(penv0, f, d))
+           (* FCTfct is not self-contained. It always occurs in the context
+	      of a functor binding (FCTB) that carries a FCT in its fct field
+              -- the necessary primaries info can be found in this FCT.
+              (We actually have the param instantiation here as the param
+	      field of the FCTfct. *)
             | (FCTfct {param as M.STR { sign, access, rlzn, ... }, def}) =>
 	      (case access
-	         of DA.LVAR v =>
+	         of DA.LVAR v => (* require access to be an LVAR *)
                let 
 		   (* val _ = debugmsg ("--mkFctexp[FCTfct] depth "^
-				     DI.dp_print d^" fm "
-				     ^Int.toString(FTM.numItems fm0)) *)
-		   (* [RepTycProps] *)
-		   (* val (fm1, argtycs) = 
-		       RepTycProps.primaryCompInStruct(fm0, rlzn, 
-						       NONE, sign, d) *)
-
+				     DI.dp_print d^" penv "
+				     ^Int.toString(FTM.numItems penv0)) *)
 		   (* [GK 5/14/09] We are stuck here if all we have are 
 		      stamps. We have the parameter realization but no way 
 		      to look up the primary tycs because stamps cannot be 
-		      directly used to look up rlzn. *)
-		   val knds = map tpsKnd (hd (map TT.toPrimaryEnv fm0))
+		      directly used to look up rlzn.
+		      [DBM] We need the primaries from the FCT in the 
+		      FCTB context. Then we use FctKind.primaryToKnd as below.
+		      We could also, redundantly, stick the primaries into
+		      the FCTfct data structure. *)
+		   val primaryBindings =
+		       map (FctKind.primaryToKnd (compInfo, #entities rlzn))
+			   primaries
+		   val knds = map #2 primaryBindings
 		   val _ = if !debugging then 
-			       (print "argtycs kinds: ";
+			       (print "parameter primary kinds: ";
 				app (fn k => (ppTKind k; print " ")) knds; 
 				print "\n";
 				with_pp (fn s => 
@@ -1505,12 +1496,13 @@ and mkFctexp (fm0 : TT.primaryEnv, fe, d) : lexp =
 			   else ()
 
                    val nd = DI.next d  (* reflecting type abstraction *)
-		   (* val _ = debugmsg ("--mkFctexp[FCTfct] fm1 "
-				     ^Int.toString(FTM.numItems fm1)) *)
-                   val body = mkStrexp (fm0, def, nd)
+
+		   (* val _ = debugmsg ("--mkFctexp[FCTfct] penv1 "
+				     ^Int.toString(FTM.numItems penv1)) *)
+                   val body = mkStrexp (penv0, def, nd)
                    val hdr = buildHdr v
 		   val _ = debugmsg "--mkFctexp[in strLty]"
-		   val lty = strLty(fm0, param, nd, compInfo)
+		   val lty = strLty(penv0, param, nd, compInfo)
 		   val _ = debugmsg "--mkFctexp[done strLty]"
                (* binding of all v's components *)
                in
@@ -1525,7 +1517,7 @@ and mkFctexp (fm0 : TT.primaryEnv, fe, d) : lexp =
 	     | _ => bug "mkFctexp: unexpected access")
         | (LETfct (dec, b)) =>
 	  let val _ = debugmsg ">>mkFctexp[LETfct]"
-	      val dec' = mkDec (fm0, dec, d) 
+	      val dec' = mkDec (penv0, dec, d) 
 	      val b' = g b
 	      val r = dec' b'
 	      val _ = debugmsg "<<mkFctexp[LETfct]"
@@ -1544,9 +1536,9 @@ and mkStrbs (ftmap0, sbs, d) =
                let val hdr = buildHdr v 
                (* binding of all v's components *)
 		   val def' = mkStrexp(ftmap0, def, d)
-		   (* val _ = debugmsg("--mkStrbs fm1 "
-				    ^Int.toString(FTM.numItems fm1)
-				    ^" to fm2 "^Int.toString(FTM.numItems fm2))
+		   (* val _ = debugmsg("--mkStrbs penv1 "
+				    ^Int.toString(FTM.numItems penv1)
+				    ^" to penv2 "^Int.toString(FTM.numItems penv2))
 		    *)
                in
 		   LET(v, def', hdr b)
@@ -1579,33 +1571,33 @@ and mkFctbs (ftmap0, fbs, d) =
  *    val mkExp : A.exp * DI.depth -> PLambda.lexp                         *
  *                                                                         *
  ***************************************************************************)
-and mkDec (fm0 : TT.primaryEnv, dec : Absyn.dec, d : DI.depth) 
+and mkDec (penv0 : TT.primaryEnv, dec : Absyn.dec, d : DI.depth) 
     : (PLambda.lexp -> PLambda.lexp) = 
   let fun g (VALdec vbs) 
 	  (* : (PLambda.lexp -> PLambda.lexp) *)
 	= (debugmsg "--mkDec[VALdec]"; 
-	   mkVBs(fm0, vbs, d))
+	   mkVBs(penv0, vbs, d))
         | g (VALRECdec rvbs) = 
-	    (mkRVBs(fm0, rvbs, d))
+	    (mkRVBs(penv0, rvbs, d))
         | g (ABSTYPEdec{body,...}) = g body
         | g (EXCEPTIONdec ebs) = 
-	    (mkEBs(fm0, ebs, d))
+	    (mkEBs(penv0, ebs, d))
         | g (STRdec sbs) = 
 	   (* mkStrbs traverses sbs in the opposite order
 	      of mkStrbsFlexmap *)
-	  (* let val fm' = mkStrbsFlexmap(fm, sbs, d)
-	      val _ = debugmsg ("--mkDec[STRdec] fm' "
-				^Int.toString(FTM.numItems fm'))
-	  in (fm', mkStrbs(fm', sbs, d))
+	  (* let val penv' = mkStrbsFlexmap(penv, sbs, d)
+	      val _ = debugmsg ("--mkDec[STRdec] penv' "
+				^Int.toString(FTM.numItems penv'))
+	  in (penv', mkStrbs(penv', sbs, d))
 	  end *)
-	  mkStrbs(fm0, sbs, d)
+	  mkStrbs(penv0, sbs, d)
         | g (FCTdec fbs) = 
-	  mkFctbs(fm0, fbs, d)
-	  (* let val fm' = mkFctbsFlexmap(fm, fbs, d)
-	      val _ = debugmsg ("--mkDec[FCTdec] fm' "
-				^Int.toString(FTM.numItems fm')) 
+	  mkFctbs(penv0, fbs, d)
+	  (* let val penv' = mkFctbsFlexmap(penv, fbs, d)
+	      val _ = debugmsg ("--mkDec[FCTdec] penv' "
+				^Int.toString(FTM.numItems penv')) 
 
-	  in (fm', mkFctbs(fm', fbs, d)) 
+	  in (penv', mkFctbs(penv', fbs, d)) 
 	  end *)
         | g (LOCALdec(ld, vd)) = 
 	    let val ld' = g ld
@@ -1614,14 +1606,14 @@ and mkDec (fm0 : TT.primaryEnv, dec : Absyn.dec, d : DI.depth)
 	    end
         | g (SEQdec ds) =  
 	    (* let 
-		(* fun loop([], fm1, fs) = (fm1, foldr (op o) ident (rev fs))
-		  | loop(d::ds, fm1, fs) = 
-		    let val (fm2, f) = g (fm1, d)
-		    in loop(ds, fm2, f::fs)
+		(* fun loop([], penv1, fs) = (penv1, foldr (op o) ident (rev fs))
+		  | loop(d::ds, penv1, fs) = 
+		    let val (penv2, f) = g (penv1, d)
+		    in loop(ds, penv2, f::fs)
 		    end
-		val (fm1, fs) = loop (ds, fm, [])
-		val _ = debugmsg ("--mkDec[SEQdec] fm1 "
-				  ^Int.toString(FTM.numItems fm1)) *)
+		val (penv1, fs) = loop (ds, penv, [])
+		val _ = debugmsg ("--mkDec[SEQdec] penv1 "
+				  ^Int.toString(FTM.numItems penv1)) *)
 	    in 
 		
 	    end *)
@@ -1634,7 +1626,7 @@ and mkDec (fm0 : TT.primaryEnv, dec : Absyn.dec, d : DI.depth)
               let (* special hack to make the import tree simpler *)
                   fun mkos (_, s as M.STR { access = acc, ... }) =
                       if extern acc then 
-                          let val _ = mkAccT(acc, strLty(fm0, s, d, compInfo),
+                          let val _ = mkAccT(acc, strLty(penv0, s, d, compInfo),
 					     NONE)
                           in ()
                           end
@@ -1646,23 +1638,23 @@ and mkDec (fm0 : TT.primaryEnv, dec : Absyn.dec, d : DI.depth)
    in g dec
   end
 
-and mkExp (fm : TT.primaryEnv, exp, d) = 
-  let val tTyc = toTyc fm d
-      val tLty = toLty fm d
+and mkExp (penv : TT.primaryEnv, exp, d) = 
+  let val tTyc = toTyc penv d
+      val tLty = toLty penv d
 
-      fun mkRules xs = map (fn (RULE(p, e)) => (fillPat(fm, p, d), g e)) xs
+      fun mkRules xs = map (fn (RULE(p, e)) => (fillPat(penv, p, d), g e)) xs
 
       and g (VARexp (ref v, ts)) = 
             (debugmsg ">>mkExp VARexp"; 
-	     mkVE(fm, v, map TP.VARty ts, d))
+	     mkVE(penv, v, map TP.VARty ts, d))
         | g (CONexp (dc, ts)) = 
 	  (let val _ = debugmsg ">>mkExp CONexp: "
-	       val c = mkCE(fm, dc, ts, NONE, d)
+	       val c = mkCE(penv, dc, ts, NONE, d)
 	       val _ = if !debugging then ppLexp c else ()
 	   in c end)
         | g (APPexp (CONexp(dc, ts), e2)) = 
 	  (let val _ = debugmsg ">>mkExp APPexp: "
-	       val c = mkCE(fm, dc, ts, SOME(g e2), d)
+	       val c = mkCE(penv, dc, ts, SOME(g e2), d)
 	       val _ = if !debugging then ppLexp c else ()
 	   in c end)
         | g (INTexp (s, t)) =
@@ -1745,14 +1737,14 @@ and mkExp (fm : TT.primaryEnv, exp, d) =
                  fun f x = FN(rootv, tLty ty, x)
                  val l' = mkRules l
               in HANDLE(g e, MC.handCompile(env, l', f, 
-                                            rootv, toTcLt fm d, complain,
+                                            rootv, toTcLt penv d, complain,
 					    genintinfswitch))
              end
 
         | g (FNexp (l, ty)) = 
              let val rootv = mkv()
                  fun f x = FN(rootv, tLty ty, x)
-              in MC.matchCompile (env, mkRules l, f, rootv, toTcLt fm d,
+              in MC.matchCompile (env, mkRules l, f, rootv, toTcLt penv d,
 				  complain, genintinfswitch)
              end
 
@@ -1762,9 +1754,9 @@ and mkExp (fm : TT.primaryEnv, exp, d) =
                  fun f x = LET(rootv, ee', x)
                  val l' = mkRules l
               in if isMatch 
-                 then MC.matchCompile (env, l', f, rootv, toTcLt fm d,
+                 then MC.matchCompile (env, l', f, rootv, toTcLt penv d,
 				       complain, genintinfswitch)
-                 else MC.bindCompile (env, l', f, rootv, toTcLt fm d,
+                 else MC.bindCompile (env, l', f, rootv, toTcLt penv d,
 				      complain, genintinfswitch)
              end
 
@@ -1788,7 +1780,7 @@ and mkExp (fm : TT.primaryEnv, exp, d) =
 		FIX ([fv], [lt_u_u], [body], APP (VAR fv, unitLexp))
 	    end
 
-        | g (LETexp (dc, e)) = (mkDec (fm, dc, d)) (g e)
+        | g (LETexp (dc, e)) = (mkDec (penv, dc, d)) (g e)
 			       (* [RepTycProp] New primary types can't 
 				  be introduced here or occur here.*)
         | g e = 
