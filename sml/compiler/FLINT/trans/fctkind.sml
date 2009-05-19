@@ -20,27 +20,20 @@ structure M = Modules
 structure EP = EntPath
 structure PT = PLambdaType
 
-(* what is the reason for passing rpath?  Is it relevant here? *)
-(* bind compInfo locally-global, so we don't have to thread it through all
- * the calls? *)
-(* not worrying about memoizing results in the functor signature yet *)
-
 fun tycToKind tyc = PT.tkc_int(TypesUtil.tyconArity tyc)
-
-(* fun getEntEnv (entities: EntityEnv.entityEnv,[]) = entities  (* top-level functor element *)
-  | getEntEnv (entities,ev::ep) =
-    (case EntityEnv.lookStrEnt(entities,ev)
-      of {entities=entities',...}) => getEntEnv(entities',ep)
-       | _ => bug "getEntEnv")
-*)
 
 fun getEntEnv (entities: EntityEnv.entityEnv,[]) = entities  (* top-level functor element *)
   | getEntEnv (entities, ep) = EE.lookStrEP(entities,take(length ep - 1,ep))
   
 (*** computing the TycKind for a functor signature ***)
-fun fsigToTkind compInfo = 
-let fun fsigToTkind'{sign as M.FSIG{paramvar, paramsig as SIG _, bodysig as SIG _, ...},
-		    entEnv) = 
+
+(* bind compInfo locally-global, so we don't have to thread it through 
+ * the recursive calls *)
+(* not worrying about memoizing results in the functor signature yet *)
+
+fun fsigToKnd compInfo = 
+let fun fsigToKnd'{sign as M.FSIG{paramvar, paramsig as SIG _, bodysig as SIG _, ...},
+		   entEnv) = 
     let val region=SourceMap.nullRegion  (* dummy region, required by instFormal *)
         val rpath=InvPath.empty (* dummy rpath, required by instFormal *)
 	val {rlzn=paramRlzn, primaries=(parTycs,parFcts)} = 
@@ -69,23 +62,32 @@ let fun fsigToTkind'{sign as M.FSIG{paramvar, paramsig as SIG _, bodysig as SIG 
 
      in PT.tkc_fun(parTycTks@parFctTks, PT.tkc_seq (bodyTycTks@bodyFctTycs)
     end
-
-  | fsigToTkind' _ = PT.tkc_fun([], PT.tkc_seq [])
+  | fsigToKnd' _ = PT.tkc_fun([], PT.tkc_seq [])
       (* one of paramsig or bodysig is ERRORsig *)
 
 and entPathToKind ({entities,...}: M.strEntity)
 		  (_, fsig, entPath) =
     (* 1. look up the entPath in the signature (how?).
        2. if the entity determined by the entPath is *)
-    fsigToTkind'(fsig,getEntEnv(entities,entPath))
+    fsigToKnd'(fsig,getEntEnv(entities,entPath))
     
- in fsigToTkind'
+ in fsigToKnd'
 end
+
+fun primaryToBind (compInfo, entEnv: EE.entEnv)
+		 (PrimaryTyc(GENtyc{stamp,kind=FORMAL,arity,...})) =
+    (stamp, LT.tkc_int arity)
+  | primaryToBind (compInfo,entEnv) (PrimaryFct(stamp, fsig, epc)) =
+    (stamp, fsigToKnd compInfo (fsig, getEntEnv(entEnv,epc)))
+  | primaryToBind (compInfo,entEnv) _ = bug "primaryToKnd"
 
 end (* structure FctKind *)
 
 
+
+
 (* some code from an earlier version that might be useful somewhere...
+Navigating a signature via an entPath.
 
 fun matchEV(ev, s as (TYCspec{entVar,...} | STRspec{entVar,...} | FCTspec{entVar,...})) =
        EP.eqEntVar(ev,entVar)

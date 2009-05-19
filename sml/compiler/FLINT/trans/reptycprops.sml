@@ -21,7 +21,7 @@
 signature REPTYCPROPS = 
 sig
    val getTk : Modules.fctSig * Modules.strEntity * DebIndex.depth 
-	       -> (TycPath.tycpath list * TycPath.tycpath FlexTycMap.map)  
+	       -> (TycPath.tycpath FlexTycMap.map * TycPath.tycpath list)  
    val primaryCompInStruct : TycPath.tycpath FlexTycMap.map * Modules.strEntity
 			     * Modules.strEntity option * Modules.Signature 
 			     * DebIndex.depth 
@@ -539,16 +539,10 @@ in
 	    end (* fun primaryCompInStruct *)
 	  | primaryCompInStruct _ = bug "Unexpected error signature"
 
-	fun getTk(M.FSIG{paramsig=paramsig as M.SIG ps, ...}, argRlzn, 
-		  d) =
-	    let 
-		val _ = debugmsg ">>getTk"
-		val (ftmap, argtycs') = 
-		    primaryCompInStruct(FTM.empty, argRlzn, NONE, 
-					paramsig, d)
-		val _ = debugmsg "<<getTk"
-	    in (argtycs', ftmap)
-	    end (* getTk *)
+	fun getTk(M.FSIG{paramsig=paramsig as M.SIG ps, ...}, argRlzn, d) =
+	    (debugmsg ">>getTk";
+	     primaryCompInStruct(FTM.empty, argRlzn, NONE, paramsig, d)
+	     before debugmsg "<<getTk")
 	  | getTk _ = bug "getTk 0"
 
     end (* local *)

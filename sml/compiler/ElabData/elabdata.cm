@@ -26,9 +26,7 @@ Group
 	signature CORE_PRIM_TYC_NUM
 	signature ENTITY_ENV
 	signature PRIMOPID
-	signature DEB_INDEX
 
-	structure DebIndex
 	structure ElabDataControl
 	structure Access
 	structure Types
@@ -81,8 +79,6 @@ is
 	basics/sympaths.sig
 	basics/sympaths.sml
 	basics/core-ptnum.sml
-	basics/debindex.sig
-	basics/debindex.sml
 
 	syntax/absyn.sig
 	syntax/absyn.sml

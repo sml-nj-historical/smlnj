@@ -263,6 +263,8 @@ FLINT/trans/module-plists.sml
 FLINT/trans/transtypes.sml
 FLINT/trans/tycpath.sml
 FLINT/trans/flextycmap.sml
+FLINT/trans/debindex.sig
+FLINT/trans/debindex.sml
 
 FLINT/lsplit/ls-inline.sml
 

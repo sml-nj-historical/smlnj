@@ -1,6 +1,20 @@
 (* COPYRIGHT (c) 1996 Bell Laboratories *)
 (* translate.sml *)
 
+(* [DBM, 5/19/09] translate is going to have to calculate primaryEnv layers by
+ * calling FctKind.primaryToKnd, for which it will need the primaries associated
+ * with a functor parameter, and the corresponding instantiation entEnv (entities).
+ * It looks like the only good way to do this is to include that entEnv (or
+ * the instantiation strEntity) in the functor representation.  Where is the
+ * best place to store these?  In the functor rlzn, or in the LAMBDA expression?
+ * NOTE: this param instantiation entEnv is NOT the same as the closureEnv in the
+ * functor rlzn (though it may be an extension of it if the paramsig is open).
+ *
+ * Since we have to save the parameter primaries and rlzn computed during
+ * elaboration, we should be able to reuse these to avoid having to re-instantiate
+ * the paramsig when calculating the lty for the functor in TransTypes.fctRlznLty.
+ *)
+
 signature TRANSLATE = 
 sig
 
@@ -47,8 +61,6 @@ local structure B  = Bindings
 
       open Absyn PLambda 
 in 
-
-type flexmap = TransTypes.primaryEnv
 
 (****************************************************************************
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *
@@ -1563,8 +1575,8 @@ and mkFctbs (ftmap0, fbs, d) =
 (***************************************************************************
  * Translating absyn decls and exprs into lambda expression:               *
  *                                                                         *
- *    val mkExp : A.exp * DI.depth -> PLambda.lexp                         *
  *    val mkDec : A.dec * DI.depth -> PLambda.lexp -> PLambda.lexp         *
+ *    val mkExp : A.exp * DI.depth -> PLambda.lexp                         *
  *                                                                         *
  ***************************************************************************)
 and mkDec (fm0 : TT.primaryEnv, dec : Absyn.dec, d : DI.depth) 
@@ -1707,8 +1719,8 @@ and mkExp (fm : TT.primaryEnv, exp, d) =
         (*| g (PACKexp(e, ty, tycs)) = g e*)
 (* [dbm, 7/10/06]: Does PACKexp do anything now? What was it doing before
  * this was commented out? This appears to be the only place reformat was called
- * Is it also the only place the FLINT PACK constructor is used? [KM???] *)
-(* (commented out by whom, when why?)
+ * Is it also the only place the PACKexp constructor is used? [KM???] *)
+(* (commented out by whom, when, why?)
              let val (nty, ks, tps) = TU.reformat(ty, tycs, d)
                  val ts = map (tpsTyc d) tps
                  (** use of LtyEnv.tcAbs is a temporary hack (ZHONG) **)
