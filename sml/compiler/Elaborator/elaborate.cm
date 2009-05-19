@@ -9,7 +9,6 @@ Group
 	structure ElabControl
 
 	signature PRIM_TYC_NUM
-	signature DEB_INDEX
 	signature BASICTYPES
 	signature INSTANTIATE
 	signature EVALENTITY

@@ -193,7 +193,7 @@ fun primaryTyconToTyc (penv : primaryEnv) (depth: int) (primary: T.tycon) =
     let fun tyconToTyc (primary, cur) = 
 	    (case primary 
 	      of GENtyc{stamp=s0, kind=FORMAL, ...} => 
-		  let fun findindex ((s1,_)::lvl)::penv, tdepth, num) =
+		  let fun findindex (((s1,_)::lvl)::penv, tdepth, num) =
 			  if Stamps.eq(s1,s0) then (tdepth, num)
 			  else findindex (lvl::penv, tdepth, num + 1)
 			| findindex ([]::penv, tdepth, num) = 
@@ -205,10 +205,9 @@ fun primaryTyconToTyc (penv : primaryEnv) (depth: int) (primary: T.tycon) =
 		  end
 	       | GENtyc{kind=ABSTRACT(frontEndTyc),...} =>
 		  bug "primaryTyconToTyc 1"
-		  (* tyconToTyc(frontEndTyc, cur) *)
-	       | frontEndTyc =>
-		 bug "primaryTyconToTyc 2" 
-                 (* tycTyc(penv, frontEndTyc, cur) *)
+		  (* ABSTRACT handled by tycTyc's h function *) 
+	       | _ =>
+		 bug "primaryTyconToTyc 2") 
      in tyconTotyc (primary, depth)
     end 
 
