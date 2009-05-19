@@ -29,7 +29,13 @@
  * At an abstraction, the binder depth is the then current depth (e.g. the outermost
  * binder will have depth=0), and the current depth is incremented when entering the
  * the scope of an abstraction. So the index of any bound type variable occurrence
- * is >= 1.
+ * is >= 1 because it is inside at least one abstraction.
+ *
+ * Abstractions incrementing the depth can be either functor abstractions, where
+ * the abstracted (FLINT) type variables represent the primaries of the functor
+ * parameter signature, or polymorphic abstractions, where the abstracted FLINT type
+ * variables correspond to the implicitly abstracted polymorphically bound type
+ * variables.
 *)
 
 structure DebIndex : DEB_INDEX = 
@@ -59,7 +65,8 @@ fun dp_print i = Int.toString i
 fun dp_toint (i : depth) = i
 fun dp_fromint (i : int) = i
 
-fun calc (cur:int, def) = 
+(* this returns an int n, n >= 0 *)
+fun relativeDepth (cur:int, def) = 
   if def > cur then bug "the definition is deeper than the use"
   else (cur - def)
 
@@ -71,12 +78,10 @@ fun di_print i = Int.toString i
 
 fun di_toint (i : index) = i
 fun di_fromint (i : int) = i
+fun di_inner i = i+1
 
 val innermost = 1
 val innersnd = 2
-fun di_inner i = i+1
 
 end (* local *)
 end (* structure DebIndex *)
-
-
