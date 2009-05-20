@@ -199,7 +199,7 @@ fun primaryTyconToTyc (penv : primaryEnv) (depth: int) (primary: T.tycon) =
 			| findindex ([]::penv, tdepth, num) = 
 			  findindex(penv, tdepth + 1, 0)
 			| findindex [] = bug "Malformed primary environment"
-		      val (tdepth, num) = findindex(penv, 0, 0)
+		      val (tdepth, num) = findindex(penv, 1, 0)
 		      val dbIndex = DI.relativeDepth(cur, tdepth)
 		  in LT.tcc_var(dbIndex, num)
 		  end
@@ -549,7 +549,7 @@ and fctRlznLty (penv : primaryEnv, sign, rlzn, depth, compInfo) =
     case (sign, ModulePropLists.fctEntityLty rlzn, rlzn) of
 	(_, SOME (lt, od), _) => LT.lt_adj(lt, od, depth)
       | (fs as FSIG{paramsig, bodysig, ...}, _,
-         {closureEnv=env, ...}) =>
+         {closureEnv=env,primaries,paramEnv, ...}) =>
         let val _ = debugmsg ">>fctRlznLty[instParam]"
             val nd = DI.next depth
 
@@ -578,14 +578,14 @@ and fctRlznLty (penv : primaryEnv, sign, rlzn, depth, compInfo) =
 	     * occurrences in the body rlzn after evalApp.
 	     *)
 
-	    val {rlzn=paramRlzn, primaries} = 
+(*	    val {rlzn=paramRlzn, primaries} = 
 		INS.instFormal{sign=paramsig,entEnv=env,
 			       rpath=InvPath.IPATH[], compInfo=compInfo,
 			       region=SourceMap.nullRegion}
-
+*)
 	    val _ = debugmsg ">>parameter kinds"
 	    val primaryBindings =
-		map (FctKind.primaryToBind (compInfo, #entities paramRlzn))
+		map (FctKind.primaryToBind (compInfo, paramEnv))
 		    primaries
 	    val ks = map #2 (primaryBindings)   (* extract kinds *)
 
