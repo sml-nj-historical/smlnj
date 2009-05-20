@@ -103,7 +103,8 @@ and strexp
 and fctexp 
   = VARfct of Functor  (* a functor "variable", designating a defined functor *)
   | FCTfct of {param: Structure, def: strexp}  (* the functor "abstraction" *)
-  | LETfct of dec * fctexp
+  | LETfct of dec * fctexp (* fctexp is either VARfct or LETfct (or MARKfct),
+			    * never FCTfct *)
   | MARKfct of fctexp * region
 
 (*

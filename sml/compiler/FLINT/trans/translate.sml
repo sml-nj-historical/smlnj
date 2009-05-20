@@ -1407,46 +1407,41 @@ and mkEBs (penv : TT.primaryEnv, ebs, d) =
  *                                                                         *
  ***************************************************************************)
 and mkStrexp (penv0, se, d) = 
-  let val _ = debugmsg ">>mkStrexp"
-      fun g(strexp : Absyn.strexp) : PLambda.lexp =
-	(case strexp 
-	  of (APPstr {oper, arg}) =>
-              let val e1 = mkFct(penv0, oper, d) 
-                  (* [RepTycProps] *)
-		  val _ = debugmsg ("--mkStrexp[APPstr] depth "^
-				    DI.dp_print d)
-		  val primaries = 
-		      (case (oper, arg)
-			of (M.FCT{sign=M.FSIG{paramsig, ...}, 
-				  rlzn={exp=M.LAMBDA{primaries,...},...}, ...}, 
-			    M.STR{rlzn, ...}) => 
-			   primaries
-			 | _ => bug "Unexpected APPstr") 
-                  val tycs = map (tpsTyc penv0 d) (TT.toPrimaryEnv primaries)
-                  val e2 = mkStr(penv0, arg, d)
-               in APP(TAPP(e1, tycs), e2)
-              end
-	   | (MARKstr (b, reg)) => withRegion reg g b
-	   | (LETstr (dec, body)) => 
-	     let val dec' = mkDec (penv0, dec, d) 
-		 val body' = g body
-	     in dec' body'
-	     end
-	   | _ => let 
-		      val le = 
-			  (case strexp
-			    of (VARstr s) => mkStr(penv0, s, d)
-			     | (STRstr bs) => 
-			         SRECORD (map (mkBnd (penv0, d)) bs)
-			     | _ => bug "strexp pattern failed"
-			     )
-		  in le
-		  end)
+    let val _ = debugmsg ">>mkStrexp"
+        fun getArgTycs entities (_,_,ep) = 
+            case EE.lookEP(entities, ep)
+              of M.TYCent tyc => TYCarg tyc
+	       | M.FCTent fctEntity => FCTarg fctEntity (* compute tycpath or pl lty? *)
+               | M.ERRORent => bug "unexpected entities in getArgTycs"
 
-      val le = g se
+	fun mk(strexp : Absyn.strexp) : PLambda.lexp =
+	    (case strexp 
+	       of APPstr {oper, arg} =>
+		   let val e1 = mkFct(penv0, oper, d) 
+		       val _ = debugmsg ("--mkStrexp[APPstr] depth "^
+					 DI.dp_print d)
+		       val primaries =
+			   (case oper
+			     of M.FCT{rlzn={primaries,...}, ...} => primaries
+				map (FctKind.primaryToKnd (compInfo, paramEnv)) primaries
+			      | _ => bug "Unexpected Functor in APPstr")
+		       val argEnv =
+			   (case arg
+			     of M.STR{entities,...} => entities
+			      | _ => bug "Unexpected arg Structure in APPstr")
+		       val argtycs0 = map (getTps argEnv) primaries
+		       val argtycs = (* translate argtycs0 to ltys *)
+		       val e2 = mkStr(penv0, arg, d)
+		    in APP(TAPP(e1, argtycs), e2)
+		   end
+		| MARKstr (b, reg) => withRegion reg mk b
+		| LETstr (dec, body) => (mkDec (penv0, dec, d)) (mk body)
+		| VARstr s => mkStr(penv0, s, d)
+		| STRstr bs => SRECORD (map (mkBnd (penv0, d)) bs))
+
+      val le = mk se
       val _ = debugmsg "<<mkStrexp"
-   in 
-      le
+   in le
   end
 
 and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp = 
@@ -1468,7 +1463,7 @@ and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp =
 	      field of the FCTfct. *)
             | (FCTfct {param as M.STR { sign, access, rlzn, ... }, def}) =>
 	      (case access
-	         of DA.LVAR v => (* require access to be an LVAR *)
+	         of DA.LVAR v => (* check that param access is LVAR *)
                let 
 		   (* val _ = debugmsg ("--mkFctexp[FCTfct] depth "^
 				     DI.dp_print d^" penv "
@@ -1549,15 +1544,14 @@ and mkStrbs (ftmap0, sbs, d) =
   end
 
 and mkFctbs (ftmap0, fbs, d) = 
-  let fun g (FCTB{fct=M.FCT { access, rlzn={exp=M.LAMBDA{primaries,...}, ...},
-			      ... }, def, ... }, b) =
-	  (case access of
-	       DA.LVAR v =>
-               let val hdr = buildHdr v
-		   val le = mkFctexp(primaries::ftmap0, def, d)
-               in
-		   LET(v, le, hdr b)
-               end
+  let fun g (FCTB{fct=M.FCT{access,rlzn={exp=M.LAMBDA{primaries,...},...},...},
+		  def, ... }, b) =
+	  (case access
+	     of DA.LVAR v =>
+		let val hdr = buildHdr v
+		    val le = mkFctexp(primaries::ftmap0, def, d)
+		 in LET(v, le, hdr b)
+		end
 	     | _ => bug "mkFctbs: unexpected access")
         | g _ = bug "unexpected functor bindings in mkStrbs"
   in fold g fbs

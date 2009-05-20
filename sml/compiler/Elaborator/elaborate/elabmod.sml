@@ -857,6 +857,7 @@ case fctexp
       end
 
   | LetFct(decl,fct) =>
+    (* fct is always either a functor name, or another LetFct *)
       let val _ = debugmsg ">>elab[LetFct]"
           val (localAbsDec, localEntDecl, env', entEnv') = 
             elabDecl0(decl, env, entEnv, context, true,

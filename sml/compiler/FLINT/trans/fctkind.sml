@@ -75,10 +75,10 @@ and entPathToKind ({entities,...}: M.strEntity)
 end
 
 fun primaryToBind (compInfo, entEnv: EE.entEnv)
-		 (PrimaryTyc(GENtyc{stamp,kind=FORMAL,arity,...})) =
+		  (PrimaryTyc arity, stamp, _) =
     (stamp, LT.tkc_int arity)
-  | primaryToBind (compInfo,entEnv) (PrimaryFct(stamp, fsig, epc)) =
-    (stamp, fsigToKnd compInfo (fsig, getEntEnv(entEnv,epc)))
+  | primaryToBind (compInfo,entEnv) (PrimaryFct fsig, stamp, ep)) =
+    (stamp, fsigToKnd compInfo (fsig, getEntEnv(entEnv,ep)))
   | primaryToBind (compInfo,entEnv) _ = bug "primaryToKnd"
 
 end (* structure FctKind *)

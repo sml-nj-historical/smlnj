@@ -133,17 +133,22 @@ and strExp
        * accurate type names in functor results where the functor has
        * a result signature constraint. *)
 
+(*
 and primary
-  = PrimaryTyc of T.tycon
+  = PrimaryTyc of T.tycon * EntPath.entPath
   | PrimaryFct of Stamps.stamp * fctSig * EntPath.entPath
+*)
+
+(* primarySig : info used (in conjunction with param instantiation, to compute 
+ * abstraction kinds for functors *)
+and primarySig
+  = PrimaryTyc of int  (* tycon arity *)
+  | PrimaryFct of fctSig  (* formal functor signature *)
 
 and fctExp
   = VARfct of EP.entPath   (* selection from current entityEnv *)
   | CONSTfct of fctEntity  (* a constant reference to an existing fct entity *)
-  | LAMBDA of {param : EP.entVar,
-	       body : strExp,
-	       primaries: primary list}
-                (* these become FLINT type variables *)
+  | LAMBDA of {param : EP.entVar, body : strExp}
   | LETfct of entityDec * fctExp
 
 and entityExp 
@@ -187,6 +192,8 @@ withtype stubinfo =
      lib   : bool,
      tree  : modtree}
 
+and primary = primarySig * ST.stamp * EP.entPath
+
 and elements = (S.symbol * spec) list
 
 and sigrec =
@@ -215,8 +222,10 @@ and strEntity =
 
 and fctEntity =
     {stamp    : ST.stamp,
-     exp      : fctExp,  (* INVARIANT: always a LAMBDA (includes primaries) *)
+     exp      : fctExp,           (* INVARIANT: always a LAMBDA *)
      closureEnv : entityEnv,
+     primaries : primary list,
+     paramEnv : entityEnv,        (* entities of parameter instantiation *)
      rpath    : IP.path,          (* reverse symbolic path name of the functor *)
      stub     : stubinfo option,  (* for pickling isolation *)
      properties: PropList.holder} (* FLINT: lambdaty memoization *)

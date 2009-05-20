@@ -584,8 +584,9 @@ and fctRlznLty (penv : primaryEnv, sign, rlzn, depth, compInfo) =
 			       region=SourceMap.nullRegion}
 
 	    val _ = debugmsg ">>parameter kinds"
-	    val primaryBindings = map (FctKind.primaryToKnd (compInfo, #entities paramRlzn))
-				      primaries
+	    val primaryBindings =
+		map (FctKind.primaryToBind (compInfo, #entities paramRlzn))
+		    primaries
 	    val ks = map #2 (primaryBindings)   (* extract kinds *)
 
 	    val _ = if !debugging 
