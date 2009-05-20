@@ -178,3 +178,30 @@ functor H = M.G
 
 \v1:STR(\/[].FCT(STR(TYC(PRIM(I))),STR(STR([]))))
 
+---------------
+FLINT types and examples of ML programs that use them
+
+tcc_app: type operator applications
+
+functor F(X:sig type 'a t val x : int t end) = ...
+
+tcc_app(TV(1,0), [PRIM(I)])
+
+tcc_fn: formal functor (typing for lambda abstraction)
+
+functor F(X: sig functor G(Y:sig val a : int end):sig val b : bool end end) = ...
+
+tcc_fn([STR([TYC(PRIM(I))])],[STR([(STR([TYC(bool)]))])])
+
+tcc_proj: selection from formal functor body 
+
+functor F(X: sig functor G() : sig type u end end) = struct structure M = G() functor H(Y:sig val x : M.u end) = struct end end;
+
+...
+   abstraction for H looks like:
+    TFN(()
+        FN(v7:
+	   STR([TYC(PROJ(TCAP(TV(2,0), []), 0))]) ...) ...)
+
+i.e., M.u translates to tcc_proj(tcc_app(TV(2,0), []), 0)
+
