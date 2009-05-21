@@ -109,55 +109,54 @@ addressed later.]
 
 Primary types
 
-[Notation: /\ is Big Lambda, \/ is forall, \/ is the vacuous quantifier, and \ is lambda]
+[Notation: /\ is Big Lambda, \/ is forall, \/[] is the vacuous quantifier, and \ is lambda]
 
 The following are some examples of how functor parameters translate into FLINT types. The only phenomenon not illustrated is the flattening of hierarchically nested structures in the functor parameter. 
 
-functor F(X:
+functor F(X:  	       		       	        Kinds
 sig 
-  type 'a t0 
-  type t1 = int 
+  type 'a t0					t0: [M]=>M  -- primary
+  type t1 = int 				t1  -- secondary
   functor G(Y:sig 
-                type 'a u = 'a t0 
-                functor H(Z:sig end):sig end 
-              end): 
+                type 'a u = 'a t0		Y.t0 -- secondary
+                functor H(Z:sig end):sig end    H.tyc : []=>[]  -- primary for Y
+              end): 			 	
      sig 
-       type u' = t1 
-     end 
-   type t2 
+       type u' = t1				t1 (G return) -- secondary
+     end       	 				G body : []
+   type t2					t2: M   -- primary
    val a : (int t0) * t1 * t2
 end) 
 = struct end;  
 
 /\([M]=>M, M, ([[]=>[]]=>[])).     --  abstraction over (t0, t2, G),  primary elements of X
-    \v1:STR([\/([]=>[]).FCT(\/[].FCT([],[]),[]), {TCAP(TV(1,0), PRIM(I)),PRIM(I),TV(1,1)}]).
+    \v1:STR([\/([]=>[]).FCT(\/[].FCT([],[]),[]),   -- type of functor G
+             {TCAP(TV(1,0), PRIM(I)),PRIM(I),TV(1,1)}]).  -- type of value a
             -- abstraction over the value part of X (v1), with a structure "STR" type
         { }   -- the empty structure body
 
-[DBM: the printing conventions here are not very clear, maybe they can be improved
-to make the terms more readable.
+"STR" constructs a value-level structure record type.  Here the STR type is the type of the value part of the parameter structure X (v1).  In this case the structure contains two value elements, G and a.
 
-"/\" represents capital lambda, representing type variable abstraction (followed by a tuple of kinds for the abstracted type variables).
-"\" represents ordinary value lambda abstraction, with a value variable (here "v1") annotated with
-its type.
-"STR" is presumable a value-level structure record.  Here this would be the value part of the
-parameter structure X.  In this case the structure contains two value elements, G and a.
-The type of a is expressed by {TCAP(TV(1,0), PRIM(I)),PRIM(I),TV(1,1)}, with TV(0,1) representing
-t0, TV(1,1) representing t2 (the 0th and 1st elements of the abstracted type tuple).
-The type of the G functor element must be represented by \/([]=>[]).FCT(\/[].FCT([],[]),[]).
-Does "\/" represent a polymorphic quantification?  I'm not sure how to parse this
-type expression.
-]
+   a :  {TCAP(TV(1,0), PRIM(I)),PRIM(I),TV(1,1)},
 
-Formal type components such as t0 and t2 translate into type abstractions of the appropriate kind (may be a non-monokind, e.g., t0 is kind [M]=>M). They are indexed according to type abstraction depth and position in the formal argument list. For example, F has two formal type arguments, t0 and t2 which occur in the body as TV(1,0) and TV(1,1) respectively. The first index is the deBruijn index. The second is the position of that formal in the list of all formals up to sharing equivalence.  
+where TV(0,1) represents t0, TV(1,1) represents t2 (the 0th and 1st elements of the abstracted type tuple). The formal functor G is decomposed into a type level function of kind ([[]=>[]]=>[]) and a value-level function of type:
 
-The formal functor G is decomposed into a type abstraction part of kind ([[]=>[]]=>[]) and a lambda part of type \/([]=>[]).FCT(\/[].FCT([],[]).[]). 
+   G : \/([]=>[]).FCT(\/[].FCT([],[]),[]).
+
+The first polymorphic quantifier of kind []=>[] corresponds abstraction over the type function of H (?), and is the kind derived from the primaries (H) of the signature of Y.  FCT constructs a functor type, analagous to a function type.  The H functor in the parameter Y has value type
+
+   H: \/[].FCT([],[])
+
+Formal type components such as t0 and t2 translate into type abstractions of the appropriate kind (may be a non-monokind, e.g., t0 is kind [M]=>M). They are indexed according to type abstraction depth and position in the formal argument list. For example, F has two formal type arguments, t0 and t2 which occur in the body as TV(1,0) and TV(1,1) respectively. The first index is the deBruijn index. The second is the position of that formal in the list of all formals up to sharing equivalence.
+
 
 
 ---------------
 Another example:
 
-functor F(X:sig type t functor G(Y:sig type s val x : s * t end): sig type u end end) = ...
+functor F(X:sig type t
+	        functor G(Y:sig type s val x : s * t end): sig type u end
+	    end) = ...
 
 /\(M,[M]=>[M]).\v1: STR(\/[M].FCT(STR[TYC{TV(1,0),TV(2,0)}],STR(STR([])))))
 
@@ -181,27 +180,37 @@ functor H = M.G
 ---------------
 FLINT types and examples of ML programs that use them
 
-tcc_app: type operator applications
+* tcc_app: type operator applications [printed TCAP]
 
 functor F(X:sig type 'a t val x : int t end) = ...
 
-tcc_app(TV(1,0), [PRIM(I)])
+   int t  ==>  tcc_app(TV(1,0), [PRIM(I)])
 
-tcc_fn: formal functor (typing for lambda abstraction)
+* tcc_fn: formal functor (typing for lambda abstraction) [printed FCT?]
 
 functor F(X: sig functor G(Y:sig val a : int end):sig val b : bool end end) = ...
 
-tcc_fn([STR([TYC(PRIM(I))])],[STR([(STR([TYC(bool)]))])])
+   value type of G: 
+   tcc_fn([STR([TYC(PRIM(I))])],[STR([(STR([TYC(bool)]))])])
 
-tcc_proj: selection from formal functor body 
+(Why the double nesting of STR in the result type?)
 
-functor F(X: sig functor G() : sig type u end end) = struct structure M = G() functor H(Y:sig val x : M.u end) = struct end end;
+* tcc_proj: selection from formal functor body [printed PROJ] 
+
+functor F(X: sig functor G() : sig type u end end) =
+struct
+  structure M = G()
+  functor H(Y:sig val x : M.u end) = struct end
+end;
 
 ...
    abstraction for H looks like:
-    TFN(()
-        FN(v7:
+    TFN(()       -- no primaries in Y's signature, so empty type abstraction
+        FN(v7:   -- Y value
 	   STR([TYC(PROJ(TCAP(TV(2,0), []), 0))]) ...) ...)
+                ^-- type of x
 
 i.e., M.u translates to tcc_proj(tcc_app(TV(2,0), []), 0)
-
+t = TCAP(TV(2,0),[]) is application of the type-function of G
+to get a type-tuple (of length 1, containing u) for the result.
+PROJ(t,0) projects the first element of this tuple (i.e. the type u).
