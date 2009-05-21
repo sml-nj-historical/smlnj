@@ -159,6 +159,8 @@ in
        return the first EPs for each representative TYCent or FCTent 
        only for FORMAL though.
 
+       It expects all the eps in the ep list to be bound in EntityEnv.
+
        Instantiate should have eliminated any seemingly FORMAL tycs 
        (that were actually constrained by a where or structure definition
         spec) by turning them into DEFtycs. 
@@ -166,7 +168,9 @@ in
        The key here is that we need to avoid including duplicate stamps 
        which can be found at the tail of each entpath. *)
     fun repEPs(eps, env) =
-        let fun loop([], env, renv, stmpseen) = []
+        let 
+	    (* *)
+	    fun loop([], env, renv, stmpseen) = []
 	      | loop(ep::rest, env, renv, stmpseen) =
 		let fun proc s = 
 			(debugmsg ("--repEPs adding stamp "^
@@ -175,6 +179,24 @@ in
 			 (case rev ep 
 			   of [] => bug "repEPs: empty entpath"
 			    | s'::_ =>
+			      (* The last entvar in the entity path
+				 is a pseudo-unique identifier for 
+				 that entity. We look up this entvar
+				 in renv to see if we have already 
+				 added this entpath to the repEPs list.
+			         We also check against the entvars 
+			         we have already seen. If we haven't 
+			         seen this entvar before or it isn't
+			         in the renv, we add it to both. 
+
+			         This is a bug. Originally,
+			         repEPs used renv's that map GENtyc
+			         stamps to EPs and not the last entvar
+			         to EPs. Thus, originally, the stmpseen
+			         and renv served different roles. 
+			         stampseen is concerned with entvars
+			         and renv is concerned with GENtyc 
+			         stamps. *)
 			      (debugmsg ("--repEPs add stamp "^
 					 Stamps.toShortString s'^
 					 " to stmpseen");
