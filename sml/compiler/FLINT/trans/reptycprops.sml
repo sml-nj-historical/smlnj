@@ -169,7 +169,13 @@ in
        which can be found at the tail of each entpath. *)
     fun repEPs(eps, env) =
         let 
-	    (* *)
+	    (* loop is intended to identify the EPs for 
+	       non-DATATYPE GENtycs. For each unique GENtyc, it 
+	       should only capture the first EP given in the ep list 
+	       argument that refers to such GENtyc. It keeps track 
+	       of the GENtycs it has seen have maintaining an
+	       environment renv that maps GENtyc stamps to representative
+	       entity paths. *)
 	    fun loop([], env, renv, stmpseen) = []
 	      | loop(ep::rest, env, renv, stmpseen) =
 		let fun proc s = 
