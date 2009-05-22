@@ -16,8 +16,8 @@ sig
 
   val genTT  : unit
 	       -> {tpsKnd : primary -> PLambdaType.tkind,
-                   tpsTyc : primaryEnv -> DebIndex.depth -> primary
-                            -> PLambdaType.tyc,
+                   primaryTyconToTyc : primaryEnv -> int -> Types.tycon 
+				       -> PLambdaType.tyc,
                    toTyc  : primaryEnv -> DebIndex.depth -> Types.ty
 			    -> PLambdaType.tyc,
                    toLty  : primaryEnv -> DebIndex.depth -> Types.ty 

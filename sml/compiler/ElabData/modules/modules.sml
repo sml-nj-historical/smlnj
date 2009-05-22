@@ -284,12 +284,10 @@ val bogusSig : Signature =
 val bogusFctEntity : fctEntity =
     {stamp = bogusFctStamp,
      exp = LAMBDA {param=EP.bogusEntVar,
-		   primaries=([],[]),
 		   body=CONSTstr bogusStrEntity},
      closureEnv = NILeenv,
-     (* closure = CLOSURE{param=EP.bogusEntVar,
-		       body= CONSTstr bogusStrEntity,
-		       env=NILeenv}, *)
+     primaries=[],
+     paramEnv=ERReenv,
      rpath = bogusRpath,
      stub = NONE,
      properties = PropList.newHolder ()}

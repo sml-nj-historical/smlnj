@@ -90,17 +90,14 @@ and strExp
        * accurate type names in functor results where the functor has
        * a result signature constraint. *)
 
-and primary
-  = PrimaryTyc of Types.tycon
-  | PrimaryFct of Stamps.stamp * fctSig * EntPath.entPath
+and primarySig
+  = PrimaryTyc of int
+  | PrimaryFct of fctSig
 
 and fctExp
   = VARfct of EntPath.entPath 
   | CONSTfct of fctEntity
-  | LAMBDA of {param : EntPath.entVar,
-	       body : strExp,
-	       primaries: primary list}
-                (* these become FLINT type variables *)
+  | LAMBDA of {param : EntPath.entVar, body : strExp}
   | LETfct of entityDec * fctExp
 
 and entityExp 
@@ -138,6 +135,8 @@ withtype stubinfo =
      lib   : bool,
      tree  : modtree}
 
+and primary = primarySig * Stamps.stamp * EntPath.entPath 
+
 and elements = (Symbol.symbol * spec) list
 
 and sigrec =
@@ -171,8 +170,10 @@ and strrec =
 
 and fctEntity =
     {stamp    : Stamps.stamp,
-     exp      : fctExp, (* INVARIANT: always a LAMBDA (includes primaries) *)
+     exp      : fctExp, (* INVARIANT: always a LAMBDA *)
      closureEnv : entityEnv,  (* closure env for exp *)
+     primaries : primary list,
+     paramEnv : entityEnv,
      rpath    : InvPath.path,
      stub     : stubinfo option,
      properties: PropList.holder}  (* FLINT lambdaty memoization *)

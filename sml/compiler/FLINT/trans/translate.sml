@@ -215,7 +215,7 @@ val mkvN = mkLvar
 fun mkv () = mkvN NONE
 
 (** generate the set of ML-to-FLINT type translation functions *)
-val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty} =
+val {tpsKnd, primaryTyconToTyc, toTyc, toLty, strLty, fctLty} =
     TT.genTT()
 
 fun toTcLt penv d = (toTyc penv d, toLty penv d) 
@@ -1420,7 +1420,10 @@ and mkStrexp (penv0, se, d) =
 			     of M.STR{entities,...} => entities
 			      | _ => bug "Unexpected arg Structure in APPstr")
 		       val argtycs0 = map (getTps argEnv) primaries
-		       val argtycs = (* translate argtycs0 to ltys *)
+		       
+		       (* translate argtycs0 to ltys *)
+		       val argtycs = map (primaryTyconToTyc penv0 d) argtycs0
+		                     
 		       val e2 = mkStr(penv0, arg, d)
 		    in APP(TAPP(e1, argtycs), e2)
 		   end
