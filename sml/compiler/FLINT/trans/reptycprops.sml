@@ -7,7 +7,7 @@
    sigBoundeps is a list of the representative entities for a signature
    This is used to determine which tycs in a functor parameter are 
    representative
-   (and therefore we need to compute the FLINT kinds)
+
 
    Datatype bindings must be accounted for in Tycpath computations 
    because they will be represented as TP_TYC(...).  
@@ -130,9 +130,11 @@ in
        The only thing we are interested in is the order of elements 
        given in the signature. 
 	  
-       Whether entpath should actually processed into a tycpath
-       (and not a DATATYPE or DEFtyc) will be determined when we search
-       the entity environment. *)
+       Whether an individual entpath should actually be processed into a
+       tycpath (and not a DATATYPE or DEFtyc) will be determined when we
+       search the entity environment.
+
+       Maintains left-to-right order. *)
     fun entpaths([]) = []
       | entpaths((_,spec)::rest) =
 	(case spec 
@@ -155,7 +157,8 @@ in
 	       fsigInElems(elems) @ (fsigInElems rest)
 	   | _ => fsigInElems rest)
 	
-    (* repEPs : ep list * EntityEnv -> ep list 
+    (* repEPs : entPath list * EntityEnv -> ep list
+       DBM: this is supposed to compute the entPaths of the primaries
        return the first EPs for each representative TYCent or FCTent 
        only for FORMAL though.
 
@@ -176,15 +179,15 @@ in
 	       of the GENtycs it has seen have maintaining an
 	       environment renv that maps GENtyc stamps to representative
 	       entity paths. *)
-	    fun loop([], env, renv, stmpseen) = []
-	      | loop(ep::rest, env, renv, stmpseen) =
+	    fun loop([], renv, stmpseen) = []
+	      | loop(ep::rest, renv, stmpseen) =
 		let fun proc s = 
 			(debugmsg ("--repEPs adding stamp "^
 				   Stamps.toShortString s^" path "^
 				   EP.entPathToString ep);
-			 (case rev ep 
-			   of [] => bug "repEPs: empty entpath"
-			    | s'::_ =>
+			 let lastEv = List.last ep
+			  in debugmsg ("--repEPs add stamp "^
+					 Stamps.toShortString lastEv ^
 			      (* The last entvar in the entity path
 				 is a pseudo-unique identifier for 
 				 that entity. We look up this entvar
@@ -203,16 +206,17 @@ in
 			         stampseen is concerned with entvars
 			         and renv is concerned with GENtyc 
 			         stamps. *)
-			      (debugmsg ("--repEPs add stamp "^
-					 Stamps.toShortString s'^
-					 " to stmpseen");
-			       (case (FTM.find(renv, s),
-				     StampSet.member(stmpseen,s')) 
-				of ((_, false) | (NONE, _)) => 
-				   ep::loop(rest, env, 
-					    FTM.insert(renv,s,ep),
-					    StampSet.add(stmpseen,s'))
-				 | _ => loop(rest, env, renv, stmpseen)))))
+			     case (FTM.find(renv, s),
+				   StampSet.member(stmpseen,lastEv)) 
+			      of ((_, false) | (NONE, _)) =>
+				 (* adds the entPath ep if EITHER
+				    1. its last entvar is not in stmpseen, or
+				    2. the stamp s is not in domain of ren. *)
+				 ep::loop(rest,
+					  FTM.insert(renv,s,ep),
+					  StampSet.add(stmpseen,lastEv))
+			       | _ => loop(rest, renv, stmpseen)
+			 end
 		in
 		    case EntityEnv.lookEP(env, ep) 
 			 handle EntityEnv.Unbound => 
@@ -220,6 +224,7 @@ in
 				       EP.entPathToString ep^"\n"); 
 				raise EntityEnv.Unbound)
 		     of M.FCTent{stamp=s,...} => proc s
+                          (* DBM: assumes all functors are primary! *)
 		      | M.TYCent tyc =>
 			   (* If the rlzn says the entity contains a 
 			      DATATYPE or a DEFtyc, then we ignore. 
@@ -229,9 +234,9 @@ in
 			   of T.GENtyc{stamp=s,kind,...} =>
 				(case kind 
 				   of T.DATATYPE _ => 
-				        loop(rest, env, renv, stmpseen)
+				        loop(rest, renv, stmpseen)
 				    | _ => proc s)
-			    | T.DEFtyc _ => loop(rest,env, renv, stmpseen)
+			    | T.DEFtyc _ => loop(rest, renv, stmpseen)
 			    | _ => bug "repEPs 0")
 		      | M.STRent _ => bug "repEPs 1"
 		      | M.ERRORent => (* in MLRISC/ra/risc-ra.sml this actually happens *)
@@ -239,11 +244,10 @@ in
 		   handle EE.Unbound => bug ("repEPs Unbound"^
 					     EP.entPathToString ep)
 		end
-	in loop(eps, env, FTM.empty, StampSet.empty)	
+	in loop(eps, FTM.empty, StampSet.empty)	
 	end (* fun repEPs *)
 
     local
-
 	(* Should use tkc_int and tkc_fun instead of these 
 	   when TP information is eliminated from Elaborator *)
 	val buildKind = LT.tkc_int
@@ -408,7 +412,7 @@ in
        (* This is the important computation for generating TC_VAR 
 	   variable references to functor parameters. 
 
-	  FTM.map * M.strEntity * M.strEntity * M.sigrec * DI.depth
+	  FTM.map * M.strEntity * M.strEntity option * M.Signature * DI.depth
 	  -> FTM.map * tycpath list 
 	   *)  
 	(* The goal here, simply put, is to get the primary components
@@ -429,10 +433,10 @@ in
 		val _ = debugmsg ("--primaryCompInStruct eps "^
 				  Int.toString (length eps)^
 				  " d="^DI.dp_print d)
-		fun loop(ftmap, tps, entenv, [], i, _) = (ftmap, rev tps)
-		  | loop(ftmap, tps, entenv, ep::rest, i, fs) =
+		fun loop(ftmap, tps, [], _, _) = (ftmap, rev tps)
+		  | loop(ftmap, tps, ep::rest, i, fs) =
 		    (debugmsg ("-primaryCompInStruct loop "^Int.toString i); 
-		     let val ev : Stamps.stamp = hd (rev ep)
+		     let val ev : Stamps.stamp = List.last ep
 		     in 
 		     case EE.lookEP(entenv, ep)
 			  handle EntityEnv.Unbound =>
@@ -441,28 +445,28 @@ in
 		      of M.TYCent(tyc as T.GENtyc{kind=T.DATATYPE _, stamp,...}) =>
 			   let val tp = TP.TP_TYC(tyc)
 			   in (loop(insertMap(ftmap, stamp, tp), 
-				    tp::tps, entenv, rest, i+1, fs))
+				    tp::tps, rest, i+1, fs))
 			   end
 			   (* Datatypes should be represented directly in the 
 			      tycpath *)
 		       | M.TYCent(T.GENtyc{kind=T.ABSTRACT(tyc),stamp=s1,...}) =>
 			   let val (tp,s) = 
 				    (case tyc 
-			     of T.GENtyc{kind=T.DATATYPE _,stamp,...} =>
-				(TP.TP_TYC(tyc), stamp)
-			      | T.GENtyc{kind=T.FORMAL, arity, stamp, ...} => 
-				(case FTM.find(ftmap, stamp)
-				  of SOME tp' => (tp', stamp)
-				   | NONE => 
-				     (debugmsg ("--eps VAR depth "^DI.dp_print d);
-				      (TP.TP_VAR{tdepth=d,num=i,
-					 kind=buildKind arity}, stamp)))
-			      | _ => 
-				(debugmsg "--pri[GEN] nonformal/data abstract";
-				 (TP.TP_TYC( tyc), s1)))
+				      of T.GENtyc{kind=T.DATATYPE _,stamp,...} =>
+					 (TP.TP_TYC(tyc), stamp)
+				       | T.GENtyc{kind=T.FORMAL, arity, stamp, ...} => 
+					 (case FTM.find(ftmap, stamp)
+					   of SOME tp' => (tp', stamp)
+					    | NONE => 
+					      (debugmsg ("--eps VAR depth "^DI.dp_print d);
+					       (TP.TP_VAR{tdepth=d,num=i,
+							  kind=buildKind arity}, stamp)))
+				       | _ => 
+					 (debugmsg "--pri[GEN] nonformal/data abstract";
+					  (TP.TP_TYC(tyc), s1)))
 			    in 
 			       loop(insertMap(ftmap, s, tp), 
-				    tp::tps, entenv,rest,i+1,fs)
+				    tp::tps, rest, i+1, fs)
 			    end
 		      
 		       | M.TYCent(T.GENtyc{kind, arity, stamp, ...}) =>
@@ -485,13 +489,13 @@ in
 			       (* val _ = checkTycPath(tp, tp') *)
 			   in 
 			     loop(insertMap(ftmap, stamp, tp'),
-				  tp'::tps, entenv, rest, i+1, fs)
+				  tp'::tps, rest, i+1, fs)
 			   end
 		       | M.TYCent tyc => 
 			    (debugmsg "--primaryCompInStruct[TYCent]";
 			     (let val tp = TP.TP_TYC(tyc)
 			      in loop(insertMap(ftmap, ev, tp),
-				      tp::tps, entenv, rest, i+1, fs)
+				      tp::tps, rest, i+1, fs)
 		              end))
 		       | M.FCTent {stamp, exp=M.LAMBDA{paramRlzn, ...},
 				   closureEnv=closenv,...} => 
@@ -556,14 +560,13 @@ in
 						    fsig, d, i)
 				     val tp' = TP.TP_FCT(argtps, bodytps)
 				 in 
-				    loop(ftmap2,
-					 tp'::tps, entenv, rest, i+1, srest)
+				    loop(ftmap2, tp'::tps, rest, i+1, srest)
 				 end
 			        | _ => bug "unexpected errorFSIG")) 
 		       | _ => bug "primaryCompInStruct 0"
 		     end (* loop *) )
 		    handle EE.Unbound => bug "primaryCompInStruct Unbound"
-		in loop(ftmap0, [], entenv, eps, 0, fsigs)
+		in loop(ftmap0, [], eps, 0, fsigs)
 	    end (* fun primaryCompInStruct *)
 	  | primaryCompInStruct _ = bug "Unexpected error signature"
 

@@ -106,16 +106,16 @@ fun enterRecTy (a) = (recTyContext := (a::(!recTyContext)))
 fun exitRecTy () = (recTyContext := tl (!recTyContext))
 fun recTyc (i) = 
       let val x = hd(!recTyContext)
-          val base = DI.innermost
+          val base = DI.innermost   (* = 1 *)
        in if x = 0 then LT.tcc_var(base, i)
-          else if x > 0 then LT.tcc_var(DI.di_inner base, i)
+          else if x > 0 then LT.tcc_var(DI.di_inner base(* 2 *), i)   
                else bug "unexpected RECtyc"
       end
 fun freeTyc (i) = 
       let val x = hd(!recTyContext)
-          val base = DI.di_inner (DI.innermost)
+          val base = DI.di_inner (DI.innermost)  (* = 2 *)
        in if x = 0 then LT.tcc_var(base, i)
-          else if x > 0 then LT.tcc_var(DI.di_inner base, i)
+          else if x > 0 then LT.tcc_var(DI.di_inner base(* 3 *), i)
                else bug "unexpected RECtyc"
       end
 end (* end of recTyc and freeTyc hack *)
@@ -163,7 +163,7 @@ fun genTT() =
 
 (* fun tpsTyc (penv : flexmap) d tp = 
   let fun h (TP.TP_VAR {tdepth, num, ...}, cur) =
-            let val finaldepth = DI.calc(cur, tdepth)
+            let val finaldepth = DI.relativeDepth(cur, tdepth)
 		val _ = debugmsg ("--tpsTyc: producing tcc_var "^
 				DI.dp_print tdepth^" "
 			   ^Int.toString num^" current depth "^DI.dp_print cur)
@@ -193,14 +193,13 @@ fun primaryTyconToTyc (penv : primaryEnv) (depth: int) (primary: T.tycon) =
     let fun tyconToTyc (primary, cur) = 
 	    (case primary 
 	      of GENtyc{stamp=s0, kind=FORMAL, ...} => 
-		  let fun findindex (((s1,_)::lvl)::penv, tdepth, num) =
-			  if Stamps.eq(s1,s0) then (tdepth, num)
-			  else findindex (lvl::penv, tdepth, num + 1)
-			| findindex ([]::penv, tdepth, num) = 
-			  findindex(penv, tdepth + 1, 0)
+		  let fun findindex (((s1,_)::rest)::penv, index, num) =
+			  if Stamps.eq(s1,s0) then (index, num)
+			  else findindex (rest::penv, index, num + 1)
+			| findindex ([]::penv, index, num) = 
+			  findindex(penv, index + 1, 0)
 			| findindex [] = bug "Malformed primary environment"
-		      val (tdepth, num) = findindex(penv, 1, 0)
-		      val dbIndex = DI.relativeDepth(cur, tdepth)
+		      val (dbIndex, num) = findindex(penv, 1, 0)
 		  in LT.tcc_var(dbIndex, num)
 		  end
 	       | GENtyc{kind=ABSTRACT(frontEndTyc),...} =>
@@ -355,7 +354,7 @@ and toTyc (penv : primaryEnv) d t =
 
       and h (INSTANTIATED t) = g t
         | h (LBOUND(SOME{depth,index,...})) =
-             LT.tcc_var(DI.calc(d, depth), index)
+             LT.tcc_var(DI.relativeDepth(d, depth), index)
         | h (UBOUND _) = LT.tcc_void
             (* DBM: should this have been converted to an LBOUND before
              * being passed to toTyc? 

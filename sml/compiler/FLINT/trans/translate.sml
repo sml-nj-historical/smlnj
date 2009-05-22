@@ -15,6 +15,13 @@
  * the paramsig when calculating the lty for the functor in TransTypes.fctRlznLty.
  *)
 
+(* [DBM, 5/22/09] The depth and penv are related by
+ *    INVARIANT:    length(penv) = depth.
+ * Thus depth is redundant.  Also, the depth is no longer used to calculate
+ * the deBruijn index! Have to check carefully for any essential uses of the
+ * depth parameter, but if the invariant above is true, it could always be
+ * calculated by taking the length of outer penv list. *)
+
 signature TRANSLATE = 
 sig
 
@@ -191,10 +198,10 @@ fun aconvertPat (pat, {mkLvar=mkv, ...} : compInfo)
 
 fun transDec
 	{ rootdec, exportLvars, oldenv, env, cproto_conv,
-	 compInfo as {errorMatch,error,...}: Absyn.dec CompInfo.compInfo } =
+	  compInfo as {errorMatch,error,mkLvar,...}: Absyn.dec CompInfo.compInfo } =
 let 
 
-(* We take mkLvar from compInfo.  This should answer Zhong's question... *)
+(* We take mkLvar from compInfo.  This should answer Zhong's question. *)
 (*
 (*
  * MAJOR CLEANUP REQUIRED ! The function mkv is currently directly taken 
@@ -202,12 +209,9 @@ let
  * "compInfo". Similarly, should we replace all mkLvar in the backend
  * with the mkv in "compInfo" ? (ZHONG)
  *)
-val mkv = LambdaVar.mkLvar 
-fun mkvN NONE = mkv()
-  | mkvN (SOME s) = LambdaVar.namedLvar s
 *)
 
-val mkvN = #mkLvar compInfo
+val mkvN = mkLvar
 fun mkv () = mkvN NONE
 
 (** generate the set of ML-to-FLINT type translation functions *)
@@ -1063,12 +1067,12 @@ end
  *                                                                         *
  * Translating various bindings into lambda expressions:                   *
  *                                                                         *
- *   val mkVar : V.var * DI.depth -> L.lexp                                *
- *   val mkVE : V.var * T.ty list -> L.lexp                                *
- *   val mkCE : T.datacon * T.ty list * L.lexp option * DI.depth -> L.lexp *
- *   val mkStr : M.Structure * DI.depth -> L.lexp                          *
- *   val mkFct : M.Functor * DI.depth -> L.lexp                            *
- *   val mkBnd : DI.depth -> B.binding -> L.lexp                           *
+ *   val mkVar : primaryEnv * V.var * DI.depth -> L.lexp                                *
+ *   val mkVE : primaryEnv * V.var * T.ty list -> L.lexp                                *
+ *   val mkCE : primaryEnv * T.datacon * T.ty list * L.lexp option * DI.depth -> L.lexp *
+ *   val mkStr : primaryEnv * M.Structure * DI.depth -> L.lexp                          *
+ *   val mkFct : primaryEnv * M.Functor * DI.depth -> L.lexp                            *
+ *   val mkBnd : primaryEnv * DI.depth -> B.binding -> L.lexp                           *
  *                                                                         *
  ***************************************************************************)
 (* [KM???] mkVar is calling mkAccInfo, which just drops the prim!!! *)
@@ -1265,7 +1269,7 @@ fun mkPE (penv : TT.primaryEnv, exp, d, []) = mkExp(penv, exp, d)
             (* assign LBOUNDs to the boundtvs to mark them as type
              * parameter variables during translation of exp *)
 
-          val exp' = mkExp(penv, exp, DI.next d)
+          val exp' = mkExp([]::penv, exp, DI.next d)
             (* increase the depth to indicate that the expression is
              * going to be wrapped by a type abstraction (TFN); see body *)
 
@@ -1400,10 +1404,10 @@ and mkEBs (penv : TT.primaryEnv, ebs, d) =
  *                                                                         *
  * Translating module exprs and decls into lambda expressions:             *
  *                                                                         *
- *    val mkStrexp : Absyn.strexp * depth -> PLambda.lexp                   *
- *    val mkFctexp : Absyn.fctexp * depth -> PLambda.lexp                   *
- *    val mkStrbs  : Absyn.strb list * depth -> PLambda.lexp -> PLambda.lexp *
- *    val mkFctbs  : Absyn.fctb list * depth -> PLambda.lexp -> PLambda.lexp *
+ *    val mkStrexp : primaryEnv * Absyn.strexp * depth -> PLambda.lexp                   *
+ *    val mkFctexp : primaryEnv * Absyn.fctexp * depth -> PLambda.lexp                   *
+ *    val mkStrbs  : primaryEnv * Absyn.strb list * depth -> PLambda.lexp -> PLambda.lexp *
+ *    val mkFctbs  : primaryEnv * Absyn.fctb list * depth -> PLambda.lexp -> PLambda.lexp *
  *                                                                         *
  ***************************************************************************)
 and mkStrexp (penv0, se, d) = 
@@ -1524,13 +1528,13 @@ and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp =
    in g fe
   end (* mkFctexp *)
  
-and mkStrbs (ftmap0, sbs, d) =
+and mkStrbs (penv, sbs, d) =
   let fun g (STRB{str=M.STR { access, ... }, def, ... }, b) =
 	  (case access of
 	       DA.LVAR v =>
                let val hdr = buildHdr v 
                (* binding of all v's components *)
-		   val def' = mkStrexp(ftmap0, def, d)
+		   val def' = mkStrexp(penv, def, d)
 		   (* val _ = debugmsg("--mkStrbs penv1 "
 				    ^Int.toString(FTM.numItems penv1)
 				    ^" to penv2 "^Int.toString(FTM.numItems penv2))
@@ -1543,13 +1547,13 @@ and mkStrbs (ftmap0, sbs, d) =
   in fold g sbs
   end
 
-and mkFctbs (ftmap0, fbs, d) = 
+and mkFctbs (penv, fbs, d) = 
   let fun g (FCTB{fct=M.FCT{access,rlzn={exp=M.LAMBDA{primaries,...},...},...},
 		  def, ... }, b) =
 	  (case access
 	     of DA.LVAR v =>
 		let val hdr = buildHdr v
-		    val le = mkFctexp(primaries::ftmap0, def, d)
+		    val le = mkFctexp(primaries::penv, def, d)
 		 in LET(v, le, hdr b)
 		end
 	     | _ => bug "mkFctbs: unexpected access")
@@ -1561,8 +1565,8 @@ and mkFctbs (ftmap0, fbs, d) =
 (***************************************************************************
  * Translating absyn decls and exprs into lambda expression:               *
  *                                                                         *
- *    val mkDec : A.dec * DI.depth -> PLambda.lexp -> PLambda.lexp         *
- *    val mkExp : A.exp * DI.depth -> PLambda.lexp                         *
+ *    val mkDec : primaryEnv * A.dec * DI.depth -> PLambda.lexp -> PLambda.lexp         *
+ *    val mkExp : primaryEnv * A.exp * DI.depth -> PLambda.lexp                         *
  *                                                                         *
  ***************************************************************************)
 and mkDec (penv0 : TT.primaryEnv, dec : Absyn.dec, d : DI.depth) 
