@@ -890,7 +890,7 @@ and ppFctExp ppstrm (fctExp,depth) =
 	  (pps ppstrm "FE.V:"; ppEntPath ppstrm ep)
        | M.CONSTfct { rpath, ... } =>
 	  (pps ppstrm "FE.C:"; ppInvPath ppstrm rpath)
-       | M.LAMBDA {param, primaries, body} =>
+       | M.LAMBDA {param, body} =>
 	  (openHVBox ppstrm (PP.Rel 0);
 	    pps ppstrm "FE.L:"; break ppstrm {nsp=1,offset=1};
 	    openHVBox ppstrm (PP.Rel 0);

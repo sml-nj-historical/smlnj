@@ -1488,11 +1488,12 @@ let val primFcts : (Stamps.stamp * M.fctSig * EP.entPath) list ref = ref []
 				  val primaries = map PrimaryTyc primaryTycs @
 						  map PrimaryFct primaryFcts
 				  val exp = LAMBDA{param=paramvar,
-						   body=bodyExp,
-						   primaries=primaries}
+						   body=bodyExp}
 			      in primFcts := (stamp,sign,epath)::(!primFcts);
 				 FCTent {stamp = stamp,
 					 exp = exp,
+					 primaries = primaryTycs,
+					 paramEnv = #entities paramRlzn,
 					 closureEnv = entEnv,
 					 rpath = path,
 					 stub = NONE,
