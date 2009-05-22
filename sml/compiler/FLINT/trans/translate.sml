@@ -1249,20 +1249,6 @@ fun mkPE (penv : TT.primaryEnv, exp, d, []) = mkExp(penv, exp, d)
             | setbtvs (i, (tv as ref (TP.LBOUND(NONE)))::rest) =
 	        (tv := TP.LBOUND(SOME{depth=d,index=i,eq=false});
 		 setbtvs (i+1, rest))
-(*
-            | setbtvs (i, (tv as ref(TP.LBOUND(SOME{depth=d',index=i',...})))::rest) =
-                (if !debugging
-                 then (if d <> d' then say ("### setbtvs: d = "^(Int.toString d)^
-                                            ", d' = "^(Int.toString d')^"\n")
-                       else ();
-                       if i <> i' then say ("### setbtvs: i = "^(Int.toString i)^
-                                            ", i' = "^(Int.toString i')^"\n")
-                       else ())
-                 else ();
-                 tv := TP.LBOUND {depth=d,eq=false,index=i};  
-		    (* reset with local values *)
-		 setbtvs (i+1, rest))
-*)
             | setbtvs _ = bug "unexpected tyvar INSTANTIATED in mkPE"
 
           val _ = setbtvs(0, boundtvs)

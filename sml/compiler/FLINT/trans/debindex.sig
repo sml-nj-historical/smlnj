@@ -1,10 +1,9 @@
 (* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
 (* debindex.sig *)
 
-(* I moved this into the elaborator library.  It may be moved
- * back to FLINT if the elaborator gets "cleaned up", i.e., if
- * it is made to be unaware of such middle-end specifics.
- * (08/2001 Blume) *)
+(* [DBM: 5/20/09]. This is no longer used in the elaborator, so the 
+ * file has been moved to FLINT/trans.
+ *)
 
 signature DEB_INDEX = 
 sig
