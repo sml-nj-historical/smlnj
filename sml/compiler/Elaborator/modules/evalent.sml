@@ -209,11 +209,13 @@ and evalFct (fctExp, epc, entEnv,
 
         | CONSTfct fctEntity => (fctEntity, entEnv)
 
-        | LAMBDA{param, body, primaries} => 
+        | LAMBDA{param, body} => 
             let val _ = debugmsg "--evalFct[LAMBDA]"
 	     in ({stamp = mkStamp (),
 		  exp=fctExp,
 		  closureEnv=entEnv,
+		  primaries=,
+		  paramEnv=,
 		  rpath=IP.IPATH[anonFctSym],
 		  stub=NONE,
 		  properties = PropList.newHolder ()},

@@ -53,7 +53,7 @@ sig
           region   : SourceMap.region,
           compInfo : ElabUtil.compInfo}
 	 -> {rlzn: Modules.strEntity,
-	     primaryTycs : Types.tycon list}
+	     primaryTycs : Modules.primary list}
 
   val debugging : bool ref
 
@@ -1160,7 +1160,7 @@ fun buildTycClass (this_slot, instKind, rpath, mkStamp, err) =
 					    path=IP.append(rpath,path),
 					    kind=knd, eq=ref(eqprop),
 					    stub = NONE}
-		       in (FinalTyc(ref(INST tyc)), SOME tyc)
+		       in (FinalTyc(ref(INST tyc)), SOME (tyc,epath))
 		       end
 		     | DATATYPE _ =>
 		       let val tyc = GENtyc{stamp=mkStamp(), kind=kind,
@@ -1228,7 +1228,7 @@ fun sigToInst (ERRORsig, instKind, rpath, err, compInfo) =
       (ErrorStr,[])
   | sigToInst (sign, instKind, rpath, err,
 	       compInfo as {mkStamp,...}: EU.compInfo) = 
-  let val primaryTycs : T.tycon list ref = ref [] (* the "primary" tycons *)
+  let val primaryTycs : M.primary list ref = ref [] (* the "primary" tycons *)
 
       fun expand ErrorStr = ()
         | expand (FinalStr {expanded=ref true,...}) = ()
@@ -1265,7 +1265,15 @@ fun sigToInst (ERRORsig, instKind, rpath, err, compInfo) =
                          (case buildTycClass(slot, instKind,
 					    rpath, mkStamp, err)
 			    of NONE => ()
-			     | SOME tyc => primaryTycs := (tyc::(!primaryTycs)))
+			     | SOME (tyc,ep) => 
+			       (case tyc
+				 of GENtyc{arity, stamp, ...} =>
+				    let val primarysig = M.PrimaryTyc arity
+				    in primaryTycs := 
+				       (primarysig, stamp, ep)::(!primaryTycs)
+				    end
+				  | _ => bug "expand 0"))
+	    
                      | _ => ())
 
              in debugmsg ">>expand"; expanded := true;
@@ -1298,8 +1306,8 @@ fun get_stamp_info instance =
 
 fun instToStr (instance, entEnv, instKind, rpath: IP.path, err,
                compInfo as {mkStamp, ...}: EU.compInfo)
-              : (M.strEntity * (ST.stamp * M.fctSig) list) =
-let val primFcts : (Stamps.stamp * M.fctSig * EP.entPath) list ref = ref []
+              : (M.strEntity * M.primary list) =
+let val primFcts : M.primary list ref = ref []
     fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 					  slotEnv,finalEnt,stamp,...}),
                     entEnv, rpath: IP.path, failuresSoFar: int)
@@ -1485,14 +1493,15 @@ let val primFcts : (Stamps.stamp * M.fctSig * EP.entPath) list ref = ref []
 							      VARstr [paramvar]))
 					  end
 					| INST_FORMAL => M.FORMstr sign
-				  val primaries = map PrimaryTyc primaryTycs @
-						  map PrimaryFct primaryFcts
+				  val primaries = 
+				      primaryTycs @ primaryFcts
 				  val exp = LAMBDA{param=paramvar,
 						   body=bodyExp}
-			      in primFcts := (stamp,sign,epath)::(!primFcts);
+				  val psig = M.PrimaryFct sign
+			      in primFcts := (psig, stamp, epath)::(!primFcts);
 				 FCTent {stamp = stamp,
 					 exp = exp,
-					 primaries = primaryTycs,
+					 primaries = primaries,
 					 paramEnv = #entities paramRlzn,
 					 closureEnv = entEnv,
 					 rpath = path,
@@ -1616,8 +1625,8 @@ end (* fun instToStr *)
    compInfo : compInfo  -- for mkStamp and error
 ->
    strEnt : strEntity (str realization)
-   primaryTycs : tycon list  -- primary tycons
-   primaryFcts : (stamp * fctsig) list  -- primary fcts
+   primaryTycs : primary list  -- primary tycons
+   primaryFcts : primary list  -- primary fcts
 *)
 and instGeneric{sign, entEnv, instKind, rpath, region, 
                 compInfo as {mkStamp,error,...} : EU.compInfo} =
@@ -1671,7 +1680,7 @@ fun instFormal{sign, entEnv, rpath, region, compInfo} =
   let val (rlzn, primaryTycs, primaryFcts)
         = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_FORMAL,
                       rpath=rpath, region=region, compInfo=compInfo}
-      val primaries = map PrimaryTycon primaryTycs @ map PrimaryFct primaryFcts
+      val primaries = primaryTycs @ primaryFcts
    in {rlzn=rlzn, primaries=primaries}
   end
 
