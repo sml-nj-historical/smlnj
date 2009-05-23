@@ -1095,9 +1095,10 @@ val resFct =
 
 	val resRlzn = {stamp = #stamp fctRlzn, (*** DAVE ? ***)
 		       exp= M.LAMBDA{param=paramId,
-				   body=resExp3,
-				   primaries = primaries},
+				   body=resExp3},
 		       closureEnv = entEnv, 
+		       primaries = primaries,
+		       paramEnv = ,
 		       rpath=rpath,
 		       stub = NONE,
 		       properties = PropList.newHolder ()}
