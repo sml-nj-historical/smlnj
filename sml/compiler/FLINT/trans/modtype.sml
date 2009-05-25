@@ -119,34 +119,6 @@ in
       end (* local ElabDebug, PPModules *)
 
     (* Processing *)	
-    (* entpaths gets all the entpaths from a list of elements 
-       We are getting the entpaths from the signature (potentially
-       a functor parameter signature). The signature is generally
-       untrustworthy because it does not account for external constraints
-       such as structure definition (specs). 
-	
-       functor F(X: sig structure M : sig type t end = A end) = ... 
-	  
-       The only thing we are interested in is the order of elements 
-       given in the signature. 
-	  
-       Whether an individual entpath should actually be processed into a
-       tycpath (and not a DATATYPE or DEFtyc) will be determined when we
-       search the entity environment.
-
-       Maintains left-to-right order. *)
-    fun entpaths([]) = []
-      | entpaths((_,spec)::rest) =
-	(case spec 
-	  of M.TYCspec{entVar,info} =>
-	     [entVar]::entpaths(rest)
-	   | M.FCTspec{entVar, sign, slot} => 
-	     [entVar]::entpaths(rest)
-	   | M.STRspec{entVar, sign=M.SIG{elements,...}, def, ...} => 
-	     (map (fn ep => entVar::ep) (entpaths elements)) @
-	     entpaths(rest)
-	   | _ => entpaths(rest))
-
     (* fsigInElems : element list -> fctSig list 
        functor signatures in parameter signature order *)
     fun fsigInElems([]) = []

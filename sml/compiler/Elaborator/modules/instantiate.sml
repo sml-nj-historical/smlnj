@@ -1307,7 +1307,7 @@ fun get_stamp_info instance =
 fun instToStr (instance, entEnv, instKind, rpath: IP.path, err,
                compInfo as {mkStamp, ...}: EU.compInfo)
               : (M.strEntity * M.primary list) =
-let val primFcts : M.primary list ref = ref []
+let val primaryFcts : M.primary list ref = ref []
     fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 					  slotEnv,finalEnt,stamp,...}),
                     entEnv, rpath: IP.path, failuresSoFar: int)
@@ -1498,7 +1498,7 @@ let val primFcts : M.primary list ref = ref []
 				  val exp = LAMBDA{param=paramvar,
 						   body=bodyExp}
 				  val psig = M.PrimaryFct sign
-			      in primFcts := (psig, stamp, epath)::(!primFcts);
+			      in primaryFcts := (psig, stamp, epath)::(!primaryFcts);
 				 FCTent {stamp = stamp,
 					 exp = exp,
 					 primaries = primaries,
@@ -1610,7 +1610,7 @@ let val primFcts : M.primary list ref = ref []
 		      strEnt')
 	     end)
  in (loop(instToStr'(instance,entEnv,rpath,0)),
-    !primFcts)
+    rev(!primaryFcts))
 end (* fun instToStr *)
 
 (*** fetching the TycKind for a particular functor signature ***)

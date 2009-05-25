@@ -212,14 +212,14 @@ and evalFct (fctExp, epc, entEnv,
         | LAMBDA{param, body} => 
             (debugmsg "--evalFct[LAMBDA]";
 	     ({stamp = mkStamp (),
-		  exp=fctExp,
-		  closureEnv=entEnv,
-		  primaries=[],     
-		  paramEnv=ERReenv, (* [FIXME] primaries and paramEnv must be set *) 
-		  rpath=IP.IPATH[anonFctSym],
-		  stub=NONE,
-		  properties = PropList.newHolder ()},
-		 entEnv))
+	       exp=fctExp,
+	       closureEnv=entEnv,
+	       primaries=[],     
+	       paramEnv=ERReenv, (* [FIXME] primaries and paramEnv must be set *) 
+	       rpath=IP.IPATH[anonFctSym],
+	       stub=NONE,
+	       properties = PropList.newHolder ()},
+	      entEnv))
 
         | LETfct (entDec, fctExp) =>
             let val entEnv1 = evalDec(entDec,  epc,
