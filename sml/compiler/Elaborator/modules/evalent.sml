@@ -55,55 +55,55 @@ fun enterOpen(epc: EPC.context, NONE: EntPath.entVar option) = epc
 
 fun evalTyc (entv, tycExp, entEnv, epc, rpath, 
              compInfo as {mkStamp,...}: EU.compInfo) : T.tycon =
-      case tycExp
-       of CONSTtyc tycon => tycon
-        | FORMtyc (T.GENtyc { kind, arity, eq, path, ... }) =>
-	  (case kind of
-	       T.DATATYPE{index=0, stamps, freetycs, family, root=NONE} =>
-               let val viztyc = MU.transTycon entEnv
-                   val nstamps = Vector.map (fn _ => mkStamp()) stamps
-                   val nst = Vector.sub(nstamps,0)
-                   val nfreetycs = map viztyc freetycs
-                   val _ = EPC.bindTycEntVar (epc, nst, entv)
-               in
-		   T.GENtyc{stamp=nst, arity=arity, eq=eq,
-                            kind=T.DATATYPE{index=0, stamps=nstamps,
-					    root=NONE,
-					    freetycs=nfreetycs,
-					    family=family},
-                            path=IP.append(rpath,path), stub=NONE}
-               end
-             | T.DATATYPE{index=i, root=SOME rtev, ...} =>
-               let val (nstamps, nfreetycs, nfamily) = 
-                       case EE.lookTycEnt(entEnv, rtev)
-			of T.GENtyc { kind = T.DATATYPE dt, ... } =>
-			   (#stamps dt, #freetycs dt, #family dt)
-			 | _ => bug "unexpected case in evalTyc-FMGENtyc (2)"
-                   val nst = Vector.sub(nstamps,i)
-                   val _ = EPC.bindTycEntVar (epc, nst, entv)
-               in
-		   T.GENtyc{stamp=nst, arity=arity,
-                            kind=T.DATATYPE{index=i, stamps=nstamps,
-					    root=NONE,
-					    freetycs=nfreetycs,
-					    family=nfamily},
-                            path=IP.append(rpath,path),
-			    eq=eq, stub=NONE}
-               end
-	     | _ => bug "unexpected GENtyc in evalTyc")
-        | FORMtyc (T.DEFtyc{stamp,tyfun=T.TYFUN{arity, body},strict,path}) =>
-          let val nst = mkStamp()
-	      (* tycId=stamp (this should perhaps be more abstract some day) *)
-	      val _ = EPC.bindTycEntVar (epc, nst, entv)
-	   in T.DEFtyc{stamp=nst,
-		       tyfun=T.TYFUN{arity=arity, 
- 				     body=MU.transType entEnv body}, 
-		       strict=strict, path=IP.append(rpath,path)}
-          end
-        | VARtyc entPath => 
-	    (debugmsg (">>evalTyc[VARtyc]: "^EP.entPathToString entPath);
-	     EE.lookTycEP(entEnv,entPath))
-        | _ => bug "unexpected tycExp in evalTyc"
+    case tycExp
+     of CONSTtyc tycon => tycon
+      | FORMtyc (T.GENtyc { kind, arity, eq, path, ... }) =>
+	(case kind of
+	     T.DATATYPE{index=0, stamps, freetycs, family, root=NONE} =>
+	     let val viztyc = MU.transTycon entEnv
+		 val nstamps = Vector.map (fn _ => mkStamp()) stamps
+		 val nst = Vector.sub(nstamps,0)
+		 val nfreetycs = map viztyc freetycs
+		 val _ = EPC.bindTycEntVar (epc, nst, entv)
+	     in
+		 T.GENtyc{stamp=nst, arity=arity, eq=eq,
+			  kind=T.DATATYPE{index=0, stamps=nstamps,
+					  root=NONE,
+					  freetycs=nfreetycs,
+					  family=family},
+			  path=IP.append(rpath,path), stub=NONE}
+	     end
+	   | T.DATATYPE{index=i, root=SOME rtev, ...} =>
+	     let val (nstamps, nfreetycs, nfamily) = 
+		     case EE.lookTycEnt(entEnv, rtev)
+		      of T.GENtyc { kind = T.DATATYPE dt, ... } =>
+			 (#stamps dt, #freetycs dt, #family dt)
+		       | _ => bug "unexpected case in evalTyc-FMGENtyc (2)"
+		 val nst = Vector.sub(nstamps,i)
+		 val _ = EPC.bindTycEntVar (epc, nst, entv)
+	     in
+		 T.GENtyc{stamp=nst, arity=arity,
+			  kind=T.DATATYPE{index=i, stamps=nstamps,
+					  root=NONE,
+					  freetycs=nfreetycs,
+					  family=nfamily},
+			  path=IP.append(rpath,path),
+			  eq=eq, stub=NONE}
+	     end
+	   | _ => bug "unexpected GENtyc in evalTyc")
+      | FORMtyc (T.DEFtyc{stamp,tyfun=T.TYFUN{arity, body},strict,path}) =>
+	let val nst = mkStamp()
+	    (* tycId=stamp (this should perhaps be more abstract some day) *)
+	    val _ = EPC.bindTycEntVar (epc, nst, entv)
+	 in T.DEFtyc{stamp=nst,
+		     tyfun=T.TYFUN{arity=arity, 
+				   body=MU.transType entEnv body}, 
+		     strict=strict, path=IP.append(rpath,path)}
+	end
+      | VARtyc entPath => 
+	  (debugmsg (">>evalTyc[VARtyc]: "^EP.entPathToString entPath);
+	   EE.lookTycEP(entEnv,entPath))
+      | _ => bug "unexpected tycExp in evalTyc"
 
 and evalStr(strExp, epc, entsvOp, entEnv, rpath, 
             compInfo as {mkStamp,...}: EU.compInfo)
@@ -200,7 +200,7 @@ and evalStr(strExp, epc, entsvOp, entEnv, rpath,
 
 
 and evalFct (fctExp, epc, entEnv, 
-             compInfo as {mkStamp,...}: EU.compInfo) =
+             compInfo as {mkStamp,...}: EU.compInfo) : ftcEntity * entityEnv =
     (debugmsg "--evalFct"; 
       case fctExp
        of VARfct entPath =>
@@ -209,6 +209,9 @@ and evalFct (fctExp, epc, entEnv,
 
         | CONSTfct fctEntity => (fctEntity, entEnv)
 
+        (* DBM: will the computed fctEntitiy be used to derive a FLINT type?
+	 * If so, then LAMBDA may need to care the (primaries, paramEnv) values
+	 * needed to derive a type-function from the fctEntity. *)
         | LAMBDA{param, body} => 
             (debugmsg "--evalFct[LAMBDA]";
 	     ({stamp = mkStamp (),
@@ -221,6 +224,7 @@ and evalFct (fctExp, epc, entEnv,
 	       properties = PropList.newHolder ()},
 	      entEnv))
 
+        (* local entvar bindings are accumulated in result entvar *)
         | LETfct (entDec, fctExp) =>
             let val entEnv1 = evalDec(entDec,  epc,
                                       entEnv, IP.empty, compInfo)
