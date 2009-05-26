@@ -4,11 +4,14 @@
 signature TRANSTYPES = 
 sig
 
-  type primaryEnv = (Stamps.stamp * PLambdaType.tkind) list list
-
+  type primaryEnv = Modules.primary list list
+  datatype argtyc 
+    = TYCarg of Types.tycon
+    | FCTarg of Modules.fctEntity
+		
   val genTT  : unit
 	       -> {(* tpsKnd : primary -> PLambdaType.tkind, *)
-                   primaryTyconToTyc : primaryEnv -> int -> Types.tycon 
+                   primaryTyconToTyc : primaryEnv -> int -> argtyc
 				       -> PLambdaType.tyc,
                    toTyc  : primaryEnv -> DebIndex.depth -> Types.ty
 			    -> PLambdaType.tyc,
@@ -46,9 +49,13 @@ local structure T = Types
       open Types Modules ElabDebug
 in
 
-type primaryEnv = (Stamps.stamp * LT.tkind) list list
+type primaryEnv = Modules.primary list list
 (* we may not need the tkind part.  stamp list list may suffice
  * for the translation from primaries to db indexes *)
+
+datatype argtyc 
+  = TYCarg of Types.tycon
+  | FCTarg of Modules.fctEntity
 
 (*
 type primaryEnv = (Types.tycon list 
@@ -181,11 +188,13 @@ fun genTT() =
  *)
 
 (* was tpsTyc *)
-fun primaryTyconToTyc (penv : primaryEnv) (depth: int) (primary: T.tycon) = 
+fun primaryTyconToTyc (penv : primaryEnv) (depth: int) (primary: argtyc) = 
     let fun tyconToTyc (primary, cur) = 
 	    (case primary 
-	      of GENtyc{stamp=s0, kind=FORMAL, ...} => 
-		  let fun findindex (((s1,_)::rest)::penv, index, num) =
+	      of TYCarg(tycon) =>
+		 (case tycon 
+		   of GENtyc{stamp=s0, kind=FORMAL, ...} => 
+		  let fun findindex (((_,s1,_)::rest)::penv, index, num) =
 			  if Stamps.eq(s1,s0) then (index, num)
 			  else findindex (rest::penv, index, num + 1)
 			| findindex ([]::penv, index, num) = 
@@ -195,11 +204,12 @@ fun primaryTyconToTyc (penv : primaryEnv) (depth: int) (primary: T.tycon) =
 		      val (dbIndex, num) = findindex(penv, 1, 0)
 		  in LT.tcc_var(dbIndex, num)
 		  end
-	       | GENtyc{kind=ABSTRACT(frontEndTyc),...} =>
-		  bug "primaryTyconToTyc 1"
-		  (* ABSTRACT handled by tycTyc's h function *) 
-	       | _ =>
-		 bug "primaryTyconToTyc 2") 
+		    | GENtyc{kind=ABSTRACT(frontEndTyc),...} =>
+		      bug "primaryTyconToTyc 1"
+		    (* ABSTRACT handled by tycTyc's h function *) 
+		    | _ =>
+		      bug "primaryTyconToTyc 2")
+	       | FCTarg(fctEnt) => bug "Unimplemented")
      in tyconToTyc (primary, depth)
     end 
 
@@ -300,7 +310,7 @@ and tycTyc(penv : primaryEnv, tc : Types.tycon, d) =
         | h (tycon, stmp, FORMAL, n) = 
 	    (debugmsg ("--tycTyc FORMAL found "^
 		       Stamps.toShortString stmp);
-	     primaryTyconToTyc penv d tycon)
+	     primaryTyconToTyc penv d (TYCarg tycon))
         | h (_, _,TEMP, _) = bug "unexpected TEMP kind in tycTyc-h"
 
       and g (tycon as GENtyc {stamp, arity, kind, ...}) =
@@ -630,7 +640,7 @@ and fctRlznLty (penv : primaryEnv, sign, rlzn, depth, compInfo) =
 	    (* add "bindings" for the primaries from the parameter
 	     * instantiation, so that references to them in the body str can be
 	     * translated into type variables. *)
-	    val innerPenv = primaryBindings :: penv
+	    val innerPenv = primaries :: penv
 
             (* [DBM: 5/19/09] Does the bodyLty have the kind that was (would be?)
 	     * calculated for the functor signature? I.e. is it a tuple of ltys

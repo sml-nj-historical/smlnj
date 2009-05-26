@@ -215,7 +215,7 @@ val mkvN = mkLvar
 fun mkv () = mkvN NONE
 
 (** generate the set of ML-to-FLINT type translation functions *)
-val {tpsKnd, primaryTyconToTyc, toTyc, toLty, strLty, fctLty} =
+val {primaryTyconToTyc, toTyc, toLty, strLty, fctLty} =
     TT.genTT()
 
 fun toTcLt penv d = (toTyc penv d, toLty penv d) 
@@ -1399,9 +1399,9 @@ and mkEBs (penv : TT.primaryEnv, ebs, d) =
 and mkStrexp (penv0, se, d) = 
     let val _ = debugmsg ">>mkStrexp"
         fun getArgTycs entities (_,_,ep) = 
-            case EE.lookEP(entities, ep)
-              of M.TYCent tyc => TYCarg tyc
-	       | M.FCTent fctEntity => FCTarg fctEntity (* compute tycpath or pl lty? *)
+            case EntityEnv.lookEP(entities, ep)
+              of M.TYCent tyc => TT.TYCarg tyc
+	       | M.FCTent fctEntity => TT.FCTarg fctEntity (* compute tycpath or pl lty? *)
                | M.ERRORent => bug "unexpected entities in getArgTycs"
 
 	fun mk(strexp : Absyn.strexp) : PLambda.lexp =
@@ -1413,13 +1413,12 @@ and mkStrexp (penv0, se, d) =
 		       val primaries =
 			   (case oper
 			     of M.FCT{rlzn={primaries,...}, ...} => primaries
-				map (FctKind.primaryToKnd (compInfo, paramEnv)) primaries
 			      | _ => bug "Unexpected Functor in APPstr")
 		       val argEnv =
 			   (case arg
-			     of M.STR{entities,...} => entities
+			     of M.STR{rlzn,...} => #entities rlzn
 			      | _ => bug "Unexpected arg Structure in APPstr")
-		       val argtycs0 = map (getTps argEnv) primaries
+		       val argtycs0 = map (getArgTycs argEnv) primaries
 		       
 		       (* translate argtycs0 to ltys *)
 		       val argtycs = map (primaryTyconToTyc penv0 d) argtycs0
@@ -1538,7 +1537,7 @@ and mkStrbs (penv, sbs, d) =
   end
 
 and mkFctbs (penv, fbs, d) = 
-  let fun g (FCTB{fct=M.FCT{access,rlzn={exp=M.LAMBDA{primaries,...},...},...},
+  let fun g (FCTB{fct=M.FCT{access,rlzn={primaries,...},...},
 		  def, ... }, b) =
 	  (case access
 	     of DA.LVAR v =>
