@@ -207,7 +207,7 @@ fun primaryTyconToTyc (penv : primaryEnv) (depth: int) (primary: T.tycon) =
 		  (* ABSTRACT handled by tycTyc's h function *) 
 	       | _ =>
 		 bug "primaryTyconToTyc 2") 
-     in tyconTotyc (primary, depth)
+     in tyconToTyc (primary, depth)
     end 
 
 (*

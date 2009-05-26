@@ -11,6 +11,8 @@ signature FCTKIND =
 sig
   val fsigToTkind : CompInfo.compInfo -> Modules.fctsig * EntityEnv.entityEnv
 		    -> PLambdaType.tkind
+  val primaryToBind : CompInfo.compInfo * EntityEnv.entityEnv 
+		      -> Modules.primary -> Stamps.stamp * PLambdaType.tkind
 end
 
 structure FctKind : FCTKIND =
