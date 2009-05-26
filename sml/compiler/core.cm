@@ -109,11 +109,11 @@ Group
 	signature PPTYPE
 	signature ACCESS
 	signature UNIFY
+	signature FCTKIND
 
 	(* export of structures required to use FLINT directly *)
 	structure Translate
-	structure TycPath
-	structure FlexTycMap
+	structure FctKind
 	structure Lty
 	structure LtyKindChk
 	structure LtyStructure
@@ -265,6 +265,7 @@ FLINT/trans/tycpath.sml
 FLINT/trans/flextycmap.sml
 FLINT/trans/debindex.sig
 FLINT/trans/debindex.sml
+FLINT/trans/fctkind.sml
 
 FLINT/lsplit/ls-inline.sml
 
