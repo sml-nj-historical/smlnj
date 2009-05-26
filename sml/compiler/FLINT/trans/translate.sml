@@ -1469,8 +1469,9 @@ and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp =
 		      FCTB context. Then we use FctKind.primaryToKnd as below.
 		      We could also, redundantly, stick the primaries into
 		      the FCTfct data structure. *)
+		   val primaries = hd penv0 
 		   val primaryBindings =
-		       map (FctKind.primaryToKnd (compInfo, #entities rlzn))
+		       map (FctKind.primaryToBind (compInfo, #entities rlzn))
 			   primaries
 		   val knds = map #2 primaryBindings
 		   val _ = if !debugging then 
