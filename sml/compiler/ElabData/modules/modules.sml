@@ -133,23 +133,19 @@ and strExp
        * accurate type names in functor results where the functor has
        * a result signature constraint. *)
 
-(*
-and primary
-  = PrimaryTyc of T.tycon * EntPath.entPath
-  | PrimaryFct of Stamps.stamp * fctSig * EntPath.entPath
-*)
-
-(* primarySig : info used (in conjunction with param instantiation, to compute 
- * abstraction kinds for functors *)
+(* primarySig : info used, in conjunction with param instantiation, to compute 
+ * abstraction kinds for functors in translate phase.
+ * A component of the type primary (see defn of primary below). *)
 and primarySig
-  = PrimaryTyc of int  (* tycon arity *)
+  = PrimaryTyc of int     (* tycon arity *)
   | PrimaryFct of fctSig  (* formal functor signature *)
 
 and fctExp
   = VARfct of EP.entPath   (* selection from current entityEnv *)
   | CONSTfct of fctEntity  (* a constant reference to an existing fct entity *)
   | LAMBDA of {param : EP.entVar, body : strExp}
-  | LETfct of entityDec * fctExp
+  | LETfct of entityDec * fctExp  (* functor let expression. 
+				   * body fctExp is either VARfct or another LETfct *)
 
 and entityExp 
   = TYCexp of tycExp
