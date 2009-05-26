@@ -52,10 +52,10 @@ let fun fsigToKnd'{sign as M.FSIG{paramvar, paramsig as M.SIG _, bodysig as M.SI
             INS.instFormal{sign=paramsig, entEnv=entEnv,
 		       rpath=rpath, region=region, compInfo=compInfo}
 
-        val entEnv' = EE.bind(paramvar, M.STRent paramRlzn, entEnv)
+        val entEnvBody = EE.bind(paramvar, STRent paramRlzn, entEnv))
 
         val {rlzn=bodyRlzn, primaries=(bodyTycs,bodyFcts)} =
-            INS.instFormal{sign=bodysig, entEnv=entEnv', 
+            INS.instFormal{sign=bodysig, entEnv=entEnvBody, 
                        rpath=rpath, region=region, compInfo=compInfo}
 
         (* calculate the tkinds of the formal components in argeps and bodyeps
@@ -63,16 +63,16 @@ let fun fsigToKnd'{sign as M.FSIG{paramvar, paramsig as M.SIG _, bodysig as M.SI
          * for formal functor components, we have to recurse *)
 
         (* can directly compute the tyc kinds from the primary tycs *)
-        val paramTycTks = map (tycToKind) parTycs
-        val bodyTycTks = map (tycToKind) bodyTycs
+        val paramTycTks = map tycToKind parTycs
+        val bodyTycTks = map tycToKind bodyTycs
 
         (* for primary fcts in param and body, we need to pass appropriate
          * entEnvs, providing the right context for the fsig.  This will be
          * the entities field of the rlzn of the immediately enclosing str. *)
-        val parFctTks = map (entPathToKind(paramRlzn)) parFcts
-        val bodyFctTks = map (entPathToKind(bodyRlzn)) bodyFcts
+        val parFctTks = map (entPathToKind paramRlzn) paramFcts
+        val bodyFctTks = map (entPathToKind bodyRlzn) bodyFcts
 
-     in PT.tkc_fun(paramTycTks@parFctTks, PT.tkc_seq (bodyTycTks@bodyFctTks))
+     in PT.tkc_fun(parTycTks @ parFctTks, PT.tkc_seq (bodyTycTks @ bodyFctTycs)
     end
   | fsigToKnd' _ = PT.tkc_fun([], PT.tkc_seq [])
       (* one of paramsig or bodysig is ERRORsig *)

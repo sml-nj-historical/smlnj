@@ -1,16 +1,10 @@
 (* modtype.sml
 
    This module processes the static information (realizations and signatures)
-   to obtain primary type component information for Translate. It fills in 
-   tycpath and sigBoundeps information.
+   to obtain primary type component information for Translate.
 
-   sigBoundeps is a list of the representative entities for a signature
-   This is used to determine which tycs in a functor parameter are 
-   representative
-
-
-   Datatype bindings must be accounted for in Tycpath computations 
-   because they will be represented as TP_TYC(...).  
+   [Datatype bindings must be accounted for in Tycpath computations 
+   because they will be represented as TP_TYC(...).]
 *)
 
 signature MODTYPE =
@@ -43,9 +37,6 @@ local
 
   open Absyn
        
-  fun unionMaps []  = FTM.empty
-    | unionMaps (m::ms) = FTM.unionWith(fn(tp1,tp2) => tp1)
-					   (m, unionMaps ms)
 in
 
   val debugging = FLINT_Control.trdebugging
@@ -56,7 +47,6 @@ in
       if !debugging then print ("RepTycProps: "^m^"\n") else ()
 
   fun bug msg = ErrorMsg.impossible("RepTycProps: " ^ msg)
-
 
   (* prettyprinting functions for debugging *)
   local
@@ -104,75 +94,12 @@ in
 
   val buildKind = LT.tkc_int
 
-  (* kinds : entenv * entenv * fctsig -> kind
-     Computes the functor kind based on that functor's
-     functor signature and the current entity env. *) 
-  fun kinds(paramEnts, bodyEnts, 
-	    M.FSIG{paramsig=M.SIG{elements=pelems,...},
-		   bodysig=M.SIG{elements=belems,...},...}) = 
-      let val _ = debugmsg ">>kinds\n";
-	  val _ = debugmsg "--kinds[FCTent]\n"
-	  val _ = if !debugging 
-		  then (print "--kinds eenv\n";
-			ppEntities paramEnts;
-			print "\n===\n")
-		  else ()
-	  val peps = repEPs(entpaths pelems, paramEnts)
-	  val _ = debugmsg "--kinds peps computed"
-	  val pfsigs = fsigInElems pelems
-	  val _ = debugmsg "--kinds pfsigs computed"
-
-	  (* [TODO] This can be a problem. belems can refer to 
-             formal functor body for curried functor,
-	     but formal body signature has not been
-	     instantiated with the actual argument realization. *)
-	  val beps = repEPs(entpaths belems, bodyEnts)
-	  val _ = debugmsg "--kinds beps computed\n"
-	  val bfsigs = fsigInElems belems
-	  val _ = debugmsg "--kinds bfsigs computed\n"
-	  (* What is the correct eenv to look up belem entpaths? *)
-	  fun loop ([], _, eenv) = []
-	    | loop (ep::eps, fsigs, eenv) = 
-	      (case EE.lookEP(eenv, ep)
-		    handle EE.Unbound => 
-			   bug ("kinds Unbound "^
-				EP.entPathToString ep)
-		of M.TYCent(T.GENtyc{kind=T.DATATYPE _, ...}) =>
-		   loop(eps, fsigs, eenv)
-		 | M.TYCent(T.GENtyc{kind, arity, ...}) =>
-		   (* Use this when PK eliminated from front-end:
-                      (LT.tkc_int arity)::loop(eps, pfsigs) *)
-		   (buildKind arity)::loop(eps, fsigs, eenv)
-		 | M.FCTent{exp=M.LAMBDA{paramRlzn,...}, closureEnv=env, ...} =>
-                   (* This should be using closure and paramRlzn --
-		    * bodyRlzn has been deleted *)
-		   (case fsigs 
-		     of [] => bug "kinds.1"
-		      | fsig::rest => 
-			kinds(#entities paramRlzn, 
-			      (raise Fail "#entities bodyRlzn"), fsig)::
-			loop(eps, rest, eenv))
-		 | _ => bug "kinds.0")
-
-	  val paramtk = loop(peps,pfsigs,paramEnts)
-	  val _ = debugmsg "--kinds paramtk computed"
-	  val bodytk = loop(beps,bfsigs, bodyEnts)
-	  val _ = debugmsg "--kinds bodytk computed"
-      in (* Use this when PK eliminated from front-end: *)
-	  LT.tkc_fun(paramtk, LT.tkc_seq bodytk)
-      end 
-    | kinds _ = bug "kinds.2" (* fun kinds *)		  
-
   fun formalBody(ftmap0, bodyEnts, argTps, msig as M.SIG{elements, ...}, 
 		 paramEnts, fsig, d, i) =
-      let val _ = debugmsg "--in formalBody kinds"
-
-	  val M.FSIG{paramsig=M.SIG{elements=pelems,...},
+      let val M.FSIG{paramsig=M.SIG{elements=pelems,...},
 		     bodysig=M.SIG{elements=belems,...},...} = fsig
 	  val peps = repEPs(entpaths pelems, paramEnts)
-	  val _ = debugmsg "--formalBody peps computed"
 	  val pfsigs = fsigInElems pelems
-	  val _ = debugmsg "--formalBody pfsigs computed"
 
 	  fun loopkind ([], _, eenv) = []
 	    | loopkind (ep::eps, fsigs, eenv) = 
@@ -197,24 +124,18 @@ in
 		 | _ => bug "kinds.0")
 
 	  val paramtk = loopkind(peps,pfsigs,paramEnts)
-	  val _ = debugmsg "--formalBody paramtk computed"
 
 	  (* [TODO] This can be a problem. belems can refer to 
 	     formal functor body for curried functor,
 	     but formal body signature has not been
 	     instantiated with the actual argument realization. *)
 	  val beps = repEPs(entpaths belems, bodyEnts)
-	  val _ = debugmsg "--formalBody beps computed\n"
 	  val bfsigs = fsigInElems belems
-	  val _ = debugmsg "--formalBody bfsigs computed\n"
 	  (* What is the correct eenv to look up belem entpaths? *)
 
 	  val bodytk = loopkind(beps,bfsigs, bodyEnts)
-	  val _ = debugmsg "--formalBody bodytk computed"
 
 	  val kind = LT.tkc_fun(paramtk, LT.tkc_seq bodytk)
-	  val _ = (debugmsg ("--formalBody elements ");
-		   if !debugging then ppSig msig else ())
 
 	  val eps = entpaths(elements)
 	  val _ = debugmsg ("--formalBody eps "^Int.toString (length eps))
@@ -222,31 +143,20 @@ in
 	    | loop(ftmap, eenv, ep::rest, j, tps) = 
 	      (case EE.lookEP(eenv, ep)
 		of M.TYCent(T.GENtyc{kind=T.DATATYPE _, stamp, ...}) =>
-		   let val _ = debugmsg ("--formalBody DATATYPE "^
-					 Stamps.toShortString stamp)
-		   in loop(ftmap, eenv, rest, j, tps) 
-		   end
+		   loop(ftmap, eenv, rest, j, tps) 
 		 | M.TYCent(T.GENtyc{stamp, ...}) =>
 		   let val fctvar = TP.TP_VAR{tdepth=d, num=i, kind=kind}
 		       val tp = TP.TP_SEL(TP.TP_APP(fctvar, argTps), j)
-		       val _ = debugmsg ("--formalBody "^
-					 Stamps.toShortString stamp^
-					 " is index "^
-					 Int.toString j)
 		   in case FTM.find(ftmap, stamp)
 		       of SOME _ => loop(ftmap, eenv, rest, j, tps)
-			| NONE => loop(insertMap(ftmap, stamp, tp),
-				       eenv,
-			   rest, j+1, tp::tps)
+			| NONE => loop(insertMap(ftmap, stamp, tp), eenv,
+				       rest, j+1, tp::tps)
 		   end
 		 | M.TYCent _ => 
-		   (debugmsg "--formalBody other TYCent GEN";
-		    loop(ftmap, eenv, rest, j, tps))
+		    loop(ftmap, eenv, rest, j, tps)
 		 | M.FCTent _ =>
-		   (debugmsg "--formalBody FCTent";
-		    loop(ftmap, eenv, rest, j, tps))
-		 | _ => (debugmsg "--formalBody other ent";
-			 loop(ftmap, eenv, rest, j, tps)))
+		    loop(ftmap, eenv, rest, j, tps)
+		 | _ => loop(ftmap, eenv, rest, j, tps)))
 	  val (ftmap1, tps) = loop(ftmap0, bodyEnts, beps, 0, [])
       in (ftmap1, tps)
       end
