@@ -9,9 +9,10 @@
 
 signature FCTKIND =
 sig
-  val fsigToTkind : Absyn.dec CompInfo.compInfo -> Modules.fctSig * EntityEnv.entityEnv
+  val fsigToKnd : ElabUtil.compInfo 
+		  -> {sign:Modules.fctSig, entEnv: EntityEnv.entityEnv}
 		    -> PLambdaType.tkind
-  val primaryToBind : Absyn.dec CompInfo.compInfo * EntityEnv.entityEnv 
+  val primaryToBind : ElabUtil.compInfo * EntityEnv.entityEnv 
 		      -> Modules.primary -> Stamps.stamp * PLambdaType.tkind
 end
 
@@ -24,13 +25,9 @@ struct
       structure PT = PLambdaType
       structure EE = EntityEnv 
       structure INS = Instantiate 
-      structure LT = LtyExtern
 
       fun bug msg = ErrorMsg.impossible ("FctKind: " ^ msg)
    in
-
-
-fun tycToKind tyc = PT.tkc_int(TypesUtil.tyconArity tyc)
 
 fun getEntEnv (entities: EntityEnv.entityEnv,[]) = 
     entities  (* top-level functor element *)
@@ -48,13 +45,13 @@ let fun fsigToKnd'{sign as M.FSIG{paramvar, paramsig as M.SIG _, bodysig as M.SI
 		   entEnv} = 
     let val region=SourceMap.nullRegion  (* dummy region, required by instFormal *)
         val rpath=InvPath.empty (* dummy rpath, required by instFormal *)
-	val {rlzn=paramRlzn, primaries=(parTycs,parFcts)} = 
+	val {rlzn=paramRlzn, primaries=parPrimaries} = 
             INS.instFormal{sign=paramsig, entEnv=entEnv,
 		       rpath=rpath, region=region, compInfo=compInfo}
 
-        val entEnvBody = EE.bind(paramvar, STRent paramRlzn, entEnv))
+        val entEnvBody = EE.bind(paramvar, M.STRent paramRlzn, entEnv)
 
-        val {rlzn=bodyRlzn, primaries=(bodyTycs,bodyFcts)} =
+        val {rlzn=bodyRlzn, primaries=bodyPrimaries} =
             INS.instFormal{sign=bodysig, entEnv=entEnvBody, 
                        rpath=rpath, region=region, compInfo=compInfo}
 
@@ -63,35 +60,41 @@ let fun fsigToKnd'{sign as M.FSIG{paramvar, paramsig as M.SIG _, bodysig as M.SI
          * for formal functor components, we have to recurse *)
 
         (* can directly compute the tyc kinds from the primary tycs *)
-        val paramTycTks = map tycToKind parTycs
-        val bodyTycTks = map tycToKind bodyTycs
-
         (* for primary fcts in param and body, we need to pass appropriate
          * entEnvs, providing the right context for the fsig.  This will be
          * the entities field of the rlzn of the immediately enclosing str. *)
-        val parFctTks = map (entPathToKind paramRlzn) paramFcts
-        val bodyFctTks = map (entPathToKind bodyRlzn) bodyFcts
 
-     in PT.tkc_fun(parTycTks @ parFctTks, PT.tkc_seq (bodyTycTks @ bodyFctTycs)
+        val parPrimaryKnds = 
+	    map (fn (M.PrimaryTyc(x),_,_) => PT.tkc_int x 
+		  | (M.PrimaryFct(fsg),_,ep) => entPathToKind paramRlzn (fsg,ep))
+		parPrimaries
+
+        val bodyPrimaryKnds = 
+	    map (fn (M.PrimaryTyc(x),_,_) => PT.tkc_int x
+		  | (M.PrimaryFct(fsg),_,ep) => entPathToKind bodyRlzn (fsg,ep))
+		bodyPrimaries
+
+        
+     in PT.tkc_fun(parPrimaryKnds, 
+		   PT.tkc_seq bodyPrimaryKnds)
     end
   | fsigToKnd' _ = PT.tkc_fun([], PT.tkc_seq [])
       (* one of paramsig or bodysig is ERRORsig *)
 
 and entPathToKind ({entities,...}: M.strEntity)
-		  (_, fsig, entPath) =
+		  (fsig, entPath) =
     (* 1. look up the entPath in the signature (how?).
        2. if the entity determined by the entPath is *)
-    fsigToKnd'(fsig,getEntEnv(entities,entPath))
+    fsigToKnd'{sign=fsig,entEnv=getEntEnv(entities,entPath)}
     
  in fsigToKnd'
 end
 
 fun primaryToBind (compInfo, entEnv: EE.entityEnv)
 		  (M.PrimaryTyc arity, stamp, _) =
-    (stamp, LT.tkc_int arity)
+    (stamp, PT.tkc_int arity)
   | primaryToBind (compInfo,entEnv) (M.PrimaryFct fsig, stamp, ep) =
-    (stamp, fsigToKnd compInfo (fsig, getEntEnv(entEnv,ep)))
-  | primaryToBind (compInfo,entEnv) _ = bug "primaryToKnd"
+    (stamp, fsigToKnd compInfo {sign=fsig, entEnv=getEntEnv(entEnv,ep)})
 
    end (* local *) 
 end (* structure FctKind *)

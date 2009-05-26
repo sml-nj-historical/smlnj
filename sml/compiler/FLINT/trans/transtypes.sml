@@ -6,16 +6,8 @@ sig
 
   type primaryEnv = (Stamps.stamp * PLambdaType.tkind) list list
 
-  (* this should go away.  replaced by Instantiate.primary *)
-  datatype primary = FormalTyc of Types.tycon
-		   | FormalFct of Stamps.stamp * Modules.fctSig
-
-  val toPrimaryEnv : Types.tycon list 
-		     * ((Stamps.stamp * Modules.fctSig) list) 
-		     -> primary list 
-
   val genTT  : unit
-	       -> {tpsKnd : primary -> PLambdaType.tkind,
+	       -> {(* tpsKnd : primary -> PLambdaType.tkind, *)
                    primaryTyconToTyc : primaryEnv -> int -> Types.tycon 
 				       -> PLambdaType.tyc,
                    toTyc  : primaryEnv -> DebIndex.depth -> Types.ty
@@ -577,11 +569,11 @@ and fctRlznLty (penv : primaryEnv, sign, rlzn, depth, compInfo) =
 	     * occurrences in the body rlzn after evalApp.
 	     *)
 
-(*	    val {rlzn=paramRlzn, primaries} = 
+	    val {rlzn=paramRlzn, primaries=_} = 
 		INS.instFormal{sign=paramsig,entEnv=env,
 			       rpath=InvPath.IPATH[], compInfo=compInfo,
 			       region=SourceMap.nullRegion}
-*)
+
 	    val _ = debugmsg ">>parameter kinds"
 	    val primaryBindings =
 		map (FctKind.primaryToBind (compInfo, paramEnv))
@@ -741,7 +733,7 @@ structure MIDict = RedBlackMapFn(struct type ord_key = ModuleId.modId
         | fctLtyLook x = fctLty (coreDict, strLtyLook, fctLtyLook)
 *)
 
-   in {tpsKnd=tpsKnd, tpsTyc=tpsTyc,
+   in {primaryTyconToTyc=primaryTyconToTyc,
        toTyc=toTyc, toLty=toLty, strLty=strLty, fctLty=fctLty}
   end (* function genTT *)
 
