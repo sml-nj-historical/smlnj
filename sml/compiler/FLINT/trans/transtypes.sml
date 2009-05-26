@@ -190,7 +190,8 @@ fun primaryTyconToTyc (penv : primaryEnv) (depth: int) (primary: T.tycon) =
 			  else findindex (rest::penv, index, num + 1)
 			| findindex ([]::penv, index, num) = 
 			  findindex(penv, index + 1, 0)
-			| findindex [] = bug "Malformed primary environment"
+			| findindex ([],_,_) = 
+			  bug "Malformed primary environment"
 		      val (dbIndex, num) = findindex(penv, 1, 0)
 		  in LT.tcc_var(dbIndex, num)
 		  end
