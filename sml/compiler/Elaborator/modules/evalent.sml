@@ -200,7 +200,7 @@ and evalStr(strExp, epc, entsvOp, entEnv, rpath,
 
 
 and evalFct (fctExp, epc, entEnv, 
-             compInfo as {mkStamp,...}: EU.compInfo) : ftcEntity * entityEnv =
+             compInfo as {mkStamp,...}: EU.compInfo) : fctEntity * entityEnv =
     (debugmsg "--evalFct"; 
       case fctExp
        of VARfct entPath =>

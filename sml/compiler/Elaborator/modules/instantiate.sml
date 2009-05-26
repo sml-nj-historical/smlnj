@@ -1478,7 +1478,7 @@ let val primaryFcts : M.primary list ref = ref []
 				 ***)
 			    | NONE =>  (* a primary functor element *)
 			      let val stamp = mkStamp()
-				  val (paramRlzn, primaryTycs, primaryFcts) =
+				  val (paramRlzn, primaryTycs, primaryFcts1) =
 				      instGeneric{sign=paramsig, entEnv=entEnv, 
 	                                          rpath=path, 
 						  region=SourceMap.nullRegion,
@@ -1494,7 +1494,7 @@ let val primaryFcts : M.primary list ref = ref []
 					  end
 					| INST_FORMAL => M.FORMstr sign
 				  val primaries = 
-				      primaryTycs @ primaryFcts
+				      primaryTycs @ primaryFcts1
 				  val exp = LAMBDA{param=paramvar,
 						   body=bodyExp}
 				  val psig = M.PrimaryFct sign

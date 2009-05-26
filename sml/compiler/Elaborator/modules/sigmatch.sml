@@ -1097,8 +1097,8 @@ val resFct =
 		       exp= M.LAMBDA{param=paramId,
 				   body=resExp3},
 		       closureEnv = entEnv, 
-		       primaries = primaries,
-		       paramEnv = ,
+		       primaries = primaries, (* [GK 5/26/09] CHECK THESE *)
+		       paramEnv = NILeenv,
 		       rpath=rpath,
 		       stub = NONE,
 		       properties = PropList.newHolder ()}
@@ -1117,8 +1117,7 @@ val fdec =
 (*** the functor entity expression ***)
 val fctExp = 
     M.LETfct(M.FCTdec(uncoerced, uncoercedFct), 
-             M.LAMBDA{param = paramId, body = resExp2, 
-		      primaries = primaries (* [GK 5/15/09] Check this! *)})
+             M.LAMBDA{param = paramId, body = resExp2})
     (* ??? is fsigParEnt the correct realization to use here? *)
 
 in  (fdec, resFct, fctExp)
@@ -1182,7 +1181,7 @@ and packStr1(specSig as M.SIG {elements=sigElements,...},
 	     str as M.STR {access=rootAcc,
 			   rlzn=srcRlzn as {entities=srcEntEnv,...},
 			   prim=rootPrim, ... },
-             abstycs, strName, entEnv, rpath, statenv, region, 
+             strName, entEnv, rpath, statenv, region, 
              compInfo as {mkLvar=mkv, error, ...}: EU.compInfo) 
              : Absyn.dec * M.Structure =
 let
@@ -1212,7 +1211,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 				    prim=PrimOpId.selStrPrimId(rootPrim,s)}
 			 val rpath' = IP.extend(rpath, sym)
 			 val (thinDec, thinStr) = 
-			   packStr1(thisSpecsig, resStrRlzn, srcStr, abstycs,
+			   packStr1(thisSpecsig, resStrRlzn, srcStr, 
 				    sym, entEnv, rpath', statenv, 
 				    region, compInfo)
 
@@ -1242,7 +1241,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 			 val rpath' = IP.extend(rpath, sym)
 
 			 val (thinDec, thinFct) = 
-			   packFct1(thisSpecsig, resFctRlzn, srcFct, abstycs,
+			   packFct1(thisSpecsig, resFctRlzn, srcFct, 
 				    sym, entEnv, rpath', statenv,
 				    region, compInfo)
 
@@ -1347,10 +1346,10 @@ and packStr {sign, str, strExp, entEnv, rpath,
         end
       val _ = debugmsg "packStr - instantiate done"
 
-      val abstycs' = foldr TU.addTycSet (TU.mkTycSet()) abstycs
+      (* val abstycs' = foldr TU.addTycSet (TU.mkTycSet()) abstycs *)
 
       val (resDec, resStr) = 
-        packStr1 (sign, resRlzn, str, abstycs', anonSym,
+        packStr1 (sign, resRlzn, str, anonSym,
                   entEnv, rpath, statenv, region, compInfo)
       val _ = debugmsg "packStr - packStr1 done"
 
@@ -1372,7 +1371,7 @@ and packStr {sign, str, strExp, entEnv, rpath,
  ***************************************************************************)
 and packFct1(specSig as FSIG{paramsig, paramvar, bodysig, ...}, resFctRlzn,
              srcFct as FCT { rlzn = srcFctRlzn, ... },
-             abstycs1, fctName, entEnv, rpath, statenv, region,
+             fctName, entEnv, rpath, statenv, region,
              compInfo as {mkStamp, mkLvar=mkv, error, ...}: EU.compInfo)
              : Absyn.dec * M.Functor = 
 
@@ -1405,11 +1404,11 @@ val {rlzn=resRlzn, primaryTycs=abstycs2} =
                      rpath=rpath, region=region, compInfo=compInfo}
   end
 
-val abstycs = foldr TU.addTycSet abstycs1 abstycs2
+(* val abstycs = foldr TU.addTycSet abstycs1 abstycs2 *)
 
 val (rdec2, resStr) = 
   let val rpath' = IP.IPATH[S.strSymbol "<FctResult>"]
-   in packStr1(bodysig, resRlzn, bodyStr, abstycs, anonSym,
+   in packStr1(bodysig, resRlzn, bodyStr, anonSym,
                entEnv, rpath', statenv, region, compInfo)
   end
 
