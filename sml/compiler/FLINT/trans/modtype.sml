@@ -178,56 +178,43 @@ in
   (* The goal here, simply put, is to get the primary components
      in rlzn where a component is primary if it is a representative
      picked by instantiate in freerlzn. *)
-  fun primaryCompInStruct(ftmap0, freerlzn : M.strEntity, 
-			  rlznOp: M.strEntity option, 
-			  M.SIG (sign : M.sigrec), 
-			  d) =
-      let
-	  val fsigs = fsigInElems(#elements sign)
-	  val _  = debugmsg ("--pri num of fsigs "^
-			     Int.toString (length fsigs)
-			     ^" depth "^DI.dp_print d)
-	  val rlzn = (case rlznOp of NONE => freerlzn | SOME r => r)
-	  val entenv = #entities rlzn
-	  val eps = repEPs(entpaths(#elements sign), #entities freerlzn) 		
-	  val _ = debugmsg ("--primaryCompInStruct eps "^
-			    Int.toString (length eps)^
-			    " d="^DI.dp_print d)
+  fun strType(penv(?): primaryEnv,
+	      freerlzn : M.strEntity, 
+	      M.SIG (sign : M.sigrec),
+	      rlzn as {entities=entenv,...}: M.strEntity,
+	      primaries,
+	      depth) =
+      let val eps = map #3 primaries
 	  fun loop(ftmap, tps, [], _, _) = (ftmap, rev tps)
 	    | loop(ftmap, tps, ep::rest, i, fs) =
-	      
-	       let val _ = debugmsg ("-primaryCompInStruct loop "^Int.toString i)
-		   val ev : Stamps.stamp = List.last ep
-	       in case EE.lookEP(entenv, ep)
-		       handle EntityEnv.Unbound =>
-			      (print "\npri for Unbound\n";
-			       raise EntityEnv.Unbound)
-		   of M.TYCent(tyc as T.GENtyc{kind=T.DATATYPE _, stamp,...}) =>
-		      let val tp = TP.TP_TYC(tyc)
-		      in (loop(insertMap(ftmap, stamp, tp), 
-			       tp::tps, rest, i+1, fs))
-		      end
+	      (case EE.lookEP(entenv, ep)
+		    handle EntityEnv.Unbound =>
+			   (print "\npri for Unbound\n";
+			    raise EntityEnv.Unbound)
+		of M.TYCent(tyc as T.GENtyc{kind=T.DATATYPE _, stamp,...}) =>
+		   let val tp = TP.TP_TYC(tyc)
+		   in (loop(insertMap(ftmap, stamp, tp), 
+			    tp::tps, rest, i+1, fs))
+		   end
 		    (* Datatypes should be represented directly in the tycpath *)
-		    | M.TYCent(T.GENtyc{kind=T.ABSTRACT(tyc),stamp=s1,...}) =>
-		      let val (tp,s) = 
-			      (case tyc 
-				of T.GENtyc{kind=T.DATATYPE _,stamp,...} =>
-				   (TP.TP_TYC(tyc), stamp)
-				 | T.GENtyc{kind=T.FORMAL, arity, stamp, ...} => 
-				   (case FTM.find(ftmap, stamp)
-				     of SOME tp' => (tp', stamp)
-				      | NONE => 
-					(debugmsg ("--eps VAR depth "^DI.dp_print d);
-					 (TP.TP_VAR{tdepth=d,num=i,
-						    kind=buildKind arity}, stamp)))
-				 | _ => 
-				   (debugmsg "--pri[GEN] nonformal/data abstract";
-				    (TP.TP_TYC(tyc), s1)))
-		       in loop(insertMap(ftmap, s, tp), 
-			       tp::tps, rest, i+1, fs)
-		      end
+		 | M.TYCent(T.GENtyc{kind=T.ABSTRACT(tyc),stamp=s1,...}) =>
+		   let val (tp,s) = 
+			   (case tyc 
+			     of T.GENtyc{kind=T.DATATYPE _,stamp,...} =>
+				(TP.TP_TYC(tyc), stamp)
+			      | T.GENtyc{kind=T.FORMAL, arity, stamp, ...} => 
+				(case FTM.find(ftmap, stamp)
+				  of SOME tp' => (tp', stamp)
+				   | NONE => 
+				     (TP.TP_VAR{tdepth=depth,num=i,
+						kind=buildKind arity}, stamp))
+			      | _ => 
+				(TP.TP_TYC(tyc), s1))
+		   in loop(insertMap(ftmap, s, tp), 
+			   tp::tps, rest, i+1, fs)
+		   end
 		      
-		    | M.TYCent(T.GENtyc{kind, arity, stamp, ...}) =>
+		 | M.TYCent(T.GENtyc{kind, arity, stamp, ...}) =>
 		      let val _ = debugmsg "--primaryCompInStruct[TYCent GENtyc]"
 			  val kind = buildKind arity
 	                     (* Check if stamp is previously defined. 
@@ -243,13 +230,13 @@ in
 		      in loop(insertMap(ftmap, stamp, tp'),
 			      tp'::tps, rest, i+1, fs)
 		      end
-		    | M.TYCent tyc => 
+		 | M.TYCent tyc => 
 		      let val _ = debugmsg "--primaryCompInStruct[TYCent]"
 			  val tp = TP.TP_TYC(tyc)
 		      in loop(insertMap(ftmap, ev, tp),
 			      tp::tps, rest, i+1, fs)
 		      end
-		    | M.FCTent {stamp, exp=M.LAMBDA{paramRlzn, ...},
+		 | M.FCTent {stamp, exp=M.LAMBDA{paramRlzn, ...},
 				closureEnv=closenv,...} => 
 		      (debugmsg "--primaryCompInStruct[FCTent SOME]";
                        (* this should be using closure and paramRlzn *)
@@ -302,11 +289,11 @@ in
 				loop(ftmap2, tp'::tps, rest, i+1, srest)
 			    end
 			  | _ => bug "unexpected errorFSIG"))
-		    | _ => bug "primaryCompInStruct 0"
+		 | _ => bug "primaryCompInStruct 0"
 	       end (* loop *)
 	      handle EE.Unbound => bug "primaryCompInStruct Unbound"
        in loop(ftmap0, [], eps, 0, fsigs)
-      end (* fun primaryCompInStruct *)
+      end (* fun strType *)
 
     | primaryCompInStruct _ = bug "Unexpected error signature"
 

@@ -34,7 +34,7 @@ fun getEntEnv (entities: EntityEnv.entityEnv,[]) =
   | getEntEnv (entities, ep) = 
     #entities (EE.lookStrEP(entities,List.take(ep, length ep - 1)))
   
-(*** computing the TycKind for a functor signature ***)
+(*** computing the kind of a functor type function from a functor signature ***)
 
 (* bind compInfo locally-global, so we don't have to thread it through 
  * the recursive calls *)
