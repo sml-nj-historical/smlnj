@@ -21,7 +21,7 @@ sig
 end  (* signature ENT_PATH_CONTEXT *)
 
 
-structure EntPathContext (* :> ENT_PATH_CONTEXT *) =
+structure EntPathContext :> ENT_PATH_CONTEXT =
 struct
  
 local structure ST = Stamps

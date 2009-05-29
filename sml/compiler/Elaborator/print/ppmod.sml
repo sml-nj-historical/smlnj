@@ -40,9 +40,10 @@ sig
                     -> Modules.entityEnv * StaticEnv.staticEnv * int
                     -> unit
 
-  val ppEPC : PrettyPrintNew.stream
+  (* val ppEPC : PrettyPrintNew.stream
 	      -> EntPathContext.context * int 
-	      -> unit
+	      -> unit 
+   *)
 
 end (* signature PPMOD *)
 
@@ -165,7 +166,7 @@ fun ppEntPath ppstrm entPath =
        pr=ppEntVar}
 *)
 
-local
+(* local
    open EntPathContext
 in
 fun ppEPC ppstrm (context, d) =
@@ -176,7 +177,7 @@ fun ppEPC ppstrm (context, d) =
 	    ppEntPath ppstrm context;
 	    ppEPC ppstrm (outer, d);
 	    pps ppstrm "]"))
-end
+end *)
 
 fun ppTycExp ppstrm (tycExp,depth) =
     if depth <= 0 then pps ppstrm "<tycExp>" else

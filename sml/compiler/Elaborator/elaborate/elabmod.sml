@@ -652,11 +652,12 @@ fun elab (BaseStr decl, env, entEnv, region) =
 	       let val resDee =
 		       EE.mark(mkStamp, EE.bind(entv, M.STRent argEnt, argDee))
 		        (* the argument structure should be bound to entv *)
-		   val _ = debugPrint("--elab[AppStr]: epContext = ",
+		   (* val _ = debugPrint("--elab[AppStr]: epContext = ",
 				   fn ppstrm => 
 			       fn ctx => 
 				  PPModules.ppEPC ppstrm (ctx, 100),
-			     epContext)
+			     epContext) 
+                    *)
 
 		    val fctExp = 
 			case EPC.lookFctEntPath(epContext, MU.fctId fct)
@@ -665,11 +666,12 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		    val epc = case entVarOp
 			       of NONE => epContext
 				| SOME ev => EPC.enterOpen(epContext, ev)
-		   val _ = debugPrint("--elab[AppStr]: epc = ",
+		   (* val _ = debugPrint("--elab[AppStr]: epc = ",
 				   fn ppstrm => 
 			       fn ctx => 
 				  PPModules.ppEPC ppstrm (ctx, 100),
 			     epc)
+                    *)
 
 		    val {resDec, resStr, resExp} = 
 			SM.applyFct{fct=fct, fctExp=fctExp, argStr=argStr, 
@@ -920,11 +922,12 @@ case fctexp
 
 	  val _ = debugmsg (">>elabFct[BaseFct]: paramEntVar = "^
 			    EP.entVarToString paramEntVar)
-	  val _ = debugPrint("--elabFct[BaseFct]: epContext = ",
+	  (* val _ = debugPrint("--elabFct[BaseFct]: epContext = ",
 			     fn ppstrm => 
 			       fn ctx => 
 				  PPModules.ppEPC ppstrm (ctx, 100),
-			     epContext)
+			     epContext) 
+           *)
 		     
           val paramSig = 
               ES.elabSig {sigexp=paramSigExp, nameOp=NONE, env=env, 
