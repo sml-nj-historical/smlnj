@@ -215,8 +215,13 @@ val mkvN = mkLvar
 fun mkv () = mkvN NONE
 
 (** generate the set of ML-to-FLINT type translation functions *)
-val {primaryTyconToTyc, toTyc, toLty, strLty, fctLty} =
+(*val {primaryTyconToTyc, toTyc, toLty, strLty, fctLty} =
     TT.genTT()
+-- [DBM] TransTypes now just exports the functions, instead of a
+-- generator of a record of functions.
+*)
+
+open TT
 
 fun toTcLt penv d = (toTyc penv d, toLty penv d) 
 
@@ -1396,7 +1401,7 @@ and mkEBs (penv : TT.primaryEnv, ebs, d) =
  *    val mkFctbs  : primaryEnv * Absyn.fctb list * depth -> PLambda.lexp -> PLambda.lexp *
  *                                                                         *
  ***************************************************************************)
-and mkStrexp (penv0, se, d) = 
+and mkStrexp (penv, se, d) = 
     let val _ = debugmsg ">>mkStrexp"
         fun getArgTycs entities (_,_,ep) = 
             case EntityEnv.lookEP(entities, ep)
@@ -1407,29 +1412,23 @@ and mkStrexp (penv0, se, d) =
 	fun mk(strexp : Absyn.strexp) : PLambda.lexp =
 	    (case strexp 
 	       of APPstr {oper, arg} =>
-		   let val e1 = mkFct(penv0, oper, d) 
+		   let val e1 = mkFct(penv, oper, d) 
 		       val _ = debugmsg ("--mkStrexp[APPstr] depth "^
-					 DI.dp_print d)
+					 Int.toString d)
 		       val primaries =
 			   (case oper
 			     of M.FCT{rlzn={primaries,...}, ...} => primaries
 			      | _ => bug "Unexpected Functor in APPstr")
-		       val argEnv =
-			   (case arg
-			     of M.STR{rlzn,...} => #entities rlzn
-			      | _ => bug "Unexpected arg Structure in APPstr")
-		       val argtycs0 = map (getArgTycs argEnv) primaries
-		       
-		       (* translate argtycs0 to ltys *)
-		       val argtycs = map (primaryTyconToTyc penv0 d) argtycs0
+
+		       val argtycs = getStrTycs(primaries,argRlzn,penv)
 		                     
-		       val e2 = mkStr(penv0, arg, d)
+		       val e2 = mkStr(penv, arg, d)
 		    in APP(TAPP(e1, argtycs), e2)
 		   end
 		| MARKstr (b, reg) => withRegion reg mk b
-		| LETstr (dec, body) => (mkDec (penv0, dec, d)) (mk body)
-		| VARstr s => mkStr(penv0, s, d)
-		| STRstr bs => SRECORD (map (mkBnd (penv0, d)) bs))
+		| LETstr (dec, body) => (mkDec (penv, dec, d)) (mk body)
+		| VARstr s => mkStr(penv, s, d)
+		| STRstr bs => SRECORD (map (mkBnd (penv, d)) bs))
 
       val le = mk se
       val _ = debugmsg "<<mkStrexp"

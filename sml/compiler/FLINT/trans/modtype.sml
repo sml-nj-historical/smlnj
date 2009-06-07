@@ -9,8 +9,10 @@
 
 signature MODTYPE =
 sig
-   val strType : Modules.Signature * Modules.strEntity ... -> PLambdaType.tyc
-   val fctType : Modules.fctsig * Modules.fctEntity ... -> PLambdaType.tyc
+   val getStrTycs : Modules.primaries * Modules.strEntity * Modules.primaryEnv
+		    -> PLambdaType.tyc list
+   val getFctTyc : Modules.fctsig * Modules.fctEntity * Modules.primaryEnv
+		   * CompInfo.compinfo -> PLambdaType.tyc
 end
 
 structure ModType : MODTYPE =
@@ -27,16 +29,7 @@ local
   structure DI = DebIndex
   structure LT = LtyExtern
   structure TU = TypesUtil
-  structure S = Symbol
-  structure V = VarCon
 		
-  (* A StampSet ADT to keep track of unique stamps (embedded in different
-   * structures) we have seen *)
-  structure StampSet = RedBlackSetFn (type ord_key = Stamps.stamp
-                                      val compare = Stamps.compare)
-
-  open Absyn
-       
 in
 
   val debugging = FLINT_Control.trdebugging
@@ -93,6 +86,60 @@ in
   end (* local ElabDebug, PPModules *)
 
   val buildKind = LT.tkc_int
+
+  (* fetching the list of LT.tycs for the primaries of a structure
+   * modelled on getTycPaths from the old version of Instantiate.
+   * assumes primaries are passed as an argument. *)
+  fun getStrTycs{primaries, rlzn : M.strEntity, penv) =
+      let val {entities, ...} = rlzn (* all we need is the entities field of rlzn *)
+	  fun getPrimaryTyc (primsig,_,ep) = 
+	      let val ent = EE.lookEP(entities, ep)
+	       in case ent
+		   of M.TYCent tyc => tyconToTyc(tyc,penv)  (* T.TP_TYC tyc *)
+		    | M.FCTent fctEnt =>
+		      (case primsig
+			of PrimaryFct fctsig => getFctTyc(fctsig,fctEnt,penv)
+			 | _ => bug "getPrimaryTyc")
+		    | M.ERRORent => bug "ERRORent in getStrTycs"
+		    | _ => bug "unexpected entity in getStrTycs"
+	      end
+
+       in map getPrimaryTyc epslist 
+      end
+    | getStrTycs _ = []
+
+(* based on routine used in old sigmatch to compute tycpath field of the
+ * functor entity resulting from a fctsig match.  *)
+and getFctTyc(fctsig, fctEntity: M.fctEntity, penv, compInfo) =
+    let val {primaries, paramEnv, exp, closureEnv, ...} = fctEntity
+	       (* maybe paramEnv should be a strEntity? *)
+	val paramRlzn = ??  paramEnv ?? (* we need a strEntity for bodyEnv *)
+	val M.FSIG{bodySig,...} = fctsig
+            (* need bodySig to calculate primaries for result structure *)
+	val LAMBDA{param,body} = exp
+            (* need param field to define bodyEnv below *)
+	val resultEnt = eval(APP(fctEntity,paramRlzn))
+            (* apply the functor to the parameter instantiation *)
+	val paramTycs = getStrTycs(primaries,paramRlzn,penv)
+	val bodyEnv = EE.bind(param, STRent paramRlzn, closureEnv)
+	val (_,resPrimaries) = instFormal{sign=bodysig, entEnv=bodyEnv,
+					  rpath=IP.IPATH[], compInfo=compInfo,
+					  region=SourceMap.nullRegion}
+	val bodyPenv = primaries::penv (* push param primaries on primaryEnv *)
+	val resultTycs = getStrTycs{resPrimaries,resultEnt,bodyPenv)
+	val paramkinds = map tycsToKind paramTycs
+           (* or should we calculate the paramkinds directly from primaries *)
+     in (* TP_FCT(paramtycs,resPrimaries)  --- translate this to a tyc! *)
+        LT.tcc_fn(paramkinds, LT.tcc_seq resultTycs)
+    end
+
+(* where do the TP_SEL (=> LT.tcc_proj) tycpaths play a part? *)
+ 
+end (* local *)
+end (* structure ModTypes *)
+
+
+(* old code from reptycprops.sml 
 
   fun formalBody(ftmap0, bodyEnts, argTps, msig as M.SIG{elements, ...}, 
 		 paramEnts, fsig, d, i) =
@@ -296,7 +343,4 @@ in
       end (* fun strType *)
 
     | primaryCompInStruct _ = bug "Unexpected error signature"
-
-end (* local *)
-	
-end (* structure ModTypes *)
+*)
