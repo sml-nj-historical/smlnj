@@ -10,7 +10,7 @@ sig
     | FCTarg of Modules.fctEntity
 		
   (* val tpsKnd : tycpath -> PLambdaType.tkind, *)
-  val primaryToTyc : primaryEnv -> argtyc -> PLambdaType.tyc
+  val primaryToTyc : argtyc * primaryEnv * int -> PLambdaType.tyc
  
   val tyconToTyc : Types.tycon * primaryEnv * int -> PLambdaType.tyc
   val toTyc  : primaryEnv -> DebIndex.depth -> Types.ty -> PLambdaType.tyc
@@ -348,7 +348,7 @@ and toLty (penv : primaryEnv) d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) =
  *               TRANSLATING ML MODULES INTO FLINT TYPES                    *
  ****************************************************************************)
 
-fun specLty (elements : (Symbol.symbol * spec) list, entEnv, 
+fun specLty (elements : (Symbol.symbol * spec) list, entEnv : EE.entityEnv, 
 	     penv : primaryEnv, depth, compInfo) = 
   let val _ = debugmsg ">>specLty"
       fun g ([], entEnv, ltys) = rev ltys
@@ -358,13 +358,13 @@ fun specLty (elements : (Symbol.symbol * spec) list, entEnv,
         | g ((sym, STRspec {sign, entVar, ...})::rest, entEnv, ltys) =
               let val rlzn = EE.lookStrEnt(entEnv,entVar)
                   val _ = debugmsg ("--specLty[STRspec] "^Symbol.name sym)
-		  val lt = strRlznLty(penv, sign, rlzn, depth, compInfo) 
+		  val lt = strRlznLty(sign, rlzn, penv, depth, compInfo) 
                in g(rest, entEnv, lt::ltys)
               end
         | g ((sym, FCTspec {sign, entVar, ...})::rest, entEnv, ltys) = 
               let val rlzn = EE.lookFctEnt(entEnv,entVar)
                   val _ = debugmsg ("--specLty[FCTspec] "^Symbol.name sym)
-		  val lt = fctRlznLty(penv, sign, rlzn, depth, compInfo) 
+		  val lt = fctRlznLty(sign, rlzn, penv, depth, compInfo) 
                in g(rest, entEnv, lt::ltys)
               end
         | g ((sym, spec)::rest, entEnv, ltys) =
@@ -430,7 +430,7 @@ and strMetaLty (sign, rlzn as { entities, ... }: strEntity,
         end
       | _ => bug "unexpected sign and rlzn in strMetaLty"
 
-and strRlznLty (sign, rlzn : strEntity, penv : primaryEnv, depth, compInfo) =
+and strRlznLty (sign, rlzn : strEntity, penv : primaryEnv, depth : int, compInfo) =
     case (sign, ModulePropLists.strEntityLty rlzn)
      of (sign, SOME (lt,od)) => LT.lt_adj(lt, od, depth)
       | _ => (debugmsg ">>strRlznLty[strEntityLty NONE]";
