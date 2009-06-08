@@ -9,10 +9,10 @@
 
 signature MODTYPE =
 sig
-   val getStrTycs : Modules.primaries * Modules.strEntity * Modules.primaryEnv
-		    -> PLambdaType.tyc list
-   val getFctTyc : Modules.fctsig * Modules.fctEntity * Modules.primaryEnv
-		   * CompInfo.compinfo -> PLambdaType.tyc
+   val getStrTycs : Modules.primary list * Modules.strEntity 
+		    * TransTypes.primaryEnv -> PLambdaType.tyc list
+   val getFctTyc : Modules.fctSig * Modules.fctEntity * TransTypes.primaryEnv
+		   * Absyn.dec CompInfo.compInfo -> PLambdaType.tyc
 end
 
 structure ModType : MODTYPE =
@@ -24,11 +24,16 @@ local
   structure TP = TycPath
   structure EE = EntityEnv
   structure EP = EntPath
+  structure EV = EvalEntity
   structure SE = StaticEnv
   structure PP = PrettyPrintNew
   structure DI = DebIndex
   structure LT = LtyExtern
   structure TU = TypesUtil
+  structure INS = Instantiate
+  structure IP = InvPath
+  structure MK = ModKind
+  structure TT = TransTypes
 		
 in
 
@@ -90,21 +95,21 @@ in
   (* fetching the list of LT.tycs for the primaries of a structure
    * modelled on getTycPaths from the old version of Instantiate.
    * assumes primaries are passed as an argument. *)
-  fun getStrTycs{primaries, rlzn : M.strEntity, penv) =
+  fun getStrTycs(primaries, rlzn : M.strEntity, penv) =
       let val {entities, ...} = rlzn (* all we need is the entities field of rlzn *)
 	  fun getPrimaryTyc (primsig,_,ep) = 
 	      let val ent = EE.lookEP(entities, ep)
 	       in case ent
-		   of M.TYCent tyc => tyconToTyc(tyc,penv)  (* T.TP_TYC tyc *)
+		   of M.TYCent tyc => TT.tyconToTyc(tyc,penv)  (* T.TP_TYC tyc *)
 		    | M.FCTent fctEnt =>
 		      (case primsig
-			of PrimaryFct fctsig => getFctTyc(fctsig,fctEnt,penv)
+			of M.PrimaryFct fctsig => getFctTyc(fctsig,fctEnt,penv)
 			 | _ => bug "getPrimaryTyc")
 		    | M.ERRORent => bug "ERRORent in getStrTycs"
 		    | _ => bug "unexpected entity in getStrTycs"
 	      end
 
-       in map getPrimaryTyc epslist 
+       in map getPrimaryTyc primaries
       end
     | getStrTycs _ = []
 
@@ -113,21 +118,21 @@ in
 and getFctTyc(fctsig, fctEntity: M.fctEntity, penv, compInfo) =
     let val {primaries, paramEnv, exp, closureEnv, ...} = fctEntity
 	       (* maybe paramEnv should be a strEntity? *)
-	val paramRlzn = ??  paramEnv ?? (* we need a strEntity for bodyEnv *)
+	val paramRlzn = raise Fail "Unimplemented" (* ??  paramEnv ?? (* we need a strEntity for bodyEnv *) *)
 	val M.FSIG{bodySig,...} = fctsig
             (* need bodySig to calculate primaries for result structure *)
-	val LAMBDA{param,body} = exp
+	val M.LAMBDA{param,body} = exp
             (* need param field to define bodyEnv below *)
-	val resultEnt = eval(APP(fctEntity,paramRlzn))
+	val resultEnt = (* APP(fctEntity,paramRlzn) *) raise Fail "Unimplemented"
             (* apply the functor to the parameter instantiation *)
 	val paramTycs = getStrTycs(primaries,paramRlzn,penv)
-	val bodyEnv = EE.bind(param, STRent paramRlzn, closureEnv)
-	val (_,resPrimaries) = instFormal{sign=bodysig, entEnv=bodyEnv,
+	val bodyEnv = EE.bind(param, M.STRent paramRlzn, closureEnv)
+	val (_,resPrimaries) = INS.instFormal{sign=bodySig, entEnv=bodyEnv,
 					  rpath=IP.IPATH[], compInfo=compInfo,
 					  region=SourceMap.nullRegion}
 	val bodyPenv = primaries::penv (* push param primaries on primaryEnv *)
-	val resultTycs = getStrTycs{resPrimaries,resultEnt,bodyPenv)
-	val paramkinds = map tycsToKind paramTycs
+	val resultTycs = getStrTycs(resPrimaries,resultEnt,bodyPenv)
+	val paramkinds = map MK.tycsToKind paramTycs
            (* or should we calculate the paramkinds directly from primaries *)
      in (* TP_FCT(paramtycs,resPrimaries)  --- translate this to a tyc! *)
         LT.tcc_fn(paramkinds, LT.tcc_seq resultTycs)

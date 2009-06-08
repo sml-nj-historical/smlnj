@@ -11,8 +11,19 @@
 structure ModKind =
 struct
 
+local 
+
 structure EP = EntPath
 structure PT = PLambdaType
+structure TU = TypesUtil
+structure INS = Instantiate
+structure EE = EntityEnv
+
+open Modules
+
+in
+
+fun tycsToKind _ = raise Fail "Unimplemented" 
 
 (* what is the reason for passing rpath?  Is it relevant here? *)
 (* bind compInfo locally-global, so we don't have to thread it through all
@@ -21,7 +32,7 @@ structure PT = PLambdaType
 
 fun matchEV(ev, s as (TYCspec{entVar,...} | STRspec{entVar,...} | FCTspec{entVar,...})) =
        EP.eqEntVar(ev,entVar)
-  | matchEv _ = false
+  | matchEV _ = false
 
 fun getSpecEntVar(ev, elements) =
     let fun loop nil = NONE
@@ -38,31 +49,31 @@ fun getSpecEntPath([ev], elements) = getSpecEntVar(ev,elements)
 	   getSpecEntPath(evs,elements')
        | NONE => NONE)
 
-fun specToTkind (TYCspec{info=RegTycSpec{spec,...},...}) = PL.tkc_int(tyconArity spec)
-  | specToTkind (TYCspec{info=InfTycSpec{arity,...},...}) = PL.tkc_int arity
-  | specToTkind (FCTspec{sign,...}) = fsigToTkind(sign, entEnv?, rpath?, compInfo)
+fun specToTkind (TYCspec{info=RegTycSpec{spec,...},...}) = PT.tkc_int(TU.tyconArity spec)
+  | specToTkind (TYCspec{info=InfTycSpec{arity,...},...}) = PT.tkc_int arity
+  | specToTkind (FCTspec{sign,...}) = raise Fail "Unimplemented" (* fsigToTkind (sign, entEnv(*?*), rpath(*?*), compInfo) *)
 
 (*** computing the TycKind for a functor signature ***)
-fun fsigToTkind{sign as M.FSIG{paramvar, paramsig as SIG _, bodysig as SIG_, ...},
+and fsigToTkind(sign as FSIG{paramvar, paramsig as SIG _, bodysig as SIG_, ...},
 		entEnv, rpath, compInfo) = 
     let val region=SourceMap.nullRegion  (* dummy region, required by instFormal *)
 
-	val {rlzn=paramRlzn, tyceps=paramEps, ...} = 
-            instFormal{sign=paramsig, entEnv=entEnv,
+	val {rlzn=paramRlzn, primaries=paramPrimaries} = 
+            INS.instFormal{sign=paramsig, entEnv=entEnv,
 		       rpath=rpath, region=region, compInfo=compInfo}
 
-        val entEnv' = EE.bind(paramvar, STRent paramRlzn, entEnv))
+        val entEnv' = EE.bind(paramvar, STRent paramRlzn, entEnv)
 
-        val {tyceps=bodyEps, ...} =
-            instFormal{sign=bodysig, entEnv=entEnv', 
+        val {primaries=bodyPrimaries, ...} =
+            INS.instFormal{sign=bodysig, entEnv=entEnv', 
                        rpath=rpath, region=region, compInfo=compInfo}
 
         (* calculate the tkinds of the formal components in argeps and bodyeps
          * for tycons, this is based on the arity.
          * for formal functor components, we have to recurse *)
 
-        val paramTks = map (entToKind paramsig) paramEps
-        val bodyTks = map (entToKind bodysig) bodyEps
+        val paramTks = raise Fail "Unimplemented" (* map (entToKind paramsig) paramEps *)
+        val bodyTks = raise Fail "Unimplemented" (* map (entToKind bodysig) bodyEps *)
 
        in PT.tkc_fun(paramTks, PT.tkc_seq bodyTks)
       end
@@ -73,6 +84,7 @@ fun fsigToTkind{sign as M.FSIG{paramvar, paramsig as SIG _, bodysig as SIG_, ...
 and entToKind (sign as SIG{elements,...}) entPath =
     (* 1. look up the entPath in the signature (how?).
        2. if the entity determined by the entPath is *)
-    specToTkind(getSpecEntPath(entPath, elements))
-    
+    specToTkind(Option.valOf (getSpecEntPath(entPath, elements)))
+
+end (* local *)    
 end (* structure ModKind *)

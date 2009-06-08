@@ -62,6 +62,7 @@ local structure B  = Bindings
       structure V  = VarCon
       structure EU = ElabUtil
       structure FTM = FlexTycMap
+      structure MT = ModType
 
       structure IIMap = RedBlackMapFn (type ord_key = IntInf.int
 					val compare = IntInf.compare)
@@ -1420,7 +1421,7 @@ and mkStrexp (penv, se, d) =
 			     of M.FCT{rlzn={primaries,...}, ...} => primaries
 			      | _ => bug "Unexpected Functor in APPstr")
 
-		       val argtycs = getStrTycs(primaries,argRlzn,penv)
+		       val argtycs = MT.getStrTycs(primaries,argRlzn,penv)
 		                     
 		       val e2 = mkStr(penv, arg, d)
 		    in APP(TAPP(e1, argtycs), e2)

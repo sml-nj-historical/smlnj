@@ -113,6 +113,8 @@ Group
 
 	(* export of structures required to use FLINT directly *)
 	structure Translate
+        structure ModType
+        structure ModKind
 	structure FctKind
 	structure Lty
 	structure LtyKindChk
@@ -261,6 +263,8 @@ FLINT/trans/primopmap.sml
 FLINT/trans/translate.sml
 FLINT/trans/module-plists.sml
 FLINT/trans/transtypes.sml
+FLINT/trans/modkind.sml
+FLINT/trans/modtype.sml
 FLINT/trans/tycpath.sml
 FLINT/trans/flextycmap.sml
 FLINT/trans/debindex.sig
