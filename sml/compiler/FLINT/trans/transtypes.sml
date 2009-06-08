@@ -10,15 +10,15 @@ sig
     | FCTarg of Modules.fctEntity
 		
   (* val tpsKnd : tycpath -> PLambdaType.tkind, *)
-  val primaryToTyc : primaryEnv -> argtyc -> PLambdaType.tyc,
+  val primaryToTyc : primaryEnv -> argtyc -> PLambdaType.tyc
  
-  val tyconToTyc : Types.tycon * primaryEnv * int -> PlambdaType.tyc
+  val tyconToTyc : Types.tycon * primaryEnv * int -> PLambdaType.tyc
   val toTyc  : primaryEnv -> DebIndex.depth -> Types.ty -> PLambdaType.tyc
   val toLty  : primaryEnv -> DebIndex.depth -> Types.ty -> PLambdaType.lty
   val strLty : Modules.Structure * primaryEnv * DebIndex.depth 
                * ElabUtil.compInfo -> PLambdaType.lty
   val fctLty : Modules.Functor * primaryEnv * DebIndex.depth 
-               * ElabUtil.compInfo -> PLambdaType.lty}
+               * ElabUtil.compInfo -> PLambdaType.lty
 
 end (* signature TRANSTYPES *)
 
@@ -168,7 +168,7 @@ fun tpsTyc (penv : flexmap) d tp =
 *)
 
 (* based on tpsTyc *)
-fun primaryToTyc (primary: argtyc), penv : primaryEnv, depth: int) =
+fun primaryToTyc (primary: argtyc, penv : primaryEnv, depth: int) =
     case primary 
      of TYCarg tycon => tyconToTyc(tycon,penv,depth)
       | FCTarg fctEnt => bug "Unimplemented"
@@ -198,7 +198,7 @@ and tyconToTyc(tc : Types.tycon, penv : primaryEnv, d: int) =
 	    end
 
 	fun dtsFam (freetycs, fam as { members, ... } : dtypeFamily) =
-	    case ModulePropLists.dtfLtyc fam of
+	    case ModulePropLists.dtfLtyc fam 
 	      of SOME (tc, od) =>
 		 LT.tc_adj(tc, od, d) (* INVARIANT: tc contains no free variables 
 				       * so tc_adj should have no effects *)
@@ -223,14 +223,14 @@ and tyconToTyc(tc : Types.tycon, penv : primaryEnv, d: int) =
 
 	fun gentyc (_, PRIMITIVE pt) = LT.tcc_prim (PrimTyc.pt_fromint pt)
 	  | gentyc (stmp, DATATYPE {index, family, freetycs, stamps, root}) = 
-	    if ST.eq(stmp, TU.tycStamp(BT.refTycon)) then LT.tcc_prim(PT.ptc_ref) else
+	    if Stamps.eq(stmp, TU.tycStamp(BT.refTycon)) then LT.tcc_prim(PT.ptc_ref) else
 	      let val tc = dtsFam (freetycs, family)
 		  val n = Vector.length stamps 
 		  val names = Vector.map (fn ({tycname,...}: dtmember) => 
 					     Symbol.name tycname)
 					 (#members family)
 		  (* invariant: n should be the number of family members *)
-	       in LT.tcc_fix((n, names, tc, (map g freetycs)), index)
+	       in LT.tcc_fix((n, names, tc, (map toTyc freetycs)), index)
 	      end
 	  | gentyc (_, ABSTRACT tc) = (toTyc tc)
 	  | gentyc (stmp, FORMAL) = 
