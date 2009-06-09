@@ -47,11 +47,14 @@ fun getSpecEntPath([ev], elements) = getSpecEntVar(ev,elements)
     (case getSpecEntVar(ev,elements)
       of SOME(STRspec{sign=SIG{elements=elements',...},...}) =>
 	   getSpecEntPath(evs,elements')
-       | NONE => NONE)
+       | NONE => NONE
+       | SOME _ => raise Fail "getSpecEntPath: unexpected spec")
+  | getSpecEntPath([], _) = raise Fail "getSpecEntPath: empty entpath"
 
 fun specToTkind (TYCspec{info=RegTycSpec{spec,...},...}) = PT.tkc_int(TU.tyconArity spec)
   | specToTkind (TYCspec{info=InfTycSpec{arity,...},...}) = PT.tkc_int arity
   | specToTkind (FCTspec{sign,...}) = raise Fail "Unimplemented" (* fsigToTkind (sign, entEnv(*?*), rpath(*?*), compInfo) *)
+  | specToTkind _ = raise Fail "specToTkind: unexpected spec"
 
 (*** computing the TycKind for a functor signature ***)
 and fsigToTkind(sign as FSIG{paramvar, paramsig as SIG _, bodysig as SIG_, ...},
@@ -85,6 +88,7 @@ and entToKind (sign as SIG{elements,...}) entPath =
     (* 1. look up the entPath in the signature (how?).
        2. if the entity determined by the entPath is *)
     specToTkind(Option.valOf (getSpecEntPath(entPath, elements)))
+  | entToKind _ _ = raise Fail "entToKind: unexpected entity"
 
 end (* local *)    
 end (* structure ModKind *)

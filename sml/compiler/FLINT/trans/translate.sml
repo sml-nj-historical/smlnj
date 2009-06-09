@@ -1197,7 +1197,7 @@ fun mkCE (penv : TT.primaryEnv, TP.DATACON{const, rep, name, typ, ...}, ts, apOp
   end 
 
 fun mkStr (penv : TT.primaryEnv, s as M.STR { access, prim, ... }, d) =
-    mkAccInfo(access, fn () => strLty(penv, s, d, compInfo), NONE)
+    mkAccInfo(access, fn () => strLty(s, penv, d, compInfo), NONE)
   | mkStr _ = bug "unexpected structures in mkStr"
 
 fun mkFct (penv : TT.primaryEnv, f as M.FCT { access, prim, ...}, d) =
@@ -1205,7 +1205,7 @@ fun mkFct (penv : TT.primaryEnv, f as M.FCT { access, prim, ...}, d) =
 	val _ = debugmsg ("--mkFct penv size "^Int.toString(length penv))
 	val res = 
 	    mkAccInfo(access, 
-	      fn () => fctLty(penv, f, d, compInfo),
+	      fn () => fctLty(f, penv, d, compInfo),
 	      NONE) 
     in debugmsg "<<mkFct"; res
     end
@@ -1404,11 +1404,11 @@ and mkEBs (penv : TT.primaryEnv, ebs, d) =
  ***************************************************************************)
 and mkStrexp (penv, se, d) = 
     let val _ = debugmsg ">>mkStrexp"
-        fun getArgTycs entities (_,_,ep) = 
+        (* fun getArgTycs entities (_,_,ep) = 
             case EntityEnv.lookEP(entities, ep)
               of M.TYCent tyc => TT.TYCarg tyc
 	       | M.FCTent fctEntity => TT.FCTarg fctEntity (* compute tycpath or pl lty? *)
-               | M.ERRORent => bug "unexpected entities in getArgTycs"
+               | M.ERRORent => bug "unexpected entities in getArgTycs" *)
 
 	fun mk(strexp : Absyn.strexp) : PLambda.lexp =
 	    (case strexp 
@@ -1416,12 +1416,14 @@ and mkStrexp (penv, se, d) =
 		   let val e1 = mkFct(penv, oper, d) 
 		       val _ = debugmsg ("--mkStrexp[APPstr] depth "^
 					 Int.toString d)
-		       val primaries =
+		       val (primaries, paramEnv) =
 			   (case oper
-			     of M.FCT{rlzn={primaries,...}, ...} => primaries
+			     of M.FCT{rlzn={primaries,paramEnv,...}, ...} => 
+				(primaries, paramEnv)
 			      | _ => bug "Unexpected Functor in APPstr")
 
-		       val argtycs = MT.getStrTycs(primaries,argRlzn,penv)
+		       val argtycs = 
+			   MT.getStrTycs(primaries,paramEnv,penv, compInfo)
 		                     
 		       val e2 = mkStr(penv, arg, d)
 		    in APP(TAPP(e1, argtycs), e2)
@@ -1490,7 +1492,7 @@ and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp =
                    val body = mkStrexp (penv0, def, nd)
                    val hdr = buildHdr v
 		   val _ = debugmsg "--mkFctexp[in strLty]"
-		   val lty = strLty(penv0, param, nd, compInfo)
+		   val lty = strLty(param, penv0, nd, compInfo)
 		   val _ = debugmsg "--mkFctexp[done strLty]"
                (* binding of all v's components *)
                in
@@ -1613,7 +1615,7 @@ and mkDec (penv0 : TT.primaryEnv, dec : Absyn.dec, d : DI.depth)
               let (* special hack to make the import tree simpler *)
                   fun mkos (_, s as M.STR { access = acc, ... }) =
                       if extern acc then 
-                          let val _ = mkAccT(acc, strLty(penv0, s, d, compInfo),
+                          let val _ = mkAccT(acc, strLty(s, penv0, d, compInfo),
 					     NONE)
                           in ()
                           end
