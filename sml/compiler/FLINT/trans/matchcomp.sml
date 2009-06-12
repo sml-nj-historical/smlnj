@@ -406,6 +406,10 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 	       in CASE{bindings = bindings, constraints = constraints,
 		       sign = sign, cases = addACase(pcon, nil, rule, cases)}
 	       end
+      | mergeAndor (INTpat (s, t), c as AND _, rule) =
+	  if TU.equalType (t, BT.int64Ty) then
+	      mergeAndor64 (LN.int64 s, c, rule)
+	  else bug "bad pattern merge: INTpat AND (not 64)"
       | mergeAndor (WORDpat(s,t), c as CASE{bindings, cases, 
 					    constraints, sign}, rule) =
 	  if TU.equalType (t, BT.word64Ty) then
@@ -414,6 +418,10 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 	       in CASE{bindings = bindings, constraints = constraints,
 		       sign = sign, cases = addACase(pcon, nil, rule, cases)}
 	       end
+      | mergeAndor (WORDpat(s,t),c as AND _, rule) =
+	  if TU.equalType (t, BT.word64Ty) then
+	      mergeAndor64 (LN.word64 s, c, rule)
+	  else bug "bad pattern merge: WORDpat AND (not 64)"
       | mergeAndor (REALpat r, CASE{bindings, cases, constraints,sign}, rule) =
 	  CASE {bindings = bindings, constraints = constraints, sign=sign,
 		cases = addACase(REALpcon r, nil, rule, cases)}
