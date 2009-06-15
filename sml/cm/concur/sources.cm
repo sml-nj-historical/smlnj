@@ -11,11 +11,14 @@
 Group is
 	concur.sml
 	servers.sig
+(*
 # if defined (OPSYS_UNIX)
 	unix-servers.sml
 # else
 	dummy-servers.sml
 # endif
+*)
+dummy-servers.sml (* FIXME *)
 	../util/sources.cm
 	$smlnj/basis/basis.cm
 	$smlnj/internal/srcpath-lib.cm
