@@ -64,6 +64,7 @@ sml:
 install:
 	cp -p $(BASIS_CXX_FILES) $(NEW_RUNTIME_DIR)/src/smlnj-rt/basis/glue
 	cp -p $(RT_CXX_FILES) $(NEW_RUNTIME_DIR)/src/smlnj-rt/runtime/glue
+	cp -p $(SML_FILES) $(BASIS_IMP_DIR)/RuntimeIDL
 
 clean:
 	rm -rf *.h *.c *.hxx *.cxx *.sml *.cm
