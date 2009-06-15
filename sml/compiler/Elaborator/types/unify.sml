@@ -144,6 +144,7 @@ fun fieldwise(_,just2,_,[],fields2) = map (fn (n,t) => (n,just2 t)) fields2
 fun adjustType (var,depth,eq,ty) =
     let val _ = debugPPType(">>adjustType: ",ty)
 	fun iter _ WILDCARDty = ()
+	  | iter eq (MARKty(ty, _)) = iter eq ty
 	  | iter eq (VARty(var' as ref(info))) =
 	      (case info
 		 of INSTANTIATED ty => 
@@ -240,7 +241,10 @@ fun unifyTy(type1,type2) =
 	val _ = debugPPType(">>unifyTy: type2: ",type2)
 	fun unifyRaw(type1, type2) = 
 	 case (type1, type2)
-	  of (VARty var1,VARty var2) =>
+	  of (MARKty (ty, _), ty') => unifyRaw(TU.prune ty, ty')
+	   | (ty, MARKty (ty', _)) => unifyRaw(ty, TU.prune ty')
+	      (* missing region args to unify, so MARKs are discarded *)
+	   | (VARty var1,VARty var2) =>
 	       unifyTyvars(var1,var2)  (* used to take type1 and type2 as args *)
 	   | (VARty var1, _) => (* type2 may be WILDCARDty *)
 	       instTyvar(var1,type2)
@@ -373,6 +377,7 @@ and unifyTyvars (var1, var2) =
 and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty) =
       (case ty
          of WILDCARDty => ()
+	  | MARKty(ty1, region1) => instTyvar (var, ty1)
 	  | _ => adjustType(var,depth,eq,ty);
        debugPPType("instTyvar ", VARty var);
        debugPPType("instTyvar to ", ty);
@@ -388,6 +393,7 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty) =
                     merge_fields(false,true,fields,record_fields);
                     var := INSTANTIATED ty
                 end
+	    | MARKty(ty1, region1) => instTyvar (var, ty1)
             | WILDCARDty => (* propagate WILDCARDty to the fields *)
 	       (app (fn (lab,ty) => unifyTy(WILDCARDty,ty)) fields)
             | _ => raise Unify (TYP(VARty(var), ty))
@@ -404,6 +410,7 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty) =
          of VARty var1 => unifyTyvars(var, var1)
               (* because of asymmetric handling of SCHEME tyvars in
                * unifyTyvars -- here SCHEME must be first arg *)
+	  | MARKty(ty1, region) => instTyvar(var, ty1)
           | CONty(tyc,nil) => var := INSTANTIATED ty
           | CONty(tyc,_) => (* nonnull arguments *)
              (case TU.nullReduceType ty
@@ -413,6 +420,7 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty) =
                   * for membership in the allowed basic types
                   * (e.g. int, real, ...) *)
                  | WILDCARDty => ()
+		| MARKty(ty1, region) => instTyvar(var, ty1)
                  | _ => raise Unify(OVLD ty))
           | WILDCARDty => ()
           | _ => bug "instTyvar: SCHEME")
@@ -420,14 +428,16 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty) =
   | instTyvar (var as ref(i as LITERAL{kind,...}),ty) =
       (case TU.headReduceType ty
 	 of WILDCARDty => ()
+	  | MARKty(ty1, region) => instTyvar(var, ty1)
 	  | ty' => 
 	     if OLL.isLiteralTy(kind,ty')
 	     then var := INSTANTIATED (TU.nullReduceType ty)
 	     else raise Unify (LIT i))   (* could return the ty for error msg*)
 
-  | instTyvar (ref(i as UBOUND _),ty) =
+  | instTyvar (var as ref(i as UBOUND _),ty) =
       (case ty
          of WILDCARDty => ()
+	  | MARKty(ty1, region) => instTyvar(var, ty1)
           | _ =>  raise Unify (UBV i))   (* could return the ty for error msg*)
 
   | instTyvar (ref(INSTANTIATED _),_) = bug "instTyvar: INSTANTIATED"

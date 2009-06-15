@@ -123,6 +123,7 @@ fun expandREC (family as {members: T.dtmember vector, ...}, stamps, freetycs) =
         | g x = x
       fun f(CONty(tyc,tyl)) = CONty(g tyc, map f tyl)
         | f(x as IBOUND _) = x
+	| f(MARKty (t, _)) = f t
         | f _ = bug "unexpected type in expandREC"
    in f
   end
@@ -137,6 +138,8 @@ fun equivType(ty,ty') =
 		     handle ReduceType =>
 			 (equivType(ty,TU.reduceType ty')
  		    handle ReduceType => false)))
+	| eq(MARKty (t, _), t') = eq(t, t')
+	| eq(t, MARKty (t', _)) = eq(t, t')
         | eq(VARty _, _) = raise Poly
         | eq(_, VARty _) = raise Poly
         | eq(POLYty _, _) = raise Poly
@@ -230,6 +233,7 @@ fun test(ty, 0) = raise Poly
 
       case ty
        of VARty(ref(INSTANTIATED t)) => test(t,depth)
+        | MARKty(ty, region) => test(ty, depth)
         | CONty(DEFtyc _, _) => test(TU.reduceType ty,depth)
         | CONty(RECORDtyc _, tyl) =>
             (find ty handle Notfound =>

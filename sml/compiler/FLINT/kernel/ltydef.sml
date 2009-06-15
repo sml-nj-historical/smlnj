@@ -24,6 +24,15 @@ local structure PT = PrimTyc
       val lt_out = LK.lt_out 
       val lt_eqv = LK.lt_eqv
 
+      (* debugging *)
+      structure PP = PrettyPrintNew
+      structure PU = PPUtilNew
+      structure EM = ErrorMsg
+      open PPLty
+      val with_pp = PP.with_default_pp
+      val debugging : bool ref = ref false
+      val dp : int ref = ref 20
+
 in
 
 (** basic entities *)
@@ -304,7 +313,18 @@ val ltd_fct    : lty -> lty list * lty list = fn lt =>
                        | _ => bug "unexpected lty in ltd_fct")
 val ltd_poly   : lty -> tkind list * lty list = fn lt => 
       (case lt_out lt of LT.LT_POLY x => x
-                       | _ => bug "unexpected lty in ltd_poly")
+                       | _ =>
+                    (with_pp(fn s =>
+                       let val {break,newline,openHVBox,openHOVBox,
+				closeBox, pps, ppi} = PU.en_pp s
+                       in openHVBox 0;
+                          pps "***ltd_poly***"; newline();
+                          pps "arg:"; newline();
+                          PPLty.ppLty (!dp) s lt; newline();
+                          closeBox ();
+                          newline(); PP.flushStream s
+			end);
+ bug "unexpected lty in ltd_poly"))
 
 (** lty predicates *)
 val ltp_tyc    : lty -> bool = fn lt =>

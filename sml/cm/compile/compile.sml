@@ -108,7 +108,7 @@ in
 	    fun statenv () =
 		let val mm0 = StabModmap.get ()
 		    val m = GenModIdMap.mkMap' (context_senv, mm0)
-		    fun context _ = m
+		    fun context _ = (m, fn () => "bfc2memo")
 		    val { pid, pickle } = BF.senvPickleOf bfc
 		in UnpickMod.unpickleEnv context (pid, pickle)
 		end
@@ -310,9 +310,11 @@ in
 			    val topLevel = EnvRef.loc ()
 			    val orig_settings =
 				map (fn c => #save'restore c ()) controllers
+(*
 			    val orig_toplenv = #get topLevel ()
+*)
 			    fun reset _ =
-				(#set topLevel orig_toplenv;
+				((* #set topLevel orig_toplenv; *)
 				 app (fn r => r ()) orig_settings)
 			    fun work () = let
 				val _ = map (fn c => #set c ()) controllers

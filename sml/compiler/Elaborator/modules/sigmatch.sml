@@ -939,7 +939,8 @@ let
 
                                  val spath = SP.SPATH[sym]
                                  val actvar = VALvar{path=spath, typ=ref acttyp,
-                                             access=dacc, prim=prim}
+                                             access=dacc, prim=prim,
+					     btvs = ref []}
 			         (* spectyp may be polymorphic even if 
 				    acttyp is monomorphic (for nonstrict
 				    type operators), see modules test case 309 *)
@@ -951,7 +952,8 @@ let
                                           let val acc = DA.namedAcc(sym, mkv)
                                               val specvar = 
                                                 VALvar{path=spath, typ=ref spectyp,
-                                                       access=acc, prim=prim}
+                                                       access=acc, prim=prim,
+						       btvs = ref []}
                                               val vb = 
                                                 A.VB {pat=A.VARpat specvar,
                                                       exp=A.VARexp(ref actvar, ptvs),
@@ -986,6 +988,7 @@ let
                                           val specvar = 
                                               VALvar{path=SP.SPATH[name], access=acc,
                                                      prim=PrimOpId.NonPrim,
+						     btvs = ref [],
                                                      typ=ref spectyp}
                                           val vb = 
                                               A.VB {pat=A.VARpat specvar,
@@ -1385,7 +1388,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 *)
                    val spath = SP.SPATH[sym]
                    val srcvar = VALvar{path=spath, typ=ref srctyp,
-                                       access=dacc, prim=prim}
+		   		       btvs = ref[], access=dacc, prim=prim}
 
 (* does nothing -- just use decs and srcvar below
                    val (decs', nv) = (decs, srcvar)

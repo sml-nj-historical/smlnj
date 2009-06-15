@@ -9,6 +9,7 @@ sig
     = VALvar of				(* ordinary variables *)
         {path : SymPath.path,
 	 typ : Types.ty ref,
+	 btvs : Types.tyvar list ref,
          access : Access.access,
          prim   : PrimOpId.primId}
     | OVLDvar of			(* overloaded identifier *)

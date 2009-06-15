@@ -9,14 +9,13 @@
  * Author: Matthias Blume (blume@tti-c.org)
  *)
 Group is
-	$smlnj/basis/basis.cm
-
 	concur.sml
 	servers.sig
-# if defined (OPSYS_UNIX) andalso defined (structure Posix)
+# if defined (OPSYS_UNIX)
 	unix-servers.sml
 # else
 	dummy-servers.sml
 # endif
 	../util/sources.cm
+	$smlnj/basis/basis.cm
 	$smlnj/internal/srcpath-lib.cm

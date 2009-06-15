@@ -72,6 +72,7 @@ fun softUnify(ty1: ty, ty2: ty): unit =
 					   | _ => raise SoftUnify)
                                     | _ => raise SoftUnify) (* won't happen? *)
 			   else app (scan eq) args
+		       | MARKty(tyc, region) => scan eq tyc
 		       | ty => ()  (* propagate error *)
 	     in case info
 		  of (SCHEME eq | OPEN{kind=META,eq,...}) =>
@@ -98,6 +99,8 @@ fun softUnify(ty1: ty, ty2: ty): unit =
 			     handle TU.ReduceType => 
 			       unify(ty1, TU.reduceType ty2)
 			       handle TU.ReduceType => raise SoftUnify)
+		   | (MARKty(ty1, region), ty2) => unify(ty1, ty2)
+		   | (ty1, MARKty(ty2,region)) => unify(ty1, ty2)
 		   | _ => raise SoftUnify
 	    end
 	

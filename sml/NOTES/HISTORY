@@ -1,3 +1,4 @@
+B
 This is the HISTORY file for the SML/NJ repository.
 
 An entry should be made for _every_ commit to the repository.
@@ -13,6 +14,122 @@ Date: yyyy/mm/dd hh:mm:ss
 Tag: cvs-tag-for-this-change
 Description:
 
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2009/06/12 11:02:00 CDT
+Description:
+
+1. Corrected problem in config/actions that led to the so-called
+   "unpickling bug" which appeared in version 110.68.
+
+2. Provided fix for the 64-bit pattern match bug.
+
+----------------------------------------------------------------------
+Name John Reppy (http://cs.uchicago.edu/~jhr)
+Date 2009/03/21
+Description:
+
+Fixed bug in Int32.fmt when the argument was the minimum int and the
+radix was something other than DEC.
+
+----------------------------------------------------------------------
+Name Aaron Turon (turon@ccs.neu.edu)
+Date 2009/02/21
+Description:
+
+Fixed bugs in how ml-antlr parsed ML types in %tokens specifications.
+
+----------------------------------------------------------------------
+Name: Jon Riehl (http://www.jonriehl.com/)
+Date: 2009/01/13
+Description:
+
+Picking up some additional fixes for 110.69, including a fix for
+spaces in CM file paths.
+
+----------------------------------------------------------------------
+Name: Jon Riehl (http://www.jonriehl.com/)
+Date: 2008/12/22
+Description:
+
+Version bumped to 110.69.  New bootfiles.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/12/06
+Description:
+
+Re-enabled some CPS optimizations (first_contract and eta).  The most
+important effect of this change is to make uses of SMLofNJ.Cont.capture
+be properly tail recursive.
+
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2008/12/03
+Description:
+
+New concurrency-related instructions for x86 and amd64 code 
+generators.
+  - PAUSE: Notify the CPU that the program is spin waiting.
+  - MFENCE: memory fence for reads and writes.
+  - SFENCE: memory fence for writes.
+  - LFENCE: memory fence for reads.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/12/02
+Description:
+
+Added makefile and other support for building runtime on OpenBSD.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/08/13
+Description:
+
+Version bumped to 110.68.  New bootfiles.
+
+----------------------------------------------------------------------
+Name Aaron Turon (turon@ccs.neu.edu)
+Date 2008/08/11
+Description:
+
+Minor fix to ml-ulex backend for regexps that match any character
+and perform a single action.  Previously the emitted code would 
+not allow the regexps to match any character at all.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/08/05
+Description:
+
+Added build support for OpenBSD (thanks to Brian O'Hanlon).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/07/12
+Description:
+
+Fixed Int64.fromString to use base-10.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/04/12
+Description:
+
+Various updates to the ml-lpt tree.  The documentation has been updated;
+bugs in the parsing of negation and character classes in ml-ulex have
+been fixed; and changes have been made to make the ml-lpt tools more
+compatible with MLton (and other SML implementations).  Thanks to
+Matthew Fluet and Aaron Turon for their patches.
+
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/20/04
+Description:
+
+Implemented timer-based profiling on Windows, with behavior as close
+to the *nix ITIMER-based profiling as possible.
 ----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
 Date: 2008/07/04

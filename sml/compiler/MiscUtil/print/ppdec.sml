@@ -90,7 +90,7 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
                 of #"$":: #","::_ => true
                  | _ => false
 
-       fun ppVar (VALvar{path, access, typ=(t0 as ref ty), prim}) =
+       fun ppVar (VALvar{path, access, typ=(t0 as ref ty), prim, ...}) =
             if isLazyBogus path then () else
              (openHVBox ppstrm (PP.Rel 0);
 	      openHOVBox ppstrm (PP.Rel 2);

@@ -48,7 +48,8 @@ struct
       fun resolve () =
 	  let fun resolveLit ty =
 		  case TU.prune ty
-		   of T.VARty(tv as ref(T.LITERAL{kind,...})) =>
+		  of (T.VARty(tv as ref(T.LITERAL{kind,...})) | 
+		      T.MARKty(T.VARty(tv as ref(T.LITERAL{kind,...})),_)) =>
 		      tv := T.INSTANTIATED(default kind)
 		    | _ => () (* ok, must have been successfully instantiated *)
 	  in app resolveLit (!lits)

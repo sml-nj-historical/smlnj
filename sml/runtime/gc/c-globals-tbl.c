@@ -7,7 +7,6 @@
  */
 
 #include "ml-base.h"
-#include <string.h>
 #include "tags.h"
 #include "ml-values.h"
 #include "c-globals-tbl.h"
