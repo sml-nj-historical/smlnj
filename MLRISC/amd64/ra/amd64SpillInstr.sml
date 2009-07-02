@@ -389,12 +389,21 @@ functor AMD64SpillInstr (
       | spill CB.FP = spillF
       | spill _ = error "spill"
 
+    val comment : string -> Annotations.annotation = (#create MLRiscAnnotations.COMMENT)
+
     (* reload a general purpose register r at instruction i from spillLoc *)
     fun reloadR (i, r, spillLoc) = let
         fun reload (instr, an) = let
 	    fun done (instr, an) = {code=[mark (instr, an)], proh=[], newReg=NONE}
-	    fun replace (opnd as I.Direct (_, r')) = if CB.sameColor (r, r')
-	        then spillLoc
+	    fun replace (opnd as I.Direct (sz, r')) = if CB.sameColor (r, r')
+	        then (case spillLoc
+		       of I.Direct (_, r) => 
+			  (* I believe that this case occurrs when the mlrisc register allocator
+			   * is doing something clever, as the spill location is clearly not a stack
+			   * location. in any case, the size associated with the register r is bogus,
+			   * which is why we use the size of the register being spilled. *)
+			  I.Direct (sz, r) 
+			| _ => spillLoc)
 	        else opnd
 	      | replace opnd = opnd
 	    fun operand (opnd, tmp) = let 
