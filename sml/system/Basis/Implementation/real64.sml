@@ -1,7 +1,7 @@
 (* real64.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 structure Real64Imp : REAL = 
@@ -33,8 +33,6 @@ structure Real64Imp : REAL =
 
     val rbase = w31_r CoreIntInf.base
     val baseBits = InlineT.Word31.copyt_int31 CoreIntInf.baseBits
-    val intbound = w31_r 0wx40000000	(* not necessarily the same as rbase *)
-    val negintbound = ~intbound
 
   (* The next three values are computed laboriously, partly to
    * avoid problems with inaccurate string->float conversions
@@ -83,20 +81,12 @@ structure Real64Imp : REAL =
 
     fun isFinite x = negInf < x andalso x < posInf
     fun isNan x = Bool.not(x==x)
-    fun floor x = if x < intbound andalso x >= negintbound then
-		      Assembly.A.floor x
-		  else if isNan x then raise General.Domain
-		  else raise General.Overflow
 
-    fun ceil n = ~1 - floor (~1.0 - n)
-    fun trunc n = if n < 0.0 then ceil n else floor n
-    fun round x =
-        (* ties go to the nearest even number *)
-	let val fl = floor(x+0.5)
-	    val cl = ceil(x-0.5)
-	 in if fl=cl then fl
-	    else if Word31Imp.andb(Word31Imp.fromInt fl,0w1) = 0w1 then cl else fl
-	end
+  (* these functions are implemented in base/system/smlnj/init/pervasive.sml *)
+    val floor = floor
+    val ceil = ceil
+    val trunc = trunc
+    val round = round
 
   (* This is the IEEE double-precision maxint *)
     val maxInt = 4503599627370496.0

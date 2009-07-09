@@ -1,7 +1,7 @@
 (* string.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 structure StringImp : STRING =
@@ -25,8 +25,13 @@ structure StringImp : STRING =
 
     val maxSize = Core.max_length
 
-  (* the length of a string *)
-    val size = InlineT.CharVector.length
+  (* these functions are implemented in base/system/smlnj/init/pervasive.sml *)
+    val size = size
+    val op ^ = op ^
+    val concat = concat
+    val implode = implode
+    val explode = explode
+    val substring = substring
 
     val unsafeCreate = Assembly.A.create_s
 
@@ -41,20 +46,6 @@ structure StringImp : STRING =
 
   (* get a character from a string *)
     val sub : (string * int) -> char = InlineT.CharVector.chkSub
-
-  (* Return the n-character substring of s starting at position i.
-   * NOTE: we use words to check the right bound so as to avoid
-   * raising overflow.
-   *)
-    local
-      structure W = InlineT.DfltWord
-    in
-    fun substring (s, i, n) =
-	  if ((i < 0) orelse (n < 0)
-	  orelse W.<(W.fromInt(size s), W.+(W.fromInt i, W.fromInt n)))
-	    then raise General.Subscript
-	    else PreString.unsafeSubstring (s, i, n)
-    end (* local *)
 
     fun extract (v, base, optLen) = let
 	  val len = size v
@@ -88,67 +79,11 @@ structure StringImp : STRING =
 	    (* end case *)
 	  end
 
-    fun op ^ ("", s) = s
-      | op ^ (s, "") = s
-      | op ^ (x, y) = PreString.concat2 (x, y)
-
-  (* concatenate a list of strings together *)
-    fun concat [s] = s
-      | concat (sl : string list) = let
-	fun length (i, []) = i
-	  | length (i, s::rest) = length(i+size s, rest)
-	in
-	  case length(0, sl)
-	   of 0 => ""
-	    | 1 => let
-		fun find ("" :: r) = find r
-		  | find (s :: _) = s
-		  | find _ = "" (** impossible **)
-		in
-		  find sl
-		end
-	    | totLen => let
-		val ss = create totLen
-		fun copy ([], _) = ()
-		  | copy (s::r, i) = let
-		      val len = size s
-		      fun copy' j = if (j = len)
-			    then ()
-			    else (
-			      unsafeUpdate(ss, i+j, unsafeSub(s, j));
-			      copy'(j+1))
-		      in
-			copy' 0;
-			copy (r, i+len)
-		      end
-		in
-		  copy (sl, 0);  ss
-		end
-	  (* end case *)
-	end (* concat *)
-
   (* concatenate a list of strings, using the given separator string *)
     fun concatWith _ [] = ""
       | concatWith _ [x] = x
       | concatWith sep (h :: t) =
 	concat (rev (foldl (fn (x, l) => x :: sep :: l) [h] t, []))
-
-  (* implode a list of characters into a string *)
-    fun implode [] = ""
-      | implode cl =  let
-	  fun length ([], n) = n
-	    | length (_::r, n) = length (r, n+1)
-	  in
-	    PreString.implode (length (cl, 0), cl)
-	  end
-
-  (* explode a string into a list of characters *)
-    fun explode s = let
-	  fun f(l, ~1) = l
-	    | f(l,  i) = f(unsafeSub(s, i) :: l, i-1)
-	  in
-	    f(nil, size s - 1)
-	  end
 
     fun map f vec = (case (size vec)
 	   of 0 => ""

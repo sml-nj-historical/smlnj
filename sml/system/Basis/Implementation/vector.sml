@@ -1,7 +1,7 @@
 (* vector.sml
  *
- * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 structure Vector : VECTOR =
@@ -27,17 +27,8 @@ structure Vector : VECTOR =
     fun checkLen n =
 	if InlineT.DfltInt.ltu(maxLen, n) then raise General.Size else ()
 
-    fun fromList l = let
-	(* no list can be longer than what is representable as int: *)
-	  fun len ([], n) = n
-	    | len ([_], n) = n ++ 1
-	    | len (_::_::r, n) = len (r, n ++ 2)
-	  val n = len (l, 0)
-    in
-	checkLen n;
-	if n = 0 then Assembly.vector0
-	else Assembly.A.create_v (n, l)
-    end
+  (* this function is implemented in base/system/smlnj/init/pervasive.sml *)
+    val fromList = vector
 
     fun tabulate (0, _) = Assembly.vector0
       | tabulate (n, f) = let
