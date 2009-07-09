@@ -1,15 +1,16 @@
 (* list.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Available (unqualified) at top level:
  *   type list
  *   val nil, ::, hd, tl, null, length, @, app, map, foldr, foldl, rev
+ *   exception Empty
  *
  * Consequently the following are not visible at top level:
  *   val last, nth, take, drop, concat, revAppend, mapPartial, find, filter,
  *       partition, exists, all, tabulate
- *   exception Empty
  *
  * The following infix declarations will hold at top level:
  *   infixr 5 :: @
@@ -31,9 +32,17 @@ structure List : LIST =
 
     exception Empty = Empty
 
+  (* these functions are implemented in base/system/smlnj/init/pervasive.sml *)
     val null = null
     val hd = hd
     val tl = tl
+    val length = length
+    val rev = rev
+    val op @ = op @
+    val foldr = foldr
+    val foldl = foldl
+    val app = app
+    val map = map
 
     fun last [] = raise Empty
       | last [x] = x
@@ -66,18 +75,12 @@ structure List : LIST =
             if n >= 0 then loop (l,n) else raise Subscript
           end
 
-    val length = length
-    val rev = rev
-    val op @ = op @
 
     fun concat [] = []
       | concat (l::r) = l @ concat r
 
     fun revAppend ([],l) = l
       | revAppend (h::t,l) = revAppend(t,h::l)
-
-    val app = app
-    val map = map
 
     fun mapPartial pred l = let
           fun mapp ([], l) = rev l
@@ -103,8 +106,6 @@ structure List : LIST =
                 else loop(t, trueList, h::falseList)
           in loop (l,[],[]) end
 
-    val foldr = foldr
-    val foldl = foldl
 
     fun exists pred = let 
           fun f [] = false

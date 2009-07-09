@@ -1,4 +1,3 @@
-B
 This is the HISTORY file for the SML/NJ repository.
 
 An entry should be made for _every_ commit to the repository.
@@ -13,6 +12,23 @@ Name: Your Name (web page or e-mail)
 Date: yyyy/mm/dd hh:mm:ss
 Tag: cvs-tag-for-this-change
 Description:
+
+----------------------------------------------------------------------
+Name John Reppy (http://cs.uchicago.edu/~jhr)
+Date 2009/07/09
+Description:
+
+Removed redundant implementations of various top-level operations by
+consolidating them in base/system/smlnj/init/pervasive.sml.  This
+change also fixes a bug in that the top-level version of round was
+incorrect.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2009/06/15 11:17:00 CDT
+Description:
+
+Bumped version number to 110.70.  New bootfiles.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)

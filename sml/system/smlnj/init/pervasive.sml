@@ -1,5 +1,15 @@
-(* (C) 1999 Lucent Technologies, Bell Laboratories *)
-
+(* pervasive.sml
+ *
+ * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * These are the pervasive bindings as defined by the SML'97
+ * Basis Library specification (Chapter 3 of Gansner and
+ * Reppy, 2004).  Note that this file must be processed before
+ * the code in base/system/Basis/Implementation, so we have to
+ * reverse the order of the bindings (e.g., Real.round is bound
+ * to the top-level round, instead of the other way around).
+ *)
 
 infix 7  * / mod div
 infix 6 ^ + -
@@ -45,13 +55,13 @@ local
 	    else let
 		val ai = CV.sub (a, i)
 		val bi = CV.sub (b, i)
-	    in
-		InlineT.Char.< (ai, bi) orelse
-		(InlineT.= (ai, bi) andalso cmp (DI.+ (i, 1)))
-	    end
-    in
-	cmp 0
-    end
+		in
+		  InlineT.Char.< (ai, bi) orelse
+		  (InlineT.= (ai, bi) andalso cmp (DI.+ (i, 1)))
+		end
+	in
+	  cmp 0
+	end
     fun stringle (a, b) = if stringlt (b, a) then false else true
     fun stringgt (a, b) = stringlt (b, a)
     fun stringge (a, b) = stringle (b, a)
@@ -134,7 +144,8 @@ exception Fail of string
  * val isSome
  * val valOf
  * val op =
- * val op <> *)
+ * val op <>
+ *)
 open PrePervasive
 
 val ! = InlineT.!
@@ -150,20 +161,6 @@ datatype ref = datatype PrimTypes.ref
 
 (* top-level value identifiers *)
 
-fun vector l = let
-    fun len ([], n) = n
-      | len ([_], n) = n+1
-      | len (_::_::r, n) = len(r, n+2)
-    val n = len (l, 0)
-in
-    if DI.ltu (Core.max_length, n) then raise Size
-    else if (n = 0) then
-	Assembly.vector0
-    else
-	Assembly.A.create_v(n, l)
-end
-
-
 (* Bool *)
 val not = InlineT.inlnot
 
@@ -174,17 +171,35 @@ type int = PrimTypes.int
 type word = PrimTypes.word
 
 (* Real *)
+local
+  val w31_r = R64.from_int32 o I32.copy_word31
+  val intbound = w31_r 0wx40000000	(* not necessarily the same as rbase *)
+  val negintbound = R64.~ intbound
+in
 type real = PrimTypes.real
 
-val real = InlineT.Real64.from_int31
+val real = R64.from_int31
+
 fun floor x =
-    if R64.< (x, 1073741824.0) andalso R64.>= (x, ~1073741824.0) then
-	Assembly.A.floor x
-    else if R64.== (x, x) then raise Overflow (* not a NaN *)
-    else raise Domain			(* NaN *)
+      if x < intbound andalso x >= negintbound then Assembly.A.floor x
+      else if R64.==(x, x) then raise Overflow (* not a NaN *)
+      else raise Domain
+
 fun ceil x = DI.- (~1, floor (R64.~ (x + 1.0)))
+
 fun trunc x = if R64.< (x, 0.0) then ceil x else floor x
-fun round x = floor (x + 0.5)		(* bug: does not round-to-nearest *)
+
+fun round x = let
+    (* ties go to the nearest even number *)
+      val fl = floor(x+0.5)
+      val cl = ceil(x-0.5)
+      in
+	if fl=cl then fl
+	else if W31.andb(W31.fromInt fl,0w1) = 0w1 then cl
+	else fl
+      end
+
+end (* local *)
 
 (* List *)
 exception Empty
@@ -195,46 +210,62 @@ fun hd (h :: _) = h
 fun tl (_ :: t) = t
   | tl [] = raise Empty
 fun foldl f b l = let
-    fun f2 ([], b) = b
-      | f2 (a :: r, b) = f2 (r, f (a, b))
-in
-    f2 (l, b)
-end
+      fun f2 ([], b) = b
+	| f2 (a :: r, b) = f2 (r, f (a, b))
+      in
+	f2 (l, b)
+      end
 fun length l = let
-    fun loop (n, []) = n
-      | loop (n, _ :: l) = loop (n + 1, l)
-in
-    loop (0, l)
-end
-fun rev l = foldl (op ::) [] l
+    (* fast add that avoids the overflow test *)
+      fun a + b = W31.copyt_int31 (W31.+(W31.copyf_int31 a, W31.copyf_int31 b))
+      fun loop (n, []) = n
+	| loop (n, [_]) = n + 1
+	| loop (n, _ :: _ :: l) = loop (n + 2, l)
+      in
+	loop (0, l)
+      end
+fun rev l = let
+      fun loop ([], l) = l
+	| loop (x::xs, l) = loop(xs, x::l)
+      in
+	loop (l, [])
+      end
 fun foldr f b = let
-    fun f2 [] = b
-      | f2 (a :: r) = f (a, f2 r)
-in
-    f2
-end
+      fun f2 [] = b
+	| f2 (a :: r) = f (a, f2 r)
+      in
+	f2
+      end
 fun l1 @ l2 = foldr (op ::) l2 l1
 fun app f = let
-    fun a2 [] = ()
-      | a2 (h :: t) = (f h : unit; a2 t)
-in
-    a2
-end
+      fun a2 [] = ()
+	| a2 (h :: t) = (f h : unit; a2 t)
+      in
+	a2
+      end
 fun map f = let
-    fun m [] = []
-      | m [a] = [f a]
-      | m [a, b] = [f a, f b]
-      | m [a, b, c] = [f a, f b, f c]
-      | m (a :: b :: c :: d :: r) = f a :: f b :: f c :: f d :: m r
-in
-    m
-end
+      fun m [] = []
+	| m [a] = [f a]
+	| m [a, b] = [f a, f b]
+	| m [a, b, c] = [f a, f b, f c]
+	| m (a :: b :: c :: d :: r) = f a :: f b :: f c :: f d :: m r
+      in
+	m
+      end
 
 (* Array *)
 type 'a array = 'a PrimTypes.array
 
 (* Vector *)
 type 'a vector = 'a PrimTypes.vector
+
+fun vector l = let
+      val n = length l
+      in
+	if DI.ltu (Core.max_length, n) then raise Size
+	else if (n = 0) then Assembly.vector0
+	else Assembly.A.create_v(n, l)
+      end
 
 (* Char *)
 type char = PrimTypes.char
@@ -257,56 +288,54 @@ val size = CV.length : string -> int
 fun str (c: char) : string = PV.sub (PreString.chars, InlineT.cast c)
 
 (* concatenate a list of strings together *)
-fun concat [s] = s
+fun concat [] = ""
+  | concat [s] = s
   | concat (sl : string list) = let
-	fun length (i, []) = i
-	  | length (i, s::rest) = length(i+size s, rest)
-    in
-	case length (0, sl) of
-	    0 => ""
+    (* compute total length of result string *)
+      fun length (i, []) = i
+	| length (i, s::rest) = length(i+size s, rest)
+      in
+	case length (0, sl)
+	 of 0 => ""
 	  | 1 => let
-		fun find ("" :: r) = find r
-		  | find (s :: _) = s
-		  | find _ = "" (** impossible **)
-	    in
+	      fun find ("" :: r) = find r
+		| find (s :: _) = s
+		| find _ = "" (** impossible **)
+	      in
 		find sl
-	    end
+	      end
 	  | totLen => let
-		val ss = create totLen
-		fun copy ([], _) = ()
-		  | copy (s::r, i) = let
-			val len = size s
-			fun copy' j =
-			    if (j = len) then ()
-			    else (unsafeUpdate(ss, i+j, unsafeSub(s, j));
-				  copy'(j+1))
+	      val ss = create totLen
+	      fun copy ([], _) = ()
+		| copy (s::r, i) = let
+		    val len = size s
+		    fun copy' j =
+			if (j = len) then ()
+			else (unsafeUpdate(ss, i+j, unsafeSub(s, j));
+			      copy'(j+1))
 		    in
-			copy' 0;
-			copy (r, i+len)
+		      copy' 0;
+		      copy (r, i+len)
 		    end
-	    in
+	      in
 		copy (sl, 0);
 		ss
-	    end
-    end (* concat *)
+	      end
+	(* end case *)
+      end (* concat *)
 
 
 (* implode a list of characters into a string *)
 fun implode [] = ""
-  | implode cl =  let
-	fun length ([], n) = n
-	  | length (_::r, n) = length (r, n+1)
-    in
-	PreString.implode (length (cl, 0), cl)
-    end
+  | implode cl = PreString.implode (length cl, cl)
 
 (* explode a string into a list of characters *)
 fun explode s = let
-    fun f(l, ~1) = l
-      | f(l,  i) = f (unsafeSub(s, i) :: l, i-1)
-in
-    f (nil, size s - 1)
-end
+      fun f(l, ~1) = l
+	| f(l,  i) = f (unsafeSub(s, i) :: l, i-1)
+      in
+	f ([], size s - 1)
+      end
 
 (* Return the n-character substring of s starting at position i.
  * NOTE: we use words to check the right bound so as to avoid
@@ -317,7 +346,7 @@ local
 in
     fun substring (s, i, n) =
 	if ((i < 0) orelse (n < 0)
-	    orelse W.<(W.fromInt(size s), W.+(W.fromInt i, W.fromInt n)))
+	  orelse W.<(W.fromInt(size s), W.+(W.fromInt i, W.fromInt n)))
 	    then raise Core.Subscript
 	else PreString.unsafeSubstring (s, i, n)
 end (* local *)
