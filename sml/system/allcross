@@ -10,3 +10,11 @@ SparcUnixCMB.make () before SparcUnixCMB.reset () andalso
 X86UnixCMB.make () before X86UnixCMB.reset () andalso
 X86Win32CMB.make () before X86Win32CMB.reset ();
 stop
+
+for target in alpha32-unix hppa-unix ppc-unix sparc-unix x86-unix x86-win32 ; do
+  dir=sml.boot.$target
+  if test -d $dir ; then
+    tar -cf - $dir | gzip > boot.$target.tgz
+  fi
+done
+
