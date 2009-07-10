@@ -3,12 +3,12 @@
  * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
  *)
 
+(* FIXME
 structure Poll : POLL = 
   struct
     exception BadPollFreq
 
     val defaultHandler = fn k => k
-
     val _ = Assembly.pollHandler := defaultHandler
     val handlerValid = ref false
 
@@ -35,4 +35,15 @@ structure Poll : POLL =
 			   else SOME x
 		       end
   end (* structure Poll *)
+*)
 
+(* dummy implementation *)
+structure Poll : POLL =
+  struct
+    exception BadPollFreq
+    val pollEvent = ref false
+    fun setHandler _ = ()
+    fun inqHandler _ = NONE
+    fun setFreq _ = ()
+    fun inqFreq _ = NONE
+  end
