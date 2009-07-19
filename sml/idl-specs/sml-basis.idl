@@ -13,6 +13,9 @@ clib_name ("SMLBasis");
 /*
 cpp_quote("#include \"ml-timer.h\"");	/* for Time_t */
 */
+cpp_quote("#include \"runtime-object.hxx\"");
+cpp_quote("#include \"io-device.hxx\"");
+cpp_quote("#include \"value-access.hxx\"");
 
 
 /******************** Useful IDL types ********************/
@@ -21,26 +24,26 @@ typedef [string] char* idl_string;
 
 /******************** Common SML types ********************/
 
-typedef [sml_type ("Word8Vector.vector")] sml_value ML_word8vec_t;
-typedef [sml_type ("Word8Vector.vector option")] sml_value ML_word8vec_opt_t;
-typedef [sml_type ("Word8Array.array")] sml_value ML_word8arr_t;
-typedef [sml_type ("CharVector.vector")] sml_value ML_charvec_t;
-typedef [sml_type ("CharVector.vector option")] sml_value ML_charvec_opt_t;
+typedef [sml_type ("Word8Vector.vector"), cpp_type ("ML_Word8Vector")] sml_value ML_word8vec_t;
+typedef [sml_type ("Word8Vector.vector option"), cpp_type ("ML_Option<ML_Word8Vector>")] sml_value ML_word8vec_opt_t;
+typedef [sml_type ("Word8Array.array"), cpp_type ("ML_Word8Array")] sml_value ML_word8arr_t;
+typedef [sml_type ("CharVector.vector"), cpp_type ("ML_String")] sml_value ML_charvec_t;
+typedef [sml_type ("CharVector.vector option"), cpp_type ("ML_Option<ML_String>")] sml_value ML_charvec_opt_t;
 typedef [sml_type ("CharArray.array")] sml_value ML_chararr_t;
 typedef [sml_type ("unit")] sml_value ML_unit_t;
-typedef [sml_type ("bool")] sml_value ML_bool_t;
-typedef [sml_type ("int")] sml_value ML_int_t;
-typedef [sml_type ("Int32.int")] sml_value ML_int32_t;
-typedef [sml_type ("string")] sml_value ML_string_t;
-typedef [sml_type ("string option")] sml_value ML_string_opt_t;
-typedef [sml_type ("string list")] sml_value ML_string_list_t;
-typedef [sml_type ("int option")] sml_value ML_int_opt_t;
+typedef [sml_type ("bool"), cpp_type ("ML_Bool")] sml_value ML_bool_t;
+typedef [sml_type ("int"), cpp_type ("ML_Int")] sml_value ML_int_t;
+typedef [sml_type ("Int32.int"), cpp_type ("ML_Int32")] sml_value ML_int32_t;
+typedef [sml_type ("string"), cpp_type ("ML_String")] sml_value ML_string_t;
+typedef [sml_type ("string option"), cpp_type ("ML_Option<ML_String>")] sml_value ML_string_opt_t;
+typedef [sml_type ("string list"), cpp_type ("ML_List<ML_String>")] sml_value ML_string_list_t;
+typedef [sml_type ("int option"), cpp_type ("ML_Option<ML_Int>")] sml_value ML_int_opt_t;
 
 /******************** Exported run-time system types ********************/
 /* typedef [ptr] struct struct_iodesc *IODesc_t; */
 /* typedef [ptr] struct struct_directory *Directory_t; */
 /* typedef [sml_type("Unsafe.Object.object")] sml_value ML_iodesc_t; */
-typedef [sml_type("word")] sml_value ML_iodesc_t;
+typedef [sml_type("word"), cpp_type("RuntimeObject<IODevice>")] sml_value ML_iodesc_t;
 typedef [sml_type("Unsafe.Object.object")] sml_value ML_directory_t;
 typedef [sml_type("(int * int)")] struct struct_time {
   int seconds;
@@ -148,7 +151,7 @@ const sml_int SET_POS_BEGIN = 0;
 const sml_int SET_POS_CUR = 1;
 const sml_int SET_POS_END = 2;
 [sml_context] ML_int32_t getPos ([in] ML_iodesc_t iod);
-[sml_context] ML_unit_t setPos (
+[sml_context] void setPos (
     [in] ML_iodesc_t iod,
     [in] ML_int32_t offset,
     [in] sml_int whence);
