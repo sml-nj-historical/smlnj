@@ -29,7 +29,7 @@ typedef [sml_type ("Word8Vector.vector option"), cpp_type ("ML_Option<ML_Word8Ve
 typedef [sml_type ("Word8Array.array"), cpp_type ("ML_Word8Array")] sml_value ML_word8arr_t;
 typedef [sml_type ("CharVector.vector"), cpp_type ("ML_String")] sml_value ML_charvec_t;
 typedef [sml_type ("CharVector.vector option"), cpp_type ("ML_Option<ML_String>")] sml_value ML_charvec_opt_t;
-typedef [sml_type ("CharArray.array")] sml_value ML_chararr_t;
+typedef [sml_type ("CharArray.array"), cpp_type ("ML_Word8Array")] sml_value ML_chararr_t;
 typedef [sml_type ("unit")] sml_value ML_unit_t;
 typedef [sml_type ("bool"), cpp_type ("ML_Bool")] sml_value ML_bool_t;
 typedef [sml_type ("int"), cpp_type ("ML_Int")] sml_value ML_int_t;
