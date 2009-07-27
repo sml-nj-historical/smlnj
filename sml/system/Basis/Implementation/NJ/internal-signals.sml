@@ -92,10 +92,11 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
   (* these run-time functions deal with the state of a signal in the system. *)
     val getSigState : system_const -> int		= SMLNJRuntime.getSigState
     val setSigState : (system_const * int) -> unit	= SMLNJRuntime.setSigState
-  (* The states are defined as: *)
-    val ignoreSigState = 0
-    val defaultSigState = 1
-    val enabledSigState = 2
+
+  (* The states are defined in the IDL spec *)
+    val ignoreSigState = SMLNJRuntime.IGNORE_SIG
+    val defaultSigState = SMLNJRuntime.DEFAULT_SIG
+    val enabledSigState = SMLNJRuntime.ENABLED_SIG
 
   (* clear the signal table of handlers *)
     fun clearSigTbl _ = Array.modify (fn _ => NONE) (!sigTbl)
@@ -183,8 +184,8 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
 		in
 		  setInfo(sigId, {act=act, mask=mask+1, signal=signal})
 		end
-	(* scan over the sorted mask list and the list of all signals.  Record which signals are masked
-	 * and how many new signals are masked.
+	(* scan over the sorted mask list and the list of all signals.  Record
+	 * which signals are masked and how many new signals are masked.
 	 *)
 	  fun computeNewMask ([], _, _, _, 0) =
 	      (* no signals are masked, so we only update the local state *)
@@ -226,15 +227,15 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
 		end
 	(* return true if decrementing this signal's count will unmask it. *)
 	  fun isUnmasked (SIG(id, _)) = (#mask(getInfo id) <= 1)
-	(* scan over the sorted mask list and the list of all signals.  Record which signals
-	 * are masked and how many new signals are unmasked.
+	(* scan over the sorted mask list and the list of all signals.  Record
+	 * which signals are masked and how many new signals are unmasked.
 	 *)
 	  fun computeNewMask ([], _, _, _, 0) =
 	      (* no signals are unmasked, so we only update the local state *)
 		List.app decMask sigs
 	    | computeNewMask ([], [], masked, nMasked, _) = (
-	      (* NOTE: we must update are local view of the mask before we change the OS's view
-	       * to avoid a race condition!
+	      (* NOTE: we must update are local view of the mask before we
+	       * change the OS's view to avoid a race condition!
 	       *)
 		List.app decMask sigs;
 		setSigMask (makeMask (masked, nMasked)))
@@ -324,26 +325,24 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
   (* Here is the ML handler that gets invoked by the run-time system.
    * It is responsible for dispatching the appropriate ML handler.
    *)
-    fun sigHandler (code, count, resume_k) =
-	(case (Array.sub(!sigTbl, code))
-	  of (SOME{act=HANDLER handler, mask=0, signal}) =>
-	     handler(signal, count, resume_k)
+    fun sigHandler (code, count, resume_k) = (case (Array.sub(!sigTbl, code))
+	   of (SOME{act=HANDLER handler, mask=0, signal}) =>
+	      handler(signal, count, resume_k)
 (*DEBUG
-	     | _ => raise Fail "inconsistent internal signal state"
+	    | _ => raise Fail "inconsistent internal signal state"
 DEBUG*)
-	   | info => let
-		 val act = (case info
-			     of NONE => "NONE"
-			      | SOME{act=IGNORE, ...} => "IGNORE"
-			      | SOME{act=DEFAULT, ...} => "DEFAULT"
-			      | SOME{act=HANDLER _, mask, ... } => 
-				concat ["HANDLER(mask=",Int.toString mask,
-					"<>0)"]
-				(*end case *))
-		 val msg = concat["inconsistent state ", act,
+	    | info => let
+		val act = (case info
+		       of NONE => "NONE"
+			| SOME{act=IGNORE, ...} => "IGNORE"
+			| SOME{act=DEFAULT, ...} => "DEFAULT"
+			| SOME{act=HANDLER _, mask, ... } => 
+			  concat ["HANDLER(mask=",Int.toString mask, "<>0)"]
+		      (*end case *))
+		val msg = concat["inconsistent state ", act,
 				  " for signal ", Int.toString code]
-	     in raise Fail msg
-	     end
+		in raise Fail msg
+		end
 	    (* end case *))
 
   (* Install the root handler *)
