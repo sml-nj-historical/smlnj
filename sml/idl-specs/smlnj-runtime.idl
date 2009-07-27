@@ -65,6 +65,9 @@ sml_int getQuantum();
 [sml_context] ML_bool_t exportHeap([in] string fname);
 
 /******************** Signals ********************/
+const sml_int IGNORE_SIG = 0;
+const sml_int DEFAULT_SIG = 1;
+const sml_int ENABLED_SIG = 2;
 [sml_context] ML_sysconst_list_t listSignals();
 [sml_context] sml_int getSigState([in] ML_sysconst_t sc);
 [sml_context] void setSigState([in] ML_sysconst_t sc, [in] sml_int i);
