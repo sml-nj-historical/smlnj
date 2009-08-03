@@ -22,6 +22,18 @@ NEW_RUNTIME_DIR=../../rt
 IDL_FILES=		sml-basis.idl \
 			smlnj-runtime.idl
 
+BASIS_C_FILES =		cfun-list.h \
+			cfun-proto-list.h \
+			sml-basis-lib.c \
+			sml-basis.c \
+			sml-basis.h
+
+RT_C_FILES =		cfun-list.h \
+			cfun-proto-list.h \
+			smlnj-runtime-lib.c \
+			smlnj-runtime.c \
+			smlnj-runtime.h
+
 BASIS_CXX_FILES =	sml-basis-lib.cxx \
 			sml-basis-lib.hxx \
 			sml-basis.cxx \
@@ -39,17 +51,25 @@ SML_FILES =	sml-basis-sig.sml \
 
 help:
 	@echo "This makefile supports the following targets:"
-	@echo "    help    -- print this message"
-	@echo "    classic -- generate C glue code for the classic runtime"
-	@echo "    new-rt  -- generate C++ glue code for the new runtime"
-	@echo "    sml     -- generate the SML glue code for either runtime"
-	@echo "    install -- copy generated files to the appropriate locations"
-	@echo "    clean   -- remove any generated files"
+	@echo "    help          -- print this message"
+	@echo "    install       -- generate and install all files to the appropriate locations"
+	@echo "    classic-basis -- generate and install C glue code for the classic runtime"
+	@echo "    classic-rt    -- generate and install C glue code for the classic runtime"
+	@echo "    new-rt        -- generate C++ glue code for the new runtime"
+	@echo "    sml           -- generate the SML glue code for either runtime"
+	@echo "    clean         -- remove any generated files"
 
-classic:
-	for f in $(IDL_FILES) ; do \
-	  $(ML_IDL) -t classic $(ML_IDL_FLAGS) $$f; \
-	done
+# generate and install the class version of the basis glue
+#
+classic-basis:
+	$(ML_IDL) -t classic $(ML_IDL_FLAGS) sml-basis.idl
+	cp -p $(BASIS_C_FILES) $(OLD_RUNTIME_DIR)/smlnj-rt-lib
+
+# generate and install the class version of the smlnj-runtime glue
+#
+classic-rt:
+	$(ML_IDL) -t classic $(ML_IDL_FLAGS) smlnj-runtime.idl
+	cp -p $(RT_C_FILES) $(OLD_RUNTIME_DIR)/sml-basis-lib
 
 new-rt:
 	for f in $(IDL_FILES) ; do \
@@ -61,9 +81,15 @@ sml:
 	  $(ML_IDL) -t smlnj $(ML_IDL_FLAGS) $$f; \
 	done
 
-install:
+# generate and install all files.  Note that the class stuff has to be installed
+# after each IDL file is processed because of file-name collisions.
+#
+install:	classic-basis classic-rt new-rt sml
 	cp -p $(BASIS_CXX_FILES) $(NEW_RUNTIME_DIR)/src/smlnj-rt/basis/glue
 	cp -p $(RT_CXX_FILES) $(NEW_RUNTIME_DIR)/src/smlnj-rt/runtime/glue
+	if [ ! -d $(BASIS_IMP_DIR)/RuntimeIDL ] ; then \
+	  mkdir $(BASIS_IMP_DIR)/RuntimeIDL; \
+	fi
 	cp -p $(SML_FILES) $(BASIS_IMP_DIR)/RuntimeIDL
 
 clean:
