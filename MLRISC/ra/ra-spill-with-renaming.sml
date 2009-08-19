@@ -214,7 +214,14 @@ struct
             *)
            fun update(pt,env,r,NONE) = kill(env, r)
              | update(pt,env,r,SOME newReg) =
-               (r,newReg,pt)::(if !keep_multiple_values then env else [])
+	       (* if the register is a dedicated register, conservatively kill
+		* the value r in the current environment. this is necessary
+		* because dedicated registers have been removed from the
+		* def/use information.
+		*) 
+	       if dedicated(CBase.registerId newReg)
+	       then kill(env, r)
+	       else (r,newReg,pt)::(if !keep_multiple_values then env else [])
 
            and kill(env,r) =
            let fun loop([], env') = env'
@@ -395,8 +402,13 @@ struct
                                  Int.toString(hd mvSrc)^" removed\n"); *) 
                   (copy, env)
                  )
-               else (* normal spill *)
-                 if spillConflict(spillLoc, don'tOverwrite) then
+               else (* normal spill *)	       
+                 if spillConflict(spillLoc, don'tOverwrite) orelse 
+		    (* if the register is a dedicated register, treat the copy as
+		     * a normal spill. this is necessary because dedicated registers
+		     * have been removed from the def/use information.
+		     *) 
+		    dedicated(CBase.registerId mvSrc) then
                  let (* cycle found *)
                      (*val _ = print("Register r"^Int.toString regToSpill^ 
                                   " overwrites ["^Int.toString spillLoc^"]\n")*)
