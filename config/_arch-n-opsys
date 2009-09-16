@@ -1,0 +1,174 @@
+#!@SHELL@
+#
+# .arch-n-opsys  -- get architecture and system info
+#
+
+export PATH
+PATH="/bin:/usr/bin"
+
+case `uname -s` in
+  HP-UX)
+    ARCH=hppa
+    case `uname -r` in
+      *.09.*) OPSYS=hpux9 ;;
+      *.10.*) OPSYS=hpux ;;
+      *.11.*) OPSYS=hpux11; HEAP_OPSYS=hpux ;;
+      *) exit 1 ;;
+    esac
+    ;; 
+  IRIX*)
+    ARCH=mipseb
+    case `uname -r` in
+      4.*) OPSYS=irix4; HEAP_OPSYS=irix;;
+      5.*) OPSYS=irix5; HEAP_OPSYS=irix;;
+      6.*) OPSYS=irix6; ALT_OPSYS=irix5; HEAP_OPSYS=irix;;
+      *) exit 1;;
+    esac
+    ;;
+  SunOS)
+    case `uname -r` in
+      4.*)
+	OPSYS=sunos
+	case `/usr/bin/arch` in
+	  sun4) ARCH=sparc;;
+	  *) exit 1;;
+	esac
+      ;;
+      5.*)
+	OPSYS=solaris
+	case `uname -p` in
+	  sparc) ARCH=sparc;;
+	  *86) ARCH=x86;;
+	  *) exit 1;;
+	esac
+      ;;
+      *) exit 1;;
+    esac
+    ;;
+  AIX)
+    OPSYS=aix
+    ARCH=ppc
+    ;;
+  Darwin)
+    case `uname -p` in
+      powerpc)
+	ARCH=ppc
+	case `uname -r` in
+	  7*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.3
+	  8*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.4
+	  9*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.5
+	  *) exit 1;;
+	esac;;
+      i386) ARCH=x86;
+	case `uname -r` in
+	  8*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.4
+	  9*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.5
+	  10*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.6
+	  *) exit 1;;
+	esac;;
+    esac
+    ;;
+  OSF1)
+    case `uname -m` in
+      alpha)
+	case `uname -r` in
+	  V2.*) ARCH=alpha32x; OPSYS=osf1 ;;
+	  V3.*) ARCH=alpha32x; OPSYS=osf1 ;;
+	  V4.*) ARCH=alpha32; OPSYS=dunix ;;
+	  *) exit 1 ;;
+	esac
+        ;;
+      *) exit 1 ;;
+    esac 
+    ;;
+  Linux)
+    OPSYS=linux
+    case `uname -m` in
+      *86)
+	ARCH=x86
+      # we no longer support Linux before the 2.2 kernel.
+	case `uname -r` in
+	  2.2.*) ;;
+	  2.3.*) ;;
+	  2.4.*) ;;
+	  2.5.*) ;;
+	  2.6.*) ;;
+	  *) exit 1 ;;
+	esac
+	;;
+    # As long as we do not natively support the amd64 architecture,
+    # we should fallback to the x86 compatibility mode.  --Stef
+      x86_64) ARCH=x86;;
+      ppc)
+	ARCH=ppc
+	case `uname -r` in
+	  *osfmach*) OPSYS=mklinux ;;
+	  *) ;;
+	esac
+	;;
+      *) exit 1;;
+    esac
+    ;;
+  FreeBSD)
+    OPSYS=freebsd
+    HEAP_OPSYS=bsd
+    case `uname -m` in
+      *86) ARCH=x86;;
+      *) exit 1;;
+    esac
+    ;;
+  NetBSD)
+    case `uname -r` in
+      2*) OPSYS=netbsd2;;
+      3*) OPSYS=netbsd;;
+      *) exit 1;;
+    esac
+    HEAP_OPSYS=bsd
+    case `uname -m` in
+      *86) ARCH=x86;;
+      *) exit 1;;
+    esac
+    ;;
+  OpenBSD)
+    OPSYS=openbsd
+    HEAP_OPSYS=bsd
+    case `uname -m` in
+      *86) ARCH=x86;;
+      *) exit 1;;
+    esac
+    ;;
+  Windows_NT)
+    OPSYS=win32
+    case `uname -m` in
+      *86) ARCH=x86;;
+      *) exit 1;;
+    esac
+    ;;
+  CYGWIN_NT*)
+    # If the environment variable SMLNJ_CYGWIN_RUNTIME is defined,
+    # use cygwin as the runtime environment.
+    if [ "$SMLNJ_CYGWIN_RUNTIME" != "" ]; then
+       OPSYS=cygwin
+    else
+       OPSYS=win32
+    fi
+    case `uname -m` in
+       *86) ARCH=x86;;
+       *) exit 1;;
+    esac
+    ;;
+  *) exit 1;;
+esac
+
+if [ "$HEAP_OPSYS" = "" ]; then
+  HEAP_SUFFIX="$ARCH-$OPSYS"
+else
+  HEAP_SUFFIX="$ARCH-$HEAP_OPSYS"
+fi
+
+if [ "$ALT_OPSYS" = "" ]; then
+echo "ARCH=$ARCH; OPSYS=$OPSYS; HEAP_SUFFIX=$HEAP_SUFFIX"
+else
+echo "ARCH=$ARCH; OPSYS=$OPSYS; ALT_OPSYS=$ALT_OPSYS; HEAP_SUFFIX=$HEAP_SUFFIX"
+fi
+
