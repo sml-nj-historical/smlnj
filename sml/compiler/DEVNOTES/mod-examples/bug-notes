@@ -1,0 +1,76 @@
+Hi Dave,
+
+Here are some notes I wrote up about the compiler bug. The solution
+will have to somehow identify these hidden realization entities
+(hidden from the perspective of signatures) during translation.
+
+---
+CodeGen/ppc/ppcCG.sml triggers a TransTypes: unexpected FORMAL kind in
+tycTyc-h bug. This appears to be the same bug illustrated in
+DEVNOTES/mod-examples/m21.cm.
+
+The problem is this: when elaborating a curried functor (the curried part) F
+
+functor F (X:sig type t end) (Y:sig val f : t end) = ...
+
+The elaborator computes the expected realization for Xsig:
+
+STR
+     sign:
+       SIG:
+         stamp: #F2
+         name: NAMED S
+         elements:
+           type X.t[GX;#F9;IND]
+           entVar: #F1
+           scope: 0
+     rlzn:
+       strEntity:
+         rpath: <X>
+         stamp: #F10
+         entities:
+           #F1:
+               X.t[GX;#F9;IND]
+
+However, the computed signature Ysig is not so straightforward:
+
+STR
+     sign:
+       SIG:
+         stamp: #F13
+         name: ANONYMOUS
+         elements:
+           val f : X.t[P;[#F7,#F1]]
+     rlzn:
+       strEntity:
+         rpath: <Y>
+         stamp: #F16
+         entities:
+           #F7:
+               strEntity:
+                 rpath: <X>
+                 stamp: #F10
+                 entities:
+                   #F1:
+                       X.t[GX;#F9;IND]
+
+In particular, reptycprop cannot compute the correct tycpaths from
+this signature and realization pair. Because #F9 is never referenced
+in the signature, it is never added to the flextycmap. Neither should
+#F9 be in the signature because Y.X.t is a reverse path necessary for
+backreferences to earlier curried functor arguments.
+
+This was not a problem when we had the whole curried functor and
+therefore Xsig and Xrlzn (which will produce the correct entry for #F9
+in the flextycmap). However, when F is partially applied, we no longer
+have access to Xsig and Xrlzn in client compilation units.
+
+When we separately compile the partial application and the functor,
+the compilation unit with the partial application gives X.t an
+external stamp name #G33. #G33 is never entered into the ftmap because
+it never occurs in any signature.
+
+When translation reaches this part, the ftmap for the context is
+actually empty.
+
+George

@@ -1,0 +1,9 @@
+(* Comes from ppcgen *)
+Group
+	functor G
+	signature S
+	functor F 
+
+is
+
+	m21a.sml

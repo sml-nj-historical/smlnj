@@ -1,0 +1,150 @@
+Tycpaths in trunk compiler
+
+tycpath definition from types.sml (trunk version)
+
+and tycpath (* FLINT!!! *)
+  = TP_VAR of exn   (* exn carries some hidden FLINT data *)
+      exn is TP_VAR_INFO, carrying FLINT type variable info (depth,num,kind)
+      defined in Semant/types/tp-var-info.sml (see below).  Essentially,
+      a TP_VAR is a FLINT plambda type variable.
+  | TP_TYC of tycon
+      tycpath for a nonformal tycon, constructed in instantiate.sml (l1851)
+      in the function getTycPaths
+  | TP_FCT of tycpath list * tycpath list
+      a list of tycpaths for the formal parameter, and one for the result structure
+      constructed in: matchFct1 in sigmatch.sml, LAMBDA_TP case of evalFct in
+      evalent.sml
+  | TP_APP of tycpath * tycpath list
+      tycpath for a functor application strexp where the body of the 
+      functor is a FORMstr (i.e. application of a formal parameter functor?)
+      1st tycpath is the tycpath for the functor, tycpath list is derived
+      from the argument str using Instantiate.getTycPaths
+      used once in evalApp in evalent.sml.
+  | TP_SEL of tycpath * int
+
+tycpath is used as the argument to the FLEXTYC constructor for tyckind:
+
+and tyckind
+  = PRIMITIVE of int
+  | DATATYPE of
+     {index: int,
+      stamps: ST.stamp vector,
+      root : EP.entVar option,    (* the root field used by type spec only *)
+      freetycs: tycon list,       (* tycs derived from functor params *)
+      family : dtypeFamily}
+  | ABSTRACT of tycon
+  | FLEXTYC of tycpath            (* instantiated formal type constructor *)
+  | FORMAL                        (* used only inside signatures *)
+  | TEMP                          (* used only during datatype elaborations *)
+
+tyckind is the type of the kind field of gtrec, which is the contents record
+for GENtyc constructor for tycon.
+
+The exception values for TP_VAR are constructed using the following, defined
+in Semant/types/tp-var-info.sml:
+
+  exception TP_VAR_INFO of 
+     {tdepth: DebIndex.depth,
+      num: int,
+      kind: PLambdaType.tkind}
+
+In absyn: tycpaths are stored in the abstract syntax for structure and functor
+expressions (APPstr and FCTfct constructors):
+
+  and strexp 
+    = VARstr of Structure 
+    | STRstr of B.binding list
+    | APPstr of {oper: Functor, arg: Structure, argtycs: tycpath list}
+    | LETstr of dec * strexp
+    | MARKstr of strexp * region
+
+    The "argtycs" field in APPstr is used to record the list of instantiated
+    hotycs passed to functor during the functor application.
+    APPstr is constructed once in sigmatch.sml
+
+  and fctexp 
+    = VARfct of Functor
+    | FCTfct of {param: Structure, argtycs: tycpath list, def: strexp}
+    | LETfct of dec * fctexp
+    | MARKfct of fctexp * region
+
+    For typing purpose, a functor is viewed as a high-order type constructor 
+    (hotyc) that takes a list of hotycs returns another list of hotycs. The
+    "argtycs" field in FCTfct records the list of formal hotyc paramaters.
+    FCTfct is constructed once in elabmod.sml and twice in sigmatch.sml
+
+In modules: tycpaths also appear (optionally) in the tycpath field of the
+fctEntity record:
+
+  and fctEntity =
+      {stamp    : ST.stamp,
+       closure  : fctClosure,
+       properties: PropList.holder, (* lambdaty *)
+       tycpath  : T.tycpath option,
+       rpath    : IP.path,
+       stub     : stubinfo option}
+
+This field is set to NONE in the BaseFct case of elabFct in elabmod.sml.
+It is calculated in the LAMBDA_TP case of evalFct in evalent.sml,
+and in matchFct1 in sigmatch.sml.
+
+In matchFct1, the tycpath is a TP_FCT(paramTps,bodyTps) with paramTps from the formal 
+instantiation of the paramsig of the matched functorsig, and bodyTps from
+matched body str via getTycPaths.
+
+In LAMBDA_TP case of evalFct, the tycpath is also TP_FCT(paramTps,bodyTps)
+where again the paramTps is from formal instantiation (instParam) of the
+paramsig of the associated functorsig, and bodyTps comes from the evaluated
+bady entity exp via getTycPaths, but without any coercion of the body by the
+bodysig of the functor sig because the body exp already incorporates the
+coercion by the functor result signature (resExp2) in matchFct1.
+
+
+1. What exactly do the forms of tycpaths represent?
+What does the phrase "instantiated formal type constructor" mean?
+
+2. How are tycpaths computed?
+a. LAMBDA_TP case of evalFct in evalent.sml
+   compute a functor (TP_FCT) for the result functor entity
+b. Instantiate.instParam computes tycpath list along with str entity
+c. Instantiate.getTycPaths computes tycpath list for given structure (sig,rlzn)
+d. constructed in sigmatch.sml as a result of signature matching
+   (Q: why does the functor tycpath need to be recomputed even if the signatures
+   are identical?)
+
+3. How are tycpaths used during translation (& elsewhere?)?
+
+
+4. Where do they appear in the code?
+Files where one of the tycpath constructors appear:
+
+Elaboration
+-----------
+ElabData/types/types.sml
+  tycpath defined here
+Elaborator/modules/evalent.sml
+  TP_FCT and TP_APP used to construct
+Elaborator/modules/instantiate.sml
+  TP_VAR, TP_SEL, TP_TYC used to construct
+Elaborator/modules/sigmatch.sml
+  TP_FCT used to construct
+
+FLINT translation
+-----------------
+FLINT/trans/transtypes.sml
+
+Semant/types/tp-var-info.sml
+  defines TP_VAR_INFO exn constructor used in TP_VAR tycpath values
+Semant/types/types-reformat.sml
+  dead code -- not used anywhere
+
+Files where "tycpath" is mentioned
+
+ElabData/modules/modules.sml
+  fctEntity has a {tycpath : tycpath option,...} field
+ElabData/syntax/absyn.sml
+  APPstr and FCTfct have {argtycs: tycpath list,...} fields
+Elaborator/elaborate/elabmod.sml
+Elaborator/modules/evalent.sml
+Elaborator/modules/instantiate.sml
+Elaborator/modules/sigmatch.sml
