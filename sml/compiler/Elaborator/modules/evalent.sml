@@ -239,7 +239,7 @@ and evalApp(fctRlzn : Modules.fctEntity, argRlzn, epc, rpath,
 	  val nenv = EE.mark(mkStamp, EE.bind(param, STRent argRlzn, env))
           val  _ = debugmsg ("[Inside EvalAPP] ......")
        in case body
-           of (FORMstr(FSIG{paramsig, bodysig, ...})) => 
+           of (FORMstr(FSIG{bodysig, ...})) =>  (* only need body sig *)
                let (** failing to add the stamps into the epcontext is
                        a potential bug here. Will fix this in the
                        future.  ZHONG. -- ??? doesn't bindEp below 
