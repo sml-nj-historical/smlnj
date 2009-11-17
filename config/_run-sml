@@ -115,6 +115,10 @@ while [ "$#" != "0" ]; do
       echo "$CMD @VERSION@"
       exit 0
       ;;
+    @SMLsuffix)
+      echo "$HEAP_SUFFIX"
+      exit 0
+      ;;
     @SMLalloc=*)
       shift
       ALLOC=$arg
