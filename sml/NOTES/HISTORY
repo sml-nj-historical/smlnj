@@ -17,6 +17,13 @@ Here is a test entry
 
 ----------------------------------------------------------------------
 Name John Reppy (http://cs.uchicago.edu/~jhr)
+Date 2009/11/17
+Description:
+
+Added "--strict-sml" flag to ml-ulex for MLton compatibility.
+
+----------------------------------------------------------------------
+Name John Reppy (http://cs.uchicago.edu/~jhr)
 Date 2009/11/10
 Description:
 
