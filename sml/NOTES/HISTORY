@@ -20,6 +20,22 @@ Name John Reppy (http://cs.uchicago.edu/~jhr)
 Date 2009/11/17
 Description:
 
+Added %header directive to the ml-ulex scanner generator.  Also
+updated the documentation.
+
+----------------------------------------------------------------------
+Name John Reppy (http://cs.uchicago.edu/~jhr)
+Date 2009/11/17
+Description:
+
+Added "@SMLsuffix" flag to sml command.  This can be used to get
+the suffix for heap files.
+
+----------------------------------------------------------------------
+Name John Reppy (http://cs.uchicago.edu/~jhr)
+Date 2009/11/17
+Description:
+
 Added "--strict-sml" flag to ml-ulex for MLton compatibility.
 
 ----------------------------------------------------------------------
