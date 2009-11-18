@@ -17,6 +17,14 @@ Here is a test entry
 
 ----------------------------------------------------------------------
 Name John Reppy (http://cs.uchicago.edu/~jhr)
+Date 2009/11/18
+Description:
+
+The ml-antlr and ml-ulex programs have been ported to build under
+mlton.
+
+----------------------------------------------------------------------
+Name John Reppy (http://cs.uchicago.edu/~jhr)
 Date 2009/11/17
 Description:
 
