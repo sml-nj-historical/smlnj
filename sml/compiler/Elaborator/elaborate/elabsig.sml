@@ -772,7 +772,12 @@ fun elabSTRspec((name,sigexp,defOp), env, elements, slots, region) =
 
       val ev = mkStamp()     (* the entVar for this structure element *)
       
-      val (sign,defStrOp) =
+      val sign = elabSig0{sigexp=sigexp, nameOp=NONE, env, entEnv=entEnv, 
+			  sigContext=elements::sctxt, epContext=epContext, region=region,
+			  compInfo=compInfo}
+
+(*
+      val (sign,defStrOp) =   (* call elabSig0 with nameOp=NONE ??? *)
 	   let val (sigexp,whereDefs,region) =
 		   elabWhere(sigexp,env,epContext,mkStamp,error,region)
 	       val sign = 
@@ -810,6 +815,7 @@ fun elabSTRspec((name,sigexp,defOp), env, elements, slots, region) =
 						    EM.COMPLAIN msg
 						    EM.nullErrorBody),
 					       mkStamp))
+*)
 	       val defStrOp = 
 		   case defOp
 		    of NONE => NONE
@@ -822,9 +828,10 @@ fun elabSTRspec((name,sigexp,defOp), env, elements, slots, region) =
 			    "unbound rhs in structure definition spec"
 			    EM.nullErrorBody;
 			  NONE))
+(*
 	    in  (sign, defStrOp)
 	   end
-
+*)
       val _ = debugmsg "--elabSTRspec: signature elaborated"
 
       val env' = SE.bind(name, B.STRbind(STRSIG{sign=sign,entPath=[ev]}), env)
@@ -1071,7 +1078,7 @@ case fsigexp
             elabSig0 {sigexp=paramSpec, nameOp=NONE, env=env, entEnv=entEnv,
                      sigContext=sigContext, epContext=epContext, 
                      region=region, compInfo=compInfo}
-          val paramName = case paramNameOp of NONE => paramId
+          val paramName = case paramNameOp of NONE => paramId (* default "<param>" *)
                                             | SOME sym => sym
           val paramEntVar = mkStamp()
           val paramStr = STRSIG {sign=paramSig,entPath=[paramEntVar]}
@@ -1080,7 +1087,7 @@ case fsigexp
                                          def=NONE, slot=0}
                 val paramElmt = [(paramName, paramSpec)]
           in val nsctxt = paramElmt :: sigContext
-          end (* a temporary work-around for the sigContext hack *)
+          end (* a _TEMPORARY_? work-around for the sigContext hack -- what is this hack? *)
 	  (* val _ = print "elabFctSig0\n" *)
           val env' = 
             case paramNameOp
@@ -1090,8 +1097,10 @@ case fsigexp
 
           val (result,region) = stripMarkSig(result,region)
 
+          (* we wrap the result sig in a structure layer, with the actual result
+           * as sole component, named <resultStr> (why is this necessary/useful?) *)
           val result = if curried then result
-		       else BaseSig[StrSpec[(resultId,result,NONE)]]
+		       else BaseSig[StrSpec[(resultId,result,NONE)]]  (* resultID = "<resultStr>" *)
 
           val bodySig = 
             elabSig0 {sigexp=result, nameOp=NONE, env=env', entEnv=entEnv,

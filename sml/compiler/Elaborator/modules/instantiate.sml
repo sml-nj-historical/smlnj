@@ -1618,7 +1618,7 @@ end (* fun instToStr *)
 (*** the generic instantiation function ***)
 (* instGeneric :
    sign : Signature     -- the signature to instantiate
-   entEnv : entityEnv   -- contextual entityEnv (for open signatures?)
+   entEnv : entityEnv   -- contextual entityEnv (for open signatures? in a functor context?)
    instKind : instKind  -- kind of instantiation (parameter, formal body, abstr)
    rpath : InvPath.path -- context symbolic path (?)
    region: SourceMap.region -- soure region for error messages

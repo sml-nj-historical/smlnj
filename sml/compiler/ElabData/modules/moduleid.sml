@@ -92,18 +92,18 @@ structure ModuleId : MODULE_ID = struct
     val freshEnv = ST.isFresh
 
     fun tycId (r: Types.gtrec) = #stamp r
-    fun sigId (s: Modules.sigrec) = #stamp s
+    fun sigId (s: M.sigrec) = #stamp s
     fun strId2 (sign: M.sigrec, rlzn: M.strEntity) =
 	{ sign = #stamp sign, rlzn = #stamp rlzn }
-    fun strId ({ sign = Modules.SIG s, rlzn, ... }: Modules.strrec) =
+    fun strId ({ sign = M.SIG s, rlzn, ... }: M.strrec) =
 	{ sign = #stamp s, rlzn = #stamp rlzn }
       | strId _ = bug "strId: bad signature"
     fun fctId2 (M.FSIG { paramsig = M.SIG psg, bodysig = M.SIG bsg, ... },
 		rlzn: M.fctEntity) =
 	{ paramsig = #stamp psg, bodysig = #stamp bsg, rlzn = #stamp rlzn }
       | fctId2 _ = bug "fctId2/fctId2: bad funsig"
-    fun fctId ({ sign, rlzn, ... }: Modules.fctrec) = fctId2 (sign, rlzn)
-    fun envId (e: Modules.envrec) = #stamp e
+    fun fctId ({ sign, rlzn, ... }: M.fctrec) = fctId2 (sign, rlzn)
+    fun envId (e: M.envrec) = #stamp e
 
     structure StrKey = struct
         type ord_key = strId
@@ -138,6 +138,7 @@ structure ModuleId : MODULE_ID = struct
 		  m_fct: M.fctEntity FctM.map,
 		  m_env: M.envrec StampM.map }
 
+    (* polymorphic empty map record *)
     val emptyTmap = { m_tyc = StampM.empty,
 		      m_sig = StampM.empty,
 		      m_str = StrM.empty,

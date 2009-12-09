@@ -62,3 +62,23 @@ Q: How could we have a ConstrainedStr(strexp,constraint) where constraint is NoS
 A: This should not happen.  ConstrainedStr is constructed in the parser only when
 there is a constraint signature.  
 
+============================================================================
+Notes from code.
+============================================================================
+[extractSig.1] Here is an example where the entity path of a tycon element
+is a nonsingular path:
+
+functor F(X: sig type t end) =
+struct
+  open X
+end
+
+In this case, the value of epOp will be SOME[ev_X, ev_t].  Longer entity paths
+could result from nested structures in the parameter, e.g.
+
+functor F(X: sig structure A : sig type t end end) =
+struct
+  open X.A
+end
+
+would give epOp = SOME[ev_X, ev_A, ev_t].

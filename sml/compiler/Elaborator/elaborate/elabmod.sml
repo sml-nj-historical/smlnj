@@ -233,11 +233,13 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
 fun extractSig (env, epContext, context, 
                 compInfo as {mkStamp,...} : EU.compInfo,
 	        absDecl) =
-  let fun getEpOp (lookfn, modId) =
-        case context
+  let fun getEpOp (lookfn, modId) = lookfn (epContext, modId)
+(*        case context
           of EU.INFCT _ => lookfn (epContext, modId)
            | _ => NONE
-
+* INVARIANT(?): context /= INFCT => epContext = Empty, so lookfn would
+  return NONE anyway if called in a nonfunctor context.
+*)
       val relativize =
         case context
 	  of EU.INFCT _ => (fn ty => #1(MU.relativizeType epContext ty))
@@ -342,7 +344,10 @@ fun extractSig (env, epContext, context,
                   val (ev, entEnv', entDecl') =
                     case epOp
                      of SOME [x] => (x, entEnv, entDecl)
-                      | _ => 
+                        (* normal (i.e. locally declared) volatile case *)
+                      | _ =>  (* NONE for nonvolatile declaration (not in functor) ,
+                               * nonsingleton path for binding from opened param structure
+			       * (Note [extractSig.1] *)
                          (let val x = mkStamp()
                               val ee = EE.bind(x, TYCent tyc, entEnv)
                               val ed =
@@ -351,7 +356,7 @@ fun extractSig (env, epContext, context,
                                       (let val tycExp = 
                                              case epOp 
                                               of SOME ep => M.VARtyc ep
-                                               | _ => M.CONSTtyc tyc
+                                               | NONE => M.CONSTtyc tyc
                                         in (M.TYCdec(x, tycExp))::entDecl
                                        end)
                                   | _ => entDecl
@@ -580,7 +585,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
           val (entEnvLocal, entDecLocal) =
               case context
                of EU.INFCT _ => 
-                    (EE.mark(mkStamp,EE.atop(entEnv'',entEnv')), 
+                    (EE.mark(mkStamp,EE.atop(entEnv'',entEnv')), (* why only in a functor? *)
                      seqEntDec(entDecl::entDecls))
 		| _ => (entEnv'', entDecl)
 
@@ -636,7 +641,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
           val _ = debugmsg "--elab[AppStr-one]: functor lookup done"
           val _ = showFct("--elab[AppStr]: functor ",fct,env)
 
-          val entv = mkStamp()   (* entVar for the uncoerced argument *)
+          val entv = mkStamp()   (* fresh entVar for the uncoerced argument *)
           val (argDec, argStr, argExp, argDee) = 
 	      elabStr(arg, NONE, env, entEnv, context, epContext,
 		      SOME entv, IP.IPATH[], region, compInfo)
@@ -659,11 +664,13 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			     epContext) 
                     *)
 
-		    val fctExp = 
+		   (* is the functor volatile or nonvolatile? *)
+		   val fctExp = 
 			case EPC.lookFctEntPath(epContext, MU.fctId fct)
 			  of SOME ep => VARfct ep
 			   | NONE => CONSTfct fctEnt
-		    val epc = case entVarOp
+
+		   val epc = case entVarOp
 			       of NONE => epContext
 				| SOME ev => EPC.enterOpen(epContext, ev)
 		   (* val _ = debugPrint("--elab[AppStr]: epc = ",
@@ -673,16 +680,16 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			     epc)
                     *)
 
-		    val {resDec, resStr, resExp} = 
+		   val {resDec, resStr, resExp} = 
 			SM.applyFct{fct=fct, fctExp=fctExp, argStr=argStr, 
 				    argExp=argExp, entvar = entv, epc=epc,
 				    statenv=env, rpath=rpath, region=region,
 				    compInfo=compInfo}
-		    val _ = debugmsg "--elab[AppStr-one]: applyFct done"
-		    val _ = showStr("--elab[AppStr-one]: result: ",resStr,env)
-		    val _ = debugmsg "<<elab[AppStr-one]"
-		 in (A.SEQdec [argDec, resDec], resStr, resExp, resDee)
-		end
+		   val _ = debugmsg "--elab[AppStr-one]: applyFct done"
+		   val _ = showStr("--elab[AppStr-one]: result: ",resStr,env)
+		   val _ = debugmsg "<<elab[AppStr-one]"
+		in (A.SEQdec [argDec, resDec], resStr, resExp, resDee)
+	       end
 	     | _ => bug "AppStrI:one arg"
       end (* AppStrI - one arg *)
 
@@ -1271,10 +1278,10 @@ and elabDecl0
    | OpenDec paths =>
        let val err = error region
            val strs = map (fn s => let val sp = SP.SPATH s
-                                    in (sp, LU.lookStr(env0, sp, err))
+                                    in LU.lookStr(env0, sp, err)
                                    end) paths
            fun loop([], env) = (A.OPENdec strs, M.EMPTYdec, env, EE.empty)
-             | loop((_, s)::r, env) = loop(r, MU.openStructure(env, s))
+             | loop(s::r, env) = loop(r, MU.openStructure(env, s))
 
         in loop(strs, SE.empty)
        end 

@@ -29,8 +29,10 @@ local structure ST = Stamps
       structure MI = ModuleId
 in
 
+(* pathmap: a record of five functional finite maps from static identifiers (for
+ * tycons, signatures, structures, functors, and static envs) *)
 type pathmap = EP.entPath MI.umap
-val emptyPathMap = MI.emptyUmap
+val emptyPathMap: pathmap = MI.emptyUmap
 
 (* 
  * A structure body (struct decls end) is "closed" if it is a functor
@@ -41,7 +43,7 @@ val emptyPathMap = MI.emptyUmap
  * body is elaborated.
  *)
 
-(* pathmap maps stamps to full entPaths relative to current functor context *)
+(* pathmap maps modIds to full entPaths relative to current functor context *)
 (* each "closed" structure body pushes a new layer, with empty pathmap and 
  * context entPath. *)
 datatype context
@@ -83,7 +85,7 @@ fun enterOpen (EMPTY, _) = EMPTY  (* not in a functor, don't need entPaths *)
 (* relative: entPath * entPath -> entPath *)
 (* relative(path,ctx) - subtract common prefix of a path and a context
  * path from the path *)
-fun relative([],_) = []
+fun relative([],_) = []    (* can this, should this, ever happen? *)
   | relative(ep,[]) = ep
   | relative(p as (x::rest),y::rest') = 
       if EP.eqEntVar(x,y) then relative(rest,rest') else p
@@ -111,10 +113,10 @@ val lookFctEntPath : context * MI.fctId -> EP.entPath option =
 (* probe: (pathmap * 'a -> rEntPath option) -> bool *)
 (* probe(ctx,s) checks whether a statId is bound in the context.
  * slightly more efficient than using lookPath because it doesn't call relative *)
-fun probe look (EMPTY, s) = false
-  | probe look (LAYER{locals, outer, ...}, s) = 
-      (case look(!locals, s)
-	of NONE => probe look (outer, s)
+fun probe look (EMPTY, id) = false
+  | probe look (LAYER{locals, outer, ...}, id) = 
+      (case look(!locals, id)
+	of NONE => probe look (outer, id)
          | _ => true)
 
 (* bindEntVar: (pathmap * 'a -> entPath option) * (pathmap * 'a * entPath -> bool)
@@ -122,9 +124,9 @@ fun probe look (EMPTY, s) = false
 	       -> unit *)
 (* generic binder function for adding items to a pathmap *)
 fun bindEntVar (look, insert) (EMPTY, _, _) = ()  (* should this be an exception? *)
-  | bindEntVar (look, insert) (xx as LAYER { locals, context, ...}, s, ev) =
-    if probe look (xx, s) then ()
-    else locals := insert (!locals, s, context@[ev])
+  | bindEntVar (look, insert) (xx as LAYER { locals, context, ...}, id, ev) =
+    if probe look (xx, id) then ()
+    else locals := insert (!locals, id, context@[ev])
 
 (* used in elabmod.sml, elabsig.sml, and evalent.sml *)
 val bindTycEntVar = bindEntVar (MI.uLookTyc, MI.uInsertTyc)
