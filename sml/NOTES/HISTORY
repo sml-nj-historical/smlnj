@@ -16,6 +16,14 @@ Description:
 Here is a test entry
 
 ----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2009/12/10
+Description:
+
+Fixed an overrun during major GC. If the string arena was nearly full, it was possible
+for alignment padding added during copy to the to-space to overrun the allocated
+size.
+----------------------------------------------------------------------
 Name John Reppy (http://cs.uchicago.edu/~jhr)
 Date 2009/11/18
 Description:
