@@ -380,6 +380,11 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
 
     RepairHeap (heap, oldBIBOP, addrOffset, boRegionTbl, externs);
 
+#ifdef CHECK_HEAP
+    SayDebug ("Checking imported heap...\n");
+    CheckHeap (heap, hdr->numGens);
+#endif
+
   /* Adjust the run-time globals that point into the heap */
     *PTR_MLtoC(ml_val_t, PervStruct) = RepairWord (
 	*PTR_MLtoC(ml_val_t, PervStruct),
