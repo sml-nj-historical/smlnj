@@ -377,29 +377,49 @@ ml_val_t _ml_win32_IO_create_file(ml_state_t *msp, ml_val_t arg)
  *
  * generic routine for writing n byes from buf to handle starting at offset
  *
+ * A maximum print size is used to avoid exceeding maximum buffer thresholds
+ * with handles corresponding to console output. Technically, we can use
+ * larger values, but this will also support several other devices that have
+ * output limits if we decide to open up the range of supported file handles
+ * through interop.
  */
+#define MAX_PRINT_SIZE 30000
 ml_val_t _ml_win32_IO_write_buf(ml_state_t *msp, ml_val_t arg)
 {
   HANDLE h = (HANDLE) WORD_MLtoC(REC_SEL(arg,0));
   ml_val_t buf = REC_SEL(arg,1);
   size_t nbytes = REC_SELINT(arg,2);
   Byte_t *start = (Byte_t *) (STR_MLtoC(buf) + REC_SELINT(arg, 3));
-  DWORD n;
+  DWORD n, remaining, total;
+  char *buffer = PTR_MLtoC(void,start);
+  int err;
 
 #ifdef WIN32_DEBUG
   SayDebug("_ml_win32_IO_write_buf: handle is %x\n", (unsigned int) h);
 #endif
-  if (WriteFile(h,PTR_MLtoC(void,start),nbytes,&n,NULL)) {
+
+  remaining = nbytes;
+  total = 0;
+
+  while (remaining > 0) {
+      nbytes = min (MAX_PRINT_SIZE, remaining);
+	  if (WriteFile(h,buffer,nbytes,&n,NULL)) {
 #ifdef WIN32_DEBUG
-    if (n == 0)
-      SayDebug("_ml_win32_IO_write_buf: eof on device\n");
+	    if (n == 0)
+            SayDebug("_ml_win32_IO_write_buf: eof on device\n");
 #endif
-    return INT_CtoML(n);
+		total += n;
+		remaining -= n;
+		buffer += n;
+	  } else {
+#ifdef WIN32_DEBUG
+          SayDebug("_ml_win32_IO_write_buf: failing\n");
+#endif
+          return RAISE_SYSERR(msp,-1);
+	  }
   }
-#ifdef WIN32_DEBUG
-  SayDebug("_ml_win32_IO_write_buf: failing\n");
-#endif
-  return RAISE_SYSERR(msp,-1);
+
+  return INT_CtoML(total);
 }
 
 ml_val_t _ml_win32_IO_write_vec(ml_state_t *msp, ml_val_t arg)
