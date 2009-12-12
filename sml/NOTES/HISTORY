@@ -17,6 +17,12 @@ Here is a test entry
 
 ----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2009/12/11
+Description:
+
+Fixed the Win32 unable to print long strings bug.
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
 Date: 2009/12/10
 Description:
 
