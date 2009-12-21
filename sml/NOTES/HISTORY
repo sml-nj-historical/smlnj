@@ -16,6 +16,14 @@ Description:
 Here is a test entry
 
 ----------------------------------------------------------------------
+Name John Reppy (http://cs.uchicago.edu/~jhr)
+Date 2009/12/20
+Description:
+
+Fixed performance bugs in List module by making @ and foldr be
+tail recursive.
+
+----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
 Date: 2009/12/11
 Description:

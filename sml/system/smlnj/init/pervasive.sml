@@ -224,19 +224,11 @@ fun length l = let
       in
 	loop (0, l)
       end
-fun rev l = let
-      fun loop ([], l) = l
-	| loop (x::xs, l) = loop(xs, x::l)
-      in
-	loop (l, [])
-      end
-fun foldr f b = let
-      fun f2 [] = b
-	| f2 (a :: r) = f (a, f2 r)
-      in
-	f2
-      end
-fun l1 @ l2 = foldr (op ::) l2 l1
+fun revAppend ([], l) = l
+  | revAppend (x::r, l) = revAppend(r, x::l)
+fun rev l = revAppend(l, [])
+fun foldr f b l = foldl f b (rev l)
+fun l1 @ l2 = revAppend(rev l1, l2)
 fun app f = let
       fun a2 [] = ()
 	| a2 (h :: t) = (f h : unit; a2 t)
