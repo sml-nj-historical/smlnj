@@ -1,0 +1,6 @@
+Files involved in bootstrapping
+
+system/smlnj/init/built-in.sml
+  Defines:
+    PrimTypes (as an odd alias to the earlier PrimTypes defined in pervasive(?) env)
+    InlineT
