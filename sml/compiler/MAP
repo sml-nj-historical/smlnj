@@ -307,7 +307,9 @@ Basic datastructures used in elaboration (including type checking)
     epcontext.sml
       context info used during module elaboration,
       related to nesting of modules (ep stands for
-      "entity path")
+      "entity path") -- an inverse entpath environment
+      mapping volatile tycon entities to their absolute
+      entity paths
       defs: ENT_PATH_CONTEXT, EntPathContext :> ENT_PATH_CONTEXT
 
   ElabData/main/
@@ -386,11 +388,11 @@ Elaborator/
       interpret PATHtycs in entity environments
       defs: EXPAND_TYCON, ExpandTycon : EXPAND_TYCON
     instantiate.sml
-      free instantiation of signatures. defines Instantiate
+      free instantiation of signatures
       defs: INSTANTIATE_PARAM, INSTANTIATE,
             Instantiate : INSTANTIATE
     sigmatch.sml
-      signature matching. defines SigMatch
+      signature matching
       defs: SIGMATCH, SigMatch : SIGMATCH
 
   Elaborator/elaborate/

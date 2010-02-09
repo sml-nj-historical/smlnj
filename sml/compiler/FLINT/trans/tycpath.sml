@@ -15,6 +15,7 @@ datatype tycpath (* (instantiated) functor type parameter path *)
   | TP_FCT of tycpath list * tycpath list
   | TP_APP of tycpath * tycpath list
   | TP_SEL of tycpath * int
+
 end (* local *)
 
 end (* structure TycPath *)

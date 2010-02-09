@@ -32,7 +32,7 @@ datatype openTvKind
 
 and tvKind		  
   = INSTANTIATED of ty (* instantiation of an OPEN *)
-  | OPEN of {depth: int, eq: bool, kind: openTvKind}
+  | OPEN of {depth: int, eq: bool, kind: openTvKind}  (* univariable *)
   | UBOUND of (* explicit type variables *)
      {depth: int, eq: bool, name: S.symbol}
   | LITERAL of (* type of a literal *)

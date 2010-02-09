@@ -13,7 +13,8 @@ sig
 		    * TransTypes.primaryEnv * Absyn.dec CompInfo.compInfo 
 		    -> PLambdaType.tyc list
    val getFctTyc : Modules.fctSig * Modules.fctEntity * TransTypes.primaryEnv
-		   * Absyn.dec CompInfo.compInfo -> PLambdaType.tyc
+		   * Absyn.dec CompInfo.compInfo
+		   -> PLambdaType.tyc
 end
 
 structure ModType : MODTYPE =
@@ -93,37 +94,53 @@ in
 
   val buildKind = LT.tkc_int
 
-  (* fetching the list of LT.tycs for the primaries of a structure
-   * modelled on getTycPaths from the old version of Instantiate.
-   * assumes primaries are passed as an argument. *)
-  fun getStrTycs(primaries, entities, penv, compInfo) =
-      let 
-	  fun getPrimaryTyc (primsig,_,ep) = 
-	      let val ent = EE.lookEP(entities, ep)
-	       in case ent
-		   of M.TYCent tyc => raise Fail "Unimplemented" (* TT.tyconToTyc(tyc,penv) *)  (* T.TP_TYC tyc *)
-		    | M.FCTent fctEnt =>
-		      (case primsig
-			of M.PrimaryFct fctsig => getFctTyc(fctsig,fctEnt,penv, compInfo)
-			 | _ => bug "getPrimaryTyc")
-		    | M.ERRORent => bug "ERRORent in getStrTycs"
-		    | _ => bug "unexpected entity in getStrTycs"
-	      end
+(* getStrTycs : Modules.primary list * EntityEnv.entityEnv
+	        * TransTypes.primaryEnv * Absyn.dec CompInfo.compInfo 
+		-> PLambdaType.tyc list
+*)
+(* fetching the list of LT.tycs for the primaries of a structure
+ * modelled on getTycPaths from the old version of Instantiate.
+ * assumes primaries are passed as an argument. *)
+fun getStrTycs(primaries, entities, penv, compInfo) =
+    let 
+	fun getPrimaryTyc (primsig,_,ep) = 
+	    let val ent = EE.lookEP(entities, ep)
+	     in case ent
+		 of M.TYCent tyc => 
+		    (* ~ T.TP_TYC tyc  in getTycPaths, what about FLEXTYC case? *)
+		    (case primsig
+		      of M.PrimaryTcy n => TT.tyconToTyc(tyc, penv, d???)
+		          (* we assume arity will match *)
+		       | _ => bug "getPrimaryTyc 1")
+		  | M.FCTent fctEnt =>
+		    (case primsig
+		      of M.PrimaryFct fctsig => getFctTyc(fctsig,fctEnt,penv,compInfo)
+		       | _ => bug "getPrimaryTyc 2")
+		  | M.ERRORent => bug "ERRORent in getStrTycs"
+		  | _ => bug "unexpected entity in getStrTycs"
+	    end
 
-       in map getPrimaryTyc primaries
-      end
+     in map getPrimaryTyc primaries
+    end
 
+(* getFctTyc : Modules.fctSig * Modules.fctEntity * TransTypes.primaryEnv
+	       * Absyn.dec CompInfo.compInfo
+	       -> PLambdaType.tyc
+*)
 (* based on routine used in old sigmatch to compute tycpath field of the
  * functor entity resulting from a fctsig match.  *)
 and getFctTyc(fctsig, fctEntity: M.fctEntity, penv, compInfo) =
-    let val {primaries, paramEnv, exp, closureEnv, ...} = fctEntity
-	       (* maybe paramEnv should be a strEntity? *)
-	val paramRlzn = raise Fail "Unimplemented" (* ??  paramEnv ?? (* we need a strEntity for bodyEnv *) *)
+    let val {primaries, paramRlzn, exp, closureEnv, ...} = fctEntity
+	       (* maybe paramEnv should be a strEntity?  ==> paramRlzn *)
+(*  -- make paramEnv field of fctEntity be paramRlzn : strEntity *)
+	val paramRlzn = (* construct a parameter rlzn from paramEnv *)
+             (* ??  paramEnv ?? (* we need a strEntity for bodyEnv *) *)
+*)
 	val M.FSIG{bodysig,...} = fctsig
             (* need bodySig to calculate primaries for result structure *)
 	val M.LAMBDA{param,body} = exp
             (* need param field to define bodyEnv below *)
-	val resultEnt = (* APP(fctEntity,paramRlzn) *) raise Fail "Unimplemented"
+	val resultEnt = evalEnt(APP(fctEntity,paramRlzn), ...) ???
             (* apply the functor to the parameter instantiation *)
 	val paramTycs = getStrTycs(primaries,paramEnv,penv,compInfo)
 	val bodyEnv = EE.bind(param, M.STRent paramRlzn, closureEnv)

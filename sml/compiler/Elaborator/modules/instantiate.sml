@@ -1185,8 +1185,8 @@ fun buildTycClass (this_slot, instKind, rpath, mkStamp, err) =
       fun finalize(defOp,slots) =
 	  let val (finalInst, tcOp) = 
 		  case defOp
-		    of SOME(tycInst,_) => (FinalTyc(ref(tycInst)), NONE)
-		     | NONE => 
+		    of SOME(tycInst,_) => (FinalTyc(ref(tycInst)), NONE) (* secondary *)
+		     | NONE => (* new primary *)
 			(scanForRep(map getSlotEp slots)
 			 handle INCONSISTENT_EQ =>
 			   (err EM.COMPLAIN
@@ -1618,7 +1618,7 @@ end (* fun instToStr *)
 (*** the generic instantiation function ***)
 (* instGeneric :
    sign : Signature     -- the signature to instantiate
-   entEnv : entityEnv   -- contextual entityEnv (for open signatures? in a functor context?)
+   entEnv : entityEnv   -- contextual entityEnv (for open signatures in a functor context)
    instKind : instKind  -- kind of instantiation (parameter, formal body, abstr)
    rpath : InvPath.path -- context symbolic path (?)
    region: SourceMap.region -- soure region for error messages
