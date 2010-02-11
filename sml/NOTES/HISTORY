@@ -17,6 +17,16 @@ Here is a test entry
 
 ----------------------------------------------------------------------
 Name: Jon Riehl (http://jonriehl.com/)
+Date: 2010/02/11
+Description:
+
+Applied patch for building on more recent NetBSD's.  See bug #39 in the
+tracker:
+
+http://smlnj-gforge.cs.uchicago.edu/tracker/index.php?func=detail&aid=39&group_id=33&atid=215
+
+----------------------------------------------------------------------
+Name: Jon Riehl (http://jonriehl.com/)
 Date: 2010/02/02
 Description:
 
