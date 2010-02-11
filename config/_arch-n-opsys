@@ -119,13 +119,15 @@ case `uname -s` in
     ;;
   NetBSD)
     case `uname -r` in
-      2*) OPSYS=netbsd2;;
-      3*) OPSYS=netbsd;;
-      *) exit 1;;
+      1.*) exit 1;;
+      2.*) OPSYS=netbsd2;;
+      *) OPSYS=netbsd;;
     esac
     HEAP_OPSYS=bsd
-    case `uname -m` in
+    case `uname -p` in
       *86) ARCH=x86;;
+      powerpc) ARCH=ppc;;
+      sparc) ARCH=sparc;;
       *) exit 1;;
     esac
     ;;
