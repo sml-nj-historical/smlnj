@@ -102,8 +102,7 @@ in
  * modelled on getTycPaths from the old version of Instantiate.
  * assumes primaries are passed as an argument. *)
 fun getStrTycs(primaries, entities, penv, compInfo) =
-    let 
-	fun getPrimaryTyc (primsig,_,ep) = 
+    let fun getPrimaryTyc (primsig,_,ep) = 
 	    let val ent = EE.lookEP(entities, ep)
 	     in case ent
 		 of M.TYCent tyc => 
@@ -143,6 +142,7 @@ and getFctTyc(fctsig, fctEntity: M.fctEntity, penv, compInfo) =
 	val resultEnt = evalEnt(APP(fctEntity,paramRlzn), ...) ???
             (* apply the functor to the parameter instantiation *)
 	val paramTycs = getStrTycs(primaries,paramEnv,penv,compInfo)
+	    (* primaries includes both primary tycons and functors *)
 	val bodyEnv = EE.bind(param, M.STRent paramRlzn, closureEnv)
 	val {primaries=resPrimaries, ...} = 
 	    INS.instFormal{sign=bodysig, entEnv=bodyEnv,

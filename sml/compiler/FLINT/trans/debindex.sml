@@ -31,7 +31,7 @@
  * [But what is the "abstraction depth" of a binder?  Is it the nesting depth of
  * that binder?  Starting with 0 or 1?]
  *
- * The abstraction depth of a binder depth is the then current depth
+ * The abstraction depth of a binder is the then current depth
  * just outside of that abstraction, i.e. the number of enclosing
  * abstractions. For example, the outermost binder will have depth=0.
  * and the current depth is incremented when entering the the scope of

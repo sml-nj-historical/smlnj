@@ -13,7 +13,7 @@ sig
   val primaryToTyc : argtyc * primaryEnv * int -> PLambdaType.tyc
  
   val tyconToTyc : Types.tycon * primaryEnv * int -> PLambdaType.tyc
-  val toTyc  : primaryEnv -> DebIndex.depth -> Types.ty -> PLambdaType.tyc
+  val tyToTyc  : primaryEnv -> DebIndex.depth -> Types.ty -> PLambdaType.tyc
   val toLty  : primaryEnv -> DebIndex.depth -> Types.ty -> PLambdaType.lty
   val strLty : Modules.Structure * primaryEnv * DebIndex.depth 
                * ElabUtil.compInfo -> PLambdaType.lty
@@ -96,26 +96,36 @@ fun ppLtyc ltyc =
 (****************************************************************************
  *               TRANSLATING ML TYPES INTO FLINT TYPES                      *
  ****************************************************************************)
-local val recTyContext = ref [~1]
+(* a global stack recording entry into dt tycon translations
+ * when entering into a dt, push its arity, when finished, pop.
+ * Can the arity be passed as a context parameter to tyconToTyc, etc? *)
+local val recTyContext : int ref = ref []
 in 
 fun enterRecTy (a) = (recTyContext := (a::(!recTyContext)))
 fun exitRecTy () = (recTyContext := tl (!recTyContext))
-fun recTyc (i) = 
-      let val x = hd(!recTyContext)
-          val base = DI.innermost   (* = 1 *)
-       in if x = 0 then LT.tcc_var(base, i)
-          else if x > 0 then LT.tcc_var(DI.di_inner base(* 2 *), i)   
-               else bug "unexpected RECtyc"
-      end
-fun freeTyc (i) = 
-      let val x = hd(!recTyContext)
-          val base = DI.di_inner (DI.innermost)  (* = 2 *)
-       in if x = 0 then LT.tcc_var(base, i)
-          else if x > 0 then LT.tcc_var(DI.di_inner base(* 3 *), i)
-               else bug "unexpected RECtyc"
-      end
-end (* end of recTyc and freeTyc hack *)
 
+fun recTyc (i) = 
+    case !recTyContext
+     of (x::_) =>
+	if x = 0 then LT.tcc_var(1, i)
+	   (* no poly abstraction, index to generator abstraction *)
+	else if x > 0 then LT.tcc_var(2, i)   
+	   (* poly abstraction, so reach beyond poly abstraction to generator abstr *)
+	else bug "transtypes: recTyc: negative arity" (* arity should be non-negative *)
+      | nil => bug "transtypes: RECtyc outside of a datatype"
+
+fun freeTyc (i) = 
+    case !recTyContext
+     of (x::_) =>
+	if x = 0 then LT.tcc_var(2, i)
+	   (* no poly abstraction, reach beyond generator abstraction
+	    * to free tyc abstraction *)
+	else if x > 0 then LT.tcc_var(3, i)
+	   (* poly abstraction, so reach beyond generator and poly abstractions *)
+	else bug "transtypes: freeTyc: negative arity"
+      | nil => bug "transtypes: FREEtyc outside of a datatype"
+
+end (* end of recTyc and freeTyc hack *)
 
 
 (* 
@@ -179,17 +189,18 @@ and tyconToTyc =
 *)
 
 (* translate Types.tycon to LT.tyc *)
-and tyconToTyc(tc : Types.tycon, penv : primaryEnv, d: int) =
-    let fun dtsTyc nd ({dcons: dconDesc list, arity, ...} : dtmember) = 
-	    let val nnd = if arity=0 then nd else nd+1
+and tyconToTyc(tc : Types.tycon, penv : primaryEnv, depth: int) =
+    let fun dtsTyc depth1 ({dcons: dconDesc list, arity, ...} : dtmember) = 
+	    let val depth2 = if arity = 0 then depth1 else depth1 + 1
 		fun f ({domain=NONE, rep, name}, r) = (LT.tcc_unit)::r
 		  | f ({domain=SOME t, rep, name}, r) = 
-		    (toTyc penv nnd t)::r
+		    (tyToTyc penv depth2 t)::r
 
 		val _ = enterRecTy arity
 		val core = LT.tcc_sum(foldr f [] dcons)
 		val _ = exitRecTy()
 
+		(* add the polymorphic abstraction if dt has arity > 0 *)
 		val resTyc = if arity=0 then core
 			     else (let val ks = LT.tkc_arg arity
 				    in LT.tcc_fn(ks, core)
@@ -198,34 +209,34 @@ and tyconToTyc(tc : Types.tycon, penv : primaryEnv, d: int) =
 	    end
 
 	fun dtsFam (freetycs, fam as { members, ... } : dtypeFamily) =
-	    case ModulePropLists.dtfLtyc fam 
-	      of SOME (tc, od) =>
-		 LT.tc_adj(tc, od, d) (* INVARIANT: tc contains no free variables 
-				       * so tc_adj should have no effects *)
-	       | NONE =>
-		 let fun ttk (GENtyc{ arity, ...}) = LT.tkc_int arity
-		       | ttk (DEFtyc{tyfun=TYFUN{arity, ...},...}) =
-			 LT.tkc_int arity
-		       | ttk _ = bug "unexpected ttk in dtsFam"
-		     val ks = map ttk freetycs
-		     val (nd, hdr) = 
-			 case ks
-			  of [] => (d, fn t => t)
-			   | _ => (DI.next d, fn t => LT.tcc_fn(ks, t))
-		     val mbs = Vector.foldr (op ::) nil members
-		     val mtcs = map (dtsTyc (DI.next nd)) mbs
-		     val (fks, fts) = ListPair.unzip mtcs
-		     val nft = case fts of [x] => x | _ => LT.tcc_seq fts
-		     val tc = hdr(LT.tcc_fn(fks, nft)) 
-		     val _ = ModulePropLists.setDtfLtyc (fam, SOME(tc, d))
-		  in tc
-		 end
+	    (* removed memoization using ModulePropLists.dtfLtyc fam *)
+	    let fun ttk (GENtyc{arity, ...}) = LT.tkc_int arity
+		  | ttk (DEFtyc{tyfun=TYFUN{arity, ...},...}) =
+		    LT.tkc_int arity
+		  | ttk _ = bug "unexpected ttk in dtsFam"
+		val ks = map ttk freetycs  (* kinds of free tycon params *)
+                (* are there any freetycs?  If so, abstract over them in fix body
+		 * tcc *)
+		val (depth1, hdr) = 
+		    case ks
+		     of [] => (depth, fn t => t)
+		      | _ => (depth + 1, fn t => LT.tcc_fn(ks, t))
+		val mbs = Vector.foldr (op ::) nil members
+		val mtcs = map (dtsTyc (depth1 + 1)) mbs
+		val (fks, fts) = ListPair.unzip mtcs
+		val nft = case fts of [x] => x | _ => LT.tcc_seq fts
+		(* add the abstraction for the fix generator, and if needed,
+		 * the outer abstraction over the free tycons *)
+		val tc = hdr(LT.tcc_fn(fks, nft)) 
+(* memoize	val _ = ModulePropLists.setDtfLtyc (fam, SOME(tc, depth)) *)
+	     in tc
+	    end
 
 	fun gentyc (_, PRIMITIVE pt) = LT.tcc_prim (PrimTyc.pt_fromint pt)
 	  | gentyc (stmp, DATATYPE {index, family, freetycs, stamps, root}) = 
 	    if Stamps.eq(stmp, TU.tycStamp(BT.refTycon)) then LT.tcc_prim(PT.ptc_ref) else
 	      let val tc = dtsFam (freetycs, family)
-		  val n = Vector.length stamps 
+		  val n = Vector.length stamps (* dt family size *)
 		  val names = Vector.map (fn ({tycname,...}: dtmember) => 
 					     Symbol.name tycname)
 					 (#members family)
@@ -257,6 +268,8 @@ and tyconToTyc(tc : Types.tycon, penv : primaryEnv, d: int) =
 	      say " in translate: ";
 	      say (EntPath.entPathToString entPath);
 	      say "\n"; *)
+	     (* this should not happen -- pathtycs should have been interpreted
+	      * before translation.  Returning a dummy PT.tyc *)
 	     if arity > 0 then LT.tcc_fn(LT.tkc_arg arity, LT.tcc_void)
 	     else LT.tcc_void)
 	  | toTyc (RECORDtyc _) = bug "unexpected RECORDtyc in tyconToTyc-g"
@@ -264,14 +277,14 @@ and tyconToTyc(tc : Types.tycon, penv : primaryEnv, d: int) =
      in toTyc tc
     end (* fun tyconToTyc *)
 
-and tfTyc (penv : primaryEnv, TYFUN{arity=0, body}, d) = toTyc penv d body
+and tfTyc (penv : primaryEnv, TYFUN{arity=0, body}, d) = tyToTyc penv d body
   | tfTyc (penv, TYFUN{arity, body}, d) = 
       let val ks = LT.tkc_arg arity
-       in LT.tcc_fn(ks, toTyc penv (DI.next d) body)
+       in LT.tcc_fn(ks, tyToTyc penv (DI.next d) body)
       end
 
 (* translating Types.ty to LT.tyc *)
-and toTyc (penv : primaryEnv) d t = 
+and tyToTyc (penv : primaryEnv) d t = 
   let val m : (tyvar * LT.tyc) list ref = ref []
       fun lookTv tv = 
         let val xxx = !m
@@ -290,7 +303,7 @@ and toTyc (penv : primaryEnv) d t =
              LT.tcc_var(DI.relativeDepth(d, depth), index)
         | h (UBOUND _) = LT.tcc_void
             (* DBM: should this have been converted to an LBOUND before
-             * being passed to toTyc? 
+             * being passed to tyToTyc? 
 	     * GK: Doesn't seem to experimentally *)
             (* dbm: a user-bound type variable that didn't get generalized;
                treat the same as an uninstantiated unification variable. 
@@ -300,19 +313,19 @@ and toTyc (penv : primaryEnv) d t =
 	       generalized.  E.g. val x = ([],1); -- the unification variable
                introduced by the generic instantiation of the type of [] is
                neither instantiated nor generalized. *)
-        | h _ = bug "toTyc:h" (* LITERAL and SCHEME should not occur *)
+        | h _ = bug "tyToTyc:h" (* LITERAL and SCHEME should not occur *)
 
       and g (VARty tv) = lookTv tv
 	| g (CONty(RECORDtyc _, [])) = LT.tcc_unit
         | g (CONty(RECORDtyc _, ts)) = LT.tcc_tuple (map g ts)
-        | g (CONty(tyc, [])) = (debugmsg "--toTyc[CONty[]]"; 
+        | g (CONty(tyc, [])) = (debugmsg "--tyToTyc[CONty[]]"; 
 				tyconToTyc(tyc, penv, d))
         | g (CONty(DEFtyc{tyfun,...}, args)) = 
-	  (debugmsg "--toTyc[CONty[DEFtyc]"; g(TU.applyTyfun(tyfun, args)))
+	  (debugmsg "--tyToTyc[CONty[DEFtyc]"; g(TU.applyTyfun(tyfun, args)))
 	| g (CONty (tc as GENtyc { kind, ... }, ts)) =
 	  (case (kind, ts) of
 	       (ABSTRACT _, ts) =>
-	       (debugmsg "--toTyc[CONty[ABSTRACT]]";
+	       (debugmsg "--tyToTyc[CONty[ABSTRACT]]";
 		LT.tcc_app(tyconToTyc(tc, penv, d), map g ts))
              | (_, [t1, t2]) =>
                if TU.eqTycon(tc, BT.arrowTycon) 
@@ -321,18 +334,18 @@ and toTyc (penv : primaryEnv) d t =
 	     | _ => LT.tcc_app (tyconToTyc (tc, penv, d), map g ts))
         | g (CONty(tc, ts)) = LT.tcc_app(tyconToTyc(tc, penv, d), map g ts)
         | g (IBOUND i) = LT.tcc_var(DI.innermost, i) 
-			 (* [KM] IBOUNDs are encountered when toTyc
+			 (* [KM] IBOUNDs are encountered when tyToTyc
                           * is called on the body of a POLYty in 
                           * toLty (see below). *)
 	| g (MARKty (t, _)) = g t
-        | g (POLYty _) = bug "unexpected poly-type in toTyc"
+        | g (POLYty _) = bug "unexpected poly-type in tyToTyc"
 	| g (UNDEFty) = 
           (* mkVB kluge!!! *) LT.tcc_void
-	  (* bug "unexpected undef-type in toTyc" *)
-        | g (WILDCARDty) = bug "unexpected wildcard-type in toTyc"      
+	  (* bug "unexpected undef-type in tyToTyc" *)
+        | g (WILDCARDty) = bug "unexpected wildcard-type in tyToTyc"
 
    in g t 
-  end (* toTyc *)
+  end (* tyToTyc *)
 
 (* translating polytypes *)
 and toLty (penv : primaryEnv) d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) = 
@@ -341,7 +354,7 @@ and toLty (penv : primaryEnv) d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) =
       let val ks = LT.tkc_arg arity
        in LT.ltc_poly(ks, [toLty penv (DI.next d) body])
       end
-  | toLty (penv : primaryEnv) d  x = LT.ltc_tyc (toTyc penv d x) 
+  | toLty (penv : primaryEnv) d  x = LT.ltc_tyc (tyToTyc penv d x) 
 
 
 (****************************************************************************
