@@ -1289,7 +1289,7 @@ and mkVBs (penv : TT.primaryEnv, vbs, d) =
                    exp, boundtvs=btvs, ...},
                 body) =
             (* We uniformly call mkPE in the case of simple variable bindings,
-             * No special case for primops, or for the case wher btvs = ptvs
+             * No special case for primops, or for the case where btvs = ptvs
              * [dbm: 5/1/07] *)
             (* simple variable pattern: No special case needed for primops [dbm: 5/1/07] *)
             LET(v, mkPE(penv, exp, d, btvs), body)
@@ -1318,7 +1318,8 @@ and mkVBs (penv : TT.primaryEnv, vbs, d) =
  *)
 	     in case oldvars
 		 of [] => (* variable-free pattern, implies boundtvs = [], hence no type abs *)
-		      LET(mkv(), mkExp(penv, newexp, d), body) (* fresh let-bound lvar doesn't occur in body *)
+		      LET(mkv(), mkExp(penv, newexp, d), body)
+		      (* fresh let-bound lvar doesn't occur in body *)
 		  | _ => 
 		    let val newVar = mkv() (* new local variable to be let-bound to newexp *)
 			fun lookup (tv: Types.tyvar) [] = NONE
@@ -1438,18 +1439,23 @@ and mkStrexp (penv, se, d) =
    in le
   end
 
+(* translation of a functor expression
+ * abstracted primaries have already been pushed onto penv0 before mkFctexp is
+ * called in mkFctbs. This seems ok for FCTfct case, but what about VARfct and
+ * the others? *)
 and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp = 
   let 
-      fun g fe = 
+      fun trans fe = 
 	  case fe
 	   of (VARfct f) => 
+	      (* here we probably don't want the primaries in hd(penv0) *)
 	      (debugmsg "--mkFctexp[VARfct]";
 	       ElabDebug.debugPrint debugging 
 			("functor: ", 
 			 fn ppstrm => fn fct => 
 			PPModules.ppFunctor ppstrm (fct, StaticEnv.empty, 100),
 				     f);
-	       mkFct(penv0, f, d))
+	       mkFct(penv0, f, d))  (* pass tl(penv0)? *)
            (* FCTfct is not self-contained. It always occurs in the context
 	      of a functor binding (FCTB) that carries a FCT in its fct field
               -- the necessary primaries info can be found in this FCT.
@@ -1470,7 +1476,8 @@ and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp =
 		      FCTB context. Then we use FctKind.primaryToKnd as below.
 		      We could also, redundantly, stick the primaries into
 		      the FCTfct data structure. *)
-		   val primaries = hd penv0 
+		   val primaries = hd penv0  (* pre-added in mkFctbs, should probably be passed
+					      * as a separate param *)
 		   val primaryBindings =
 		       map (FctKind.primaryToBind (compInfo, #entities rlzn))
 			   primaries
@@ -1485,7 +1492,7 @@ and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp =
 				print "\n")
 			   else ()
 
-                   val nd = DI.next d  (* reflecting type abstraction *)
+                   val nd = d + 1  (* reflecting TFN type abstraction below, and = length penv0 *)
 
 		   (* val _ = debugmsg ("--mkFctexp[FCTfct] penv1 "
 				     ^Int.toString(FTM.numItems penv1)) *)
@@ -1507,16 +1514,16 @@ and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp =
 	     | _ => bug "mkFctexp: unexpected access")
         | (LETfct (dec, b)) =>
 	  let val _ = debugmsg ">>mkFctexp[LETfct]"
-	      val dec' = mkDec (penv0, dec, d) 
-	      val b' = g b
+	      val dec' = mkDec (penv0, dec, d)   (* should be tl(penv0)? *)
+	      val b' = trans b  (* this uses penv0. Ok? *)
 	      val r = dec' b'
 	      val _ = debugmsg "<<mkFctexp[LETfct]"
 	  in r 
 	  end
-        | (MARKfct (b, reg)) => withRegion reg g b
+        | (MARKfct (b, reg)) => withRegion reg trans b
         | _ => bug "unexpected functor expressions in mkFctexp"
 
-   in g fe
+   in trans fe
   end (* mkFctexp *)
  
 and mkStrbs (penv, sbs, d) =

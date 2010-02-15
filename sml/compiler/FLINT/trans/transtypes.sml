@@ -226,7 +226,7 @@ and tyconToTyc(tc : Types.tycon, penv : primaryEnv, depth: int) =
 		val (fks, fts) = ListPair.unzip mtcs
 		val nft = case fts of [x] => x | _ => LT.tcc_seq fts
 		(* add the abstraction for the fix generator, and if needed,
-		 * the outer abstraction over the free tycons *)
+		 * the outer abstraction over the freetycs (done by hdr) *)
 		val tc = hdr(LT.tcc_fn(fks, nft)) 
 (* memoize	val _ = ModulePropLists.setDtfLtyc (fam, SOME(tc, depth)) *)
 	     in tc
@@ -574,7 +574,7 @@ and strLty (str as STR { sign, rlzn, ... }, penv : primaryEnv, depth, compInfo) 
 and fctLty (fct as FCT { sign, rlzn, ... }, penv : primaryEnv, depth, compInfo) =
     (debugmsg ">>fctLty";
      (case ModulePropLists.fctEntityLty rlzn of
-	 SOME (lt,od) => (debugmsg "--fctLty[proplist] "; 
+	 SOME (lt,od) => (debugmsg "--fctLty[proplist] "; (* memoized *)
 			  LT.lt_adj(lt, od, depth))
        | NONE =>
          let val _ = debugmsg ">>fctLty[computing]"

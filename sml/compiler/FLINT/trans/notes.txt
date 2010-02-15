@@ -1,0 +1,35 @@
+TransTypes
+
+* primaryEnv should be generalized to an environment that deals with all
+the different sources of LT.tcc_fn abstractions.
+
+* which tycons are collected in the freetycs field of datatypes?  Are
+  these exactly the volatile primaries that appear in the dataype dcon
+  signature?
+
+* what _tycons_ are translated into LT.tcc_var db indexes?
+
+    -- those that have kind FORMAL, and correspondingly appear at some
+         level in the current primaryEnv.  This primaryEnv level
+	 corresponds to a functor abstraction. (TFN abstractor in
+         functor expression translation (FCTfct case of mkFctexp in Translate))
+
+    -- tycons referred to by FREEtyc and RECtyc within a datatype
+         representation.  These are translated into local db indices
+         refering to abstractions (tcc_fn) that are part of the the
+	 same datatype representations. (tcc_fn abstractor)
+
+* what else is translated into LT.tcc_var db indexes?
+
+    -- tyvar with LBOUND(SOME{depth,index,...}) content, in tyToTyc.
+         These are inferred, polymorphically abstracted univariables.
+         The corresponding abstractor is the FLINT expression
+         abstractor TFN.
+
+
+Volatility and epcontext
+
+* tycon is volatile if it is in the domain of the epcontext
+
+* epcontext binds both GENtyc(FORMAL) and DEFtyc and GENtyc(DATATYPE) tycons
+     (bindNewTycs in elabmod.sml)

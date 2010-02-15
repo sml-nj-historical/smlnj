@@ -31,14 +31,14 @@ datatype openTvKind
   | FLEX of (label * ty) list     (* flex record variables *)
 
 and tvKind		  
-  = INSTANTIATED of ty (* instantiation of an OPEN *)
-  | OPEN of {depth: int, eq: bool, kind: openTvKind}  (* univariable *)
-  | UBOUND of (* explicit type variables *)
+  = INSTANTIATED of ty (* instantiation univariable *)
+  | OPEN of {depth: int, eq: bool, kind: openTvKind}  (* uninstantiated univariable *)
+  | UBOUND of (* explicit type variables, not instantiable *)
      {depth: int, eq: bool, name: S.symbol}
   | LITERAL of (* type of a literal *)
      {kind: litKind, region: SourceMap.region}
   | SCHEME of bool (* overloaded operator type scheme variable
-		   * arg is true if must be instantiated to equality type *)
+		    * arg is true if must be instantiated to equality type *)
   | LBOUND of {depth: int, index: int, eq: bool} option
      (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
       * associated with polymorphic bindings (including val bindings and
@@ -109,7 +109,7 @@ and dtmember =
 and dtypeFamily = 
   {mkey: ST.stamp,
    members: dtmember vector,
-   properties: PropList.holder}
+   properties: PropList.holder}  (* FLINT: transtypes memo *)
 
 and stubinfo =
     {owner : PersStamps.persstamp,

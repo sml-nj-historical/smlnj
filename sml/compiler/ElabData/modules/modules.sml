@@ -201,7 +201,7 @@ and sigrec =
      typsharing : sharespec list,
      strsharing : sharespec list,
      stub       : stubinfo option,
-     properties : PropList.holder} (* FLINT: (entpath * tkind) list option *)
+     properties : PropList.holder} (* FLINT: (entpath * tkind) list option memo *)
 
 (* strEntity and fctEntity
  * realizations: the essential static descriptions for structures and functors
@@ -214,7 +214,7 @@ and strEntity =
 				   * specified in the structure signature *)
      rpath    : IP.path,          (* reverse symbolic path of structure *)
      stub     : stubinfo option,  (* for pickling isolation *)
-     properties: PropList.holder} (* FLINT: lambdaty memoization *)
+     properties: PropList.holder} (* FLINT: lambdaty memo *)
 
 and fctEntity =
     {stamp    : ST.stamp,
@@ -224,7 +224,7 @@ and fctEntity =
      paramEnv : entityEnv,        (* entities of parameter instantiation *)
      rpath    : IP.path,          (* reverse symbolic path name of the functor *)
      stub     : stubinfo option,  (* for pickling isolation *)
-     properties: PropList.holder} (* FLINT: lambdaty memoization *)
+     properties: PropList.holder} (* FLINT: lambdaty memo *)
 
 (* contents of a STR.  named because also used in modtree/STRNODE *)
 and strrec =
@@ -290,3 +290,6 @@ val bogusFctEntity : fctEntity =
 
 end (* local *)
 end (* structure Modules *)
+
+(* Plan: externalize FLINT translate memoization, thereby eliminating
+ * the various FLINT memo fields [DBM] *)

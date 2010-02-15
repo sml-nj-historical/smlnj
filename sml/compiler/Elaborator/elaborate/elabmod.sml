@@ -1509,7 +1509,7 @@ and elabDecl0
    | DatatypeDec (x as {datatycs,withtycs}) =>
       (case datatycs
 	 of (Db{rhs=(Constrs _), ...}) :: _ =>
-	      let val isFree = 
+	      let val isFree = (* true if volatile, i.e. in domain of epcontext *)
                     (case context 
                       of EU.INFCT _ =>
                           (fn tyc => 
