@@ -29,7 +29,9 @@ the different sources of LT.tcc_fn abstractions.
 
 Volatility and epcontext
 
-* tycon is volatile if it is in the domain of the epcontext
+* tycon is volatile if it is in the domain of the epcontext (primary or secondary)
+* isFree (elabmod.sml) checks if a tycon is in the domain of epContext
 
 * epcontext binds both GENtyc(FORMAL) and DEFtyc and GENtyc(DATATYPE) tycons
      (bindNewTycs in elabmod.sml)
+
