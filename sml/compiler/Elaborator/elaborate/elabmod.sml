@@ -53,8 +53,6 @@ local structure SM = SigMatch
       structure DA = Access
       structure PPU = PPUtil
       structure ED = ElabDebug
-      structure ST = RedBlackSetFn(type ord_key = S.symbol
-                                   val compare = S.compare) 
       open Ast Modules
       open SpecialSymbols (* special symbols *)      
 in
@@ -83,6 +81,22 @@ fun showFct(msg,fct,env) =
 		 (fn pps => fn fct' =>
 		   PPModules.ppFunctor pps (fct', env, 100)),
 		 fct))
+
+(* removeDuplicates : symbol list -> symbol list
+   removes duplicate symbols from a list of symbols.
+   Used on list of declared names passed to extractSig.
+ *)
+structure ST = RedBlackSetFn(type ord_key = S.symbol
+                             val compare = S.compare) 
+
+fun removeDuplicates syms =
+    let fun helper([], memset, result) = rev result
+	  | helper(s::rest, memset, result) = 
+	    if ST.member(memset,s)
+	    then helper(rest, memset, result)
+	    else helper(rest, ST.add(memset,s), s::result)
+    in helper(syms, ST.empty, [])
+    end
 
 (*
  * Check if an entity declaration is empty in order to avoid the unnecessary
@@ -215,24 +229,32 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
 
 
 (***************************************************************************
- *                                                                         *
- * extractSig infers the signature for an arbitrary static environment.    *
- *                                                                         *
- * Recompute dynamic accesses after the elaboration of a structure body,   *
- * replacing the original dynamic access by a SLOT and generating a        *
- * thinning that will be used (in translate) to create the structure       *
- * record.                                                                 *
- *                                                                         *
- * Recompute all the dynamic accesses in an environment, suppress doubles  *
- * and allocate slots. Components are ordered so that slot allocation is   *
- * independent from the way elaboration is done.                           *
- *                                                                         *
- * Should use Env.fold or Env.map?                                         *
- *                                                                         *
+ * extractSig : 
+ *    SE.staticEnv *     -- the environment being translated info a full signature
+ *    epContext *        -- epContext including entities in staticEnv
+ *    context *          -- tells us if we are in a functor context
+ *    symbol list *      -- gives declaration order of symbols in staticEnv
+ *    compInfo           -- for mkStamp, to generate fresh entvars
+ * -> M.elements *       -- elements of extracted signature (including slot numbers)
+ *    M.entityEnv *      -- realization for full signature
+ *    M.entityDec list * -- "redeclaration" of static entities
+ *    B.binding list *   -- for original dyn. access of dynamic elements
+ *    bool               -- flag to indicate presence of a functor (at any depth)
+
+ * extractSig infers a signature and realization (entenv) for an arbitrary static
+ * environment.
+ * 
+ * Recompute dynamic accesses as slots after the elaboration of a structure body,
+ * replacing the original dynamic access by a SLOT and generating a
+ * thinning (bindings) that will be used (in translate) to create the structure
+ * record.
+ * 
+ * Also produces signature elements and matching entityEnv realization, and
+ * corresponding new entityDecls.
+ * 
  ***************************************************************************)
-fun extractSig (env, epContext, context, 
-                compInfo as {mkStamp,...} : EU.compInfo,
-	        absDecl) =
+fun extractSig (env, epContext, context, declaredSymbols,
+                compInfo as {mkStamp,...} : EU.compInfo) =
   let fun getEpOp (lookfn, modId) = lookfn (epContext, modId)
 (*        case context
           of EU.INFCT _ => lookfn (epContext, modId)
@@ -245,78 +267,75 @@ fun extractSig (env, epContext, context,
 	  of EU.INFCT _ => (fn ty => #1(MU.relativizeType epContext ty))
 	   | _ => fn x => x
 
-      fun addElems(x, elements) = x::elements
-
       fun transBind ((sym, binding), 
-                     (elements, entEnv, entDecl, trans, slotCount, fctflag)) = 
+                     (elements, entEnv, entDecls, bindings, slotCount, fctflag)) = 
         case binding
          of B.VALbind(V.VALvar{typ,path,...}) =>
               let val spec = VALspec{spec=relativize(!typ),
                                      slot=slotCount}
-                  val elements' = addElems((sym, spec), elements)
-               in (elements', entEnv, entDecl, binding::trans, 
+                  val elements' = (sym, spec) :: elements
+               in (elements', entEnv, entDecls, binding::bindings, 
                    slotCount+1, fctflag)
               end
 
           | B.CONbind(dcon as T.DATACON{name,const,lazyp,sign,typ,rep}) =>
               let val typ' = relativize typ
-                  val (rep', trans', slotOp, slotCount') =
+                  val (rep', bindings', slotOp, slotCount') =
                     case rep
                      of DA.EXN _ => 
-                          (DA.EXN(DA.nullAcc), binding::trans, 
+                          (DA.EXN(DA.nullAcc), binding::bindings,
                            SOME slotCount, slotCount+1)
-
-                      | _ => (rep, trans, NONE, slotCount)
+                      | _ => (rep, bindings, NONE, slotCount)
 
                   val ndcon = T.DATACON{name=name, const=const, sign=sign,
                                         typ=typ', rep=rep', lazyp=lazyp}
 
                   val spec = CONspec{spec=ndcon, slot=slotOp}
-                  val elements' = addElems((sym, spec), elements)
+                  val elements' = (sym, spec) :: elements
 
-               in (elements', entEnv, entDecl, trans', slotCount', fctflag)
+               in (elements', entEnv, entDecls, bindings', slotCount', fctflag)
               end
 
           | B.STRbind(str as STR{sign, rlzn, ...}) =>
 	    let val epOp = getEpOp (EPC.lookStrEntPath, MU.strId str)  
-                val (ev, entEnv', entDecl') =
+                val (entVar, entEnv', entDecls') =
                     case epOp
-                     of SOME [x] => (x, entEnv, entDecl)
+                     of SOME [ev] => (ev, entEnv, entDecls)
                       | _ => 
-                         (let val x = mkStamp()
+                          let val ev = mkStamp()   (* fresh entvar *)
                               val ee = EE.bind(x, STRent rlzn, entEnv)
                               val ed =
                                 case context
                                  of EU.INFCT _ => 
-                                      (let val strExp = 
-                                             case epOp 
-                                              of SOME ep => M.VARstr ep
-                                               | _ => M.CONSTstr rlzn
-                                        in (M.STRdec(x, strExp, sym))::entDecl
-                                       end)
-                                  | _ => entDecl
-                           in (x, ee, ed)
-                          end)
+                                      let val strExp = 
+                                              case epOp 
+                                               of SOME ep => M.VARstr ep
+						| _ => M.CONSTstr rlzn
+                                       in (M.STRdec(ev, strExp, sym))::entDecls
+                                      end
+                                  | _ => entDecls
+                           in (ev, ee, ed)
+                          end
 
                   val spec = STRspec{sign=sign, slot=slotCount, def = NONE,
-				     entVar=ev}
-                  val elements' = addElems((sym, spec), elements)
+				     entVar=entVar}
+                  val elements' = (sym, spec) :: elements
                   val fctflag' = 
                     (case sign 
                       of SIG sg => fctflag orelse #fctflag sg
                        | _ => fctflag)
-               in (elements', entEnv', entDecl', binding::trans, 
+               in (elements', entEnv', entDecls', binding::bindings,
                    slotCount+1, fctflag')
               end
 
           | B.FCTbind(fct as FCT {sign, rlzn, ...}) =>
 	    let val epOp = getEpOp(EPC.lookFctEntPath, MU.fctId fct)
-                val (ev, entEnv', entDecl') =
+                val (entVar, entEnv', entDecls') =
                     case epOp
-                     of SOME [x] => (x, entEnv, entDecl)
+                     of SOME [ev] => (ev, entEnv, entDecls)
                       | _ => 
-                         (let val x = mkStamp()
-                              val ee = EE.bind(x, FCTent rlzn, entEnv)
+                         (let val ev = mkStamp()  (* fresh entvar *)
+                              val ee = EE.bind(ev, FCTent rlzn, entEnv)
                               val ed =
                                 case context
                                  of EU.INFCT _ => 
@@ -324,15 +343,15 @@ fun extractSig (env, epContext, context,
                                              case epOp 
                                               of SOME ep => M.VARfct ep
                                                | _ => M.CONSTfct rlzn
-                                        in (M.FCTdec(x, fctExp))::entDecl
+                                        in (M.FCTdec(x, fctExp))::entDecls
                                        end)
                                   | _ => entDecl
-                           in (x, ee, ed)
+                           in (ev, ee, ed)
                           end)
 
-                  val spec = FCTspec{sign=sign,slot=slotCount,entVar=ev}
-                  val elements' = addElems((sym, spec), elements)
-               in (elements', entEnv', entDecl', binding::trans, 
+                  val spec = FCTspec{sign=sign,slot=slotCount,entVar=entVar}
+                  val elements' = (sym, spec) :: elements
+               in (elements', entEnv', entDecls', binding::bindings, 
                    slotCount+1, true)
               end
 
@@ -341,15 +360,15 @@ fun extractSig (env, epContext, context,
 		      case tyc
 			of T.ERRORtyc => NONE
 			 | _ => getEpOp(EPC.lookTycEntPath, MU.tycId tyc)
-                  val (ev, entEnv', entDecl') =
+                  val (entVar, entEnv', entDecls') =
                     case epOp
-                     of SOME [x] => (x, entEnv, entDecl)
+                     of SOME [x] => (x, entEnv, entDecls)
                         (* normal (i.e. locally declared) volatile case *)
                       | _ =>  (* NONE for nonvolatile declaration (not in functor) ,
                                * nonsingleton path for binding from opened param structure
 			       * (Note [extractSig.1] *)
-                         (let val x = mkStamp()
-                              val ee = EE.bind(x, TYCent tyc, entEnv)
+                          let val ev = mkStamp()  (* fresh entvar *)
+                              val ee = EE.bind(ev, TYCent tyc, entEnv)
                               val ed =
                                 case context
                                  of EU.INFCT _ => 
@@ -357,18 +376,18 @@ fun extractSig (env, epContext, context,
                                              case epOp 
                                               of SOME ep => M.VARtyc ep
                                                | NONE => M.CONSTtyc tyc
-                                        in (M.TYCdec(x, tycExp))::entDecl
+                                        in (M.TYCdec(ev, tycExp))::entDecls
                                        end)
                                   | _ => entDecl
-                           in (x, ee, ed)
-                          end)
+                           in (ev, ee, ed)
+                          end
 
-                  val spec = TYCspec{entVar=ev,
+                  val spec = TYCspec{entVar=entVar,
                                      info=InfTycSpec{name=sym,arity=TU.tyconArity tyc}}
-                  val elements' = addElems((sym, spec), elements)
+                  val elements' = (sym, spec) :: elements
                   (* 
                    * Use of T.ERRORtyc here is a hack. It relies on the
-                   * fact that the inferred signature would never be 
+                   * fact that the inferred signature will never be 
                    * instantiated or signature-matched against. One might
                    * wonder what about a functor declaration with no result
                    * signature constraint ? the inferred fctSig would contain
@@ -376,109 +395,11 @@ fun extractSig (env, epContext, context,
                    * would never be matched against either. (ZHONG)
                    *)
 
-               in (elements', entEnv', entDecl', trans, slotCount, fctflag)
+               in (elements', entEnv', entDecls', bindings, slotCount, fctflag)
               end
 
-          | _ => (elements, entEnv, entDecl, trans, slotCount, fctflag)
-
-      (* getDeclOrder : absyn -> symbol list 
-	 getDeclOrder returns the names of all the surface declaractions
-	 in decl. We use this function to return the signature elements
-         in the same order as they appear in the structure body decls. *)
-      fun getDeclOrder(decl) =
-	  let fun procstrbs([]) = []
-		| procstrbs((A.STRB{name,...})::rest) = name::(procstrbs rest)
-	      fun procpat(A.VARpat(V.VALvar{path,...})) = [SymPath.first path] 
-		| procpat(A.VARpat(_)) = 
-		    bug "elabmod: extractSig -- Bad VARpat"
-		| procpat(A.RECORDpat{fields,...}) = 
-		    foldl (fn ((_,pat), names) => (procpat pat)@names) [] 
-			  fields
-		| procpat(A.APPpat(_,_,pat)) = procpat pat
-		| procpat(A.CONSTRAINTpat(pat,_)) = procpat pat
-		| procpat(A.LAYEREDpat(pat,pat')) = 
-		    (procpat pat)@(procpat pat')
-		| procpat(A.ORpat(pat,pat')) = (procpat pat)@(procpat pat')
-		| procpat(A.VECTORpat(pats,_)) = 
-		    foldl (fn (pat,names) => (procpat pat)@names) [] pats
-		| procpat _ = []
-	      fun procvbs([]) = []
-		| procvbs((A.VB{pat,...})::rest) = 
-		    (procpat pat)@(procvbs rest)
-	      fun proctycs([]) = []
-		| proctycs(tyc::rest) = (TU.tycName tyc)::(proctycs rest) 
-	      fun procdatatycs([]) = []
-		| procdatatycs(T.GENtyc{kind=T.DATATYPE dt, path, ...}::rest) =
-		    let val {index,family as {members,...},...} = dt
-			val {tycname,dcons,...} = Vector.sub(members,index)
-			val pathname = InvPath.last path
-		    in (map (fn ({name,...}) => name) dcons)@
-		       (pathname::procdatatycs rest)
-		    end 
-		| procdatatycs(_) = bug "elabmod: extractSig -- bad datatycs"
-	      fun procebs([]) = []
-		| procebs((A.EBgen{exn=T.DATACON{name,...},...})::rest) = 
-		    name::(procebs rest)
-		| procebs((A.EBdef{exn=T.DATACON{name,...},...})::rest) =
-		    name::(procebs rest)
-	      fun procfctbs([]) = []
-		| procfctbs(A.FCTB{name,...}::rest) = name::(procfctbs rest)
-	      fun procstr(M.STR{sign=M.SIG{elements,...},...}) = 
-                    MU.getElementsSymbols elements
-		| procstr(M.STR{sign=M.ERRORsig,...}) = []
-		| procstr(M.STRSIG{sign=M.SIG{elements,...},...}) =
-                    MU.getElementsSymbols elements
-		| procstr(M.STRSIG{sign=M.ERRORsig,...}) = 
-		    bug "elabmod: extractSig ERRORsig in STRSIG"
-		| procstr(M.ERRORstr) = []
-	      fun procrvbs([]) = []
-		| procrvbs(A.RVB{var=V.VALvar{path,...},...}::rest) =
-		    (SymPath.first path)::(procrvbs rest)
-		| procrvbs(_::rest) = bug "elabmod: extractSig -- Bad RVB"
-	  in case decl 
-	      of A.STRdec(strbs) => procstrbs strbs
-	       | A.VALdec(vbs) => procvbs vbs
-	       | A.VALRECdec(rvbs) => procrvbs rvbs
-	       | A.TYPEdec(tycs) => proctycs tycs
-	       | A.DATATYPEdec{datatycs,withtycs} => 
-		   (rev (proctycs withtycs))@(rev (procdatatycs datatycs))
-	       | A.ABSTYPEdec{abstycs,withtycs,body} =>
-		   (proctycs abstycs)@(proctycs withtycs)@(getDeclOrder body)
-	       | A.EXCEPTIONdec(ebs) => procebs ebs
-	       | A.FCTdec(fctbs) => procfctbs fctbs
-	       | A.OPENdec(pathstrs) => 
-		   foldl (fn (str,names) => (rev (procstr str))@names) [] 
-			 (map #2 pathstrs)
-	       | A.LOCALdec(_,dec) => (getDeclOrder dec) 
-	       | A.SEQdec(decs) => 
-		   foldl (fn (dec,names) => (getDeclOrder dec)@names) [] decs
-	       | A.MARKdec(dec,_) => getDeclOrder dec
-	       | A.FIXdec{ops,...} => ops
-	       | _ => bug "elabmod: extractSig Unexpected dec"  
-	  end
-
-	(* suppressDuplicates is not strictly necessary for correctness
-	   because signature matching will just try to match the duplicate
-	   specs to the same type. However, suppressing duplicates will
-	   eliminate these extraneous signature match checks. 
-	   [GK 4/18/07] *)
-        fun suppressDuplicates syms =
-	    let fun helper([], memset, result) = (memset, result)
-		  | helper(s::rest, memset, result) = 
-		    if ST.member(memset,s)
-		    then helper(rest,memset, result)
-		    else helper(rest,ST.add(memset,s),s::result)
-	    in helper(syms, ST.empty, [])
-	    end
-
-	(* Check that the decl names list computed by getDeclOrder is
-	   equivalent (up to reordering) to the keys in the static 
-	   environment. If they are not equal, then getDeclOrder may 
-	   be missing some decl name. We use the decl names list to 
-	   order the elements in this extracted/inferred signature. 
-	   [GK 4/18/07] *)
-        val (declnameset, origdeclorder) = 
-	      suppressDuplicates(getDeclOrder absDecl)
+          | _ => (elements, entEnv, entDecls, bindings, slotCount, fctflag)
+        (* end transBind *)
 
 	(* [GK 4/15/07] Consolidate will compact the potentially
 	   linear static environment (i.e., BIND(...BIND(...)))
@@ -490,12 +411,12 @@ fun extractSig (env, epContext, context,
            the structure decl order on the consolidated list. *)
         val cenv = SE.consolidate env 
 
-        val (elements, entEnv, entDecl, trans, _, fctflag) = 
-          SE.foldOverElems(transBind,(nil, EE.empty, [], [], 0, false),cenv,
-			   origdeclorder)
+        val (elements, entEnv, entDecls, bindings, _, fctflag) = 
+          SE.foldOverElems(transBind, (nil, EE.empty, nil, nil, 0, false), cenv,
+			   declaredSymbols)
 	  handle SE.Unbound => bug "elabmod: extractSig -- SE.foldOverElems \
 				    \Unbound symbol in origdeclorder"
-     in (rev elements, entEnv, rev entDecl, rev trans, fctflag)
+     in (rev elements, entEnv, rev entDecls, rev bindings, fctflag)
     end (* fun extractSig *)
 
 
@@ -545,7 +466,7 @@ fun elabStr
        entEnv: M.entityEnv,
        context: EU.context,
        epContext: EPC.context,   
-       entVarOp: EP.entVar option,  (* entVar for _this_ structure *)
+       entVarOp: EP.entVar option,  (* entVar for _this_ structure (when is it SOME?) *)
        rpath: IP.path,
        region: SourceMap.region,      
        compInfo as {mkLvar=mkv, mkStamp, error, ...}: EU.compInfo)
@@ -561,7 +482,7 @@ val _ = debugmsg (">>elabStr: " ^ sname)
              
 (* 
  * elab: Ast.strexp * staticEnv * entityEnv * region
- *        -> A.dec * M.Structure * M.strExp * EE.entityEnv
+ *       -> A.dec * M.Structure * M.strExp * EE.entityEnv
  *)
 fun elab (BaseStr decl, env, entEnv, region) =
       let val _ = debugmsg ">>elab[BaseStr]"
@@ -572,14 +493,19 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			    | SOME entVar => EPC.enterOpen(epContext,entVar) 
 
 	  (* elaborating the body declarations *)
-          val (absDecl, entDecl, env', entEnv') = 
+          val (absDecl, entDecl, env', entEnv') =  (* entEnv' delta or cumulative? *)
                  elabDecl0(decl, env, entEnv, inStr context, true,
                            epContext', rpath, region, compInfo)
           val _ = debugmsg "--elab[BaseStr]: elabDecl0 done"
    
+	  (* We use the declaredSymbol list to order the elements in the extracted/inferred
+           * signature to ensure more accurate printing of signatures. *)
+	   [GK 4/18/07] *)
+          val delcaredSymbols = suppressDuplicates(AbsynUtil.declaredSymbols absDecl)
+
           (* extracting a signature from the body environment *)
           val (elements, entEnv'', entDecls, locations, fctflag) =
-                extractSig(env', epContext', context, compInfo, absDecl)
+                extractSig(env', epContext', context, declaredSymbols, compInfo)
           val _ = debugmsg "--elab[BaseStr]: extractSig done"
 
           val (entEnvLocal, entDecLocal) =

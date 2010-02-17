@@ -13,7 +13,7 @@ sig
   val primaryToTyc : argtyc * primaryEnv * int -> PLambdaType.tyc
  
   val tyconToTyc : Types.tycon * primaryEnv * int -> PLambdaType.tyc
-  val tyToTyc  : primaryEnv -> DebIndex.depth -> Types.ty -> PLambdaType.tyc
+  val tyToTyc  : primaryEnv * DebIndex.depth * Types.ty -> PLambdaType.tyc
   val toLty  : primaryEnv -> DebIndex.depth -> Types.ty -> PLambdaType.lty
   val strLty : Modules.Structure * primaryEnv * DebIndex.depth 
                * ElabUtil.compInfo -> PLambdaType.lty
@@ -189,7 +189,7 @@ and tyconToTyc =
 *)
 
 (* translate Types.tycon to LT.tyc *)
-and tyconToTyc(tc : Types.tycon, penv : primaryEnv, depth: int) =
+and tyconToTyc(tc : Types.tycon, penv : primaryEnv, depth: int): LT.tyc =
     let fun dtsTyc depth1 ({dcons: dconDesc list, arity, ...} : dtmember) = 
 	    let val depth2 = if arity = 0 then depth1 else depth1 + 1
 		fun f ({domain=NONE, rep, name}, r) = (LT.tcc_unit)::r
@@ -257,7 +257,7 @@ and tyconToTyc(tc : Types.tycon, penv : primaryEnv, depth: int) =
 	      end
 	  | gentyc (_, TEMP) = bug "unexpected TEMP kind in tyconToTyc-h"
 
-	and toTyc (tycon as GENtyc {stamp, arity, kind, ...}) =
+	and toTyc (tycon as GENtyc {stamp, arity, kind, ...}): LT.tyc =
 	      gentyc(stamp, kind)
 	  | toTyc (DEFtyc{tyfun, ...}) = tfTyc(penv, tyfun, d)
 	  | toTyc (RECtyc i) = recTyc i
@@ -277,84 +277,84 @@ and tyconToTyc(tc : Types.tycon, penv : primaryEnv, depth: int) =
      in toTyc tc
     end (* fun tyconToTyc *)
 
-and tfTyc (penv : primaryEnv, TYFUN{arity=0, body}, d) = tyToTyc penv d body
+and tfTyc (penv : primaryEnv, TYFUN{arity=0, body}, depth) : LT.tyc = 
+      tyToTyc penv depth body
   | tfTyc (penv, TYFUN{arity, body}, d) = 
       let val ks = LT.tkc_arg arity
-       in LT.tcc_fn(ks, tyToTyc penv (DI.next d) body)
+       in LT.tcc_fn(ks, tyToTyc ([]::penv) (d+1) body)
       end
 
 (* translating Types.ty to LT.tyc *)
-and tyToTyc (penv : primaryEnv) d t = 
-  let val m : (tyvar * LT.tyc) list ref = ref []
+and tyToTyc (penv : primaryEnv, d: int, t: T.ty) : LT.tyc = 
+  let val tvmemo : (tyvar * LT.tyc) list ref = ref []
       fun lookTv tv = 
-        let val xxx = !m
-            fun uu ((z as (a,x))::r, b, n) = 
-                 if a = tv then (x, z::((rev b)@r)) else uu(r, z::b, n+1)
-              | uu ([], b, n) = let val zz = h (!tv)
-                                    val nb = if n > 64 then tl b else b
-                                 in (zz, (tv, zz)::(rev b))
-                                end
-            val (res, nxx) = uu(xxx, [], 0)
-         in m := nxx; res
-        end
+          let fun uu ((z as (a,x))::r, b, n) = 
+                  if a = tv then (x, z::((rev b)@r)) else uu(r, z::b, n+1)
+		| uu ([], b, n) = let val zz = tyvar (!tv)
+                                      val nb = if n > 64 then tl b else b
+                                   in tvmemo := (tv, zz)::(rev nb);
+				      zz
+                                  end
+           in uu(!tvmemo, [], 0)
+          end
 
-      and h (INSTANTIATED t) = g t
-        | h (LBOUND(SOME{depth,index,...})) =
+      and tyvar (INSTANTIATED t) = typ t
+        | tyvar (LBOUND(SOME{depth,index,...})) =
              LT.tcc_var(DI.relativeDepth(d, depth), index)
-        | h (UBOUND _) = LT.tcc_void
+        | tyvar (UBOUND _) = LT.tcc_void
             (* DBM: should this have been converted to an LBOUND before
              * being passed to tyToTyc? 
 	     * GK: Doesn't seem to experimentally *)
             (* dbm: a user-bound type variable that didn't get generalized;
                treat the same as an uninstantiated unification variable. 
 	       E.g. val x = ([]: 'a list; 1) *)
-        | h (OPEN _) = LT.tcc_void
+        | tyvar (OPEN _) = LT.tcc_void
             (* dbm: a unification variable that was neither instantiated nor
 	       generalized.  E.g. val x = ([],1); -- the unification variable
                introduced by the generic instantiation of the type of [] is
                neither instantiated nor generalized. *)
-        | h _ = bug "tyToTyc:h" (* LITERAL and SCHEME should not occur *)
+        | tyvar _ = bug "tyToTyc:h" (* LITERAL and SCHEME should not occur *)
 
-      and g (VARty tv) = lookTv tv
-	| g (CONty(RECORDtyc _, [])) = LT.tcc_unit
-        | g (CONty(RECORDtyc _, ts)) = LT.tcc_tuple (map g ts)
-        | g (CONty(tyc, [])) = (debugmsg "--tyToTyc[CONty[]]"; 
-				tyconToTyc(tyc, penv, d))
-        | g (CONty(DEFtyc{tyfun,...}, args)) = 
-	  (debugmsg "--tyToTyc[CONty[DEFtyc]"; g(TU.applyTyfun(tyfun, args)))
-	| g (CONty (tc as GENtyc { kind, ... }, ts)) =
-	  (case (kind, ts) of
-	       (ABSTRACT _, ts) =>
-	       (debugmsg "--tyToTyc[CONty[ABSTRACT]]";
-		LT.tcc_app(tyconToTyc(tc, penv, d), map g ts))
-             | (_, [t1, t2]) =>
-               if TU.eqTycon(tc, BT.arrowTycon) 
-	       then LT.tcc_parrow(g t1, g t2)
-               else LT.tcc_app(tyconToTyc(tc, penv, d), [g t1, g t2])
-	     | _ => LT.tcc_app (tyconToTyc (tc, penv, d), map g ts))
-        | g (CONty(tc, ts)) = LT.tcc_app(tyconToTyc(tc, penv, d), map g ts)
-        | g (IBOUND i) = LT.tcc_var(DI.innermost, i) 
+      and typ (VARty tv) = lookTv tv
+	| typ (CONty(RECORDtyc _, [])) = LT.tcc_unit
+        | typ (CONty(RECORDtyc _, ts)) = LT.tcc_tuple (map typ ts)
+        | typ (CONty(tyc, [])) = (debugmsg "--tyToTyc[CONty[]]"; 
+				  tyconToTyc(tyc, penv, d))
+        | typ (CONty(DEFtyc{tyfun,...}, args)) = 
+	  (debugmsg "--tyToTyc[CONty[DEFtyc]";
+	   typ (TU.applyTyfun(tyfun, args)))
+	| typ (CONty (tc as GENtyc { kind, ... }, ts)) =
+	  (case (kind, ts)
+	     of (ABSTRACT _, ts) =>
+	        (debugmsg "--tyToTyc[CONty[ABSTRACT]]";
+		 LT.tcc_app(tyconToTyc(tc, penv, d), map typ ts))
+              | (_, [t1, t2]) =>
+                 if TU.eqTycon(tc, BT.arrowTycon) 
+	         then LT.tcc_parrow(typ t1, typ t2)
+                 else LT.tcc_app(tyconToTyc(tc, penv, d), [typ t1, typ t2])
+	     | _ => LT.tcc_app (tyconToTyc (tc, penv, d), map typ ts))
+        | typ (CONty(tc, ts)) = LT.tcc_app(tyconToTyc(tc, penv, d), map typ ts)
+        | typ (IBOUND i) = LT.tcc_var(1, i) 
 			 (* [KM] IBOUNDs are encountered when tyToTyc
-                          * is called on the body of a POLYty in 
-                          * toLty (see below). *)
-	| g (MARKty (t, _)) = g t
-        | g (POLYty _) = bug "unexpected poly-type in tyToTyc"
-	| g (UNDEFty) = 
-          (* mkVB kluge!!! *) LT.tcc_void
-	  (* bug "unexpected undef-type in tyToTyc" *)
-        | g (WILDCARDty) = bug "unexpected wildcard-type in tyToTyc"
+                          * is called on the body of a TYFUN in 
+                          * tfTyc or on a POLYty in Lty (see below). *)
+	| typ (MARKty (t, _)) = typ t
+        | typ (POLYty _) = bug "unexpected poly-type in tyToTyc"
+	| typ (UNDEFty) = LT.tcc_void (* mkVB kluge!!! *) 
+	    (* bug "unexpected undef-type in tyToTyc" *)
+        | typ (WILDCARDty) = bug "unexpected wildcard-type in tyToTyc"
 
-   in g t 
+   in typ t 
   end (* tyToTyc *)
 
 (* translating polytypes *)
-and toLty (penv : primaryEnv) d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) = 
-    toLty (penv : primaryEnv) d body
+and toLty (penv : primaryEnv) d (POLYty {tyfun=TYFUN{arity=0, body}, ...}): LT.lty = 
+    toLty (penv : primaryEnv) d body  (* degenerate polytype *)
   | toLty (penv : primaryEnv) d (POLYty {tyfun=TYFUN{arity, body},...}) = 
       let val ks = LT.tkc_arg arity
-       in LT.ltc_poly(ks, [toLty penv (DI.next d) body])
+       in LT.ltc_poly(ks, [toLty ([]::penv) (d+1) body])
       end
-  | toLty (penv : primaryEnv) d  x = LT.ltc_tyc (tyToTyc penv d x) 
+  | toLty (penv : primaryEnv) d  x = LT.ltc_tyc (tyToTyc(penv, d, x))
 
 
 (****************************************************************************
@@ -362,25 +362,25 @@ and toLty (penv : primaryEnv) d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) =
  ****************************************************************************)
 
 fun specLty (elements : (Symbol.symbol * spec) list, entEnv : EE.entityEnv, 
-	     penv : primaryEnv, depth, compInfo) = 
+	     penv : primaryEnv, depth: int, compInfo) = 
   let val _ = debugmsg ">>specLty"
-      fun g ([], entEnv, ltys) = rev ltys
-        | g ((sym, (TYCspec _ ))::rest, entEnv, ltys) =
+      fun elemsLty ([], ltys) = rev ltys
+        | elemsLty ((sym, (TYCspec _ ))::rest, entEnv, ltys) =
               (debugmsg ("--specLty[TYCspec] "^Symbol.name sym); 
-	       g(rest, entEnv, ltys))
-        | g ((sym, STRspec {sign, entVar, ...})::rest, entEnv, ltys) =
+	       elemsLty(rest, ltys))
+        | elemsLty ((sym, STRspec {sign, entVar, ...})::rest, ltys) =
               let val rlzn = EE.lookStrEnt(entEnv,entVar)
                   val _ = debugmsg ("--specLty[STRspec] "^Symbol.name sym)
 		  val lt = strRlznLty(sign, rlzn, penv, depth, compInfo) 
-               in g(rest, entEnv, lt::ltys)
+               in elemsLty(rest, lt::ltys)
               end
-        | g ((sym, FCTspec {sign, entVar, ...})::rest, entEnv, ltys) = 
+        | elemsLty ((sym, FCTspec {sign, entVar, ...})::rest, ltys) = 
               let val rlzn = EE.lookFctEnt(entEnv,entVar)
                   val _ = debugmsg ("--specLty[FCTspec] "^Symbol.name sym)
 		  val lt = fctRlznLty(sign, rlzn, penv, depth, compInfo) 
-               in g(rest, entEnv, lt::ltys)
+               in elemsLty(rest, lt::ltys)
               end
-        | g ((sym, spec)::rest, entEnv, ltys) =
+        | elemsLty ((sym, spec)::rest, ltys) =
               let val _ = debugmsg ("--specLtyElt "^Symbol.name sym)
                   (* TODO translate entEnv results here? *)
 		  fun transty ty = 
@@ -405,7 +405,7 @@ fun specLty (elements : (Symbol.symbol * spec) list, entEnv : EE.entityEnv,
                in case spec
                    of VALspec{spec=typ,...} => 
                         (debugmsg "--specLty[VALspec]";
-			 g(rest, entEnv, (mapty typ)::ltys))
+			 elemsLty (rest, (mapty typ)::ltys))
                     | CONspec{spec=DATACON{rep=DA.EXN _, 
                                            typ, ...}, ...} => 
                         let val _ = debugmsg "--specLty[CONspec]\n"
@@ -413,15 +413,16 @@ fun specLty (elements : (Symbol.symbol * spec) list, entEnv : EE.entityEnv,
                               if BT.isArrowType typ then  
                                    #1(LT.ltd_parrow (mapty typ))
                               else LT.ltc_unit
-                         in g(rest, entEnv, (LT.ltc_etag argt)::ltys)
+                         in elemsLty (rest, (LT.ltc_etag argt)::ltys)
                         end
                     | CONspec{spec=DATACON _, ...} =>
-                        (debugmsg "--specLty[CONspec]"; g(rest, entEnv, ltys))
+                        (debugmsg "--specLty[CONspec]";
+			 elemsLty (rest, ltys))
                     | _ => bug "unexpected spec in specLty"
               end
-      val res = g (elements, entEnv, [])
-      val _  = debugmsg ("<<specLty")
-   in res
+      val res = elemsLty (elements, [])
+   in debugmsg ("<<specLty");
+      res
   end
 
 (* sign is paramsig
@@ -430,18 +431,18 @@ fun specLty (elements : (Symbol.symbol * spec) list, entEnv : EE.entityEnv,
 and strMetaLty (sign, rlzn as { entities, ... }: strEntity, 
 		penv : primaryEnv, depth, compInfo, envop) =
     case (sign, ModulePropLists.strEntityLty rlzn) (* check for momoized value *)
-     of (_, SOME (lt, od)) => LT.lt_adj(lt, od, depth)
-      | (SIG { elements, ... }, NONE) => 
-	let val entenv' = (case envop 
-			    of NONE => entities
-			     | SOME env => EE.atop(entities, env))
-	    val ltys = specLty (elements, entities, penv, depth, compInfo)
-            val lt = LT.ltc_str(ltys)
-        in
-	    ModulePropLists.setStrEntityLty (rlzn, SOME(lt, depth));
-	    lt
-        end
-      | _ => bug "unexpected sign and rlzn in strMetaLty"
+      of (_, SOME (lt, od)) => LT.lt_adj(lt, od, depth)
+       | (SIG { elements, ... }, NONE) => 
+	 let val entenv' = (case envop 
+			     of NONE => entities
+			      | SOME env => EE.atop(entities, env))
+	     val ltys = specLty (elements, entities, penv, depth, compInfo)
+	     val lt = LT.ltc_str(ltys)
+	 in
+	     ModulePropLists.setStrEntityLty (rlzn, SOME(lt, depth));
+	     lt
+	 end
+       | _ => bug "unexpected sign and rlzn in strMetaLty"
 
 and strRlznLty (sign, rlzn : strEntity, penv : primaryEnv, depth : int, compInfo) =
     case (sign, ModulePropLists.strEntityLty rlzn)

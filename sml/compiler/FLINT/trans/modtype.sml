@@ -98,18 +98,19 @@ in
 	        * TransTypes.primaryEnv * Absyn.dec CompInfo.compInfo 
 		-> PLambdaType.tyc list
 *)
+
 (* fetching the list of LT.tycs for the primaries of a structure
  * modelled on getTycPaths from the old version of Instantiate.
  * assumes primaries are passed as an argument. *)
-fun getStrTycs(primaries, entities, penv, compInfo) =
+fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
     let fun getPrimaryTyc (primsig,_,ep) = 
 	    let val ent = EE.lookEP(entities, ep)
 	     in case ent
 		 of M.TYCent tyc => 
 		    (* ~ T.TP_TYC tyc  in getTycPaths, what about FLEXTYC case? *)
 		    (case primsig
-		      of M.PrimaryTcy n => TT.tyconToTyc(tyc, penv, d???)
-		          (* we assume arity will match *)
+		      of M.PrimaryTcy n => TT.tyconToTyc(tyc, penv, depth(penv)???)
+		          (* we assume arity will match - could check *)
 		       | _ => bug "getPrimaryTyc 1")
 		  | M.FCTent fctEnt =>
 		    (case primsig
@@ -128,7 +129,7 @@ fun getStrTycs(primaries, entities, penv, compInfo) =
 *)
 (* based on routine used in old sigmatch to compute tycpath field of the
  * functor entity resulting from a fctsig match.  *)
-and getFctTyc(fctsig, fctEntity: M.fctEntity, penv, compInfo) =
+and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
     let val {primaries, paramRlzn, exp, closureEnv, ...} = fctEntity
 	       (* maybe paramEnv should be a strEntity?  ==> paramRlzn *)
 (*  -- make paramEnv field of fctEntity be paramRlzn : strEntity *)
@@ -145,7 +146,7 @@ and getFctTyc(fctsig, fctEntity: M.fctEntity, penv, compInfo) =
 	    (* primaries includes both primary tycons and functors *)
 	val bodyEnv = EE.bind(param, M.STRent paramRlzn, closureEnv)
 	val {primaries=resPrimaries, ...} = 
-	    INS.instFormal{sign=bodysig, entEnv=bodyEnv,
+	    INS.instFormal{sign=bodysig, entEnv=bodyEnv, (* the right entEnv? *)
 			   rpath=IP.IPATH[], compInfo=compInfo,
 			   region=SourceMap.nullRegion}
 	val bodyPenv = primaries::penv (* push param primaries on primaryEnv *)
