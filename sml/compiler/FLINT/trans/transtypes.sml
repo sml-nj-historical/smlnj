@@ -17,7 +17,7 @@ sig
   val toLty  : primaryEnv -> DebIndex.depth -> Types.ty -> PLambdaType.lty
   val strLty : Modules.Structure * primaryEnv * DebIndex.depth 
                * ElabUtil.compInfo -> PLambdaType.lty
-  val fctLty : Modules.Functor * primaryEnv * DebIndex.depth 
+  val fctLty : Modules.Functor * primaryEnv * int
                * ElabUtil.compInfo -> PLambdaType.lty
 
 end (* signature TRANSTYPES *)
@@ -27,7 +27,6 @@ struct
 local structure T = Types
       structure BT = BasicTypes
       structure DA = Access   
-      structure DI = DebIndex
       structure EE = EntityEnv
       structure EM = ErrorMsg
       structure EPC = EntPathContext
@@ -92,6 +91,12 @@ fun ppTycon x =
 fun ppLtyc ltyc = 
     PP.with_default_pp (fn ppstrm => PPLty.ppTyc 20 ppstrm ltyc)
 
+(* this returns a nonnegative int *)
+fun relativeDepth (useDepth: int, bindDepth: int) = 
+  if bindDepth > useDepth then bug "the definition is deeper than the use"
+  (* ASSERT: useDepth >= bindDepth *)
+  else (useDepth - bindDepth)
+
 
 (****************************************************************************
  *               TRANSLATING ML TYPES INTO FLINT TYPES                      *
@@ -152,10 +157,10 @@ fun tpsKnd (TP.TP_VAR{kind,...}) = kind
 (* translating tycpath to LT.tyc -- *)
 fun tpsTyc (penv : flexmap) d tp = 
   let fun h (TP.TP_VAR {tdepth, num, ...}, cur) =
-            let val finaldepth = DI.relativeDepth(cur, tdepth)
+            let val finaldepth = relativeDepth(cur, tdepth)
 		val _ = debugmsg ("--tpsTyc: producing tcc_var "^
-				DI.dp_print tdepth^" "
-			   ^Int.toString num^" current depth "^DI.dp_print cur)
+				Int.toString tdepth^" "
+			   ^Int.toString num^" current depth "^Int.toString cur)
 	    in
 		if finaldepth < 0 then bug "Invalid depth calculation"
 		else LT.tcc_var(finaldepth, num)
@@ -167,7 +172,7 @@ fun tpsTyc (penv : flexmap) d tp =
         | h (TP.TP_FCT (ps, ts), cur) = 
              let val _ = debugmsg ">>tpsTyc[TP_FCT]"
 		 val ks = map tpsKnd ps
-                 val cur' = DI.next cur
+                 val cur' = cur + 1
                  val ts' = map (fn x => h(x, cur')) ts
 		 val _ = debugmsg "<<tpsTyc[TP_FCT]"
              in LT.tcc_fn(ks, LT.tcc_seq ts')
@@ -300,7 +305,7 @@ and tyToTyc (penv : primaryEnv, d: int, t: T.ty) : LT.tyc =
 
       and tyvar (INSTANTIATED t) = typ t
         | tyvar (LBOUND(SOME{depth,index,...})) =
-             LT.tcc_var(DI.relativeDepth(d, depth), index)
+             LT.tcc_var(relativeDepth(d, depth), index)
         | tyvar (UBOUND _) = LT.tcc_void
             (* DBM: should this have been converted to an LBOUND before
              * being passed to tyToTyc? 
@@ -456,7 +461,7 @@ and fctRlznLty (sign, rlzn, penv : primaryEnv, depth, compInfo) =
        | (fs as FSIG{paramsig, bodysig, ...}, _,
          {closureEnv=env,primaries,paramEnv, ...}) =>
         let val _ = debugmsg ">>fctRlznLty[instParam]"
-            val nd = DI.next depth
+            val nd = depth + 1
 
 	    (* [GK 4/30/09] Closure environments map entity paths to 
                types that have no connection to the stamps of the formal 
@@ -514,7 +519,7 @@ and fctRlznLty (sign, rlzn, penv : primaryEnv, depth, compInfo) =
 				     SOME env)
 		handle _ => bug "fctRlznLty 2"
 		     
-	    val _ = debugmsg (">>fctRlznLty calling evalApp nd "^DI.dp_print nd)
+	    val _ = debugmsg (">>fctRlznLty calling evalApp nd "^Int.toString nd)
             (* use evalApp to propagate parameter elements and generate new body
 	     * elements *)
             val bodyRlzn = 

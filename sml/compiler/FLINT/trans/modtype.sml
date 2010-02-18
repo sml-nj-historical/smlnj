@@ -110,14 +110,17 @@ fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
 		    (* ~ T.TP_TYC tyc  in getTycPaths, what about FLEXTYC case? *)
 		    (case primsig
 		      of M.PrimaryTcy n => TT.tyconToTyc(tyc, penv, depth(penv)???)
-		          (* we assume arity will match - could check *)
+		          (* we assume arity will match - could check
+			   * tyconToTyc will have to search for tyc in penv and
+			   * if it finds it in penv it will translate to a tcc_var.
+			   * otherwise it translates tyc directly. *)
 		       | _ => bug "getPrimaryTyc 1")
 		  | M.FCTent fctEnt =>
 		    (case primsig
 		      of M.PrimaryFct fctsig => getFctTyc(fctsig,fctEnt,penv,compInfo)
 		       | _ => bug "getPrimaryTyc 2")
-		  | M.ERRORent => bug "ERRORent in getStrTycs"
-		  | _ => bug "unexpected entity in getStrTycs"
+		  | M.ERRORent => bug "getStrTycs -- ERRORent"
+		  | _ => bug "getStrTycs -- unexpected entity"
 	    end
 
      in map getPrimaryTyc primaries
