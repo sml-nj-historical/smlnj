@@ -136,10 +136,12 @@ fun inStr (EU.TOP) = EU.INSTR
 (* mapPaths moved to ModuleUtil. (DBM, 5/16/09) *)
 
 (* 
- * ASSERT: order of DEFtycs in tycs respects dependencies, i.e. no
- *         DEFtyc refers to tycons occurring after itself. 
+ * ASSERT: order of DEFtycs in wtycs respects dependencies, i.e. no
+ *         DEFtyc refers to tycons occurring after itself.
+ * returns entityEnv and entityDec for type declarations. entityEnv is incremental
  *)
-fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) = 
+fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err)
+      : EE.entityEnv * M.entityDec = 
     let fun stripPath path =
 	    let val namePath = IP.IPATH[IP.last path]
 	        val prefix = IP.lastPrefix path
@@ -493,7 +495,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			    | SOME entVar => EPC.enterOpen(epContext,entVar) 
 
 	  (* elaborating the body declarations *)
-          val (absDecl, entDecl, env', entEnv') =  (* entEnv' delta or cumulative? *)
+          val (absDecl, entDecl, env', entEnv') =  (* entEnv' is a delta env *)
                  elabDecl0(decl, env, entEnv, inStr context, true,
                            epContext', rpath, region, compInfo)
           val _ = debugmsg "--elab[BaseStr]: elabDecl0 done"
@@ -562,6 +564,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
   | elab (AppStrI(spath,[(arg,b)]), env, entEnv, region) =
       let val _ = debugmsg ">>elab[AppStr-one]"
 
+          (* lookup functor designated by spath *)
           val fct = LU.lookFct(env, SP.SPATH spath, error region)
 
           val _ = debugmsg "--elab[AppStr-one]: functor lookup done"
@@ -593,10 +596,10 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		   (* is the functor volatile or nonvolatile? *)
 		   val fctExp = 
 			case EPC.lookFctEntPath(epContext, MU.fctId fct)
-			  of SOME ep => VARfct ep
-			   | NONE => CONSTfct fctEnt
+			  of SOME ep => VARfct ep    (* volatile, use variable ref *)
+			   | NONE => CONSTfct fctEnt (* nonvolatile, a constant *)
 
-		   val epc = case entVarOp
+		   val epc = case entVarOp (* from outer evalStr call *)
 			       of NONE => epContext
 				| SOME ev => EPC.enterOpen(epContext, ev)
 		   (* val _ = debugPrint("--elab[AppStr]: epc = ",
@@ -1195,6 +1198,7 @@ and elabDecl0
        compInfo as {mkStamp,mkLvar=mkv,error,anyErrors,transform,...}
          : EU.compInfo)
       : A.dec * entityDec * SE.staticEnv * entityEnv =
+      (* entityDec and entityEnv are for bindings in decl *)
 
 (case decl
   of StrDec strbs =>
@@ -1279,7 +1283,7 @@ and elabDecl0
         in loop(fctbs, nil, nil, SE.empty, EE.empty)
            handle EE.Unbound => (debugmsg("$elabDecl0: FctDec"); 
                                 raise EE.Unbound)
-       end                                 
+       end (* FctDec fctbs *)                            
 
    | SigDec sigbs =>
        let val _ = debugmsg ">>elabSigbs"
@@ -1316,7 +1320,7 @@ and elabDecl0
         in loop(sigbs, nil, SE.empty)
            handle EE.Unbound => (debugmsg("$elabDecl0: SigDec"); 
                                 raise EE.Unbound)
-       end                                 
+       end (* SigDec sigbs *)                            
 
    | FsigDec fsigbs =>
        let val _ = debugmsg ">>elabFSigbs"
@@ -1343,7 +1347,7 @@ and elabDecl0
         in loop(fsigbs, nil, SE.empty)
            handle EE.Unbound => (debugmsg("$elabDecl0: FsigDec"); 
                                  raise EE.Unbound)
-       end                                 
+       end (* FsigDec fsigbs *)
 
    | LocalDec(decl_in,decl_out) =>
        let val top_in = EU.hasModules decl_in orelse EU.hasModules decl_out
@@ -1376,7 +1380,7 @@ and elabDecl0
                | _ => (M.EMPTYdec, EE.empty)
 
         in (resAbsyn, entDec, env_out, resEE)
-       end
+       end (* LocalDec(decl_in,decl_out) *)
 
    | SeqDec decls => 
        let val _ = debugmsg ">>elabSeqDec"
@@ -1405,8 +1409,7 @@ and elabDecl0
 		     (* Consolidate env in case of large number of bindings
 			in a single module *)
 		     val env2 = SE.consolidateLazy (SE.atop(env',env))
-                  in loop(rest, absyn::asdecls, entDecl::entDecls,
-                          env2,
+                  in loop(rest, absyn::asdecls, entDecl::entDecls, env2,
                           EE.mark(mkStamp,EE.atop(entEnv',entEnv)))
                  end
 
@@ -1414,7 +1417,7 @@ and elabDecl0
            handle EE.Unbound =>
 	     (debugmsg("$elabDecl0: SeqDec"); 
 	      raise EE.Unbound)
-       end
+       end (* SeqDec decls *)
 
    | TypeDec tbs =>
        (*** ASSERT: the tycons declared are all DEFtycs ***)
@@ -1455,8 +1458,8 @@ and elabDecl0
 	       in (resDec, entDec, env, entEnv)
 	      end
 
-	  | (Db{tyc=name,rhs=Repl syms,tyvars=nil,lazyp=false}::nil) => let
-		fun no_datatype () =
+	  | (Db{tyc=name,rhs=Repl syms,tyvars=nil,lazyp=false}::nil) =>
+	    let fun no_datatype () =
 		    (error region EM.COMPLAIN
 			   "rhs of datatype replication not a datatype"
 			   EM.nullErrorBody;
@@ -1518,7 +1521,7 @@ and elabDecl0
 		  (A.SEQdec[],M.ERRORdec,SE.empty,EE.empty)))
 
    | AbstypeDec x =>
-       (let val isFree = 
+       (let val isFree = (* tycon in domain of epContext pathmap *)
               (case context 
                 of EU.INFCT _ =>
                      (fn tyc => 
@@ -1556,7 +1559,7 @@ and elabDecl0
        elabDecl0(decl', env0, entEnv0, context, top,
                  epContext, rpath, region', compInfo)
 
-   | dec =>
+   | dec =>  (* other core decls *)
        (let val isFree = 
              (case context 
                of EU.INFCT _ =>
