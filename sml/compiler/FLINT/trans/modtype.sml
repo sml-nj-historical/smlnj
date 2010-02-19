@@ -104,13 +104,13 @@ in
  * assumes primaries are passed as an argument. *)
 fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
     let fun getPrimaryTyc (primsig,_,ep) = 
-	    let val ent = EE.lookEP(entities, ep)
+	    let val ent = EE.lookEP(entities, ep)  (* extract the entity at ep *)
 	     in case ent
 		 of M.TYCent tyc => 
 		    (* ~ T.TP_TYC tyc  in getTycPaths, what about FLEXTYC case? *)
 		    (case primsig
 		      of M.PrimaryTcy n => TT.tyconToTyc(tyc, penv, depth(penv)???)
-		          (* we assume arity will match - could check
+		          (* we assume arity will match - could check.
 			   * tyconToTyc will have to search for tyc in penv and
 			   * if it finds it in penv it will translate to a tcc_var.
 			   * otherwise it translates tyc directly. *)
