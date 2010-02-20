@@ -2,7 +2,7 @@
 
 (* Compute a kind for a formal functor element from an instantiated signature.
  * This is a new implementation of the function performed by getTkFct within
- * the old version of instantiate.sml, where is was used to compute the tkind
+ * the old version of instantiate.sml, where it was used to compute the tkind
  * of a functor element for the tycpaths returned by instParam.  This in turn
  * was used in elabmod.sml for the argtycs field of a FCTfct, and also in
  * sigmatch.sml (matchFct1). *)

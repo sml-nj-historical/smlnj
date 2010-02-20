@@ -60,7 +60,16 @@ ElabStr
 
 Q: How could we have a ConstrainedStr(strexp,constraint) where constraint is NoSig?
 A: This should not happen.  ConstrainedStr is constructed in the parser only when
-there is a constraint signature.  
+there is a constraint signature.
+
+Q: When is the entVarOp argument of elabStr a SOME ev?
+A: List of elabStr calls:
+
+   1. AppStrI(spath,[(arg,b)]) case in elabStr
+      elabStr called with (SOME entv) where entv is a fresh entvar.
+      the binding entv |-> argEnt is added to argDee to make resDee  ???
+
+   2. ?
 
 ============================================================================
 Notes from code.

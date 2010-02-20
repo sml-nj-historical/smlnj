@@ -104,7 +104,7 @@ in
  * assumes primaries are passed as an argument. *)
 fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
     let fun getPrimaryTyc (primsig,_,ep) = 
-	    let val ent = EE.lookEP(entities, ep)  (* extract the entity at ep *)
+	    let val ent = EE.lookEP(entities, ep)  (* fetch the entity at ep *)
 	     in case ent
 		 of M.TYCent tyc => 
 		    (* ~ T.TP_TYC tyc  in getTycPaths, what about FLEXTYC case? *)
@@ -113,7 +113,9 @@ fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
 		          (* we assume arity will match - could check.
 			   * tyconToTyc will have to search for tyc in penv and
 			   * if it finds it in penv it will translate to a tcc_var.
-			   * otherwise it translates tyc directly. *)
+			   * otherwise it translates tyc directly.
+			   * What forms of tycons will be found in penv?  Only
+			   * FORMAL? *)
 		       | _ => bug "getPrimaryTyc 1")
 		  | M.FCTent fctEnt =>
 		    (case primsig
@@ -131,7 +133,8 @@ fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
 	       -> PLambdaType.tyc
 *)
 (* based on routine used in old sigmatch to compute tycpath field of the
- * functor entity resulting from a fctsig match.  *)
+ * functor entity resulting from a fctsig match. Returns the LT.tyc representing
+ * the functor static action. *)
 and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
     let val {primaries, paramRlzn, exp, closureEnv, ...} = fctEntity
 	       (* maybe paramEnv should be a strEntity?  ==> paramRlzn *)

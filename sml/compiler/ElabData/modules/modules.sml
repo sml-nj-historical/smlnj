@@ -220,8 +220,8 @@ and fctEntity =
     {stamp    : ST.stamp,
      exp      : fctExp,           (* INVARIANT: always a LAMBDA *)
      closureEnv : entityEnv,
-     primaries : primary list,
-     paramEnv : entityEnv,        (* entities of parameter instantiation *)
+     primaries : primary list,    (* primary elements of parameter *)
+     paramEnv : entityEnv,        (* entities of parameter formal instantiation *)
      rpath    : IP.path,          (* reverse symbolic path name of the functor *)
      stub     : stubinfo option,  (* for pickling isolation *)
      properties: PropList.holder} (* FLINT: lambdaty memo *)

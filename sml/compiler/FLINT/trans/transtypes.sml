@@ -366,101 +366,107 @@ and toLty (penv : primaryEnv) d (POLYty {tyfun=TYFUN{arity=0, body}, ...}): LT.l
  *               TRANSLATING ML MODULES INTO FLINT TYPES                    *
  ****************************************************************************)
 
+(* specLty: return lty for the dynamic elements of a structure (i.e.
+   structure, functor, value, and exn constr elements. The lty describes
+   the dynamic aspect of the element.
+   The entEnv is assumed to be from the realization associated with the
+   signature elements in some structure fullsig. *)
 fun specLty (elements : (Symbol.symbol * spec) list, entEnv : EE.entityEnv, 
-	     penv : primaryEnv, depth: int, compInfo) = 
+	     penv : primaryEnv, depth: int, compInfo) : LT.lty list = 
   let val _ = debugmsg ">>specLty"
+      (* elemsLty : M.elements -> LT.lty list *)
       fun elemsLty ([], ltys) = rev ltys
         | elemsLty ((sym, (TYCspec _ ))::rest, entEnv, ltys) =
-              (debugmsg ("--specLty[TYCspec] "^Symbol.name sym); 
-	       elemsLty(rest, ltys))
+            (* tycon element, no dynamic value *)
+            (debugmsg ("--specLty[TYCspec] "^Symbol.name sym); 
+	     elemsLty(rest, ltys))
         | elemsLty ((sym, STRspec {sign, entVar, ...})::rest, ltys) =
-              let val rlzn = EE.lookStrEnt(entEnv,entVar)
-                  val _ = debugmsg ("--specLty[STRspec] "^Symbol.name sym)
-		  val lt = strRlznLty(sign, rlzn, penv, depth, compInfo) 
-               in elemsLty(rest, lt::ltys)
-              end
+            let val rlzn = EE.lookStrEnt(entEnv,entVar)
+                val _ = debugmsg ("--specLty[STRspec] "^Symbol.name sym)
+		val lt = strRlznLty(sign, rlzn, penv, depth, compInfo, NONE)
+             in elemsLty(rest, lt::ltys)
+            end
         | elemsLty ((sym, FCTspec {sign, entVar, ...})::rest, ltys) = 
-              let val rlzn = EE.lookFctEnt(entEnv,entVar)
-                  val _ = debugmsg ("--specLty[FCTspec] "^Symbol.name sym)
-		  val lt = fctRlznLty(sign, rlzn, penv, depth, compInfo) 
-               in elemsLty(rest, lt::ltys)
-              end
+            let val rlzn = EE.lookFctEnt(entEnv,entVar)
+                val _ = debugmsg ("--specLty[FCTspec] "^Symbol.name sym)
+		val lt = fctRlznLty(sign, rlzn, penv, depth, compInfo) 
+             in elemsLty(rest, lt::ltys)
+            end
         | elemsLty ((sym, spec)::rest, ltys) =
-              let val _ = debugmsg ("--specLtyElt "^Symbol.name sym)
-                  (* TODO translate entEnv results here? *)
-		  fun transty ty = 
-                    ((MU.transType entEnv ty)
-                      handle EE.Unbound =>
-                         (debugmsg "$specLty";
-                          withInternals(fn () =>
-                           debugPrint("entEnv: ",
-                                 (fn pps => fn ee => 
-                                  PPModules.ppEntityEnv pps (ee,SE.empty,12)),
-                                  entEnv));
-                          debugmsg ("$specLty: should have printed entEnv");
-                          raise EE.Unbound))
+	    (* VAL or CON spec *)
+	    let val _ = debugmsg ("--specLtyElt "^Symbol.name sym)
+		(* TODO translate entEnv results here? *)
+		fun instTy ty =   (* instantiate relativized ty wrt entEnv *)
+		    (MU.transType entEnv ty)
+		     handle EE.Unbound =>
+		       (debugmsg "$specLty";
+			withInternals(fn () =>
+			 debugPrint("entEnv: ",
+			       (fn pps => fn ee => 
+				PPModules.ppEntityEnv pps (ee,SE.empty,12)),
+				entEnv));
+			debugmsg ("$specLty: should have printed entEnv");
+			raise EE.Unbound)
 
-                  fun mapty t = 
-		      let val t' = transty t 
-			      handle _ => (bug "specLty[mapty,transty]")
-		      in toLty penv depth t'  
-			 handle _ => bug "specLty[mapty]"
+		fun transTy t = 
+		    let val t' = instTy t 
+				 handle _ => (bug "specLty[mapty,transty]")
+		    in toLty penv depth t'  
+		       handle _ => bug "specLty[mapty]"
+		    end
+
+	     in case spec
+		 of VALspec{spec=typ,...} => 
+		      (debugmsg "--specLty[VALspec]";
+		       elemsLty (rest, (transTy typ)::ltys))
+		  | CONspec{spec=DATACON{rep=DA.EXN _, 
+					 typ, ...}, ...} => 
+		      let val _ = debugmsg "--specLty[CONspec]\n"
+			  val argt = 
+			    if BT.isArrowType typ then  
+				 #1(LT.ltd_parrow (transTy typ))
+			    else LT.ltc_unit
+		       in elemsLty (rest, (LT.ltc_etag argt)::ltys)
 		      end
-
-               in case spec
-                   of VALspec{spec=typ,...} => 
-                        (debugmsg "--specLty[VALspec]";
-			 elemsLty (rest, (mapty typ)::ltys))
-                    | CONspec{spec=DATACON{rep=DA.EXN _, 
-                                           typ, ...}, ...} => 
-                        let val _ = debugmsg "--specLty[CONspec]\n"
-			    val argt = 
-                              if BT.isArrowType typ then  
-                                   #1(LT.ltd_parrow (mapty typ))
-                              else LT.ltc_unit
-                         in elemsLty (rest, (LT.ltc_etag argt)::ltys)
-                        end
-                    | CONspec{spec=DATACON _, ...} =>
-                        (debugmsg "--specLty[CONspec]";
-			 elemsLty (rest, ltys))
-                    | _ => bug "unexpected spec in specLty"
-              end
+		  | CONspec{spec=DATACON _, ...} =>
+		      (debugmsg "--specLty[CONspec]";
+		       elemsLty (rest, ltys))
+		  | _ => bug "unexpected spec in specLty"
+	    end
       val res = elemsLty (elements, [])
    in debugmsg ("<<specLty");
       res
   end
 
-(* sign is paramsig
-   rlzn is argRlzn
+(* strMetaLty computes Lty describing dynamic content of a structure.
+   envop: entityEnv option -- optional external context entityEnv.
+   envop will be SOME closureEnv when calculating lty of formal instantiation
+   of functor param in fctRlznLty.
  *) 
-and strMetaLty (sign, rlzn as { entities, ... }: strEntity, 
+and strRlznLty (sign, rlzn as { entities, ... }: strEntity, 
 		penv : primaryEnv, depth, compInfo, envop) =
     case (sign, ModulePropLists.strEntityLty rlzn) (* check for momoized value *)
-      of (_, SOME (lt, od)) => LT.lt_adj(lt, od, depth)
-       | (SIG { elements, ... }, NONE) => 
-	 let val entenv' = (case envop 
+      of (_, SOME (lt, od)) => LT.lt_adj(lt, od, depth)  (* memo exists *)
+       | (SIG { elements, ... }, NONE) =>   (* no memo, must compute *)
+	 let val entenv' = (case envop  (* add context entityEnv if provided *)
 			     of NONE => entities
-			      | SOME env => EE.atop(entities, env))
+			      | SOME entenv => EE.atop(entities, entenv))
 	     val ltys = specLty (elements, entities, penv, depth, compInfo)
-	     val lt = LT.ltc_str(ltys)
-	 in
-	     ModulePropLists.setStrEntityLty (rlzn, SOME(lt, depth));
+	     val lt = LT.ltc_str(ltys)  (* bundle ltys of dyn. elements *)
+	  in ModulePropLists.setStrEntityLty (rlzn, SOME(lt, depth)); (* memoize *)
 	     lt
 	 end
-       | _ => bug "unexpected sign and rlzn in strMetaLty"
+       | _ => bug "unexpected sign and rlzn in strRlznLty"
 
-and strRlznLty (sign, rlzn : strEntity, penv : primaryEnv, depth : int, compInfo) =
-    case (sign, ModulePropLists.strEntityLty rlzn)
-     of (sign, SOME (lt,od)) => LT.lt_adj(lt, od, depth)
-      | _ => (debugmsg ">>strRlznLty[strEntityLty NONE]";
-	      strMetaLty(sign, rlzn, penv, depth, compInfo, NONE))
-
-and fctRlznLty (sign, rlzn, penv : primaryEnv, depth, compInfo) = 
-    case (sign, ModulePropLists.fctEntityLty rlzn, rlzn)
-      of (_, SOME (lt, od), _) => LT.lt_adj(lt, od, depth)
-       | (fs as FSIG{paramsig, bodysig, ...}, _,
-         {closureEnv=env,primaries,paramEnv, ...}) =>
-        let val _ = debugmsg ">>fctRlznLty[instParam]"
+(* fctRlznLty calculates lty of dynamic content of a functor *)
+and fctRlznLty (fctSign: M.fctSig, fctRlzn: M.fctEntity,
+		penv : primaryEnv, depth: int, compInfo) = 
+    case ModulePropLists.fctEntityLty rlzn   (* check for memoization *)
+      of SOME (lt, od) => LT.lt_adj(lt, od, depth)  (* use memo *)
+       | NONE =>  (* no memo, compute it *)
+        let val FSIG{paramsig, bodysig, ...} = fctSign
+	    val {closureEnv, primaries, paramEnv, ...} = fctRlzn
+	    val _ = debugmsg ">>fctRlznLty[instParam]"
             val nd = depth + 1
 
 	    (* [GK 4/30/09] Closure environments map entity paths to 
@@ -468,7 +474,7 @@ and fctRlznLty (sign, rlzn, penv : primaryEnv, depth, compInfo) =
                types they map. 
                
                [GK 4/24/09] We must somehow account for the closure 
-	       environment env. It contains important realization 
+	       environment closureEnv. It contains important realization 
 	       information such as parameter information from 
                partially applied curried functors. 
              *)
@@ -484,20 +490,26 @@ and fctRlznLty (sign, rlzn, penv : primaryEnv, depth, compInfo) =
 	     * We also need to reuse the parameter instantiation for the call
 	     * of evalApp below. Whichever instantiation is used to calculate
 	     * the penv_layer must also be used for evalApp so that the
-	     * type variable bindings (via stamps) are correlated with their
-	     * occurrences in the body rlzn after evalApp.
+	     * type variable bindings (determined via stamps) are correlated
+	     * with their occurrences in the body rlzn after evalApp.
 	     *)
 
+            (* Do we really need to instantiate paramsig again, given that
+	     * we save paramEnv in fctRlzn?  We could recreate a paramRlzn
+	     * from paramEnv, or maybe evalApp should just require an
+	     * entityEnv for the argument structure instead of a realization?
+	     *)
 	    val {rlzn=paramRlzn, primaries=_} = 
-		INS.instFormal{sign=paramsig,entEnv=env,
+		INS.instFormal{sign=paramsig,entEnv=closureEnv,
 			       rpath=InvPath.IPATH[], compInfo=compInfo,
 			       region=SourceMap.nullRegion}
 
 	    val _ = debugmsg ">>parameter kinds"
-	    val primaryBindings =
-		map (FctKind.primaryToBind (compInfo, paramEnv))
+         
+            (* calculate kinds of parameter's primaries *)
+	    val paramPrimaryKinds =
+		map (#2 o (FctKind.primaryToBind (compInfo, paramEnv)))
 		    primaries
-	    val ks = map #2 (primaryBindings)   (* extract kinds *)
 
 	    val _ = if !debugging 
 		    then (debugmsg "====================";
@@ -510,20 +522,20 @@ and fctRlznLty (sign, rlzn, penv : primaryEnv, depth, compInfo) =
 			    debugPrint("closure: ",
 				       (fn pps => fn env =>
 					PPModules.ppEntityEnv pps (env,SE.empty,100)),
-				       env));
+				       closureEnv));
 			  debugmsg "====================")
 		    else ()
 
-	    val _ = debugmsg ">>strMetaLty"
+	    val _ = debugmsg ">>strRlznLty"
             val paramLty = strMetaLty(paramsig, paramRlzn, penv, nd, compInfo,
-				     SOME env)
+				     SOME closureEnv)
 		handle _ => bug "fctRlznLty 2"
 		     
 	    val _ = debugmsg (">>fctRlznLty calling evalApp nd "^Int.toString nd)
             (* use evalApp to propagate parameter elements and generate new body
 	     * elements *)
             val bodyRlzn = 
-                EV.evalApp(rlzn, paramRlzn, EPC.initContext,
+                EV.evalApp(fctRlzn, paramRlzn, EPC.initContext,
                            IP.empty, compInfo)
 	    val _ = if !debugging
 		    then (debugmsg "==================";
@@ -542,7 +554,7 @@ and fctRlznLty (sign, rlzn, penv : primaryEnv, depth, compInfo) =
 	    val _ = debugmsg ">>strRlznLty: functor body"
 	    (* [GK 5/5/09] Ideally, we want to be able to compute this 
 	       without having to appeal to EV.evalApp to get bodyRlzn.
-	       [DBM 5/19/09] This should be possible. It will require
+	       [DBM 5/19/09] This may be possible, but it would require
 	       "decompiling" the LAMBDA expression in the functor rlzn. *)
 
 	    (* add "bindings" for the primaries from the parameter
@@ -553,11 +565,11 @@ and fctRlznLty (sign, rlzn, penv : primaryEnv, depth, compInfo) =
             (* [DBM: 5/19/09] Does the bodyLty have the kind that was (would be?)
 	     * calculated for the functor signature? I.e. is it a tuple of ltys
 	     * corresponding to the primaries of bodysig? *)
-	    val bodyLty = strRlznLty(bodysig, bodyRlzn, innerPenv, nd, compInfo)
+	    val bodyLty = strRlznLty(bodysig, bodyRlzn, innerPenv, nd, compInfo, NONE)
 
 	    val _ = debugmsg "<<strRlznLty: functor body"
 
-            val lt = LT.ltc_poly(ks, [LT.ltc_fct([paramLty],[bodyLty])])
+            val lt = LT.ltc_poly(paramPrimaryKinds, [LT.ltc_fct([paramLty],[bodyLty])])
         in
 	    ModulePropLists.setFctEntityLty (rlzn, SOME (lt, depth));  (* memoize *)
 	    debugmsg "<<fctRlznLty";
@@ -570,7 +582,7 @@ and strLty (str as STR { sign, rlzn, ... }, penv : primaryEnv, depth, compInfo) 
       of SOME (lt, od) => LT.lt_adj(lt, od, depth)
        | NONE =>
          let val _ = debugmsg ">>strLty"
-	     val lt = strRlznLty(sign, rlzn, penv, depth, compInfo)
+	     val lt = strRlznLty(sign, rlzn, penv, depth, compInfo, NONE)
           in ModulePropLists.setStrEntityLty (rlzn, SOME(lt, depth));
 	     debugmsg "<<strLty";
 	     lt
