@@ -1476,8 +1476,10 @@ and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp =
 		      FCTB context. Then we use FctKind.primaryToKnd as below.
 		      We could also, redundantly, stick the primaries into
 		      the FCTfct data structure. *)
-		   val primaries = hd penv0  (* pre-added in mkFctbs, should probably be passed
-					      * as a separate param *)
+		   val primaries = hd penv0
+		     (* primaries for this functor param sig were
+		      * added to penv0 in mkFctbs when it called mkFctexp,
+		      * should probably be passed as a separate param *)
 		   val primaryBindings =
 		       map (FctKind.primaryToBind (compInfo, #entities rlzn))
 			   primaries
@@ -1492,7 +1494,8 @@ and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp =
 				print "\n")
 			   else ()
 
-                   val nd = d + 1  (* reflecting TFN type abstraction below, and = length penv0 *)
+                   val nd = d + 1 
+		       (* reflecting TFN type abstraction below, and = length penv0 *)
 
 		   (* val _ = debugmsg ("--mkFctexp[FCTfct] penv1 "
 				     ^Int.toString(FTM.numItems penv1)) *)
@@ -1502,8 +1505,7 @@ and mkFctexp (penv0 : TT.primaryEnv, fe, d) : lexp =
 		   val lty = strLty(param, penv0, nd, compInfo)
 		   val _ = debugmsg "--mkFctexp[done strLty]"
                (* binding of all v's components *)
-               in
-		   TFN(knds, FN(v, lty, hdr body))
+               in TFN(knds, FN(v, lty, hdr body))
 		   (* [FIXME]strLty's param has a signature with GENtyc formals.
 		    * transtypes will not know how to deal with this. 
 		    * The free instantiation of this functor's parameter 

@@ -962,8 +962,9 @@ case fctexp
 					 body=bodyExp},
 			    primaries=primaries,
 			    closureEnv = entEnv, 
+			      (* Closure: Using the old entity environment !! *)
 			    paramEnv = #entities paramRlzn,
-		(* Closure: Using the old entity environment !! *)
+			      (* or just paramRlzn? Where and how used? *)
 			    properties = PropList.newHolder (),
 			    rpath = rpath,
 			    stub = NONE}

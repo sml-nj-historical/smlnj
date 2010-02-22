@@ -222,6 +222,7 @@ and fctEntity =
      closureEnv : entityEnv,
      primaries : primary list,    (* primary elements of parameter *)
      paramEnv : entityEnv,        (* entities of parameter formal instantiation *)
+		(* or just paramRlzn? Where and how used? fctLty0 in transtypes *)
      rpath    : IP.path,          (* reverse symbolic path name of the functor *)
      stub     : stubinfo option,  (* for pickling isolation *)
      properties: PropList.holder} (* FLINT: lambdaty memo *)
@@ -244,7 +245,7 @@ and fctrec =
   (* access and prim belong in a separate FCTvar type, since they describe
    * the "dynamic" attributes of a functor *)
 
-(* envrec: chunks of entity evns are marked with a stamp and stubbed for
+(* envrec: chunks of entity envs are marked with a stamp and stubbed for
  * pickling isolation *)
 and envrec =
     {stamp : ST.stamp,
