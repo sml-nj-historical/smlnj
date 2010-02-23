@@ -107,7 +107,7 @@ fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
 		 of M.TYCent tyc => (* tyc could be formal or nonformal *)
 		    (case primsig
 		      of M.PrimaryTcy n => TT.tyconToTyc(tyc, penv, penvDepth(penv))
-		          (* we assume arity will match - could check.
+		          (* We assume arity will match - could check this.
 			   * tyconToTyc will have to search for tyc in penv and
 			   * if it finds it in penv it will translate to a corresponding
 			   * tcc_var; otherwise it translates tyc directly.
@@ -117,7 +117,7 @@ fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
 			   * surrounding abstraction level. This corresponds to the
 			   * FLEXTYC case in the old getTycPaths function.
 			   * Non-FORMAL tycons and functors can also occur, of course,
-			   * since, because entities can be a realization for
+			   * because entities can be a realization for
 			   * (e.g.) the coerced actual parameter structure in a functor
 			   * application. Do we ever apply getStrTycs to a formal
 			   * instantiation realization for a signature? For such a
@@ -137,6 +137,10 @@ fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
 
      in map getPrimaryTyc primaries
     end
+(* so in tyconToTyc we don't need to search penv unless the tycon is a
+ * genTyc[FORMAL].  Similarly, we don't need to search penv for a functor
+ * unless we know the functor is formal (an instantiated fctsig). *)
+
 
 (* getFctTyc : Modules.fctSig * Modules.fctEntity * TransTypes.primaryEnv
 	       * Absyn.dec CompInfo.compInfo
@@ -147,7 +151,7 @@ fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
  * the functor static action.
  * Note that the functor being translated can be either a normal functor
  * or a formal functor.  If it is a formal functor, we need to look it up
- * in penv *)
+ * in penv, and return a tcc_var as its PT.tyc *)
 and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
     let val {primaries, paramRlzn, exp, closureEnv, ...} = fctEntity
 	       (* maybe paramEnv should be a strEntity?  ==> paramRlzn *)

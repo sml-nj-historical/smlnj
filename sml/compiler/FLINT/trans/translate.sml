@@ -1394,23 +1394,19 @@ and mkEBs (penv : TT.primaryEnv, ebs, d) =
 
 
 (***************************************************************************
- *                                                                         *
- * Translating module exprs and decls into lambda expressions:             *
- *                                                                         *
- *    val mkStrexp : primaryEnv * Absyn.strexp * depth -> PLambda.lexp                   *
- *    val mkFctexp : primaryEnv * Absyn.fctexp * depth -> PLambda.lexp                   *
- *    val mkStrbs  : primaryEnv * Absyn.strb list * depth -> PLambda.lexp -> PLambda.lexp *
- *    val mkFctbs  : primaryEnv * Absyn.fctb list * depth -> PLambda.lexp -> PLambda.lexp *
- *                                                                         *
+ *                                                               
+ * Translating module exprs and decls into lambda expressions:   
+ *                                                               
+ *    val mkStrexp : primaryEnv * Absyn.strexp * depth -> PLambda.lexp
+ *    val mkFctexp : primaryEnv * Absyn.fctexp * depth -> PLambda.lexp
+ *    val mkStrbs  : primaryEnv * Absyn.strb list * depth
+ *		     -> PLambda.lexp -> PLambda.lexp
+ *    val mkFctbs  : primaryEnv * Absyn.fctb list * depth
+ *		     -> PLambda.lexp -> PLambda.lexp 
+ *                                                   
  ***************************************************************************)
 and mkStrexp (penv, se, d) = 
     let val _ = debugmsg ">>mkStrexp"
-        (* fun getArgTycs entities (_,_,ep) = 
-            case EntityEnv.lookEP(entities, ep)
-              of M.TYCent tyc => TT.TYCarg tyc
-	       | M.FCTent fctEntity => TT.FCTarg fctEntity (* compute tycpath or pl lty? *)
-               | M.ERRORent => bug "unexpected entities in getArgTycs" *)
-
 	fun mk(strexp : Absyn.strexp) : PLambda.lexp =
 	    (case strexp 
 	       of APPstr {oper, arg} =>
@@ -1421,7 +1417,7 @@ and mkStrexp (penv, se, d) =
 			   (case oper
 			     of M.FCT{rlzn={primaries,paramEnv,...}, ...} => 
 				(primaries, paramEnv)
-			      | _ => bug "Unexpected Functor in APPstr")
+			      | _ => bug "mkStrexp - Unexpected Functor in APPstr")
 
 		       val argtycs = 
 			   MT.getStrTycs(primaries,paramEnv,penv, compInfo)
