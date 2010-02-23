@@ -97,32 +97,42 @@ in
 (* getStrTycs : Modules.primary list * EntityEnv.entityEnv
 	        * TransTypes.primaryEnv * Absyn.dec CompInfo.compInfo 
 		-> PLambdaType.tyc list
-*)
-
-(* fetching the list of LT.tycs for the primaries of a structure
- * modelled on getTycPaths from the old version of Instantiate.
+ * fetching the list of LT.tycs for the primaries of a structure
+ * Modeled on getTycPaths from the old version of Instantiate.
  * assumes primaries are passed as an argument. *)
 fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
     let fun getPrimaryTyc (primsig,_,ep) = 
-	    let val ent = EE.lookEP(entities, ep)  (* fetch the entity at ep *)
+	    let val ent = EE.lookEP(entities, ep)  (* fetch the primary entity at ep *)
 	     in case ent
-		 of M.TYCent tyc => 
-		    (* ~ T.TP_TYC tyc  in getTycPaths, what about FLEXTYC case? *)
+		 of M.TYCent tyc => (* tyc could be formal or nonformal *)
 		    (case primsig
-		      of M.PrimaryTcy n => TT.tyconToTyc(tyc, penv, depth(penv)???)
+		      of M.PrimaryTcy n => TT.tyconToTyc(tyc, penv, penvDepth(penv))
 		          (* we assume arity will match - could check.
 			   * tyconToTyc will have to search for tyc in penv and
-			   * if it finds it in penv it will translate to a tcc_var.
-			   * otherwise it translates tyc directly.
+			   * if it finds it in penv it will translate to a corresponding
+			   * tcc_var; otherwise it translates tyc directly.
 			   * What forms of tycons will be found in penv?  Only
-			   * FORMAL? *)
+			   * FORMAL? Yes, because they will have come from a 
+			   * functor parameter formal instantiation at some
+			   * surrounding abstraction level. This corresponds to the
+			   * FLEXTYC case in the old getTycPaths function.
+			   * Non-FORMAL tycons and functors can also occur, of course,
+			   * since, because entities can be a realization for
+			   * (e.g.) the coerced actual parameter structure in a functor
+			   * application. Do we ever apply getStrTycs to a formal
+			   * instantiation realization for a signature? For such a
+			   * realization, the primary tycons would be genTyc[FORMAL]
+			   * and the primary functors will be formal functors. Yes,
+			   * this could presumably happen if a outer functor parameter
+			   * was passed directly as a parameter to a functor application
+			   * within the parameter's scope. *)
 		       | _ => bug "getPrimaryTyc 1")
 		  | M.FCTent fctEnt =>
 		    (case primsig
 		      of M.PrimaryFct fctsig => getFctTyc(fctsig,fctEnt,penv,compInfo)
 		       | _ => bug "getPrimaryTyc 2")
+		  | M.STRent _ => bug "getStrTycs -- STRent"
 		  | M.ERRORent => bug "getStrTycs -- ERRORent"
-		  | _ => bug "getStrTycs -- unexpected entity"
 	    end
 
      in map getPrimaryTyc primaries
@@ -134,31 +144,64 @@ fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
 *)
 (* based on routine used in old sigmatch to compute tycpath field of the
  * functor entity resulting from a fctsig match. Returns the LT.tyc representing
- * the functor static action. *)
+ * the functor static action.
+ * Note that the functor being translated can be either a normal functor
+ * or a formal functor.  If it is a formal functor, we need to look it up
+ * in penv *)
 and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
     let val {primaries, paramRlzn, exp, closureEnv, ...} = fctEntity
 	       (* maybe paramEnv should be a strEntity?  ==> paramRlzn *)
-(*  -- make paramEnv field of fctEntity be paramRlzn : strEntity *)
-	val paramRlzn = (* construct a parameter rlzn from paramEnv *)
+(*
+        (*  make paramEnv field of fctEntity be paramRlzn : strEntity *)
+	val paramRlzn = (* reconstruct a full parameter rlzn from paramEnv *)
              (* ??  paramEnv ?? (* we need a strEntity for bodyEnv *) *)
 *)
+        (* check if fctEntity is formal, and if so, look it up in penv to
+	 * get tcc_var coordinates. *)
+
 	val M.FSIG{bodysig,...} = fctsig
             (* need bodySig to calculate primaries for result structure *)
+
 	val M.LAMBDA{param,body} = exp
             (* need param field to define bodyEnv below *)
+
 	val resultEnt = evalEnt(APP(fctEntity,paramRlzn), ...) ???
-            (* apply the functor to the parameter instantiation *)
+            (* apply the functor to the parameter instantiation, i.e. 
+	     * the one that was saved in the fctEntity (= functor realization) *)
+
 	val paramTycs = getStrTycs(primaries,paramEnv,penv,compInfo)
-	    (* primaries includes both primary tycons and functors *)
+	    (* primaries includes both primary tycons and functors,
+	     * these are the argument tycs *)
+
 	val bodyEnv = EE.bind(param, M.STRent paramRlzn, closureEnv)
-	val {primaries=resPrimaries, ...} = 
+
+	val {primaries=resPrimaries, ...} =  (* not using the actual functor? *)
 	    INS.instFormal{sign=bodysig, entEnv=bodyEnv, (* the right entEnv? *)
 			   rpath=IP.IPATH[], compInfo=compInfo,
 			   region=SourceMap.nullRegion}
+            (* this looks similar to what we would do with a formal functor to
+	     * perform its application, but all we are looking for here is
+	     * the primaries for the result structure. [What is this going to
+	     * do if the bodysig is extracted?] *)
+
 	val bodyPenv = primaries::penv (* push param primaries on primaryEnv *)
+
 	val resultTycs = getStrTycs(resPrimaries,resultEnt,bodyPenv,compInfo)
+            (* this might work for nonformal functors? But can we just use
+             * the entities from the formal application, or do we need to
+	     * translate the body of the functor entity expression? It seems
+	     * that the translation of the evaluated entities may suffice,
+	     * but this needs to be checked carefully. *)
+
+            (* the translation of the result primary entities in the case of
+	     * a formal functor is special.  We need to construct a tcc application
+	     * of the functor's tcc_var (to what arg? -- an innermost tcc_var representing
+	     * the formal functor parameter) and then select from the result
+	     * of this application (the TP_SEL case from old instantiateParam) *)
+
 	val paramkinds = map MK.tycsToKind paramTycs
            (* or should we calculate the paramkinds directly from primaries *)
+
      in (* TP_FCT(paramtycs,resPrimaries)  --- translate this to a tyc! *)
         LT.tcc_fn(paramkinds, LT.tcc_seq resultTycs)
     end
