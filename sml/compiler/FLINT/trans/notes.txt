@@ -35,3 +35,57 @@ Volatility and epcontext
 * epcontext binds both GENtyc(FORMAL) and DEFtyc and GENtyc(DATATYPE) tycons
      (bindNewTycs in elabmod.sml)
 
+
+---------------------------
+modtype.sml
+
+Translating structures and functors into their LT.tyc's.  (getStrTycs, getFctTyc)
+
+For nonvolatile structures, the simple version of getStrTyc should suffice.
+
+For volatile structures defined inside a functor, particularly those
+defined by application of a formal functor, we need to "type-check"
+the functor body code.  This is also required in general for typing
+functors themselves.
+
+Example:
+[type* and functor* identify primary elements. T_t and T_G are LT bound type
+variables for the two F parameter primaries.]
+
+functor F(X: sig
+	               type* t								     T_t : M
+		       functor* G(Y: sig type* s end) : sig type* u end      T_G :  [M] => M
+       		    end  = 
+struct
+  structure A = G(struct type s = X.t end)
+end
+
+F: [T_t, T_G]  ->  str [ str [ proj(1)(app (T_G, str [T_t])) ] ]
+
+where the anonymous structure argument of G has type:
+
+     struct type s = X.t end  :  str [T_t]
+
+
+How to compile a functor to its LT type.
+-------------------------------
+
+Ingredients: 
+1. functor signature
+     paramsig, bodysig
+2. exp : entityExp (= LAMBDA{param: entVar, body: strExp})
+
+1. get primaries from paramsig
+
+2. bind them by pushing onto penv  (will we be looking primaries up there?)
+
+3. determine the result primaries (by instantiating bodysig?)
+
+4. body entityExp will be a STRUCTURE{stampExp, entDec}
+
+5. interpret the entDec from body, building an entity environment
+    that maps element entity variables to LT tycs  [could ignore bindings
+    that we know will not be result primaries?]
+
+6. gather LT tycs for result by looking up result primary entpaths
+    in entity environment built in step 5

@@ -100,58 +100,89 @@ in
  * fetching the list of LT.tycs for the primaries of a structure
  * Modeled on getTycPaths from the old version of Instantiate.
  * assumes primaries are passed as an argument. *)
-fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo) =
-    let fun getPrimaryTyc (primsig,_,ep) = 
+fun getStrTycs(primaries, entities: EE.entityEnv, penv: primaryEnv, compInfo)
+    : LT.tyc list =
+    let fun transPrimary (primsig,_,ep) = 
 	    let val ent = EE.lookEP(entities, ep)  (* fetch the primary entity at ep *)
 	     in case ent
 		 of M.TYCent tyc => (* tyc could be formal or nonformal *)
 		    (case primsig
 		      of M.PrimaryTcy n => TT.tyconToTyc(tyc, penv, penvDepth(penv))
-		          (* We assume arity will match - could check this.
-			   * tyconToTyc will have to search for tyc in penv and
-			   * if it finds it in penv it will translate to a corresponding
-			   * tcc_var; otherwise it translates tyc directly.
-			   * What forms of tycons will be found in penv?  Only
-			   * FORMAL? Yes, because they will have come from a 
-			   * functor parameter formal instantiation at some
-			   * surrounding abstraction level. This corresponds to the
-			   * FLEXTYC case in the old getTycPaths function.
-			   * Non-FORMAL tycons and functors can also occur, of course,
-			   * because entities can be a realization for
-			   * (e.g.) the coerced actual parameter structure in a functor
-			   * application. Do we ever apply getStrTycs to a formal
-			   * instantiation realization for a signature? For such a
-			   * realization, the primary tycons would be genTyc[FORMAL]
-			   * and the primary functors will be formal functors. Yes,
-			   * this could presumably happen if a outer functor parameter
-			   * was passed directly as a parameter to a functor application
-			   * within the parameter's scope. *)
-		       | _ => bug "getPrimaryTyc 1")
+		          (* We assume arity will match - could check this. *)
+		       | _ => bug "getStrTyc 1")
 		  | M.FCTent fctEnt =>
 		    (case primsig
 		      of M.PrimaryFct fctsig => getFctTyc(fctsig,fctEnt,penv,compInfo)
-		       | _ => bug "getPrimaryTyc 2")
+		       | _ => bug "getStrTyc 2")
 		  | M.STRent _ => bug "getStrTycs -- STRent"
 		  | M.ERRORent => bug "getStrTycs -- ERRORent"
 	    end
 
-     in map getPrimaryTyc primaries
+     in map transPrimary primaries
     end
-(* so in tyconToTyc we don't need to search penv unless the tycon is a
- * genTyc[FORMAL].  Similarly, we don't need to search penv for a functor
- * unless we know the functor is formal (an instantiated fctsig). *)
+(*
+
+In the TYCent case, tyconToTyc will have to search for tyc in penv and
+if it finds it in penv it will translate to a corresponding tcc_var;
+otherwise it translates tyc directly.  What forms of tycons will be
+found in penv?  Only FORMAL? Yes, because they will have come from a
+functor parameter formal instantiation at some surrounding abstraction
+level. This corresponds to the FLEXTYC case in the old getTycPaths
+function.  Non-FORMAL tycons and functors can also occur, of course,
+because entities can be a realization for (e.g.) the coerced actual
+parameter structure in a functor application. Do we ever apply
+getStrTycs to a formal instantiation realization for a signature? For
+such a realization, the primary tycons would be genTyc[FORMAL] and the
+primary functors will be formal functors. Yes, this could presumably
+happen if a outer functor parameter was passed directly as a parameter
+to a functor application within the parameter's scope.
+
+So in tyconToTyc we don't need to search penv unless the tycon is a
+genTyc[FORMAL].  Similarly, in the FCTent case, getFctTyc does not
+need to search penv for the functor unless we know it is formal
+(i.e. an instantiated fctsig with FORMstr body).
+
+There is a special case where the structure was the result of an
+application of a formal parameter functor (within a functor body). In
+this case result primaries should be expressed as projections
+(LT.tcc_proj, formerly TP_SEL) of a tyc that is the application
+(formerly TP_APP) of the functor LT.tyc (a tcc_var) to the argument
+LT.tyc.
+
+How do we detect this kind of structure after the fact, and
+how to we recover the needed functor an argument tycs?  In the old
+system, the tycpaths were computed in instFMBD when the functor
+application was evaluated in evalent.sml.  Do we need to process the
+functor body entity expression?
+
+The above getStrTycs should work for non-volatile (top-level) structures,
+but for volatile structures defined in a functor context it seems we will
+have to "type-check" the functor body entity expression, probably using
+information from signatures.
+
+*)
 
 
 (* getFctTyc : Modules.fctSig * Modules.fctEntity * TransTypes.primaryEnv
 	       * Absyn.dec CompInfo.compInfo
 	       -> PLambdaType.tyc
 *)
-(* based on routine used in old sigmatch to compute tycpath field of the
- * functor entity resulting from a fctsig match. Returns the LT.tyc representing
- * the functor static action.
- * Note that the functor being translated can be either a normal functor
- * or a formal functor.  If it is a formal functor, we need to look it up
- * in penv, and return a tcc_var as its PT.tyc *)
+(*
+
+Returns the LT.tyc representing the functor static action.
+
+Note that the functor being translated can be either a regular functor
+or a formal functor (instantiated parameter fctsig). If it is a formal
+functor, we look it up in penv, and return a tcc_var as its PT.tyc.
+[In the old version, the tcc_var coordinates were stored in a TP_VAR
+assigned to the tycpath field of the functor realization in instToEntity
+FinalFct case in instParam.]
+
+For a regular functor (where the body is not a FORMstr), we use an
+algorithm based on that used in old sigmatch to compute tycpath field of the
+functor realizations resulting from a fctsig match (in matchFct1).
+
+*)
 and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
     let val {primaries, paramRlzn, exp, closureEnv, ...} = fctEntity
 	       (* maybe paramEnv should be a strEntity?  ==> paramRlzn *)
@@ -210,214 +241,5 @@ and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
         LT.tcc_fn(paramkinds, LT.tcc_seq resultTycs)
     end
 
-(* where do the TP_SEL (=> LT.tcc_proj) tycpaths play a part? *)
- 
 end (* local *)
 end (* structure ModTypes *)
-
-
-(* old code from reptycprops.sml 
-
-  fun formalBody(ftmap0, bodyEnts, argTps, msig as M.SIG{elements, ...}, 
-		 paramEnts, fsig, d, i) =
-      let val M.FSIG{paramsig=M.SIG{elements=pelems,...},
-		     bodysig=M.SIG{elements=belems,...},...} = fsig
-	  val peps = repEPs(entpaths pelems, paramEnts)
-	  val pfsigs = fsigInElems pelems
-
-	  fun loopkind ([], _, eenv) = []
-	    | loopkind (ep::eps, fsigs, eenv) = 
-	      (case EE.lookEP(eenv, ep)
-		    handle EE.Unbound => 
-			   bug ("kinds Unbound "^
-				EP.entPathToString ep)
-		of M.TYCent(T.GENtyc{kind=T.DATATYPE _, ...}) =>
-		   loopkind(eps, fsigs, eenv)
-		 | M.TYCent(T.GENtyc{kind, arity, ...}) =>
-		   (* Use this when PK eliminated from front-end:
-		      (LT.tkc_int arity)::loop(eps, pfsigs) *)
-		   (buildKind arity)::loopkind(eps, fsigs, eenv)
-		 | M.FCTent{exp=M.LAMBDA{paramRlzn,...}, closureEnv=env, ...} =>
-		   (* this should be using closure and paramRlzn *)
-		   (case fsigs 
-		     of [] => bug "kinds.1"
-		      | fsig::rest => 
-			kinds(#entities paramRlzn, 
-			      (raise Fail "#entities bodyRlzn"), fsig)::
-			loopkind(eps, rest, eenv))
-		 | _ => bug "kinds.0")
-
-	  val paramtk = loopkind(peps,pfsigs,paramEnts)
-
-	  (* [TODO] This can be a problem. belems can refer to 
-	     formal functor body for curried functor,
-	     but formal body signature has not been
-	     instantiated with the actual argument realization. *)
-	  val beps = repEPs(entpaths belems, bodyEnts)
-	  val bfsigs = fsigInElems belems
-	  (* What is the correct eenv to look up belem entpaths? *)
-
-	  val bodytk = loopkind(beps,bfsigs, bodyEnts)
-
-	  val kind = LT.tkc_fun(paramtk, LT.tkc_seq bodytk)
-
-	  val eps = entpaths(elements)
-	  val _ = debugmsg ("--formalBody eps "^Int.toString (length eps))
-	  fun loop(ftmap, eenv, [], j, tps) = (ftmap, rev tps)
-	    | loop(ftmap, eenv, ep::rest, j, tps) = 
-	      (case EE.lookEP(eenv, ep)
-		of M.TYCent(T.GENtyc{kind=T.DATATYPE _, stamp, ...}) =>
-		   loop(ftmap, eenv, rest, j, tps) 
-		 | M.TYCent(T.GENtyc{stamp, ...}) =>
-		   let val fctvar = TP.TP_VAR{tdepth=d, num=i, kind=kind}
-		       val tp = TP.TP_SEL(TP.TP_APP(fctvar, argTps), j)
-		   in case FTM.find(ftmap, stamp)
-		       of SOME _ => loop(ftmap, eenv, rest, j, tps)
-			| NONE => loop(insertMap(ftmap, stamp, tp), eenv,
-				       rest, j+1, tp::tps)
-		   end
-		 | M.TYCent _ => 
-		    loop(ftmap, eenv, rest, j, tps)
-		 | M.FCTent _ =>
-		    loop(ftmap, eenv, rest, j, tps)
-		 | _ => loop(ftmap, eenv, rest, j, tps)))
-	  val (ftmap1, tps) = loop(ftmap0, bodyEnts, beps, 0, [])
-      in (ftmap1, tps)
-      end
-    | formalBody _ = bug "Unexpected signature in formalBody"
-
-  (* There are two kinds of tycpath computations, one for 
-   * functor parameters and the other for functor parameter
-   * references in the body of a functor. In either case, 
-   * we want to use the deBruijn index depth at the 
-   * site of definition and not the incidental depth at the 
-   * site of occurrence. 
-   *)  
-  (* This is the important computation for generating TC_VAR 
-     variable references to functor parameters. 
-
-    FTM.map * M.strEntity * M.strEntity option * M.Signature * DI.depth
-    -> FTM.map * tycpath list 
-     *)  
-  (* The goal here, simply put, is to get the primary components
-     in rlzn where a component is primary if it is a representative
-     picked by instantiate in freerlzn. *)
-  fun strType(penv(?): primaryEnv,
-	      freerlzn : M.strEntity, 
-	      M.SIG (sign : M.sigrec),
-	      rlzn as {entities=entenv,...}: M.strEntity,
-	      primaries,
-	      depth) =
-      let val eps = map #3 primaries
-	  fun loop(ftmap, tps, [], _, _) = (ftmap, rev tps)
-	    | loop(ftmap, tps, ep::rest, i, fs) =
-	      (case EE.lookEP(entenv, ep)
-		    handle EntityEnv.Unbound =>
-			   (print "\npri for Unbound\n";
-			    raise EntityEnv.Unbound)
-		of M.TYCent(tyc as T.GENtyc{kind=T.DATATYPE _, stamp,...}) =>
-		   let val tp = TP.TP_TYC(tyc)
-		   in (loop(insertMap(ftmap, stamp, tp), 
-			    tp::tps, rest, i+1, fs))
-		   end
-		    (* Datatypes should be represented directly in the tycpath *)
-		 | M.TYCent(T.GENtyc{kind=T.ABSTRACT(tyc),stamp=s1,...}) =>
-		   let val (tp,s) = 
-			   (case tyc 
-			     of T.GENtyc{kind=T.DATATYPE _,stamp,...} =>
-				(TP.TP_TYC(tyc), stamp)
-			      | T.GENtyc{kind=T.FORMAL, arity, stamp, ...} => 
-				(case FTM.find(ftmap, stamp)
-				  of SOME tp' => (tp', stamp)
-				   | NONE => 
-				     (TP.TP_VAR{tdepth=depth,num=i,
-						kind=buildKind arity}, stamp))
-			      | _ => 
-				(TP.TP_TYC(tyc), s1))
-		   in loop(insertMap(ftmap, s, tp), 
-			   tp::tps, rest, i+1, fs)
-		   end
-		      
-		 | M.TYCent(T.GENtyc{kind, arity, stamp, ...}) =>
-		      let val _ = debugmsg "--primaryCompInStruct[TYCent GENtyc]"
-			  val kind = buildKind arity
-	                     (* Check if stamp is previously defined. 
-			      * If so, then this must be a variable occurrence
-			      * and not a functor parameter binding
-			      * so use the depth at the definition site 
-			      * (i.e., in the ftmap0 tycpath) instead of the 
-			      * current occurrence site depth. *)
-			  val tp' = 
-			      (case FTM.find(ftmap, stamp)
-				of SOME tp' => tp'
-				 | NONE => TP.TP_VAR {tdepth=d,num=i, kind=kind})
-		      in loop(insertMap(ftmap, stamp, tp'),
-			      tp'::tps, rest, i+1, fs)
-		      end
-		 | M.TYCent tyc => 
-		      let val _ = debugmsg "--primaryCompInStruct[TYCent]"
-			  val tp = TP.TP_TYC(tyc)
-		      in loop(insertMap(ftmap, ev, tp),
-			      tp::tps, rest, i+1, fs)
-		      end
-		 | M.FCTent {stamp, exp=M.LAMBDA{paramRlzn, ...},
-				closureEnv=closenv,...} => 
-		      (debugmsg "--primaryCompInStruct[FCTent SOME]";
-                       (* this should be using closure and paramRlzn *)
-		       (case fs
-			 of [] => bug "primaryCompInStruct.1"
-			  | (fsig as M.FSIG{bodysig=bsig as M.SIG bsr,
-					    paramsig=paramsig as M.SIG psr, 
-					    ...})::srest => 
-			    let 
-				     (* If FCTent is a result from a partially
-				        applied functor, then the given bsr
-					is no longer reliable, because it 
-					may only give the signature of the 
-					result after curried application when
-					we need the signature for the 
-					original functor before partial 
-					application *)
-				val paramEnts = #entities paramRlzn
-				val bodyEnts = raise Fail "#entities bodyRlzn"
-
-				val argRepEPs = 
-				    repEPs(entpaths(#elements psr),
-					   #entities paramRlzn)
-				val (ftmap1, argtps) = 
-				    primaryCompInStruct(ftmap,
-							paramRlzn,
-							NONE,
-							paramsig,
-							DI.next d)
-
-                                     (* [TODO] Replace free instantiation
-				        components with actual argument 
-					realization components. *)
-
-				     (* Can't do normal flextyc tycpath 
-				        construction here because actual 
-					argument is not yet available.
-					Must traverse bodyRlzn in signature
-					order and add TP_SEL(TC_APP(tv,args),i)
-					for each FORMAL GENtyc *)
-
-			       (* BOGUS! bodyRlzn is being DELETED *)
-				val (ftmap2,bodytps) = 
-				    formalBody(ftmap1, (raise Fail "#entities bodyRlzn"),
-					       argtps, bsig, 
-					       paramEnts,
-					       fsig, d, i)
-				val tp' = TP.TP_FCT(argtps, bodytps)
-			    in 
-				loop(ftmap2, tp'::tps, rest, i+1, srest)
-			    end
-			  | _ => bug "unexpected errorFSIG"))
-		 | _ => bug "primaryCompInStruct 0"
-	       end (* loop *)
-	      handle EE.Unbound => bug "primaryCompInStruct Unbound"
-       in loop(ftmap0, [], eps, 0, fsigs)
-      end (* fun strType *)
-
-    | primaryCompInStruct _ = bug "Unexpected error signature"
-*)
