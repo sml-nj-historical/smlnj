@@ -67,11 +67,11 @@ and tycon
        tyfun : tyfun, 
        strict: bool list, 
        path  : IP.path}
-  | PATHtyc of                    (* used only inside signatures *)
+  | RECORDtyc of label list
+  | PATHtyc of                    (* used only inside signatures, entity exps *)
       {arity : int,
        entPath : EP.entPath,
        path : IP.path}
-  | RECORDtyc of label list
   | RECtyc of int                 (* used only in domain type of dconDesc *)
   | FREEtyc of int                (* used only in domain type of dconDesc *)
   | ERRORtyc                      (* for error recovery, and used as a dummy

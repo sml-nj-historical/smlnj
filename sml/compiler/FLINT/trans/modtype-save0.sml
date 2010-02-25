@@ -23,17 +23,19 @@ struct
 local
   structure M = Modules
   structure T = Types
-  structure TU = TypesUtil
   structure TP = TycPath
   structure EE = EntityEnv
   structure EP = EntPath
   structure EV = EvalEntity
   structure SE = StaticEnv
+  structure PP = PrettyPrintNew
+  structure DI = DebIndex
   structure LT = LtyExtern
+  structure TU = TypesUtil
   structure INS = Instantiate
   structure IP = InvPath
+  structure MK = ModKind
   structure TT = TransTypes
-  structure PP = PrettyPrintNew
 		
 in
 
@@ -181,48 +183,22 @@ algorithm based on that used in old sigmatch to compute tycpath field of the
 functor realizations resulting from a fctsig match (in matchFct1).
 
 *)
-
-
 and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
-    let 
-	val M.FSIG{paramsig, bodysig} = fctsig
-            (* need bodysig to calculate primaries for result structure *)
-
-	val {primaries, paramRlzn, exp, closureEnv, ...} = fctEntity
-	    (* paramRlzn was paramEnv, just the entities field of paramRlzn
-	     * could recreate primaries and paramRlzn by re-instantiating
-	     * paramsig, since entities and stamps from the original
-	     * parameter instantiation during functor elaboration would
-	     * have been relativized away. *)
-
+    let val {primaries, paramRlzn, exp, closureEnv, ...} = fctEntity
+	       (* maybe paramEnv should be a strEntity?  ==> paramRlzn *)
+(*
+        (*  make paramEnv field of fctEntity be paramRlzn : strEntity *)
+	val paramRlzn = (* reconstruct a full parameter rlzn from paramEnv *)
+             (* ??  paramEnv ?? (* we need a strEntity for bodyEnv *) *)
+*)
         (* check if fctEntity is formal, and if so, look it up in penv to
-	 * get tcc_var coordinates. (obsolete) *)
+	 * get tcc_var coordinates. *)
+
+	val M.FSIG{bodysig,...} = fctsig
+            (* need bodySig to calculate primaries for result structure *)
 
 	val M.LAMBDA{param,body} = exp
             (* need param field to define bodyEnv below *)
-
-        val 
-
-     in case body
-	  of M.STRUCTURE{entDec,...} =>  (* regular functor *)
-	     let val {entities, ...} = paramRlzn
-		 val paramLtycEnv : ltycEnv = typeEntities entities 
-                   (* compute types of param entities *)
-	         val ltenvParam = bindLtyc(param, STRtenv paramLtycEnv)
-	           (* intial ltyc env binds param entvar *)
-		 val ltenvBody = typeEntDecl(entDec, ltenvParam, penv)
-	           (* how do we use parameter primaries? Presumably these
-		    * should translate to tcc_var tycs in paramLtyEnv? Or does this
-		    * get taken care of when translating tycons against penv? *)
-		 val bodyLtyc = LT.STR(getPrimaries(bodyPrimaries, ltenvBody))
-	           (* extract body primaries from ltenvBody *)
-		 val paramTkinds = getTkind map paramPrimaries
-	      in LT.tcc_fun(paramTkinds, bodyLtyc)
-	     end
-
-	   | M.FORMstr sign =>
-	      (* is sign = bodysig? *) 
-
 
 	val resultEnt = evalEnt(APP(fctEntity,paramRlzn), ...) ???
             (* apply the functor to the parameter instantiation, i.e. 

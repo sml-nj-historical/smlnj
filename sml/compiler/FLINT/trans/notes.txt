@@ -67,21 +67,27 @@ where the anonymous structure argument of G has type:
      struct type s = X.t end  :  str [T_t]
 
 
-How to compile a functor to its LT type.
--------------------------------
+--------------------------------------
+How to compile a functor to its LT type (LT.tyc).
+--------------------------------------
+(LT = PLambdaType)
 
 Ingredients: 
 1. functor signature
      paramsig, bodysig
 2. exp : entityExp (= LAMBDA{param: entVar, body: strExp})
+    from functor realization
 
 1. get primaries from paramsig
-
 2. bind them by pushing onto penv  (will we be looking primaries up there?)
+2a. create LT.tyc entityEnv for parameter structure (instantiate parameter and
+    map the resulting realization entityEnv to an LT entity env.
 
-3. determine the result primaries (by instantiating bodysig?)
+3. determine the result primaries (by instantiating bodysig, for instance)
 
-4. body entityExp will be a STRUCTURE{stampExp, entDec}
+Regular functor case:
+4. Check whether functor is regular or formal.  If regular:
+    body: entityExp = STRUCTURE{stampExp, entDec}
 
 5. interpret the entDec from body, building an entity environment
     that maps element entity variables to LT tycs  [could ignore bindings
@@ -89,3 +95,6 @@ Ingredients:
 
 6. gather LT tycs for result by looking up result primary entpaths
     in entity environment built in step 5
+
+Formal functor case (this can happen how?):
+7. If formal (body = FORMstr sig):
