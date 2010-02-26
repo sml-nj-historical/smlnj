@@ -182,6 +182,20 @@ functor realizations resulting from a fctsig match (in matchFct1).
 
 *)
 
+(* function that types a functor body entDecl, producing an ltycEnv *)
+
+fun typeEntDecl (entDec, ltenv, penv) : ltycEnv =
+    let fun tycDec (TYCdec(ev,tycExp), ltycenv) : ltycEnv = 
+	    let val ltyc = 
+		    case tycExp
+		     of VARtyc entpath => lookPathLtyc(ltenv, entpath)
+		      | CONSTtyc tycon => TT.tyconToTyc(tycon, penv, penvDepth(penv))
+		      | FORMtyc tycon => (* lookup in penv? same as CONSTtyc? *)  
+	     in bindLtyc(ev, ltyc, ltycenv)
+	    end
+     in
+
+    end
 
 and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
     let 
@@ -201,16 +215,16 @@ and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
 	val M.LAMBDA{param,body} = exp
             (* need param field to define bodyEnv below *)
 
-        val 
-
      in case body
 	  of M.STRUCTURE{entDec,...} =>  (* regular functor *)
 	     let val {entities, ...} = paramRlzn
 		 val paramLtycEnv : ltycEnv = typeEntities entities 
                    (* compute types of param entities *)
 	         val ltenvParam = bindLtyc(param, STRtenv paramLtycEnv)
-	           (* intial ltyc env binds param entvar *)
-		 val ltenvBody = typeEntDecl(entDec, ltenvParam, penv)
+	           (* intial ltyc env binds param entvar. 
+		    * Do we need this, or just innerPenv defined below? *)
+		 val innerPenv = paramPrimaries :: penv
+		 val ltenvBody = typeEntDecl(entDec, ltenvParam, innerPenv)
 	           (* how do we use parameter primaries? Presumably these
 		    * should translate to tcc_var tycs in paramLtyEnv? Or does this
 		    * get taken care of when translating tycons against penv? *)
@@ -222,8 +236,12 @@ and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
 
 	   | M.FORMstr sign =>
 	      (* is sign = bodysig? *) 
+	      (* The ltyc of a formal functor is a tcc_var, since a formal
+	       * functor is a primary of a functor parameter. This tcc_var
+	       * is external to the formal functor and so can't be computed
+	       * here. *)
 
-
+(* old stuff -----------------------------
 	val resultEnt = evalEnt(APP(fctEntity,paramRlzn), ...) ???
             (* apply the functor to the parameter instantiation, i.e. 
 	     * the one that was saved in the fctEntity (= functor realization) *)
@@ -263,6 +281,8 @@ and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
 
      in (* TP_FCT(paramtycs,resPrimaries)  --- translate this to a tyc! *)
         LT.tcc_fn(paramkinds, LT.tcc_seq resultTycs)
+------------------------------------------- *)
+
     end
 
 end (* local *)
