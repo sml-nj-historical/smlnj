@@ -161,23 +161,23 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err)
 		 (case kind
 		   of T.DATATYPE{index=0,family,freetycs, stamps, root} =>
                       let val rootev = mkStamp()
-			  val rtevOp = SOME rootev
-			  val nfreetycs = map viztc freetycs
+			  val rootevOp = SOME rootev
+			  val newfreetycs = map viztc freetycs
 			  val nstamps = Vector.map (fn _ => mkStamp()) stamps
 
 			  fun newdt (dt as T.GENtyc {kind,arity,eq,path,...})=
 			      (case kind
 				 of T.DATATYPE{index=i,...} =>
-				    let val (ev, rtev) = 
+				    let val (ev, rtevOp) = 
 					    if i=0 then (rootev, NONE)
-					    else (mkStamp(), rtevOp)
+					    else (mkStamp(), rootevOp)
 
 					val nkind = 
 					    T.DATATYPE{index=i, stamps=nstamps,
-						       freetycs=nfreetycs,
-						       root=rtev,
+						       freetycs=newfreetycs,
+						       root=rtevOp,
 						       family=family}
-					(* the rtev field in DATATYPE indicates
+					(* the root field in DATATYPE indicates
 					 * how to discover the new stamps when 
 					 * such datatypes get evalent-ed *)
 
@@ -191,7 +191,7 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err)
 
 					val _ = 
 					    EPC.bindTycEntVar(epctxt,
-							    MU.tycId dt, ev)
+							      MU.tycId dt, ev)
 				     in (ev, dt, M.FORMtyc ndt)
 				    end
 				 | _ => bug "unexpected case in newdtyc (1)")
@@ -304,20 +304,20 @@ fun extractSig (env, epContext, context, declaredSymbols,
                     case epOp
                      of SOME [ev] => (ev, entEnv, entDecls)
                       | _ => 
-                          let val ev = mkStamp()   (* fresh entvar *)
-                              val ee = EE.bind(x, STRent rlzn, entEnv)
-                              val ed =
-                                case context
-                                 of EU.INFCT _ => 
-                                      let val strExp = 
-                                              case epOp 
-                                               of SOME ep => M.VARstr ep
-						| _ => M.CONSTstr rlzn
-                                       in (M.STRdec(ev, strExp, sym))::entDecls
-                                      end
-                                  | _ => entDecls
-                           in (ev, ee, ed)
-                          end
+			let val ev = mkStamp()   (* fresh entvar *)
+			    val ee = EE.bind(x, STRent rlzn, entEnv)
+			    val ed =
+			      case context
+			       of EU.INFCT _ => 
+				    let val strExp = 
+					    case epOp 
+					     of SOME ep => M.VARstr ep
+					      | _ => M.CONSTstr rlzn (* nonvolatile *)
+				     in (M.STRdec(ev, strExp, sym))::entDecls
+				    end
+				| _ => entDecls
+			 in (ev, ee, ed)
+			end
 
                   val spec = STRspec{sign=sign, slot=slotCount, def = NONE,
 				     entVar=entVar}
@@ -341,12 +341,12 @@ fun extractSig (env, epContext, context, declaredSymbols,
                               val ed =
                                 case context
                                  of EU.INFCT _ => 
-                                      (let val fctExp = 
-                                             case epOp 
-                                              of SOME ep => M.VARfct ep
-                                               | _ => M.CONSTfct rlzn
-                                        in (M.FCTdec(x, fctExp))::entDecls
-                                       end)
+                                    let val fctExp = 
+                                            case epOp
+                                             of SOME ep => M.VARfct ep
+                                              | _ => M.CONSTfct rlzn (* nonvolatile *)
+                                    in (M.FCTdec(x, fctExp))::entDecls
+                                    end
                                   | _ => entDecl
                            in (ev, ee, ed)
                           end)
@@ -374,12 +374,12 @@ fun extractSig (env, epContext, context, declaredSymbols,
                               val ed =
                                 case context
                                  of EU.INFCT _ => 
-                                      (let val tycExp = 
-                                             case epOp 
+                                    let val tycExp = 
+                                            case epOp 
                                               of SOME ep => M.VARtyc ep
-                                               | NONE => M.CONSTtyc tyc
-                                        in (M.TYCdec(ev, tycExp))::entDecls
-                                       end)
+                                               | NONE => M.CONSTtyc tyc (* nonvolatile *)
+                                    in (M.TYCdec(ev, tycExp))::entDecls
+                                    end
                                   | _ => entDecl
                            in (ev, ee, ed)
                           end
@@ -597,7 +597,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		   val fctExp = 
 			case EPC.lookFctEntPath(epContext, MU.fctId fct)
 			  of SOME ep => VARfct ep    (* volatile, use variable ref *)
-			   | NONE => CONSTfct fctEnt (* nonvolatile, a constant *)
+			   | NONE => CONSTfct fctEnt (* a nonvolatile constant *)
 
 		   val epc = case entVarOp (* from outer evalStr call *)
 			       of NONE => epContext
@@ -648,7 +648,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		  of STR _ =>
 		      ((* debugmsg "--elab[VarStr]: resExp/STR"; *)
 		       case EPC.lookStrEntPath(epContext,MU.strId str) 
-			 of NONE => M.CONSTstr strRlzn
+			 of NONE => M.CONSTstr strRlzn (* nonvolatile constant *)
 			  | SOME ep => M.VARstr ep)
 		   | _ => M.CONSTstr M.bogusStrEntity (* error recovery *)
 
@@ -1491,10 +1491,11 @@ and elabDecl0
 				 val tyc_id = MU.tycId tyc
 				 val (ee_dec,ee_env) =
 				     case context
-				      of EU.INFCT _ => let
-					     val texp =
+				      of EU.INFCT _ =>
+					 let val texp =
 						 case EPC.lookTycEntPath(epContext,tyc_id)
-						  of NONE => M.CONSTtyc tyc
+						  of NONE =>
+						     M.CONSTtyc tyc (* nonvolatile *)
 						   | SOME entPath =>
 						     M.VARtyc entPath
 			                 in (M.TYCdec(ev,texp),
