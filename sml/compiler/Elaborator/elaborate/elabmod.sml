@@ -140,7 +140,7 @@ fun inStr (EU.TOP) = EU.INSTR
  *         DEFtyc refers to tycons occurring after itself.
  * returns entityEnv and entityDec for type declarations. entityEnv is incremental
  *)
-fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err)
+fun bindNewTycs(EU.INFCT _, epContext, mkStamp, dtycs, wtycs, rpath, err)
       : EE.entityEnv * M.entityDec = 
     let fun stripPath path =
 	    let val namePath = IP.IPATH[IP.last path]
@@ -152,19 +152,20 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err)
 	     in namePath
 	    end
 
-	val vizty = (fn ty => #1(MU.relativizeType epctxt ty))
-	val viztc = (fn tc => #1(MU.relativizeTyc epctxt tc))
+	val vizty = (fn ty => #1(MU.relativizeType epContext ty))
+	val viztc = (fn tc => #1(MU.relativizeTyc epContext tc))
            (* this is ok because epContext has state; a bit ugly *)
         val ndtycs =
             (case dtycs
-	      of (T.GENtyc { kind, ... } :: _) =>
+	      of (T.GENtyc {kind, ...} :: _) =>
 		 (case kind
 		   of T.DATATYPE{index=0,family,freetycs, stamps, root} =>
                       let val rootev = mkStamp()
 			  val rootevOp = SOME rootev
 			  val newfreetycs = map viztc freetycs
+			      (* relativize free tycons *)
 			  val nstamps = Vector.map (fn _ => mkStamp()) stamps
-
+			      (* vector of dt family stamps *)
 			  fun newdt (dt as T.GENtyc {kind,arity,eq,path,...})=
 			      (case kind
 				 of T.DATATYPE{index=i,...} =>
@@ -172,7 +173,7 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err)
 					    if i=0 then (rootev, NONE)
 					    else (mkStamp(), rootevOp)
 
-					val nkind = 
+					val newkind = 
 					    T.DATATYPE{index=i, stamps=nstamps,
 						       freetycs=newfreetycs,
 						       root=rtevOp,
@@ -181,18 +182,17 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err)
 					 * how to discover the new stamps when 
 					 * such datatypes get evalent-ed *)
 
-					val ndt =
+					val newdt =
 					    T.GENtyc{arity=arity, eq=eq,
-						     kind=nkind,
+						     kind=newkind,
 						     path=stripPath path, 
 						     stamp=
 						       Vector.sub(nstamps,i),
 						     stub=NONE}
 
-					val _ = 
-					    EPC.bindTycEntVar(epctxt,
-							      MU.tycId dt, ev)
-				     in (ev, dt, M.FORMtyc ndt)
+				     in EPC.bindTycEntVar(epContext,
+							  MU.tycId dt, ev);
+					(ev, dt, M.FORMtyc newdt)
 				    end
 				 | _ => bug "unexpected case in newdtyc (1)")
                             | newdt _ = bug "unexpected case in newdtyc (2)"
@@ -206,13 +206,13 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err)
             let fun newtc (tc as T.DEFtyc{stamp, tyfun=T.TYFUN{arity,body}, 
                                           strict, path}) =
                      let val ev = mkStamp()
-                         val _ = EPC.bindTycEntVar(epctxt, MU.tycId tc, ev)
-			 val ntc = 
+                         val _ = EPC.bindTycEntVar(epContext, MU.tycId tc, ev)
+			 val newtyc = 
                            T.DEFtyc{stamp=mkStamp(), strict=strict, 
 				    path=stripPath path,
                                     tyfun=T.TYFUN{arity=arity, 
                                                   body=vizty body}}
-                      in (ev, tc, M.FORMtyc ntc)
+                      in (ev, tc, M.FORMtyc newtyc)
                      end
                   | newtc _ = bug "unexpected case in newwtyc"
              in map newtc wtycs

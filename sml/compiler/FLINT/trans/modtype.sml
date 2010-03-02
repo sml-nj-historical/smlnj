@@ -11,10 +11,10 @@ signature MODTYPE =
 sig
    val getStrTycs : Modules.primary list * EntityEnv.entityEnv
 		    * TransTypes.primaryEnv * Absyn.dec CompInfo.compInfo 
-		    -> PLambdaType.tyc list
+		    -> PLambdaType.tyc list   (* or .lty list ? *)
    val getFctTyc : Modules.fctSig * Modules.fctEntity * TransTypes.primaryEnv
 		   * Absyn.dec CompInfo.compInfo
-		   -> PLambdaType.tyc
+		   -> PLambdaType.tyc  (* or .lty ? *)
 end
 
 structure ModType : MODTYPE =
@@ -186,71 +186,111 @@ functor realizations resulting from a fctsig match (in matchFct1).
 
 datatype ltycTree
   = TYCleaf of ltyc
-  | FCTleaf of ltyc
+  | FCTleaf of ltyc  (* is the FLINT type of a functor an LT.tyc or LT.lty? *)
   | STRnode of ltycEnv  (* don't need ltycs for structures *)
 
 withtype ltycEnv = (entvar * ltyctree) list
 
-fun typeBodyDecl (entDec, sign, ltenv, penv) : ltycEnv =
+fun typeBodyDecl (entDec, sign, ltycenv, penv) : ltycEnv =
     (* should entDec return a cumulative or incremental ltycEnv? *)
-    let fun entDec (TYCdec(ev,tycExp), ltycenv) : ltycEnv = 
-	    let val ltyc =  (* tycon leaf *)
-		    case tycExp
-		     of VARtyc entpath => lookPathLtyc(ltycenv, entpath)
-		      | CONSTtyc tycon => TT.tyconToTyc(tycon, emptyPenv, 0)
-		          (* nonvolatile tycon *)
-		      | FORMtyc tycon => (* lookup in penv? same as CONSTtyc? *)  
-	     in bindLtyc(ev, TYCleaf ltyc, ltycenv)
-	    end
-	  | entDec (STRdec(ev,strExp,_), ltycenv) =  (* structure node *)
-	    (* we don't need an ltyc for the structure elements, just a nested
-	     * ltycEnv *)
-	    let val strltycenv =
-		    case strExp
-		     of VARstr entpath => lookPathLtyc(ltycenv, entpath)
-		      | CONSTstr strEnt =>
-                        (* nonvolatile constant? or can it be volatile? 
-			 * or would a volatile str always be represented by
-			 * a VARstr? 
-			 * Can we ignore this because none of its elements
-			 * can be primaries? No. *)
-			... getStrTycs(..., strEnt, ...) ...
-			(* getStrTycs needs to be replaced by something
-			 * like getStrLtycEnv? *)
-		      | STRUCTURE {entDec,...} => entDec(entDec, ltycenv)
-                        (* is it ok to return the cumulative ltycEnv here? *)
-		      | APPLY (fctExp, strExp) =>
-		      | LETstr (localDec,strExp) =>
-		      | ABSstr (sign, strExp) =>
-		      | FORMstr fctsig =>  bug "FORMstr"
-		         (* can't happen? Shouldn't find FORMstr embedded
-			  * within a regular function body.  It can only
-			  * occur as the whole functor body, instead of
-			  * a STRUCTURE *)
-		      | CONSTRAINstr {boundvar, raw, coercion } =>
-                        (* is this what we always have for a body where
-			 * the functor has a result signature? *)
-	     in bindLtyc(ev, STRnode strltycenv, ltycenv)
-	    end
-	  | entDec (FCTdec(ev,fctExp), ltycenv) =  (* functor leaf *)
-	    let val ltyc = 
-		    case fctExp
-		     of VARfct entpath => lookPathLtyc(ltycenv, entpath)
-		      | CONSTfct fctEnt => getFctTyc( ... fctEnt ... )
-		      | LAMBDA {param, body} =>
-		      | LETfct (entDec, fctExp) =>
-	     in bindLtyc(ev, ltyc, ltycenv)
-	    end
-	  | entDec (SEQdec entDecs, ltycenv) =
-	     foldl (fn (entDec, ltycenv') => entDec(entDec, ltycenv')) ltycenv entDecs
-	  | entDec (LOCALdec (locDecs, bodyDecs), ltycenv) =
-	     entDec(bodyDecs, entDec(locDecs, ltycenv))
-	     (* we don't bother to hide the local bindings *)
-	  | entDec (EMPTYdec ltycenv) = ltycenv
-	  | entDec (ERRORdec, _) = bug "typeEntDecl ERRORdec"
-     in
 
+fun tycExpTyc (tycExp, ltycenv) : LT.tyc =
+    case tycExp
+     of VARtyc entpath => lookPathLtyc(ltycenv, entpath)
+      | CONSTtyc tycon =>
+	(* nonvolatile tycon, not relativized, won't contain
+	 * any PATHtycs or volatile primaries *)
+	TT.tyconToTyc(tycon, emptyPenv, 0, emptyLtycEnv)
+      | FORMtyc tycon => (* lookup in penv? same as CONSTtyc? *)  
+	(* tycon is a formalized (i.e. relativized) variant
+	 * of a declared tycon, either DEFtyc or datatype.
+	 * have to pass ltycEnv for looking up entpaths.
+	 * ASSERT: Don't need penv because any free occurrences
+	 * of volatile primaries will have been relativized,
+	 * and so can be translated via ltycenv. *)
+	TT.tyconToTyc(tycon, emptyPenv, 0, ltycenv)
+
+fun entDec (TYCdec(ev,tycExp), ltycenv) : ltycEnv = 
+    let val ltyc =  tycExpTyc(tycExp, ltycenv) (* tycon leaf *) 
+     in [(ev, TYCleaf ltyc)]
     end
+
+  | entDec (STRdec(ev,strExp,_), ltycenv) =  (* structure node *)
+    (* we don't need an ltyc for the structure itself, just a nested
+     * ltycEnv for its contents *)
+    let val strltycenv = strExpLtycEnv(strExp, ...) \
+     in [(ev, STRnode strltycenv)]
+    end
+
+  | entDec (FCTdec(ev,fctExp), ltycenv) =  (* functor leaf *)
+    let val ltyc = fctExpTyc(fctExp, ltycenv, ...) 
+     in [(ev, FCTleaf ltyc)]
+    end
+
+  | entDec (SEQdec entDecs, ltycenv) =
+    foldl (fn (entDec, ltycenv') => entDec(entDec, ltycenv'@ltycenv)@ltycenv) nil entDecs
+
+  | entDec (LOCALdec (locDecs, bodyDecs), ltycenv) =
+    entDec(bodyDecs, entDec(locDecs, ltycenv) @ ltycenv)
+
+  | entDec (EMPTYdec, ltycenv) = []
+
+  | entDec (ERRORdec, _) = bug "typeEntDecl ERRORdec"
+
+	    
+and strExpTycs (strExp, primaries, ...) : LT.tyc list =
+    (* computer ltycenv for strExp, then extract LT.tycs for primaries *)
+    let val strltycenv = strExpLtycEnv (strExp, ...)
+     in map (fn (_,_,ep) => lookEntTyc (ep, strltycenv)) primaries
+    end
+
+(* fctExpTyc -- map a fctExp to an LT.tyc *)
+and fctExpTyc (fctExp, ltycenv, penv, depth, compInfo) : LT.tyc =
+    let fun fctExpTyc' (VARfct entpath, penv, depth) = lookPathLtyc(ltycenv, entpath)
+	  | fctExpTyc' (CONSTfct (fctEnt, fctsig), penv, depth) =
+	      getFctTyc(fctsig, fctEnt, penv, compInfo?)
+	  | fctExpTyc' (LAMBDA {param, body, fctsig}, penv, depth) =
+	      let val
+	      in
+	      end
+	  | fctExpTyc' (LETfct (entDec, fctExp, fctsig), penv, depth) =
+     in fctExpTyc' fctExp
+    end
+
+(* strExpLtycEnv -- map a strExp to an ltycEnv *)
+and strExpLtycEnv (strExp, ltycenv, ...) : ltycEnv =
+    case strExp
+      of VARstr entpath =>
+	 (* reference to a previously defined volatile substructure *)
+	 (case lookPathLtyc(ltycenv, entpath)
+	    of STRnode ltycenv' => ltycenv'
+	     | _ => bug "typeBodyDecl STRdec 1")
+       | CONSTstr strEnt =>
+	 (* nonvolatile constant? or can it be volatile? 
+	  * or would a volatile str always be represented by
+	  * a VARstr? 
+	  * Can we ignore this because none of its elements
+	  * can be primaries? No. *)
+	 getStrLtycEnv(..., strEnt, ...)
+       | STRUCTURE {entDec,...} => entDec(entDec, ltycenv)
+	 (* is it ok to return the cumulative ltycEnv here?
+	  * Maybe, but let's return an incremental ltycEnv. *)
+       | APPLY (fctExp, strExp) =>
+	 let val fctLtyc = fctExpTyc(fctExp, ... )
+	     val argLtycs = strExpTycs(strExp, ... )
+	  in LT.tcc_app(fctLtyc, argLtycs)
+	 end
+       | LETstr (localDec, strExp) =>
+	 let val ent
+       | ABSstr (sign, strExp) =>
+       | FORMstr fctsig =>  bug "FORMstr"
+	  (* can't happen? Shouldn't find FORMstr embedded
+	   * within a regular function body.  It can only
+	   * occur as the whole functor body, instead of
+	   * a STRUCTURE *)
+       | CONSTRAINstr {boundvar, raw, coercion } =>
+	 (* is this what we always have for a body where
+	  * the functor has a result signature? *)
 
 and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
     let 
@@ -258,28 +298,35 @@ and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
             (* need bodysig to calculate primaries for result structure *)
 
 	val {primaries, paramRlzn, exp, closureEnv, ...} = fctEntity
-	    (* paramRlzn was paramEnv, just the entities field of paramRlzn
-	     * could recreate primaries and paramRlzn by re-instantiating
+	    (* paramRlzn was paramEnv, just the entities field of paramRlzn.
+	     * Could recreate primaries and paramRlzn at this point by re-instantiating
 	     * paramsig, since entities and stamps from the original
 	     * parameter instantiation during functor elaboration would
 	     * have been relativized away. *)
 
+        (* how do we use the closureEnv? Presumably we need it to interpret
+	 * PATHtyc's somewhere, undoing relativizations. *)
+
         (* check if fctEntity is formal, and if so, look it up in penv to
-	 * get tcc_var coordinates. (obsolete) *)
+	 * get tcc_var coordinates. (obsolete because this function will not
+	 * be used for formal functors?) *)
 
 	val M.LAMBDA{param,body} = exp
             (* need param field to define bodyEnv below *)
-	val bodyPrimaries = (* get primaries for bodysig *)
+	val bodyPrimaries = (* get primaries for bodysig, presumably by
+			     * instantiation *)
 
      in case body
 	  of M.STRUCTURE{entDec,...} =>  (* regular functor *)
 	     let val {entities, ...} = paramRlzn
 		 val paramLtycEnv : ltycEnv = typeEntities entities 
-                   (* compute types of param entities *)
+                   (* compute types of param entities -- all of them,
+		    * not just primaries (?) *)
 	         val ltenvParam = bindLtyc(param, STRtenv paramLtycEnv)
 	           (* intial ltyc env binds param entvar. 
 		    * Do we need this, or just innerPenv defined below? *)
 		 val innerPenv = paramPrimaries :: penv
+		   (* penv for processing body *)
 		 val ltenvBody = typeEntDecl(entDec, ltenvParam, innerPenv)
 	           (* how do we use parameter primaries? Presumably these
 		    * should translate to tcc_var tycs in paramLtyEnv? Or does this
@@ -292,7 +339,7 @@ and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
 
 	   | M.FORMstr sign =>
 	      (* is sign = bodysig? *) 
-	      (* The ltyc of a formal functor is a tcc_var, since a formal
+	      (* The ltyc of a formal functor should be a tcc_var, since a formal
 	       * functor is a primary of a functor parameter. This tcc_var
 	       * is external to the formal functor and so can't be computed
 	       * here. *)
