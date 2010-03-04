@@ -250,10 +250,15 @@ and fctExpTyc (fctExp, ltycenv, penv, depth, compInfo) : LT.tyc =
 	  | fctExpTyc' (CONSTfct (fctEnt, fctsig), penv, depth) =
 	      getFctTyc(fctsig, fctEnt, penv, compInfo?)
 	  | fctExpTyc' (LAMBDA {param, body, fctsig}, penv, depth) =
-	      let val
+	      let val F.FSIG{paramsig,bodysig} = fctsig
+		  val paramPrimaries = (* instantiate paramsig to get its primaries *)
+		  val returnPrimaries = (* instantiate bodysig to get its primaries *)
 	      in
 	      end
 	  | fctExpTyc' (LETfct (entDec, fctExp, fctsig), penv, depth) =
+	      let val
+	       in
+	      end
      in fctExpTyc' fctExp
     end
 
@@ -311,7 +316,7 @@ and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
 	 * get tcc_var coordinates. (obsolete because this function will not
 	 * be used for formal functors?) *)
 
-	val M.LAMBDA{param,body} = exp
+	val M.LAMBDA {param, body} = exp
             (* need param field to define bodyEnv below *)
 	val bodyPrimaries = (* get primaries for bodysig, presumably by
 			     * instantiation *)
