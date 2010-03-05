@@ -161,26 +161,6 @@ information from signatures.
 *)
 
 
-(* getFctTyc : M.fctSig * M.fctEntity * TT.primaryEnv
-	       * Absyn.dec CompInfo.compInfo
-	       -> PLambdaType.tyc
-*)
-(*
-
-Returns the LT.tyc representing the functor static action.
-
-Note that the functor being translated can be either a regular functor
-or a formal functor (instantiated parameter fctsig). If it is a formal
-functor, we look it up in penv, and return a tcc_var as its PT.tyc.
-[In the old version, the tcc_var coordinates were stored in a TP_VAR
-assigned to the tycpath field of the functor realization in instToEntity
-FinalFct case in instParam.]
-
-For a regular functor (where the body is not a FORMstr), we use an
-algorithm based on that used in old sigmatch to compute tycpath field of the
-functor realizations resulting from a fctsig match (in matchFct1).
-
-*)
 
 (* function that types a functor body entDecl, producing an ltycEnv *)
 
@@ -246,21 +226,53 @@ and strExpTycs (strExp, primaries, ...) : LT.tyc list =
 
 (* fctExpTyc -- map a fctExp to an LT.tyc *)
 and fctExpTyc (fctExp, ltycenv, penv, depth, compInfo) : LT.tyc =
-    let fun fctExpTyc' (VARfct entpath, penv, depth) = lookPathLtyc(ltycenv, entpath)
-	  | fctExpTyc' (CONSTfct (fctEnt, fctsig), penv, depth) =
-	      getFctTyc(fctsig, fctEnt, penv, compInfo?)
-	  | fctExpTyc' (LAMBDA {param, body, fctsig}, penv, depth) =
-	      let val F.FSIG{paramsig,bodysig} = fctsig
-		  val paramPrimaries = (* instantiate paramsig to get its primaries *)
-		  val returnPrimaries = (* instantiate bodysig to get its primaries *)
-	      in
-	      end
-	  | fctExpTyc' (LETfct (entDec, fctExp, fctsig), penv, depth) =
-	      let val
-	       in
-	      end
-     in fctExpTyc' fctExp
-    end
+    case fctExp
+      of VARfct entpath => lookPathLtyc(ltycenv, entpath)
+
+       | CONSTfct (fctEnt, fctsig) =>
+	 (* we need a functor sig here.  Should it be stored in the CONSTfct
+	  * fctExp, or passed as a parameter to fctExpTyc? *)
+	 getFctTyc(fctsig, fctEnt, penv, compInfo?)
+
+       | LAMBDA {param, body, fctsig} =>
+	 (* we need a functor sig here.  Should it be stored in the LAMBDA
+	  * fctExp, or passed as a parameter to fctExpTyc? *)
+	 let val F.FSIG{paramsig,bodysig} = fctsig
+	     val {primaries = paramPrimaries, rlzn=paramRlzn} =
+		 (* instantiate paramsig to get its primaries *)
+		 INS.instFormal{sign=paramsig, entEnv=???,
+				rpath=InvPath.IPATH[], compInfo=compInfo,
+				region=SourceMap.nullRegion}
+	     (* translate the parameter inst. rlzn into a ltycEnv *)
+	     val paramLtycEnv = strLtycEnv(paramRlzn, ...)
+
+	     (* construct an inner ltycenv that binds
+	      * the param ltycenv to the param entvar *)
+	     val innerLtyEnv = (param, STRnode paramLtycEnv) :: ltycenv
+
+	     val bodyLtycEnv = strExpLtyEnv(body, innerLtycEnv, ...)
+
+	     val paramPrimaryKinds =
+		 map (#2 o (FctKind.primaryToBind (compInfo, paramEnv)))
+		     paramPrimaries
+
+	     (* instantiate bodysig to determine its primaries *)
+	     val {primaries = bodyPrimaries, ...} =
+		 INS.instFormal{sign=bodysig, entEnv=???,
+				rpath=InvPath.IPATH[], compInfo=compInfo,
+				region=SourceMap.nullRegion}
+
+	     (* access the LT.tycs for body primaries in bodyLtycEnv *)
+	     val resultLtycs = 
+		 map (fn (_,_,ep) => lookEntTyc(ep, bodyLtycEnv)) bodyPrimaries
+
+	  in LT.tcc_fn (paramKinds, LT.tcc_seq(resultLtycs))
+	 end
+
+       | LETfct (entDec, fctExp, fctsig) =>
+	 let val localLtycEnv = entDec(entDec, ltycenv, ...)
+	  in fctExpTyc(fctExp, localLtycEnv@ltycenv, penv, depth, compInfo?)
+	 end
 
 (* strExpLtycEnv -- map a strExp to an ltycEnv *)
 and strExpLtycEnv (strExp, ltycenv, ...) : ltycEnv =
@@ -270,6 +282,7 @@ and strExpLtycEnv (strExp, ltycenv, ...) : ltycEnv =
 	 (case lookPathLtyc(ltycenv, entpath)
 	    of STRnode ltycenv' => ltycenv'
 	     | _ => bug "typeBodyDecl STRdec 1")
+
        | CONSTstr strEnt =>
 	 (* nonvolatile constant? or can it be volatile? 
 	  * or would a volatile str always be represented by
@@ -277,25 +290,50 @@ and strExpLtycEnv (strExp, ltycenv, ...) : ltycEnv =
 	  * Can we ignore this because none of its elements
 	  * can be primaries? No. *)
 	 getStrLtycEnv(..., strEnt, ...)
+
        | STRUCTURE {entDec,...} => entDec(entDec, ltycenv)
 	 (* is it ok to return the cumulative ltycEnv here?
 	  * Maybe, but let's return an incremental ltycEnv. *)
+
        | APPLY (fctExp, strExp) =>
 	 let val fctLtyc = fctExpTyc(fctExp, ... )
 	     val argLtycs = strExpTycs(strExp, ... )
 	  in LT.tcc_app(fctLtyc, argLtycs)
 	 end
+
        | LETstr (localDec, strExp) =>
 	 let val ent
+
        | ABSstr (sign, strExp) =>
+
        | FORMstr fctsig =>  bug "FORMstr"
 	  (* can't happen? Shouldn't find FORMstr embedded
 	   * within a regular function body.  It can only
 	   * occur as the whole functor body, instead of
 	   * a STRUCTURE *)
+
        | CONSTRAINstr {boundvar, raw, coercion } =>
 	 (* is this what we always have for a body where
 	  * the functor has a result signature? *)
+(* end strExpLtycEnv *)
+
+(* getFctTyc : M.fctSig * M.fctEntity * TT.primaryEnv
+	       * Absyn.dec CompInfo.compInfo
+	       -> PLambdaType.tyc
+
+Returns the LT.tyc representing the functor static action.
+
+Note that the functor being translated can be either a regular functor
+or a formal functor (instantiated parameter fctsig). If it is a formal
+functor, we look it up in penv, and return a tcc_var as its PT.tyc.
+[In the old version, the tcc_var coordinates were stored in a TP_VAR
+assigned to the tycpath field of the functor realization in instToEntity
+FinalFct case in instParam.]
+
+For a regular functor (where the body is not a FORMstr), we use an
+algorithm based on that used in old sigmatch to compute tycpath field of the
+functor realizations resulting from a fctsig match (in matchFct1).
+*)
 
 and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
     let 
@@ -338,7 +376,7 @@ and getFctTyc(fctsig, fctEntity: M.fctEntity, penv: primaryEnv, compInfo) =
 		    * get taken care of when translating tycons against penv? *)
 		 val bodyLtyc = LT.tcc_str(getPrimaries(bodyPrimaries, ltenvBody))
 	           (* extract body primaries from ltenvBody *)
-		 val paramTkinds = getTkind map paramPrimaries
+		 val paramTkinds = map getTkind paramPrimaries
 	      in LT.tcc_fun(paramTkinds, bodyLtyc)
 	     end
 

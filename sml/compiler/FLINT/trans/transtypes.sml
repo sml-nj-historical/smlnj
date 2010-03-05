@@ -470,13 +470,13 @@ and fctLty0 (fctSign: M.fctSig, fctRlzn: M.fctEntity,
       of SOME (lt, od) => LT.lt_adj(lt, od, depth)  (* use memo *)
        | NONE =>  (* no memo, compute it *)
         let val FSIG{paramsig, bodysig, ...} = fctSign
-	    val {closureEnv, primaries, paramEnv, ...} = fctRlzn
+	    val {closureEnv, ...} = fctRlzn
             (* we're going to discard primaries and paramEnv from fctRlzn
 	     * and recompute primaries (primaries') and paramRlzn by
 	     * reinstantiating the paramsig below *)
 
 	    val _ = debugmsg ">>fctLty0[instParam]"
-            val nd = depth + 1
+            val innerDepth = depth + 1
 
 	    (* [GK 4/30/09] Closure environments map entity paths to 
                types that have no connection to the stamps of the formal 
@@ -507,13 +507,15 @@ and fctLty0 (fctSign: M.fctSig, fctRlzn: M.fctEntity,
 	     * from paramEnv, or maybe evalApp should just require an
 	     * entityEnv for the argument structure instead of a realization?
 	     *)
-	    val {rlzn=paramRlzn, primaries=primaries'} = 
+	    val {rlzn=paramRlzn, primaries=paramPrimaries} = 
 		INS.instFormal{sign=paramsig,entEnv=closureEnv,
 			       rpath=InvPath.IPATH[], compInfo=compInfo,
 			       region=SourceMap.nullRegion}
-           (* ASSERT: primaries' is isomorphic to primaries, modulo the
+           (* ASSERT: paramPrimaries is isomorphic to fctRlzn.primaries, modulo the
 	    * change in fresh stamps.
-	    * Same for #entities(paramRlzn) vs paramEnv. *)
+	    * Same for #entities(paramRlzn) vs fctRlzn.paramEnv. *)
+
+	    val {entities=paramEntities, ...} = paramRlzn
 
 	    val _ = debugmsg ">>parameter kinds"
          
@@ -522,8 +524,8 @@ and fctLty0 (fctSign: M.fctSig, fctRlzn: M.fctEntity,
 	     * fctRlzn, but equivalently we would use primaries' and the
 	     * entities field of paramRlzn computed by the local instantiation *)
 	    val paramPrimaryKinds =
-		map (#2 o (FctKind.primaryToBind (compInfo, paramEnv)))
-		    primaries
+		map (#2 o (FctKind.primaryToBind (compInfo, paramEntities)))
+		    paramPrimaries
 	    (* or, if we used the freshly instantiated versions --
 	        map (#2 o (FctKind.primaryToBind (compInfo, #entities(paramRlzn))))
 	            primaries'
@@ -549,7 +551,7 @@ and fctLty0 (fctSign: M.fctSig, fctRlzn: M.fctEntity,
 	     * elaborated, so relative entpaths will need to be interpreted
 	     * with respect to closureEnv augmented with local entities. *)
 	    val _ = debugmsg ">>strLty0"
-            val paramLty = strLty0(paramsig, paramRlzn, penv, nd, compInfo,
+            val paramLty = strLty0(paramsig, paramRlzn, penv, innerDepth, compInfo,
 				   SOME closureEnv)
 		handle _ => bug "fctLty0 2"
 		     
@@ -596,7 +598,8 @@ and fctLty0 (fctSign: M.fctSig, fctRlzn: M.fctEntity,
 	     * should be used instead of NONE for the last parameter, just as for
 	     * the calculation of paramLty earlier. Or perhaps bodyRlzn already
 	     * incorporates closureEnv if necessary? *)
-	    val bodyLty = strLty0(bodysig, bodyRlzn, innerPenv, nd, compInfo, NONE)
+	    val bodyLty = strLty0(bodysig, bodyRlzn, innerPenv, innerDepth,
+				  compInfo, NONE)
 
 	    val _ = debugmsg "<<strLty0: functor body"
 
