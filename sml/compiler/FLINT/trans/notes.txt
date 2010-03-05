@@ -98,3 +98,14 @@ Regular functor case:
 
 Formal functor case (this can happen how?):
 7. If formal (body = FORMstr sig):
+
+
+
+---------------
+Perhaps the representation of a signature should include a list of
+entpaths for its primaries?  This might allow us to avoid reperforming
+instantiation repeatedly in the translation phase.  The primarySig
+information could be recovered from these entpaths and the signature
+itself, but what about the instantiation stamps that are currently
+stored in the primary triples?
+
