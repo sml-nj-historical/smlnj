@@ -34,6 +34,7 @@ structure HashCons :> HASH_CONS =
 		val id = !nextTag
 		val obj = {nd = term, hash = h, tag = id}
 		in
+		  nextTag := id + 0w1;
 		  Array.update(tbl', i, obj::bucket);
 (* check for table resize *)
 		  obj
