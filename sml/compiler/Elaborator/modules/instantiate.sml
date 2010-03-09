@@ -150,7 +150,7 @@ datatype stampInfo
  * The bool argument of GENERATE_ENT is normally true when there was
  * a VARstrDef applying to the structure spec with a different signature
  * than the spec. This means that the spec signature should be considered
- * as open, despite what it's "closed" field might say.  This was introduced
+ * as open, despite what it's "closed" field might say. This was introduced
  * to fix bug 1238.  [dbm, 8/13/97]
  *)
 datatype entityInfo

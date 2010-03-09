@@ -109,3 +109,12 @@ information could be recovered from these entpaths and the signature
 itself, but what about the instantiation stamps that are currently
 stored in the primary triples?
 
+
+---------------
+We need a variant of instantiation that produces a LT.tyc env
+instead of an entity env.  In general, typechecking entity decls
+will be analagous to evaluating entity decls, except that the
+input and output will be LT.tyc environments.
+
+Pathtycs will be interpreted relative to such LT.tyc envs to
+produce LT.tyc results.
