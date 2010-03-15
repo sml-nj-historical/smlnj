@@ -1694,3 +1694,6 @@ end (* structure Instantiate *)
 (* [dbm, 6/16/06] Eliminated ii2ty from INSTANTIATE_PARAM. Eventually want
    to eliminate the parameterization completely. *)
 
+(* uses of entities parameter:
+   l1481: inside of an INST_ABSTR case for instToEntity for functors
+*)
