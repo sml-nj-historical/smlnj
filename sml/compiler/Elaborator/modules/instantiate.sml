@@ -34,7 +34,7 @@
 signature INSTANTIATE =
 sig
 
-  (*** instantiation of the formal functor parameter and body signatures ***)
+  (*** instantiation of formal functor parameter and body signatures ***)
   val instFormal :
          {sign     : Modules.Signature,
           entEnv   : Modules.entityEnv,
@@ -44,7 +44,7 @@ sig
 	 -> {rlzn: Modules.strEntity,
 	     primaries : Modules.primary list}
 
-  (*** instantiation of the structure abstractions ***)
+  (*** instantiation of structure abstraction signatures ***)
   val instAbstr : 
          {sign     : Modules.Signature,
           entEnv   : Modules.entityEnv,
@@ -436,8 +436,7 @@ fun mkElemSlots(SIG {elements,...},slotEnv,rpath,epath,sigDepth) =
 				       epath=epath@[entVar],
 				       inherited=ref []})))
 	  | mkSlot((sym,FCTspec{sign,entVar,...}),slotEnv) = 
-	     SOME (entVar,ref(FinalFct{sign=sign, def=ref NONE, 
-				       epath=epath@[entVar],
+	     SOME (entVar,ref(FinalFct{sign=sign, epath=epath@[entVar],
 				       path=IP.extend(rpath,sym)}))
 	  | mkSlot _ = NONE  (* value element *)
 
@@ -1457,7 +1456,7 @@ let val primaryFcts : M.primary list ref = ref []
 		    (debugmsg ("instToEntity: "^Symbol.name sym^" "^
 			       Int.toString failuresSoFar);
 		    case !slot
-		     of (inst as (FinalStr _)) =>
+		     of inst as (FinalStr _) =>
 			  let val (strEntity,n) =
 			          instToStr'(inst, entEnv, IP.extend(rpath,sym),
 					     failuresSoFar)
@@ -1468,49 +1467,38 @@ let val primaryFcts : M.primary list ref = ref []
 			  (TYCent(instToTyc(r,entEnv)),failuresSoFar)
 
 		      | FinalFct{sign as FSIG{paramvar,paramsig,bodysig,...},
-				 def, epath, path} =>
-			 (case !def
-			   of SOME(FCT { rlzn, ... }) => FCTent rlzn
-				(*** would this case ever occur ??? 
-				 Presumably this would be a definition
-				 propagated down from an outer where
-				 structure clause.  Check that this is done.
-				 ***)
-			    | NONE =>  (* a primary functor element *)
-			      let val stamp = mkStamp()
-				  val (paramRlzn, primaryTycs, primaryFcts1) =
-				      instGeneric{sign=paramsig, entEnv=entEnv, 
-	                                          rpath=path, 
-						  region=SourceMap.nullRegion,
-	                                          instKind=INST_FORMAL, 
-					          compInfo=compInfo}
-				  val (bodyExp) =
-				      case instKind
-				       of INST_ABSTR {entities,...} =>
-					  let val fctEnt = EE.lookFctEP (entities, epath)
-					   in M.ABSstr (bodysig,
-							APPLY(CONSTfct fctEnt, 
-							      VARstr [paramvar]))
-					  end
-					| INST_FORMAL => M.FORMstr sign
-				  val primaries = 
-				      primaryTycs @ primaryFcts1
-				  val exp = LAMBDA{param=paramvar,
-						   body=bodyExp}
-				  val psig = M.PrimaryFct sign
-			      in primaryFcts := (psig, stamp, epath)::(!primaryFcts);
-				 FCTent {stamp = stamp,
-					 exp = exp,
-					 primaries = primaries,
-					 paramEnv = #entities paramRlzn,
-					 closureEnv = entEnv,
-					 rpath = path,
-					 stub = NONE,
-					 properties = PropList.newHolder ()}
-			      end
-
-			    | _ => bug "unexpected functor def in instToStr",
-			   failuresSoFar)
+				 epath, path} =>
+			  let val stamp = mkStamp()
+			      val (paramRlzn, primaryTycs, primaryFcts') =
+				  instGeneric{sign=paramsig, entEnv=entEnv, 
+					      rpath=path, 
+					      region=SourceMap.nullRegion,
+					      instKind=INST_FORMAL, 
+					      compInfo=compInfo}
+			      val bodyExp =
+				  case instKind
+				   of INST_ABSTR {entities,...} =>
+				      let val fctEnt = EE.lookFctEP (entities, epath)
+				       in M.ABSstr (bodysig,
+						    APPLY(CONSTfct fctEnt, 
+							  VARstr [paramvar]))
+				      end
+				    | INST_FORMAL => M.FORMstr sign
+			      val primaries = primaryTycs @ primaryFcts'
+			      val exp = LAMBDA{param=paramvar,
+					       body=bodyExp}
+			      val psig = M.PrimaryFct sign
+			  in primaryFcts := (psig, stamp, epath)::(!primaryFcts);
+			     (FCTent{stamp = stamp,
+				     exp = exp,
+				     primaries = primaries,
+				     paramEnv = #entities paramRlzn,
+				     closureEnv = entEnv,
+				     rpath = path,
+				     stub = NONE,
+				     properties = PropList.newHolder ()},
+		              failuresSoFar)
+			  end
 
 		      | ErrorStr => (ERRORent,failuresSoFar)
 		      | ErrorTyc => (ERRORent,failuresSoFar)
