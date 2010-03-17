@@ -1558,13 +1558,13 @@ and mkFctbs (penv, fbs, d) =
   end
 
 
-(***************************************************************************
- * Translating absyn decls and exprs into lambda expression:               *
- *                                                                         *
- *    val mkDec : primaryEnv * A.dec * DI.depth -> PLambda.lexp -> PLambda.lexp         *
- *    val mkExp : primaryEnv * A.exp * DI.depth -> PLambda.lexp                         *
- *                                                                         *
- ***************************************************************************)
+(*********************************************************************************
+ * Translating absyn decls and exprs into lambda expression:                     *
+ *                                                                               *
+ *    val mkDec : primaryEnv * A.dec * DI.depth -> PLambda.lexp -> PLambda.lexp  *
+ *    val mkExp : primaryEnv * A.exp * DI.depth -> PLambda.lexp                  *
+ *                                                                               *
+ *********************************************************************************)
 and mkDec (penv0 : TT.primaryEnv, dec : Absyn.dec, d : DI.depth) 
     : (PLambda.lexp -> PLambda.lexp) = 
   let fun g (VALdec vbs) 

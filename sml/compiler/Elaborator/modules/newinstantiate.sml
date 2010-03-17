@@ -1,6 +1,20 @@
 (* Copyright 1996 by AT&T Bell Laboratories *)
 (* instantiate.sml *)
 
+(* a new design for instantiate.
+ * Principle: instantiate should process sharing and definition specs and
+ * produce a prescription for building a realization that minimally satisfies
+ * those specs.  The prescription should be executed separatly to actually
+ * build the realization. 
+ * 
+ * This separate process of building the realization can deal with the special
+ * treatments needed for abstraction instances (sealing), and the typing
+ * of a formal instantiation involved in translate.
+ *
+ * Thus there will be a single instantiate function, supplemented by other
+ * functions that build realizations (formal or abstracting) or FLINT typings.
+ *)
+
 (* 
  * This function constructs a dummy structure which satisfies all sharing
  * constraints (explicit or induced) of a given signature.  The resulting
@@ -43,17 +57,6 @@ sig
           compInfo : ElabUtil.compInfo}
 	 -> {rlzn: Modules.strEntity,
 	     primaries : Modules.primary list}
-
-  (*** instantiation of structure abstraction signatures ***)
-  val instAbstr : 
-         {sign     : Modules.Signature,
-          entEnv   : Modules.entityEnv,
-          srcRlzn  : Modules.strEntity,   (* rlzn of structure being abstracted *)
-          rpath    : InvPath.path,
-          region   : SourceMap.region,
-          compInfo : ElabUtil.compInfo}
-	 -> {rlzn: Modules.strEntity,
-	     primaryTycs : Modules.primary list}
 
   val debugging : bool ref
 
@@ -127,13 +130,6 @@ fun signName (SIG { name, ... }) = getOpt (Option.map S.name name, "Anonymous")
 
 (* -------------------- important data structures ------------------------ *)
 
-(*
- * the different kinds of instantiations 
- *)
-datatype instKind 
-  = INST_ABSTR of M.strEntity     (* a sealed signature ascription *)
-  | INST_FORMAL  (* instantiating a functor param sig or formal functor result sig *)
-
 (* datatype stampInfo 
  * encodes an instruction about how to get a stamp for a new entity
  *)
@@ -164,12 +160,13 @@ datatype tycInst
 
 (* 
  * This datatype represents the continually changing DAG that is being 
- * constructed by instantiate.  We start off with just an Initial node.  
- * It is expanded into a Partial node whose children are 
- * initialized to Initial nodes.  When all of the members of the node's
- * equivalence class have been found, and converted to Partial nodes, 
- * the node is converted to FinalStr.  Finally, we recurse on the children
- * of the node.  
+ * constructed by instantiate.  
+ * 1. We start with an Initial node for the entity.
+ * 2. It is expanded into a Partial node whose children are 
+ *    initialized to Initial nodes.
+ * 3. When all of the members of the node's equivalence class have been
+ *    found, and converted to Partial nodes, the node is converted to FinalStr.
+ * 4. Finally, we recurse on the children of the node.  
  *
  * Invariants:
  *
@@ -223,7 +220,7 @@ datatype inst
     (* functor instances *)
   | FinalFct of
      {sign : M.fctSig,
-      def : M.Functor option ref,
+    (*  def : M.Functor option ref,  ??? *)
       path: IP.path,
       epath: EP.entPath}
   | NullFct

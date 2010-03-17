@@ -231,6 +231,7 @@ fun pushDefs(elements,defs,error,mkStamp) =
 
 (* does this belong in ModuleUtil or ElabUtil? DBM *)
 and addWhereDefs(sign,nil,nameOp,error,mkStamp) = bug "addWhereDefs"
+     (* shouldn't be called with no defs *)
   | addWhereDefs(sign as SIG {stamp,name,closed,fctflag,stub,
 			      elements, properties,
 			      typsharing,strsharing},
@@ -239,8 +240,8 @@ and addWhereDefs(sign,nil,nameOp,error,mkStamp) = bug "addWhereDefs"
 	(* give modified sig a new stamp 
 	 * -- could stack stamps *)
 	name=case nameOp
-	      of SOME _ => nameOp (* new name provided *)
-	       | NONE => name, (* retain old name (?) *)
+	      of SOME _ => nameOp (* new name provided, overrides old one *)
+	       | NONE => name, (* retain old name, even though sign modified? *)
 	closed=closed andalso closedDefs whereDefs,
         fctflag=fctflag,
 	elements=pushDefs(elements,whereDefs,error,mkStamp),
