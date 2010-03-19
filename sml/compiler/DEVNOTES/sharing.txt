@@ -1,0 +1,300 @@
+Sharing and where definitions
+
+Here we examine the claim that in any SML 97 signature, sharing specs
+can always be eliminated by translation into where clauses, or by 
+adding definitions to tycon specs in an open (i.e. inline) signature
+expression.  The claim is not strictly true, but the only exception is
+where the sharing equation applies to two elements that are both
+specified within a named signature.
+
+------------------------------------------------
+Example 1.
+
+signature S1 =
+sig
+  type t
+  type s
+end
+
+signature S2 =
+sig
+  structure A : S1
+  structure B : sig
+                         val x: A.s
+			 datatype u = C | K of u
+                      end
+  sharing type A.t = B.u
+end
+
+The signature S2 can be matched, for instance, by the following
+structure:
+
+structure M =
+struct
+  structure A =
+  struct
+      datatype t = C | K of t
+      type s = int
+  end
+
+  structure B =
+  struct
+     val x = 3
+     datatype u = datatype A.t   (* datatype replication *)
+  end
+end
+
+Can we eliminate the sharing spec in S2, replacing it
+with a definitional type spec or where clause?
+
+We might try to replace the sharing spec in S2 by using
+"datatype replication spec" in the inline signature of B:
+
+signature S3 =
+sig
+  structure A : S1
+  structure B : sig
+                         val x: A.s
+			 datatype u = datatype A.t
+                      end
+end
+
+but this doesn't make sense because the spec for
+A.t is fully "open", and in particular doesn't specify
+that A.t is a datatype.  We would also have to
+enrich S1 to a signature S1' that specifies t as
+a datatype. [This gives an error in SML/NJ.]
+
+We might alternatively try to add a where clause to 
+the signature of B as follows
+
+signature S4 =
+sig
+  structure A : S1
+  structure B : sig
+                         val x: A.s
+			 datatype u = C | K of u
+                      end
+		      where type u = A.t
+end
+
+But this requires that we allow datatype specs to
+be the target of definitional where specs.   This appears
+to be permitted by the Defn of SML97 (rule (64)).
+
+-----------
+Note: In SML/NJ, S4 is accepted and M matches S4. But it
+is not clear what the elaboration of S4 produces.  It prints
+as:
+signature S4 =
+  sig
+    structure A :
+      sig
+        type t
+        type s
+      end
+    structure B :
+      sig
+        val x : A.s
+        datatype u = datatype A.t
+      end
+  end
+
+which seems to indicate that the original datatype
+spec for u has been overwritten by a datatype repl
+spec.  But then what has become of the constructor
+signature of u, specifying C and K?  They seem to
+be preserved in signature matching:
+
+structure M1 : S4 = M;
+structure M1 : S4
+- M1.B.C;
+val it = C : M.A.t
+--------------
+
+So Example 1 does allow the sharing spec to be
+replaced with a where clause on the signature of
+B.
+
+The rationale for this is that a datatype spec is
+semi-open.  It cannot be satisfied by any type,
+but it can be satisfied by any actual datatype whose
+signature agrees with the spec.
+
+----------------------------------------------
+Example 2.
+
+Here is an example that might not seem solvable.
+
+signature S1 =
+sig
+  type t
+  type s
+end
+
+signature S2 =
+sig
+  structure A : S1
+  structure B : sig
+                         val x: A.s
+			 type u
+			 type v
+                      end
+  structure C : sig
+                         type w = B.u * B.v
+                      end			 
+  sharing type A.t = C.w
+end
+
+This signature is matched by, e.g. 
+
+structure M =
+struct
+  structure A =
+  struct
+    type t = int * bool
+    type s = int
+  end
+  structure B =
+  struct
+    val x = 3
+    type u = int
+    type v = bool
+  end
+  structure C =
+  struct
+    type w = B.u * B.v
+  end
+end                                
+
+[Note that no datatypes are needed.]
+
+Obviously we can't permute the three structure specs, and
+so we can't turn the sharing spec into a where clause on
+S1 in the A spec.
+
+We also can't express the sharing as a where clause on
+the C signature:
+
+  structure C : sig
+                         type w = B.u * B.v
+                      end
+		      where type w = A.t
+
+because the Definition requires the target of the where
+definition to be either open or a datatype spec (specifically,
+the binding of w in the signature environment must be
+a TyStr of the form (t, VE) where t is a fresh type name.
+But here the binding of w in the environment for C's
+signature is (\(). t_u * t_v, {}).
+
+(It doesn't matter in this example whether the signature
+of A is a named signature S1 or is inlined.)
+
+The point here is that although it is possible to use a
+where defn to constrain a datatype spec, it is not possible
+to constrain a type spec that already has a definition.
+
+But the flaw here is that this sharing spec is not legal,
+because the paths in a sharing equation must all 
+point to open tycon specs.  So unfortunately this is also
+not a counterexample.
+
+------------------------------------------------
+Example 3.
+
+signature S1 =
+sig
+  type t
+  type s
+end
+
+signature S2 = 
+sig
+  structure A : S1
+  sharing A.t = A.s
+end
+
+This is a rather trivial example, but the point is
+that a where clause can't but used because the
+rhs has to be interpreted in the scope outside
+the spec.  So
+
+signature S2 = 
+sig
+  structure A : S1 where type s = A.t
+end
+
+is not legal because the structure name A
+is not in scope when it is used in the rhs of
+the where clause.
+
+Here the only solution would be to open up the
+signature S1 and add definitional spec for s.
+
+signature S2 = 
+sig
+  structure A : sig
+                         type t
+			 type s = t
+                      end
+end
+
+-----------------------------------------------
+
+Question: what are the conditions under which a given
+(type) sharing equation can be translated into a where clause
+without having to inline expand any named signatures?
+
+Suppose the sharing equation is 
+
+	path1 = path2
+
+It is assumed that both paths designate open tycon
+specs (may be open datatype specs).
+If path1 and path2 start with the same stucture name, 
+say A, and the signature spec for A is a signature name,
+then translation is impossible.  If the signature of A
+is an open signature expression, we strip A off each
+path and move the derived sharing equation into the
+A signature, and procede as below.  In this way, we eventually
+eliminate any common prefix of path1 and path2.
+
+Now we can assume that the paths have distinct initial
+symbols, and we commute the equation if necessary so that
+path1 is "before" path2 in the signature hierarchy.
+(ie.
+
+	path1 = A.path1'
+
+	path2 = B.path2'
+
+where the A spec is earlier than the B spec (both specs
+at top level in the current signature).  If the B spec is
+an open tycon spec (path2 = B):
+
+        type B
+
+we replace it with
+
+       type B = path1
+
+If B is a structure, say
+
+      structure B: sigexp
+
+we replace it with
+
+      structure B : sigexp where type path2' = path1
+
+If sigexp is open, it may be possible to push the
+definition further down, but there is a danger of
+free variable capture (there might be a local spec
+for A that overrides the original one).
+
+[Is that all there is to it?]
+
+So the conclusion is that the one thing that you can
+do with sharing specs that can't be done with 
+where clauses or definitional specs is to specify
+internal sharing within a structure with a closed (named) signature.
