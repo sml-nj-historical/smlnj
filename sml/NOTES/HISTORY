@@ -16,6 +16,13 @@ Description:
 Here is a test entry
 
 ----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2010/03/23
+Description:
+
+Fixed the bug with Win32 calls to OS.Process.system not quoting the string. 
+
+----------------------------------------------------------------------
 Name: Jon Riehl (http://jonriehl.com/)
 Date: 2010/02/11
 Description:
