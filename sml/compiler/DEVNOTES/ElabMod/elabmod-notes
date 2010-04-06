@@ -1,3 +1,35 @@
+New terms:
+
+* primary vs seconday tycons  (should functor elements also be primaries?)
+  primaries are atomic (primitive or generative), secondaries are DEFtycs
+* volatile vs nonvolatile (stable) tycons (and other entities)
+
+The functor static action can be viewed as mapping parameter primaries
+to result primaries -- for tycons.  It also maps functor elements to
+
+----------------------------
+Entity variables, paths, environments.  Relativization and epcontext.
+As with semantics, can assume all module elaboration is in volatile
+mode (as though all top level declarations are actually within a 
+virtual top-level functor body). Nonvolatiles are a potential elaboration
+optimization, but may not be worth it.
+
+Static environment is then always paired with an entity environment
+* static environment bindings can come with entity variables (just like specs)
+* tycons can contain their entity paths as a field, so relativization is
+  simple -- just map the tycon to its epath field
+
+-------------
+Signature elaboration should push struct definitions (direct and where clause)
+down to the tycon leaf nodes.  This should not be left to instantiation.
+
+Instantiation needs to be refactored.  One part to determine the equivalence
+classes, and the second to build the associated enity environment (realization).
+We need to also build ltyEnv for translating functors into FLINT ltys, using
+the first (factoring) phase of instantiation.
+
+----------------------------
+
 Types:
 
 ModuleId:  (ElabData/modules/moduleid.sml)
