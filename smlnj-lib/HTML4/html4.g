@@ -6,8 +6,7 @@
 
 %defs(
 
-datatype 'a tree = Nd of 'a tree list
-                 | Lf of 'a
+open HTML4Utils
 
 fun optToList NONE = []
   | optToList (SOME thing) = [thing]
@@ -217,11 +216,12 @@ fun optListToList NONE = []
 *)
 
 document : cdata_opt
-           (DOCTYPE cdata_opt => ((Lf DOCTYPE) :: cdata_opt))?
-           (STARTHTML cdata_opt => ((Lf STARTHTML) :: cdata_opt))?
+           (DOCTYPE cdata_opt => ((Lf (Tok.DOCTYPE DOCTYPE)) :: cdata_opt))?
+           (STARTHTML cdata_opt
+            => ((Lf (Tok.STARTHTML STARTHTML)) :: cdata_opt))?
            head
            (body | frameset)
-           (ENDHTML cdata_opt => ((Lf ENDHTML) :: cdata_opt))?
+           (ENDHTML cdata_opt => ((Lf (Tok.ENDHTML)) :: cdata_opt))?
            => (Nd (cdata_opt @ (optListToList SR1) @ (optListToList SR2) @
                    (head :: SR3 :: (optListToList SR4))))
 ;
@@ -230,9 +230,9 @@ document : cdata_opt
    HEAD and related elements
    ______________________________________________________________________ *)
 
-head : (STARTHEAD cdata_opt => ((Lf STARTHEAD) :: cdata_opt))?
+head : (STARTHEAD cdata_opt => ((Lf (Tok.STARTHEAD STARTHEAD)) :: cdata_opt))?
        (head_content cdata_opt => (head_content :: cdata_opt))*
-       (ENDHEAD cdata_opt => ((Lf ENDHEAD) :: cdata_opt))?
+       (ENDHEAD cdata_opt => ((Lf (Tok.ENDHEAD)) :: cdata_opt))?
        => (Nd ((optListToList SR1) @ (foldr op@ [] SR2) @ (optListToList SR3)))
 ;
 
@@ -240,35 +240,39 @@ head_content : title | base | script | style | meta | link | object
 ;
 
 title : STARTTITLE cdata_opt ENDTITLE
-        => (Nd ((Lf STARTTITLE) :: (cdata_opt @ [Lf ENDTITLE])))
+        => (Nd ((Lf (Tok.STARTTITLE STARTTITLE)) ::
+                (cdata_opt @ [Lf (Tok.ENDTITLE)])))
 ;
 
 base : STARTBASE
-       => (Lf STARTBASE)
+       => (Lf (Tok.STARTBASE STARTBASE))
 ;
 
 script : STARTSCRIPT cdata_opt ENDSCRIPT
-         => (Nd ((Lf STARTSCRIPT) :: (cdata_opt @ [Lf ENDSCRIPT])))
+         => (Nd ((Lf (Tok.STARTSCRIPT STARTSCRIPT)) ::
+                 (cdata_opt @ [Lf (Tok.ENDSCRIPT)])))
 ;
 
 style : STARTSTYLE cdata_opt ENDSTYLE
-         => (Nd ((Lf STARTSTYLE) :: (cdata_opt @ [Lf ENDSTYLE])))
+         => (Nd ((Lf (Tok.STARTSTYLE STARTSTYLE)) ::
+                 (cdata_opt @ [Lf (Tok.ENDSTYLE)])))
 ;
 
 meta : STARTMETA
-       => (Lf STARTMETA)
+       => (Lf (Tok.STARTMETA STARTMETA))
 ;
 
 link : STARTLINK
-       => (Lf STARTLINK)
+       => (Lf (Tok.STARTLINK STARTLINK))
 ;
 
 object : STARTOBJECT (param | flow)* ENDOBJECT
-         => (Nd ((Lf STARTOBJECT) :: (SR @ [Lf ENDOBJECT])))
+         => (Nd ((Lf (Tok.STARTOBJECT STARTOBJECT)) ::
+                 (SR @ [Lf (Tok.ENDOBJECT)])))
 ;
 
 param : STARTPARAM
-       => (Lf STARTPARAM)
+       => (Lf (Tok.STARTPARAM STARTPARAM))
 ;
 
 (* ______________________________________________________________________
@@ -276,14 +280,14 @@ param : STARTPARAM
    ______________________________________________________________________ *)
 
 body : STARTBODY body_rest
-       => (Nd ((Lf STARTBODY) :: body_rest))
+       => (Nd ((Lf (Tok.STARTBODY STARTBODY)) :: body_rest))
      | (block | ins | del) body_rest
        => (Nd (SR :: body_rest))
 ;
 
 body_rest : (block | script | ins | del | cdata)*
-            (ENDBODY cdata_opt => ((Lf ENDBODY) :: cdata_opt))?
-            => (SR1 :: (optListToList SR2))
+            (ENDBODY cdata_opt => ((Lf (Tok.ENDBODY)) :: cdata_opt))?
+            => (SR1 @ (optListToList SR2))
 ;
 
 flow : block
@@ -392,232 +396,267 @@ formctrl : input
 (* Actual elements *)
 
 a : STARTA inline* ENDA
-         => (Nd ((Lf STARTA) :: (inline @ [Lf ENDA])))
+         => (Nd ((Lf (Tok.STARTA STARTA)) :: (inline @ [Lf (Tok.ENDA)])))
 ;
 
 abbr : STARTABBR inline* ENDABBR
-         => (Nd ((Lf STARTABBR) :: (inline @ [Lf ENDABBR])))
+         => (Nd ((Lf (Tok.STARTABBR STARTABBR)) ::
+                 (inline @ [Lf (Tok.ENDABBR)])))
 ;
 
 acronym : STARTACRONYM inline* ENDACRONYM
-         => (Nd ((Lf STARTACRONYM) :: (inline @ [Lf ENDACRONYM])))
+         => (Nd ((Lf (Tok.STARTACRONYM STARTACRONYM)) ::
+                 (inline @ [Lf (Tok.ENDACRONYM)])))
 ;
 
 address : STARTADDRESS inline* ENDADDRESS
-         => (Nd ((Lf STARTADDRESS) :: (inline @ [Lf ENDADDRESS])))
+         => (Nd ((Lf (Tok.STARTADDRESS STARTADDRESS)) ::
+                 (inline @ [Lf (Tok.ENDADDRESS)])))
 ;
 
 applet : STARTAPPLET (param | flow)* ENDAPPLET
-         => (Nd ((Lf STARTAPPLET) :: (SR @ [Lf ENDAPPLET])))
+         => (Nd ((Lf (Tok.STARTAPPLET STARTAPPLET)) ::
+                 (SR @ [Lf (Tok.ENDAPPLET)])))
 ;
 
 area : STARTAREA
-       => (Lf STARTAREA)
+       => (Lf (Tok.STARTAREA STARTAREA))
 ;
 
 b : STARTB inline* ENDB
-         => (Nd ((Lf STARTB) :: (inline @ [Lf ENDB])))
+         => (Nd ((Lf (Tok.STARTB STARTB)) :: (inline @ [Lf (Tok.ENDB)])))
 ;
 
 basefont : STARTBASEFONT
-       => (Lf STARTBASEFONT)
+       => (Lf (Tok.STARTBASEFONT STARTBASEFONT))
 ;
 
 bdo : STARTBDO inline* ENDBDO
-         => (Nd ((Lf STARTBDO) :: (inline @ [Lf ENDBDO])))
+         => (Nd ((Lf (Tok.STARTBDO STARTBDO)) ::
+                 (inline @ [Lf (Tok.ENDBDO)])))
 ;
 
 big : STARTBIG inline* ENDBIG
-         => (Nd ((Lf STARTBIG) :: (inline @ [Lf ENDBIG])))
+         => (Nd ((Lf (Tok.STARTBIG STARTBIG)) ::
+                 (inline @ [Lf (Tok.ENDBIG)])))
 ;
 
 blockquote : STARTBLOCKQUOTE (block | script | cdata)+ ENDBLOCKQUOTE
-         => (Nd ((Lf STARTBLOCKQUOTE) :: (SR @ [Lf ENDBLOCKQUOTE])))
+         => (Nd ((Lf (Tok.STARTBLOCKQUOTE STARTBLOCKQUOTE)) ::
+                 (SR @ [Lf (Tok.ENDBLOCKQUOTE)])))
 ;
 
 br : STARTBR
-       => (Lf STARTBR)
+       => (Lf (Tok.STARTBR STARTBR))
 ;
 
 button : STARTBUTTON flow* ENDBUTTON
-         => (Nd ((Lf STARTBUTTON) :: (flow @ [Lf ENDBUTTON])))
+         => (Nd ((Lf (Tok.STARTBUTTON STARTBUTTON)) ::
+                 (flow @ [Lf (Tok.ENDBUTTON)])))
 ;
 
 caption : STARTCAPTION inline* ENDCAPTION
-          => (Nd ((Lf STARTCAPTION) :: (inline @ [Lf ENDCAPTION])))
+          => (Nd ((Lf (Tok.STARTCAPTION STARTCAPTION)) ::
+                  (inline @ [Lf (Tok.ENDCAPTION)])))
 ;
 
 center : STARTCENTER flow* ENDCENTER
-         => (Nd ((Lf STARTCENTER) :: (flow @ [Lf ENDCENTER])))
+         => (Nd ((Lf (Tok.STARTCENTER STARTCENTER)) ::
+                 (flow @ [Lf (Tok.ENDCENTER)])))
 ;
 
 cite : STARTCITE inline* ENDCITE
-       => (Nd ((Lf STARTCITE) :: (inline @ [Lf ENDCITE])))
+       => (Nd ((Lf (Tok.STARTCITE STARTCITE)) ::
+               (inline @ [Lf (Tok.ENDCITE)])))
 ;
 
 code : STARTCODE inline* ENDCODE
-       => (Nd ((Lf STARTCODE) :: (inline @ [Lf ENDCODE])))
+       => (Nd ((Lf (Tok.STARTCODE STARTCODE)) ::
+               (inline @ [Lf (Tok.ENDCODE)])))
 ;
 
 col : STARTCOL
-      => (Lf STARTCOL)
+      => (Lf (Tok.STARTCOL STARTCOL))
 ;
 
 colgroup : STARTCOLGROUP cdata_opt
-           (col cdata_opt => (col :: cdata_opt))* ENDCOLGROUP?
-           => (Nd ((Lf STARTCOLGROUP) :: (cdata_opt @ (foldr op@ [] SR) @
-                                          (optToList ENDCOLGROUP))))
+           (col cdata_opt => (col :: cdata_opt))*
+           (ENDCOLGROUP => (Lf (Tok.ENDCOLGROUP)))?
+           => (Nd ((Lf (Tok.STARTCOLGROUP STARTCOLGROUP)) ::
+                   (cdata_opt @ (foldr op@ [] SR1) @ (optToList SR2))))
 ;
 
-dd : STARTDD flow* ENDDD?
-     => (Nd ((Lf STARTDD) :: (flow @ (optToList ENDDD))))
+dd : STARTDD flow* (ENDDD => (Lf (Tok.ENDDD)))?
+     => (Nd ((Lf (Tok.STARTDD STARTDD)) :: (flow @ (optToList SR))))
 ;
 
 del : STARTDEL flow* ENDDEL
-      => (Nd ((Lf STARTDEL) :: (flow @ [Lf ENDDEL])))
+      => (Nd ((Lf (Tok.STARTDEL STARTDEL)) ::
+              (flow @ [Lf (Tok.ENDDEL)])))
 ;
 
 dfn : STARTDFN inline* ENDDFN
-      => (Nd ((Lf STARTDFN) :: (inline @ [Lf ENDDFN])))
+      => (Nd ((Lf (Tok.STARTDFN STARTDFN)) ::
+              (inline @ [Lf (Tok.ENDDFN)])))
 ;
 
 dir : STARTDIR cdata_opt li+ ENDDIR
-      => (Nd ((Lf STARTDIR) :: (cdata_opt @ li @ [Lf ENDDIR])))
+      => (Nd ((Lf (Tok.STARTDIR STARTDIR)) ::
+              (cdata_opt @ li @ [Lf (Tok.ENDDIR)])))
 ;
 
 div : STARTDIV flow* ENDDIV
-      => (Nd ((Lf STARTDIV) :: (flow @ [Lf ENDDIV])))
+      => (Nd ((Lf (Tok.STARTDIV STARTDIV)) ::
+              (flow @ [Lf (Tok.ENDDIV)])))
 ;
 
 dl : STARTDL cdata_opt (dt | dd)+ ENDDL
-     => (Nd ((Lf STARTDL) :: (cdata_opt @ SR @ [Lf ENDDL])))
+     => (Nd ((Lf (Tok.STARTDL STARTDL)) ::
+             (cdata_opt @ SR @ [Lf (Tok.ENDDL)])))
 ;
 
-dt : STARTDT inline* ENDDT?
-     => (Nd ((Lf STARTDT) :: (inline @ (optToList ENDDT))))
+dt : STARTDT inline* (ENDDT => (Lf (Tok.ENDDT)))?
+     => (Nd ((Lf (Tok.STARTDT STARTDT)) :: (inline @ (optToList SR))))
 ;
 
 em : STARTEM inline* ENDEM
-     => (Nd ((Lf STARTEM) :: (inline @ [Lf ENDEM])))
+     => (Nd ((Lf (Tok.STARTEM STARTEM)) :: (inline @ [Lf (Tok.ENDEM)])))
 ;
 
 fieldset : STARTFIELDSET cdata_opt legend flow* ENDFIELDSET
-           => (Nd ((Lf STARTFIELDSET) :: (cdata_opt @ [legend] @ flow @
-                                          [Lf ENDFIELDSET])))
+           => (Nd ((Lf (Tok.STARTFIELDSET STARTFIELDSET)) ::
+                   (cdata_opt @ [legend] @ flow @
+                    [Lf (Tok.ENDFIELDSET)])))
 ;
 
 font : STARTFONT inline* ENDFONT
-       => (Nd ((Lf STARTFONT) :: (inline @ [Lf ENDFONT])))
+       => (Nd ((Lf (Tok.STARTFONT STARTFONT)) ::
+               (inline @ [Lf (Tok.ENDFONT)])))
 ;
 
 form : STARTFORM (cdata | block | script)+ ENDFORM
-       => (Nd ((Lf STARTFORM) :: (SR @ [Lf ENDFORM])))
+       => (Nd ((Lf (Tok.STARTFORM STARTFORM)) ::
+               (SR @ [Lf (Tok.ENDFORM)])))
 ;
 
 frame : STARTFRAME
-        => (Lf STARTFRAME)
+        => (Lf (Tok.STARTFRAME STARTFRAME))
 ;
 
 frameset : STARTFRAMESET (frameset | frame | noframes | cdata)+ ENDFRAMESET
-           => (Nd ((Lf STARTFRAMESET) :: (SR @ [Lf ENDFRAMESET])))
+           => (Nd ((Lf (Tok.STARTFRAMESET STARTFRAMESET)) ::
+                   (SR @ [Lf (Tok.ENDFRAMESET)])))
 ;
 
 h1 : STARTH1 inline* ENDH1
-     => (Nd ((Lf STARTH1) :: (inline @ [Lf ENDH1])))
+     => (Nd ((Lf (Tok.STARTH1 STARTH1)) :: (inline @ [Lf (Tok.ENDH1)])))
 ;
 
 h2 : STARTH2 inline* ENDH2
-     => (Nd ((Lf STARTH2) :: (inline @ [Lf ENDH2])))
+     => (Nd ((Lf (Tok.STARTH2 STARTH2)) :: (inline @ [Lf (Tok.ENDH2)])))
 ;
 
 h3 : STARTH3 inline* ENDH3
-     => (Nd ((Lf STARTH3) :: (inline @ [Lf ENDH3])))
+     => (Nd ((Lf (Tok.STARTH3 STARTH3)) :: (inline @ [Lf (Tok.ENDH3)])))
 ;
 
 h4 : STARTH4 inline* ENDH4
-     => (Nd ((Lf STARTH4) :: (inline @ [Lf ENDH4])))
+     => (Nd ((Lf (Tok.STARTH4 STARTH4)) :: (inline @ [Lf (Tok.ENDH4)])))
 ;
 
 h5 : STARTH5 inline* ENDH5
-     => (Nd ((Lf STARTH5) :: (inline @ [Lf ENDH5])))
+     => (Nd ((Lf (Tok.STARTH5 STARTH5)) :: (inline @ [Lf (Tok.ENDH5)])))
 ;
 
 h6 : STARTH6 inline* ENDH6
-     => (Nd ((Lf STARTH6) :: (inline @ [Lf ENDH6])))
+     => (Nd ((Lf (Tok.STARTH6 STARTH6)) :: (inline @ [Lf (Tok.ENDH6)])))
 ;
 
 hr : STARTHR
-     => (Lf STARTHR)
+     => (Lf (Tok.STARTHR STARTHR))
 ;
 
 i : STARTI inline* ENDI
-         => (Nd ((Lf STARTI) :: (inline @ [Lf ENDI])))
+         => (Nd ((Lf (Tok.STARTI STARTI)) ::
+                 (inline @ [Lf (Tok.ENDI)])))
 ;
 
 iframe : STARTIFRAME flow* ENDIFRAME
-         => (Nd ((Lf STARTIFRAME) :: (flow @ [Lf ENDIFRAME])))
+         => (Nd ((Lf (Tok.STARTIFRAME STARTIFRAME)) ::
+                 (flow @ [Lf (Tok.ENDIFRAME)])))
 ;
 
 img : STARTIMG
-       => (Lf STARTIMG)
+       => (Lf (Tok.STARTIMG STARTIMG))
 ;
 
 input : STARTINPUT
-       => (Lf STARTINPUT)
+       => (Lf (Tok.STARTINPUT STARTINPUT))
 ;
 
 ins : STARTINS flow* ENDINS
-         => (Nd ((Lf STARTINS) :: (flow @ [Lf ENDINS])))
+         => (Nd ((Lf (Tok.STARTINS STARTINS)) ::
+                 (flow @ [Lf (Tok.ENDINS)])))
 ;
 
 isindex : STARTISINDEX
-       => (Lf STARTISINDEX)
+       => (Lf (Tok.STARTISINDEX STARTISINDEX))
 ;
 
 kbd : STARTKBD inline* ENDKBD
-         => (Nd ((Lf STARTKBD) :: (inline @ [Lf ENDKBD])))
+         => (Nd ((Lf (Tok.STARTKBD STARTKBD)) ::
+                 (inline @ [Lf (Tok.ENDKBD)])))
 ;
 
 label : STARTLABEL inline* ENDLABEL
-         => (Nd ((Lf STARTLABEL) :: (inline @ [Lf ENDLABEL])))
+         => (Nd ((Lf (Tok.STARTLABEL STARTLABEL)) ::
+                 (inline @ [Lf (Tok.ENDLABEL)])))
 ;
 
 legend : STARTLEGEND inline* ENDLEGEND
-         => (Nd ((Lf STARTLEGEND) :: (inline @ [Lf ENDLEGEND])))
+         => (Nd ((Lf (Tok.STARTLEGEND STARTLEGEND)) ::
+                 (inline @ [Lf (Tok.ENDLEGEND)])))
 ;
 
-li : STARTLI flow* ENDLI?
-     => (Nd ((Lf STARTLI) :: (flow @ (optToList ENDLI))))
+li : STARTLI flow* (ENDLI => (Lf (Tok.ENDLI)))?
+     => (Nd ((Lf (Tok.STARTLI STARTLI)) :: (flow @ (optToList SR))))
 ;
 
 map : STARTMAP (cdata | block | area)+ ENDMAP
-      => (Nd ((Lf STARTMAP) :: (SR @ [Lf ENDMAP])))
+      => (Nd ((Lf (Tok.STARTMAP STARTMAP)) :: (SR @ [Lf (Tok.ENDMAP)])))
 ;
 
 menu : STARTMENU cdata_opt li+ ENDMENU
-       => (Nd ((Lf STARTMENU) :: (cdata_opt @ li @ [Lf ENDMENU])))
+       => (Nd ((Lf (Tok.STARTMENU STARTMENU)) ::
+               (cdata_opt @ li @ [Lf (Tok.ENDMENU)])))
 ;
 
 noframes : STARTNOFRAMES body ENDNOFRAMES
-           => (Nd [Lf STARTNOFRAMES, body, Lf ENDNOFRAMES])
+           => (Nd [Lf (Tok.STARTNOFRAMES STARTNOFRAMES), body,
+                   Lf (Tok.ENDNOFRAMES)])
 ;
 
 noscript : STARTNOSCRIPT (cdata | block)+ ENDNOSCRIPT
-           => (Nd ((Lf STARTNOSCRIPT) :: (SR @ [Lf ENDNOSCRIPT])))
+           => (Nd ((Lf (Tok.STARTNOSCRIPT STARTNOSCRIPT)) ::
+                   (SR @ [Lf (Tok.ENDNOSCRIPT)])))
 ;
 
 ol : STARTOL cdata_opt li+ ENDOL
-     => (Nd ((Lf STARTOL) :: (cdata_opt @ li @ [Lf ENDOL])))
+     => (Nd ((Lf (Tok.STARTOL STARTOL)) ::
+             (cdata_opt @ li @ [Lf (Tok.ENDOL)])))
 ;
 
 optgroup : STARTOPTGROUP cdata_opt option+ ENDOPTGROUP cdata_opt
-           => (Nd ((Lf STARTOPTGROUP) :: (cdata_opt1 @ option @
-                                          ((Lf ENDOPTGROUP) :: cdata_opt2))))
+           => (Nd ((Lf (Tok.STARTOPTGROUP STARTOPTGROUP)) ::
+                   (cdata_opt1 @ option @ ((Lf (Tok.ENDOPTGROUP))
+                                           :: cdata_opt2))))
 ;
 
 option : STARTOPTION cdata_opt
-         (ENDOPTION cdata_opt => ((Lf ENDOPTION) :: cdata_opt))?
-         => (Nd ((Lf STARTOPTION) :: (cdata_opt @ (optListToList SR))))
+         (ENDOPTION cdata_opt => ((Lf (Tok.ENDOPTION)) ::
+                                  cdata_opt))?
+         => (Nd ((Lf (Tok.STARTOPTION STARTOPTION)) ::
+                 (cdata_opt @ (optListToList SR))))
 ;
 
 (* TODO: Making the ENDP optional, which is valid, causes
@@ -625,51 +664,60 @@ left-recursion for the inline* part.  This can be fixed by having a
 two state flow nonterminal, which the older HTML library does. *)
 
 p : STARTP inline* ENDP
-    => (Nd ((Lf STARTP) :: (inline @ [Lf ENDP])))
+    => (Nd ((Lf (Tok.STARTP STARTP)) :: (inline @ [Lf (Tok.ENDP)])))
 ;
 
 pre : STARTPRE inline* ENDPRE
-      => (Nd ((Lf STARTPRE) :: (inline @ [Lf ENDPRE])))
+      => (Nd ((Lf (Tok.STARTPRE STARTPRE)) ::
+              (inline @ [Lf (Tok.ENDPRE)])))
 ;
 
 q : STARTQ inline* ENDQ
-    => (Nd ((Lf STARTQ) :: (inline @ [Lf ENDQ])))
+    => (Nd ((Lf (Tok.STARTQ STARTQ)) :: (inline @ [Lf (Tok.ENDQ)])))
 ;
 
 s : STARTS inline* ENDS
-    => (Nd ((Lf STARTS) :: (inline @ [Lf ENDS])))
+    => (Nd ((Lf (Tok.STARTS STARTS)) :: (inline @ [Lf (Tok.ENDS)])))
 ;
 
 samp : STARTSAMP inline* ENDSAMP
-       => (Nd ((Lf STARTSAMP) :: (inline @ [Lf ENDSAMP])))
+       => (Nd ((Lf (Tok.STARTSAMP STARTSAMP)) ::
+               (inline @ [Lf (Tok.ENDSAMP)])))
 ;
 
 select : STARTSELECT cdata_opt (optgroup | option)+ ENDSELECT
-         => (Nd ((Lf STARTSELECT) :: (cdata_opt @ SR @ [Lf ENDSELECT])))
+         => (Nd ((Lf (Tok.STARTSELECT STARTSELECT)) ::
+                 (cdata_opt @ SR @ [Lf (Tok.ENDSELECT)])))
 ;
 
 small : STARTSMALL inline* ENDSMALL
-        => (Nd ((Lf STARTSMALL) :: (inline @ [Lf ENDSMALL])))
+        => (Nd ((Lf (Tok.STARTSMALL STARTSMALL)) ::
+                (inline @ [Lf (Tok.ENDSMALL)])))
 ;
 
 span : STARTSPAN inline* ENDSPAN
-       => (Nd ((Lf STARTSPAN) :: (inline @ [Lf ENDSPAN])))
+       => (Nd ((Lf (Tok.STARTSPAN STARTSPAN)) ::
+               (inline @ [Lf (Tok.ENDSPAN)])))
 ;
 
 strike : STARTSTRIKE inline* ENDSTRIKE
-         => (Nd ((Lf STARTSTRIKE) :: (inline @ [Lf ENDSTRIKE])))
+         => (Nd ((Lf (Tok.STARTSTRIKE STARTSTRIKE)) ::
+                 (inline @ [Lf (Tok.ENDSTRIKE)])))
 ;
 
 strong : STARTSTRONG inline* ENDSTRONG
-         => (Nd ((Lf STARTSTRONG) :: (inline @ [Lf ENDSTRONG])))
+         => (Nd ((Lf (Tok.STARTSTRONG STARTSTRONG)) ::
+                 (inline @ [Lf (Tok.ENDSTRONG)])))
 ;
 
 sub : STARTSUB inline* ENDSUB
-      => (Nd ((Lf STARTSUB) :: (inline @ [Lf ENDSUB])))
+      => (Nd ((Lf (Tok.STARTSUB STARTSUB)) ::
+              (inline @ [Lf (Tok.ENDSUB)])))
 ;
 
 sup : STARTSUP inline* ENDSUP
-      => (Nd ((Lf STARTSUP) :: (inline @ [Lf ENDSUP])))
+      => (Nd ((Lf (Tok.STARTSUP STARTSUP)) ::
+              (inline @ [Lf (Tok.ENDSUP)])))
 ;
 
 (* My reading of the HTML DTD indicates the following order of
@@ -678,9 +726,9 @@ elements is enforceable: *)
 table : STARTTABLE cdata_opt
         (caption cdata_opt => (caption :: cdata_opt))?
         col_or_colgroups table_content ENDTABLE
-        => (Nd ((Lf STARTTABLE) ::
+        => (Nd ((Lf (Tok.STARTTABLE STARTTABLE)) ::
                 (cdata_opt @ (optListToList SR) @ col_or_colgroups @
-                 table_content @ [Lf ENDTABLE])))
+                 table_content @ [Lf (Tok.ENDTABLE)])))
 ;
 
 (* The whole tr+ thing makes the original table production ambiguous:
@@ -702,7 +750,8 @@ col_or_colgroups : (* empty *)
 ;
 
 
-tbodies_nostart : (STARTTBODY cdata_opt => ((Lf STARTTBODY) :: cdata_opt))?
+tbodies_nostart : (STARTTBODY cdata_opt =>
+                   ((Lf (Tok.STARTTBODY STARTTBODY)) :: cdata_opt))?
                   tr+ tbodies_rest?
                   => (let val (tbody_rest, tbody_peers) =
                               case tbodies_rest of
@@ -714,67 +763,80 @@ tbodies_nostart : (STARTTBODY cdata_opt => ((Lf STARTTBODY) :: cdata_opt))?
 
 tbodies : STARTTBODY cdata_opt tr+ tbodies_rest
           => (let val (tbody_rest, tbody_peers) = tbodies_rest
-              in (Nd ((Lf STARTTBODY) :: (cdata_opt @ tr @ tbody_rest))) ::
+              in (Nd ((Lf (Tok.STARTTBODY STARTTBODY)) ::
+                      (cdata_opt @ tr @ tbody_rest))) ::
                  tbody_peers end)
 ;
 
 tbodies_rest : ENDTBODY cdata_opt tbodies?
-               => ((Lf ENDTBODY) :: cdata_opt, optListToList tbodies)
+               => ((Lf (Tok.ENDTBODY)) :: cdata_opt,
+                   optListToList tbodies)
              | STARTTBODY cdata_opt tr+ tbodies_rest?
-               => (let val (tbody_rest, tbody_peers) = tbodies_rest
-                   in ([], (Nd ((Lf STARTTBODY) ::
+               => (let val (tbody_rest, tbody_peers) =
+                           case tbodies_rest of NONE => ([], [])
+                                              | SOME tbodies_tup => tbodies_tup
+                   in ([], (Nd ((Lf (Tok.STARTTBODY STARTTBODY)) ::
                                 (cdata_opt @ tr @ tbody_rest))) :: tbody_peers)
                    end)
 ;
 
-td : STARTTD flow* (ENDTD cdata_opt => ((Lf ENDTD) :: cdata_opt))?
-     => (Nd ((Lf STARTTD) :: (flow @ (optListToList SR))))
+td : STARTTD flow* (ENDTD cdata_opt => ((Lf (Tok.ENDTD)) :: cdata_opt))?
+     => (Nd ((Lf (Tok.STARTTD STARTTD)) :: (flow @ (optListToList SR))))
 ;
 
 textarea : STARTTEXTAREA cdata_opt ENDTEXTAREA
-           => (Nd ((Lf STARTTEXTAREA) :: (cdata_opt @ [Lf ENDTEXTAREA])))
+           => (Nd ((Lf (Tok.STARTTEXTAREA STARTTEXTAREA)) ::
+                   (cdata_opt @ [Lf (Tok.ENDTEXTAREA)])))
 ;
 
 tfoot : STARTTFOOT cdata_opt tr+
-        (ENDTFOOT cdata_opt => ((Lf ENDTFOOT) :: cdata_opt))?
-        => (Nd ((Lf STARTTFOOT) :: (cdata_opt @ tr @ (optListToList SR))))
+        (ENDTFOOT cdata_opt => ((Lf (Tok.ENDTFOOT)) :: cdata_opt))?
+        => (Nd ((Lf (Tok.STARTTFOOT STARTTFOOT)) :: (cdata_opt @ tr @
+                                                     (optListToList SR))))
 ;
 
-th : STARTTH flow* (ENDTH cdata_opt => ((Lf ENDTH) :: cdata_opt))?
-     => (Nd ((Lf STARTTH) :: (flow @ (optListToList SR))))
+th : STARTTH flow* (ENDTH cdata_opt => ((Lf (Tok.ENDTH)) :: cdata_opt))?
+     => (Nd ((Lf (Tok.STARTTH STARTTH)) :: (flow @ (optListToList SR))))
 ;
 
 thead : STARTTHEAD cdata_opt tr+
-        (ENDTHEAD cdata_opt => ((Lf ENDTHEAD) :: cdata_opt))?
-        => (Nd ((Lf STARTTHEAD) :: (cdata_opt @ tr @ (optListToList SR))))
+        (ENDTHEAD cdata_opt => ((Lf (Tok.ENDTHEAD)) :: cdata_opt))?
+        => (Nd ((Lf (Tok.STARTTHEAD STARTTHEAD)) :: (cdata_opt @ tr @
+                                                     (optListToList SR))))
 ;
 
 tr : STARTTR cdata_opt (th | td)+
-     (ENDTR cdata_opt => ((Lf ENDTR) :: cdata_opt))?
-     => (Nd ((Lf STARTTR) :: (cdata_opt @ SR1 @ (optListToList SR2))))
+     (ENDTR cdata_opt => ((Lf (Tok.ENDTR)) :: cdata_opt))?
+     => (Nd ((Lf (Tok.STARTTR STARTTR)) :: (cdata_opt @ SR1 @
+                                            (optListToList SR2))))
 ;
 
 tt : STARTTT inline* ENDTT
-     => (Nd ((Lf STARTTT) :: (inline @ [Lf ENDTT])))
+     => (Nd ((Lf (Tok.STARTTT STARTTT)) :: (inline @ [Lf (Tok.ENDTT)])))
 ;
 
 u : STARTU inline* ENDU
-    => (Nd ((Lf STARTU) :: (inline @ [Lf ENDU])))
+    => (Nd ((Lf (Tok.STARTU STARTU)) :: (inline @ [Lf (Tok.ENDU)])))
 ;
 
 ul : STARTUL cdata_opt li+ ENDUL
-     => (Nd (((Lf STARTUL) :: (cdata_opt @ li @ [Lf ENDUL]))))
+     => (Nd (((Lf (Tok.STARTUL STARTUL)) :: (cdata_opt @ li @
+                                             [Lf (Tok.ENDUL)]))))
 ;
 
 var : STARTVAR inline* ENDVAR
-      => (Nd ((Lf STARTVAR) :: (inline @ [Lf ENDVAR])))
+      => (Nd ((Lf (Tok.STARTVAR STARTVAR)) :: (inline @
+                                               [Lf (Tok.ENDVAR)])))
 ;
 
 (* ______________________________________________________________________
    Miscellaneous data nonterminals
    ______________________________________________________________________ *)
 
-cdata : (PCDATA | CHAR_REF | ENTITY_REF | COMMENT)
+cdata : (PCDATA => (Tok.PCDATA PCDATA) 
+        | CHAR_REF => (Tok.CHAR_REF CHAR_REF)
+        | ENTITY_REF => (Tok.ENTITY_REF ENTITY_REF)
+        | COMMENT => (Tok.COMMENT COMMENT))
         => ((Lf SR) : HTML4Tokens.token tree)
 ;
 

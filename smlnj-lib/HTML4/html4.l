@@ -5,7 +5,7 @@
 %name HTML4Lexer;
 
 %defs (
-open HTML4Tokens
+open HTML4TokenUtils
 
 fun eof() = EOF
 type lex_result = token

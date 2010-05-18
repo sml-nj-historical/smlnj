@@ -1,17 +1,16 @@
 (* ______________________________________________________________________
-   html4-lex-test.cm
+   html4-utils.sml
+
+   Defines a set of utility data types and functions for the HTML 4 parser.
    ______________________________________________________________________ *)
 
-Group is
-    $/basis.cm
-    $/smlnj-lib.cm
-    $/ml-lpt-lib.cm
+structure HTML4Utils = struct
 
-    html4-lex-test-toks.sml
-    html4-token-utils.sml
-    html4.l : ml-ulex
-    html4-lex-test.sml
+datatype 'a tree = Nd of 'a tree list
+                 | Lf of 'a
+
+end
 
 (* ______________________________________________________________________
-   End of html4-lex-test.cm
+   End of html4-utils.sml
    ______________________________________________________________________ *)
