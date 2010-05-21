@@ -16,7 +16,7 @@ fun optListToList NONE = []
 
 );
 
-%tokens        : OPENTAG of Atom.atom * string
+%tokens        : OPENTAG of Atom.atom * HTML4Utils.tag_payload
                | CLOSETAG of Atom.atom
                | COMMENT of string
                | PCDATA of string
@@ -25,187 +25,187 @@ fun optListToList NONE = []
                | ENTITY_REF of Atom.atom
                | XML_PROCESSING of string
                (* HTML 4 element tokens. *)
-               | STARTA of string
+               | STARTA of HTML4Utils.tag_payload
                | ENDA
-               | STARTABBR of string
+               | STARTABBR of HTML4Utils.tag_payload
                | ENDABBR
-               | STARTACRONYM of string
+               | STARTACRONYM of HTML4Utils.tag_payload
                | ENDACRONYM
-               | STARTADDRESS of string
+               | STARTADDRESS of HTML4Utils.tag_payload
                | ENDADDRESS
-               | STARTAPPLET of string
+               | STARTAPPLET of HTML4Utils.tag_payload
                | ENDAPPLET
-               | STARTAREA of string
+               | STARTAREA of HTML4Utils.tag_payload
                (* No END tag for AREA element. *)
-               | STARTB of string
+               | STARTB of HTML4Utils.tag_payload
                | ENDB
-               | STARTBASE of string
+               | STARTBASE of HTML4Utils.tag_payload
                (* No END tag for BASE element. *)
-               | STARTBASEFONT of string
+               | STARTBASEFONT of HTML4Utils.tag_payload
                (* No END tag for BASEFONT element. *)
-               | STARTBDO of string
+               | STARTBDO of HTML4Utils.tag_payload
                | ENDBDO
-               | STARTBIG of string
+               | STARTBIG of HTML4Utils.tag_payload
                | ENDBIG
-               | STARTBLOCKQUOTE of string
+               | STARTBLOCKQUOTE of HTML4Utils.tag_payload
                | ENDBLOCKQUOTE
-               | STARTBODY of string
+               | STARTBODY of HTML4Utils.tag_payload
                | ENDBODY
-               | STARTBR of string
+               | STARTBR of HTML4Utils.tag_payload
                (* No END tag for BR element. *)
-               | STARTBUTTON of string
+               | STARTBUTTON of HTML4Utils.tag_payload
                | ENDBUTTON
-               | STARTCAPTION of string
+               | STARTCAPTION of HTML4Utils.tag_payload
                | ENDCAPTION
-               | STARTCENTER of string
+               | STARTCENTER of HTML4Utils.tag_payload
                | ENDCENTER
-               | STARTCITE of string
+               | STARTCITE of HTML4Utils.tag_payload
                | ENDCITE
-               | STARTCODE of string
+               | STARTCODE of HTML4Utils.tag_payload
                | ENDCODE
-               | STARTCOL of string
+               | STARTCOL of HTML4Utils.tag_payload
                (* No END tag for COL element. *)
-               | STARTCOLGROUP of string
+               | STARTCOLGROUP of HTML4Utils.tag_payload
                | ENDCOLGROUP
-               | STARTDD of string
+               | STARTDD of HTML4Utils.tag_payload
                | ENDDD
-               | STARTDEL of string
+               | STARTDEL of HTML4Utils.tag_payload
                | ENDDEL
-               | STARTDFN of string
+               | STARTDFN of HTML4Utils.tag_payload
                | ENDDFN
-               | STARTDIR of string
+               | STARTDIR of HTML4Utils.tag_payload
                | ENDDIR
-               | STARTDIV of string
+               | STARTDIV of HTML4Utils.tag_payload
                | ENDDIV
-               | STARTDL of string
+               | STARTDL of HTML4Utils.tag_payload
                | ENDDL
-               | STARTDT of string
+               | STARTDT of HTML4Utils.tag_payload
                | ENDDT
-               | STARTEM of string
+               | STARTEM of HTML4Utils.tag_payload
                | ENDEM
-               | STARTFIELDSET of string
+               | STARTFIELDSET of HTML4Utils.tag_payload
                | ENDFIELDSET
-               | STARTFONT of string
+               | STARTFONT of HTML4Utils.tag_payload
                | ENDFONT
-               | STARTFORM of string
+               | STARTFORM of HTML4Utils.tag_payload
                | ENDFORM
-               | STARTFRAME of string
+               | STARTFRAME of HTML4Utils.tag_payload
                (* No END tag for FRAME element. *)
-               | STARTFRAMESET of string
+               | STARTFRAMESET of HTML4Utils.tag_payload
                | ENDFRAMESET
-               | STARTH1 of string
+               | STARTH1 of HTML4Utils.tag_payload
                | ENDH1
-               | STARTH2 of string
+               | STARTH2 of HTML4Utils.tag_payload
                | ENDH2
-               | STARTH3 of string
+               | STARTH3 of HTML4Utils.tag_payload
                | ENDH3
-               | STARTH4 of string
+               | STARTH4 of HTML4Utils.tag_payload
                | ENDH4
-               | STARTH5 of string
+               | STARTH5 of HTML4Utils.tag_payload
                | ENDH5
-               | STARTH6 of string
+               | STARTH6 of HTML4Utils.tag_payload
                | ENDH6
-               | STARTHEAD of string
+               | STARTHEAD of HTML4Utils.tag_payload
                | ENDHEAD
-               | STARTHR of string
+               | STARTHR of HTML4Utils.tag_payload
                (* No END tag for HR element. *)
-               | STARTHTML of string
+               | STARTHTML of HTML4Utils.tag_payload
                | ENDHTML
-               | STARTI of string
+               | STARTI of HTML4Utils.tag_payload
                | ENDI
-               | STARTIFRAME of string
+               | STARTIFRAME of HTML4Utils.tag_payload
                | ENDIFRAME
-               | STARTIMG of string
+               | STARTIMG of HTML4Utils.tag_payload
                (* No END tag for IMG element. *)
-               | STARTINPUT of string
+               | STARTINPUT of HTML4Utils.tag_payload
                (* No END tag for INPUT element. *)
-               | STARTINS of string
+               | STARTINS of HTML4Utils.tag_payload
                | ENDINS
-               | STARTISINDEX of string
+               | STARTISINDEX of HTML4Utils.tag_payload
                (* No END tag for ISINDEX element. *)
-               | STARTKBD of string
+               | STARTKBD of HTML4Utils.tag_payload
                | ENDKBD
-               | STARTLABEL of string
+               | STARTLABEL of HTML4Utils.tag_payload
                | ENDLABEL
-               | STARTLEGEND of string
+               | STARTLEGEND of HTML4Utils.tag_payload
                | ENDLEGEND
-               | STARTLI of string
+               | STARTLI of HTML4Utils.tag_payload
                | ENDLI
-               | STARTLINK of string
+               | STARTLINK of HTML4Utils.tag_payload
                (* No END tag for LINK element. *)
-               | STARTMAP of string
+               | STARTMAP of HTML4Utils.tag_payload
                | ENDMAP
-               | STARTMENU of string
+               | STARTMENU of HTML4Utils.tag_payload
                | ENDMENU
-               | STARTMETA of string
+               | STARTMETA of HTML4Utils.tag_payload
                (* No END tag for META element. *)
-               | STARTNOFRAMES of string
+               | STARTNOFRAMES of HTML4Utils.tag_payload
                | ENDNOFRAMES
-               | STARTNOSCRIPT of string
+               | STARTNOSCRIPT of HTML4Utils.tag_payload
                | ENDNOSCRIPT
-               | STARTOBJECT of string
+               | STARTOBJECT of HTML4Utils.tag_payload
                | ENDOBJECT
-               | STARTOL of string
+               | STARTOL of HTML4Utils.tag_payload
                | ENDOL
-               | STARTOPTGROUP of string
+               | STARTOPTGROUP of HTML4Utils.tag_payload
                | ENDOPTGROUP
-               | STARTOPTION of string
+               | STARTOPTION of HTML4Utils.tag_payload
                | ENDOPTION
-               | STARTP of string
+               | STARTP of HTML4Utils.tag_payload
                | ENDP
-               | STARTPARAM of string
+               | STARTPARAM of HTML4Utils.tag_payload
                (* No END tag for PARAM element. *)
-               | STARTPRE of string
+               | STARTPRE of HTML4Utils.tag_payload
                | ENDPRE
-               | STARTQ of string
+               | STARTQ of HTML4Utils.tag_payload
                | ENDQ
-               | STARTS of string
+               | STARTS of HTML4Utils.tag_payload
                | ENDS
-               | STARTSAMP of string
+               | STARTSAMP of HTML4Utils.tag_payload
                | ENDSAMP
-               | STARTSCRIPT of string
+               | STARTSCRIPT of HTML4Utils.tag_payload
                | ENDSCRIPT
-               | STARTSELECT of string
+               | STARTSELECT of HTML4Utils.tag_payload
                | ENDSELECT
-               | STARTSMALL of string
+               | STARTSMALL of HTML4Utils.tag_payload
                | ENDSMALL
-               | STARTSPAN of string
+               | STARTSPAN of HTML4Utils.tag_payload
                | ENDSPAN
-               | STARTSTRIKE of string
+               | STARTSTRIKE of HTML4Utils.tag_payload
                | ENDSTRIKE
-               | STARTSTRONG of string
+               | STARTSTRONG of HTML4Utils.tag_payload
                | ENDSTRONG
-               | STARTSTYLE of string
+               | STARTSTYLE of HTML4Utils.tag_payload
                | ENDSTYLE
-               | STARTSUB of string
+               | STARTSUB of HTML4Utils.tag_payload
                | ENDSUB
-               | STARTSUP of string
+               | STARTSUP of HTML4Utils.tag_payload
                | ENDSUP
-               | STARTTABLE of string
+               | STARTTABLE of HTML4Utils.tag_payload
                | ENDTABLE
-               | STARTTBODY of string
+               | STARTTBODY of HTML4Utils.tag_payload
                | ENDTBODY
-               | STARTTD of string
+               | STARTTD of HTML4Utils.tag_payload
                | ENDTD
-               | STARTTEXTAREA of string
+               | STARTTEXTAREA of HTML4Utils.tag_payload
                | ENDTEXTAREA
-               | STARTTFOOT of string
+               | STARTTFOOT of HTML4Utils.tag_payload
                | ENDTFOOT
-               | STARTTH of string
+               | STARTTH of HTML4Utils.tag_payload
                | ENDTH
-               | STARTTHEAD of string
+               | STARTTHEAD of HTML4Utils.tag_payload
                | ENDTHEAD
-               | STARTTITLE of string
+               | STARTTITLE of HTML4Utils.tag_payload
                | ENDTITLE
-               | STARTTR of string
+               | STARTTR of HTML4Utils.tag_payload
                | ENDTR
-               | STARTTT of string
+               | STARTTT of HTML4Utils.tag_payload
                | ENDTT
-               | STARTU of string
+               | STARTU of HTML4Utils.tag_payload
                | ENDU
-               | STARTUL of string
+               | STARTUL of HTML4Utils.tag_payload
                | ENDUL
-               | STARTVAR of string
+               | STARTVAR of HTML4Utils.tag_payload
                | ENDVAR
 ;
 

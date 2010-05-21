@@ -7,6 +7,26 @@
 
 structure HTML4TokenUtils = struct
 
+(* ____________________________________________________________ *)
+(* Attribute handling *)
+(* XXX Is this too heavyweight?  It certainly gives us some
+   flexibility in the future. *)
+
+structure HTML4AttrParser = HTML4AttrParseFn(HTML4AttrLexer)
+
+fun parseAttrsFromStream inStream =
+    let
+        val sourceMap = AntlrStreamPos.mkSourcemap ()
+        val lex = HTML4AttrLexer.lex sourceMap
+        val stream = HTML4AttrLexer.streamifyInstream inStream
+        val (result, _, _) = HTML4AttrParser.parse lex stream
+    in
+        if isSome result then valOf result else []
+    end
+
+fun parseAttrs inStr = parseAttrsFromStream (TextIO.openString inStr)
+
+(* ____________________________________________________________ *)
 open HTML4Tokens
 
 val strict_tuple_list = [
@@ -109,24 +129,28 @@ val frameset_tuple_list = [
     ("NOFRAMES", STARTNOFRAMES, SOME ENDNOFRAMES)
 ]
 
-fun endTagNameTest ch = (case ch of
-                             #" " => true | #"\t" => true | #"\r" => true 
-                           | #"\n" => true | #">" => true | _ => false)
+val endTagNameTest = Char.notContains " \t\r\n>"
 
-fun split ch_test = 
-    let fun loop [] = []
-          | loop (ch :: rst) = if ch_test ch then [] else ch :: (loop rst)
-    in loop end
+fun splitTagStart inStr =
+    Substring.splitl endTagNameTest (Substring.full inStr)
 
 fun extractTag str =
-    let val split_tag = split endTagNameTest
-        val ch_list = case String.explode str of
-                          #"<" :: #"/" :: rst => rst
-                        | #"<" :: rst => rst
-                        | rst => rst
-        val ch_list' = split_tag ch_list
+    let
+        val (tagStart, _) = splitTagStart str
+        val tagNameChs = case Substring.explode tagStart
+                          of #"<" :: #"/" :: rst => rst
+                           | #"<" :: rst => rst
+                           | rst => rst
     in
-        Atom.atom (String.implode (map Char.toUpper ch_list'))
+        Atom.atom (String.implode (map Char.toUpper tagNameChs))
+    end
+
+fun extractAttrs str =
+    let 
+        val (_, tagRest) = splitTagStart str
+        val (tagRest', _) = Substring.splitr (fn c => c = #">") tagRest
+    in
+        parseAttrs (Substring.string tagRest')
     end
 
 structure AtomMap : ORD_MAP = RedBlackMapFn(struct
@@ -160,15 +184,15 @@ val open_map_ref = ref strict_open_map
 
 val close_map_ref = ref strict_close_map
 
-fun mkOpenTag payload =
-    let val tag_atom = extractTag payload
+fun mkOpenTag payloadStr =
+    let val tag_atom = extractTag payloadStr
     in case AtomMap.find(!open_map_ref, tag_atom) of
-           NONE => OPENTAG (tag_atom, payload)
-         | SOME ctor => ctor payload
+           NONE => OPENTAG (tag_atom, (payloadStr, extractAttrs payloadStr))
+         | SOME ctor => ctor (payloadStr, extractAttrs payloadStr)
     end
 
-fun mkCloseTag payload =
-    let val tag_atom = extractTag payload
+fun mkCloseTag payloadStr =
+    let val tag_atom = extractTag payloadStr
     in case AtomMap.find(!close_map_ref, tag_atom) of
            NONE => CLOSETAG tag_atom
          | SOME tok => tok
