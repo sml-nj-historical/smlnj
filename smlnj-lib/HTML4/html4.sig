@@ -1,12 +1,10 @@
 (* ______________________________________________________________________
-   html4.sml
+   html4.sig
 
-   Defines the main HTML4 structure.
+   Main signature for the HTML4 library.
    ______________________________________________________________________ *)
 
-structure HTML4Parser = HTML4ParseFn(HTML4Lexer)
-
-structure HTML4 : HTML4 = struct
+signature HTML4 = sig
 
     type pcdata = string
 
@@ -168,30 +166,14 @@ structure HTML4 : HTML4 = struct
 
     (* ____________________________________________________________ *)
 
-    fun parseStream inStream =
-        let
-            val sourceMap = AntlrStreamPos.mkSourcemap ()
-            val lex = HTML4Lexer.lex sourceMap
-            val stream = HTML4Lexer.streamifyInstream inStream
-            val (result, _, _) = HTML4Parser.parse lex stream
-        in
-            result
-        end
+    val parseStream :
+        TextIO.instream -> HTML4Tokens.token HTML4Utils.parsetree option
+    val fromString : string -> html option
+    val toString : html -> string
+    val fromParseTree : HTML4Tokens.token HTML4Utils.parsetree -> html option
 
-    fun fromParseTree pt =
-        SOME (HTML { version = NONE, head = [], content = BODY([],[]) })
-
-    fun fromString str = let
-        val pt_opt = parseStream (TextIO.openString str)
-    in case pt_opt
-        of NONE => NONE 
-         | SOME pt => fromParseTree pt
-    end
-
-    fun toString doc = "<HTML></HTML>"
-
-end (* HTML4 *)
+end
 
 (* ______________________________________________________________________
-   End of html4.sml
+   End of html4.sig
    ______________________________________________________________________ *)

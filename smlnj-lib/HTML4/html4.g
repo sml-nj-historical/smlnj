@@ -211,9 +211,7 @@ fun optListToList NONE = []
 
 %start document;
 
-(*
-%entry document, body, flow, block, inline;
-*)
+%entry body, flow, block, inline;
 
 document : cdata_opt
            (DOCTYPE cdata_opt => ((Lf (Tok.DOCTYPE DOCTYPE)) :: cdata_opt))?
@@ -222,7 +220,8 @@ document : cdata_opt
            head
            (body | frameset)
            (ENDHTML cdata_opt => ((Lf (Tok.ENDHTML)) :: cdata_opt))?
-           => (Nd (cdata_opt @ (optListToList SR1) @ (optListToList SR2) @
+           => (Nd (Atom.atom "document", 
+                   cdata_opt @ (optListToList SR1) @ (optListToList SR2) @
                    (head :: SR3 :: (optListToList SR4))))
 ;
 
@@ -233,14 +232,16 @@ document : cdata_opt
 head : (STARTHEAD cdata_opt => ((Lf (Tok.STARTHEAD STARTHEAD)) :: cdata_opt))?
        (head_content cdata_opt => (head_content :: cdata_opt))*
        (ENDHEAD cdata_opt => ((Lf (Tok.ENDHEAD)) :: cdata_opt))?
-       => (Nd ((optListToList SR1) @ (foldr op@ [] SR2) @ (optListToList SR3)))
+       => (Nd (Atom.atom "head",
+               (optListToList SR1) @ (foldr op@ [] SR2) @ (optListToList SR3)))
 ;
 
 head_content : title | base | script | style | meta | link | object
 ;
 
 title : STARTTITLE cdata_opt ENDTITLE
-        => (Nd ((Lf (Tok.STARTTITLE STARTTITLE)) ::
+        => (Nd (Atom.atom "title",
+                (Lf (Tok.STARTTITLE STARTTITLE)) ::
                 (cdata_opt @ [Lf (Tok.ENDTITLE)])))
 ;
 
@@ -249,12 +250,14 @@ base : STARTBASE
 ;
 
 script : STARTSCRIPT cdata_opt ENDSCRIPT
-         => (Nd ((Lf (Tok.STARTSCRIPT STARTSCRIPT)) ::
+         => (Nd (Atom.atom "script",
+                 (Lf (Tok.STARTSCRIPT STARTSCRIPT)) ::
                  (cdata_opt @ [Lf (Tok.ENDSCRIPT)])))
 ;
 
 style : STARTSTYLE cdata_opt ENDSTYLE
-         => (Nd ((Lf (Tok.STARTSTYLE STARTSTYLE)) ::
+         => (Nd (Atom.atom "style",
+                 (Lf (Tok.STARTSTYLE STARTSTYLE)) ::
                  (cdata_opt @ [Lf (Tok.ENDSTYLE)])))
 ;
 
@@ -267,7 +270,8 @@ link : STARTLINK
 ;
 
 object : STARTOBJECT (param | flow)* ENDOBJECT
-         => (Nd ((Lf (Tok.STARTOBJECT STARTOBJECT)) ::
+         => (Nd (Atom.atom "object",
+                 (Lf (Tok.STARTOBJECT STARTOBJECT)) ::
                  (SR @ [Lf (Tok.ENDOBJECT)])))
 ;
 
@@ -280,9 +284,10 @@ param : STARTPARAM
    ______________________________________________________________________ *)
 
 body : STARTBODY body_rest
-       => (Nd ((Lf (Tok.STARTBODY STARTBODY)) :: body_rest))
+       => (Nd (Atom.atom "body",
+               (Lf (Tok.STARTBODY STARTBODY)) :: body_rest))
      | (block | ins | del) body_rest
-       => (Nd (SR :: body_rest))
+       => (Nd (Atom.atom "body", SR :: body_rest))
 ;
 
 body_rest : (block | script | ins | del | cdata)*
@@ -396,26 +401,31 @@ formctrl : input
 (* Actual elements *)
 
 a : STARTA inline* ENDA
-         => (Nd ((Lf (Tok.STARTA STARTA)) :: (inline @ [Lf (Tok.ENDA)])))
+         => (Nd (Atom.atom "a",
+                 (Lf (Tok.STARTA STARTA)) :: (inline @ [Lf (Tok.ENDA)])))
 ;
 
 abbr : STARTABBR inline* ENDABBR
-         => (Nd ((Lf (Tok.STARTABBR STARTABBR)) ::
+         => (Nd (Atom.atom "abbr",
+                 (Lf (Tok.STARTABBR STARTABBR)) ::
                  (inline @ [Lf (Tok.ENDABBR)])))
 ;
 
 acronym : STARTACRONYM inline* ENDACRONYM
-         => (Nd ((Lf (Tok.STARTACRONYM STARTACRONYM)) ::
+         => (Nd (Atom.atom "acronym",
+                 (Lf (Tok.STARTACRONYM STARTACRONYM)) ::
                  (inline @ [Lf (Tok.ENDACRONYM)])))
 ;
 
 address : STARTADDRESS inline* ENDADDRESS
-         => (Nd ((Lf (Tok.STARTADDRESS STARTADDRESS)) ::
+         => (Nd (Atom.atom "addresss",
+                 (Lf (Tok.STARTADDRESS STARTADDRESS)) ::
                  (inline @ [Lf (Tok.ENDADDRESS)])))
 ;
 
 applet : STARTAPPLET (param | flow)* ENDAPPLET
-         => (Nd ((Lf (Tok.STARTAPPLET STARTAPPLET)) ::
+         => (Nd (Atom.atom "applet",
+                 (Lf (Tok.STARTAPPLET STARTAPPLET)) ::
                  (SR @ [Lf (Tok.ENDAPPLET)])))
 ;
 
@@ -424,7 +434,8 @@ area : STARTAREA
 ;
 
 b : STARTB inline* ENDB
-         => (Nd ((Lf (Tok.STARTB STARTB)) :: (inline @ [Lf (Tok.ENDB)])))
+         => (Nd (Atom.atom "b",
+                 (Lf (Tok.STARTB STARTB)) :: (inline @ [Lf (Tok.ENDB)])))
 ;
 
 basefont : STARTBASEFONT
@@ -432,17 +443,20 @@ basefont : STARTBASEFONT
 ;
 
 bdo : STARTBDO inline* ENDBDO
-         => (Nd ((Lf (Tok.STARTBDO STARTBDO)) ::
+         => (Nd (Atom.atom "bdo",
+                 (Lf (Tok.STARTBDO STARTBDO)) ::
                  (inline @ [Lf (Tok.ENDBDO)])))
 ;
 
 big : STARTBIG inline* ENDBIG
-         => (Nd ((Lf (Tok.STARTBIG STARTBIG)) ::
+         => (Nd (Atom.atom "big",
+                 (Lf (Tok.STARTBIG STARTBIG)) ::
                  (inline @ [Lf (Tok.ENDBIG)])))
 ;
 
 blockquote : STARTBLOCKQUOTE (block | script | cdata)+ ENDBLOCKQUOTE
-         => (Nd ((Lf (Tok.STARTBLOCKQUOTE STARTBLOCKQUOTE)) ::
+         => (Nd (Atom.atom "blockquote",
+                 (Lf (Tok.STARTBLOCKQUOTE STARTBLOCKQUOTE)) ::
                  (SR @ [Lf (Tok.ENDBLOCKQUOTE)])))
 ;
 
@@ -451,27 +465,32 @@ br : STARTBR
 ;
 
 button : STARTBUTTON flow* ENDBUTTON
-         => (Nd ((Lf (Tok.STARTBUTTON STARTBUTTON)) ::
+         => (Nd (Atom.atom "button",
+                 (Lf (Tok.STARTBUTTON STARTBUTTON)) ::
                  (flow @ [Lf (Tok.ENDBUTTON)])))
 ;
 
 caption : STARTCAPTION inline* ENDCAPTION
-          => (Nd ((Lf (Tok.STARTCAPTION STARTCAPTION)) ::
+          => (Nd (Atom.atom "caption",
+                  (Lf (Tok.STARTCAPTION STARTCAPTION)) ::
                   (inline @ [Lf (Tok.ENDCAPTION)])))
 ;
 
 center : STARTCENTER flow* ENDCENTER
-         => (Nd ((Lf (Tok.STARTCENTER STARTCENTER)) ::
+         => (Nd (Atom.atom "center",
+                 (Lf (Tok.STARTCENTER STARTCENTER)) ::
                  (flow @ [Lf (Tok.ENDCENTER)])))
 ;
 
 cite : STARTCITE inline* ENDCITE
-       => (Nd ((Lf (Tok.STARTCITE STARTCITE)) ::
+       => (Nd (Atom.atom "cite",
+               (Lf (Tok.STARTCITE STARTCITE)) ::
                (inline @ [Lf (Tok.ENDCITE)])))
 ;
 
 code : STARTCODE inline* ENDCODE
-       => (Nd ((Lf (Tok.STARTCODE STARTCODE)) ::
+       => (Nd (Atom.atom "code",
+               (Lf (Tok.STARTCODE STARTCODE)) ::
                (inline @ [Lf (Tok.ENDCODE)])))
 ;
 
@@ -482,60 +501,72 @@ col : STARTCOL
 colgroup : STARTCOLGROUP cdata_opt
            (col cdata_opt => (col :: cdata_opt))*
            (ENDCOLGROUP => (Lf (Tok.ENDCOLGROUP)))?
-           => (Nd ((Lf (Tok.STARTCOLGROUP STARTCOLGROUP)) ::
+           => (Nd (Atom.atom "colgroup",
+                   (Lf (Tok.STARTCOLGROUP STARTCOLGROUP)) ::
                    (cdata_opt @ (foldr op@ [] SR1) @ (optToList SR2))))
 ;
 
 dd : STARTDD flow* (ENDDD => (Lf (Tok.ENDDD)))?
-     => (Nd ((Lf (Tok.STARTDD STARTDD)) :: (flow @ (optToList SR))))
+     => (Nd (Atom.atom "dd",
+             (Lf (Tok.STARTDD STARTDD)) :: (flow @ (optToList SR))))
 ;
 
 del : STARTDEL flow* ENDDEL
-      => (Nd ((Lf (Tok.STARTDEL STARTDEL)) ::
+      => (Nd (Atom.atom "del",
+              (Lf (Tok.STARTDEL STARTDEL)) ::
               (flow @ [Lf (Tok.ENDDEL)])))
 ;
 
 dfn : STARTDFN inline* ENDDFN
-      => (Nd ((Lf (Tok.STARTDFN STARTDFN)) ::
+      => (Nd (Atom.atom "dfn",
+              (Lf (Tok.STARTDFN STARTDFN)) ::
               (inline @ [Lf (Tok.ENDDFN)])))
 ;
 
 dir : STARTDIR cdata_opt li+ ENDDIR
-      => (Nd ((Lf (Tok.STARTDIR STARTDIR)) ::
+      => (Nd (Atom.atom "dir",
+              (Lf (Tok.STARTDIR STARTDIR)) ::
               (cdata_opt @ li @ [Lf (Tok.ENDDIR)])))
 ;
 
 div : STARTDIV flow* ENDDIV
-      => (Nd ((Lf (Tok.STARTDIV STARTDIV)) ::
+      => (Nd (Atom.atom "div",
+              (Lf (Tok.STARTDIV STARTDIV)) ::
               (flow @ [Lf (Tok.ENDDIV)])))
 ;
 
 dl : STARTDL cdata_opt (dt | dd)+ ENDDL
-     => (Nd ((Lf (Tok.STARTDL STARTDL)) ::
+     => (Nd (Atom.atom "dl",
+             (Lf (Tok.STARTDL STARTDL)) ::
              (cdata_opt @ SR @ [Lf (Tok.ENDDL)])))
 ;
 
 dt : STARTDT inline* (ENDDT => (Lf (Tok.ENDDT)))?
-     => (Nd ((Lf (Tok.STARTDT STARTDT)) :: (inline @ (optToList SR))))
+     => (Nd (Atom.atom "dt",
+             (Lf (Tok.STARTDT STARTDT)) :: (inline @ (optToList SR))))
 ;
 
 em : STARTEM inline* ENDEM
-     => (Nd ((Lf (Tok.STARTEM STARTEM)) :: (inline @ [Lf (Tok.ENDEM)])))
+     => (Nd (Atom.atom "em",
+             (Lf (Tok.STARTEM STARTEM)) :: (inline @ [Lf (Tok.ENDEM)])))
 ;
 
 fieldset : STARTFIELDSET cdata_opt legend flow* ENDFIELDSET
-           => (Nd ((Lf (Tok.STARTFIELDSET STARTFIELDSET)) ::
+           => (Nd (Atom.atom "fieldset",
+                   (Lf (Tok.STARTFIELDSET STARTFIELDSET)) ::
                    (cdata_opt @ [legend] @ flow @
                     [Lf (Tok.ENDFIELDSET)])))
 ;
 
 font : STARTFONT inline* ENDFONT
-       => (Nd ((Lf (Tok.STARTFONT STARTFONT)) ::
+       => (Nd (Atom.atom "font",
+               (Lf (Tok.STARTFONT STARTFONT)) ::
                (inline @ [Lf (Tok.ENDFONT)])))
 ;
 
 form : STARTFORM (cdata | block | script)+ ENDFORM
-       => (Nd ((Lf (Tok.STARTFORM STARTFORM)) ::
+       => (Nd (Atom.atom "form",
+               (Lf (Tok.STARTFORM STARTFORM)) ::
                (SR @ [Lf (Tok.ENDFORM)])))
 ;
 
@@ -544,32 +575,39 @@ frame : STARTFRAME
 ;
 
 frameset : STARTFRAMESET (frameset | frame | noframes | cdata)+ ENDFRAMESET
-           => (Nd ((Lf (Tok.STARTFRAMESET STARTFRAMESET)) ::
+           => (Nd (Atom.atom "frameset",
+                   (Lf (Tok.STARTFRAMESET STARTFRAMESET)) ::
                    (SR @ [Lf (Tok.ENDFRAMESET)])))
 ;
 
 h1 : STARTH1 inline* ENDH1
-     => (Nd ((Lf (Tok.STARTH1 STARTH1)) :: (inline @ [Lf (Tok.ENDH1)])))
+     => (Nd (Atom.atom "h1",
+             (Lf (Tok.STARTH1 STARTH1)) :: (inline @ [Lf (Tok.ENDH1)])))
 ;
 
 h2 : STARTH2 inline* ENDH2
-     => (Nd ((Lf (Tok.STARTH2 STARTH2)) :: (inline @ [Lf (Tok.ENDH2)])))
+     => (Nd (Atom.atom "h2",
+             (Lf (Tok.STARTH2 STARTH2)) :: (inline @ [Lf (Tok.ENDH2)])))
 ;
 
 h3 : STARTH3 inline* ENDH3
-     => (Nd ((Lf (Tok.STARTH3 STARTH3)) :: (inline @ [Lf (Tok.ENDH3)])))
+     => (Nd (Atom.atom "h3",
+             (Lf (Tok.STARTH3 STARTH3)) :: (inline @ [Lf (Tok.ENDH3)])))
 ;
 
 h4 : STARTH4 inline* ENDH4
-     => (Nd ((Lf (Tok.STARTH4 STARTH4)) :: (inline @ [Lf (Tok.ENDH4)])))
+     => (Nd (Atom.atom "h4",
+             (Lf (Tok.STARTH4 STARTH4)) :: (inline @ [Lf (Tok.ENDH4)])))
 ;
 
 h5 : STARTH5 inline* ENDH5
-     => (Nd ((Lf (Tok.STARTH5 STARTH5)) :: (inline @ [Lf (Tok.ENDH5)])))
+     => (Nd (Atom.atom "h5",
+             (Lf (Tok.STARTH5 STARTH5)) :: (inline @ [Lf (Tok.ENDH5)])))
 ;
 
 h6 : STARTH6 inline* ENDH6
-     => (Nd ((Lf (Tok.STARTH6 STARTH6)) :: (inline @ [Lf (Tok.ENDH6)])))
+     => (Nd (Atom.atom "h6",
+             (Lf (Tok.STARTH6 STARTH6)) :: (inline @ [Lf (Tok.ENDH6)])))
 ;
 
 hr : STARTHR
@@ -577,12 +615,14 @@ hr : STARTHR
 ;
 
 i : STARTI inline* ENDI
-         => (Nd ((Lf (Tok.STARTI STARTI)) ::
+         => (Nd (Atom.atom "i",
+                 (Lf (Tok.STARTI STARTI)) ::
                  (inline @ [Lf (Tok.ENDI)])))
 ;
 
 iframe : STARTIFRAME flow* ENDIFRAME
-         => (Nd ((Lf (Tok.STARTIFRAME STARTIFRAME)) ::
+         => (Nd (Atom.atom "iframe",
+                 (Lf (Tok.STARTIFRAME STARTIFRAME)) ::
                  (flow @ [Lf (Tok.ENDIFRAME)])))
 ;
 
@@ -595,7 +635,8 @@ input : STARTINPUT
 ;
 
 ins : STARTINS flow* ENDINS
-         => (Nd ((Lf (Tok.STARTINS STARTINS)) ::
+         => (Nd (Atom.atom "ins",
+                 (Lf (Tok.STARTINS STARTINS)) ::
                  (flow @ [Lf (Tok.ENDINS)])))
 ;
 
@@ -604,50 +645,60 @@ isindex : STARTISINDEX
 ;
 
 kbd : STARTKBD inline* ENDKBD
-         => (Nd ((Lf (Tok.STARTKBD STARTKBD)) ::
+         => (Nd (Atom.atom "kbd",
+                 (Lf (Tok.STARTKBD STARTKBD)) ::
                  (inline @ [Lf (Tok.ENDKBD)])))
 ;
 
 label : STARTLABEL inline* ENDLABEL
-         => (Nd ((Lf (Tok.STARTLABEL STARTLABEL)) ::
+         => (Nd (Atom.atom "label",
+                 (Lf (Tok.STARTLABEL STARTLABEL)) ::
                  (inline @ [Lf (Tok.ENDLABEL)])))
 ;
 
 legend : STARTLEGEND inline* ENDLEGEND
-         => (Nd ((Lf (Tok.STARTLEGEND STARTLEGEND)) ::
+         => (Nd (Atom.atom "legend",
+                 (Lf (Tok.STARTLEGEND STARTLEGEND)) ::
                  (inline @ [Lf (Tok.ENDLEGEND)])))
 ;
 
 li : STARTLI flow* (ENDLI => (Lf (Tok.ENDLI)))?
-     => (Nd ((Lf (Tok.STARTLI STARTLI)) :: (flow @ (optToList SR))))
+     => (Nd (Atom.atom "li",
+             (Lf (Tok.STARTLI STARTLI)) :: (flow @ (optToList SR))))
 ;
 
 map : STARTMAP (cdata | block | area)+ ENDMAP
-      => (Nd ((Lf (Tok.STARTMAP STARTMAP)) :: (SR @ [Lf (Tok.ENDMAP)])))
+      => (Nd (Atom.atom "map",
+              (Lf (Tok.STARTMAP STARTMAP)) :: (SR @ [Lf (Tok.ENDMAP)])))
 ;
 
 menu : STARTMENU cdata_opt li+ ENDMENU
-       => (Nd ((Lf (Tok.STARTMENU STARTMENU)) ::
+       => (Nd (Atom.atom "menu",
+               (Lf (Tok.STARTMENU STARTMENU)) ::
                (cdata_opt @ li @ [Lf (Tok.ENDMENU)])))
 ;
 
 noframes : STARTNOFRAMES body ENDNOFRAMES
-           => (Nd [Lf (Tok.STARTNOFRAMES STARTNOFRAMES), body,
-                   Lf (Tok.ENDNOFRAMES)])
+           => (Nd (Atom.atom "noframes",
+                   [Lf (Tok.STARTNOFRAMES STARTNOFRAMES), body,
+                    Lf (Tok.ENDNOFRAMES)]))
 ;
 
 noscript : STARTNOSCRIPT (cdata | block)+ ENDNOSCRIPT
-           => (Nd ((Lf (Tok.STARTNOSCRIPT STARTNOSCRIPT)) ::
+           => (Nd (Atom.atom "noscript",
+                   (Lf (Tok.STARTNOSCRIPT STARTNOSCRIPT)) ::
                    (SR @ [Lf (Tok.ENDNOSCRIPT)])))
 ;
 
 ol : STARTOL cdata_opt li+ ENDOL
-     => (Nd ((Lf (Tok.STARTOL STARTOL)) ::
+     => (Nd (Atom.atom "ol",
+             (Lf (Tok.STARTOL STARTOL)) ::
              (cdata_opt @ li @ [Lf (Tok.ENDOL)])))
 ;
 
 optgroup : STARTOPTGROUP cdata_opt option+ ENDOPTGROUP cdata_opt
-           => (Nd ((Lf (Tok.STARTOPTGROUP STARTOPTGROUP)) ::
+           => (Nd (Atom.atom "optgroup",
+                   (Lf (Tok.STARTOPTGROUP STARTOPTGROUP)) ::
                    (cdata_opt1 @ option @ ((Lf (Tok.ENDOPTGROUP))
                                            :: cdata_opt2))))
 ;
@@ -655,7 +706,8 @@ optgroup : STARTOPTGROUP cdata_opt option+ ENDOPTGROUP cdata_opt
 option : STARTOPTION cdata_opt
          (ENDOPTION cdata_opt => ((Lf (Tok.ENDOPTION)) ::
                                   cdata_opt))?
-         => (Nd ((Lf (Tok.STARTOPTION STARTOPTION)) ::
+         => (Nd (Atom.atom "option",
+                 (Lf (Tok.STARTOPTION STARTOPTION)) ::
                  (cdata_opt @ (optListToList SR))))
 ;
 
@@ -664,59 +716,71 @@ left-recursion for the inline* part.  This can be fixed by having a
 two state flow nonterminal, which the older HTML library does. *)
 
 p : STARTP inline* ENDP
-    => (Nd ((Lf (Tok.STARTP STARTP)) :: (inline @ [Lf (Tok.ENDP)])))
+    => (Nd (Atom.atom "p",
+            (Lf (Tok.STARTP STARTP)) :: (inline @ [Lf (Tok.ENDP)])))
 ;
 
 pre : STARTPRE inline* ENDPRE
-      => (Nd ((Lf (Tok.STARTPRE STARTPRE)) ::
+      => (Nd (Atom.atom "pre",
+              (Lf (Tok.STARTPRE STARTPRE)) ::
               (inline @ [Lf (Tok.ENDPRE)])))
 ;
 
 q : STARTQ inline* ENDQ
-    => (Nd ((Lf (Tok.STARTQ STARTQ)) :: (inline @ [Lf (Tok.ENDQ)])))
+    => (Nd (Atom.atom "q",
+            (Lf (Tok.STARTQ STARTQ)) :: (inline @ [Lf (Tok.ENDQ)])))
 ;
 
 s : STARTS inline* ENDS
-    => (Nd ((Lf (Tok.STARTS STARTS)) :: (inline @ [Lf (Tok.ENDS)])))
+    => (Nd (Atom.atom "s",
+            (Lf (Tok.STARTS STARTS)) :: (inline @ [Lf (Tok.ENDS)])))
 ;
 
 samp : STARTSAMP inline* ENDSAMP
-       => (Nd ((Lf (Tok.STARTSAMP STARTSAMP)) ::
+       => (Nd (Atom.atom "samp",
+               (Lf (Tok.STARTSAMP STARTSAMP)) ::
                (inline @ [Lf (Tok.ENDSAMP)])))
 ;
 
 select : STARTSELECT cdata_opt (optgroup | option)+ ENDSELECT
-         => (Nd ((Lf (Tok.STARTSELECT STARTSELECT)) ::
+         => (Nd (Atom.atom "select",
+                 (Lf (Tok.STARTSELECT STARTSELECT)) ::
                  (cdata_opt @ SR @ [Lf (Tok.ENDSELECT)])))
 ;
 
 small : STARTSMALL inline* ENDSMALL
-        => (Nd ((Lf (Tok.STARTSMALL STARTSMALL)) ::
+        => (Nd (Atom.atom "small",
+                (Lf (Tok.STARTSMALL STARTSMALL)) ::
                 (inline @ [Lf (Tok.ENDSMALL)])))
 ;
 
 span : STARTSPAN inline* ENDSPAN
-       => (Nd ((Lf (Tok.STARTSPAN STARTSPAN)) ::
+       => (Nd (Atom.atom "span",
+               (Lf (Tok.STARTSPAN STARTSPAN)) ::
                (inline @ [Lf (Tok.ENDSPAN)])))
 ;
 
 strike : STARTSTRIKE inline* ENDSTRIKE
-         => (Nd ((Lf (Tok.STARTSTRIKE STARTSTRIKE)) ::
+         => (Nd (Atom.atom "strike",
+                 (Lf (Tok.STARTSTRIKE STARTSTRIKE)) ::
                  (inline @ [Lf (Tok.ENDSTRIKE)])))
 ;
 
 strong : STARTSTRONG inline* ENDSTRONG
-         => (Nd ((Lf (Tok.STARTSTRONG STARTSTRONG)) ::
+         => (Nd (Atom.atom "strong",
+                 (Lf (Tok.STARTSTRONG STARTSTRONG)) ::
                  (inline @ [Lf (Tok.ENDSTRONG)])))
 ;
 
 sub : STARTSUB inline* ENDSUB
-      => (Nd ((Lf (Tok.STARTSUB STARTSUB)) ::
+      => (Nd (Atom.atom "sub",
+              (Lf (Tok.STARTSUB STARTSUB)) ::
               (inline @ [Lf (Tok.ENDSUB)])))
 ;
 
 sup : STARTSUP inline* ENDSUP
-      => (Nd ((Lf (Tok.STARTSUP STARTSUP)) ::
+      => (Nd (Atom.atom "sup",
+              (Lf (Tok.STARTSUP STARTSUP)) ::
               (inline @ [Lf (Tok.ENDSUP)])))
 ;
 
@@ -726,7 +790,8 @@ elements is enforceable: *)
 table : STARTTABLE cdata_opt
         (caption cdata_opt => (caption :: cdata_opt))?
         col_or_colgroups table_content ENDTABLE
-        => (Nd ((Lf (Tok.STARTTABLE STARTTABLE)) ::
+        => (Nd (Atom.atom "table",
+                (Lf (Tok.STARTTABLE STARTTABLE)) ::
                 (cdata_opt @ (optListToList SR) @ col_or_colgroups @
                  table_content @ [Lf (Tok.ENDTABLE)])))
 ;
@@ -757,13 +822,15 @@ tbodies_nostart : (STARTTBODY cdata_opt =>
                               case tbodies_rest of
                                   NONE => ([], [])
                                 | SOME tbodies_tup => tbodies_tup
-                      in (Nd ((optListToList SR) @ tr @ tbody_rest)) ::
+                      in (Nd (Atom.atom "tbodies_nostart",
+                              (optListToList SR) @ tr @ tbody_rest)) ::
                          tbody_peers end)
 ;
 
 tbodies : STARTTBODY cdata_opt tr+ tbodies_rest
           => (let val (tbody_rest, tbody_peers) = tbodies_rest
-              in (Nd ((Lf (Tok.STARTTBODY STARTTBODY)) ::
+              in (Nd (Atom.atom "tbodies",
+                      (Lf (Tok.STARTTBODY STARTTBODY)) ::
                       (cdata_opt @ tr @ tbody_rest))) ::
                  tbody_peers end)
 ;
@@ -775,57 +842,68 @@ tbodies_rest : ENDTBODY cdata_opt tbodies?
                => (let val (tbody_rest, tbody_peers) =
                            case tbodies_rest of NONE => ([], [])
                                               | SOME tbodies_tup => tbodies_tup
-                   in ([], (Nd ((Lf (Tok.STARTTBODY STARTTBODY)) ::
+                   in ([], (Nd (Atom.atom "tbodies_rest",
+                                (Lf (Tok.STARTTBODY STARTTBODY)) ::
                                 (cdata_opt @ tr @ tbody_rest))) :: tbody_peers)
                    end)
 ;
 
 td : STARTTD flow* (ENDTD cdata_opt => ((Lf (Tok.ENDTD)) :: cdata_opt))?
-     => (Nd ((Lf (Tok.STARTTD STARTTD)) :: (flow @ (optListToList SR))))
+     => (Nd (Atom.atom "td",
+             (Lf (Tok.STARTTD STARTTD)) :: (flow @ (optListToList SR))))
 ;
 
 textarea : STARTTEXTAREA cdata_opt ENDTEXTAREA
-           => (Nd ((Lf (Tok.STARTTEXTAREA STARTTEXTAREA)) ::
+           => (Nd (Atom.atom "textarea",
+                   (Lf (Tok.STARTTEXTAREA STARTTEXTAREA)) ::
                    (cdata_opt @ [Lf (Tok.ENDTEXTAREA)])))
 ;
 
 tfoot : STARTTFOOT cdata_opt tr+
         (ENDTFOOT cdata_opt => ((Lf (Tok.ENDTFOOT)) :: cdata_opt))?
-        => (Nd ((Lf (Tok.STARTTFOOT STARTTFOOT)) :: (cdata_opt @ tr @
+        => (Nd (Atom.atom "tfoot",
+                (Lf (Tok.STARTTFOOT STARTTFOOT)) :: (cdata_opt @ tr @
                                                      (optListToList SR))))
 ;
 
 th : STARTTH flow* (ENDTH cdata_opt => ((Lf (Tok.ENDTH)) :: cdata_opt))?
-     => (Nd ((Lf (Tok.STARTTH STARTTH)) :: (flow @ (optListToList SR))))
+     => (Nd (Atom.atom "th",
+             (Lf (Tok.STARTTH STARTTH)) :: (flow @ (optListToList SR))))
 ;
 
 thead : STARTTHEAD cdata_opt tr+
         (ENDTHEAD cdata_opt => ((Lf (Tok.ENDTHEAD)) :: cdata_opt))?
-        => (Nd ((Lf (Tok.STARTTHEAD STARTTHEAD)) :: (cdata_opt @ tr @
+        => (Nd (Atom.atom "thead",
+                (Lf (Tok.STARTTHEAD STARTTHEAD)) :: (cdata_opt @ tr @
                                                      (optListToList SR))))
 ;
 
 tr : STARTTR cdata_opt (th | td)+
      (ENDTR cdata_opt => ((Lf (Tok.ENDTR)) :: cdata_opt))?
-     => (Nd ((Lf (Tok.STARTTR STARTTR)) :: (cdata_opt @ SR1 @
+     => (Nd (Atom.atom "tr",
+             (Lf (Tok.STARTTR STARTTR)) :: (cdata_opt @ SR1 @
                                             (optListToList SR2))))
 ;
 
 tt : STARTTT inline* ENDTT
-     => (Nd ((Lf (Tok.STARTTT STARTTT)) :: (inline @ [Lf (Tok.ENDTT)])))
+     => (Nd (Atom.atom "tt",
+             (Lf (Tok.STARTTT STARTTT)) :: (inline @ [Lf (Tok.ENDTT)])))
 ;
 
 u : STARTU inline* ENDU
-    => (Nd ((Lf (Tok.STARTU STARTU)) :: (inline @ [Lf (Tok.ENDU)])))
+    => (Nd (Atom.atom "u",
+            (Lf (Tok.STARTU STARTU)) :: (inline @ [Lf (Tok.ENDU)])))
 ;
 
 ul : STARTUL cdata_opt li+ ENDUL
-     => (Nd (((Lf (Tok.STARTUL STARTUL)) :: (cdata_opt @ li @
+     => (Nd (Atom.atom "ul",
+             ((Lf (Tok.STARTUL STARTUL)) :: (cdata_opt @ li @
                                              [Lf (Tok.ENDUL)]))))
 ;
 
 var : STARTVAR inline* ENDVAR
-      => (Nd ((Lf (Tok.STARTVAR STARTVAR)) :: (inline @
+      => (Nd (Atom.atom "var",
+              (Lf (Tok.STARTVAR STARTVAR)) :: (inline @
                                                [Lf (Tok.ENDVAR)])))
 ;
 
@@ -837,10 +915,10 @@ cdata : (PCDATA => (Tok.PCDATA PCDATA)
         | CHAR_REF => (Tok.CHAR_REF CHAR_REF)
         | ENTITY_REF => (Tok.ENTITY_REF ENTITY_REF)
         | COMMENT => (Tok.COMMENT COMMENT))
-        => ((Lf SR) : HTML4Tokens.token tree)
+        => ((Lf SR) : HTML4Tokens.token parsetree)
 ;
 
-cdata_opt : cdata* => (cdata : HTML4Tokens.token tree list)
+cdata_opt : cdata* => (cdata : HTML4Tokens.token parsetree list)
 ;
 
 (* ______________________________________________________________________

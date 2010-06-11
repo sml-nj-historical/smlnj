@@ -6,6 +6,9 @@
 
 Library
     structure HTML4
+    structure HTML4Parser
+    structure HTML4Tokens
+    structure HTML4Utils
 is
     $/basis.cm
     $/smlnj-lib.cm
@@ -14,6 +17,13 @@ is
     html4.g : ml-antlr
     html4.l : ml-ulex
 
+    html4-attr.g : ml-antlr
+    html4-attr.l : ml-ulex
+
+    html4-token-utils.sml
+    html4-utils.sml
+
+    html4.sig
     html4.sml
 
 (* ______________________________________________________________________
