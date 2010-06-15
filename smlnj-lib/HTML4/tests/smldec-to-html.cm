@@ -4,6 +4,7 @@
 
 Group is
     $/basis.cm
+    $/smlnj-lib.cm
     $smlnj/compiler/current.cm
     $smlnj/viscomp/core.cm
     $smlnj/viscomp/basics.cm

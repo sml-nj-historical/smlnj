@@ -246,7 +246,7 @@ title : STARTTITLE cdata_opt ENDTITLE
 ;
 
 base : STARTBASE
-       => (Lf (Tok.STARTBASE STARTBASE))
+       => (Nd (Atom.atom "base", [Lf (Tok.STARTBASE STARTBASE)]))
 ;
 
 script : STARTSCRIPT cdata_opt ENDSCRIPT
@@ -262,11 +262,11 @@ style : STARTSTYLE cdata_opt ENDSTYLE
 ;
 
 meta : STARTMETA
-       => (Lf (Tok.STARTMETA STARTMETA))
+       => (Nd (Atom.atom "meta", [Lf (Tok.STARTMETA STARTMETA)]))
 ;
 
 link : STARTLINK
-       => (Lf (Tok.STARTLINK STARTLINK))
+       => (Nd (Atom.atom "link", [Lf (Tok.STARTLINK STARTLINK)]))
 ;
 
 object : STARTOBJECT (param | flow)* ENDOBJECT
@@ -276,7 +276,7 @@ object : STARTOBJECT (param | flow)* ENDOBJECT
 ;
 
 param : STARTPARAM
-       => (Lf (Tok.STARTPARAM STARTPARAM))
+       => (Nd (Atom.atom "param", [(Lf (Tok.STARTPARAM STARTPARAM))]))
 ;
 
 (* ______________________________________________________________________
@@ -430,7 +430,7 @@ applet : STARTAPPLET (param | flow)* ENDAPPLET
 ;
 
 area : STARTAREA
-       => (Lf (Tok.STARTAREA STARTAREA))
+       => (Nd (Atom.atom "area", [Lf (Tok.STARTAREA STARTAREA)]))
 ;
 
 b : STARTB inline* ENDB
@@ -439,7 +439,7 @@ b : STARTB inline* ENDB
 ;
 
 basefont : STARTBASEFONT
-       => (Lf (Tok.STARTBASEFONT STARTBASEFONT))
+       => (Nd (Atom.atom "basefont", [Lf (Tok.STARTBASEFONT STARTBASEFONT)]))
 ;
 
 bdo : STARTBDO inline* ENDBDO
@@ -461,7 +461,7 @@ blockquote : STARTBLOCKQUOTE (block | script | cdata)+ ENDBLOCKQUOTE
 ;
 
 br : STARTBR
-       => (Lf (Tok.STARTBR STARTBR))
+       => (Nd (Atom.atom "br", [Lf (Tok.STARTBR STARTBR)]))
 ;
 
 button : STARTBUTTON flow* ENDBUTTON
@@ -495,7 +495,7 @@ code : STARTCODE inline* ENDCODE
 ;
 
 col : STARTCOL
-      => (Lf (Tok.STARTCOL STARTCOL))
+      => (Nd (Atom.atom "col", [Lf (Tok.STARTCOL STARTCOL)]))
 ;
 
 colgroup : STARTCOLGROUP cdata_opt
@@ -571,7 +571,7 @@ form : STARTFORM (cdata | block | script)+ ENDFORM
 ;
 
 frame : STARTFRAME
-        => (Lf (Tok.STARTFRAME STARTFRAME))
+        => (Nd (Atom.atom "frame", [Lf (Tok.STARTFRAME STARTFRAME)]))
 ;
 
 frameset : STARTFRAMESET (frameset | frame | noframes | cdata)+ ENDFRAMESET
@@ -611,7 +611,7 @@ h6 : STARTH6 inline* ENDH6
 ;
 
 hr : STARTHR
-     => (Lf (Tok.STARTHR STARTHR))
+     => (Nd (Atom.atom "hr", [Lf (Tok.STARTHR STARTHR)]))
 ;
 
 i : STARTI inline* ENDI
@@ -627,11 +627,11 @@ iframe : STARTIFRAME flow* ENDIFRAME
 ;
 
 img : STARTIMG
-       => (Lf (Tok.STARTIMG STARTIMG))
+       => (Nd (Atom.atom "img", [Lf (Tok.STARTIMG STARTIMG)]))
 ;
 
 input : STARTINPUT
-       => (Lf (Tok.STARTINPUT STARTINPUT))
+       => (Nd (Atom.atom "input", [Lf (Tok.STARTINPUT STARTINPUT)]))
 ;
 
 ins : STARTINS flow* ENDINS
@@ -641,7 +641,7 @@ ins : STARTINS flow* ENDINS
 ;
 
 isindex : STARTISINDEX
-       => (Lf (Tok.STARTISINDEX STARTISINDEX))
+       => (Nd (Atom.atom "isindex", [Lf (Tok.STARTISINDEX STARTISINDEX)]))
 ;
 
 kbd : STARTKBD inline* ENDKBD

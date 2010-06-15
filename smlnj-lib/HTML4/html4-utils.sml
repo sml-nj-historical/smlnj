@@ -126,12 +126,15 @@ terminals to a parse tree visitation stream, do a map over an existing
 visitation stream.  This should be useful for mapping some placeholder
 token into a synthetic nonterminal or list of terminals. *)
 
-fun parsetreeStreamMapTStream maptsfn =
+fun parsetreeStreamMapTStream (guardfn, maptsfn) =
     let fun transduce StreamNil = StreamNil
           | transduce (StreamCons(crnt_hd, tl_thunk)) =
             let fun tl_thunk' () = transduce (tl_thunk ())
             in case crnt_hd of
-                   VisitT term => stream_concat(maptsfn term, tl_thunk'())
+                   VisitT term => if (guardfn term)
+                                  then stream_concat(maptsfn term,
+                                                     tl_thunk'())
+                                  else StreamCons(crnt_hd, tl_thunk')
                  | _ => StreamCons(crnt_hd, tl_thunk')
             end
     in transduce end
