@@ -16,6 +16,13 @@ Description:
 Here is a test entry
 
 ----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2010/06/16
+Description:
+
+Fixed Real.toString and Real.fmt to include sign for negative zero.
+
+----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
 Date: 2010/03/23
 Description:
