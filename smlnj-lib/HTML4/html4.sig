@@ -164,14 +164,6 @@ signature HTML4 = sig
            = BlockOrArea_BLOCK of block
            | AREA of attributes
 
-    (* ____________________________________________________________ *)
-
-    val parseStream :
-        TextIO.instream -> HTML4Tokens.token HTML4Utils.parsetree option
-    val fromString : string -> html option
-    val toString : html -> string
-    val fromParseTree : HTML4Tokens.token HTML4Utils.parsetree -> html option
-
 end
 
 (* ______________________________________________________________________

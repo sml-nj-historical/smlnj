@@ -6,29 +6,47 @@ structure Test = struct
 
 structure H4U = HTML4Utils
 
+structure H4T = HTML4Tokens
+
+structure H4TU = HTML4TokenUtils
+
 (* ____________________________________________________________ *)
-(* Most of the following set of functions were automatically generated.
+(* Most of the following set of functions were automatically
+   generated, with additional pattern matching and recursion added in an
+   ad hoc fashion to arrive at a string H4U.parsetree that approximately
+   shows a structure and the functions it defines.
  *)
 
 local
     open Ast
 in
-    fun handleSigConst NoSig = H4U.Nd(Atom.atom "NoSig", nil)
-      | handleSigConst (Opaque _) = H4U.Nd(Atom.atom "Opaque", nil)
-      | handleSigConst (Transparent _) = H4U.Nd(Atom.atom "Transparent", nil)
+    fun handleFixitem (handleItem : 'a -> string H4U.parsetree)
+                      ({item, fixity, region} : 'a fixitem) =
+        H4U.Nd(Atom.atom "fixity",
+               [H4U.Lf (case fixity of SOME sym => Symbol.name sym
+                                     | NONE => "NONE"),
+                handleItem item])
+
+    fun handleSigConst _ NoSig = H4U.Nd(Atom.atom "NoSig", nil)
+      | handleSigConst handleElem (Opaque elem) =
+        H4U.Nd(Atom.atom "Opaque", [handleElem elem])
+      | handleSigConst handleElem (Transparent elem) =
+        H4U.Nd(Atom.atom "Transparent", [handleElem elem])
     and handleExp (AndalsoExp _) = H4U.Nd(Atom.atom "AndalsoExp", nil)
       | handleExp (AppExp _) = H4U.Nd(Atom.atom "AppExp", nil)
       | handleExp (CaseExp _) = H4U.Nd(Atom.atom "CaseExp", nil)
       | handleExp (CharExp _) = H4U.Nd(Atom.atom "CharExp", nil)
       | handleExp (ConstraintExp _) = H4U.Nd(Atom.atom "ConstraintExp", nil)
-      | handleExp (FlatAppExp _) = H4U.Nd(Atom.atom "FlatAppExp", nil)
+      | handleExp (FlatAppExp exps) =
+        H4U.Nd(Atom.atom "FlatAppExp", map (handleFixitem handleExp) exps)
       | handleExp (FnExp _) = H4U.Nd(Atom.atom "FnExp", nil)
       | handleExp (HandleExp _) = H4U.Nd(Atom.atom "HandleExp", nil)
       | handleExp (IfExp _) = H4U.Nd(Atom.atom "IfExp", nil)
       | handleExp (IntExp _) = H4U.Nd(Atom.atom "IntExp", nil)
       | handleExp (LetExp _) = H4U.Nd(Atom.atom "LetExp", nil)
       | handleExp (ListExp _) = H4U.Nd(Atom.atom "ListExp", nil)
-      | handleExp (MarkExp _) = H4U.Nd(Atom.atom "MarkExp", nil)
+      | handleExp (MarkExp (theexp, _)) = H4U.Nd(Atom.atom "MarkExp",
+                                                 [handleExp theexp])
       | handleExp (OrelseExp _) = H4U.Nd(Atom.atom "OrelseExp", nil)
       | handleExp (RaiseExp _) = H4U.Nd(Atom.atom "RaiseExp", nil)
       | handleExp (RealExp _) = H4U.Nd(Atom.atom "RealExp", nil)
@@ -60,11 +78,13 @@ in
       | handlePat (WordPat _) = H4U.Nd(Atom.atom "WordPat", nil)
     and handleStrexp (AppStr _) = H4U.Nd(Atom.atom "AppStr", nil)
       | handleStrexp (AppStrI _) = H4U.Nd(Atom.atom "AppStrI", nil)
-      | handleStrexp (BaseStr _) = H4U.Nd(Atom.atom "BaseStr", nil)
+      | handleStrexp (BaseStr thedec) = H4U.Nd(Atom.atom "BaseStr",
+                                               [handleDec thedec])
       | handleStrexp (ConstrainedStr _) = H4U.Nd(Atom.atom "ConstrainedStr",
                                                  nil)
       | handleStrexp (LetStr _) = H4U.Nd(Atom.atom "LetStr", nil)
-      | handleStrexp (MarkStr _) = H4U.Nd(Atom.atom "MarkStr", nil)
+      | handleStrexp (MarkStr (thestr, _)) = H4U.Nd(Atom.atom "MarkStr",
+                                                    [handleStrexp thestr])
       | handleStrexp (VarStr _) = H4U.Nd(Atom.atom "VarStr", nil)
     and handleFctexp (AppFct _) = H4U.Nd(Atom.atom "AppFct", nil)
       | handleFctexp (BaseFct _) = H4U.Nd(Atom.atom "BaseFct", nil)
@@ -97,9 +117,14 @@ in
       | handleDec (FctDec _) = H4U.Nd(Atom.atom "FctDec", nil)
       | handleDec (FixDec _) = H4U.Nd(Atom.atom "FixDec", nil)
       | handleDec (FsigDec _) = H4U.Nd(Atom.atom "FsigDec", nil)
-      | handleDec (FunDec _) = H4U.Nd(Atom.atom "FunDec", nil)
-      | handleDec (LocalDec _) = H4U.Nd(Atom.atom "LocalDec", nil)
-      | handleDec (MarkDec (thedec, _)) = handleDec thedec
+      | handleDec (FunDec (fbs, tyvars)) =
+        H4U.Nd(Atom.atom "FunDec", [H4U.Nd(Atom.atom "fbs", map handleFb fbs),
+                                    H4U.Nd(Atom.atom "tyvars",
+                                           map handleTyvar tyvars)])
+      | handleDec (LocalDec (dec1, dec2)) =
+        H4U.Nd(Atom.atom "LocalDec", [handleDec dec1, handleDec dec2])
+      | handleDec (MarkDec (thedec, _)) = H4U.Nd(Atom.atom "MarkDec",
+                                                 [handleDec thedec])
       | handleDec (OpenDec _) = H4U.Nd(Atom.atom "OpenDec", nil)
       | handleDec (OvldDec _) = H4U.Nd(Atom.atom "OvldDec", nil)
       | handleDec (SeqDec decs) = H4U.Nd(Atom.atom "SeqDec",
@@ -115,9 +140,20 @@ in
       | handleVb (Vb _) = H4U.Nd(Atom.atom "Vb", nil)
     and handleRvb (MarkRvb _) = H4U.Nd(Atom.atom "MarkRvb", nil)
       | handleRvb (Rvb _) = H4U.Nd(Atom.atom "Rvb", nil)
-    and handleFb (Fb _) = H4U.Nd(Atom.atom "Fb", nil)
-      | handleFb (MarkFb _) = H4U.Nd(Atom.atom "MarkFb", nil)
-    and handleClause (Clause _) = H4U.Nd(Atom.atom "Clause", nil)
+    and handleFb (Fb (clauses, flag)) =
+        H4U.Nd(Atom.atom "Fb", (map handleClause clauses) @
+                               [if flag then H4U.Lf "true"
+                                else H4U.Lf "false"])
+      | handleFb (MarkFb (thefb, _)) = H4U.Nd(Atom.atom "MarkFb",
+                                              [handleFb thefb])
+    and handleClause (Clause {exp, pats, resultty}) =
+        H4U.Nd(Atom.atom "Clause", [
+               H4U.Nd (Atom.atom "pats", map (handleFixitem handlePat) pats),
+               H4U.Nd (Atom.atom "exp", [handleExp exp]),
+               H4U.Nd (Atom.atom "resultty", [
+                       case resultty of SOME tyast => handleTy tyast
+                                      | NONE => H4U.Lf "NONE"])
+              ])
     and handleTb (MarkTb _) = H4U.Nd(Atom.atom "MarkTb", nil)
       | handleTb (Tb _) = H4U.Nd(Atom.atom "Tb", nil)
     and handleDb (Db _) = H4U.Nd(Atom.atom "Db", nil)
@@ -127,303 +163,28 @@ in
     and handleEb (EbDef _) = H4U.Nd(Atom.atom "EbDef", nil)
       | handleEb (EbGen _) = H4U.Nd(Atom.atom "EbGen", nil)
       | handleEb (MarkEb _) = H4U.Nd(Atom.atom "MarkEb", nil)
-    and handleStrb (MarkStrb _) = H4U.Nd(Atom.atom "MarkStrb", nil)
-      | handleStrb (Strb _) = H4U.Nd(Atom.atom "Strb", nil)
+    and handleStrb (MarkStrb (thestrb, _)) = H4U.Nd(Atom.atom "MarkStrb",
+                                                    [handleStrb thestrb])
+      | handleStrb (Strb {name, constraint, def}) =
+        H4U.Nd(Atom.atom "Strb",
+               [H4U.Nd(Atom.atom "name", [H4U.Lf (Symbol.name name)]),
+                H4U.Nd(Atom.atom "constraint", [handleSigConst handleSigexp
+                                                               constraint]),
+                H4U.Nd(Atom.atom "def", [handleStrexp def])])
     and handleFctb (Fctb _) = H4U.Nd(Atom.atom "Fctb", nil)
       | handleFctb (MarkFctb _) = H4U.Nd(Atom.atom "MarkFctb", nil)
     and handleSigb (MarkSigb _) = H4U.Nd(Atom.atom "MarkSigb", nil)
       | handleSigb (Sigb _) = H4U.Nd(Atom.atom "Sigb", nil)
     and handleFsigb (Fsigb _) = H4U.Nd(Atom.atom "Fsigb", nil)
       | handleFsigb (MarkFsigb _) = H4U.Nd(Atom.atom "MarkFsigb", nil)
-    and handleTyvar (MarkTyv _) = H4U.Nd(Atom.atom "MarkTyv", nil)
+    and handleTyvar (MarkTyv (thetyv, _)) = H4U.Nd(Atom.atom "MarkTyv",
+                                                   [handleTyvar thetyv])
       | handleTyvar (Tyv _) = H4U.Nd(Atom.atom "Tyv", nil)
     and handleTy (ConTy _) = H4U.Nd(Atom.atom "ConTy", nil)
       | handleTy (MarkTy _) = H4U.Nd(Atom.atom "MarkTy", nil)
       | handleTy (RecordTy _) = H4U.Nd(Atom.atom "RecordTy", nil)
       | handleTy (TupleTy _) = H4U.Nd(Atom.atom "TupleTy", nil)
       | handleTy (VarTy _) = H4U.Nd(Atom.atom "VarTy", nil)
-end
-
-(* ____________________________________________________________ *)
-
-fun payloadToStr (_, []) = ""
-  | payloadToStr (_, attrs as (_ :: _)) = " " ^ H4U.attrsToStr attrs
-
-local
-    open HTML4Tokens
-in
-    fun tokToString EOF = "EOF"
-      | tokToString (OPENTAG (tagname, tagdata)) =
-        String.concat ["OPENTAG ", Atom.toString tagname, " ",
-                       payloadToStr tagdata]
-      | tokToString (CLOSETAG tagname) = "CLOSETAG " ^ (Atom.toString tagname)
-      | tokToString (DOCTYPE docdata) = docdata
-      | tokToString (PCDATA pcdata) = pcdata
-      | tokToString (COMMENT comment) = comment
-      | tokToString (CHAR_REF refatom) = "CHAR REF " ^ (Atom.toString refatom)
-      | tokToString (ENTITY_REF refatom) = "ENTITY REF " ^
-                                           (Atom.toString refatom)
-      | tokToString (XML_PROCESSING directive) = "XML DIRECTIVE " ^ directive
-      | tokToString (STARTA payload) =
-        "<A" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDA = "</A>"
-      | tokToString (STARTABBR payload) =
-        "<ABBR" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDABBR = "</ABBR>"
-      | tokToString (STARTACRONYM payload) =
-        "<ACRONYM" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDACRONYM = "</ACRONYM>"
-      | tokToString (STARTADDRESS payload) =
-        "<ADDRESS" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDADDRESS = "</ADDRESS>"
-      | tokToString (STARTAREA payload) =
-        "<AREA" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTB payload) =
-        "<B" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDB = "</B>"
-      | tokToString (STARTBASE payload) =
-        "<BASE" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTBDO payload) =
-        "<BDO" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDBDO = "</BDO>"
-      | tokToString (STARTBIG payload) =
-        "<BIG" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDBIG = "</BIG>"
-      | tokToString (STARTBLOCKQUOTE payload) =
-        "<BLOCKQUOTE" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDBLOCKQUOTE = "</BLOCKQUOTE>"
-      | tokToString (STARTBODY payload) =
-        "<BODY" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDBODY = "</BODY>"
-      | tokToString (STARTBR payload) =
-        "<BR" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTBUTTON payload) =
-        "<BUTTON" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDBUTTON = "</BUTTON>"
-      | tokToString (STARTCAPTION payload) =
-        "<CAPTION" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDCAPTION = "</CAPTION>"
-      | tokToString (STARTCITE payload) =
-        "<CITE" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDCITE = "</CITE>"
-      | tokToString (STARTCODE payload) =
-        "<CODE" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDCODE = "</CODE>"
-      | tokToString (STARTCOL payload) =
-        "<COL" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTCOLGROUP payload) =
-        "<COLGROUP" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDCOLGROUP = "</COLGROUP>"
-      | tokToString (STARTDD payload) =
-        "<DD" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDDD = "</DD>"
-      | tokToString (STARTDEL payload) =
-        "<DEL" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDDEL = "</DEL>"
-      | tokToString (STARTDFN payload) =
-        "<DFN" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDDFN = "</DFN>"
-      | tokToString (STARTDIV payload) =
-        "<DIV" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDDIV = "</DIV>"
-      | tokToString (STARTDL payload) =
-        "<DL" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDDL = "</DL>"
-      | tokToString (STARTDT payload) =
-        "<DT" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDDT = "</DT>"
-      | tokToString (STARTEM payload) =
-        "<EM" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDEM = "</EM>"
-      | tokToString (STARTFIELDSET payload) =
-        "<FIELDSET" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDFIELDSET = "</FIELDSET>"
-      | tokToString (STARTFORM payload) =
-        "<FORM" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDFORM = "</FORM>"
-      | tokToString (STARTH1 payload) =
-        "<H1" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDH1 = "</H1>"
-      | tokToString (STARTH2 payload) =
-        "<H2" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDH2 = "</H2>"
-      | tokToString (STARTH3 payload) =
-        "<H3" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDH3 = "</H3>"
-      | tokToString (STARTH4 payload) =
-        "<H4" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDH4 = "</H4>"
-      | tokToString (STARTH5 payload) =
-        "<H5" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDH5 = "</H5>"
-      | tokToString (STARTH6 payload) =
-        "<H6" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDH6 = "</H6>"
-      | tokToString (STARTHEAD payload) =
-        "<HEAD" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDHEAD = "</HEAD>"
-      | tokToString (STARTHR payload) =
-        "<HR" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTHTML payload) =
-        "<HTML" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDHTML = "</HTML>"
-      | tokToString (STARTI payload) =
-        "<I" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDI = "</I>"
-      | tokToString (STARTIMG payload) =
-        "<IMG" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTINPUT payload) =
-        "<INPUT" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTINS payload) =
-        "<INS" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDINS = "</INS>"
-      | tokToString (STARTKBD payload) =
-        "<KBD" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDKBD = "</KBD>"
-      | tokToString (STARTLABEL payload) =
-        "<LABEL" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDLABEL = "</LABEL>"
-      | tokToString (STARTLEGEND payload) =
-        "<LEGEND" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDLEGEND = "</LEGEND>"
-      | tokToString (STARTLI payload) =
-        "<LI" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDLI = "</LI>"
-      | tokToString (STARTLINK payload) =
-        "<LINK" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTMAP payload) =
-        "<MAP" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDMAP = "</MAP>"
-      | tokToString (STARTMETA payload) =
-        "<META" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTNOSCRIPT payload) =
-        "<NOSCRIPT" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDNOSCRIPT = "</NOSCRIPT>"
-      | tokToString (STARTOBJECT payload) =
-        "<OBJECT" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDOBJECT = "</OBJECT>"
-      | tokToString (STARTOL payload) =
-        "<OL" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDOL = "</OL>"
-      | tokToString (STARTOPTGROUP payload) =
-        "<OPTGROUP" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDOPTGROUP = "</OPTGROUP>"
-      | tokToString (STARTOPTION payload) =
-        "<OPTION" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDOPTION = "</OPTION>"
-      | tokToString (STARTP payload) =
-        "<P" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDP = "</P>"
-      | tokToString (STARTPARAM payload) =
-        "<PARAM" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTPRE payload) =
-        "<PRE" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDPRE = "</PRE>"
-      | tokToString (STARTQ payload) =
-        "<Q" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDQ = "</Q>"
-      | tokToString (STARTSAMP payload) =
-        "<SAMP" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDSAMP = "</SAMP>"
-      | tokToString (STARTSCRIPT payload) =
-        "<SCRIPT" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDSCRIPT = "</SCRIPT>"
-      | tokToString (STARTSELECT payload) =
-        "<SELECT" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDSELECT = "</SELECT>"
-      | tokToString (STARTSMALL payload) =
-        "<SMALL" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDSMALL = "</SMALL>"
-      | tokToString (STARTSPAN payload) =
-        "<SPAN" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDSPAN = "</SPAN>"
-      | tokToString (STARTSTRONG payload) =
-        "<STRONG" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDSTRONG = "</STRONG>"
-      | tokToString (STARTSTYLE payload) =
-        "<STYLE" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDSTYLE = "</STYLE>"
-      | tokToString (STARTSUB payload) =
-        "<SUB" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDSUB = "</SUB>"
-      | tokToString (STARTSUP payload) =
-        "<SUP" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDSUP = "</SUP>"
-      | tokToString (STARTTABLE payload) =
-        "<TABLE" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDTABLE = "</TABLE>"
-      | tokToString (STARTTBODY payload) =
-        "<TBODY" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDTBODY = "</TBODY>"
-      | tokToString (STARTTD payload) =
-        "<TD" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDTD = "</TD>"
-      | tokToString (STARTTEXTAREA payload) =
-        "<TEXTAREA" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDTEXTAREA = "</TEXTAREA>"
-      | tokToString (STARTTFOOT payload) =
-        "<TFOOT" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDTFOOT = "</TFOOT>"
-      | tokToString (STARTTH payload) =
-        "<TH" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDTH = "</TH>"
-      | tokToString (STARTTHEAD payload) =
-        "<THEAD" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDTHEAD = "</THEAD>"
-      | tokToString (STARTTITLE payload) =
-        "<TITLE" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDTITLE = "</TITLE>"
-      | tokToString (STARTTR payload) =
-        "<TR" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDTR = "</TR>"
-      | tokToString (STARTTT payload) =
-        "<TT" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDTT = "</TT>"
-      | tokToString (STARTUL payload) =
-        "<UL" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDUL = "</UL>"
-      | tokToString (STARTVAR payload) =
-        "<VAR" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDVAR = "</VAR>"
-      | tokToString (STARTAPPLET payload) =
-        "<APPLET" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDAPPLET = "</APPLET>"
-      | tokToString (STARTBASEFONT payload) =
-        "<BASEFONT" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTCENTER payload) =
-        "<CENTER" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDCENTER = "</CENTER>"
-      | tokToString (STARTDIR payload) =
-        "<DIR" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDDIR = "</DIR>"
-      | tokToString (STARTFONT payload) =
-        "<FONT" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDFONT = "</FONT>"
-      | tokToString (STARTIFRAME payload) =
-        "<IFRAME" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDIFRAME = "</IFRAME>"
-      | tokToString (STARTISINDEX payload) =
-        "<ISINDEX" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTMENU payload) =
-        "<MENU" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDMENU = "</MENU>"
-      | tokToString (STARTS payload) =
-        "<S" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDS = "</S>"
-      | tokToString (STARTSTRIKE payload) =
-        "<STRIKE" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDSTRIKE = "</STRIKE>"
-      | tokToString (STARTU payload) =
-        "<U" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDU = "</U>"
-      | tokToString (STARTFRAME payload) =
-        "<FRAME" ^ (payloadToStr payload) ^ ">"
-      | tokToString (STARTFRAMESET payload) =
-        "<FRAMESET" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDFRAMESET = "</FRAMESET>"
-      | tokToString (STARTNOFRAMES payload) =
-        "<NOFRAMES" ^ (payloadToStr payload) ^ ">"
-      | tokToString ENDNOFRAMES = "</NOFRAMES>"
 end
 
 (* ____________________________________________________________ *)
@@ -447,7 +208,7 @@ fun tokIsCloseTag tok = String.isPrefix "END" (HTML4Tokens.toString tok)
 
 val templateStream =
     let val instrm = TextIO.openIn "template.html"
-        val template_pt_opt = HTML4.parseStream instrm
+        val template_pt_opt = HTML4Parser.parseStream instrm
     in
         TextIO.closeIn instrm;
         case template_pt_opt of
@@ -458,30 +219,63 @@ val templateStream =
 
 (* ____________________________________________________________ *)
 
+exception IllFormedHTMLParseStream of H4T.token H4U.parsevisitation H4U.stream
+
 fun outputHTMLParseStream (istrm, ostrm) =
     let fun visit (H4U.EnterNT _, indent) = indent ^ " "
           | visit (H4U.ExitNT _, indent) = String.extract(indent, 1, NONE)
           | visit (H4U.VisitT tok, indent) =
-            (TextIO.output(ostrm, String.concat [indent, tokToString tok,
-                                                 "\n"]);
+            (TextIO.output(ostrm,
+                           String.concat [indent, H4TU.tokToString tok, "\n"]);
              indent)
         val _ = H4U.stream_foldl visit "" istrm
     in () end
 
-fun outputHTMLParseStream1 (istrm, ostrm) =
-    let fun visit (H4U.EnterNT _, (indent,indents)) =
-            (indent ^ " ", indent :: indents)
-          | visit (H4U.ExitNT _, (_, indent :: indents)) = (indent, indents)
-          | visit (H4U.VisitT tok, (indent, indents)) =
-            (TextIO.output(ostrm, String.concat [indent, tokToString tok,
-                                                 "\n"]);
-             (if tokIsOpenTag tok
-              then indent ^ " "
-              else
-                  if tokIsCloseTag tok
-                  then String.extract(indent, 1, NONE)
-                  else indent, indents))
-        val _ = H4U.stream_foldl visit ("", []) istrm
+structure PP = PrettyPrint
+
+fun ppHTMLParseStream ppstrm istrm =
+    let fun visit (H4U.EnterNT _) =
+            PP.openHVBox ppstrm (PP.Rel 2)
+          | visit (H4U.ExitNT _) =
+            PP.closeBox ppstrm
+          | visit (H4U.VisitT tok) =
+            (PP.string ppstrm (H4TU.tokToString tok);
+             PP.cut ppstrm)
+        val _ = H4U.stream_app visit istrm
+    in () end
+
+(* __________________________________________________ *)
+
+(* The following was an attempt at a fancier pretty printer, but it
+was not meant to be. *)
+
+fun ppHTMLParseStream' ppstrm istrm =
+    let exception BadStream
+        fun do_closes 0 = ()
+          | do_closes n = (PP.closeBox ppstrm; do_closes (n - 1))
+        fun visit (H4U.EnterNT _, (opens, openstk)) =
+            (PP.openHVBox ppstrm (PP.Rel 1); (1, opens::openstk))
+          | visit (H4U.ExitNT _, (opens, opens'::openstk)) =
+            (do_closes opens; (opens', openstk))
+          | visit (H4U.ExitNT _, (_, [])) = raise BadStream
+          | visit (H4U.VisitT tok, (opens, openstk)) =
+            let val opens' = ref opens
+            in
+                if tokIsCloseTag tok then (
+                    PP.closeBox ppstrm;
+                    PP.newline ppstrm;
+                    opens' := (!opens') - 1)
+                else ();
+                PP.string ppstrm (H4TU.tokToString tok);
+                if tokIsOpenTag tok then (
+                    PP.newline ppstrm;
+                    PP.openHVBox ppstrm (PP.Rel 1);
+                    opens' := (!opens') + 1)
+                else PP.space ppstrm 1;
+                (!opens', openstk)
+            end
+        val _ = H4U.stream_foldl visit (0,[]) istrm 
+            handle BadStream => raise IllFormedHTMLParseStream istrm
     in () end
 
 (* ____________________________________________________________ *)
@@ -513,9 +307,83 @@ fun parseFile filename =
 
 (* ____________________________________________________________ *)
 
+val aEm = Atom.atom "em"
+val aUl = Atom.atom "ul"
+val aLi = Atom.atom "li"
+
+(* Here is a "simple" "little" example of many to many stream transduction. *)
+
+fun scrubEmptyULs (orig as H4U.StreamCons(orig_enter as H4U.EnterNT ntAtom,
+                                          tl_thunk)) =
+    if Atom.same(aUl, ntAtom) then let
+            val thunk_val = tl_thunk ()
+        in case thunk_val of
+               H4U.StreamCons(orig_start as H4U.VisitT (H4T.STARTUL _),
+                              tl_thunk') =>
+               let val thunk_val' = tl_thunk' ()
+               in case thunk_val' of
+                      H4U.StreamCons(H4U.VisitT H4T.ENDUL, tl_thunk'') =>
+                      let val thunk_val'' = tl_thunk'' ()
+                      in case thunk_val'' of
+                             H4U.StreamCons(H4U.ExitNT ntAtom, tl_thunk''') =>
+                             if Atom.same(aUl, ntAtom)
+                             then scrubEmptyULs (tl_thunk'''())
+                             else raise IllFormedHTMLParseStream orig
+                           | _ => raise IllFormedHTMLParseStream orig
+                      end
+                    | _ => let
+                          fun new_thunk' () = scrubEmptyULs thunk_val'
+                          fun new_thunk () = H4U.StreamCons(orig_start,
+                                                            new_thunk')
+                      in H4U.StreamCons(orig_enter, new_thunk) end
+               end
+             | _ => raise IllFormedHTMLParseStream orig
+        end
+    else H4U.StreamCons(orig_enter, fn () => scrubEmptyULs (tl_thunk ()))
+  | scrubEmptyULs (H4U.StreamCons (orig, tl_thunk)) =
+    H4U.StreamCons(orig, fn () => scrubEmptyULs (tl_thunk ()))
+  | scrubEmptyULs (orig as H4U.StreamNil) = orig
+
+(* ____________________________________________________________ *)
+
 fun handleFile filename =
     let val intree = parseFile filename
-        val strs = handleDec intree
+        val decStrm = H4U.parsetreeToVisitationStream (handleDec intree)
+        fun ptStrmToHTMLPtStrm _ (H4U.EnterNT ntAtom) =
+            H4U.stream_fromList [
+            H4U.EnterNT aLi,
+            H4U.VisitT (H4T.STARTLI("<li>", [])),
+            H4U.EnterNT aEm,
+            H4U.VisitT (H4T.STARTEM("<em>", [])),
+            H4U.VisitT (H4T.PCDATA (Atom.toString ntAtom)),
+            H4U.VisitT H4T.ENDEM,
+            H4U.ExitNT aEm,
+            H4U.EnterNT aUl,
+            H4U.VisitT (H4T.STARTUL("<ul>", []))
+            ]
+          | ptStrmToHTMLPtStrm _ (H4U.ExitNT ntAtom) =
+            H4U.stream_fromList [
+            H4U.VisitT H4T.ENDUL,
+            H4U.ExitNT aUl,
+            H4U.VisitT H4T.ENDLI,
+            H4U.ExitNT aLi
+            ]
+          | ptStrmToHTMLPtStrm tokToString (H4U.VisitT tok) =
+            H4U.stream_fromList [
+            H4U.EnterNT aLi,
+            H4U.VisitT (H4T.STARTLI("<li>", [])),
+            H4U.VisitT (H4T.PCDATA (tokToString tok)),
+            H4U.VisitT H4T.ENDLI,
+            H4U.ExitNT aLi
+            ]
+        val decHTMLStrm =
+            H4U.stream_concatl [
+            H4U.stream_fromList [H4U.EnterNT aUl,
+                                 H4U.VisitT (H4T.STARTUL ("<ul", []))],
+            scrubEmptyULs (H4U.stream_maps (ptStrmToHTMLPtStrm (fn x => x))
+                                           decStrm),
+            H4U.stream_fromList [H4U.VisitT H4T.ENDUL,
+                                 H4U.ExitNT aUl]]
         val commentMap =
             foldl CommentMap.insert' CommentMap.empty
                   [("<!--title-->",
@@ -524,7 +392,7 @@ fun handleFile filename =
                    ("<!--filename-->",
                     H4U.stream_singleton (H4U.VisitT (HTML4Tokens.PCDATA
                                                           filename))),
-                   ("<!--pt-->", H4U.StreamNil)
+                   ("<!--pt-->", decHTMLStrm)
                   ]
         val filterTemplate =
             (commentFilter commentMap) o filterSpaceFromParseStream

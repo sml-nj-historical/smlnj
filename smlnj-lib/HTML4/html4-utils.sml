@@ -49,9 +49,38 @@ fun stream_nth (stream, 0) = stream_hd stream
 fun stream_empty StreamNil = true
   | stream_empty (StreamCons _) = false
 
+fun stream_concat (StreamNil, stream2) = stream2
+  | stream_concat (StreamCons(hdval, tl_thunk), stream2) =
+    StreamCons(hdval, fn () => (stream_concat (tl_thunk(), stream2)))
+
+fun stream_concatl [] = StreamNil
+  | stream_concatl (StreamNil :: streams) = stream_concatl streams
+  | stream_concatl ((StreamCons(hdval, tl_thunk)) :: streams) =
+    StreamCons(hdval, fn () => (stream_concatl ((tl_thunk())::streams)))
+
+(* stream_concatt() - Special concat that allows a stream thunk to be
+appended to the tail of a stream. *)
+
+fun stream_concatt (StreamNil, tl_thunk2) = tl_thunk2()
+  | stream_concatt (StreamCons(hdval, tl_thunk1), tl_thunk2) =
+    StreamCons(hdval, fn () => stream_concatt (tl_thunk1(), tl_thunk2))
+
 fun stream_map mapfn StreamNil = StreamNil
   | stream_map mapfn (StreamCons (hdval, tl_thunk)) =
     StreamCons(mapfn hdval, fn () => (stream_map mapfn (tl_thunk())))
+
+(* stream_maps() - Full blown transduction from one kind of stream to
+another, where the mapper returns a stream.  This allows one to zero
+and one to many mappings, as opposed to stream_map() which only allows
+one to one maps. *)
+
+fun stream_maps mapsfn instrm =
+    (case instrm of
+         StreamNil => StreamNil
+       | StreamCons(crnt_hd, tl_thunk) =>
+         let val outstrm_front = mapsfn crnt_hd
+             fun tl_thunk' () = stream_maps mapsfn (tl_thunk ())
+         in stream_concatt(outstrm_front, tl_thunk') end)
 
 fun stream_app appfn StreamNil = ()
   | stream_app appfn (StreamCons (hdval, tl_thunk)) =
@@ -63,15 +92,6 @@ fun stream_filter pred StreamNil = StreamNil
                                fn () => (stream_filter pred (tl_thunk())))
     else stream_filter pred (tl_thunk())
 
-fun stream_concat (StreamNil, stream2) = stream2
-  | stream_concat (StreamCons(hdval, tl_thunk), stream2) =
-    StreamCons(hdval, fn () => (stream_concat (tl_thunk(), stream2)))
-
-fun stream_concatl [] = StreamNil
-  | stream_concatl (StreamNil :: streams) = stream_concatl streams
-  | stream_concatl ((StreamCons(hdval, tl_thunk)) :: streams) =
-    StreamCons(hdval, fn () => (stream_concatl ((tl_thunk())::streams)))
-
 fun stream_foldl foldlfn acc StreamNil = acc
   | stream_foldl foldlfn acc (StreamCons(hd_val, tl_thunk)) =
     stream_foldl foldlfn (foldlfn(hd_val, acc)) (tl_thunk())
@@ -79,6 +99,10 @@ fun stream_foldl foldlfn acc StreamNil = acc
 fun stream_singleton soleval = StreamCons(soleval, fn () => StreamNil)
 
 fun stream_inf infval = StreamCons(infval, fn () => (stream_inf infval))
+
+fun stream_fromList [] = StreamNil
+  | stream_fromList (elem::elems) =
+    StreamCons(elem, fn () => stream_fromList elems)
 
 (* ____________________________________________________________
    Parse tree streams
@@ -132,8 +156,8 @@ fun parsetreeStreamMapTStream (guardfn, maptsfn) =
             let fun tl_thunk' () = transduce (tl_thunk ())
             in case crnt_hd of
                    VisitT term => if (guardfn term)
-                                  then stream_concat(maptsfn term,
-                                                     tl_thunk'())
+                                  then stream_concatt(maptsfn term,
+                                                     tl_thunk')
                                   else StreamCons(crnt_hd, tl_thunk')
                  | _ => StreamCons(crnt_hd, tl_thunk')
             end

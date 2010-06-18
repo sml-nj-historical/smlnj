@@ -5,14 +5,21 @@
    ______________________________________________________________________ *)
 
 Library
+    signature HTML4
     structure HTML4
     structure HTML4Parser
     structure HTML4Tokens
+    structure HTML4TokenUtils
     structure HTML4Utils
+    structure HTML4Printer
 is
     $/basis.cm
     $/smlnj-lib.cm
     $/ml-lpt-lib.cm
+
+    (* XXX IMO, the following should not be required to be able to
+    "see" the PrettyPrint structure. *)
+    $smlnj/compiler/current.cm
 
     html4.g : ml-antlr
     html4.l : ml-ulex
@@ -25,6 +32,9 @@ is
 
     html4.sig
     html4.sml
+
+    html4-parser.sml
+    html4-printer.sml
 
 (* ______________________________________________________________________
    End of html4-lib.cm

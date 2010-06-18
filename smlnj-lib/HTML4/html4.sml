@@ -4,8 +4,6 @@
    Defines the main HTML4 structure.
    ______________________________________________________________________ *)
 
-structure HTML4Parser = HTML4ParseFn(HTML4Lexer)
-
 structure HTML4 : HTML4 = struct
 
     type pcdata = string
@@ -165,30 +163,6 @@ structure HTML4 : HTML4 = struct
          and block_or_area
            = BlockOrArea_BLOCK of block
            | AREA of attributes
-
-    (* ____________________________________________________________ *)
-
-    fun parseStream inStream =
-        let
-            val sourceMap = AntlrStreamPos.mkSourcemap ()
-            val lex = HTML4Lexer.lex sourceMap
-            val stream = HTML4Lexer.streamifyInstream inStream
-            val (result, _, _) = HTML4Parser.parse lex stream
-        in
-            result
-        end
-
-    fun fromParseTree pt =
-        SOME (HTML { version = NONE, head = [], content = BODY([],[]) })
-
-    fun fromString str = let
-        val pt_opt = parseStream (TextIO.openString str)
-    in case pt_opt
-        of NONE => NONE 
-         | SOME pt => fromParseTree pt
-    end
-
-    fun toString doc = "<HTML></HTML>"
 
 end (* HTML4 *)
 
