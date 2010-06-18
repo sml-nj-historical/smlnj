@@ -5,10 +5,9 @@ Version 1.0, 31 Mar 2000
 0. Contact information
 ----------------------
 
-   ckit mailing list: ckit@research.bell-labs.com
-   Nevin Heintze: nch@research.bell-labs.com
-   Dino Oliva: oliva@research.nj.nec.com
-   Dave MacQueen: dbm@research.bell-labs.com
+   ckit mailing list: ckit@mailman.cs.uchicago.edu
+   Dave MacQueen: dbm@cs.uchicago.edu
+   Nevin Heintze: nch@google.com
 
 
 1. How to build it
