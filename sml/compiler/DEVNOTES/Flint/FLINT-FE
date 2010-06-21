@@ -1,0 +1,5 @@
+FLINT/Front End Cleanup
+
+[dbm,1/25/07] Elaborator/basics/debindex.[sig,sml] should be moved (back) to
+FLINT. Make sure these are not used in the FE.
+
