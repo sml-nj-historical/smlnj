@@ -5,16 +5,22 @@ signature UNIFY =
 sig
 
   datatype unifyFail
-    = CIRC of Types.tyvar * Types.ty * SourceMap.region * SourceMap.region  (* circularity *)
-    | EQ                               (* equality type required *)
-    | TYC of Types.tycon * Types.tycon * SourceMap.region * SourceMap.region (* tycon mismatch *)
-    | TYP of Types.ty * Types.ty * SourceMap.region * SourceMap.region      (* type mismatch *)
-    | LIT of Types.tvKind * Types.ty * SourceMap.region * SourceMap.region             (* literal *)
-    | OVLD of Types.ty                 (* overload scheme *)
-    | UBV of Types.tvKind * Types.ty * SourceMap.region * SourceMap.region  (* UBOUND match *)
-    | UBVE of Types.tvKind             (* UBOUND, equality mismatch -- never used *)
-    | SCH of Types.tvKind * Types.tvKind * SourceMap.region * SourceMap.region  (* SCHEME, equality mismatch  *)
-    | REC                              (* record labels *)
+    = CIRC of Types.tyvar * Types.ty * SourceMap.region * SourceMap.region
+        (* circularity *)
+    | TYC of Types.tycon * Types.tycon * SourceMap.region * SourceMap.region
+        (* tycon mismatch *)
+    | TYP of Types.ty * Types.ty * SourceMap.region * SourceMap.region
+        (* type mismatch *)
+    | LIT of Types.tvKind * Types.ty * SourceMap.region * SourceMap.region
+        (* literal *)
+    | UBV of Types.tvKind * Types.ty * SourceMap.region * SourceMap.region
+        (* UBOUND match *)
+    | SCH of Types.tvKind * Types.tvKind * SourceMap.region * SourceMap.region
+        (* SCHEME, equality mismatch  *)
+    | OVLD of Types.ty        (* overload scheme *)
+    | EQ                      (* equality type required *)
+    | REC                     (* record labels *)
+    | UBVE of Types.tvKind    (* UBOUND, equality mismatch -- never used *)
 
   exception Unify of unifyFail
 

@@ -72,6 +72,7 @@ val { push = oll_push, resolve = oll_resolve } = OverloadLit.new ()
 val { push = ol_push, resolve = ol_resolve } = Overload.new ()
 
 val ppType = PPType.ppType env
+val ppTycon = PPType.ppTycon env
 val ppPat = PPAbsyn.ppPat env
 val ppExp = PPAbsyn.ppExp(env,NONE)
 val ppRule = PPAbsyn.ppRule(env,NONE)
@@ -88,6 +89,33 @@ fun ppTypeDebug (msg,ty) =
 
 fun ppTyvarDebug tv = 
   ED.withInternals(fn () => debugmsg (PPType.tyvarPrintname tv))
+
+fun ppRegion ppstrm ((l,u): SourceMap.region) = 
+    (PP.string ppstrm (Int.toString l); 
+     PP.string ppstrm "-";
+     PP.string ppstrm (Int.toString u))
+    
+fun ppModeErrorMsg ppstrm (mode: Unify.unifyFail) = 
+    case mode
+      of TYC(tyc1,tyc2,reg1,reg2) =>
+	 (newline ppstrm;
+	  PP.string ppstrm "Mode: tycon mismatch"; newline ppstrm;
+	  PP.string ppstrm "tycon1: ";
+	  ppTycon ppstrm tyc1; newline ppstrm;
+	  PP.string ppstrm "from: "; ppRegion ppstrm reg1; newline ppstrm;
+	  PP.string ppstrm "tycon2: ";
+	  ppTycon ppstrm tyc2; newline ppstrm;
+	  PP.string ppstrm "from: "; ppRegion ppstrm reg2)
+       | TYP(ty1,ty2,reg1,reg2) =>
+	 (newline ppstrm;
+	  PP.string ppstrm "Mode: type mismatch"; newline ppstrm;
+	  PP.string ppstrm "type1: ";
+	  ppType ppstrm ty1; newline ppstrm;
+	  PP.string ppstrm "from: "; ppRegion ppstrm reg1; newline ppstrm;
+	  PP.string ppstrm "type2: ";
+	  ppType ppstrm ty2; newline ppstrm;
+	  PP.string ppstrm "from: "; ppRegion ppstrm reg2)
+	| _ => ()
 
 (* setup for recording FLEX tyvars and checking that they are eventually
  * resolved to exact record types. This is to prevent the leakage of
@@ -119,7 +147,9 @@ fun checkFlex (): unit =
 val nullRegion = SourceMap.nullRegion
 
 (* translating a marked type to its origin srcloc *)
-fun tyToLoc (MARKty(ty,reg)) = reg
+(* do we need to worry about immediately nested MARKty's? Can this happen? *)
+fun tyToLoc (MARKty(t as MARKty _,region)) = tyToLoc t
+  | tyToLoc (MARKty(ty,region)) = region
   | tyToLoc _ = SourceMap.nullRegion
 
 (* debugging diagnostic
@@ -153,7 +183,8 @@ fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
 	     if kindname="" then ()
 	     else (newline ppstrm; PP.string ppstrm("in "^kindname^":");
 		   break ppstrm {nsp=1,offset=2};
-                   kind ppstrm (phrase,!printDepth))
+                   kind ppstrm (phrase,!printDepth));
+             newline ppstrm; ppModeErrorMsg ppstrm mode
 	 end));
        false)
 
@@ -579,7 +610,8 @@ in
 			    ppType ppstrm randTy; newline ppstrm;
 			    PP.string ppstrm "in expression:";
 			    break ppstrm {nsp=1,offset=2};
-			    ppExp ppstrm (exp,!printDepth)));
+			    ppExp ppstrm (exp,!printDepth);
+			    newline ppstrm; ppModeErrorMsg ppstrm mode));
 			 (exp,WILDCARDty))
 		   else (err region COMPLAIN
 			  (message("operator is not a function",mode))
@@ -589,7 +621,8 @@ in
 			     ppType ppstrm (ratorTy); newline ppstrm;
 			     PP.string ppstrm "in expression:";
 			     break ppstrm {nsp=1,offset=2};
-			     ppExp ppstrm (exp,!printDepth)));
+			     ppExp ppstrm (exp,!printDepth);
+			     newline ppstrm; ppModeErrorMsg ppstrm mode));
 			 (exp,WILDCARDty))
 	       end
 	   end
