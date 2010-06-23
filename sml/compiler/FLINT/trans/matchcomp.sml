@@ -156,6 +156,7 @@ fun boundVariables (VARpat v) = [v]
       List.concat (map (boundVariables o #2) fields)
   | boundVariables (VECTORpat(pats,_)) = List.concat (map boundVariables pats)
   | boundVariables (ORpat (pat1,_)) = boundVariables pat1
+  | boundVariables (MARKpat _) = bug "MARKpat"
   | boundVariables _ = nil
 
 fun patternBindings (VARpat v, path) = [(v, path)]
@@ -177,6 +178,7 @@ fun patternBindings (VARpat v, path) = [(v, path)]
        in doGen(0, pats)
       end
   | patternBindings (ORpat _, _) = bug "Unexpected or pattern"
+  | patternBindings (MARKpat _, path) = bug "MARKpat"
   | patternBindings _ = nil
  
 fun patPaths (pat, constrs) =
@@ -195,7 +197,8 @@ fun vartolvar (VALvar{access=DA.LVAR v, typ,...}, toLty) = (v, toLty (!typ))
   | vartolvar _ = bug "bug variable in mc.sml"
 
 fun preProcessPat toLty (pat, rhs) =
-  let val bindings = boundVariables pat
+  let val pat = AbsynUtil.stripPatMarks pat
+      val bindings = boundVariables pat
       val fname = mkv()
 
       fun genRHSFun ([], rhs) = FN(mkv(), LT.ltc_unit, rhs)

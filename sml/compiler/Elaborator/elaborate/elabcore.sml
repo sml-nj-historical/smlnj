@@ -53,6 +53,7 @@ local structure EM = ErrorMsg
     *)
 in
 
+fun cMARKpat (p, r) = if !ElabControl.markabsyn then MARKpat (p, r) else p
 fun cMARKexp (e, r) = if !ElabControl.markabsyn then MARKexp (e, r) else e
 fun cMARKdec (d, r) = if !ElabControl.markabsyn then MARKdec (d, r) else d
 
@@ -381,6 +382,8 @@ let
 				     ORpat(doPat' p1, doPat checkFn p2)
 				 | doPat' (VECTORpat(pats, ty)) =
 				     VECTORpat(map doPat' pats, ty)
+				 | doPat' (MARKpat(pat, region)) =
+				     doPat' pat  (*?? *)
 				 | doPat' pat = pat
 			      in doPat'
 			     end
@@ -427,7 +430,7 @@ let
 	   end
        | MarkPat (pat,region) =>
 	   let val (p,tv) = elabPat(pat, env, region)
-	    in (p,tv)
+	    in (cMARKpat(p,region),tv)
 	   end
        | FlatAppPat pats => elabPat(patParse(pats,env,error), env, region) 
 
@@ -803,12 +806,18 @@ let
                * replaced. 
 	       * [DBM] This won't apply if lazyp=true.
                *)
+              fun stripMarksVar (MARKpat(p as VARpat _, reg)) = p
+                | stripMarksVar (MARKpat(p,reg)) = stripMarksVar p
+                | stripMarksVar (CONSTRAINTpat (p, ty)) =
+                    CONSTRAINTpat(stripMarksVar p, ty)
+                | stripMarksVar p = p
+
 	      val pat = 
 		case stripExpAbs exp
 		 of VARexp(ref(VALvar{prim,...}),_) =>
                       (case prim
                          of PrimOpId.Prim _ => 
-		            (case pat
+		            (case stripMarksVar pat
 			      of CONSTRAINTpat(VARpat(VALvar{path,typ,btvs,
                                                              access,...}), ty) =>
 			         CONSTRAINTpat(

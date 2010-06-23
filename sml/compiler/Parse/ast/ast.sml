@@ -74,14 +74,14 @@ and pat = WildPat				(* empty pattern *)
 	| CharPat of string			(* char *)
 	| RecordPat of {def:(symbol * pat) list, flexibility:bool}
 						(* record *)
-        | ListPat of pat list		       (*  [list,in,square,brackets] *)
+        | ListPat of pat list		        (* [list,in,square,brackets] *)
 	| TuplePat of pat list			(* tuple *)
         | FlatAppPat of pat fixitem list (* patterns before fixity parsing *)
 	| AppPat of {constr:pat,argument:pat}	(* application *)
 	| ConstraintPat of {pattern:pat,constraint:ty}
 						(* constraint *)
 	| LayeredPat of {varPat:pat,expPat:pat}	(* as expressions *)
-	| MarkPat of pat * region	(* mark a pattern *)
+	| MarkPat of pat * region	        (* mark a pattern *)
         | VectorPat of pat list                 (* vector pattern *)
 	| OrPat of pat list			(* or-pattern *)
 

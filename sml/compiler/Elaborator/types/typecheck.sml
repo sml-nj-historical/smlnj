@@ -113,7 +113,15 @@ fun checkFlex (): unit =
     in if anyErrors () then ()
        else app check1 (!flexTyVars)
     end
-			
+		
+(* managing source locations (srcloc = SourceMap.region) *)
+
+val nullRegion = SourceMap.nullRegion
+
+(* translating a marked type to its origin srcloc *)
+fun tyToLoc (MARKty(ty,reg)) = reg
+  | tyToLoc _ = SourceMap.nullRegion
+
 (* debugging diagnostic
 fun findRegion ty =
     case ty
@@ -123,17 +131,17 @@ fun findRegion ty =
 *)
 
 fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
-    (unifyTy(ty1,ty2); true) handle Unify(mode) =>
+    (unifyTy(ty1, ty2, tyToLoc ty1, tyToLoc ty2); true) handle Unify(mode) =>
       (err region COMPLAIN (message(m,mode))
        (fn ppstrm => 
 	 (PPType.resetPPType();
-	  let val len1= size name1 
-	      val len2= size name2
+	  let val len1 = size name1 
+	      val len2 = size name2
 	      val spaces = "                                   "
-	      val pad1= substring(spaces,0,Int.max(0,len2-len1))
-	      val pad2= substring(spaces,0,Int.max(0,len2-len1))
-	      val m = if m="" then name1 ^ " and " ^ name2 ^ " don't agree"
-		      else m
+	      val pad1 = substring(spaces,0,Int.max(0,len2-len1))
+	      val pad2 = substring(spaces,0,Int.max(0,len2-len1))
+	      val m = if m = "" then name1 ^ " and " ^ name2 ^ " don't agree"
+		      else m   (* but name1 and name2 may be "" ! *)
 	  in if name1="" then ()
              else (newline ppstrm; 
                    PP.string ppstrm (name1 ^ ": " ^ pad1);
@@ -335,6 +343,7 @@ fun generalizePat(pat: pat, userbound: tyvar list, occ: occ, tdepth,
 	  | gen(APPpat(_,_,arg)) = gen arg
 	  | gen(CONSTRAINTpat(pat,_)) = gen pat
 	  | gen(LAYEREDpat(varPat,pat)) = (gen varPat; gen pat)
+          | gen(MARKpat(pat,reg)) = gen pat
 	  | gen _ = ()
      in gen pat;
         (* indexBoundTyvars(tdepth,!tvs); *)
@@ -343,12 +352,20 @@ fun generalizePat(pat: pat, userbound: tyvar list, occ: occ, tdepth,
 
 fun applyType(ratorTy: ty, randTy: ty) : ty =
   let val resultType = mkMETAty()
-   in unifyTy(ratorTy, (randTy --> resultType)); resultType
+   in unifyTy(ratorTy, (randTy --> resultType), tyToLoc ratorTy, tyToLoc randTy);
+      resultType
   end
+
+fun stripMarksVar (MARKpat(p as VARpat _, reg)) = p
+  | stripMarksVar (MARKpat(p,reg)) = stripMarksVar p
+  | stripMarksVar (CONSTRAINTpat (p, ty)) =
+      CONSTRAINTpat(stripMarksVar p, ty)
+  | stripMarksVar p = p
 
 fun patType(pat: pat, depth, region) : pat * ty =
     case pat
       of WILDpat => (pat,mkMETAtyBounded depth)
+       | MARKpat(p,region') => patType(p,depth,region')
        | VARpat(VALvar{typ as ref UNDEFty,...}) => 
 	      (typ := mkMETAtyBounded depth; (pat,MARKty(!typ, region)))
 			             (* multiple occurrence due to or-pat *)
@@ -378,7 +395,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
           (let val (npats,ntys) = 
                      mapUnZip (fn pat => patType(pat,depth,region)) pats
                val nty =
-	       foldr (fn (a,b) => (unifyTy(a,b); b)) (mkMETAtyBounded depth) ntys
+	       foldr (fn (a,b) => (unifyTy(a, b, tyToLoc a, tyToLoc b); b)) (mkMETAtyBounded depth) ntys
             in (VECTORpat(npats,nty),
 	    	MARKty(CONty(vectorTycon,[nty]), region))
            end handle Unify(mode) => (
@@ -388,21 +405,19 @@ fun patType(pat: pat, depth, region) : pat * ty =
        | ORpat(p1, p2) => 
            let val (p1, ty1) = patType(p1, depth, region)
   	       val (p2, ty2) = patType(p2, depth, region)
-	   in
-	     unifyErr{ty1=ty1,ty2=ty2,name1="expected",name2="found",
-		      message="or-patterns don't agree",region=region,
-		      kind=ppPat,kindname="pattern",phrase=pat};
-	     (ORpat(p1, p2), MARKty(ty1, region))
+	   in  unifyErr{ty1=ty1,ty2=ty2,name1="expected",name2="found",
+			message="or-patterns don't agree",region=region,
+			kind=ppPat,kindname="pattern",phrase=pat};
+	       (ORpat(p1, p2), MARKty(ty1, region))
 	   end
        | CONpat(dcon as DATACON{typ,...},_) => 
            let val (ty, insts) = instantiatePoly typ
                (* the following is to set the correct depth information
-                * to the type variables in ty. (ZHONG)
+                * to the type variables in ty. (ZHONG)  It cannot fail.
                 *)
                val nty = mkMETAtyBounded depth
-               val _ = unifyTy(nty, ty) 
-            in (** (CONpat(dcon,insts),ty) *)
-	       (CONpat(dcon, insts), MARKty(ty, region))
+               val _ = unifyTy(nty, ty, nullRegion, nullRegion) 
+            in (CONpat(dcon, insts), MARKty(ty, region))
            end
        | APPpat(dcon as DATACON{typ,rep,...},_,arg) =>
 	   let val (argpat,argty) = patType(arg,depth,region)
@@ -429,25 +444,27 @@ fun patType(pat: pat, depth, region) : pat * ty =
        | CONSTRAINTpat(pat',ty) => 
 	   let val (npat,patTy) = patType(pat',depth,region)
 	    in if unifyErr{ty1=patTy,name1="pattern",ty2=ty,name2="constraint",
-			message="pattern and constraint don't agree",
-			region=region,kind=ppPat,kindname="pattern",phrase=pat}
+			   message="pattern and constraint don't agree",
+			   region=region,kind=ppPat,kindname="pattern",phrase=pat}
 		then (CONSTRAINTpat(npat,MARKty(ty, region)),
 					(MARKty(ty, region)))
 		else (pat,WILDCARDty)
 	   end
-       | LAYEREDpat(vpat as VARpat(VALvar{typ,...}),pat') =>
-           let val (npat,patTy) = patType(pat',depth,region)
-               val _ = (typ := patTy)
-            in (LAYEREDpat(vpat,npat),MARKty(patTy, region))
-           end
-       | LAYEREDpat(cpat as CONSTRAINTpat(VARpat(VALvar{typ,...}),ty),pat') =>
-	   let val (npat,patTy) = patType(pat',depth,region)
-	    in if unifyErr{ty1=patTy,name1="pattern",ty2=ty,name2="constraint",
-			   message="pattern and constraint don't agree",
-			   region=region,kind=ppPat,kindname="pattern",phrase=pat}
-		   then (typ := ty; (LAYEREDpat(cpat,npat),MARKty(ty, region)))
-		  else (pat,WILDCARDty)
-	   end
+       | LAYEREDpat(vpat,pat') => 
+	   (case stripMarksVar vpat
+              of VARpat(VALvar{typ,...}) =>
+		 let val (npat,patTy) = patType(pat',depth,region)
+		     val _ = (typ := patTy)
+		  in (LAYEREDpat(vpat,npat),MARKty(patTy, region))
+		 end
+	       | (cpat as CONSTRAINTpat(VARpat(VALvar{typ,...}),ty)) =>
+		 let val (npat,patTy) = patType(pat',depth,region)
+		  in if unifyErr{ty1=patTy,name1="pattern",ty2=ty,name2="constraint",
+				 message="pattern and constraint don't agree",
+				 region=region,kind=ppPat,kindname="pattern",phrase=pat}
+		     then (typ := ty; (LAYEREDpat(cpat,npat),MARKty(ty, region)))
+		     else (pat,WILDCARDty)
+		 end)
        | p => bug "patType -- unexpected pattern"
 
 fun expType(exp: exp, occ: occ, tdepth: DI.depth, region) : exp * ty =
@@ -500,7 +517,8 @@ in
                val tv = mkTyvar(mkFLEX(labtys,infinity))
                val pt = VARty tv
                val _ = registerFlex(tv,region)
-            in (unifyTy(pt,nty); (SELECTexp(l, nexp), MARKty(res, region)))
+            in (unifyTy(pt, nty, region, tyToLoc nty);
+		(SELECTexp(l, nexp), MARKty(res, region)))
                handle Unify(mode) =>
                  (err region COMPLAIN
                   (message("selecting a non-existing field from a record",mode))
@@ -519,7 +537,7 @@ in
            end
        | VECTORexp(exps,_) =>
           (let val (exps',nty) = mapUnZip (fn e => expType(e,occ,tdepth,region)) exps
-               val vty = foldr (fn (a,b) => (unifyTy(a,b); b)) (mkMETAty()) nty
+               val vty = foldr (fn (a,b) => (unifyTy(a,b,tyToLoc a, tyToLoc b); b)) (mkMETAty()) nty
             in (VECTORexp(exps',vty),
 	    	MARKty(CONty(vectorTycon,[vty]), region))
            end handle Unify(mode) =>
@@ -589,7 +607,8 @@ in
 	   let val (e',ety) = expType(e,occ,tdepth,region)
 	       and (rules',rty,hty) = matchType (rules, occ, region)
                val exp' = HANDLEexp(e', (rules', rty))
-	    in (unifyTy(hty, exnTy --> ety); (exp',MARKty(ety, region)))
+	    in (unifyTy(hty, exnTy --> ety, region, tyToLoc ety);
+		(exp', MARKty(ety, region)))
 	       handle Unify(mode) =>
 		 (if unifyErr{ty1=domain(prune hty), name1="handler domain",
 			     ty2=exnTy, name2="",
