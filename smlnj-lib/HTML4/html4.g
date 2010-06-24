@@ -574,10 +574,11 @@ frame : STARTFRAME
         => (Nd (Atom.atom "frame", [Lf (Tok.STARTFRAME STARTFRAME)]))
 ;
 
-frameset : STARTFRAMESET (frameset | frame | noframes | cdata)+ ENDFRAMESET
+frameset : STARTFRAMESET (frameset | frame | cdata)+
+           (noframes cdata_opt => (noframes::cdata_opt))? ENDFRAMESET
            => (Nd (Atom.atom "frameset",
                    (Lf (Tok.STARTFRAMESET STARTFRAMESET)) ::
-                   (SR @ [Lf (Tok.ENDFRAMESET)])))
+                   (SR1 @ (optListToList SR2) @ [Lf (Tok.ENDFRAMESET)])))
 ;
 
 h1 : STARTH1 inline* ENDH1

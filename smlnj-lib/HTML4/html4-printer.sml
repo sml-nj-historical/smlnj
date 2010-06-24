@@ -202,16 +202,17 @@ in
         ppTagAndChildren ppstrm ppCdata S.TITLE contents
     and ppBody_or_frameset ppstrm (BODY content) =
         ppTagAndChildren ppstrm ppBlock_or_script S.BODY content
-      | ppBody_or_frameset ppstrm (BodyOrFrameset_FRAMESET (frameset,
-                                                            noframes_opt)) = (
-        ppFrameset ppstrm frameset;
-        case noframes_opt of
+      | ppBody_or_frameset ppstrm (BodyOrFrameset_FRAMESET frameset) =
+        ppFrameset ppstrm frameset
+    and ppFrameset ppstrm (FRAMESET (attrs, children, noframesOpt)) = (
+        ppOpenTag ppstrm (S.FRAMESET, attrs);
+        ppChildren ppstrm ppFrameset_or_frame children;
+        case noframesOpt of
             SOME noframes => (PP.newline ppstrm;
                               ppNoframes ppstrm noframes)
-          | _ => ()
-        )
-    and ppFrameset ppstrm (FRAMESET content) =
-        ppTagAndChildren ppstrm ppFrameset_or_frame S.FRAMESET content
+          | _ => ();
+        ppCloseTag ppstrm S.FRAMESET
+    )
     and ppFrameset_or_frame ppstrm (FRAME attrs) =
         ppOpenTag ppstrm (S.FRAME, attrs)
       | ppFrameset_or_frame ppstrm (FramesetOrFrame_FRAMESET frameset) =

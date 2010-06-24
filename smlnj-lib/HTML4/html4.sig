@@ -36,10 +36,10 @@ signature HTML4 = sig
 
          and body_or_frameset
            = BODY of attributes * block_or_script list
-           | BodyOrFrameset_FRAMESET of frameset * noframes option
+           | BodyOrFrameset_FRAMESET of frameset
 
          and frameset
-           = FRAMESET of attributes * frameset_or_frame list
+           = FRAMESET of attributes * frameset_or_frame list * noframes option
 
          and frameset_or_frame
            = FramesetOrFrame_FRAMESET of frameset

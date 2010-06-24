@@ -10,6 +10,8 @@ structure H4T = HTML4Tokens
 
 structure H4TU = HTML4TokenUtils
 
+structure H4P = HTML4Parser
+
 (* ____________________________________________________________ *)
 (* Most of the following set of functions were automatically
    generated, with additional pattern matching and recursion added in an
@@ -189,11 +191,7 @@ end
 
 (* ____________________________________________________________ *)
 
-fun tokIsSpace (HTML4Tokens.PCDATA pcstr) =
-    let fun loop nil = true
-          | loop (ch :: rst) = if Char.isSpace ch then loop rst else false
-    in loop (String.explode pcstr) end
-  | tokIsSpace _ = false
+val tokIsSpace = H4P.tokIsSpace
 
 fun filterSpaceFromParseStream strm =
     let fun pred (H4U.VisitT tok) = not (tokIsSpace tok)

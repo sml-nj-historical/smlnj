@@ -28,6 +28,8 @@ fun attrsToStr attrs = String.concatWith "  " (map attrToStr attrs)
 fun payloadToStr (payload, []) = payload
   | payloadToStr (_, attrs as (attr :: _)) = attrsToStr attrs
 
+val getAttrs : tag_payload -> (Atom.atom * string option) list = #2
+
 (* ____________________________________________________________
    Streams
  *)
@@ -111,6 +113,21 @@ fun stream_fromList [] = StreamNil
 datatype 'a parsevisitation = EnterNT of Atom.atom
                             | ExitNT of Atom.atom
                             | VisitT of 'a
+
+fun visitationToString _ (EnterNT ntAtom) =
+    "entry of " ^ (Atom.toString ntAtom) ^ " nonterminal"
+  | visitationToString _ (ExitNT ntAtom) =
+    "exit of " ^ (Atom.toString ntAtom) ^ " nonterminal"
+  | visitationToString termToString (VisitT terminal) =
+    "vistation of " ^ (termToString terminal) ^ " terminal"
+
+fun visitationSame _ (EnterNT ntAtom, EnterNT ntAtom') =
+    Atom.same(ntAtom, ntAtom')
+  | visitationSame _ (ExitNT ntAtom, ExitNT ntAtom') =
+    Atom.same(ntAtom, ntAtom')
+  | visitationSame termSame (VisitT term, VisitT term') =
+    termSame(term, term')
+  | visitationSame _ _ = false
 
 fun parsetreeToVisitationStream (node as (Nd (ntAtom, children))) =
     let fun tl_thunk () =
