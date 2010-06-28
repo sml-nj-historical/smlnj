@@ -35,8 +35,11 @@ signature HTML4 = sig
            | Head_OBJECT of attributes * flow_or_param list
 
          and body_or_frameset
-           = BODY of attributes * block_or_script list
+           = BodyOrFrameset_BODY of body
            | BodyOrFrameset_FRAMESET of frameset
+
+         and body
+           = BODY of attributes * block_or_script list
 
          and frameset
            = FRAMESET of attributes * frameset_or_frame list * noframes option
@@ -46,7 +49,7 @@ signature HTML4 = sig
            | FRAME of attributes
 
          and noframes
-           = NOFRAMES of attributes * flow list
+           = NOFRAMES of attributes * body
 
          and flow 
            = Flow_BLOCK of block

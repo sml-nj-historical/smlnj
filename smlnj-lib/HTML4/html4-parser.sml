@@ -46,8 +46,10 @@ fun expect expectedVisit pstrm =
     let val pstrmHd = H4U.stream_hd pstrm
             handle _ => H4U.VisitT H4T.EOF
         fun expectationError () =
-            let val msg = "Expected " ^ (strVisitationToString expectedVisit) ^  ", got "
-                          ^ (tokVisitationToString pstrmHd) ^ " instead."
+            let val msg = String.concat
+                              ["Expected ",
+                               strVisitationToString expectedVisit, ", got ",
+                               tokVisitationToString pstrmHd, " instead."]
             in IllFormedHTMLParseStream(pstrm, SOME msg) end
     in
         if visitationSimilar(pstrmHd, expectedVisit) then H4U.stream_tl pstrm
@@ -64,22 +66,25 @@ fun expectEnterNTInDomain ntMap pstrm =
     let val pstrmHd = H4U.stream_hd pstrm
             handle _ => H4U.VisitT H4T.EOF
         fun expectationError () =
-            let val msg = String.concat ["Expected entry of one of ",
-                                         String.concatWith
-                                             ", " (map (Atom.toString)
-                                                       (AtomMap.listKeys ntMap)),
-                                         "; got ", tokVisitationToString pstrmHd,
-                                         " instead."]
+            let val expectedNTs =
+                    String.concatWith ", " (map (Atom.toString)
+                                                (AtomMap.listKeys ntMap))
+                val msg = String.concat
+                              ["Expected entry of one of ", expectedNTs,
+                               "; got ", tokVisitationToString pstrmHd,
+                               " instead."]
             in IllFormedHTMLParseStream(pstrm, SOME msg) end
     in case pstrmHd
         of H4U.EnterNT ntAtom =>
-           if AtomMap.inDomain (ntMap, ntAtom) then AtomMap.lookup (ntMap, ntAtom)
+           if AtomMap.inDomain (ntMap, ntAtom)
+           then AtomMap.lookup (ntMap, ntAtom)
            else raise (expectationError ())
          | _ => raise (expectationError ())
     end
 
 fun optional optVisit (strm as H4U.StreamCons(strmHd, _)) =
-    if visitationSimilar(strmHd, optVisit) then (H4U.stream_tl strm, SOME strmHd)
+    if visitationSimilar(strmHd, optVisit)
+    then (H4U.stream_tl strm, SOME strmHd)
     else (strm, NONE)
   | optional _ _ = (H4U.StreamNil, NONE)
 
@@ -108,7 +113,7 @@ fun streamSkipWhile pred = streamSkipUntil (fn strmHd => not (pred strmHd))
 fun streamConsumeUntil consumer until strm =
     let fun streamConsumeUntil' strm' acc =
             if until strm' then (strm', rev acc)
-            else let val (strm'', consumerVal) = consumer strm
+            else let val (strm'', consumerVal) = consumer strm'
                  in streamConsumeUntil' strm'' (consumerVal :: acc) end
     in streamConsumeUntil' strm [] end
 
@@ -142,7 +147,8 @@ fun tokToCdata (H4T.PCDATA str) = H4.PCDATA str
 
 (*+DEBUG*)
 fun tokToString (H4T.DOCTYPE doctypeStr) = doctypeStr
-  | tokToString (H4T.PCDATA dataStr) = ("PCDATA \"" ^ (String.toString dataStr) ^ "\"")
+  | tokToString (H4T.PCDATA dataStr) = ("PCDATA \"" ^ (String.toString dataStr)
+                                        ^ "\"")
   | tokToString (H4T.COMMENT commentStr) = commentStr
   | tokToString tok = H4TU.tokToString tok
 
@@ -164,7 +170,8 @@ fun getAttrsFromStream (H4U.StreamCons (H4U.VisitT tok, _)) =
 
 fun html0aryFromParseStream tag ctor pstrm =
     let val pstrm1 = expectEnterNT tag pstrm
-        val pstrm2 = expectVisitT ("START" ^ (String.map Char.toUpper tag)) pstrm1
+        val pstrm2 = expectVisitT ("START" ^ (String.map Char.toUpper tag))
+                                  pstrm1
         val attrs = getAttrsFromStream pstrm1
         val pstrm3 = expectExitNT tag (skipWhitespace pstrm2)
     in
@@ -173,32 +180,71 @@ fun html0aryFromParseStream tag ctor pstrm =
 
 fun listOfOptsToList lst = map Option.valOf lst
 
-fun htmlNaryFromParseStream tag ctor childFromParseStream pstrm =
+fun htmlNaryFromParseStream tag ctor childFromParseStream pstrm0 =
     let val tagUpper = (String.map Char.toUpper tag)
         val endTag = "END" ^ tagUpper
-        val pstrm1 = expectEnterNT tag pstrm
+        val pstrm1 = expectEnterNT tag pstrm0
         val pstrm2 = expectVisitT ("START" ^ tagUpper) pstrm1
         val attrs = getAttrsFromStream pstrm1
         val (pstrm3, children) =
-            streamConsumeUntil childFromParseStream (isVisitT endTag)
+            streamConsumeUntil childFromParseStream
+                               (isEither (isVisitT endTag, isExitNT tag))
                                (skipWhitespace pstrm2)
-        val pstrm4 = expectVisitT endTag pstrm3
+        val (pstrm4, _) = optVisitTok endTag pstrm3
         val pstrm5 = expectExitNT tag (skipWhitespace pstrm4)
     in (pstrm5, SOME (ctor (attrs, listOfOptsToList children))) end
 
 type parseVisitStream = H4T.token H4U.parsevisitation H4U.stream
 
-val headContentHandlerMap : (parseVisitStream ->
-                             parseVisitStream * 
-                             H4.head_content option) AtomMap.map ref = ref AtomMap.empty
+val headContentNTMap : (parseVisitStream ->
+                        parseVisitStream * 
+                        H4.head_content option) AtomMap.map ref =
+    ref AtomMap.empty
 
-val blockContentHandlerMap : (parseVisitStream ->
-                              parseVisitStream *
-                              H4.block option) AtomMap.map ref = ref AtomMap.empty
+val blockNTMap : (parseVisitStream ->
+                  parseVisitStream *
+                  H4.block option) AtomMap.map ref = ref AtomMap.empty
 
-val inlineContentHandlerMap : (parseVisitStream ->
-                               parseVisitStream *
-                               H4.inline option) AtomMap.map ref = ref AtomMap.empty
+val inlineNTMap : (parseVisitStream ->
+                   parseVisitStream *
+                   H4.inline option) AtomMap.map ref = ref AtomMap.empty
+
+val tableDataNTMap : (parseVisitStream ->
+                      parseVisitStream *
+                      H4.table_data option) AtomMap.map ref = ref AtomMap.empty
+
+fun cvtBlock ctor (SOME block) = SOME (ctor block)
+  | cvtBlock _ NONE = NONE
+
+fun cvtInline ctor (SOME inline) = SOME (ctor inline)
+  | cvtInline _ NONE = NONE
+
+fun cvtFlow ctor (SOME flow) = SOME (ctor flow)
+  | cvtFlow _ _ = NONE
+
+fun cvtOption ctor (SOME htmlopt) = SOME (ctor htmlopt)
+  | cvtOption _ _ = NONE
+
+fun cvtParam ctor (SOME param) = SOME (ctor param)
+  | cvtParam _ _ = NONE
+
+fun cvtFrameset ctor (SOME frameset) = SOME (ctor frameset)
+  | cvtFrameset _ NONE = NONE
+
+fun cvtScript ctor (SOME script) = SOME (ctor script)
+  | cvtScript _ _ = NONE
+
+fun cdataFromParseStream pstrm =
+    if isNotCdata pstrm
+    then raise (IllFormedHTMLParseStream(pstrm,
+                                         SOME "Expected character data."))
+    else
+        let val pstrmHd = H4U.stream_hd pstrm
+            val pstrmTl = H4U.stream_tl pstrm
+        in case pstrmHd
+            of H4U.VisitT tok => (pstrmTl, SOME (tokToCdata tok))
+             | _ => (pstrmTl, NONE)
+        end
 
 fun htmlFromParseStream pstrm0 =
     let val pstrm1 = (skipWhitespace o (expectEnterNT "document")) pstrm0
@@ -206,20 +252,25 @@ fun htmlFromParseStream pstrm0 =
         val theVersion = (case doctypeTokOpt
                            of SOME (H4T.DOCTYPE doctype) => SOME doctype
                             | _ => NONE)
-        val (pstrm3, starthtmlTokOpt) = optVisitTok "STARTHTML" (skipWhitespace pstrm2)
-        val (pstrm4, headDataListOpt) = headFromParseStream (skipWhitespace pstrm3)
+        val (pstrm3, starthtmlTokOpt) = optVisitTok "STARTHTML"
+                                                    (skipWhitespace pstrm2)
+        val (pstrm4, headDataListOpt) = headFromParseStream
+                                            (skipWhitespace pstrm3)
     in if not (isSome headDataListOpt) then (pstrm4, NONE)
        else
-           let val (pstrm5, contentDataOpt) = bodyOrFramesetFromParseStream pstrm4
+           let val (pstrm5, contentDataOpt) =
+                   bodyOrFramesetFromParseStream pstrm4
            in if not (isSome contentDataOpt) then (pstrm5, NONE)
               else
                   let val (pstrm6, _) = optVisitTok "ENDHTML" pstrm5
-                      val pstrm7 = (skipWhitespace o (expectExitNT "document") o
+                      val pstrm7 = (skipWhitespace o
+                                    (expectExitNT "document") o
                                     skipWhitespace) pstrm6
                   in
-                      (pstrm7, SOME (H4.HTML { version = theVersion,
-                                               head = [],
-                                               content = valOf contentDataOpt } ))
+                      (pstrm7,
+                       SOME (H4.HTML{ version = theVersion,
+                                      head = [],
+                                      content = valOf contentDataOpt }))
                   end
            end
     end
@@ -227,54 +278,42 @@ and headFromParseStream pstrm0 =
     let val pstrm1 = (skipWhitespace o (expectEnterNT "head")) pstrm0
         val (pstrm2, startheadTokOpt) = optVisitTok "STARTHEAD" pstrm1
         val (pstrm3, children) =
-            streamConsumeUntil headContentFromParseStream (isEither(isExitNT "head",
-                                                                    isVisitT "ENDHEAD"))
+            streamConsumeUntil headContentFromParseStream
+                               (isEither(isExitNT "head", isVisitT "ENDHEAD"))
                                (skipWhitespace pstrm2)
         val (pstrm4, _) = optVisitTok "ENDHEAD" pstrm3
         val pstrm5 = expectExitNT "head" (skipWhitespace pstrm4)
-    in (pstrm5, SOME []) end
+    in (pstrm5, SOME (listOfOptsToList children)) end
 and headContentFromParseStream pstrm =
-    let val pstrmHd = H4U.stream_hd pstrm
-        fun expectationErr () =
-            let val msg = String.concat ["Expected entry of one of title, base, script,",
-                                         "style, meta, link, or object, got ",
-                                         tokVisitationToString pstrmHd, " instead."]
-            in IllFormedHTMLParseStream (pstrm, SOME msg) end
-    in case pstrmHd
-        of H4U.EnterNT ntAtom =>
-           (case AtomMap.find (!headContentHandlerMap, ntAtom)
-             of SOME handler => handler pstrm
-              | NONE => raise (expectationErr ()))
-         | _ => raise (expectationErr ())
-    end
+    let val ntFunc = expectEnterNTInDomain (!headContentNTMap) pstrm
+        val (pstrm', resultOpt) = ntFunc pstrm
+    in (skipWhitespace pstrm', resultOpt) end
 and bodyOrFramesetFromParseStream pstrm =
-    let fun bodyFromParseStream pstrm0 =
-            let val pstrm1 = expectEnterNT "body" pstrm0
-                val (pstrm2, startbodyTokOpt) = optVisitTok "STARTBODY" pstrm1
-                val attrs = if isSome startbodyTokOpt
-                            then case H4TU.tokGetAttrs (valOf startbodyTokOpt)
-                                  of SOME attrs => attrs
-                                   | NONE => []
-                            else []
-                val (pstrm3, children) =
-                    streamConsumeUntil blockOrScriptFromParseStream
-                                       (isEither(isExitNT "body", isVisitT "ENDBODY"))
-                                       (skipWhitespace pstrm2)
-                val (pstrm4, _) = optVisitTok "ENDBODY" pstrm3
-                val pstrm5 = expectExitNT "body" (skipWhitespace pstrm4)
-            in (pstrm5, SOME (H4.BODY (attrs, listOfOptsToList children))) end
-        fun bodyOrFrameset_FRAMESET_FromParseStream pstrm0 =
-            let val (pstrm1, framesetOpt) = framesetFromParseStream pstrm0
-            in
-                (pstrm1,
-                 case framesetOpt
-                  of SOME frameset => SOME (H4.BodyOrFrameset_FRAMESET frameset)
-                   | NONE => NONE)
-            end
+    let fun cvtBody (SOME body) = SOME (H4.BodyOrFrameset_BODY body)
+          | cvtBody _ = NONE
     in
-        if isEnterNT "body" pstrm then bodyFromParseStream pstrm
-        else bodyOrFrameset_FRAMESET_FromParseStream pstrm
+        if isEnterNT "body" pstrm
+        then let val (pstrm', bodyOpt) = bodyFromParseStream pstrm
+             in (pstrm', cvtBody bodyOpt) end
+        else let val (pstrm', framesetOpt) = framesetFromParseStream pstrm
+             in (pstrm',
+                 cvtFrameset H4.BodyOrFrameset_FRAMESET framesetOpt) end
     end
+and bodyFromParseStream pstrm0 =
+    let val pstrm1 = expectEnterNT "body" pstrm0
+        val (pstrm2, startbodyTokOpt) = optVisitTok "STARTBODY" pstrm1
+        val attrs = if isSome startbodyTokOpt
+                    then case H4TU.tokGetAttrs (valOf startbodyTokOpt)
+                          of SOME attrs => attrs
+                           | NONE => []
+                    else []
+        val (pstrm3, children) =
+            streamConsumeUntil blockOrScriptFromParseStream
+                               (isEither(isExitNT "body", isVisitT "ENDBODY"))
+                               (skipWhitespace pstrm2)
+        val (pstrm4, _) = optVisitTok "ENDBODY" pstrm3
+        val pstrm5 = expectExitNT "body" (skipWhitespace pstrm4)
+    in (pstrm5, SOME (H4.BODY (attrs, listOfOptsToList children))) end 
 and framesetFromParseStream pstrm0 =
     let val pstrm1 = expectEnterNT "frameset" pstrm0
         val pstrm2 = expectVisitT "STARTFRAMESET" pstrm1
@@ -286,227 +325,342 @@ and framesetFromParseStream pstrm0 =
                                (skipWhitespace pstrm2)
         val (pstrm4, noframesOpt) =
             if isEnterNT "noframes" pstrm3 then
-                let val (pstrm4', noframesOpt') = noFramesFromParseStream pstrm3
+                let val (pstrm4', noframesOpt') =
+                        noFramesFromParseStream pstrm3
                 in (skipWhitespace pstrm4', noframesOpt') end
             else (pstrm3, NONE)
         val pstrm5 = expectVisitT "ENDFRAMESET" pstrm4
         val pstrm6 = expectExitNT "frameset" (skipWhitespace pstrm5)
     in
-        (pstrm6, SOME (H4.FRAMESET (attrs, listOfOptsToList children, noframesOpt)))
+        (pstrm6, SOME (H4.FRAMESET (attrs, listOfOptsToList children,
+                                    noframesOpt)))
     end
 and framesetOrFrameFromParseStream pstrm0 =
-    let fun cvtFrameset (SOME frameset) = SOME (H4.FramesetOrFrame_FRAMESET frameset)
-          | cvtFrameset NONE = NONE
-        val pstrm1 = skipWhitespace pstrm0
+    let val pstrm1 = skipWhitespace pstrm0
         val (pstrm2, result) =
             if isEnterNT "frameset" pstrm1
             then let val (pstrm', result') = framesetFromParseStream pstrm1
-                 in (pstrm', cvtFrameset result') end
+                 in (pstrm',
+                     cvtFrameset H4.FramesetOrFrame_FRAMESET result') end
             else html0aryFromParseStream "frame" H4.FRAME pstrm1
     in (skipWhitespace pstrm2, result) end
-and noFramesFromParseStream pstrm = (pstrm, NONE) (* XXX *)
+and noFramesFromParseStream pstrm0 =
+    let val pstrm1 = expectEnterNT "noframes" pstrm0
+        val pstrm2 = expectVisitT "STARTNOFRAMES" pstrm1
+        val attrs = getAttrsFromStream pstrm1
+        val (pstrm3, bodyOpt) = bodyFromParseStream pstrm2
+        val pstrm4 = expectVisitT "ENDNOFRAMES" pstrm3
+        val pstrm5 = expectExitNT "noframes" pstrm4
+    in (pstrm5, SOME (H4.NOFRAMES (attrs, valOf bodyOpt))) end
 and flowFromParseStream pstrm =
     let val pstrmHd = H4U.stream_hd pstrm
-        fun cvtBlock (SOME block) = SOME (H4.Flow_BLOCK block)
-          | cvtBlock NONE = NONE
-        fun cvtInline (SOME inline) = SOME (H4.Flow_INLINE inline)
-          | cvtInline NONE = NONE
-        fun handleInline pstrm =
+        fun procInline pstrm =
             let val (pstrm', result') = inlineFromParseStream pstrm
-            in (pstrm', cvtInline result') end
+            in (pstrm', cvtInline H4.Flow_INLINE result') end
     in case pstrmHd
         of H4U.EnterNT ntAtom =>
-           if AtomMap.inDomain (!blockContentHandlerMap, ntAtom)
+           if AtomMap.inDomain (!blockNTMap, ntAtom)
            then let val (pstrm', result') = blockFromParseStream pstrm
-                in (pstrm', cvtBlock result') end
-           else handleInline pstrm
-         | _ => handleInline pstrm
+                in (pstrm', cvtBlock H4.Flow_BLOCK result') end
+           else procInline pstrm
+         | _ => procInline pstrm
     end
 and blockFromParseStream pstrm =
-    (expectEnterNTInDomain (!blockContentHandlerMap) pstrm) pstrm
+    (expectEnterNTInDomain (!blockNTMap) pstrm) pstrm
 and inlineFromParseStream pstrm =
     let val pstrmHd = H4U.stream_hd pstrm
     in case pstrmHd
-        of H4U.VisitT tok => (H4U.stream_tl pstrm, NONE) (* XXX *)
-         | _ => (expectEnterNTInDomain (!inlineContentHandlerMap) pstrm) pstrm
+        of H4U.VisitT tok =>
+           let val (pstrm', cdataOptList) =
+                   streamConsumeUntil cdataFromParseStream isNotCdata pstrm
+           in (pstrm', SOME (H4.CDATA (listOfOptsToList cdataOptList))) end
+         | _ => (expectEnterNTInDomain (!inlineNTMap) pstrm) pstrm
     end
-and listItemFromParseStream pstrm = (pstrm, NONE)
-and scriptFromParseStream pstrm = (pstrm, NONE)
-and paramFromParseStream pstrm = (pstrm, NONE)
-and legendFromParseStream pstrm = (pstrm, NONE)
-and defTermOrDescFromParseStream pstrm = (pstrm, NONE)
-and tableDataFromParseStream pstrm = (pstrm, NONE)
-and trFromParseStream pstrm = (pstrm, NONE)
-and thOrTdFromParseStream pstrm = (pstrm, NONE)
-and optgrouporOptionFromParseStream pstrm = (pstrm, NONE)
-and htmlOptionFromParseStream pstrm = (pstrm, NONE)
-and flowOrParamFromParseStream pstrm = (pstrm, NONE)
-and blockOrScriptFromParseStream pstrm = (pstrm, NONE)
-and blockOrAreaFromParseStream pstrm = (pstrm, NONE)
-and objectFromParseStream pstrm =
-    htmlNaryFromParseStream "object" H4.Head_OBJECT flowOrParamFromParseStream pstrm
+and listItemFromParseStream pstrm =
+    htmlNaryFromParseStream "li" H4.LI flowFromParseStream pstrm
+and scriptFromParseStream pstrm =
+    htmlNaryFromParseStream "script" H4.SCRIPT cdataFromParseStream pstrm
+and paramFromParseStream pstrm =
+    html0aryFromParseStream "param" H4.PARAM pstrm
+and legendFromParseStream pstrm =
+    htmlNaryFromParseStream "legend" H4.LEGEND inlineFromParseStream pstrm
+and defTermOrDescFromParseStream pstrm =
+    if isEnterNT "dt" pstrm
+    then htmlNaryFromParseStream "dt" H4.DT inlineFromParseStream pstrm
+    else htmlNaryFromParseStream "dd" H4.DD flowFromParseStream pstrm
+and tableDataFromParseStream pstrm =
+    (expectEnterNTInDomain (!tableDataNTMap) pstrm) pstrm
+and trFromParseStream pstrm =
+    htmlNaryFromParseStream "tr" H4.TR thOrTdFromParseStream pstrm
+and thOrTdFromParseStream pstrm =
+    if isEnterNT "th" pstrm
+    then htmlNaryFromParseStream "th" H4.TH flowFromParseStream pstrm
+    else htmlNaryFromParseStream "td" H4.TD flowFromParseStream pstrm
+and optgroupOrOptionFromParseStream pstrm =
+    if isEnterNT "optgroup" pstrm
+    then htmlNaryFromParseStream "optgroup" H4.OPTGROUP
+                                 htmlOptionFromParseStream pstrm
+    else let val (pstrm', optionOpt) = htmlOptionFromParseStream pstrm
+         in (pstrm', cvtOption H4.OptgroupOrOption_OPTION optionOpt) end
+and htmlOptionFromParseStream pstrm =
+    htmlNaryFromParseStream "option" H4.OPTION cdataFromParseStream pstrm
+and flowOrParamFromParseStream pstrm =
+    if isEnterNT "param" pstrm
+    then let val (pstrm', paramOpt) = paramFromParseStream pstrm
+         in (pstrm', cvtParam H4.FlowOrParam_PARAM paramOpt) end
+    else let val (pstrm', flowOpt) = flowFromParseStream pstrm
+         in (pstrm', cvtFlow H4.FlowOrParam_FLOW flowOpt) end
+and blockOrScriptFromParseStream pstrm =
+    if isEnterNT "script" pstrm
+    then let val (pstrm', scriptOpt) = scriptFromParseStream pstrm
+         in (skipWhitespace pstrm',
+             cvtScript H4.BlockOrScript_SCRIPT scriptOpt) end
+    else let val (pstrm', blockOpt) = blockFromParseStream pstrm
+         in (skipWhitespace pstrm',
+             cvtBlock H4.BlockOrScript_BLOCK blockOpt) end
+and blockOrAreaFromParseStream pstrm =
+    if isEnterNT "area" pstrm
+    then html0aryFromParseStream "area" H4.AREA pstrm
+    else let val (pstrm', blockOpt) = blockFromParseStream pstrm
+         in (pstrm', cvtBlock H4.BlockOrArea_BLOCK blockOpt) end
+and headObjectFromParseStream pstrm =
+    htmlNaryFromParseStream "object" H4.Head_OBJECT flowOrParamFromParseStream
+                            pstrm
 and headScriptFromParseStream pstrm =
     let val (pstrm', scriptOpt) = scriptFromParseStream pstrm
-    in case scriptOpt of NONE => (pstrm', NONE)
-                       | SOME script => (pstrm', SOME (H4.Head_SCRIPT script))
-    end
-
-fun cdataFromParseStream pstrm =
-    if isNotCdata pstrm
-    then raise (IllFormedHTMLParseStream(pstrm, SOME "Expected character data."))
-    else
-        let val pstrmHd = H4U.stream_hd pstrm
-            val pstrmTl = H4U.stream_tl pstrm
-        in case pstrmHd
-            of H4U.VisitT tok => (pstrmTl, SOME (tokToCdata tok))
-             | _ => (pstrmTl, NONE)
-        end
+    in (pstrm', cvtScript H4.Head_SCRIPT scriptOpt) end
 
 val titleFromParseStream =
     htmlNaryFromParseStream "title" H4.Head_TITLE cdataFromParseStream
 val baseFromParseStream = html0aryFromParseStream "base" H4.Head_BASE
 val metaFromParseStream = html0aryFromParseStream "meta" H4.Head_META
 val linkFromParseStream = html0aryFromParseStream "link" H4.Head_LINK
-fun pFromParseStream pstrm = (pstrm, NONE)
-fun h1FromParseStream pstrm = (pstrm, NONE)
-fun h2FromParseStream pstrm = (pstrm, NONE)
-fun h3FromParseStream pstrm = (pstrm, NONE)
-fun h4FromParseStream pstrm = (pstrm, NONE)
-fun h5FromParseStream pstrm = (pstrm, NONE)
-fun h6FromParseStream pstrm = (pstrm, NONE)
-fun ulFromParseStream pstrm = (pstrm, NONE)
-fun olFromParseStream pstrm = (pstrm, NONE)
-fun dirFromParseStream pstrm = (pstrm, NONE)
-fun menuFromParseStream pstrm = (pstrm, NONE)
-fun preFromParseStream pstrm = (pstrm, NONE)
-fun dlFromParseStream pstrm = (pstrm, NONE)
-fun divFromParseStream pstrm = (pstrm, NONE)
-fun noscriptFromParseStream pstrm = (pstrm, NONE)
-fun blockquoteFromParseStream pstrm = (pstrm, NONE)
-fun formFromParseStream pstrm = (pstrm, NONE)
-fun hrFromParseStream pstrm = (pstrm, NONE)
-fun tableFromParseStream pstrm = (pstrm, NONE)
-fun fieldsetFromParseStream pstrm = (pstrm, NONE)
-fun addressFromParseStream pstrm = (pstrm, NONE)
-fun centerFromParseStream pstrm = (pstrm, NONE)
-fun isindexFromParseStream pstrm = (pstrm, NONE)
-fun ttFromParseStream pstrm = (pstrm, NONE)
-fun iFromParseStream pstrm = (pstrm, NONE)
-fun bFromParseStream pstrm = (pstrm, NONE)
-fun bigFromParseStream pstrm = (pstrm, NONE)
-fun smallFromParseStream pstrm = (pstrm, NONE)
-fun uFromParseStream pstrm = (pstrm, NONE)
-fun sFromParseStream pstrm = (pstrm, NONE)
-fun strikeFromParseStream pstrm = (pstrm, NONE)
-fun emFromParseStream pstrm = (pstrm, NONE)
-fun strongFromParseStream pstrm = (pstrm, NONE)
-fun dfnFromParseStream pstrm = (pstrm, NONE)
-fun codeFromParseStream pstrm = (pstrm, NONE)
-fun sampFromParseStream pstrm = (pstrm, NONE)
-fun kbdFromParseStream pstrm = (pstrm, NONE)
-fun varFromParseStream pstrm = (pstrm, NONE)
-fun citeFromParseStream pstrm = (pstrm, NONE)
-fun abbrFromParseStream pstrm = (pstrm, NONE)
-fun acronymFromParseStream pstrm = (pstrm, NONE)
-fun aFromParseStream pstrm = (pstrm, NONE)
-fun imgFromParseStream pstrm = (pstrm, NONE)
-fun objectFromParseStream pstrm = (pstrm, NONE)
-fun brFromParseStream pstrm = (pstrm, NONE)
-fun inlineScriptFromParseStream pstrm = (pstrm, NONE)
-fun mapFromParseStream pstrm = (pstrm, NONE)
-fun qFromParseStream pstrm = (pstrm, NONE)
-fun subFromParseStream pstrm = (pstrm, NONE)
-fun supFromParseStream pstrm = (pstrm, NONE)
-fun spanFromParseStream pstrm = (pstrm, NONE)
-fun bdoFromParseStream pstrm = (pstrm, NONE)
-fun appletFromParseStream pstrm = (pstrm, NONE)
-fun basefontFromParseStream pstrm = (pstrm, NONE)
-fun fontFromParseStream pstrm = (pstrm, NONE)
-fun iframeFromParseStream pstrm = (pstrm, NONE)
-fun inputFromParseStream pstrm = (pstrm, NONE)
-fun selectFromParseStream pstrm = (pstrm, NONE)
-fun textareaFromParseStream pstrm = (pstrm, NONE)
-fun labelFromParseStream pstrm = (pstrm, NONE)
-fun buttonFromParseStream pstrm = (pstrm, NONE)
-fun inlineCdataFromParseStream pstrm = (pstrm, NONE)
+val pFromParseStream = htmlNaryFromParseStream "p" H4.P inlineFromParseStream
+val h1FromParseStream =
+    htmlNaryFromParseStream "h1" H4.H1 inlineFromParseStream
+val h2FromParseStream =
+    htmlNaryFromParseStream "h2" H4.H2 inlineFromParseStream
+val h3FromParseStream =
+    htmlNaryFromParseStream "h3" H4.H3 inlineFromParseStream
+val h4FromParseStream =
+    htmlNaryFromParseStream "h4" H4.H4 inlineFromParseStream
+val h5FromParseStream =
+    htmlNaryFromParseStream "h5" H4.H5 inlineFromParseStream
+val h6FromParseStream =
+    htmlNaryFromParseStream "h6" H4.H6 inlineFromParseStream
+val ulFromParseStream =
+    htmlNaryFromParseStream "ul" H4.UL listItemFromParseStream
+val olFromParseStream =
+    htmlNaryFromParseStream "ol" H4.OL listItemFromParseStream
+val dirFromParseStream =
+    htmlNaryFromParseStream "dir" H4.DIR listItemFromParseStream
+val menuFromParseStream =
+    htmlNaryFromParseStream "menu" H4.MENU listItemFromParseStream
+val preFromParseStream =
+    (* XXX This will not properly track whitespace currently. *)
+    htmlNaryFromParseStream "pre" H4.PRE inlineFromParseStream
+val dlFromParseStream =
+    htmlNaryFromParseStream "dl" H4.DL defTermOrDescFromParseStream
+val divFromParseStream =
+    htmlNaryFromParseStream "div" H4.DIV flowFromParseStream
+val noscriptFromParseStream =
+    htmlNaryFromParseStream "noscript" H4.NOSCRIPT blockFromParseStream
+val blockquoteFromParseStream =
+    htmlNaryFromParseStream "blockquote" H4.BLOCKQUOTE
+                            blockOrScriptFromParseStream
+val formFromParseStream =
+    htmlNaryFromParseStream "form" H4.FORM blockOrScriptFromParseStream
+val hrFromParseStream = html0aryFromParseStream "hr" H4.HR
+val tableFromParseStream =
+    htmlNaryFromParseStream "table" H4.TABLE tableDataFromParseStream
+fun fieldsetFromParseStream pstrm = (pstrm, NONE) (* XXX *)
+val addressFromParseStream =
+    htmlNaryFromParseStream "address" H4.ADDRESS inlineFromParseStream
+val centerFromParseStream =
+    htmlNaryFromParseStream "center" H4.CENTER flowFromParseStream
+val isindexFromParseStream = html0aryFromParseStream "isindex" H4.ISINDEX
+val ttFromParseStream =
+    htmlNaryFromParseStream "tt" H4.TT inlineFromParseStream
+val iFromParseStream =
+    htmlNaryFromParseStream "i" H4.I inlineFromParseStream
+val bFromParseStream =
+    htmlNaryFromParseStream "b" H4.B inlineFromParseStream
+val bigFromParseStream =
+    htmlNaryFromParseStream "big" H4.BIG inlineFromParseStream
+val smallFromParseStream =
+    htmlNaryFromParseStream "small" H4.SMALL inlineFromParseStream
+val uFromParseStream =
+    htmlNaryFromParseStream "u" H4.U inlineFromParseStream
+val sFromParseStream =
+    htmlNaryFromParseStream "s" H4.S inlineFromParseStream
+val strikeFromParseStream =
+    htmlNaryFromParseStream "strike" H4.STRIKE inlineFromParseStream
+val emFromParseStream =
+    htmlNaryFromParseStream "em" H4.EM inlineFromParseStream
+val strongFromParseStream =
+    htmlNaryFromParseStream "strong" H4.STRONG inlineFromParseStream
+val dfnFromParseStream =
+    htmlNaryFromParseStream "dfn" H4.DFN inlineFromParseStream
+val codeFromParseStream =
+    htmlNaryFromParseStream "code" H4.CODE inlineFromParseStream
+val sampFromParseStream =
+    htmlNaryFromParseStream "samp" H4.SAMP inlineFromParseStream
+val kbdFromParseStream =
+    htmlNaryFromParseStream "kbd" H4.KBD inlineFromParseStream
+val varFromParseStream =
+    htmlNaryFromParseStream "var" H4.VAR inlineFromParseStream
+val citeFromParseStream =
+    htmlNaryFromParseStream "cite" H4.CITE inlineFromParseStream
+val abbrFromParseStream =
+    htmlNaryFromParseStream "abbr" H4.ABBR inlineFromParseStream
+val acronymFromParseStream =
+    htmlNaryFromParseStream "acronym" H4.ACRONYM inlineFromParseStream
+val aFromParseStream =
+    htmlNaryFromParseStream "a" H4.A inlineFromParseStream
+val imgFromParseStream =
+    html0aryFromParseStream "img" H4.IMG
+val objectFromParseStream =
+    htmlNaryFromParseStream "object" H4.OBJECT flowOrParamFromParseStream
+val brFromParseStream =
+    html0aryFromParseStream "br" H4.BR
+fun inlineScriptFromParseStream pstrm =
+    let val (pstrm', scriptOpt) = scriptFromParseStream pstrm
+    in (pstrm', cvtScript H4.Inline_SCRIPT scriptOpt) end
+val mapFromParseStream =
+    htmlNaryFromParseStream "map" H4.MAP blockOrAreaFromParseStream
+val qFromParseStream =
+    htmlNaryFromParseStream "q" H4.Q inlineFromParseStream
+val subFromParseStream =
+    htmlNaryFromParseStream "sub" H4.SUB inlineFromParseStream
+val supFromParseStream =
+    htmlNaryFromParseStream "sup" H4.SUP inlineFromParseStream
+val spanFromParseStream =
+    htmlNaryFromParseStream "span" H4.SPAN inlineFromParseStream
+val bdoFromParseStream =
+    htmlNaryFromParseStream "bdo" H4.BDO inlineFromParseStream
+val appletFromParseStream =
+    htmlNaryFromParseStream "applet" H4.APPLET flowOrParamFromParseStream
+val basefontFromParseStream =
+    html0aryFromParseStream "basefont" H4.BASEFONT
+val fontFromParseStream =
+    htmlNaryFromParseStream "font" H4.FONT inlineFromParseStream
+val iframeFromParseStream =
+    htmlNaryFromParseStream "iframe" H4.IFRAME flowFromParseStream
+val inputFromParseStream =
+    html0aryFromParseStream "input" H4.INPUT
+val selectFromParseStream =
+    htmlNaryFromParseStream "select" H4.SELECT optgroupOrOptionFromParseStream
+val textareaFromParseStream =
+    htmlNaryFromParseStream "textarea" H4.TEXTAREA cdataFromParseStream
+val labelFromParseStream =
+    htmlNaryFromParseStream "label" H4.LABEL inlineFromParseStream
+val buttonFromParseStream =
+    htmlNaryFromParseStream "button" H4.BUTTON flowFromParseStream
+
+val captionFromParseStream =
+    htmlNaryFromParseStream "caption" H4.CAPTION inlineFromParseStream
+
+fun colFromParseStream pstrm = (pstrm, NONE) (* XXX *)
+
+val colgroupFromParseStream =
+    htmlNaryFromParseStream "colgroup" H4.COLGROUP colFromParseStream
+
+val theadFromParseStream =
+    htmlNaryFromParseStream "thead" H4.THEAD trFromParseStream
+
+val tfootFromParseStream =
+    htmlNaryFromParseStream "tfoot" H4.TFOOT trFromParseStream
+
+val tbodyFromParseStream =
+    htmlNaryFromParseStream "tbody" H4.TBODY trFromParseStream
 
 val _ =
-    (headContentHandlerMap := (foldl AtomMap.insert' AtomMap.empty
-                                     [ (Atom.atom "title", titleFromParseStream),
-                                       (Atom.atom "base", baseFromParseStream),
-                                       (Atom.atom "script", headScriptFromParseStream),
-                                       (Atom.atom "meta", metaFromParseStream),
-                                       (Atom.atom "link", linkFromParseStream),
-                                       (Atom.atom "object", objectFromParseStream) ]),
-     blockContentHandlerMap := (foldl AtomMap.insert' AtomMap.empty
-                                      [ (Atom.atom "p", pFromParseStream),
-                                        (Atom.atom "h1", h1FromParseStream),
-                                        (Atom.atom "h2", h2FromParseStream),
-                                        (Atom.atom "h3", h3FromParseStream),
-                                        (Atom.atom "h4", h4FromParseStream),
-                                        (Atom.atom "h5", h5FromParseStream),
-                                        (Atom.atom "h6", h6FromParseStream),
-                                        (Atom.atom "ul", ulFromParseStream),
-                                        (Atom.atom "ol", olFromParseStream),
-                                        (Atom.atom "dir", dirFromParseStream),
-                                        (Atom.atom "menu", menuFromParseStream),
-                                        (Atom.atom "pre", preFromParseStream),
-                                        (Atom.atom "dl", dlFromParseStream),
-                                        (Atom.atom "div", divFromParseStream),
-                                        (Atom.atom "noscript", noscriptFromParseStream),
-                                        (Atom.atom "blockquote",
-                                         blockquoteFromParseStream),
-                                        (Atom.atom "form", formFromParseStream),
-                                        (Atom.atom "hr", hrFromParseStream),
-                                        (Atom.atom "table", tableFromParseStream),
-                                        (Atom.atom "fieldset", fieldsetFromParseStream),
-                                        (Atom.atom "address", addressFromParseStream),
-                                        (Atom.atom "isindex", isindexFromParseStream),
-                                        (Atom.atom "center", centerFromParseStream) ]),
-     inlineContentHandlerMap := (foldl AtomMap.insert' AtomMap.empty
-                                       [(Atom.atom "tt", ttFromParseStream),
-                                        (Atom.atom "i", iFromParseStream),
-                                        (Atom.atom "b", bFromParseStream),
-                                        (Atom.atom "big", bigFromParseStream),
-                                        (Atom.atom "small", smallFromParseStream),
-                                        (Atom.atom "u", uFromParseStream),
-                                        (Atom.atom "s", sFromParseStream),
-                                        (Atom.atom "strike", strikeFromParseStream),
-                                        (Atom.atom "em", emFromParseStream),
-                                        (Atom.atom "strong", strongFromParseStream),
-                                        (Atom.atom "dfn", dfnFromParseStream),
-                                        (Atom.atom "code", codeFromParseStream),
-                                        (Atom.atom "samp", sampFromParseStream),
-                                        (Atom.atom "kbd", kbdFromParseStream),
-                                        (Atom.atom "var", varFromParseStream),
-                                        (Atom.atom "cite", citeFromParseStream),
-                                        (Atom.atom "abbr", abbrFromParseStream),
-                                        (Atom.atom "acronym", acronymFromParseStream),
-                                        (Atom.atom "a", aFromParseStream),
-                                        (Atom.atom "img", imgFromParseStream),
-                                        (Atom.atom "object", objectFromParseStream),
-                                        (Atom.atom "br", brFromParseStream),
-                                        (Atom.atom "script",
-                                         inlineScriptFromParseStream),
-                                        (Atom.atom "map", mapFromParseStream),
-                                        (Atom.atom "q", qFromParseStream),
-                                        (Atom.atom "sub", subFromParseStream),
-                                        (Atom.atom "sup", supFromParseStream),
-                                        (Atom.atom "span", spanFromParseStream),
-                                        (Atom.atom "bdo", bdoFromParseStream),
-                                        (Atom.atom "applet", appletFromParseStream),
-                                        (Atom.atom "basefont", basefontFromParseStream),
-                                        (Atom.atom "font", fontFromParseStream),
-                                        (Atom.atom "iframe", iframeFromParseStream),
-                                        (Atom.atom "input", inputFromParseStream),
-                                        (Atom.atom "select", selectFromParseStream),
-                                        (Atom.atom "textarea", textareaFromParseStream),
-                                        (Atom.atom "label", labelFromParseStream),
-                                        (Atom.atom "button", buttonFromParseStream) ])
+    (headContentNTMap
+     := (foldl AtomMap.insert' AtomMap.empty
+               [ (Atom.atom "title", titleFromParseStream),
+                 (Atom.atom "base", baseFromParseStream),
+                 (Atom.atom "script", headScriptFromParseStream),
+                 (Atom.atom "meta", metaFromParseStream),
+                 (Atom.atom "link", linkFromParseStream),
+                 (Atom.atom "object", headObjectFromParseStream)]),
+     blockNTMap
+     := (foldl AtomMap.insert' AtomMap.empty
+               [ (Atom.atom "p", pFromParseStream),
+                 (Atom.atom "h1", h1FromParseStream),
+                 (Atom.atom "h2", h2FromParseStream),
+                 (Atom.atom "h3", h3FromParseStream),
+                 (Atom.atom "h4", h4FromParseStream),
+                 (Atom.atom "h5", h5FromParseStream),
+                 (Atom.atom "h6", h6FromParseStream),
+                 (Atom.atom "ul", ulFromParseStream),
+                 (Atom.atom "ol", olFromParseStream),
+                 (Atom.atom "dir", dirFromParseStream),
+                 (Atom.atom "menu", menuFromParseStream),
+                 (Atom.atom "pre", preFromParseStream),
+                 (Atom.atom "dl", dlFromParseStream),
+                 (Atom.atom "div", divFromParseStream),
+                 (Atom.atom "noscript", noscriptFromParseStream),
+                 (Atom.atom "blockquote", blockquoteFromParseStream),
+                 (Atom.atom "form", formFromParseStream),
+                 (Atom.atom "hr", hrFromParseStream),
+                 (Atom.atom "table", tableFromParseStream),
+                 (Atom.atom "fieldset", fieldsetFromParseStream),
+                 (Atom.atom "address", addressFromParseStream),
+                 (Atom.atom "isindex", isindexFromParseStream),
+                 (Atom.atom "center", centerFromParseStream)]),
+     inlineNTMap
+     := (foldl AtomMap.insert' AtomMap.empty
+               [ (Atom.atom "tt", ttFromParseStream),
+                 (Atom.atom "i", iFromParseStream),
+                 (Atom.atom "b", bFromParseStream),
+                 (Atom.atom "big", bigFromParseStream),
+                 (Atom.atom "small", smallFromParseStream),
+                 (Atom.atom "u", uFromParseStream),
+                 (Atom.atom "s", sFromParseStream),
+                 (Atom.atom "strike", strikeFromParseStream),
+                 (Atom.atom "em", emFromParseStream),
+                 (Atom.atom "strong", strongFromParseStream),
+                 (Atom.atom "dfn", dfnFromParseStream),
+                 (Atom.atom "code", codeFromParseStream),
+                 (Atom.atom "samp", sampFromParseStream),
+                 (Atom.atom "kbd", kbdFromParseStream),
+                 (Atom.atom "var", varFromParseStream),
+                 (Atom.atom "cite", citeFromParseStream),
+                 (Atom.atom "abbr", abbrFromParseStream),
+                 (Atom.atom "acronym", acronymFromParseStream),
+                 (Atom.atom "a", aFromParseStream),
+                 (Atom.atom "img", imgFromParseStream),
+                 (Atom.atom "object", objectFromParseStream),
+                 (Atom.atom "br", brFromParseStream),
+                 (Atom.atom "script", inlineScriptFromParseStream),
+                 (Atom.atom "map", mapFromParseStream),
+                 (Atom.atom "q", qFromParseStream),
+                 (Atom.atom "sub", subFromParseStream),
+                 (Atom.atom "sup", supFromParseStream),
+                 (Atom.atom "span", spanFromParseStream),
+                 (Atom.atom "bdo", bdoFromParseStream),
+                 (Atom.atom "applet", appletFromParseStream),
+                 (Atom.atom "basefont", basefontFromParseStream),
+                 (Atom.atom "font", fontFromParseStream),
+                 (Atom.atom "iframe", iframeFromParseStream),
+                 (Atom.atom "input", inputFromParseStream),
+                 (Atom.atom "select", selectFromParseStream),
+                 (Atom.atom "textarea", textareaFromParseStream),
+                 (Atom.atom "label", labelFromParseStream),
+                 (Atom.atom "button", buttonFromParseStream)]),
+     tableDataNTMap
+     := (foldl AtomMap.insert' AtomMap.empty
+               [ (Atom.atom "caption", captionFromParseStream),
+                 (Atom.atom "col", colFromParseStream),
+                 (Atom.atom "colgroup", colgroupFromParseStream),
+                 (Atom.atom "thead", theadFromParseStream),
+                 (Atom.atom "tfoot", tfootFromParseStream),
+                 (Atom.atom "tbody", tbodyFromParseStream)])
     )
 
 fun fromParseTree pt =
-    let val (_, result) = htmlFromParseStream (H4U.parsetreeToVisitationStream pt)
+    let val (_, result) =
+            htmlFromParseStream (H4U.parsetreeToVisitationStream pt)
     in result end
 
 fun fromString str = let

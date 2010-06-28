@@ -125,8 +125,8 @@ fun isStrict _ = true
 
 fun getVersionStr (doc as H4.HTML {head, content, ...}) =
     case content of
-        H4.BODY (attrs, children) => if isStrict children then strictStr
-                                     else looseStr
+        H4.BodyOrFrameset_BODY (H4.BODY (attrs, children)) =>
+        if isStrict children then strictStr else looseStr
       | H4.BodyOrFrameset_FRAMESET _ => framesetStr
 
 (* ____________________________________________________________ *)
@@ -200,10 +200,12 @@ in
         ppTagAndChildren ppstrm ppCdata S.STYLE contents
       | ppHead_content ppstrm (Head_TITLE contents) =
         ppTagAndChildren ppstrm ppCdata S.TITLE contents
-    and ppBody_or_frameset ppstrm (BODY content) =
-        ppTagAndChildren ppstrm ppBlock_or_script S.BODY content
+    and ppBody_or_frameset ppstrm (BodyOrFrameset_BODY body) =
+        ppBody ppstrm body
       | ppBody_or_frameset ppstrm (BodyOrFrameset_FRAMESET frameset) =
         ppFrameset ppstrm frameset
+    and ppBody ppstrm (BODY content) =
+        ppTagAndChildren ppstrm ppBlock_or_script S.BODY content
     and ppFrameset ppstrm (FRAMESET (attrs, children, noframesOpt)) = (
         ppOpenTag ppstrm (S.FRAMESET, attrs);
         ppChildren ppstrm ppFrameset_or_frame children;
@@ -217,8 +219,10 @@ in
         ppOpenTag ppstrm (S.FRAME, attrs)
       | ppFrameset_or_frame ppstrm (FramesetOrFrame_FRAMESET frameset) =
         ppFrameset ppstrm frameset
-    and ppNoframes ppstrm (NOFRAMES content) =
-        ppTagAndChildren ppstrm ppFlow S.NOFRAMES content
+    and ppNoframes ppstrm (NOFRAMES (attrs, body)) =
+        (ppOpenTag ppstrm (S.NOFRAMES, attrs);
+         ppBody ppstrm body;
+         ppCloseTag ppstrm S.NOFRAMES)
     and ppFlow ppstrm (Flow_BLOCK block) = ppBlock ppstrm block
       | ppFlow ppstrm (Flow_INLINE inline) = ppInline ppstrm inline
     and ppBlock ppstrm (ADDRESS content) =

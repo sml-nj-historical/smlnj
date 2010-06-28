@@ -7,12 +7,7 @@ Group is
     $/smlnj-lib.cm
     $/ml-lpt-lib.cm
 
-    html4-token-utils.sml
-    html4-utils.sml
-    html4-attr.l : ml-ulex
-    html4-attr.g : ml-antlr
-    html4.l : ml-ulex
-    html4.g : ml-antlr
+    html4-lib.cm
     html4-test.sml
 
 (* ______________________________________________________________________

@@ -418,7 +418,7 @@ acronym : STARTACRONYM inline* ENDACRONYM
 ;
 
 address : STARTADDRESS inline* ENDADDRESS
-         => (Nd (Atom.atom "addresss",
+         => (Nd (Atom.atom "address",
                  (Lf (Tok.STARTADDRESS STARTADDRESS)) ::
                  (inline @ [Lf (Tok.ENDADDRESS)])))
 ;
