@@ -62,23 +62,23 @@ structure SourceMap : SOURCE_MAP = struct
     {resynchPos = ref [(pos, fileName, column)], linePos = ref [(pos, line)]}
 
   fun resynch ({resynchPos, linePos}: sourcemap) (pos, {fileName, line, column}) =
-    let val curFile = #2 (hd (!resynchPos))
-        fun thefile (SOME file) = if file = curFile then curFile else file
-                                     (* pathetic attempt at hash-consing *)
-          | thefile NONE        = #2 (hd (!resynchPos))
-        fun thecol NONE     = 1
-          | thecol (SOME c) = c
-    in  resynchPos := (pos, thefile fileName, thecol column) :: !resynchPos;
-        linePos := (pos, line) :: !linePos
-    end
+      let val curFile = #2 (hd (!resynchPos))
+	  fun thefile (SOME file) = if file = curFile then curFile else file
+				       (* pathetic attempt at hash-consing *)
+	    | thefile NONE        = #2 (hd (!resynchPos))
+	  fun thecol NONE     = 1
+	    | thecol (SOME c) = c
+      in  resynchPos := (pos, thefile fileName, thecol column) :: !resynchPos;
+	  linePos := (pos, line) :: !linePos
+      end
 
   (* Since [[pos]] is the position of the newline, the next line doesn't      *)
   (* start until the succeeding position.                                     *)
 
   fun newline ({resynchPos, linePos}: sourcemap) pos =
-    let val (_, line) = hd (!linePos)
-    in  linePos := (pos+1, line+1) :: !linePos
-    end
+      let val (_, line) = hd (!linePos)
+      in  linePos := (pos+1, line+1) :: !linePos
+      end
 
   fun lastChange({linePos, ...}: sourcemap) = #1 (hd (!linePos))
 
@@ -87,19 +87,19 @@ structure SourceMap : SOURCE_MAP = struct
   (* whose positions satisfy some predicate:                                  *)
 
   fun remove p ({resynchPos,linePos}: sourcemap) =
-    let fun strip (l as (pos, _   )::rest) = if p pos then strip  rest else l
-          | strip [] = []
-        fun strip'(l as (pos, _, _)::rest) = if p pos then strip' rest else l
-          | strip'[] = []
-    in  (strip'(!resynchPos), strip (!linePos))
-    end
+      let fun strip (l as (pos, _   )::rest) = if p pos then strip  rest else l
+	    | strip [] = []
+	  fun strip'(l as (pos, _, _)::rest) = if p pos then strip' rest else l
+	    | strip'[] = []
+      in  (strip'(!resynchPos), strip (!linePos))
+      end
 
   (* We find file and line number by linear search.                           *)
   (* The first position less than [[p]] is what we want.                      *)
   (* The initial column depends on whether we resynchronized.                 *)
 
   fun column ((pos, file, col), (pos', line), p) =
-    if pos = pos' then p - pos + col else p - pos' + 1
+      if pos = pos' then p - pos + col else p - pos' + 1
 
   fun filepos smap p : sourceloc =
       let val (files, lines) = remove (fn pos : int => pos > p) smap
@@ -114,33 +114,33 @@ structure SourceMap : SOURCE_MAP = struct
   (* We also exploit that only file entries correspond to new regions.        *)
 
   fun fileregion smap (lo, hi) =
-    if (lo,hi) = nullRegion then [] else
-    let exception Impossible
-        fun gather((p, file, col)::files, (p', line)::lines, region_end, answers) =
-          if p' <= lo then (* last item *)
-            ({fileName=file, line=line, column=column((p, file, col), (p', line), lo)}, 
-             region_end) :: answers
-          else
-            if p < p' then
-              gather((p, file, col)::files, lines, region_end, answers)
-            else (* p = p'; new region *)
-              gather(files, lines, end_of (p, hd files, hd lines), 
-                   ({fileName = file, line = line, column = col}, region_end) :: answers)
-          | gather _ = raise Impossible
-        and end_of(lastpos, xx as (p, file, col), yy as (p', line)) = 
-               {fileName=file, line=line, column=column(xx, yy, lastpos)}
-        val (files, lines) = remove (fn pos : int => pos >= hi andalso pos > lo) smap
-        val _ = if null files orelse null lines then raise Impossible else ()
-        val answer = gather(files, lines, end_of(hi, hd files, hd lines), [])
-        fun validate(({fileName=f,  line=l,  column=c}:sourceloc, 
-                      {fileName=f', line=l', column=c'}) :: rest) = 
-              if f = f' andalso (l' > l orelse (l' = l andalso c' >= c)) then
-                validate rest 
-              else 
-                raise Impossible
-          | validate [] = ()
-    in  validate answer; answer
-    end
+      if (lo,hi) = nullRegion then [] else
+      let exception Impossible
+	  fun gather((p, file, col)::files, (p', line)::lines, region_end, answers) =
+	    if p' <= lo then (* last item *)
+	      ({fileName=file, line=line, column=column((p, file, col), (p', line), lo)}, 
+	       region_end) :: answers
+	    else
+	      if p < p' then
+		gather((p, file, col)::files, lines, region_end, answers)
+	      else (* p = p'; new region *)
+		gather(files, lines, end_of (p, hd files, hd lines), 
+		     ({fileName = file, line = line, column = col}, region_end) :: answers)
+	    | gather _ = raise Impossible
+	  and end_of(lastpos, xx as (p, file, col), yy as (p', line)) = 
+		 {fileName=file, line=line, column=column(xx, yy, lastpos)}
+	  val (files, lines) = remove (fn pos : int => pos >= hi andalso pos > lo) smap
+	  val _ = if null files orelse null lines then raise Impossible else ()
+	  val answer = gather(files, lines, end_of(hi, hd files, hd lines), [])
+	  fun validate(({fileName=f,  line=l,  column=c}:sourceloc, 
+			{fileName=f', line=l', column=c'}) :: rest) = 
+		if f = f' andalso (l' > l orelse (l' = l andalso c' >= c)) then
+		  validate rest 
+		else 
+		  raise Impossible
+	    | validate [] = ()
+      in  validate answer; answer
+      end
 
   (* [[validate]] checks the invariant that single regions occupy a           *)
   (* single source file and that coordinates are nondecreasing.               *)
@@ -148,24 +148,24 @@ structure SourceMap : SOURCE_MAP = struct
   (* [[pos = hi = lo]].                                                       *)
 
   fun positions({resynchPos,linePos}: sourcemap) (src:sourceloc) =
-    let exception Unimplemented
-    in  raise Unimplemented
-    end
+      let exception Unimplemented
+      in  raise Unimplemented
+      end
 
   (* When discarding old positions, we have to be careful to maintain the     *)
   (* last part of the invariant.                                              *)
 
   fun forgetOldPositions ({resynchPos, linePos} : sourcemap) =
-    let val r as (p,  file, col) = hd (!resynchPos)
-        val l as (p', line)      = hd (!linePos)
-    in  linePos := [l];
-        resynchPos := [if p = p' then r else (p', file, 1)]
-    end
+      let val r as (p,  file, col) = hd (!resynchPos)
+	  val l as (p', line)      = hd (!linePos)
+      in  linePos := [l];
+	  resynchPos := [if p = p' then r else (p', file, 1)]
+      end
 
   fun newlineCount smap (lo, hi) =
-    let val (hifiles, hilines) = remove (fn pos : int => pos >= hi andalso pos > lo) smap
-        val (lofiles, lolines) = remove (fn pos : int =>                   pos > lo) smap
-    in  length hilines - length hifiles - (length lolines - length lofiles)
-    end
+      let val (hifiles, hilines) = remove (fn pos : int => pos >= hi andalso pos > lo) smap
+	  val (lofiles, lolines) = remove (fn pos : int =>                   pos > lo) smap
+      in  length hilines - length hifiles - (length lolines - length lofiles)
+      end
 
 end (* structure SourceMap *)

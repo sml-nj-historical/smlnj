@@ -311,12 +311,12 @@ and unifyTyvars (var1: tyvar, var2: tyvar, reg1, reg2) =
 		  (case i2
 		     of LITERAL{kind=kind',...} =>
 			 if kind = kind'
-			 then var2 := INSTANTIATED (VARty var1)
+			 then var2 := INSTANTIATED (MARKty(VARty var1, reg1))
 			 else raise Unify (LIT(i1,VARty(var2),reg1,reg2))
 		      | (OPEN{kind=META,eq=e2,...} | SCHEME e2) =>
 			 (* check eq compatibility *)
 			 if not e2 orelse eqLitKind kind
-			 then var2 := INSTANTIATED (VARty var1)
+			 then var2 := INSTANTIATED (MARKty(VARty var1, reg1))
 			 else raise Unify (LIT(i1, VARty(var2), reg1, reg2))
 		      | _ => raise Unify (LIT(i1, VARty(var2), reg1, reg2)))
 
@@ -327,20 +327,20 @@ and unifyTyvars (var1: tyvar, var2: tyvar, reg1, reg2) =
 			 then (if d2 < d1
 				   then var1 := UBOUND{depth=d2,eq=e1,name=name}
 				   else ();
-			       var2 := INSTANTIATED (VARty var1))
+			       var2 := INSTANTIATED (MARKty(VARty var1, reg1)))
 			 else raise Unify (UBV(i1,VARty var2,reg1,reg2))
 		      | _ => raise Unify (UBV(i1,VARty var2,reg1,reg2)))
 
 	       | SCHEME e1 =>
 		  (case i2
 		     of SCHEME e2 =>
-			 if e1 orelse not e2 then var2 := INSTANTIATED (VARty var1)
-			 else var1 := INSTANTIATED(VARty var2)
+			 if e1 orelse not e2 then var2 := INSTANTIATED (MARKty(VARty var1, reg1))
+			 else var1 := INSTANTIATED(MARKty(VARty var2, reg2))
 		      | OPEN{kind=META,eq=e2,depth=d2} =>
 			 if e1 orelse (not e2)
-			 then var2 := INSTANTIATED (VARty var1)
+			 then var2 := INSTANTIATED (MARKty(VARty var1, reg1))
 		         else (var1 := SCHEME e2;
-			       var2 := INSTANTIATED (VARty var1))
+			       var2 := INSTANTIATED (MARKty(VARty var1, reg1)))
 		      | _ => raise Unify (SCH(i1,i2,reg1,reg2)))
 
 	       | OPEN{kind=k1 as FLEX f1,depth=d1,eq=e1} =>
@@ -355,11 +355,11 @@ and unifyTyvars (var1: tyvar, var2: tyvar, reg1, reg2) =
 				    var1 :=
 				      OPEN{depth=d, eq=e,
 					   kind=FLEX(merge_fields(true,true,f1,f2,reg1,reg2))};
-				    var2 := INSTANTIATED(VARty var1))
+				    var2 := INSTANTIATED(MARKty(VARty var1, reg1)))
 			        | META =>
 				   (app (fn (l,t) => adjustType(var2,d,e,t,reg1,reg2)) f1;
 				    var1 := OPEN{kind=k1,depth=d,eq=e};
-				    var2 := INSTANTIATED(VARty var1))
+				    var2 := INSTANTIATED(MARKty(VARty var1, reg1)))
 			 end
 		      | _ => bug "unifyTyvars 2")
 			 
@@ -369,7 +369,7 @@ and unifyTyvars (var1: tyvar, var2: tyvar, reg1, reg2) =
 			 let val d = Int.min(d1,d2)
 			     val e = e1 orelse e2
 			  in var1 := OPEN{kind=META,depth=d,eq=e};
-			     var2 := INSTANTIATED(VARty var1)
+			     var2 := INSTANTIATED(MARKty(VARty var1, reg1))
 			 end
 		      | _ => bug "unifyTyvars 3")
 

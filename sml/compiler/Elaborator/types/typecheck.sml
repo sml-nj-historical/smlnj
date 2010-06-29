@@ -147,18 +147,12 @@ fun checkFlex (): unit =
 val nullRegion = SourceMap.nullRegion
 
 (* translating a marked type to its origin srcloc *)
-(* do we need to worry about immediately nested MARKty's? Can this happen? *)
+(* We need to worry about immediately nested MARKty's, where a wider
+ * region is wrapped immediately around a narrower one. Hence the 
+ * first rule. *)
 fun tyToLoc (MARKty(t as MARKty _,region)) = tyToLoc t
   | tyToLoc (MARKty(ty,region)) = region
   | tyToLoc _ = SourceMap.nullRegion
-
-(* debugging diagnostic
-fun findRegion ty =
-    case ty
-      of MARKty (t as MARKty(_, _), _) => findRegion t
-       | MARKty (_, pos) => SOME pos
-       | _ => NONE
-*)
 
 fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
     (unifyTy(ty1, ty2, tyToLoc ty1, tyToLoc ty2); true) handle Unify(mode) =>
@@ -408,11 +402,11 @@ fun patType(pat: pat, depth, region) : pat * ty =
        | CHARpat _ => (pat,MARKty(charTy, region))
        | RECORDpat{fields,flex,typ} =>
 	   (* fields assumed already sorted by label *)
-	   let fun g(lab,pat') = 
+	   let fun fieldType(lab,pat') = 
                  let val (npat,nty) = patType(pat',depth,region)
                   in ((lab,npat), (lab,nty))
                  end
-               val (fields',labtys) = mapUnZip g fields
+               val (fields',labtys) = mapUnZip fieldType fields
                val npat = RECORDpat{fields=fields',flex=flex,typ=typ}
 	    in if flex
 	       then let val tv = mkTyvar(mkFLEX(labtys,depth))
@@ -426,7 +420,8 @@ fun patType(pat: pat, depth, region) : pat * ty =
           (let val (npats,ntys) = 
                      mapUnZip (fn pat => patType(pat,depth,region)) pats
                val nty =
-	       foldr (fn (a,b) => (unifyTy(a, b, tyToLoc a, tyToLoc b); b)) (mkMETAtyBounded depth) ntys
+	       foldr (fn (a,b) => (unifyTy(a, b, tyToLoc a, tyToLoc b); b))
+		     (mkMETAtyBounded depth) ntys
             in (VECTORpat(npats,nty),
 	    	MARKty(CONty(vectorTycon,[nty]), region))
            end handle Unify(mode) => (
@@ -436,15 +431,15 @@ fun patType(pat: pat, depth, region) : pat * ty =
        | ORpat(p1, p2) => 
            let val (p1, ty1) = patType(p1, depth, region)
   	       val (p2, ty2) = patType(p2, depth, region)
-	   in  unifyErr{ty1=ty1,ty2=ty2,name1="expected",name2="found",
+	    in unifyErr{ty1=ty1,ty2=ty2,name1="expected",name2="found",
 			message="or-patterns don't agree",region=region,
 			kind=ppPat,kindname="pattern",phrase=pat};
 	       (ORpat(p1, p2), MARKty(ty1, region))
 	   end
        | CONpat(dcon as DATACON{typ,...},_) => 
            let val (ty, insts) = instantiatePoly typ
-               (* the following is to set the correct depth information
-                * to the type variables in ty. (ZHONG)  It cannot fail.
+               (* the following unification is used to set the correct depth information
+                * for the type variables in ty. (ZHONG)  It cannot fail.
                 *)
                val nty = mkMETAtyBounded depth
                val _ = unifyTy(nty, ty, nullRegion, nullRegion) 
@@ -568,7 +563,8 @@ in
            end
        | VECTORexp(exps,_) =>
           (let val (exps',nty) = mapUnZip (fn e => expType(e,occ,tdepth,region)) exps
-               val vty = foldr (fn (a,b) => (unifyTy(a,b,tyToLoc a, tyToLoc b); b)) (mkMETAty()) nty
+               val vty = foldr (fn (a,b) => (unifyTy(a,b,tyToLoc a, tyToLoc b); b))
+			       (mkMETAty()) nty
             in (VECTORexp(exps',vty),
 	    	MARKty(CONty(vectorTycon,[vty]), region))
            end handle Unify(mode) =>
