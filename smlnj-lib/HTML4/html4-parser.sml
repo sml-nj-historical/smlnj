@@ -123,10 +123,24 @@ fun tokIsSpace (H4T.PCDATA pcstr) =
     in loop (String.explode pcstr) end
   | tokIsSpace _ = false
 
+fun tokIsComment (H4T.COMMENT _) = true
+  | tokIsComment _ = false
+
 fun visitationIsSpace (H4U.VisitT tok) = tokIsSpace tok
   | visitationIsSpace _ = false
 
+(* XXX I don't like the solution of skipping both whitespace and
+comments, but I don't know how to munge CDATA and comments into block
+elements, given the current HTML 4 data structure (I could add these,
+but it would break the "purity" of the existing data type). *)
+
+fun visitationIsSpaceOrComment (H4U.VisitT tok) = (tokIsSpace tok) orelse
+                                                  (tokIsComment tok)
+  | visitationIsSpaceOrComment _ = false
+
 val skipWhitespace = streamSkipWhile visitationIsSpace
+
+val skipWhitespaceOrComment = streamSkipWhile visitationIsSpaceOrComment
 
 fun tokIsCdata (H4T.PCDATA _) = true
   | tokIsCdata (H4T.ENTITY_REF _) = true
@@ -173,7 +187,7 @@ fun html0aryFromParseStream tag ctor pstrm =
         val pstrm2 = expectVisitT ("START" ^ (String.map Char.toUpper tag))
                                   pstrm1
         val attrs = getAttrsFromStream pstrm1
-        val pstrm3 = expectExitNT tag (skipWhitespace pstrm2)
+        val pstrm3 = expectExitNT tag (skipWhitespaceOrComment pstrm2)
     in
         (pstrm3, SOME (ctor attrs))
     end
@@ -189,9 +203,9 @@ fun htmlNaryFromParseStream tag ctor childFromParseStream pstrm0 =
         val (pstrm3, children) =
             streamConsumeUntil childFromParseStream
                                (isEither (isVisitT endTag, isExitNT tag))
-                               (skipWhitespace pstrm2)
+                               (skipWhitespaceOrComment pstrm2)
         val (pstrm4, _) = optVisitTok endTag pstrm3
-        val pstrm5 = expectExitNT tag (skipWhitespace pstrm4)
+        val pstrm5 = expectExitNT tag (skipWhitespaceOrComment pstrm4)
     in (pstrm5, SOME (ctor (attrs, listOfOptsToList children))) end
 
 type parseVisitStream = H4T.token H4U.parsevisitation H4U.stream
@@ -247,15 +261,16 @@ fun cdataFromParseStream pstrm =
         end
 
 fun htmlFromParseStream pstrm0 =
-    let val pstrm1 = (skipWhitespace o (expectEnterNT "document")) pstrm0
+    let val pstrm1 =
+            (skipWhitespaceOrComment o (expectEnterNT "document")) pstrm0
         val (pstrm2, doctypeTokOpt) = optVisitTok "DOCTYPE" pstrm1
         val theVersion = (case doctypeTokOpt
                            of SOME (H4T.DOCTYPE doctype) => SOME doctype
                             | _ => NONE)
-        val (pstrm3, starthtmlTokOpt) = optVisitTok "STARTHTML"
-                                                    (skipWhitespace pstrm2)
+        val (pstrm3, starthtmlTokOpt) =
+            optVisitTok "STARTHTML" (skipWhitespaceOrComment pstrm2)
         val (pstrm4, headDataListOpt) = headFromParseStream
-                                            (skipWhitespace pstrm3)
+                                            (skipWhitespaceOrComment pstrm3)
     in if not (isSome headDataListOpt) then (pstrm4, NONE)
        else
            let val (pstrm5, contentDataOpt) =
@@ -263,9 +278,9 @@ fun htmlFromParseStream pstrm0 =
            in if not (isSome contentDataOpt) then (pstrm5, NONE)
               else
                   let val (pstrm6, _) = optVisitTok "ENDHTML" pstrm5
-                      val pstrm7 = (skipWhitespace o
+                      val pstrm7 = (skipWhitespaceOrComment o
                                     (expectExitNT "document") o
-                                    skipWhitespace) pstrm6
+                                    skipWhitespaceOrComment) pstrm6
                   in
                       (pstrm7,
                        SOME (H4.HTML{ version = theVersion,
@@ -275,19 +290,19 @@ fun htmlFromParseStream pstrm0 =
            end
     end
 and headFromParseStream pstrm0 =
-    let val pstrm1 = (skipWhitespace o (expectEnterNT "head")) pstrm0
+    let val pstrm1 = (skipWhitespaceOrComment o (expectEnterNT "head")) pstrm0
         val (pstrm2, startheadTokOpt) = optVisitTok "STARTHEAD" pstrm1
         val (pstrm3, children) =
             streamConsumeUntil headContentFromParseStream
                                (isEither(isExitNT "head", isVisitT "ENDHEAD"))
-                               (skipWhitespace pstrm2)
+                               (skipWhitespaceOrComment pstrm2)
         val (pstrm4, _) = optVisitTok "ENDHEAD" pstrm3
-        val pstrm5 = expectExitNT "head" (skipWhitespace pstrm4)
+        val pstrm5 = expectExitNT "head" (skipWhitespaceOrComment pstrm4)
     in (pstrm5, SOME (listOfOptsToList children)) end
 and headContentFromParseStream pstrm =
     let val ntFunc = expectEnterNTInDomain (!headContentNTMap) pstrm
         val (pstrm', resultOpt) = ntFunc pstrm
-    in (skipWhitespace pstrm', resultOpt) end
+    in (skipWhitespaceOrComment pstrm', resultOpt) end
 and bodyOrFramesetFromParseStream pstrm =
     let fun cvtBody (SOME body) = SOME (H4.BodyOrFrameset_BODY body)
           | cvtBody _ = NONE
@@ -310,9 +325,9 @@ and bodyFromParseStream pstrm0 =
         val (pstrm3, children) =
             streamConsumeUntil blockOrScriptFromParseStream
                                (isEither(isExitNT "body", isVisitT "ENDBODY"))
-                               (skipWhitespace pstrm2)
+                               (skipWhitespaceOrComment pstrm2)
         val (pstrm4, _) = optVisitTok "ENDBODY" pstrm3
-        val pstrm5 = expectExitNT "body" (skipWhitespace pstrm4)
+        val pstrm5 = expectExitNT "body" (skipWhitespaceOrComment pstrm4)
     in (pstrm5, SOME (H4.BODY (attrs, listOfOptsToList children))) end 
 and framesetFromParseStream pstrm0 =
     let val pstrm1 = expectEnterNT "frameset" pstrm0
@@ -322,28 +337,28 @@ and framesetFromParseStream pstrm0 =
             streamConsumeUntil framesetOrFrameFromParseStream
                                (isEither(isVisitT "ENDFRAMESET",
                                          isEnterNT "noframes"))
-                               (skipWhitespace pstrm2)
+                               (skipWhitespaceOrComment pstrm2)
         val (pstrm4, noframesOpt) =
             if isEnterNT "noframes" pstrm3 then
                 let val (pstrm4', noframesOpt') =
                         noFramesFromParseStream pstrm3
-                in (skipWhitespace pstrm4', noframesOpt') end
+                in (skipWhitespaceOrComment pstrm4', noframesOpt') end
             else (pstrm3, NONE)
         val pstrm5 = expectVisitT "ENDFRAMESET" pstrm4
-        val pstrm6 = expectExitNT "frameset" (skipWhitespace pstrm5)
+        val pstrm6 = expectExitNT "frameset" (skipWhitespaceOrComment pstrm5)
     in
         (pstrm6, SOME (H4.FRAMESET (attrs, listOfOptsToList children,
                                     noframesOpt)))
     end
 and framesetOrFrameFromParseStream pstrm0 =
-    let val pstrm1 = skipWhitespace pstrm0
+    let val pstrm1 = skipWhitespaceOrComment pstrm0
         val (pstrm2, result) =
             if isEnterNT "frameset" pstrm1
             then let val (pstrm', result') = framesetFromParseStream pstrm1
                  in (pstrm',
                      cvtFrameset H4.FramesetOrFrame_FRAMESET result') end
             else html0aryFromParseStream "frame" H4.FRAME pstrm1
-    in (skipWhitespace pstrm2, result) end
+    in (skipWhitespaceOrComment pstrm2, result) end
 and noFramesFromParseStream pstrm0 =
     let val pstrm1 = expectEnterNT "noframes" pstrm0
         val pstrm2 = expectVisitT "STARTNOFRAMES" pstrm1
@@ -413,10 +428,10 @@ and flowOrParamFromParseStream pstrm =
 and blockOrScriptFromParseStream pstrm =
     if isEnterNT "script" pstrm
     then let val (pstrm', scriptOpt) = scriptFromParseStream pstrm
-         in (skipWhitespace pstrm',
+         in (skipWhitespaceOrComment pstrm',
              cvtScript H4.BlockOrScript_SCRIPT scriptOpt) end
     else let val (pstrm', blockOpt) = blockFromParseStream pstrm
-         in (skipWhitespace pstrm',
+         in (skipWhitespaceOrComment pstrm',
              cvtBlock H4.BlockOrScript_BLOCK blockOpt) end
 and blockOrAreaFromParseStream pstrm =
     if isEnterNT "area" pstrm
