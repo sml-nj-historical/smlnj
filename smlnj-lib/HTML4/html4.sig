@@ -11,7 +11,7 @@ signature HTML4 = sig
     datatype cdata
       = PCDATA of pcdata
       | ENTITY of Atom.atom
-      | CHAR of Atom.atom
+      | CHAR of IntInf.int
       | COMMENT of string
 
     type attribute = Atom.atom * string option

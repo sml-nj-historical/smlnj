@@ -488,7 +488,19 @@ val formFromParseStream =
 val hrFromParseStream = html0aryFromParseStream "hr" H4.HR
 val tableFromParseStream =
     htmlNaryFromParseStream "table" H4.TABLE tableDataFromParseStream
-fun fieldsetFromParseStream pstrm = (pstrm, NONE) (* XXX *)
+fun fieldsetFromParseStream pstrm0 =
+    let val pstrm1 = expectEnterNT "fieldset" pstrm0
+        val pstrm2 = expectVisitT "STARTFIELDSET" pstrm1
+        val attrs = getAttrsFromStream pstrm1
+        val (pstrm3, legendOpt) =
+            legendFromParseStream (skipWhitespaceOrComment pstrm2)
+        val (pstrm4, flows) =
+            streamConsumeUntil flowFromParseStream (isVisitT "ENDFIELDSET")
+                               pstrm3
+        val pstrm5 = expectVisitT "ENDFIELDSET" pstrm4
+        val pstrm6 = expectExitNT "fieldset" pstrm5
+    in (pstrm5, SOME (H4.FIELDSET (attrs, legendOpt,
+                                   listOfOptsToList flows))) end
 val addressFromParseStream =
     htmlNaryFromParseStream "address" H4.ADDRESS inlineFromParseStream
 val centerFromParseStream =
@@ -571,21 +583,21 @@ val labelFromParseStream =
     htmlNaryFromParseStream "label" H4.LABEL inlineFromParseStream
 val buttonFromParseStream =
     htmlNaryFromParseStream "button" H4.BUTTON flowFromParseStream
-
 val captionFromParseStream =
     htmlNaryFromParseStream "caption" H4.CAPTION inlineFromParseStream
-
-fun colFromParseStream pstrm = (pstrm, NONE) (* XXX *)
-
+val colFromParseStream =
+    html0aryFromParseStream "col" H4.COL
 val colgroupFromParseStream =
-    htmlNaryFromParseStream "colgroup" H4.COLGROUP colFromParseStream
-
+    let fun consumeCol pstrm =
+            let val (pstrm', colOptVal) = colFromParseStream pstrm
+                fun cvtCol (SOME (H4.COL attrs)) = SOME attrs
+                  | cvtCol _ = NONE
+            in (skipWhitespaceOrComment pstrm', cvtCol colOptVal) end
+    in htmlNaryFromParseStream "colgroup" H4.COLGROUP consumeCol end
 val theadFromParseStream =
     htmlNaryFromParseStream "thead" H4.THEAD trFromParseStream
-
 val tfootFromParseStream =
     htmlNaryFromParseStream "tfoot" H4.TFOOT trFromParseStream
-
 val tbodyFromParseStream =
     htmlNaryFromParseStream "tbody" H4.TBODY trFromParseStream
 

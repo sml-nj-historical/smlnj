@@ -216,9 +216,8 @@ fun tokToString EOF = "EOF"
   | tokToString (DOCTYPE docdata) = docdata
   | tokToString (PCDATA pcdata) = pcdata
   | tokToString (COMMENT comment) = comment
-  | tokToString (CHAR_REF refatom) = "CHAR REF " ^ (Atom.toString refatom)
-  | tokToString (ENTITY_REF refatom) = "ENTITY REF " ^
-                                       (Atom.toString refatom)
+  | tokToString (CHAR_REF refint) = "&#" ^ (IntInf.toString refint) ^ ";"
+  | tokToString (ENTITY_REF refatom) = "&" ^ (Atom.toString refatom) ^ ";"
   | tokToString (XML_PROCESSING directive) = "XML DIRECTIVE " ^ directive
   | tokToString (STARTA payload) =
     "<A" ^ (payloadToString payload) ^ ">"

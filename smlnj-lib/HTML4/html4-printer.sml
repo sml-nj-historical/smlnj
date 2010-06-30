@@ -164,10 +164,12 @@ local
 in
     fun ppCol ppstrm attrs = ppOpenTag ppstrm (S.COL, attrs)
 
-    fun ppCdata ppstrm (CHAR _) = () (* XXX *)
+    fun ppCdata ppstrm (CHAR chNum) =
+        PP.string ppstrm ("&#" ^ (IntInf.toString chNum) ^ ";")
       | ppCdata ppstrm (COMMENT comment_string) =
         PP.string ppstrm comment_string
-      | ppCdata ppstrm (ENTITY _) = () (* XXX *)
+      | ppCdata ppstrm (ENTITY ent) =
+        PP.string ppstrm ("&" ^ (Atom.toString ent) ^ ";")
       | ppCdata ppstrm (PCDATA string_data) = PP.string ppstrm string_data
     and ppHtml ppstrm (doc as HTML {version, head, content}) = (
         PP.string ppstrm (case version of

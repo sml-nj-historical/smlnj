@@ -10,7 +10,7 @@ datatype token = EOF
                | COMMENT of string
                | PCDATA of string
                | DOCTYPE of string
-               | CHAR_REF of Atom.atom
+               | CHAR_REF of IntInf.int
                | ENTITY_REF of Atom.atom
                | XML_PROCESSING of string
                (* HTML 4 element tokens. *)
@@ -206,7 +206,7 @@ fun tokToString EOF = "EOF"
   | tokToString (PCDATA pcdata) = ("PCDATA \"" ^ (String.toString pcdata)
                                    ^ "\"")
   | tokToString (COMMENT comment) = "COMMENT " ^ comment
-  | tokToString (CHAR_REF refatom) = "CHAR REF " ^ (Atom.toString refatom)
+  | tokToString (CHAR_REF refint) = "CHAR REF " ^ (IntInf.toString refint)
   | tokToString (ENTITY_REF refatom) = "ENTITY REF " ^ (Atom.toString refatom)
   | tokToString (XML_PROCESSING directive) = "XML DIRECTIVE " ^ directive
 

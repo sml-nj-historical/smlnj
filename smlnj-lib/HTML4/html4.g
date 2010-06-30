@@ -21,7 +21,7 @@ fun optListToList NONE = []
                | COMMENT of string
                | PCDATA of string
                | DOCTYPE of string
-               | CHAR_REF of Atom.atom
+               | CHAR_REF of IntInf.int
                | ENTITY_REF of Atom.atom
                | XML_PROCESSING of string
                (* HTML 4 element tokens. *)
@@ -211,7 +211,7 @@ fun optListToList NONE = []
 
 %start document;
 
-%entry body, flow, block, inline;
+%entry body, flow, block, inline, cdata_opt;
 
 document : cdata_opt
            (DOCTYPE cdata_opt => ((Lf (Tok.DOCTYPE DOCTYPE)) :: cdata_opt))?

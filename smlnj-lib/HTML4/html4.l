@@ -15,6 +15,18 @@ val buffer = ref ([] : string list)
 fun addStr s = (buffer := s :: !buffer)
 fun getStr () = (String.concat(List.rev(!buffer)) before (buffer := []))
 
+fun entityText crntYYText =
+    let val exploded = String.explode crntYYText
+        val size = String.size crntYYText
+        val start = if (size > 1) andalso
+                       ((List.nth (exploded, 2)) = #"#")
+                    then 2
+                    else 1
+        val stop = if (List.last exploded) = #";"
+                   then SOME (size - (start + 1))
+                   else NONE
+    in String.extract(crntYYText, start, stop) end
+
 );
 
 %states INITIAL, INTAG, COM1, COM2;
@@ -45,7 +57,7 @@ fun getStr () = (String.concat(List.rev(!buffer)) before (buffer := []))
 <COM2>">" => (addStr yytext; YYBEGIN INITIAL; COMMENT (getStr()));
 <COM2>\n => (addStr yytext; continue());
 <COM2>{ws}+ => (addStr yytext; continue());
-<COM2>. => (raise (Fail "XXX"));
+<COM2>. => (raise (Fail ("Unexpected text in comment: \"" ^ yytext ^ "\"")));
 
 (* Doctype *)
 
@@ -57,9 +69,10 @@ fun getStr () = (String.concat(List.rev(!buffer)) before (buffer := []))
 
 (* Entities *)
 
-<INITIAL>"&#"[0-9]+";"? => (CHAR_REF (Atom.atom yytext));
+<INITIAL>"&#"[0-9]+";"? => (CHAR_REF (valOf (IntInf.fromString
+                                                 (entityText yytext))));
 
-<INITIAL>"&"{tag}";"? => (ENTITY_REF (Atom.atom yytext));
+<INITIAL>"&"{tag}";"? => (ENTITY_REF (Atom.atom (entityText yytext)));
 
 (* Character data *)
 
