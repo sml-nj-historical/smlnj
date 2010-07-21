@@ -11,7 +11,7 @@ structure PrimeSizes : sig
 
   end = struct
 
-  (* This is a sequence of prim numbers; each number is approx. sqrt(2)
+  (* This is a sequence of prime numbers; each number is approx. sqrt(2)
    * larger than the previous one in the series.  The list is organized
    * into sublists to make searches faster.
    *)
