@@ -1,5 +1,7 @@
-(* \section{Source locations}                                               *)
-(*                                                                          *)
+(* sourcemap.sig *)
+
+(* Source locations                                               *)
+
 (* The goal of this interface is to map character positions to              *)
 (* locations in source files, where a location is described in              *)
 (* ``file-line-column'' format.                                             *)
@@ -7,12 +9,12 @@
 (* maintains the mapping.                                                   *)
 (* This way, most of a compiler can work with character positions, but we   *)
 (* can use real source locations in error messages.                         *)
-(*                                                                          *)
+
 (* A \emph{region} represents a contiguous span of                          *)
 (* source locations as seen by the compiler.                                *)
 (* Because of preprocessing, any region could be spread out over multiple   *)
 (* overlapping regions in the original source.                              *)
-(*                                                                          *)
+
 (* A source map is maintained as mutable state.                             *)
 (* We create such a map by giving the initial character position, file      *)
 (* name, line, and column number.                                           *)
@@ -20,7 +22,7 @@
 (* of the line; the first character on the line is deemed to be in          *)
 (* column~1.                                                                *)
 (* Tabs are given no special treatment.                                     *)
-(*                                                                          *)
+
 (* Character positions increase as the compiler moves through the source,   *)
 (* and the lexer mutates the source map any time something interesting      *)
 (* happens.                                                                 *)
@@ -61,32 +63,14 @@
 (* guaranteed to have the same file name.                                   *)
 (* [[newlineCount]] returns the number of newlines that occurred in the given *)
 (* region.                                                                  *)
-(*                                                                          *)
-(* <sourcemap.sig>=                                                         *)
-(* sourcemap.sig *)
-(* <sig RCS log>=                                                           *)
+
 (* 
  * changed ErrorMsg to use SourceMap to get source locations; only the
  * formatting is done internally
  *
  * added SourceMap structure
- *
- * .sig and .sml for sourcemap, source, and errormsg are derived from .nw
- * files.  to extract, try
- *   for base in sourcemap source errormsg
- *   do
- *     for suffix in sml sig
- *     do
- *       $cmd -L'(*#line %L "%F"*)' -R$base.$suffix $base.nw > $base.$suffix
- *     done
- *   done
- * where
- *   cmd=notangle
- * or
- *   cmd="nountangle -ml"
- *
- * At some point, it may be desirable to move noweb support into CM
- * *)
+*)
+
 signature SOURCE_MAP = sig
   type charpos (* = int *)
   type 'a pair (* = 'a * 'a *)

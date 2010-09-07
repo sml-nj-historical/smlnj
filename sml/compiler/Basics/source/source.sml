@@ -1,4 +1,3 @@
-(* <source.sml>=                                                            *)
 (* source.sml
  *
  * COPYRIGHT (c) 1996 Bell Laboratories.
@@ -11,17 +10,19 @@ struct
   type inputSource = {
         sourceMap: SourceMap.sourcemap,
         fileOpened: string,
-        anyErrors: bool ref,
-        errConsumer: PrettyPrintNew.device,
         interactive: bool,
         sourceStream: TextIO.instream
+        anyErrors: bool ref,
+        errConsumer: PrettyPrintNew.device,
       }
 
+(* -- inactive diagnostic printing
   fun say (msg : string) = Control_Print.say msg
+*)
 
   val lexer_initial_position = 2 (* position of first char according to ml-lex *)
 
-  fun newSource(fileName,lineNum,sourceStream,interactive, errConsumer) =
+  fun newSource(fileName, lineNum, sourceStream, interactive, errConsumer) =
       {sourceMap=SourceMap.newmap(lexer_initial_position, 
                                   {fileName=fileName, line=lineNum, column=1}),
        sourceStream=sourceStream,interactive=interactive,fileOpened=fileName,
@@ -32,10 +33,10 @@ struct
         (* app say ["[closing ", (Pathnames.trim fileName), "]\n"];*)
         TextIO.closeIn sourceStream handle IO.Io _ => ())
 
-  fun filepos({sourceMap,...}: inputSource) pos = 
-    let val {fileName, line, column} = SourceMap.filepos sourceMap pos
-    in  (fileName, line, column)
-    end
+  fun filepos ({sourceMap,...}: inputSource) pos = SourceMap.filepos sourceMap pos
+      let val {fileName, line, column} = 
+       in (fileName, line, column)
+      end
 
 end (* structure Source *)
 

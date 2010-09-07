@@ -17,7 +17,8 @@
 (* DBM: what is "resynchronization" and what is it used for?  Is there any
  * reason to continue to support it (and maintain the extra code complexity)?
  * If this was a feature used only by Ramsey's noweb utility, which is defunct,
- * then we could simplify the sourcemap code. *)
+ * then we could simplify the sourcemap code.  -- John claims that resynchronization
+ * is still relevant. *)
 
 structure SourceMap : SOURCE_MAP = struct
 
