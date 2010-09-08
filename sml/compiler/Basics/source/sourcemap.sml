@@ -5,22 +5,22 @@
  * support resynchronization, one that supports resynchronization only at
  * column 1, and one that supports arbitrary resynchronization.
  *
- * \section{Implementation}
  * This implementation supports arbitary resynchronization.
  *
- * changed ErrorMsg to use SourceMap to get source locations; only the
- * formatting is done internally
+ * Changed ErrorMsg to use SourceMap to get source locations; only the
+ * formatting is done internally.
  *
- * added SourceMap structure
+ * Added SourceMap structure.
  *)
 
 (* DBM: what is "resynchronization" and what is it used for?  Is there any
  * reason to continue to support it (and maintain the extra code complexity)?
  * If this was a feature used only by Ramsey's noweb utility, which is defunct,
  * then we could simplify the sourcemap code.  -- John claims that resynchronization
- * is still relevant. *)
+ * is still relevant (examples?). *)
 
-structure SourceMap : SOURCE_MAP = struct
+structure SourceMap : SOURCE_MAP =
+struct
 
   (* A character position is an integer.  A region is delimited by the
    * position of the start character and one beyond the end.
@@ -29,8 +29,7 @@ structure SourceMap : SOURCE_MAP = struct
    *)
 
   type charpos = int
-  type 'a pair = 'a * 'a
-  type region = charpos pair
+  type region = charpos * charpos
   val nullRegion : region = (0,0)
   type sourceloc = {fileName:string, line:int, column:int}
 
@@ -56,8 +55,9 @@ structure SourceMap : SOURCE_MAP = struct
    clever about tracking column numbers and resynchronizations.
 *)
 
-  type sourcemap = {resynchPos: (charpos * string * int) list ref,
-                    linePos:    (charpos * int)          list ref}
+  type sourcemap = {linePos:    (charpos * int)          list ref,
+		    resynchPos: (charpos * string * int) list ref}
+                    
 
   fun newmap (pos, {fileName, line, column}: sourceloc) : sourcemap =
     {resynchPos = ref [(pos, fileName, column)], linePos = ref [(pos, line)]}
@@ -73,8 +73,8 @@ structure SourceMap : SOURCE_MAP = struct
 	  linePos := (pos, line) :: !linePos
       end
 
-  (* Since [[pos]] is the position of the newline, the next line doesn't      *)
-  (* start until the succeeding position.                                     *)
+  (* Since pos is the position of the newline, the next line doesn't
+   * start until the succeeding position. *)
 
   fun newline ({resynchPos, linePos}: sourcemap) pos =
       let val (_, line) = hd (!linePos)
@@ -83,9 +83,8 @@ structure SourceMap : SOURCE_MAP = struct
 
   fun lastChange({linePos, ...}: sourcemap) = #1 (hd (!linePos))
 
-  (* A generally useful thing to do is to remove from the lists the initial   *)
-  (* sequences of tuples                                                      *)
-  (* whose positions satisfy some predicate:                                  *)
+  (* A generally useful thing to do is to remove from the lists the initial
+   * sequences of tuples whose positions satisfy some predicate: *)
 
   fun remove p ({resynchPos,linePos}: sourcemap) =
       let fun strip (l as (pos, _   )::rest) = if p pos then strip  rest else l
@@ -95,9 +94,9 @@ structure SourceMap : SOURCE_MAP = struct
       in  (strip'(!resynchPos), strip (!linePos))
       end
 
-  (* We find file and line number by linear search.                           *)
-  (* The first position less than [[p]] is what we want.                      *)
-  (* The initial column depends on whether we resynchronized.                 *)
+  (* We find file and line number by linear search.
+   * The first position less than p is what we want.
+   * The initial column depends on whether we resynchronized. *)
 
   fun column ((pos, file, col), (pos', line), p) =
       if pos = pos' then p - pos + col else p - pos' + 1
@@ -106,13 +105,13 @@ structure SourceMap : SOURCE_MAP = struct
       let val (files, lines) = remove (fn pos : int => pos > p) smap
           val xx as (_, file, _) = hd files
           val yy as (_, line)    = hd lines
-      in  {fileName = file, line = line, column = column(xx, yy, p)}
+       in {fileName = file, line = line, column = column(xx, yy, p)}
       end
 
-  (* Searching regions is a bit trickier, since we track file and line        *)
-  (* simultaneously.  We exploit the invariant that every file entry has a    *)
-  (* corresponding line entry.                                                *)
-  (* We also exploit that only file entries correspond to new regions.        *)
+  (* Searching regions is a bit trickier, since we track file and line
+   * simultaneously.  We exploit the invariant that every file entry has a
+   * corresponding line entry.
+   * We also exploit that only file entries correspond to new regions. *)
 
   fun fileregion smap (lo, hi) =
       if (lo,hi) = nullRegion then [] else
@@ -143,18 +142,18 @@ structure SourceMap : SOURCE_MAP = struct
       in  validate answer; answer
       end
 
-  (* [[validate]] checks the invariant that single regions occupy a           *)
-  (* single source file and that coordinates are nondecreasing.               *)
-  (* We have to be careful not to remove the entry for [[lo]] when            *)
-  (* [[pos = hi = lo]].                                                       *)
+  (* validate checks the invariant that single regions occupy a
+   * single source file and that coordinates are nondecreasing.
+   * We have to be careful not to remove the entry for lo when
+   * pos = hi = lo. *)
 
   fun positions({resynchPos,linePos}: sourcemap) (src:sourceloc) =
       let exception Unimplemented
       in  raise Unimplemented
       end
 
-  (* When discarding old positions, we have to be careful to maintain the     *)
-  (* last part of the invariant.                                              *)
+  (* When discarding old positions, we have to be careful to maintain the
+   * last part of the invariant. *)
 
   fun forgetOldPositions ({resynchPos, linePos} : sourcemap) =
       let val r as (p,  file, col) = hd (!resynchPos)

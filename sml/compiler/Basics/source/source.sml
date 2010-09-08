@@ -1,8 +1,5 @@
-(* source.sml
- *
- * COPYRIGHT (c) 1996 Bell Laboratories.
- *
- *)
+(* source.sml *)
+(* COPYRIGHT (c) 1996 Bell Laboratories. *)
 
 structure Source : SOURCE =
 struct
@@ -20,7 +17,8 @@ struct
   fun say (msg : string) = Control_Print.say msg
 *)
 
-  val lexer_initial_position = 2 (* position of first char according to ml-lex *)
+  val lexer_initial_position = 2
+  (* position of first char according to ml-lex. This is a BUG, should be 1! *)
 
   fun newSource(fileName, lineNum, sourceStream, interactive, errConsumer) =
       {sourceMap=SourceMap.newmap(lexer_initial_position, 
@@ -39,4 +37,3 @@ struct
       end
 
 end (* structure Source *)
-
