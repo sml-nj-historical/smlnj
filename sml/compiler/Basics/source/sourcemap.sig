@@ -68,23 +68,27 @@ sig
 
   type charpos (* = int *)
   type region  (* = charpos * charpos *)
-  val span : region * region -> region (* smallest region containing the two regions *)
+
   val nullRegion : region              (* left and right identity of span *)
 
-  type sourceloc (* = {fileName:string, line:int, column:int} *)
+  type sourceloc = {fileName:string, line:int, column:int}
 
   type sourcemap (* = opaque mutable *)
-  val newmap  : charpos * sourceloc -> sourcemap
+  val newmap  : charpos * string * int -> sourcemap
   val newline : sourcemap -> charpos -> unit
   val resynch : sourcemap -> 
-                charpos * {fileName:string option, line:int, column:int option} -> unit
-  val forgetOldPositions : sourcemap -> unit
+                charpos * {fileNameOp:string option, line:int, column:int} -> unit
 
   val filepos     : sourcemap -> charpos -> sourceloc
   val fileregion  : sourcemap -> region  -> (sourceloc * sourceloc) list
-  val positions   : sourcemap -> sourceloc -> charpos list
 
-  val lastChange  : sourcemap -> charpos
+  val lastLineStart  : sourcemap -> charpos
   val newlineCount: sourcemap -> region -> int
+
+(* not used 
+  val span : region * region -> region (* smallest region containing the two regions *)
+  val forgetOldPositions : sourcemap -> unit
+  val positions   : sourcemap -> sourceloc -> charpos list
+ *)
 
 end (* signature SOURCE_MAP *)

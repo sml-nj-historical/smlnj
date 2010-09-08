@@ -21,7 +21,7 @@ type lexarg = {
 type arg = lexarg
 type ('a,'b) token = ('a,'b) Tokens.token
 fun eof ({comLevel,err,charlist,stringstart,sourceMap, ...} : lexarg) = let
-      val pos = Int.max(!stringstart+2, SourceMap.lastChange sourceMap)
+      val pos = Int.max(!stringstart+2, SourceMap.lastLineStart sourceMap)
       in
 	if !comLevel>0
 	  then err (!stringstart,pos) COMPLAIN "unclosed comment" nullErrorBody
@@ -50,9 +50,9 @@ fun mysynch (src, pos, parts) =
       val r = SourceMap.resynch src
   in  case parts 
         of [col, line] => 
-              r (pos, {fileName=NONE,      line=cvt line, column=SOME(cvt col)})
+	  r (pos, {fileNameOp=NONE, line=cvt line, column=cvt col})
          | [file, col, line] => 
-              r (pos, {fileName=SOME file, line=cvt line, column=SOME(cvt col)})
+              r (pos, {fileNameOp=SOME file, line=cvt line, column=cvt col})
          | _ => impossible "text in (*#line...*)"
   end
 
