@@ -52,8 +52,8 @@ struct
        raise Error)
 
 (* With the advent of source-map resynchronization (a.k.a
- * ( *#line...* )), a contiguous region as seen by the compiler can
- * correspond to one or more contiguous regions in source code.
+ * ( *#line...* ) comments), a contiguous region as seen by the compiler
+ * can correspond to one or more contiguous regions in source code.
  * We can imagine myriad ways of displaying such information, but we
  * confine ourselves to two:
  *  * When there's just one source region, we have what we had in the old
