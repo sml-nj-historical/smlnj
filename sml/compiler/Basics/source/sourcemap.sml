@@ -86,9 +86,24 @@ struct
    clever about tracking column numbers and resynchronizations.
 *)
 
+  datatype line
+    = LINE of int   (* line number *)
+    | SYNC of int * int   (* resynch point with line and column *)
+    | FILE of int * int   (* file resynch point with line and column *)
+
+  type sourcemap = {lines: (charpos * line)   list ref,
+		    files: string list ref}
+  (* INVARIANTS:
+   * (1) length (!lines) > 0
+   * (2) length (!files) > 0
+   * (3) charpos components of lines are strictly decreasing
+   * (4) length (!files) =< number of SYNC elements in lines
+   *)
+
+(*
   type sourcemap = {lines: (charpos * int)    list ref,
 		    files: (charpos * string) list ref}
-                    
+*)                  
 
   val nullRegion : region = (0,0)
   (* nullRegion is a conventional default region value.  It does not represent
@@ -98,33 +113,70 @@ struct
   (* called only one place, in Source.newSource. pos argument is fixed as the
    * value of lexer_initial_position, which _should be_ 1 *)
   fun newmap (pos: charpos, fileName: string, line: int) : sourcemap =
+      {files = ref [fileName], lines = ref [(pos, FILE(line,1))]}
+(*
+  fun newmap (pos: charpos, fileName: string, line: int) : sourcemap =
       {files = ref [(pos, fileName)], lines = ref [(pos, line)]}
+*)
 
   (* ASSUMPTION: pos > last line position in the sourcemap argument *)
+  fun resynch ({files, lines}: sourcemap) (pos, fileNameOp, line, column) =
+      let val curFile = hd (!files)  (* current file name *)
+      in  case fileNameOp
+            of SOME f => 
+	        (files := f :: !files;
+		 lines := (pos, FSYNC(line,column)) :: !lines
+	     | NONE => lines := (pos, SYNC(line,column)) :: !lines
+      end
+
+(*  (* ASSUMPTION: pos > last line position in the sourcemap argument *)
   fun resynch ({files, lines}: sourcemap) (pos, fileNameOp, line) =
       let val curFile = #2 (hd (!files))  (* current file name *)
       in  files := (pos, getOpt(fileNameOp, curFile)) :: !files;
 	  lines := (pos, line) :: !lines
       end
-
+*)
   (* Since pos is the position of the newline, the next line doesn't
    * start until the succeeding position, pos+1. *)
+  fun lineNo (LINE l) = l
+    | lineNo (SYNC(l,_) | FILE(l,_)) = l
+
+  fun newline ({files, lines}: sourcemap) pos =
+      case !lines
+        of (line :: _) =>  lines := (pos+1, LINE(lineNo(line)+1)) :: !lines
+         | nil => bug "newline"
+(*
   fun newline ({files, lines}: sourcemap) pos =
       let val (_, line) = hd (!lines)
       in  lines := (pos+1, line+1) :: !lines
       end
+*)
+  fun lastLineStart({lines, ...}: sourcemap) =
+      case lines
+        of (line::_) => lineNo line
+         | nil => bug "lastLineStart"
 
-  fun lastLineStart({lines, ...}: sourcemap) = #1 (hd (!lines))
+  (* A generally useful thing to do is to remove from the lists the
+   * lines whose initial positions excede a target position. First
+   * line of result contains the target position. *)
 
-  (* A generally useful thing to do is to remove from the lists the initial
-   * sequences of tuples whose positions satisfy some predicate: *)
-
+  fun remove pos ({files,lines}: sourcemap) =
+      let fun strip (lines as (pos', line)::rest, files) = 
+              if pos' > pos then 
+                 (case line
+                    of (LINE _ | SYNC _) => strip (rest, files)
+		     | FILE(l,c) => strip(rest, tl files)) 
+              else (lines, files)
+	    | strip [] = []
+       in strip(!lines, !files)
+      end
+(*
   fun remove p ({files,lines}: sourcemap) =
       let fun strip (l as (pos, _)::rest) = if p pos then strip  rest else l
 	    | strip [] = []
        in (strip(!files), strip (!lines))
       end
-
+*)
   (* We find file and line number by linear search.
    * The first position less than p is what we want.
    * The initial column depends on whether we resynchronized. *)
@@ -133,12 +185,18 @@ struct
 
   exception SourceMap_filepos
 
+  fun filepos smap pos : sourceloc =
+      case remove pos smap
+        of ((_,file)::_, (pos',line)::_) => 
+           {fileName = file, line = line, column = column(pos', p)}
+         | _ => raise SourceMap_filepos
+(*
   fun filepos smap p : sourceloc =
       case remove (fn pos : int => pos > p) smap
         of ((_,file)::_, (pos',line)::_) => 
            {fileName = file, line = line, column = column(pos', p)}
          | _ => raise SourceMap_filepos
-
+*)
   (* Searching regions is a bit trickier, since we track file and line
    * simultaneously.  We exploit the invariant that every file entry has a
    * corresponding line entry.  We also exploit that only file entries
