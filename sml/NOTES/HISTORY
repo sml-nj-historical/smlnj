@@ -16,6 +16,14 @@ Description:
 Here is a test entry
 
 ----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2010/09/16
+Description:
+
+Fixed the Win32 socket and polling implementation to work correctly
+with CML. Signature of poll was wrong and didn't handle sockets at all.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2010/06/16
 Description:
