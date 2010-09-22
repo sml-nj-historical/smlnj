@@ -8,9 +8,9 @@ struct
         sourceMap: SourceMap.sourcemap,
         fileOpened: string,
         interactive: bool,
-        sourceStream: TextIO.instream
+        sourceStream: TextIO.instream,
         anyErrors: bool ref,
-        errConsumer: PrettyPrintNew.device,
+        errConsumer: PrettyPrintNew.device
       }
 
 (* -- inactive diagnostic printing
@@ -32,8 +32,5 @@ struct
         TextIO.closeIn sourceStream handle IO.Io _ => ())
 
   fun filepos ({sourceMap,...}: inputSource) pos = SourceMap.filepos sourceMap pos
-      let val {fileName, line, column} = 
-       in (fileName, line, column)
-      end
 
 end (* structure Source *)

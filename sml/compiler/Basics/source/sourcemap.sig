@@ -66,29 +66,28 @@ returns the number of newlines that occurred in the given region.
 signature SOURCE_MAP =
 sig
 
-  type charpos (* = int *)
-  type region  (* = charpos * charpos *)
-
-  val nullRegion : region              (* left and right identity of span *)
+  type charpos = int
+  type region = charpos * charpos
 
   type sourceloc = {fileName:string, line:int, column:int}
 
   type sourcemap (* = opaque mutable *)
+
+  val nullRegion : region              (* left and right identity of span *)
+
+  (* creating and modifying sourcemaps *)
   val newmap  : charpos * string * int -> sourcemap
   val newline : sourcemap -> charpos -> unit
   val resynch : sourcemap -> 
-                charpos * {fileNameOp:string option, line:int, column:int} -> unit
+                charpos * charpos * int * int * string option -> unit
 
+  (* using sourcemaps to translate charpos to sourceloc *) 
   val filepos     : sourcemap -> charpos -> sourceloc
   val fileregion  : sourcemap -> region  -> (sourceloc * sourceloc) list
 
-  val lastLineStart  : sourcemap -> charpos
-  val newlineCount: sourcemap -> region -> int
+  val lastLinePos : sourcemap -> charpos
+  val newlineCount : sourcemap -> region -> int
 
-(* not used 
-  val span : region * region -> region (* smallest region containing the two regions *)
-  val forgetOldPositions : sourcemap -> unit
-  val positions   : sourcemap -> sourceloc -> charpos list
- *)
+  val widenToLines : sourcemap -> region -> region
 
 end (* signature SOURCE_MAP *)

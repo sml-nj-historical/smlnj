@@ -78,11 +78,11 @@ fun parse (source as {sourceStream,errConsumer,interactive,
             else if MLP.sameToken(nextToken,dummyEOF)
                  then EOF
                  else let val _ = prompt := !ParserControl.secondaryPrompt;
-			  val initialLinePos = SourceMap.lastLineStart sourceMap
+			  val initialLinePos = SourceMap.lastLinePos sourceMap
                           val (result, lexer'') =
                               MLP.parse(lookahead,!lexer',parseerror,err)
 			  val linesRead = SourceMap.newlineCount sourceMap 
-					  (initialLinePos, SourceMap.lastLineStart sourceMap)
+					  (initialLinePos, SourceMap.lastLinePos sourceMap)
                        in addLines(linesRead);
                           lexer' := lexer'';
 			  if !anyErrors then ERROR else PARSE result

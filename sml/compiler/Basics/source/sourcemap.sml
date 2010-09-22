@@ -48,7 +48,7 @@
  * What new clients require this functionality?
  *) 
 
-structure SourceMap : SOURCE_MAP =
+structure SourceMap :> SOURCE_MAP =
 struct
 
   (* compiler bug errors *)
@@ -76,29 +76,25 @@ struct
 
 (* The representation of a sourcemap is a pair of lists.
      lines: line numbers for newlines and resynchronizations,
-            labeled by initial charpos of lines
+            labeled by initial charpos of each lines.
      files: file name for resynchronization, labeled by
             initial position for resynchronization
 
    The representation satisfies these invariants:
      * The lists are never empty (initialization is treated as a resynchronization).
-     * Positions strictly decrease as we walk down the lists.
-     * The last element in each list contains the smallest valid position.
-     * For every element in files, there is a corresponding element in
-       lines with the same position.
-
-   We could get even more clever and store file names only when they
-   differ, but it doesn't seem worth it---we would have to get very
-   clever about tracking column numbers and resynchronizations.
+     * Initial positions strictly decrease as we traverse the line list.
+     * The last element in the line list contains the smallest valid position (1).
+     * For every element in files, there is a corresponding SYNC element in
+       lines, and visa versa.
 *)
 
   (* line -- elements of lines list *)
   datatype line
     = LINE of int         (* line number, simple line bump *)
-    | SYNC of int * int   (* resynch point with line and column;
-                           * there will be an associated entry in
-                           * files list, which MAY change the current
-                           * file name. *)
+    | SYNC of int * int * int
+       (* resynch point with line, column, and the #line directive gap;
+        * there will be an associated entry in files list, which MAY change
+        * the current file name. *)
 
   type sourcemap = {lines: (charpos * line) list ref,
 		    files: string list ref}
@@ -110,110 +106,75 @@ struct
    * (5) last (initial) element of lines is a SYNC line
    *)
 
-(*
-  type sourcemap = {lines: (charpos * int)    list ref,
-		    files: (charpos * string) list ref}
-*)                  
   val nullRegion : region = (0,0)
   (* nullRegion is a conventional default region value.  It does not represent
    * a proper region, and does not have a location in the file. In particular, it
    * should not be viewed as an empty region at the beginning of the input. *)
 
-  (* called only one place, in Source.newSource. pos argument is the fixed
+  (* newmap: create a new sourcemap
+   * called only one place, in Source.newSource. pos argument is the fixed
    * value of lexer_initial_position, which _should be_ 1.  line is determined
-   * by the lineNum argument of newSource, which will always be 1. *)j
+   * by the lineNum argument of newSource, which will always be 1. *)
   fun newmap (pos: charpos, fileName: string, line: int) : sourcemap =
-      {files = ref [fileName], lines = ref [(pos, SYNC(line,1))]}
-(*
-  fun newmap (pos: charpos, fileName: string, line: int) : sourcemap =
-      {files = ref [(pos, fileName)], lines = ref [(pos, line)]}
-*)
+      {files = ref [fileName], lines = ref [(pos, SYNC(line,1,0))]}
 
-  (* ASSUMPTION: pos > last line position in the sourcemap argument *)
-  fun resynch ({files, lines}: sourcemap) (pos, fileNameOp, line, column) =
+  (* resynch: implements a #line directive, changing the current filename, line and column.
+   * initpos is the position of the initial character of the #line comment
+   * newpos is the character immediately following the end of the #line comment
+   * ASSUMPTION: newpos > last line position in the sourcemap argument *)
+  fun resynch ({files, lines}: sourcemap) (initpos, newpos, line, column, fileNameOp) =
       let val newFileName =
               case fileNameOp
                 of SOME f => f
                  | NONE => hd (!files)   (* same as the current file name *)
        in files := newFileName :: !files;
-	  lines := (pos, SYNC(line,column)) :: !lines
+	  lines := (newpos, SYNC(line,column,newpos-initpos)) :: !lines
       end
 
-(*  (* ASSUMPTION: pos > last line position in the sourcemap argument *)
-  fun resynch ({files, lines}: sourcemap) (pos, fileNameOp, line) =
-      let val curFile = #2 (hd (!files))  (* current file name *)
-      in  files := (pos, getOpt(fileNameOp, curFile)) :: !files;
-	  lines := (pos, line) :: !lines
-      end
-*)
-  (* Since pos is the position of the newline, the next line doesn't
+  fun lineNo (LINE l | SYNC(l,_,_)) = l
+
+  (* Since pos is the position of the newline character, the next line doesn't
    * start until the succeeding position, pos+1. *)
-  fun lineNo (LINE l | SYNC(l,_)) = l
-
   fun newline ({lines, ...}: sourcemap) pos =
       case !lines
-        of line :: _ =>  lines := (pos+1, LINE(lineNo(line)+1)) :: !lines
+        of (_,line) :: _ =>  lines := (pos+1, LINE(lineNo(line)+1)) :: !lines
          | nil => bug "newline"  (* invariant (1) violated *)
-(*
-  fun newline ({files, lines}: sourcemap) pos =
-      let val (_, line) = hd (!lines)
-      in  lines := (pos+1, line+1) :: !lines
-      end
-*)
-  fun lastLineNumber({lines, ...}: sourcemap) =
-      case lines
-        of (line::_) => lineNo line
+
+  fun lastLinePos ({lines, ...}: sourcemap) : charpos =
+      case !lines
+        of ((pos,line)::_) => pos
          | nil => bug "lastLineNumber" (* invariant (1) violated *)
 
-  (* A generally useful thing to do is to remove from the lists the
-   * lines whose initial positions excede a target position. First
-   * line of result contains the target position.
-   * ASSUMPTION: pos is >= initial pos of the sourcemap. *)
-
-  fun remove pos ({files,lines}: sourcemap) =
+  (* remove: remove from sourcemap lines those lines whose initial positions
+   * exceed a target position, while maintaining the lines/files invariants.
+   * The first line of the result will contain the target position.
+   * ASSUMPTION: pos is >= initial pos of the sourcemap (normally 1). *)
+  fun remove pos (lines: (charpos * line) list, files: string list) = 
       let fun strip (lines as (pos', line)::lines', files as (_ :: files')) = 
               if pos' > pos then 
                  (case line
                     of LINE _ => strip (lines', files)
 		     | SYNC _ => strip (lines', files')) 
               else (lines, files)
-	    | strip _ => bug "remove"
-       in strip(!lines, !files)
+	    | strip _ = bug "remove"
+       in strip(lines, files)
       end
-(*
-  fun remove p ({files,lines}: sourcemap) =
-      let fun strip (l as (pos, _)::rest) = if p pos then strip  rest else l
-	    | strip [] = []
-       in (strip(!files), strip (!lines))
-      end
-*)
-  (* We find file and line number by linear search.
-   * The first position less than p is what we want.
-   * The initial column depends on whether we resynchronized. *)
 
-(*
-  fun column (lineStart, pos) = pos - lineStart + 1
-*)
-
+  (* ASSUMPTION: pos lies within the given line: 
+   *   lineStart <= pos < start of next line  *)
   fun column ((lineStart, line), pos) =
       let val col = case line 
-		     of LINE _  => 1
-		      | SYNC(_,c) => c
+		      of LINE _  => 1
+		       | SYNC(_,c,_) => c
        in pos - lineStart + col
       end
 
-  fun filepos smap pos : sourceloc =
-      case remove pos smap
-        of ((pos',line)::_, file::_) => 
-           {fileName = file, line = lineNo line, column = column((pos',line), pos)}
+  fun filepos ({lines,files}:sourcemap) pos : sourceloc =
+      case remove pos (!lines,!files)
+        of ((linePos,line)::_, file::_) =>   (* pos is within top line *)
+           {fileName = file, line = lineNo line, column = column((linePos,line), pos)}
          | _ => bug "filepos"
-(*
-  fun filepos smap p : sourceloc =
-      case remove (fn pos : int => pos > p) smap
-        of ((_,file)::_, (pos',line)::_) => 
-           {fileName = file, line = line, column = column(pos', p)}
-         | _ => raise SourceMap_filepos
-*)
+
   (* Searching regions is a bit trickier, since we track file and line
    * simultaneously.  We exploit the invariant that every file entry has a
    * corresponding line entry.  We also exploit that only file entries
@@ -222,67 +183,74 @@ struct
   fun isNullRegion (0,0) = true
     | isNullRegion _ = false
 
-  fun fileregion smap (lo, hi) =
+  fun fileregion ({lines,files}: sourcemap) ((lo, hi): region) =
       if isNullRegion(lo,hi) then [] else
-      let fun gather(files as (filePos, file)::files', (linePos, line)::lines',
-		     region_end, answers) =
+      let fun posToSourceLoc(pos, (linePos, line)::_,  file::_): sourceloc = 
+		 {fileName=file, line=lineNo(line), column=column((linePos,line), pos)}
+	    | posToSourceLoc _ = bug "posToSourceLoc"
+	  
+	  fun gather((linePos, line)::lines', files as file::files',
+		     segment_end, answers) =
 	       if linePos <= lo then (* last item *)
-		 ({fileName=file, line=line, column=column(linePos,lo)}, region_end)
+		 ({fileName=file, line=lineNo(line), column=column((linePos,line),lo)},
+		  segment_end)
                  :: answers
-	       else if filePos < linePos then
-		 gather(files, lines', region_end, answers)
-	       else (* p = p'; new region *)
-		 gather(files', lines', end_of (filePos, hd files', hd lines'), 
-			({fileName = file, line = line, column = col}, region_end) :: answers)
-	    | gather _ = raise SourceMap_fileregion
-	  and end_of(lastpos, (filePos, file), (linePos, line)) = 
-		 {fileName=file, line=line, column=column(linePos, lastpos)}
-	  val (lines, files) = remove (hi-1) smap
-	  val _ = if null files orelse null lines then bug "fileregion" else ()
-	  val answer = gather(files, lines, end_of(hi, hd files, hd lines), [])
-	  fun validate(({fileName=f,  line=l,  column=c}:sourceloc, 
-			{fileName=f', line=l', column=c'}) :: rest) =
-		if f = f' andalso (l' > l orelse (l' = l andalso c' >= c)) then
-		  validate rest 
-		else 
-		  raise SourceMap_fileregion
-	    | validate [] = ()
-	  (* validate checks the invariant that single "region segments" making
-           * up the answer list occupy a single source file and that coordinates
-           * are nondecreasing. We have to be careful not to remove the entry for
-           * lo when pos = hi = lo. A redundant check if the algorithm is correct. *)
-       in validate answer; answer
+	       else (case line
+                       of LINE _ => gather(lines', files, segment_end, answers)
+                        | SYNC(l,c,g) => (* crossing segment boundary *)
+			  let val endpos =
+				  (case lines'
+				    of (linePos', _)::_ =>
+                                       if linePos - g = linePos' then linePos' - 1
+                                       else linePos - g)
+                          in gather(lines', files',
+				    posToSourceLoc (endpos, lines', files'),
+				    ({fileName = file, line = l, column = c},
+				     segment_end) :: answers)
+			  end)
+	    | gather _ = bug "fileregion"
+	  val (lines0, files0) = remove hi (!lines,!files)
+       in gather(lines0, files0, posToSourceLoc(hi,lines0,files0), [])
       end
 
    (* newlineCount : sourcemap -> region -> int 
-    * determines the number of lines involved in a region, which may be 0
-    * for a region that lies within a single line. Any lines containing
-    * #line commands within the region are not counted. *)
-   fun newlineCount smap ((lo, hi): region) =
-      let val (hifiles, hilines) = remove (fn pos : int => pos >= hi) smap
-	  val (lofiles, lolines) = remove (fn pos : int => pos > lo) smap
-       in (length hilines - length lolines) - (length hifiles - length lofiles)
-      end
+    * determines the (approximate) number of newlines occurring in a region,
+    * which may be 0 for a region that lies within a single line. Any lines
+    * containing #line directives (i.e. SYNC lines) are not counted. *)
+   fun newlineCount ({lines,files}: sourcemap) ((lo, hi): region) =
+       let val his as (hilines, hifiles) = remove hi (!lines,!files)
+	   val (lolines, lofiles) = remove lo his
+	in (length hilines - length lolines) - (length hifiles - length lofiles)
+       end
+
+   (* removeLines - remove lines, stoping when the next line contains pos *)
+   fun removeLines (pos, (lines: (charpos * line) list)) =
+       let fun strip (lines as (pos1, _)::lines') =
+	       if pos1 > pos then strip (lines') else lines
+	     | strip _ = bug "removeLines"
+	in strip lines
+       end
+
+   (* removeABO - remove all-but-one.
+    * removes lines until pos is in the next to last line *)
+   fun removeABO (pos, (line::lines: (charpos * line) list)) =
+       let fun strip (lines as (pos1, line1)::lines', (pos0, line0)) =
+	       if pos1 > pos then strip (lines', (pos1, line1))
+	       else (pos0,line0)::lines
+	     | strip _ = bug "removeABO"
+	in strip(lines, line)
+       end
+
+   (* widenToLines - take a region and expand it to the beginning, respectively end,
+    * of the first and last lines intersecting the region. This works only
+    * for nonsegmented inputs (no noninitial SYNCs). Also assumes that the
+    * region hi limit comes before the last newline in the input, which 
+    * should be the case if the input ends with a newline. *)
+   fun widenToLines ({lines,files}: sourcemap) ((lo, hi) : region) =
+       if isNullRegion (lo,hi) then nullRegion
+       else let val (lines1 as (pos1,_)::lines1') = removeABO(hi, !lines)
+                val (pos2,_)::_ = removeLines(lo, lines1')
+             in (pos2, pos1-1)
+	    end
 
 end (* structure SourceMap *)
-
-(* not used -- 
-
-  fun span ((0,0), r) = r
-    | span (r, (0,0)) = r
-    | span ((l1, h1), (l2, h2)) = 
-      (Int.min(l1,l2), Int.max(h1,h2))
-
-  (one call in Parse/main/parser.sml commented out)
-  fun forgetOldPositions ({files, lines} : sourcemap) =
-      let val r as (p,  file, col) = hd (!files)
-	  val l as (p', line)      = hd (!lines)
-      in  lines := [l];
-	  files := [if p = p' then r else (p', file, 1)]
-      end
-
-  fun positions({files,lines}: sourcemap) (src:sourceloc) =
-      let exception Unimplemented
-      in  raise Unimplemented
-      end
-*)

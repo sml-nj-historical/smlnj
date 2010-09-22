@@ -21,7 +21,7 @@ type lexarg = {
 type arg = lexarg
 type ('a,'b) token = ('a,'b) Tokens.token
 fun eof ({comLevel,err,charlist,stringstart,sourceMap, ...} : lexarg) = let
-      val pos = Int.max(!stringstart+2, SourceMap.lastLineStart sourceMap)
+      val pos = Int.max(!stringstart+2, SourceMap.lastLinePos sourceMap)
       in
 	if !comLevel>0
 	  then err (!stringstart,pos) COMPLAIN "unclosed comment" nullErrorBody
@@ -44,24 +44,23 @@ val atoi = cvt StringCvt.DEC
 val xtoi = cvt StringCvt.HEX
 end (* local *)
 
-fun mysynch (src, pos, parts) =
+fun mysynch (srcmap, initpos, pos, args) =
   let fun digit d = Char.ord d - Char.ord #"0"
       fun cvt digits = foldl (fn(d, n) => 10*n + digit d) 0 (explode digits)
-      val r = SourceMap.resynch src
-  in  case parts 
+      val resynch = SourceMap.resynch srcmap
+  in  case args
         of [col, line] => 
-	  r (pos, {fileNameOp=NONE, line=cvt line, column=cvt col})
+	    resynch (initpos, pos, cvt line, cvt col, NONE)
          | [file, col, line] => 
-              r (pos, {fileNameOp=SOME file, line=cvt line, column=cvt col})
-         | _ => impossible "text in (*#line...*)"
+	    resynch (initpos, pos, cvt line, cvt col, SOME file)
+         | _ => impossible "ill-formed args in (*#line...*)"
   end
 
-fun has_quote s = let
-      fun loop i = ((String.sub(s,i) = #"`") orelse loop (i+1))
-	    handle _ => false
-      in
-	loop 0
-      end
+fun has_quote s =
+    let fun loop i = ((String.sub(s,i) = #"`") orelse loop (i+1))
+	             handle _ => false
+     in loop 0
+    end
 
 fun inc (ri as ref i) = (ri := i+1)
 fun dec (ri as ref i) = (ri := i-1)
@@ -164,11 +163,11 @@ hexnum=[0-9a-fA-F]+;
 <LL>[0-9]+                => (YYBEGIN LLC; addString(charlist, yytext); continue());
 <LL>0*               	  => (YYBEGIN LLC; addString(charlist, "1");    continue()
 		(* note hack, since ml-lex chokes on the empty string for 0* *));
-<LLC>"*)"                 => (YYBEGIN INITIAL; mysynch(sourceMap, yypos+2, !charlist); 
+<LLC>"*)"                 => (YYBEGIN INITIAL; mysynch(sourceMap, !stringstart, yypos+2, !charlist); 
 		              comLevel := 0; charlist := []; continue());
 <LLC>{ws}\"		  => (YYBEGIN LLCQ; continue());
 <LLCQ>[^\"]*              => (addString(charlist, yytext); continue());
-<LLCQ>\""*)"              => (YYBEGIN INITIAL; mysynch(sourceMap, yypos+3, !charlist); 
+<LLCQ>\""*)"              => (YYBEGIN INITIAL; mysynch(sourceMap, !stringstart, yypos+3, !charlist); 
 		              comLevel := 0; charlist := []; continue());
 <L,LLC,LLCQ>"*)" => (err (!stringstart, yypos+1) WARN 
                        "ill-formed (*#line...*) taken as comment" nullErrorBody;
