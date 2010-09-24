@@ -45,7 +45,14 @@
  * 
  * QUESTION: Presumably, the original motivation for adding this feature was to support
  * Norman Ramsey's nw "literate programming" system, which we no longer support.
- * What new clients require this functionality?
+ * What new clients use this functionality?
+ *
+ * Obviously, the implementation of sourcemap could be made much simpler without
+ * resynchronization.
+ *
+ * New functionality for mapping regions to source strings (for enhanced type error
+ * messages) is currently incompatible with resynchronization.
+ *
  *) 
 
 structure SourceMap :> SOURCE_MAP =
@@ -92,18 +99,19 @@ struct
   datatype line
     = LINE of int         (* line number, simple line bump *)
     | SYNC of int * int * int
-       (* resynch point with line, column, and the #line directive gap;
+       (* resynch point with line, column, and the size of the #line directive gap;
         * there will be an associated entry in files list, which MAY change
-        * the current file name. *)
+        * the current file name, but may be the same as the previous file name
+        * if the #line directive does not specify a file name. *)
 
   type sourcemap = {lines: (charpos * line) list ref,
 		    files: string list ref}
   (* INVARIANTS for sourcemaps:
    * (1) length (!lines) > 0
    * (2) length (!files) > 0
-   * (3) charpos components of lines are strictly decreasing
+   * (3) charpos components of lines are strictly decreasing (ending in 1)
    * (4) length (!files) = number of SYNC elements in lines
-   * (5) last (initial) element of lines is a SYNC line
+   * (5) last (initial) element of lines is the SYNC line: (1, SYNC(1,1,0))
    *)
 
   val nullRegion : region = (0,0)
@@ -111,12 +119,12 @@ struct
    * a proper region, and does not have a location in the file. In particular, it
    * should not be viewed as an empty region at the beginning of the input. *)
 
-  (* newmap: create a new sourcemap
-   * called only one place, in Source.newSource. pos argument is the fixed
-   * value of lexer_initial_position, which _should be_ 1.  line is determined
-   * by the lineNum argument of newSource, which will always be 1. *)
-  fun newmap (pos: charpos, fileName: string, line: int) : sourcemap =
-      {files = ref [fileName], lines = ref [(pos, SYNC(line,1,0))]}
+  (* newSourceMap: create a new sourcemap, given initial file name.
+   * called only one place, in Source.newSource.  Initial position at the
+   * start of the first line is 1, initial line number is 1. *)
+  fun newSourceMap (fileName: string) : sourcemap =
+      {files = ref [fileName],
+       lines = ref [(1, SYNC(1,1,0))]}
 
   (* resynch: implements a #line directive, changing the current filename, line and column.
    * initpos is the position of the initial character of the #line comment

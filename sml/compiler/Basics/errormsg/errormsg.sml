@@ -51,9 +51,10 @@ struct
        Control_Print.flush();
        raise Error)
 
-(* With the advent of source-map resynchronization (a.k.a
+(* [Ramsey] With the advent of source-map resynchronization (a.k.a
  * ( *#line...* ) comments), a contiguous region as seen by the compiler
- * can correspond to one or more contiguous regions in source code.
+ * can correspond to one or more contiguous segments in source code, with
+ * different segments possibly lying in different source files.
  * We can imagine myriad ways of displaying such information, but we
  * confine ourselves to two:
  *  * When there's just one source region, we have what we had in the old
@@ -62,13 +63,14 @@ struct
  *      name:line.col or
  *      name:line1.col1-line2.col2
  *
- *  * When there are two or more source regions, we use an ellipsis instead
+ *  * When the region spans two or more source segments, we use an ellipsis instead
  *    of a dash, and if not all regions are from the same file, we provide
  *    the file names of both endpoints (even if the endpoints are the same
  *    file).
  *)
 
-  fun location_string ({sourceMap,fileOpened,...}:Source.inputSource) (p1,p2) =
+  fun location_string ({sourceMap,fileOpened,...}:Source.inputSource)
+                      ((p1,p2): SourceMap.region) : string =
       let fun shortpoint ({line, column,...}:sourceloc, l) = 
              Int.toString line :: "." :: Int.toString column :: l
           fun showpoint (p as {fileName,...}:sourceloc, l) = 
@@ -93,11 +95,8 @@ struct
           )
       end
 
-(* Emulating my predecessors, I've gone to some trouble to avoid list appends (and the
- * corresponding allocations). *)
-
   fun error (source as {anyErrors, errConsumer,...}: Source.inputSource)
-            (p1:int,p2:int) (severity:severity)
+            ((p1,p2): SourceMap.region) (severity:severity)
             (msg: string) (body : PP.stream -> unit) = 
       (ppmsg(errConsumer,(location_string source (p1,p2)),severity,msg,body);
        record(severity,anyErrors))

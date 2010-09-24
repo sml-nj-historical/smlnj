@@ -76,7 +76,7 @@ sig
   val nullRegion : region              (* left and right identity of span *)
 
   (* creating and modifying sourcemaps *)
-  val newmap  : charpos * string * int -> sourcemap
+  val newSourceMap : string -> sourcemap
   val newline : sourcemap -> charpos -> unit
   val resynch : sourcemap -> 
                 charpos * charpos * int * int * string option -> unit
