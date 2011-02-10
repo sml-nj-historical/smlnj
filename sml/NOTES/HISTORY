@@ -17,6 +17,14 @@ Here is a test entry
 
 ----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2011/02/10
+Description:
+
+Fixed ml-yacc examples to respect the changed signatures with respect
+to TextIO.inputLine.
+
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
 Date: 2010/09/16
 Description:
 
