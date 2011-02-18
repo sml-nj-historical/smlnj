@@ -1,5 +1,8 @@
 (* core-cml.cm
  *
+ * COPYRIGHT (c) 2011 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * This is the "core" of CML.  It is provided as a library so that
  * ../cml-lib/trace-cml.cm can refer to it directly.
  *)
@@ -7,6 +10,7 @@ Library
   signature CML
   signature SYNC_VAR
   signature MAILBOX
+  signature BARRIER
   signature CML_CLEANUP
   structure CML
   structure Event
@@ -15,6 +19,7 @@ Library
   structure Scheduler
   structure SyncVar
   structure Mailbox
+  structure Barrier
   structure TimeOut
   structure IOManager
   structure Running
@@ -44,6 +49,8 @@ is
   core-cml/sync-var.sml
   core-cml/mailbox-sig.sml
   core-cml/mailbox.sml
+  core-cml/barrier-sig.sml
+  core-cml/barrier.sml
 
   core-cml/running.sml
   core-cml/cml-cleanup-sig.sml

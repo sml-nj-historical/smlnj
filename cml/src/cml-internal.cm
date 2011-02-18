@@ -1,5 +1,8 @@
 (* cml-internal.cm
  *
+ * COPYRIGHT (c) 2011 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * This is the actual implementation of CML.  It defines the public
  * interface of CML as well as some other things which belong intro
  * basis.cm.
@@ -15,6 +18,8 @@ Library
   structure SyncVar
   signature MAILBOX
   structure Mailbox
+  signature BARRIER
+  structure Barrier
 
   structure RunCML
 
