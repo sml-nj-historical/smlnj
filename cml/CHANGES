@@ -1,6 +1,10 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2011-02-18]
+	Added barriers.  These are inspired by the similar mechanism in CHP, although
+	we do not include any event-based operations on them as of yet.
+
 [2008-07-16]
 	Fixed interface to OS.Process so that it agrees with the SML Basis Library
 	(added isSuccess and sleep; status is nolonger an eqtype).

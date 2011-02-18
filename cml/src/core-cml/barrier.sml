@@ -25,7 +25,7 @@ structure Barrier :> BARRIER =
 
     datatype status = ENROLLED | WAITING | RESIGNED
 
-    datatype 'a enrolled_barrier = ENROLL of {
+    datatype 'a enrollment = ENROLL of {
 	bar : 'a barrier,
 	sts : status ref	(* current status of this enrollment *)
       }
@@ -94,5 +94,8 @@ structure Barrier :> BARRIER =
 	   of RESIGNED => () (* ignore multiple resignations *)
 	    | WAITING => (S.atomicEnd(); raise Fail "resign while waiting")
 	    | ENROLLED => (sts := RESIGNED; S.atomicEnd()))
+
+  (* get the current state of the barrier *)
+    fun value (ENROLL{bar=BAR{state, ...}, ...}) = !state
 
   end

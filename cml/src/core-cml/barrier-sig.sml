@@ -11,7 +11,7 @@ signature BARRIER =
   sig
 
     type 'a barrier
-    type 'a enrolled_barrier
+    type 'a enrollment
 
   (* create a new barrier.  The first argument is the update function that
    * is applied to the global state whenever a barrier synchronization occurs.
@@ -20,13 +20,16 @@ signature BARRIER =
     val barrier : ('a -> 'a) -> 'a -> 'a barrier
 
   (* enroll in a barrier *)
-    val enroll : 'a barrier -> 'a enrolled_barrier
+    val enroll : 'a barrier -> 'a enrollment
 
   (* synchronize on a barrier *)
-    val wait : 'a enrolled_barrier -> 'a
+    val wait : 'a enrollment -> 'a
 
   (* resign from an enrolled barrier *)
-    val resign : 'a enrolled_barrier -> unit
+    val resign : 'a enrollment -> unit
+
+  (* get the current state of the barrier *)
+    val value : 'a enrollment -> 'a
 
   end
 
