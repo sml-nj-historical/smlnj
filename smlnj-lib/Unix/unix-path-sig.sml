@@ -18,10 +18,16 @@ signature UNIX_PATH =
 
     exception NoSuchFile
 
+  (* return the first path p in the pathlist, such that p/name has the given access modes *)
     val findFile : (path_list * access_mode list) -> string -> string
+
+  (* return the list of paths p in the pathlist, such that p/name has the given access modes *)
     val findFiles : (path_list * access_mode list) -> string -> string list
 
+  (* return the first path p in the pathlist, such that p/name has the given file type *)
     val findFileOfType : (path_list * file_type * access_mode list) -> string -> string
+
+  (* return the list of paths p in the pathlist, such that p/name has the given file type *)
     val findFilesOfType : (path_list * file_type * access_mode list) -> string -> string list
 
   end (* UNIX_PATH *)
