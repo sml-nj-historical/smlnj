@@ -37,5 +37,7 @@ structure PathUtil : PATH_UTIL =
     val findFile  = existsFile fileExists
     val findFiles = allFiles fileExists
 
+    val findExe = existsFile (fn p => OS.FileSys.access(p, [OS.FileSys.A_EXEC]))
+
   end;
 
