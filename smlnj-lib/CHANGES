@@ -6,7 +6,7 @@ correspond to SML/NJ releases.
 	Added findExe function to PathUtil module.
 
 [2010-03-09]
-	Fixed bug in hashed cons library.
+	Fixed bug in hashed cons library (bug #55).
 
 [2009-05-13]
 	Added array iterators to DynamicArray module.
