@@ -7,13 +7,19 @@ description.
 
 The form of an entry should be:
 
-
 Name: Your Name (web page or e-mail)
 Date: yyyy/mm/dd hh:mm:ss
 Tag: cvs-tag-for-this-change
 Description:
 
 Here is a test entry
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/03/31
+Description:
+
+Fixed syntax error in ml-lex compatibility mode (bug #49)
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
