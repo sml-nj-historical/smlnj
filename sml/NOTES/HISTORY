@@ -19,6 +19,14 @@ Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2011/04/08
 Description:
 
+Added fix for comments in code bug (#63).  
+Thanks to Michael Norrish.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/04/08
+Description:
+
 Fixed bug in Socket.acceptNB (bug #59)
 
 ----------------------------------------------------------------------
