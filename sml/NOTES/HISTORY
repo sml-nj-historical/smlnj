@@ -16,6 +16,13 @@ Here is a test entry
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/04/08
+Description:
+
+Fixed bug in Socket.acceptNB (bug #59)
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2011/03/31
 Description:
 

@@ -97,13 +97,16 @@ signature SYNCHRONOUS_SOCKET =
     val sockDesc : ('af, 'sock_type) sock -> sock_desc
     val sameDesc : sock_desc * sock_desc -> bool
 
-    val select : { rds : sock_desc list,
-		   wrs : sock_desc list,
-		   exs : sock_desc list,
-		   timeout : Time.time option }
-		 -> { rds : sock_desc list,
-		      wrs : sock_desc list,
-		      exs : sock_desc list }
+    val select : {
+	    rds : sock_desc list,
+	    wrs : sock_desc list,
+	    exs : sock_desc list,
+	    timeout : Time.time option
+	  } -> {
+	    rds : sock_desc list,
+	    wrs : sock_desc list,
+	    exs : sock_desc list
+	  }
 
     val ioDesc : ('af, 'sock_type) sock -> OS.IO.iodesc
 

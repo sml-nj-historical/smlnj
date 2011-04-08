@@ -6,11 +6,14 @@
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
+
 structure OpsysDetails : sig
+
     val mkIODesc : int -> PreOS.IO.iodesc
     val wrapNB_o : ('a -> 'b) -> ('a -> 'b option)
     val wrapNB_b : ('a -> unit) -> ('a -> bool)
-end = struct
+
+  end = struct
 
     val mkIODesc = PreOS.IO.SockDesc
 
@@ -24,4 +27,5 @@ end = struct
 
     fun wrapNB_b f x = (f x; true)
 	handle ex => if blockErr ex then false else raise ex
-end
+
+  end
