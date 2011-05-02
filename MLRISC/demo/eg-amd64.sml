@@ -80,14 +80,16 @@ structure AMD64Demo =
         val fpTys = [CTy.C_float, CTy.C_float]
         val paramTys = map (fn _ => intTy) args @ fpTys
 	val proto = {conv="", retTy=CTy.C_void, paramTys=paramTys}
-	val {result, callseq} = CCalls.genCall {
+(*	val {result, callseq} = CCalls.genCall {
 	           name=T.LABEL ccL,
 	           paramAlloc=fn _ => false,
 	           structRet=fn _ => T.REG (64, C.rax),
 	           saveRestoreDedicated=fn _ => {save=[], restore=[]},
 	           callComment=NONE,
 	           proto=proto,
-	           args=args @ fpArgs}
+	           args=args @ fpArgs
+				}
+*)
 	val stms = [
 	    T.FMV (64, f3, T.FADD (64, T.FLOAD (64, T.ADD (64, li 128, T.REG (64, r2)), ()), T.FLOAD (64, T.ADD (64, li 128, T.REG (64, r1)), ()))),
 	    T.FSTORE (64, T.REG (64, r1), T.FREG (64, f3), ())

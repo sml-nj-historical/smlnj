@@ -9,11 +9,13 @@ Group is
   ../cm/Graphs.cm
   ../cm/MLTREE.cm
   ../cm/RA.cm
-  ../cm/SA.cm
   ../cm/Visual.cm
+  ../cm/StagedAlloc.cm
   ../cm/Peephole.cm
   ../cm/AMD64.cm
   ../cm/AMD64-Peephole.cm
+  ../cm/CCall.cm
+  ../cm/CCall-x86-64.cm
       
 	spill-table.sml
 

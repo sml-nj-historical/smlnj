@@ -115,6 +115,7 @@ structure AMD64 = AMD64Gen (
 		  structure ExtensionComp = AMD64MTC
 		  fun signBit _ = raise Fail "todo"
 		  fun negateSignBit _ = raise Fail "todo"
+		  val floats16ByteAligned = true
 		  )
 
 structure AMD64Emit = CFGEmit (
@@ -183,9 +184,10 @@ structure AMD64RA = AMD64RegAlloc (
          datatype spill_operand_kind = datatype spill_operand_kind
          datatype ra_phase = datatype ra_phase
          structure Int = IntRA
-         structure Float = FloatRA)
+         structure Float = FloatRA
+	 val floats16ByteAligned = true)
 
-structure CCalls = AMD64SVID (
+structure CCalls = X86_64SVIDFn (
         structure T = AMD64MLTree
         val frameAlign = 8)
 
