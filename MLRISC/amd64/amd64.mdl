@@ -333,7 +333,7 @@ architecture AMD64 =
      fun dec x = x - 1
 
      (* I'm too lazy to specify the semantics of these for now *)
-     rtl adc sbb bts btc btr rol ror xchg xadd cmpxchg
+     rtl adc sbb bts btc btr rol ror xchg xadd cmpxchg rdtsc rdtscp
           : #n bits * #n bits -> #n bits
 
      rtl [ADD,SUB,AND,OR,XOR]^^B = map (arith byte) [(+),(-),andb,orb,xorb]
@@ -862,6 +862,11 @@ architecture AMD64 =
 	      | I.I64 => ``q'';
               ``\t<src>, <dst>''
              )
+
+    | RDTSC
+        asm: ``rdtsc''
+    | RDTSCP
+        asm: ``rdtscp''
 
     | LAHF	  (* %ah -> %flags *)
 	``lahf''

@@ -50,5 +50,17 @@ structure AMD64InstrExt =
      * the sfence instruction.
      *)
 	| SFENCE
+    (* time-stamp counter (TSC) operations
+     *    RDTSC         edx := <high-order 32 bits of the processor's time-stamp counter>
+     *                  eax := <low-order 32 bits of the processor's time-stamp counter>
+     *
+     *    RDTSCP        edx := <high-order 32 bits of the processor's time-stamp counter>
+     *                  eax := <low-order 32 bits of the processor's time-stamp counter>
+     *                  ecx := <processor's cpu id>
+     *                  *** waits until all previous instructions have been executed 
+     *                  before the reading the counter
+     *)
+	| RDTSC
+	| RDTSCP
 
   end (* AMD64InstrExt *)

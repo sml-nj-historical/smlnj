@@ -113,6 +113,8 @@ struct
       | X.MFENCE => emit(I.mfence, an)
       | X.LFENCE => emit(I.lfence, an)
       | X.SFENCE => emit(I.sfence, an)
+      | X.RDTSC => emit(I.rdtsc, an)
+      | X.RDTSCP => emit(I.rdtscp, an)
     (* end case *)
   end
 end

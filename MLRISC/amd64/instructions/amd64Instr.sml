@@ -273,6 +273,8 @@ sig
    | XCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
+   | RDTSC
+   | RDTSCP
    | LAHF
    | SOURCE of {}
    | SINK of {}
@@ -339,6 +341,8 @@ sig
    val xchg : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
    val cmpxchg : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
    val xadd : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
+   val rdtsc : instruction
+   val rdtscp : instruction
    val lahf : instruction
    val source : {} -> instruction
    val sink : {} -> instruction
@@ -612,6 +616,8 @@ struct
    | XCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
+   | RDTSC
+   | RDTSCP
    | LAHF
    | SOURCE of {}
    | SINK of {}
@@ -676,6 +682,8 @@ struct
    and xchg = INSTR o XCHG
    and cmpxchg = INSTR o CMPXCHG
    and xadd = INSTR o XADD
+   and rdtsc = INSTR RDTSC
+   and rdtscp = INSTR RDTSCP
    and lahf = INSTR LAHF
    and source = INSTR o SOURCE
    and sink = INSTR o SINK

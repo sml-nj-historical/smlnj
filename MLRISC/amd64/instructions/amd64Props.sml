@@ -232,6 +232,8 @@ functor AMD64Props (
 	      * do potentially it may define *and* use 
 	      *)
 	     | I.CMOV {src, dst,...} => ([dst], operandAcc(src, [dst]))
+	     | I.RDTSC => ([C.rax,C.rdx], [])
+	     | I.RDTSCP => ([C.rax,C.rdx,C.rcx], [])
 	     | _ => ([], [])
 	    (* end case *))
 	in
@@ -358,6 +360,8 @@ functor AMD64Props (
 	 | I.XADD {sz, ...} => szToInt sz
 	 | I.CMPXCHG {sz, ...} => szToInt sz
 	 | I.PAUSE => 64
+	 | I.RDTSC => 64
+	 | I.RDTSCP => 64
 	 | (I.MFENCE | I.SFENCE | I.LFENCE) => 64
 	 | _ => raise Fail "" (*64*)
       (* esac *))

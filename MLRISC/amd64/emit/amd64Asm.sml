@@ -689,6 +689,8 @@ struct
              emit_src src; 
              emit ", "; 
              emit_dst dst ) )
+       | I.RDTSC => emit "rdtsc"
+       | I.RDTSCP => emit "rdtscp"
        | I.LAHF => emit "lahf"
        | I.SOURCE{} => emit "source"
        | I.SINK{} => emit "sink"

@@ -288,6 +288,8 @@ functor AMD64SpillInstr (
 			   newReg=SOME tmpR
 			  }
 		       end
+		 | I.RDTSC => error "spill: RDTSC"
+		 | I.RDTSCP => error "spill: RDTSCP"
 		 | I.MULTDIV _ => error "spill: MULTDIV"
 		 | I.MUL3 {src1, src2, dst} => let 
 		   val tmpR = newReg() 
@@ -574,6 +576,8 @@ functor AMD64SpillInstr (
 		   I.FCOM {comOp=comOp, dst=dst, src=operand (src, tmp)})
 		 | I.FBINOP {binOp, dst, src} => withTmpAvail (fn tmp =>
                    I.FBINOP {binOp=binOp, dst=dst, src=operand (src, tmp)})
+		 | I.RDTSC => error "reload: RDTSC"
+ 		 | I.RDTSCP => error "reload: RDTSCP"
 		 | _ => error "reloadR"
               (* end case *))
             end (* reload *)
