@@ -15,6 +15,13 @@ Description:
 Here is a test entry
 
 ----------------------------------------------------------------------
+Name Mike Rainey (http://www.mpi-sws.org/~mrainey)
+Date 2011/05/03
+Description:
+
+Added the RTDSC and RTDSCP instructions to the amd64 code generator.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2011/04/08
 Description:
