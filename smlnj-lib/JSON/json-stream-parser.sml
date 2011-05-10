@@ -21,7 +21,9 @@ structure JSONStreamParser : sig
 	error : 'ctx * string -> 'ctx
       }
 
-    val parser : 'ctx callbacks -> (TextIO.instream * 'ctx) -> unit
+    val parse : 'ctx callbacks -> (TextIO.instream * 'ctx) -> 'ctx
+
+    val parseFile : 'ctx callbacks -> (string * 'ctx) -> 'ctx
 
   end = struct
 
@@ -47,7 +49,7 @@ structure JSONStreamParser : sig
 	  #error cb (ctx, msg);
 	  raise Fail "error")
 
-    fun parser (cb : 'a callbacks) (inStrm, ctx) = let
+    fun parser (cb : 'a callbacks) (srcMap, inStrm, ctx) = let
 	  val lexer = Lex.lex (AntlrStreamPos.mkSourcemap ())
 	  fun parseValue (strm : Lex.strm, ctx) = let
 		val (tok, pos, strm) = lexer strm
@@ -112,7 +114,29 @@ structure JSONStreamParser : sig
 		  (strm, #endObject cb ctx)
 		end
 	  in
-	    ignore (parseValue (Lex.streamifyInstream inStrm, ctx))
+	    #2 (parseValue (Lex.streamifyInstream inStrm, ctx))
+	  end
+
+    fun parse cb = let
+	  val parser = parser cb
+	  fun parse' (inStrm, ctx) =
+		parser(AntlrStreamPos.mkSourcemap (), inStrm, ctx)
+	  in
+	    parse'
+	  end
+
+    fun parseFile cb = let
+	  val parser = parser cb
+	  fun parse (fileName, ctx) = let
+		val inStrm = TextIO.openIn fileName
+		val ctx = parser (AntlrStreamPos.mkSourcemap' fileName, inStrm, ctx)
+		      handle ex => (TextIO.closeIn inStrm; raise ex)
+		in
+		  TextIO.closeIn inStrm;
+		  ctx
+		end
+	  in
+	    parse
 	  end
 
   end

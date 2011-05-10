@@ -2,6 +2,10 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2011-04-10]
+	Changed the interface of JSONStreamParser to support both parsing files
+	and TextIO.instreams.
+
 [2011-03-16]
 	Added findExe function to PathUtil module.
 

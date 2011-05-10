@@ -91,6 +91,7 @@ structure JSONParser : sig
     fun parseFile fileName = let
 	  val inStrm = TextIO.openIn fileName
 	  val v = parse' (AntlrStreamPos.mkSourcemap' fileName, inStrm)
+		handle ex => (TextIO.closeIn inStrm; raise ex)
 	  in
 	    TextIO.closeIn inStrm;
 	    v
