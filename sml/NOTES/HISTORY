@@ -16,6 +16,21 @@ Here is a test entry
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/05/10
+Description:
+
+Added boolean literals (true and false) to the conditional-expression
+syntax in CM.  Thus, you can write
+
+#if true
+  structure Foo
+#endif
+
+in a CM file.  This change is meant to make it easier to use autoconf
+to configure the build process of an SML application.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2011/05/09
 Description:
 

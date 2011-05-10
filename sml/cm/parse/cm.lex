@@ -81,7 +81,9 @@ val pp_ids = [("defined", plain Tokens.DEFINED),
 	      ("mod", plain (fn (x, y) => Tokens.MULSYM (S.MOD, x, y))),
 	      ("andalso", plain Tokens.ANDALSO),
 	      ("orelse", plain Tokens.ORELSE),
-	      ("not", plain Tokens.NOT)]
+	      ("not", plain Tokens.NOT),
+	      ("true", plain Tokens.TRUE),
+	      ("false", plain Tokens.FALSE)]
 
 fun idToken (t, p, idlist, default, chstate, in_section2) =
     case List.find (fn (id, _) => id = t) ml_ids of
