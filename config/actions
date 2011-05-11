@@ -85,8 +85,13 @@ cml lib cml cml.cm          cml/src
 cml lib cml basis.cm        cml/src
 
 # Concurrent ML support libraries:
-cml-lib lib cml-lib      trace-cml.cm cml/cml-lib/cm-descr
-cml-lib lib cml-lib      smlnj-lib.cm cml/cml-lib/cm-descr
+cml-lib  lib cml-lib      trace-cml.cm cml/cml-lib/cm-descr
+cml-lib  lib cml-lib      smlnj-lib.cm cml/cml-lib/cm-descr
+cml-lib  lib cml          trace-cml.cm cml/src
+cml-lib  lib cml          smlnj-lib.cm cml/src
+cml-lib  lib cml          inet-lib.cm  cml/src
+cml-lib ulib cml          unix-lib.cm  cml/src
+cml-lib  lib cml          cml-lib.cm   cml/src
 
 # eXene toolkit:
 eXene lib eXene.cm eXene.cm eXene
