@@ -54,30 +54,33 @@ structure GetOpt :> GET_OPT =
       | fmtLong (OptArg (_,ad)) lo = concat ["--",lo,"[=",ad,"]"]
 
     fun fmtOpt {short=sos, long=los, desc=ad, help=descr} = (
-          sepBy (", ", map (fmtShort ad) (S.explode sos)),
-          sepBy (", ", map (fmtLong ad) los),
+          String.concatWith ", " (map (fmtShort ad) (S.explode sos)),
+          String.concatWith ", " (map (fmtLong ad) los),
           descr)
 
   (* Usage information *)
     fun usageInfo {header, options} = let
           fun unlines l = sepBy ("\n", l)
-          val fmtOptions = map fmtOpt options
+          val fmtOptions = List.map fmtOpt options
           val (ms1, ms2) = foldl
 		(fn ((e1,e2,_), (m1,m2)) => (
 		    Int.max (size e1, m1), 
                     Int.max (size e2, m2)
 		  )) (0,0) fmtOptions
+	  val indent = StringCvt.padLeft #" " (ms1 + ms2 + 6)
 	  val pad = StringCvt.padRight #" "
-          val table = foldr
-		(fn ((e1,e2,e3),l) => concat [
-		      "  ", pad ms1 e1, "  ", pad ms2 e2, "  ", e3
-		    ] :: l
-		  ) [] fmtOptions
+	  fun doEntry ((e1, e2, e3), l) = (
+		case String.fields (fn #"\n" => true | _ => false) e3
+		 of [] => concat["  ", pad ms1 e1, "  ", pad ms2 e2] :: l
+		  | [e3] => concat["  ", pad ms1 e1, "  ", pad ms2 e2, "  ", e3] :: l
+		  | fst::rest =>
+		      concat["  ", pad ms1 e1, "  ", pad ms2 e2, "  ", fst]
+		        :: List.foldr (fn (s, l) => (indent "" ^ s) :: l) l rest
+		(* end case *))
+          val table = List.foldr doEntry [""] fmtOptions
           in
-            unlines (header::table)
+            String.concatWith "\n" (header::table)
           end
-
-
 
     (* entry point of the library
      *)
