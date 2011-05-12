@@ -425,7 +425,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			     tok (implode (rev (!curstring)), !startpos, pos))
 			(* handling EOF *)
 			fun handleEof () = let
-			    val pos = SM.lastLinePos sourceMap
+			    val pos = SM.lastChange sourceMap
 			in
 			    if !depth > 0 then
 				error (pos, pos)
@@ -442,17 +442,17 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			fun sync (p, t) = let
 			    fun sep c = c = #"#" orelse Char.isSpace c
 			    fun cvt s = getOpt (Int.fromString s, 0)
-			    fun r (line, col, fileOp) =
-				SM.resynch sourceMap
-  				   (p-(size t), p, line, col, fileOp)
+			    fun r (line, col, file) = SM.resynch sourceMap
+				(p, { fileName = file,
+				      line = line, column = col })
 			in
 			    case String.tokens sep t of
 				[_, line] =>
-				    r (cvt line, 1, NONE)
+				    r (cvt line, NONE, NONE)
 			      | [_, line, file] =>
-				    r (cvt line, 1, SOME file)
+				    r (cvt line, NONE, SOME file)
 			      | [_, line, col, file] =>
-				    r (cvt line, cvt col, SOME file)
+				    r (cvt line, SOME (cvt col), SOME file)
 			      | _ => error (p, p + size t)
 				    "illegal #line directive"
 			end
