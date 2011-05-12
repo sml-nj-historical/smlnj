@@ -1,7 +1,7 @@
-(* unix-socket.sml
+(* socket.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2011 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 local
@@ -157,14 +157,13 @@ structure SocketImp : SOCKET =
 	if nb then (setNBIO' (fd, false); nbr := false; fd) else fd
 
     (* same for non-blocking *)
-    fun fdNB (SOCK { fd, nb = nbr as ref nb }) =
+    fun fdNB (SOCK{fd, nb = nbr as ref nb }) =
 	if nb then fd else (setNBIO' (fd, true); nbr := true; fd)
 
     val wrapNB_o = OpsysDetails.wrapNB_o
     val wrapNB_b = OpsysDetails.wrapNB_b
 
-    fun sockB fd = SOCK { fd = fd, nb = ref false }
-    fun sockNB fd = SOCK { fd = fd, nb = ref true }
+    fun sockB fd = SOCK{ fd = fd, nb = ref false }
 
     (* socket address operations *)
     fun sameAddr (ADDR a1, ADDR a2) = (a1 = a2)
@@ -177,23 +176,23 @@ structure SocketImp : SOCKET =
     (* socket management *)
     local
 	val accept'	: int -> (int * addr)	= sockFn "accept"
-	val bind'		: (int * addr) -> unit	= sockFn "bind"
+	val bind'	: (int * addr) -> unit	= sockFn "bind"
 	val connect'	: (int * addr) -> unit	= sockFn "connect"
 	val listen'	: (int * int) -> unit	= sockFn "listen"
 	val close'	: int -> unit		= sockFn "close"
     in
 
-    fun bind (SOCK { fd, ... }, ADDR addr) = bind' (fd, addr)
+    fun bind (SOCK{ fd, ... }, ADDR addr) = bind' (fd, addr)
 (** Should do some range checking on backLog *)
-    fun listen (SOCK { fd, ... }, backLog) = listen' (fd, backLog)
+    fun listen (SOCK{ fd, ... }, backLog) = listen' (fd, backLog)
 
     fun accept0 (sock, getfd) s = let
-	val (newFD, addr) = accept' (getfd s)
-    in
-	(sock newFD, ADDR addr)
-    end
+	  val (newFD, addr) = accept' (getfd s)
+	  in
+	    (sock newFD, ADDR addr)
+	  end
     fun accept s = accept0 (sockB, fdB) s
-    fun acceptNB s = wrapNB_o (accept0 (sockNB, fdNB)) s
+    fun acceptNB s = wrapNB_o (accept0 (sockB, fdNB)) s
 
     fun connect0 getfd (s, ADDR addr) = connect' (getfd s, addr)
     fun connect arg = connect0 fdB arg
@@ -208,10 +207,10 @@ structure SocketImp : SOCKET =
 	| how NO_SENDS = 1
 	| how NO_RECVS_OR_SENDS = 2
     in
-    fun shutdown (SOCK { fd, ... }, mode) = shutdown' (fd, how mode)
+    fun shutdown (SOCK{ fd, ... }, mode) = shutdown' (fd, how mode)
     end
 
-    fun ioDesc (SOCK { fd, ... }) = OpsysDetails.mkIODesc fd
+    fun ioDesc (SOCK{ fd, ... }) = OpsysDetails.mkIODesc fd
 
     fun pollDesc sock = Option.valOf (OS.IO.pollDesc (ioDesc sock)) (** delete **)
     (* for now we implement select in terms of polling... *)

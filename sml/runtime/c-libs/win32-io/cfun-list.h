@@ -48,4 +48,5 @@ CFUNC("write_arr_txt",\
       _ml_win32_IO_write_arr_txt,\
      "(word32*word8array.array*int*int)->int")
 
-CFUNC("poll", _ml_win32_OS_poll,"word32 list * (Int32.int * int) option -> word32 list")
+CFUNC("poll", _ml_win32_OS_poll, "((word32 * word) list * (int * word) list * (int * int) option) -> ((word32 * word) list * (int * word) list)")
+

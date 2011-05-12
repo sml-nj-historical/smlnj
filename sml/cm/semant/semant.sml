@@ -132,6 +132,7 @@ signature CM_SEMANT = sig
     val negate : aexp -> aexp
 
     (* (bool-valued) expressions *)
+    val boolean : bool -> exp
     val ml_defined : ml_symbol -> exp
     val cm_defined : GeneralParams.info -> cm_symbol -> exp
     val conj : exp * exp -> exp
@@ -411,6 +412,7 @@ structure CMSemant :> CM_SEMANT = struct
       | sign (MINUS, ex) e = ~(ex e)
     fun negate ex e = ~(ex e)
 
+    fun boolean b _ = b
     fun ml_defined s e = MC.ml_look e s
     fun cm_defined gp s e = MC.cm_look gp e s
     fun conj (e1, e2) e = e1 e andalso e2 e

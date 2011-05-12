@@ -9,20 +9,21 @@ signature STRING =
     eqtype string
 
     val maxSize : int
-
     val size      : string -> int
+
     val sub       : string * int -> char
+
+    val str       : char -> string
     val extract   : string * int * int option -> string
     val substring : string * int * int -> string
+
     val ^         : string * string -> string
     val concat    : string list -> string
     val concatWith : string -> string list -> string
-    val str       : char -> string
+
     val implode   : char list -> string
     val explode   : string -> char list
-
     val map       : (char -> char) -> string -> string
-
     val translate : (char -> string) -> string -> string
     val tokens    : (char -> bool) -> string -> string list
     val fields    : (char -> bool) -> string -> string list
@@ -39,9 +40,10 @@ signature STRING =
     val >  : (string * string) -> bool
     val >= : (string * string) -> bool
 
-    val fromString  : String.string -> string option
     val toString    : string -> String.string
-    val fromCString : String.string -> string option
+    val scan        : (char, 'a) StringCvt.reader -> (string, 'a) StringCvt.reader
+    val fromString  : String.string -> string option
     val toCString   : string -> String.string
+    val fromCString : String.string -> string option
 
   end

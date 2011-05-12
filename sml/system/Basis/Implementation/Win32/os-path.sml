@@ -28,13 +28,10 @@ structure OS_Path = OS_PathFn (
       val parentArc  = ".."
       val currentArc = "."
 
-    fun validArc arc = let
-	  fun ok #"\\" = false
-	    | ok #":" = false
-	    | ok c = Char.isPrint c
-	  in
-	    CharVector.all ok arc
-	  end
+      (* / should also be disabled on windows, but they it is used
+       * within CM, so we need to allow it.
+       *)
+      val validArc = CharVector.all (Char.notContains "\\:*?\"<>|")
 
       val volSepChar = #":"
 

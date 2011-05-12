@@ -7,21 +7,24 @@
  * Author: Matthias Blume (blume@tti-c.org)
  *)
 structure OpsysDetails : sig
+
     val mkIODesc : int -> PreOS.IO.iodesc
     val wrapNB_o : ('a -> 'b) -> ('a -> 'b option)
     val wrapNB_b : ('a -> unit) -> ('a -> bool)
-end = struct
+
+  end = struct
 
     val mkIODesc = PreOS.IO.IODesc
 
-    (* The following is essentially lifted from the CML implementation's
-     * handling of non-blocking socket I/O.  I am not sure whether
-     * conflating EINPROGRESS, EAGAIN, and EWOULDBLOCK is exactly
-     * the right thing, though... *)
-    val blockErrors =
-	case Posix.Error.syserror "wouldblock" of
-	    NONE => [Posix.Error.again, Posix.Error.inprogress]
-	  | SOME e => [e, Posix.Error.again, Posix.Error.inprogress]
+ (* The following is essentially lifted from the CML implementation's
+  * handling of non-blocking socket I/O.  I am not sure whether
+  * conflating EINPROGRESS, EAGAIN, and EWOULDBLOCK is exactly
+  * the right thing, though...
+  *)
+    val blockErrors = (case Posix.Error.syserror "wouldblock"
+	   of NONE => [Posix.Error.again, Posix.Error.inprogress]
+	    | SOME e => [e, Posix.Error.again, Posix.Error.inprogress]
+	  (* end case *))
 
     fun blockErr (OSImp.SysErr(_, SOME err)) =
 	List.exists (fn err' => err = err') blockErrors
@@ -32,4 +35,5 @@ end = struct
 
     fun wrapNB_b f x = (f x; true)
 	handle ex => if blockErr ex then false else raise ex
-end
+
+  end

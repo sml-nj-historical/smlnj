@@ -70,7 +70,7 @@ structure OS_IO : OS_IO =
 	fun pollPri (PollDesc (iod,{rd,wr,pri})) = PollDesc (iod,{rd=rd,wr=wr,pri=true})
 
 	local 
-	    val poll' : (word32 list * (int * word) list * (Int32.int * int) option -> (word32 list * (int * word) list)) = 
+	    val poll' : ((word32 * word) list * (int * word) list * (Int32.int * int) option -> ((word32 * word) list * (int * word) list)) = 
 		CInterface.c_function "WIN32-IO" "poll"
 
 	    fun join (false, _, w) = w
@@ -78,14 +78,27 @@ structure OS_IO : OS_IO =
 	    fun test (w, b) = (Word.andb(w, b) <> 0w0)
 	    val rdBit = 0w1 and wrBit = 0w2 and priBit = 0w4
 
-	    fun toPollInfoIO (fd) = PollInfo (PollDesc (OS.IO.IODesc (ref fd),{rd=false,wr=false,pri=false}))
+	    fun toPollInfoIO (fd,w) = PollInfo (PollDesc (OS.IO.IODesc (ref fd),{rd= test(w,rdBit),
+                                                                               wr= test(w,wrBit),
+                                                                               pri= test(w,priBit)}))
 	    fun toPollInfoSock (i,w) = PollInfo (PollDesc (OS.IO.SockDesc (i),{rd = test(w,rdBit),
 									       wr = test(w,wrBit),
 									       pri = test(w,priBit)}))
-	    fun fromPollDescIO (PollDesc (OS.IO.IODesc (ref w),_)) =SOME (w)
-	      | fromPollDescIO _ = NONE
-	    fun fromPollDescSock (PollDesc (OS.IO.SockDesc (i),{rd,wr,pri})) = SOME (i,join (rd,rdBit, join (wr,wrBit, join (pri,priBit,0w0))))
-	      | fromPollDescSock _ = NONE
+	    fun fromPollDescIO (PollDesc (OS.IO.IODesc (ref w),{rd,wr,pri})) =(w,join (rd,rdBit, join (wr,wrBit, join (pri,priBit,0w0))))
+	    fun fromPollDescSock (PollDesc (OS.IO.SockDesc (i),{rd,wr,pri})) = (i,join (rd,rdBit, join (wr,wrBit, join (pri,priBit,0w0))))
+
+            (* To preserve equality, return the original PollDesc passed to poll.
+             * This is cheesy, but restructuring the IODesc to no longer have a ref
+             * cell is a substantial amount of work, as much of the Win32 FS basis
+             * relies on mutability.
+             *)
+            fun findPollDescFromIO (pollIOs, (fd,w)) = let
+                val desc = List.find (fn (PollDesc (OS.IO.IODesc (ref fd'),_)) => fd'=fd) pollIOs
+            in
+                case desc
+                 of SOME f => SOME(PollInfo f)
+                  | NONE => NONE
+            end
 	in
 	    fun poll (pdl,t) = 
 		let val timeout =
@@ -94,21 +107,23 @@ structure OS_IO : OS_IO =
 			    SOME (Int32.fromLarge (Time.toSeconds (t)),
 				  Int.fromLarge (Time.toMicroseconds t))
 			  | NONE => NONE
+                    fun partDesc (PollDesc (OS.IO.IODesc (_),_)) = true
+                      | partDesc (_) = false
+                    val (pollIOs, pollSocks) = List.partition partDesc pdl
 		    val (infoIO,infoSock) =
-			poll' (List.mapPartial fromPollDescIO pdl,
-			       List.mapPartial fromPollDescSock pdl,
+			poll' (List.map fromPollDescIO pollIOs,
+			       List.map fromPollDescSock pollSocks,
 			       timeout)
 		in
-		    List.@ (List.map toPollInfoIO infoIO,
+		    List.@ (List.mapPartial (fn (p) => findPollDescFromIO(pollIOs,p)) infoIO,
 			    List.map toPollInfoSock infoSock)
 		end
 	end
 		    
-	fun isIn pd = raise Fail("isIn: "^noPolling)
-	fun isOut pd = raise Fail("isOut: "^noPolling)
-	fun isPri pd = raise Fail("isPri: "^noPolling)
-
-	fun infoToPollDesc (PollInfo pd) = pd (* raise Fail("infoToPollDesc: "^noPolling) *)
+        fun isIn (PollInfo(PollDesc(_, flgs))) = #rd flgs
+        fun isOut (PollInfo(PollDesc(_, flgs))) = #wr flgs
+        fun isPri (PollInfo(PollDesc(_, flgs))) = #pri flgs
+	fun infoToPollDesc (PollInfo pd) = pd
     end
 end
 

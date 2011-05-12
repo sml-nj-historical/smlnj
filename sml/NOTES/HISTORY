@@ -7,13 +7,102 @@ description.
 
 The form of an entry should be:
 
-
 Name: Your Name (web page or e-mail)
 Date: yyyy/mm/dd hh:mm:ss
 Tag: cvs-tag-for-this-change
 Description:
 
 Here is a test entry
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/05/10
+Description:
+
+Added boolean literals (true and false) to the conditional-expression
+syntax in CM.  Thus, you can write
+
+#if true
+  structure Foo
+#endif
+
+in a CM file.  This change is meant to make it easier to use autoconf
+to configure the build process of an SML application.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/05/09
+Description:
+
+Added missing String.scan function (#69).  This also fixes the handling
+of certain corner cases by String.fromString.
+
+----------------------------------------------------------------------
+Name Mike Rainey (http://www.mpi-sws.org/~mrainey)
+Date 2011/05/03
+Description:
+
+Added the RTDSC and RTDSCP instructions to the amd64 code generator.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/04/08
+Description:
+
+Added fix for comments in code bug (#63).  
+Thanks to Michael Norrish.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/04/08
+Description:
+
+Fixed bug in Socket.acceptNB (bug #59)
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/03/31
+Description:
+
+Fixed syntax error in ml-lex compatibility mode (bug #49)
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/03/22
+Description:
+
+Update _arch-n-opsys script for Mac OS X Lion (10.7).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/02/18
+Description:
+
+Added Barriers module to CML.
+
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2011/02/10
+Description:
+
+Fixed ml-yacc examples to respect the changed signatures with respect
+to TextIO.inputLine.
+
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2010/09/16
+Description:
+
+Changed the Win32 implementation of validArc to support directories
+with extended characters (umlauts, etc.).
+
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2010/09/16
+Description:
+
+Fixed the Win32 socket and polling implementation to work correctly
+with CML. Signature of poll was wrong and didn't handle sockets at all.
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
