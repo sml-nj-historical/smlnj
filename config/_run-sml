@@ -173,6 +173,7 @@ if [ "$ALLOC" = "" ] ; then
 		1024) ALLOC="@SMLalloc=512k" ;;
 		2048) ALLOC="@SMLalloc=1024k" ;;
 		3072) ALLOC="@SMLalloc=1024k" ;;
+		12288) ALLOC="@SMLalloc=1024k" ;;
 		*)
 		    ;;
 	    esac
