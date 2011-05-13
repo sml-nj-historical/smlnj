@@ -164,16 +164,41 @@ if [ "$ALLOC" = "" ] ; then
 		    ;;
 		256)
 		    # Do CPUs like this exist?
-		    ALLOC="@SMLalloc=128k"
+		    ALLOC="@SMLalloc=256k"
 		    ;;
 		512)
 		    # The Pentium II case...
-		    ALLOC="@SMLalloc=256k"
+		    ALLOC="@SMLalloc=512k"
 		    ;;
+		1024) ALLOC="@SMLalloc=512k" ;;
+		2048) ALLOC="@SMLalloc=1024k" ;;
+		3072) ALLOC="@SMLalloc=1024k" ;;
 		*)
 		    ;;
 	    esac
 	fi
+    elif [ x"$OPSYS" = "darwin" ] ; then
+      cache=`/usr/sbin/sysctl -n hw.l3cachesize`
+      if [ x"$cache" = "x" ] ; then
+	cache=`/usr/sbin/sysctl -n hw.l2cachesize`
+	if [ x"$cache" = "x" ] ; then
+	  cache=262144  # fallback
+	fi
+      fi
+    # possible cache sizes for Intel Macs
+    # see list at http://en.wikipedia.org/wiki/List_of_Macintosh_models_grouped_by_CPU_type
+      case $cache in
+	262144) kb=256;;
+	524288) kb=512;;
+	1048576) kb=512;;
+	2097152) kb=1024;;
+	3145728) kb=1024;;
+	4194304) kb=1024;;
+	6291456) kb=1024;;
+	8388608) kb=1024;;
+	12582912) kb=1024;;
+      esac
+      ALLOC="@SMLalloc=$kb"
     fi
 fi
 
