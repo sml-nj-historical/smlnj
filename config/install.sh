@@ -276,12 +276,10 @@ case $ARCH in
 	ALLOC=1M
 	;;
     x86)
-	# The following is the _wrong_ value for many popular x86 chips
-	# (i.e., Celerons).  However, the optimal value for those is 32k,
-	# and such a small value is not enough for the runtime system's boot
-	# code.  Therefore, we use 256k here and re-set it to the proper
+	# The following is the _wrong_ value for some x86 chips
+	# (i.e., Celerons).  We use 512k here and re-set it to the proper
 	# value in .run-sml.
-	ALLOC=256k
+	ALLOC=512k
 	;;
     alpha32)
 	ALLOC=512k
@@ -303,6 +301,26 @@ case $OPSYS in
 	EXTRA_DEFS="XDEFS=$EXTRA_DEFS"
 	;;
 esac
+
+#
+# on 64-bit linux systems, we need to check to see if the 32-bit emulation
+# support is installed
+#
+if [ x"$ARCH" = "xx86" -a x"$OPSYS" = "xlinux" ] ; then
+  case `uname -m` in
+    x86_64)
+      tmpFile=smlnj-test$$
+      echo "int main () { return 0; }" >> /tmp/$tmpFile.c
+      gcc -m32 -o /tmp/$tmpFile /tmp/$tmpFile.c 2> /dev/null 1>> /dev/null
+      if [ "$?" != "0" ] ; then
+	complain "$this: !!! SML/NJ requires support for 32-bit executables"
+      else
+	rm -f /tmp/$tmpFile /tmp/$tmpFile.c
+      fi
+    ;;
+    *) ;;
+  esac
+fi
 
 #
 # the name of the bin files directory
