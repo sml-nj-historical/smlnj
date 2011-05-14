@@ -45,16 +45,15 @@ val xtoi = cvt StringCvt.HEX
 end (* local *)
 
 fun mysynch (srcmap, initpos, pos, args) =
-  let fun digit d = Char.ord d - Char.ord #"0"
-      fun cvt digits = foldl (fn(d, n) => 10*n + digit d) 0 (explode digits)
-      val resynch = SourceMap.resynch srcmap
-  in  case args
-        of [col, line] => 
-	    resynch (initpos, pos, cvt line, cvt col, NONE)
-         | [file, col, line] => 
-	    resynch (initpos, pos, cvt line, cvt col, SOME file)
-         | _ => impossible "ill-formed args in (*#line...*)"
-  end
+    let fun cvt digits = getOpt(Int.fromString digits, 0)
+	val resynch = SourceMap.resynch srcmap
+     in case args
+          of [col, line] => 
+	       resynch (initpos, pos, cvt line, cvt col, NONE)
+           | [file, col, line] => 
+	       resynch (initpos, pos, cvt line, cvt col, SOME file)
+           | _ => impossible "ill-formed args in (*#line...*)"
+    end
 
 fun has_quote s =
     let fun loop i = ((String.sub(s,i) = #"`") orelse loop (i+1))

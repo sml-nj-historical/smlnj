@@ -363,7 +363,7 @@ structure SmlInfo :> SMLINFO = struct
 					   SrcPath.descr sourcepath, "]\n"]
 		    val source =
 			Source.newSource (SrcPath.osstring' sourcepath,
-					  1, stream, false, #errcons gp)
+					  stream, false, #errcons gp)
 		in app (fn c => #set c ()) controllers;
 		   (SF.parse source, source)
 		   before app (fn r => r ()) orig_settings

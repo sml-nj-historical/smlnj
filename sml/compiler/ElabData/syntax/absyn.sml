@@ -69,7 +69,7 @@ and pat
   | NOpat
 
 and dec	
-  = VALdec of vb list                  (* always a single element list (FLINT nomralization) *)
+  = VALdec of vb list        (* always a single element list (FLINT normalization) *)
   | VALRECdec of rvb list
   | TYPEdec of tycon list
   | DATATYPEdec of {datatycs: tycon list, withtycs: tycon list}

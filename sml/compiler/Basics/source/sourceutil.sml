@@ -1,3 +1,8 @@
+(* sourceutil.sml *)
+
+structure SourceUtil =
+struct
+
 (* stringToLines : string * int => (string * int list) *)
 
 fun stringToLines (s, initpos) =
@@ -30,3 +35,4 @@ fun hl (s, p1, p2, hlOn, hlOff) =
 val redOn = "\027[1;31m"
 val hlOff = "\027[0m"
 
+end (* structure SourceUtil *)
