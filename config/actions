@@ -3,7 +3,7 @@
 # See base/system/smlnj/installer/generic-install.sml for how this file
 # is to be interpreted.
 #
-# (C) 2006 The Fellowship of SML/NJ
+# (C) 2006-2011 The Fellowship of SML/NJ
 #
 # Each action is on a single line and has one of the following forms:
 #
@@ -77,6 +77,7 @@ smlnj-lib  lib regexp-lib.cm    regexp-lib.cm    smlnj-lib/RegExp
 smlnj-lib  lib reactive-lib.cm  reactive-lib.cm  smlnj-lib/Reactive
 smlnj-lib  lib hash-cons-lib.cm hash-cons-lib.cm smlnj-lib/HashCons
 smlnj-lib  lib json-lib.cm      json-lib.cm      smlnj-lib/JSON
+smlnj-lib  lib html4-lib.cm	html4-lib.cm	 smlnj-lib/HTML4
 
 # Concurrent ML:
 cml lib cml core-cml.cm     cml/src
