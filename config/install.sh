@@ -313,6 +313,7 @@ if [ x"$ARCH" = "xx86" -a x"$OPSYS" = "xlinux" ] ; then
       echo "int main () { return 0; }" >> /tmp/$tmpFile.c
       gcc -m32 -o /tmp/$tmpFile /tmp/$tmpFile.c 2> /dev/null 1>> /dev/null
       if [ "$?" != "0" ] ; then
+	rm -f /tmp/$tmpFile /tmp/$tmpFile.c
 	complain "$this: !!! SML/NJ requires support for 32-bit executables"
       else
 	rm -f /tmp/$tmpFile /tmp/$tmpFile.c
