@@ -61,7 +61,8 @@
 <INITIAL>{int}{frac}{exp}	=> ( float yytext );
 
 <INITIAL>"\""			=> ( YYBEGIN S; continue() );
-<S>"\\\""			=> ( addStr "\\"; continue() );
+<S>"\\\\"			=> ( addStr "\\"; continue() );
+<S>"\\\""			=> ( addStr "\""; continue() );
 <S>"\\/"			=> ( addStr "/"; continue() );
 <S>"\\b"			=> ( addStr "\b"; continue() );
 <S>"\\f"			=> ( addStr "\f"; continue() );
