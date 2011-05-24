@@ -2,11 +2,18 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
-[2011-04-17]
+[2011-05-23]
+	Added new S-expression library (contributed by Damon Wang)
+
+[2011-05-17]
 	Fixed bug in JSON scanner.  It didn't handle escaped backslash or double
 	quote correctly.
 
-[2011-04-12]
+--------------------------------------------------------------------------------
+SML/NJ 110.73
+-------------------
+
+[2011-05-12]
 	Modified the implementation of GetOpt.usageInfo so that if the help
 	string has embedded newlines, then the extra lines are properly
 	indented.
@@ -23,6 +30,10 @@ correspond to SML/NJ releases.
 
 [2010-03-09]
 	Fixed bug in hashed cons library (bug #55).
+
+--------------------------------------------------------------------------------
+SML/NJ 110.72
+-------------------
 
 [2009-05-13]
 	Added array iterators to DynamicArray module.
