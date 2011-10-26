@@ -314,7 +314,7 @@ if [ x"$ARCH" = "xx86" -a x"$OPSYS" = "xlinux" ] ; then
       gcc -m32 -o /tmp/$tmpFile /tmp/$tmpFile.c 2> /dev/null 1>> /dev/null
       if [ "$?" != "0" ] ; then
 	rm -f /tmp/$tmpFile /tmp/$tmpFile.c
-	complain "$this: !!! SML/NJ requires support for 32-bit executables"
+	complain "$this: !!! SML/NJ requires support for 32-bit executables. On Linux, you may need to apt-get install gcc-multilib g++-multilib ia32-libs"
       else
 	rm -f /tmp/$tmpFile /tmp/$tmpFile.c
       fi
