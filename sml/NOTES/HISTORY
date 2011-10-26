@@ -19,6 +19,15 @@ Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2010/05/13
 Description:
 
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2011/10/25
+Description:
+
+Better error reporting under 32-bit linux for the missing dpkg 
+support.
+Enable 3.x kernels to build.
+
 ******************** Version 110.73 ********************
 
 ----------------------------------------------------------------------
