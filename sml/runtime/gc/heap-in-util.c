@@ -86,23 +86,19 @@ status_t HeapIO_ReadBlock (inbuf_t *bp, void *blk, long len)
 {
     status_t	sts = SUCCESS;
 
-    if (bp->nbytes == 0) {
-	if (bp->file != NULL)
-	    sts = ReadBlock (bp->file, blk, len);
-	else {
-	    Error ("missing data in memory blast object");
-	    return FAILURE;
-	}
-    }
-    else if (bp->nbytes >= len) {
+    if (bp->nbytes >= len) {
 	memcpy (blk, bp->buf, len);
 	bp->nbytes -= len;
 	bp->buf += len;
     }
-    else {
+    else if (bp->file != NULL) {
 	memcpy (blk, bp->buf, bp->nbytes);
 	sts = ReadBlock (bp->file, ((Byte_t *)blk) + bp->nbytes, len - bp->nbytes);
 	bp->nbytes = 0;
+    }
+    else {
+        Error ("missing data in memory blast object");
+        return FAILURE;
     }
 
     if (bp->needsSwap) {
