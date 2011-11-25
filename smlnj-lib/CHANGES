@@ -2,6 +2,10 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2011-11-25]
+	Added hash-table-based implementation of sets (HASH_SET signature and
+	HashSetFn functor).
+
 [2011-05-23]
 	Added new S-expression library (contributed by Damon Wang)
 

@@ -38,7 +38,6 @@ structure HashTableRep : sig
     val listItems  : (('a, 'b) table * int ref) -> 'b list
     val listItemsi : (('a, 'b) table * int ref) -> ('a * 'b) list
 
-
     val appi : ('a * 'b -> 'c) -> ('a, 'b) table -> unit
     val app : ('a -> 'b) -> ('c, 'a) table -> unit
 
@@ -68,7 +67,7 @@ structure HashTableRep : sig
 
     fun index (i, sz) = Word.toIntX(Word.andb(i, Word.fromInt sz - 0w1))
 
-  (* find smallest power of 2 (>= 32) that is >= n *)
+  (* find smallest power of 2 (<= 32) that is >= n *)
     fun roundUp n = let
 	  fun f i = if (i >= n) then i else f(i * 2)
 	  in
