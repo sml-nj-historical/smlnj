@@ -16,8 +16,23 @@ Here is a test entry
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
-Date: 2010/05/13
+Date: yyyy/mm/dd
 Description:
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/11/25
+Description:
+
+Bug fix for HeapIO_ReadBlock: proper error handling when reading
+from memory and there are not enough bytes.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/11/25
+Description:
+
+Added hash-table-based implementation of sets to SML/NJ Library.
 
 ----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
@@ -28,7 +43,28 @@ Better error reporting under 32-bit linux for the missing dpkg
 support.
 Enable 3.x kernels to build.
 
-******************** Version 110.73 ********************
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/05/23
+Description:
+
+Added new S-expression library to SML/NJ Library
+(contributed by Damon Wang)
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/05/17
+Description:
+
+Fixed bug in JSON scanner (SML/NJ Library).  It didn't handle escaped
+backslash or double quote correctly.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2011/05/13
+Description:
+
+*************************** Version 110.73 ***************************
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
