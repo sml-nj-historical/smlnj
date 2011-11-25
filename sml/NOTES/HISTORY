@@ -24,8 +24,11 @@ Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2011/11/25
 Description:
 
-Bug fix for HeapIO_ReadBlock: proper error handling when reading
-from memory and there are not enough bytes.
+Bug fixes for Unsafe.blastRead:
+  1) proper error handling when reading from memory and there are
+     not enough bytes.
+  2) pass correct data pointer and length to BlastIn (code was using
+     old macros).
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
