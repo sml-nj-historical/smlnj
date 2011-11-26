@@ -24,7 +24,7 @@ Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2011/11/25
 Description:
 
-Bug fixes for Unsafe.blastRead:
+Bug fixes for Unsafe.blastRead (#76):
   1) proper error handling when reading from memory and there are
      not enough bytes.
   2) pass correct data pointer and length to BlastIn (code was using
@@ -43,8 +43,8 @@ Date: 2011/10/25
 Description:
 
 Better error reporting under 32-bit linux for the missing dpkg 
-support.
-Enable 3.x kernels to build.
+support (#70).
+Enable 3.x kernels to build (#80, 81, 83).
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
