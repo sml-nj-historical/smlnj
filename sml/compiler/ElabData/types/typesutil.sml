@@ -799,6 +799,7 @@ and irref pp  =
                     | h _ = true
                in h ps
               end
+        | g (MARKpat(p,_)) = g p
         | g _ = true
    in g pp
   end

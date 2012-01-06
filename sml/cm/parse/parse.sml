@@ -338,7 +338,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		fun work stream = let
 		    val source =
 			S.newSource (SrcPath.osstring group,
-				     1, stream, false, errcons)
+				     stream, false, errcons)
 		    val sourceMap = #sourceMap source
 		    val _ = GroupReg.register groupreg (group, source)
 
@@ -425,7 +425,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			     tok (implode (rev (!curstring)), !startpos, pos))
 			(* handling EOF *)
 			fun handleEof () = let
-			    val pos = SM.lastChange sourceMap
+			    val pos = SM.lastLinePos sourceMap
 			in
 			    if !depth > 0 then
 				error (pos, pos)
@@ -439,21 +439,21 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			(* handling line breaks *)
 			fun newline pos = SM.newline sourceMap pos
 			(* handling #line directives *)
-			fun sync (p, t) = let
+			fun sync (initpos, t) = let
+			    val endpos = initpos + size t
 			    fun sep c = c = #"#" orelse Char.isSpace c
 			    fun cvt s = getOpt (Int.fromString s, 0)
-			    fun r (line, col, file) = SM.resynch sourceMap
-				(p, { fileName = file,
-				      line = line, column = col })
+			    fun r (line, col, file) =
+				SM.resynch sourceMap (initpos, endpos, line, col, file)
 			in
 			    case String.tokens sep t of
 				[_, line] =>
-				    r (cvt line, NONE, NONE)
+				    r (cvt line, 0, NONE)
 			      | [_, line, file] =>
-				    r (cvt line, NONE, SOME file)
+				    r (cvt line, 0, SOME file)
 			      | [_, line, col, file] =>
-				    r (cvt line, SOME (cvt col), SOME file)
-			      | _ => error (p, p + size t)
+				    r (cvt line, cvt col, SOME file)
+			      | _ => error (initpos, endpos)
 				    "illegal #line directive"
 			end
 		    in

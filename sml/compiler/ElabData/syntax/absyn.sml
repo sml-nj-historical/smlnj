@@ -19,10 +19,11 @@ datatype numberedLabel = LABEL of {name: S.symbol, number: int}
 
 datatype exp
   = VARexp of var ref * tyvar list
-    (* the 2nd arg is a type mv list used to capture the instantiation
+    (* the 2nd arg is a type univar list used to capture the instantiation
        parameters for this occurence of var when its type is polymorphic.
        FLINT will use these to provide explicit type parameters for
-       var if var is bound to a primop. *)
+       var if var is bound to a primop. These will then be used to specialize
+       the primop. *)
   | CONexp of datacon * tyvar list (* ditto *)
   | INTexp of IntInf.int * ty
   | WORDexp of IntInf.int * ty
@@ -63,11 +64,12 @@ and pat
   | CONSTRAINTpat of pat * ty
   | LAYEREDpat of pat * pat
   | ORpat of pat * pat
-  | VECTORpat of pat list * ty       
+  | VECTORpat of pat list * ty
+  | MARKpat of pat * region       
   | NOpat
 
 and dec	
-  = VALdec of vb list                  (* always a single element list *)
+  = VALdec of vb list        (* always a single element list (FLINT normalization) *)
   | VALRECdec of rvb list
   | TYPEdec of tycon list
   | DATATYPEdec of {datatycs: tycon list, withtycs: tycon list}

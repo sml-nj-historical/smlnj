@@ -9,9 +9,8 @@ type raw_symbol = FastSymbol.raw_symbol
 
 fun markexp (e as MarkExp _, _, _) = e
   | markexp(e,a,b) = MarkExp(e,(a,b))
-(*fun markdec((d as MarkDec _, e), _,_) = (d,e)
-  | markdec((d,e),a,b) = (MarkDec(d,(a,b)),e)
-*)
+fun markpat (p as MarkPat _, _, _) = p
+  | markpat(p,a,b) = MarkPat(p,(a,b))
 fun markdec(d as MarkDec _, _,_) = d
   | markdec(d,a,b) = MarkDec(d,(a,b))
 
@@ -320,26 +319,28 @@ exp_list : exp			([exp])
 
 pat	: pat AS pat		(layered(pat1, pat2, 
 					 error(pat1left,pat2right)))
-	| pat COLON ty		(ConstraintPat{pattern=pat, constraint=ty})
-	| apats			(FlatAppPat apats)
+	| pat COLON ty		(markpat(ConstraintPat{pattern=pat, constraint=ty},patleft,tyright))
+	| apats			(markpat(FlatAppPat apats, apatsleft, apatsright))
 
-apat	: apat'		({item=apat', region=(apat'left,apat'right),
-			  fixity=NONE})
+apat	: apat'		        ({item=markpat(apat',apat'left,apat'right),
+				  region=(apat'left,apat'right),
+			          fixity=NONE})
 	| LPAREN pat RPAREN	({item=pat,
 				  region=(LPARENleft,RPARENright),
 				  fixity=NONE})
 	| id			(let val (v,f) = var'n'fix id
-				 in {item=VarPat [v], 
+				 in {item=markpat(VarPat [v],idleft,idright), 
 				     region=(idleft,idright),
 				     fixity=SOME f} end)
-	| LPAREN RPAREN		({item=unitPat,fixity=NONE,
-				  region=(LPARENleft,RPARENright)})
+	| LPAREN RPAREN		({item=markpat(unitPat,LPARENleft,RPARENright),
+				  region=(LPARENleft,RPARENright),
+				  fixity=NONE})
 	| LPAREN pat COMMA  pat_list RPAREN	
-  				({item=TuplePat(pat :: pat_list),
+  				({item=markpat(TuplePat(pat :: pat_list),LPARENleft,RPARENright),
 				  region=(LPARENleft,RPARENright),
 				  fixity=NONE})
 	| LPAREN pat BAR or_pat_list RPAREN
-				({item=OrPat(pat :: or_pat_list),
+				({item=markpat(OrPat(pat :: or_pat_list),LPARENleft,RPARENright),
 				  region=(LPARENleft,RPARENright),
 				  fixity=NONE})
 
@@ -357,10 +358,9 @@ apat'	: OP ident		(VarPat [varSymbol ident])
 	| VECTORSTART pat_list 
 		RBRACKET	(VectorPat pat_list)
 	| LBRACE RBRACE		(unitPat)
-	| LBRACE plabels RBRACE	
-		            (let val (d,f) = plabels
-			     in MarkPat(RecordPat{def=d,flexibility=f},
-					(LBRACEleft,RBRACEright)) end)
+	| LBRACE plabels RBRACE (let val (d,f) = plabels
+			          in RecordPat{def=d,flexibility=f}
+                                 end)
 
 plabel	: selector EQUALOP pat	((selector,pat))
 	| ID			(labSymbol ID, VarPat [varSymbol ID])

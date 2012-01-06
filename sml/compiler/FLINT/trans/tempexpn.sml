@@ -46,37 +46,37 @@ fun andPatterns(WILDpat, pat) = pat
   | andPatterns(VARpat v, pat) = LAYEREDpat(VARpat v, pat)
   | andPatterns(pat, VARpat v) = LAYEREDpat(VARpat v, pat)
   | andPatterns(CONpat(k,t), CONpat(k',t')) = 
-	  if conEq (k, k') then CONpat(k,t)
-	  else if abstract k then LAYEREDpat(CONpat(k,t), CONpat(k',t'))
-      else if abstract k' then LAYEREDpat(CONpat(k',t'), CONpat(k,t))
-      else raise CANT_MATCH
+    if conEq (k, k') then CONpat(k,t)
+    else if abstract k then LAYEREDpat(CONpat(k,t), CONpat(k',t'))
+    else if abstract k' then LAYEREDpat(CONpat(k',t'), CONpat(k,t))
+    else raise CANT_MATCH
   | andPatterns(CONpat(k,t), APPpat(k',t',pat)) =
-	  if abstract k then LAYEREDpat(CONpat(k,t), APPpat(k',t',pat))
-      else if abstract k' then LAYEREDpat(APPpat(k',t',pat), CONpat(k,t))
-      else raise CANT_MATCH
+    if abstract k then LAYEREDpat(CONpat(k,t), APPpat(k',t',pat))
+    else if abstract k' then LAYEREDpat(APPpat(k',t',pat), CONpat(k,t))
+    else raise CANT_MATCH
   | andPatterns(APPpat(k',t',pat), CONpat(k,t)) =
-	  if abstract k then LAYEREDpat(CONpat(k,t), APPpat(k',t',pat))
-      else if abstract k' then LAYEREDpat(APPpat(k',t',pat), CONpat(k,t))
-      else raise CANT_MATCH
+    if abstract k then LAYEREDpat(CONpat(k,t), APPpat(k',t',pat))
+    else if abstract k' then LAYEREDpat(APPpat(k',t',pat), CONpat(k,t))
+    else raise CANT_MATCH
   | andPatterns(APPpat(k,t,pat), APPpat(k',t',pat')) =
-	  if conEq (k, k') then APPpat(k,t,andPatterns(pat,pat'))
-	  else if abstract k then 
-                LAYEREDpat(APPpat(k,t,pat),APPpat(k',t',pat'))
-      else if abstract k' then 
-                LAYEREDpat(APPpat(k',t',pat'), APPpat(k,t,pat))
-      else raise CANT_MATCH
+    if conEq (k, k') then APPpat(k,t,andPatterns(pat,pat'))
+    else if abstract k then 
+        LAYEREDpat(APPpat(k,t,pat),APPpat(k',t',pat'))
+    else if abstract k' then 
+        LAYEREDpat(APPpat(k',t',pat'), APPpat(k,t,pat))
+    else raise CANT_MATCH
   | andPatterns(CONpat(k,t), pat) =
-	  if abstract k then LAYEREDpat(CONpat(k,t), pat)
-      else impossible "Non abstract CONpat & non constructor pat in andPat"
+    if abstract k then LAYEREDpat(CONpat(k,t), pat)
+    else impossible "Non abstract CONpat & non constructor pat in andPat"
   | andPatterns(pat, CONpat(k,t)) =
-	  if abstract k then LAYEREDpat(CONpat(k,t), pat)
-      else impossible "non constructor pat & Non abstract CONpat in andPat"
+    if abstract k then LAYEREDpat(CONpat(k,t), pat)
+    else impossible "non constructor pat & Non abstract CONpat in andPat"
   | andPatterns(APPpat(k,t,pat), pat') =
-	  if abstract k then LAYEREDpat(APPpat(k,t,pat), pat')
-      else impossible "Non abstract APPpat & non constructor pat in andPat"
+    if abstract k then LAYEREDpat(APPpat(k,t,pat), pat')
+    else impossible "Non abstract APPpat & non constructor pat in andPat"
   | andPatterns(pat, APPpat(k,t,pat')) = 
-	  if abstract k then LAYEREDpat(APPpat(k,t,pat'), pat)
-      else impossible "non constructor pat & Non abstract APPpat in andPat"
+    if abstract k then LAYEREDpat(APPpat(k,t,pat'), pat)
+    else impossible "non constructor pat & Non abstract APPpat in andPat"
   | andPatterns(LAYEREDpat(CONSTRAINTpat(pat1, _), pat2), pat) =
       andPatterns(LAYEREDpat(pat1, pat2), pat) 
   | andPatterns(pat, LAYEREDpat(CONSTRAINTpat(pat1, _), pat2)) =
@@ -86,42 +86,42 @@ fun andPatterns(WILDpat, pat) = pat
   | andPatterns(pat, LAYEREDpat(pat1, pat2)) =
       LAYEREDpat(pat1, andPatterns(pat2, pat))
   | andPatterns(INTpat (p as (s,t)), INTpat (s',t')) =
-	  ((if TypesUtil.equalType(t,intTy) then
-	        if (LiteralToNum.int s) = (LiteralToNum.int s')
-		  then INTpat p
-	          else raise CANT_MATCH
-        else if TypesUtil.equalType(t,int32Ty) then
-	        if (LiteralToNum.int32 s) = (LiteralToNum.int32 s')
-		  then INTpat p
-	          else raise CANT_MATCH
-	    else ErrorMsg.impossible "andPatterns/INTpat in tempexpn")
-	   handle Overflow => 
-       ErrorMsg.impossible "overflow during int or word patter comparisons")
+    ((if TypesUtil.equalType(t,intTy) then
+	  if (LiteralToNum.int s) = (LiteralToNum.int s')
+	  then INTpat p
+	  else raise CANT_MATCH
+      else if TypesUtil.equalType(t,int32Ty) then
+	  if (LiteralToNum.int32 s) = (LiteralToNum.int32 s')
+	  then INTpat p
+	  else raise CANT_MATCH
+      else ErrorMsg.impossible "andPatterns/INTpat in tempexpn")
+     handle Overflow => 
+	    ErrorMsg.impossible "overflow during int or word patter comparisons")
   | andPatterns(WORDpat (p as (w,t)), WORDpat (w',t')) =
-	  ((if TypesUtil.equalType(t,wordTy) then
-	        if (LiteralToNum.word w) = (LiteralToNum.word w')
-		  then WORDpat p
-	          else raise CANT_MATCH
-	    else if TypesUtil.equalType(t,word8Ty) then
-	        if (LiteralToNum.word8 w) = (LiteralToNum.word8 w')
-		  then WORDpat p
-	          else raise CANT_MATCH
-	    else if TypesUtil.equalType(t,word32Ty) then
-	        if (LiteralToNum.word32 w) = (LiteralToNum.word32 w')
-		  then WORDpat p
-	          else raise CANT_MATCH
-	    else ErrorMsg.impossible "andPatterns/WORDpat in tempexpn")
-	   handle Overflow => 
-       ErrorMsg.impossible "overflow during int or word patter comparisons")
+    ((if TypesUtil.equalType(t,wordTy) then
+	  if (LiteralToNum.word w) = (LiteralToNum.word w')
+	  then WORDpat p
+	  else raise CANT_MATCH
+      else if TypesUtil.equalType(t,word8Ty) then
+	  if (LiteralToNum.word8 w) = (LiteralToNum.word8 w')
+	  then WORDpat p
+	  else raise CANT_MATCH
+      else if TypesUtil.equalType(t,word32Ty) then
+	  if (LiteralToNum.word32 w) = (LiteralToNum.word32 w')
+	  then WORDpat p
+	  else raise CANT_MATCH
+      else ErrorMsg.impossible "andPatterns/WORDpat in tempexpn")
+     handle Overflow => 
+	    ErrorMsg.impossible "overflow during int or word patter comparisons")
   | andPatterns(REALpat r, REALpat r') = 
-	  if r = r' then REALpat r else raise CANT_MATCH
+    if r = r' then REALpat r else raise CANT_MATCH
   | andPatterns(STRINGpat s, STRINGpat s') =
-	  if s = s' then STRINGpat s else raise CANT_MATCH
+    if s = s' then STRINGpat s else raise CANT_MATCH
   | andPatterns(CHARpat s, CHARpat s') =
-	  if s = s' then CHARpat s else raise CANT_MATCH
+    if s = s' then CHARpat s else raise CANT_MATCH
   | andPatterns(pat1 as RECORDpat{fields=p,...}, 
                 pat2 as RECORDpat{fields=q,...}) =
-      mkRECORDpat pat1 (multiAnd(map #2 p, map #2 q))
+    mkRECORDpat pat1 (multiAnd(map #2 p, map #2 q))
 
 (******************* how to and two types ? **************************)
   | andPatterns(VECTORpat(p,t), VECTORpat(p',t')) =
@@ -182,6 +182,7 @@ fun wildEnv (VARpat v) = [(v, WILDpat)]
   | wildEnv _ = impossible "wildEnv called on non-trivpat"
 
 fun matchTrivpat (VARpat v, pat)= ([(v, pat)], nil, nil)
+  | matchTrivpat (MARKpat(tpat, _), pat) = matchTrivpat(tpat, pat)
   | matchTrivpat (CONSTRAINTpat(tpat, _), pat) = matchTrivpat(tpat, pat)
   | matchTrivpat (tpat, CONSTRAINTpat(pat, _)) = matchTrivpat(tpat, pat)
   | matchTrivpat (RECORDpat{fields=tps,...},RECORDpat{fields=ps,...}) =
@@ -224,6 +225,7 @@ fun matchTrivpat (VARpat v, pat)= ([(v, pat)], nil, nil)
   | matchTrivpat (tpat, LAYEREDpat(CONSTRAINTpat(pat1, _), pat2)) =
       matchTrivpat (tpat, LAYEREDpat(pat1, pat2))
   | matchTrivpat (tpat, pat) = impossible "bad matchTrivpat call"
+
 and multiMatchTrivpat (nil, nil) = (nil, nil, nil)
   | multiMatchTrivpat (tpat::trest, pat::prest) =
 	  let val (patenv, varenv, constr) = multiMatchTrivpat(trest, prest)
@@ -335,6 +337,8 @@ and templateExpandPattern (APPpat(k,t,pat)) =
       in
         (LAYEREDpat(pat1', pat2'), constr1@constr2, varenv1@varenv2)
       end
+  | templateExpandPattern (MARKpat(pat, _)) =
+      templateExpandPattern pat
   | templateExpandPattern (CONSTRAINTpat(pat, _)) =
       templateExpandPattern pat
   | templateExpandPattern pat = (pat, nil, nil)

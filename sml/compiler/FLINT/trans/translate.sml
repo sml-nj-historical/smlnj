@@ -126,6 +126,7 @@ fun aconvertPat (pat, {mkLvar=mkv, ...} : compInfo)
     let val varmap : (VC.var * VC.var) list ref = ref nil
             (* association list mapping old vars to new *)
         (* ASSERT: any VARpat/VALvar will have an LVAR access. *)
+        (* ASSERT: pat will not contain MARKpat *)
 	fun mappat (VARpat(oldvar as VC.VALvar{access=DA.LVAR(oldlvar),
                                             typ=ref oldtyp,prim,btvs,path})) =
               let fun find ((VC.VALvar{access=DA.LVAR(lv),...}, newvar)::rest) =
@@ -151,6 +152,7 @@ fun aconvertPat (pat, {mkLvar=mkv, ...} : compInfo)
 	  | mappat (ORpat(a,b)) = ORpat(mappat a, mappat b)
 	  | mappat (CONSTRAINTpat(p,t)) = CONSTRAINTpat(mappat p, t)
 	  | mappat (LAYEREDpat(p,q)) = LAYEREDpat(mappat p, mappat q)
+	  | mappat (MARKpat(p,_)) = bug "aconvertPat: MARKpat"
 	  | mappat p = p
 
         val newpat = mappat pat
@@ -460,7 +462,8 @@ fun mkAccInfo (acc, getLty, nameOp) =
   if extern acc then mkAccT(acc, getLty(), nameOp) else mkAcc (acc, nameOp)
 
 fun fillPat(pat, d) = 
-  let fun fill (CONSTRAINTpat (p,t)) = fill p
+  let fun fill (CONSTRAINTpat (p,_)) = fill p
+	| fill (MARKpat (p,_)) = fill p
         | fill (LAYEREDpat (p,q)) = LAYEREDpat(fill p, fill q)
         | fill (RECORDpat {fields, flex=false, typ}) =
             RECORDpat{fields = map (fn (lab, p) => (lab, fill p)) fields,
@@ -1274,64 +1277,64 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
       end
 
 and mkVBs (vbs, d) =
-  let fun mkVB (VB{pat=(VARpat(V.VALvar{access=DA.LVAR v, ...}) |
-                        CONSTRAINTpat(VARpat(V.VALvar{access=DA.LVAR v, ...}),_)),
-                   exp, boundtvs=btvs, ...},
-                body) =
-            (* simple variable pattern: No special case needed for primops [dbm: 5/1/07] *)
-            LET(v, mkPE(exp, d, btvs), body)
+  let fun mkVB (VB{pat,exp,boundtvs,...}, body) =
+	  case AbsynUtil.stripPatMarks pat
+            of (VARpat(V.VALvar{access=DA.LVAR v, ...}) |
+                CONSTRAINTpat(VARpat(V.VALvar{access=DA.LVAR v, ...}),_)) =>
+                  (* simple variable pattern: No special case needed for primops [dbm: 5/1/07] *)
+                  LET(v, mkPE(exp, d, boundtvs), body)
 
-        | mkVB (VB{pat, exp, boundtvs, ...}, body) =
-	    (* boundtvs is cumulative bound univariables for the whole pattern *)
-	    let val (newpat,oldvars,newvars) = aconvertPat(pat, compInfo)
-		  (* this is the only call of aconvertPat; it replaces pattern variables with
-		   * new versions with fresh lvar access values *)
-		val newVarExps = map (fn v => VARexp(ref v,[])) newvars 
-		val rhsTy = CoreBasicTypes.tupleTy(map (fn (VC.VALvar{typ,...}) => !typ) newvars)
-		val rule1 = RULE(newpat, EU.TUPLEexp(newVarExps))
-		val rule2 = RULE(WILDpat, 
-				 RAISEexp(CONexp(CoreAccess.getExn env ["Bind"],[]),rhsTy))
-		val newexp = CASEexp(exp, EU.completeMatch(env,"Bind")[rule1,rule2], false)
+              | pat =>
+		(* boundtvs is cumulative bound univariables for the whole pattern *)
+		let val (newpat,oldvars,newvars) = aconvertPat(pat, compInfo)
+		      (* this is the only call of aconvertPat; it replaces pattern variables with
+		       * new versions with fresh lvar access values *)
+		    val newVarExps = map (fn v => VARexp(ref v,[])) newvars 
+		    val rhsTy = CoreBasicTypes.tupleTy(map (fn (VC.VALvar{typ,...}) => !typ) newvars)
+		    val rule1 = RULE(newpat, EU.TUPLEexp(newVarExps))
+		    val rule2 = RULE(WILDpat, 
+				     RAISEexp(CONexp(CoreAccess.getExn env ["Bind"],[]),rhsTy))
+		    val newexp = CASEexp(exp, EU.completeMatch(env,"Bind")[rule1,rule2], false)
 
-	     in case oldvars
-		 of [] => (* variable-free pattern, implies boundtvs = [], hence no type abs *)
-		      LET(mkv(), mkExp(newexp, d), body) (* fresh let-bound lvar doesn't occur in body *)
-		  | _ => 
-		    let val newVar = mkv() (* new local variable to be let-bound to newexp *)
-			fun lookup (tv: Types.tyvar) [] = NONE
-			  | lookup tv ((tv',k)::r) = if tv = tv' then SOME k
-						     else lookup tv r
-			fun buildDec([], i, body) = body
-			  | buildDec(bvar::rest, i, body) = 
-			    let val V.VALvar{access=DA.LVAR(lv),btvs,...} = bvar
-				val btvs = !btvs
-			        (* bound univariables for this particular pattern variable
-			           btvs is a subset of boundtvs -- possibly proper *)
-				val tvarity = length(btvs)
-			        val defn = case (boundtvs, btvs)
-					    of ([],[]) => 
-					       SELECT(i,VAR(newVar))
-					     | (_,[]) =>
-					       SELECT(i,TAPP(VAR(newVar),
-							     map (fn _ => LT.tcc_void) boundtvs))
-					     | _ =>
-					       let val indices = List.tabulate(tvarity, (fn x => x))
-						   (* 0-based index into bound type variable sequence *)
-						   val tvToIndex = ListPair.zip(btvs,indices)
-						   val targs = map (fn tv => case lookup tv tvToIndex
-									      of NONE => LT.tcc_void
-									       | SOME k => LT.tcc_var(1,k))
-								   boundtvs
-					       in TFN(LT.tkc_arg(tvarity),
-						      SELECT(i,TAPP(VAR(newVar),targs)))
-					       end
-			     in buildDec(rest,i+1,LET(lv, defn, body))
-			    end
+		 in case oldvars
+		     of [] => (* variable-free pattern, implies boundtvs = [], hence no type abs *)
+			  LET(mkv(), mkExp(newexp, d), body) (* fresh let-bound lvar doesn't occur in body *)
+		      | _ => 
+			let val newVar = mkv() (* new local variable to be let-bound to newexp *)
+			    fun lookup (tv: Types.tyvar) [] = NONE
+			      | lookup tv ((tv',k)::r) = if tv = tv' then SOME k
+							 else lookup tv r
+			    fun buildDec([], i, body) = body
+			      | buildDec(bvar::rest, i, body) = 
+				let val V.VALvar{access=DA.LVAR(lv),btvs,...} = bvar
+				    val btvs = !btvs
+				    (* bound univariables for this particular pattern variable
+				       btvs is a subset of boundtvs -- possibly proper *)
+				    val tvarity = length(btvs)
+				    val defn = case (boundtvs, btvs)
+						of ([],[]) => 
+						   SELECT(i,VAR(newVar))
+						 | (_,[]) =>
+						   SELECT(i,TAPP(VAR(newVar),
+								 map (fn _ => LT.tcc_void) boundtvs))
+						 | _ =>
+						   let val indices = List.tabulate(tvarity, (fn x => x))
+						       (* 0-based index into bound type variable sequence *)
+						       val tvToIndex = ListPair.zip(btvs,indices)
+						       val targs = map (fn tv => case lookup tv tvToIndex
+										  of NONE => LT.tcc_void
+										   | SOME k => LT.tcc_var(1,k))
+								       boundtvs
+						   in TFN(LT.tkc_arg(tvarity),
+							  SELECT(i,TAPP(VAR(newVar),targs)))
+						   end
+				 in buildDec(rest,i+1,LET(lv, defn, body))
+				end
 
-		       in LET(newVar,mkPE(newexp,d,boundtvs),
-			      buildDec(oldvars, 0, body))
-		      end
-	    end
+			   in LET(newVar,mkPE(newexp,d,boundtvs),
+				  buildDec(oldvars, 0, body))
+			  end
+		end
 
    in fold mkVB vbs
   end (* mkVBs *)

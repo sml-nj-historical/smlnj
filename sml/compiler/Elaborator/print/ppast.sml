@@ -31,10 +31,10 @@ fun strongerR(INfix(_,m),INfix(n,_)) = n > m
 fun prpos(ppstrm: PP.stream,
           source: Source.inputSource, charpos: int) =
     if (!lineprint) then
-      let val (file:string,line:int,pos:int) = Source.filepos source charpos
+      let val {line,column,...} = Source.filepos source charpos
        in PP.string ppstrm (Int.toString line);
 	  PP.string ppstrm ".";
-	  PP.string ppstrm (Int.toString pos)
+	  PP.string ppstrm (Int.toString column)
       end
     else PP.string ppstrm (Int.toString charpos)
 

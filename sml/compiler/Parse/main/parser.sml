@@ -71,10 +71,6 @@ fun parse (source as {sourceStream,errConsumer,interactive,
       fun oneparse () =
         let val _ = prompt := !ParserControl.primaryPrompt
             val (nextToken,rest) = LrParser.Stream.get(!lexer') 
-
-            val startpos = SourceMap.lastChange sourceMap
-            fun linesRead() = SourceMap.newlineCount sourceMap 
-                      (startpos, SourceMap.lastChange sourceMap)
          in (*if interactive then SourceMap.forgetOldPositions sourceMap 
               else ();*)
             if MLP.sameToken(nextToken,dummySEMI) 
@@ -82,11 +78,14 @@ fun parse (source as {sourceStream,errConsumer,interactive,
             else if MLP.sameToken(nextToken,dummyEOF)
                  then EOF
                  else let val _ = prompt := !ParserControl.secondaryPrompt;
+			  val initialLinePos = SourceMap.lastLinePos sourceMap
                           val (result, lexer'') =
-                            MLP.parse(lookahead,!lexer',parseerror,err)
-                          val _ = addLines(linesRead())
-                          val _ = lexer' := lexer''
-                       in if !anyErrors then ERROR else PARSE result
+                              MLP.parse(lookahead,!lexer',parseerror,err)
+			  val linesRead = SourceMap.newlineCount sourceMap 
+					  (initialLinePos, SourceMap.lastLinePos sourceMap)
+                       in addLines(linesRead);
+                          lexer' := lexer'';
+			  if !anyErrors then ERROR else PARSE result
                       end 
         end handle LrParser.ParseError => ABORT
                  | AbortLex => ABORT

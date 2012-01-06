@@ -129,6 +129,7 @@ fun bindVARp (patlist,err) =
 	  | f (CONSTRAINTpat(pat,_)) = f pat
 	  | f (LAYEREDpat(p1,p2)) = (f p1; f p2)
 	  | f (ORpat(p1, p2)) = (f p1; bindVARp([p2], err); ())
+	  | f (MARKpat(p,_)) = f p
 	  | f _ = ()
      in app f patlist;
 	checkUniq (err,"duplicate variable in pattern(s)",!vl);
@@ -353,6 +354,7 @@ fun clean_pat err (CONpat(DATACON{const=false,name,...},_)) =
        WILDpat)
   | clean_pat err (p as CONpat(DATACON{lazyp=true,...},_)) = 
       APPpat(BT.dollarDcon,[],p) (* LAZY *) (* second argument = nil OK? *)
+  | clean_pat err (MARKpat(p,region)) = MARKpat(clean_pat err p, region)
   | clean_pat err p = p
 
 fun pat_to_string WILDpat = "_"
@@ -368,11 +370,11 @@ fun pat_to_string WILDpat = "_"
   | pat_to_string (LAYEREDpat _) = "<layered pattern>"
   | pat_to_string (VECTORpat _) = "<vector pattern>"
   | pat_to_string (ORpat _) = "<or pattern>"
+  | pat_to_string (MARKpat _) = "<marked pattern>"
   | pat_to_string _ = "<illegal pattern>"
 
 fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},tvs),p) =
-      let 
-	  val p1 = APPpat(d, tvs, p) 
+      let val p1 = APPpat(d, tvs, p) 
        in if lazyp (* LAZY *)
 	  then APPpat(BT.dollarDcon, [], p1)
           else p1
@@ -383,6 +385,8 @@ fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},tvs),p) =
 	 ^ S.name name)
          nullErrorBody;
        WILDpat)
+  | makeAPPpat err (MARKpat(rator,region),p) =
+      MARKpat(makeAPPpat err (rator,p), region)
   | makeAPPpat err (rator,_) = 
       (err COMPLAIN (concat["non-constructor applied to argument in pattern: ",
 			     pat_to_string rator])
@@ -390,8 +394,11 @@ fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},tvs),p) =
        WILDpat)
 
 fun makeLAYEREDpat ((x as VARpat _), y, _) = LAYEREDpat(x,y)
+  | makeLAYEREDpat ((x as MARKpat(VARpat _, reg)), y, _) = LAYEREDpat(x,y)
   | makeLAYEREDpat (CONSTRAINTpat(x,t), y, err) = 
-      makeLAYEREDpat(x,CONSTRAINTpat(y,t),err)
+      makeLAYEREDpat(x, CONSTRAINTpat(y,t), err)
+  | makeLAYEREDpat (MARKpat(CONSTRAINTpat(x,t),reg), y, err) = 
+      makeLAYEREDpat(MARKpat(x,reg), CONSTRAINTpat(y,t), err)
   | makeLAYEREDpat (x,y,err) =
       (err COMPLAIN "pattern to left of \"as\" must be variable" nullErrorBody;
        y)

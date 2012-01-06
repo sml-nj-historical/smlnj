@@ -43,7 +43,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 
 	fun work stream = let
 	    val source = S.newSource (SrcPath.osstring specgroup,
-				      1, stream, false, errcons)
+				      stream, false, errcons)
 	    val sourceMap = #sourceMap source
 
 	    val _ = GroupReg.register groupreg (specgroup, source)
