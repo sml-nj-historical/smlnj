@@ -1,9 +1,20 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2011-05-10]
+        Changed the paths used to specify the CML versions of libraries
+        in a CM file.  The new scheme is
+          $cml/basis.cm         -- the CML version of $/basis.cm
+          $cml/cml.cm           -- core CML features
+          $cml/cml-lib.cm       -- CML library code
+          $cml/trace-cml.cm     -- TraceCML library for debugging
+          $cml/smlnj-lib.cm     -- CML version of the $/smlnj-lib.cm library
+          $cml/inet-lib.cm      -- CML version of the $/inet-lib.cm library
+          $cml/unix-lib.cm      -- CML version of the $/unix-lib.cm library
+
 [2011-02-18]
-	Added barriers.  These are inspired by the similar mechanism in CHP, although
-	we do not include any event-based operations on them as of yet.
+	Added barriers.  These are inspired by the similar mechanism in CHP,
+        although we do not include any event-based operations on them as of yet.
 
 [2010-09-16]
 	Fixed the Win32 socket and polling implementation to work correctly
