@@ -42,6 +42,7 @@ Group
   signature FORMAT_COMB
   signature GRAPH_SCC
   signature HASH_KEY
+  signature HASH_SET
   signature HASH_TABLE
   signature INTERVAL_DOMAIN
   signature INTERVAL_SET
@@ -132,6 +133,7 @@ Group
   functor GraphSCCFn
   functor HashTableFn
   functor Hash2TableFn
+  functor HashSetFn
   functor IntervalSetFn
   functor KeywordFn
   functor LeftPriorityQFn
