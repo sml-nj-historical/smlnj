@@ -1,0 +1,59 @@
+mkVBs
+
+  case: val x = x (simple variable to variable binding)
+    Question: to do explice type abstraction wrapping (mkPE) or not.
+      - avoid type eta-expansion?
+      - inst param tyvars are always going to equal VB boundtvs?
+      - avoid using mkVar if exp is primop var, since mkVar looses
+        primop
+
+
+mkExp
+  calls mkVE for variable expression
+
+mkPE 
+  Wraps an expression with a type abstraction corresponding to
+  the boundtvs of a VB
+
+
+mkVar
+  Translates a VALvar into default dynamic access path via mkAccInfo.
+  prim property is discarded.
+
+
+mkVE(e = VALvar, ts = inst types, d=depth)
+  Translate variable that might be bound to a primop.
+
+  Prim case:
+    (1) determines the type instantiation parameters relative
+    to the primop intrinsice type (intrinsicParams).
+    (2) case on primop: performs special immediate translations
+    of certain primops, supplying instantiation types: [POLYEQ,
+    POLYNEQ, INLMKARRAY, RAW_CCALL).
+    For all other primops, calls transPrim with primop, translated
+    intrinsic type, and translated intrinsic params.
+
+  Nonprim case:
+    calls mkVar if there are no instantiation
+    parameters, otherwise calls mkVar and wraps result with appropriate
+    TAPP (type application) to translated instantiation types.
+ 
+
+Control Flow
+
+For simple variable bindings like 
+
+    val x = y
+
+    VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),  (* x *)
+       exp as VARexp _, boundtvs=btvs, ...},         (* y *)
+
+The flow is:
+
+    mkVBs --> mkPE --> mkExp -> mkVE
+
+mkPE wraps the rhs variable expression in an n-ary TFN abstraction,
+where n = length(btvs), the polymorphically bound tyvars.
+
+mkVE takes care of calculating the type instantiation parameters for
+primops relative to their intrinsic types.
