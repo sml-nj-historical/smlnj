@@ -117,10 +117,12 @@ trans/
     main match compiler
 
   mccommon.sml
+    match compiler support
 
   pequal.sml
 
-  tempexpn.sml
+[DELETED: -- unused support for pattern templates
+  tempexpn.sml]
 
   transtypes.sml
     translate front-end types to flint types (lty, tyc)
