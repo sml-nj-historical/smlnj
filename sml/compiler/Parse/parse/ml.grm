@@ -459,6 +459,9 @@ tyvar_pc: TYVAR	([MarkTyv(Tyv(tyvSymbol TYVAR), (TYVARleft,TYVARright))])
 		(MarkTyv(Tyv(tyvSymbol TYVAR),(TYVARleft,TYVARright))
 		 :: tyvar_pc)
 
+dtrepl  | ident EQUALOP DATATYPE tycon  (DatatypeRep{tyc=tycSymbol ident,
+						     rhs=tycon})
+
 db	: db AND db			(db1 @ db2)
 	| tyvars ident EQUALOP dbrhs	([Db{tyc=tycSymbol ident,
 					     tyvars=tyvars,
@@ -469,7 +472,7 @@ db	: db AND db			(db1 @ db2)
                                              rhs=dbrhs,lazyp=true}])
 
 dbrhs   : constrs			(Constrs constrs)
-        | DATATYPE tycon		(Repl tycon)
+(* | DATATYPE tycon		(Repl tycon) *)
 
 constrs : constr		([constr])
 	| constr BAR constrs	(constr :: constrs)
@@ -499,6 +502,7 @@ ldec	: VAL vb		(ValDec(vb,nil))
 	| FUN fb		(FunDec(fb,nil))
 	| FUN tyvarseq fb	(FunDec(fb,tyvarseq))
 	| TYPE tb		(TypeDec tb)
+        | DATATYPE dtrepl       (dtrepl)
 	| DATATYPE db		(DatatypeDec{datatycs=db,withtycs=[]})
  	| DATATYPE db WITHTYPE tb  (DatatypeDec{datatycs=db,withtycs=tb})
 	| ABSTYPE db WITH ldecs END (AbstypeDec{abstycs=db,withtycs=[],

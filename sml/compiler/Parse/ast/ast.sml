@@ -1,7 +1,6 @@
-(* Copyright 1992 by AT&T Bell Laboratories 
- *
- *)
-(* Abstract syntax of bare ML *)
+(* ast.sml *)
+(* Syntax trees for bare ML *)
+(* Copyright 1992 by AT&T Bell Laboratories *)
 
 (****************************************************************************
  *            PLEASE PROPAGATE ANY MODIFICATIONS TO THIS FILE               *
@@ -142,6 +141,7 @@ and dec	= ValDec of (vb list * tyvar list)		(* values *)
 	| ValrecDec of (rvb list * tyvar list)		(* recursive values *)
 	| FunDec of (fb list * tyvar list)		(* recurs functions *)
 	| TypeDec of tb list				(* type dec *)
+	| DatatypeRepl of {tyc: symbol, rhs: path}      (* dt replication *)
 	| DatatypeDec of {datatycs: db list, withtycs: tb list}
 							(* datatype dec *)
 	| AbstypeDec of {abstycs: db list, withtycs: tb list, body: dec}
@@ -179,13 +179,15 @@ and clause = Clause of {pats: pat fixitem list, resultty: ty option, exp:exp}
 and tb = Tb of {tyc : symbol, def : ty, tyvars : tyvar list}
        | MarkTb of tb * region
 
+and dtrepl = DatatypeRepl of {tyc: symbol, rhs: symbol list}
+
 (* DATATYPE BINDING *)
 and db = Db of {tyc : symbol, tyvars : tyvar list, rhs : dbrhs, lazyp : bool}
        | MarkDb of db * region
 
 (* DATATYPE BINDING RIGHT HAND SIDE *)
 and dbrhs = Constrs of (symbol * ty option) list
-	  | Repl of symbol list
+(*	  | Repl of symbol list  *)
 
 (* EXCEPTION BINDING *)
 and eb = EbGen of {exn: symbol, etype: ty option} (* Exception definition *)
