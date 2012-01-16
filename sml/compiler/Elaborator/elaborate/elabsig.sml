@@ -491,7 +491,7 @@ fun elabDATArepl(name,path,env,elements,region) =
 				  * datatypes using the fact that the entVar
 				  * for a datatype spec is the same as the
 				  * stamp of the datatype.
-				  * See elabDATATYPEspec0 *)
+				  * See elabDATATYPEspec *)
 				 | expandTyc tyc = tyc
 
 			       val expand = TU.mapTypeFull expandTyc
@@ -622,7 +622,7 @@ fun elabDATArepl(name,path,env,elements,region) =
 exception TypeDups
 
 (*** elaborating datatype specification ***)
-fun elabDATATYPEspec0(dtycspec, env, elements, region) = 
+fun elabDATATYPEspec(dtycspec, env, elements, region) = 
   let val _ = debugmsg ">>elabDATATYPEspec"
       val err = error region
 
@@ -750,7 +750,7 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
   handle TypeDups => (env,elements)
     (* in case of duplicate type specs introduced by the datatype specs,
      * ignore the datatype specs and return original env and elements *)                                                      
-
+(*
 fun elabDATATYPEspec(db as {datatycs,withtycs}, env, elements, region) = 
     case datatycs
       of ([spec as Db{rhs=Repl path,tyc=name,tyvars=[],lazyp=false}]) =>
@@ -762,6 +762,7 @@ fun elabDATATYPEspec(db as {datatycs,withtycs}, env, elements, region) =
        | _ => (error region EM.COMPLAIN "ill-formed datatype spec"
 	         EM.nullErrorBody;
 	       (env,elements))
+*)
 
 (*** elaborating structure specification ***)
 fun elabSTRspec((name,sigexp,defOp), env, elements, slots, region) =
@@ -910,8 +911,12 @@ fun elabSpec (spec, env, elements, slots, region) =
         let val _ = debugmsg "--elabSpec[DataSpec]"
             val (env', elems') =
               elabDATATYPEspec(spec, env, elements, region)
+	      handle TypeDups => (env,elements)
          in (env', elems', [], [], slots, false)
         end
+
+    | DataReplSpec(name,path) =>
+        elabDATArepl(name,path,env,elements,region)
 
     | ValSpec specs =>
         let val err = error region
