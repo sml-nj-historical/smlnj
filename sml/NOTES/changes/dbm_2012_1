@@ -1,0 +1,119 @@
+svn commit -m "fix of lexer off-by-one bug, change of SourceMap interface, slight cleanup of match compiler, preliminary modification of type checker to add culprit tracking"
+Committed revision 3648. (therefore diff against r 3647 for changes)
+
+cm/bootstrap/build-initdg.sml
+   Source.newSource (deleted argument)
+cm/parse/parse.sml
+   Source.newSource (deleted argument)
+   SourceMap.lastChange -> SourceMap.lastLinePos
+   revised sync
+cm/smlfile/smlinfo.sml
+   Source.newSource (deleted argument)
+   
+compiler/Basics/errormsg/errormsg.sml
+   clarified Ramsey comments
+
+compiler/Basics/source/source.sig
+   inputSource: added content field
+   newSource: deleted 2nd argument
+   filepos: return type is now SourceMap.sourceloc
+   add getContent, regionContent
+   clarified comment
+
+compiler/Basics/source/source.sml
+   newSource: deleted 2nd argument, use SourceMap.newSourceMap, add content
+   filepos: defined in terms of SourceMap.filepos
+   add getContent, regionContent
+
+compiler/Basics/source/sourcemap.sig
+   rewrote Ramsey comment (revising noweb support)
+   newSourceMap, replaces newmap w. changed type
+   fileregion: changed return type
+   lastLinePos: replaces lastChange, same type
+   widenToLines: added
+   positions: deleted
+   
+compiler/Basics/source/sourcemap.sml
+   major rewrite, implementing changes noted for sourcemap.sig
+
+compiler/Basics/source/sourceutil.sml
+   preliminary incomplete version to support printing regions of
+   source code with embedded hilighting
+   not currently used
+
+compiler/DebugProf/profile/sprof.sml
+   modified for change in type of Source.filepos
+
+compiler/ElabData/syntax/absyn.sig
+   added MARKpat constructor to pat datatype spec
+
+compiler/ElabData/syntax/absyn.sml
+   added MARKpat constructor to pat datatype
+   modified a couple of comments
+
+compiler/ElabData/syntax/absynutil.sml
+   stripPathMarks added
+
+compiler/ElabData/types/typesutil.sml
+   MARKpat case in fun. irref
+
+compiler/Elaborator/elaborate/elabcore.sml
+   MarkPat/MARKpat handling added
+
+compiler/Elaborator/elaborate/elabutil.sml
+   MARKpat handling added
+
+compiler/Elaborator/print/ppabsyn.sml
+   change for modified Source.filepos
+   MARKpat handling added
+
+compiler/Elaborator/print/ppast.sml
+   change for modified Source.filepos
+
+compiler/Elaborator/types/typecheck.sml
+   type location tracking added
+   ppModeErrorMsg added to print culprit locations
+
+compiler/Elaborator/types/unify.sml
+   type location tracking added (major changes)
+
+compiler/FLINT/trans/matchcomp.sml
+   superficial cleanup, removing unused calls related to templates
+
+compiler/FLINT/trans/mccommon.sml
+   deleted unused datatype simp
+
+compiler/FLINT/trans/tempexpn.sml
+   file removed (at revision 3652)
+
+compiler/FLINT/trans/translate.sml
+   MARKpat handling added
+   superficial cleanup with some added comments
+
+compiler/Parse/lex/ml.lex
+   SourceMap.lastChange -> SourceMap.lastLinePos
+   revised mysynch
+
+compiler/Parse/main/parser.sml
+   revised oneparse to use new SourceMap version
+
+compiler/Parse/parse/ml.grm
+   markpat added and used to capture pattern regions
+
+compiler/TopLevel/interact/evalloop.sml
+   Source.newSource calls drop second argument
+
+compiler/core.cm
+   delete line for FLINT/trans/tempexpn.sml (unused pattern template code)
+
+======================================================================
+2nd set of commits
+
+jura$ svn commit -m "added showTypeErrorCulprit flag in ElabControl (Elaborator/main/elabcontrol.s??)"
+Sending        compiler/Elaborator/basics/elabcontrol.sig
+Sending        compiler/Elaborator/basics/elabcontrol.sml
+Sending        compiler/Elaborator/types/typecheck.sml
+Sending        compiler/FLINT/MAP
+Deleting       compiler/FLINT/trans/tempexpn.sml
+Transmitting file data ....
+Committed revision 3652.

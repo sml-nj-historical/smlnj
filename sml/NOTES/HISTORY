@@ -20,6 +20,26 @@ Date: yyyy/mm/dd
 Description:
 
 ----------------------------------------------------------------------
+Name: David MacQueen (dbm@cs.uchicago.edu)
+Date: 2012/1/12
+Revision: 3648, 3652
+Description:
+
+1) Change of SourceMap interface.
+   related to fix of off-by-one error in lexer (committed earlier?), and cleanup of noweb code
+   added by Norman Ramsey many years ago (but little used today).
+
+3) Slight cleanup of match compiler, eliminatiing compiler/FLINT/tempexpn.sml file that 
+   was part of unused implementation of pattern templates (pattern macros).
+
+4) Modification of type checker to add "culprit tracking" for improved type error messages
+   (printing of additional culprit information is controlled by ElabControl.showTypeErrorCulprits
+    flag, default false, added in revision 3652).  The culprit tracking needs to be debugged
+    and improved, and the presentation of the culprits needs to be done better.
+
+Details in NOTES/changes/dbm_2012_1.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2011/11/25
 Description:
