@@ -175,10 +175,8 @@ structure SkelCvt :> SKELCVT = struct
       | eb_s (MarkEb (arg, _), set) = eb_s (arg, set)
 
     (* ... *)
-    fun dbrhs_s (Constrs l, set) = foldl (tyopt_s o' #2) set l
-      | dbrhs_s (Repl cn, set) = s_addMP (cn, set)
 
-    fun db_s (Db { tyc, tyvars, rhs, lazyp }, set) = dbrhs_s (rhs, set)
+    fun db_s (Db { tyc, tyvars, rhs, lazyp }, set) = foldl (tyopt_s o' #2) set rhs
       | db_s (MarkDb (arg, _), set) = db_s (arg, set)
 
     fun tb_s (Tb { tyc, def, tyvars }, set) = ty_s (def, set)
@@ -351,6 +349,8 @@ structure SkelCvt :> SKELCVT = struct
       | dec_dl (TypeDec l, d) = dl_addS (foldl tb_s SS.empty l, d)
       | dec_dl (DatatypeDec { datatycs, withtycs }, d) =
 	dl_addS (foldl db_s (foldl tb_s SS.empty withtycs) datatycs, d)
+      | dec_dl (DataReplDec (_,cn), d) =
+	dl_addS (s_addMP (cn, SS.empty), d)
       | dec_dl (AbstypeDec { abstycs, withtycs, body }, d) =
 	dl_addS (foldl db_s (foldl tb_s SS.empty withtycs) abstycs,
 		 dec_dl (body, d))
