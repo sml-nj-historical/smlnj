@@ -43,6 +43,11 @@
 /* the size of a list cons cell in bytes */
 #define CONS_SZB	(WORD_SZB*3)
 
+/* the amount of free space that we want in the allocation arena; this value must be
+ * less than MIN_ALLOC_SZB (defined in include/ml-limits.h)
+ */
+#define FREE_REQ_SZB    64*ONE_K
+
 /* GetDouble:
  */
 PVT double GetDouble (Byte_t *p)
@@ -91,7 +96,7 @@ ml_val_t BuildLiterals (ml_state_t *msp, Byte_t *lits, int len)
     do {										\
 	if ((spaceReq > availSpace) && NeedGC(msp, spaceReq+CONS_SZB)) {		\
 	    InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));	\
-	    availSpace = 0;								\
+	    availSpace = ((int)msp->ml_limitPtr - (int)msp->ml_allocPtr);               \
 	}										\
 	else										\
 	    availSpace -= spaceReq;							\
@@ -110,16 +115,16 @@ SayDebug("BuildLiterals: lits = %#x, len = %d\n", lits, len);
     }
 
     stk = ML_nil;
-    availSpace = 0;
+    availSpace = ((int)msp->ml_limitPtr - (int)msp->ml_allocPtr);
     while (TRUE) {
 	ASSERT(pc < len);
 	ASSERT(availSpace <= ((int)msp->ml_limitPtr - (int)msp->ml_allocPtr));
-	availSpace -= CONS_SZB;	/* space for stack cons cell */
 	if (availSpace < ONE_K) {
-	    if (NeedGC(msp, 64*ONE_K))
+	    if (NeedGC(msp, FREE_REQ_SZB))
 		InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));
-	    availSpace = 64*ONE_K;
+	    availSpace = ((int)msp->ml_limitPtr - (int)msp->ml_allocPtr);
 	}
+	availSpace -= CONS_SZB;	/* space for stack cons cell */
 	switch (lits[pc++]) {
 	  case I_INT:
 	    i = GET32(lits); pc += 4;
@@ -144,6 +149,7 @@ SayDebug("[%2d]: RAW32L(%d) [...]\n", pc-5, n);
 #endif
 	    ASSERT(n > 0);
 	    spaceReq = 4*(n+1);
+/* FIXME: for large objects, we should be allocating them in the 1st generation */
 	    GC_CHECK;
 	    ML_AllocWrite (msp, 0, MAKE_DESC(n, DTAG_raw32));
 	    for (j = 1;  j <= n;  j++) {
@@ -152,6 +158,7 @@ SayDebug("[%2d]: RAW32L(%d) [...]\n", pc-5, n);
 	    }
 	    res = ML_Alloc (msp, n);
 	    LIST_cons(msp, stk, res, stk);
+	    availSpace -= spaceReq;
 	    break;
 	  case I_RAW64:
 	    d = GetDouble(&(lits[pc]));  pc += 8;
@@ -169,6 +176,7 @@ SayDebug("[%2d]: RAW64L(%d) [...]\n", pc-5, n);
 #endif
 	    ASSERT(n > 0);
 	    spaceReq = 8*(n+1);
+/* FIXME: for large objects, we should be allocating them in the 1st generation */
 	    GC_CHECK;
 #ifdef ALIGN_REALDS
 	  /* Force REALD_SZB alignment (descriptor is off by one word) */
@@ -181,6 +189,7 @@ SayDebug("[%2d]: RAW64L(%d) [...]\n", pc-5, n);
 		PTR_MLtoC(double, res)[j] = GetDouble(&(lits[pc]));  pc += 8;
 	    }
 	    LIST_cons(msp, stk, res, stk);
+	    availSpace -= spaceReq;
 	    break;
 	  case I_STR:
 	    n = GET32(lits); pc += 4;
@@ -199,6 +208,7 @@ SayDebug("\n");
 	   * the sequence header object.
 	   */
 	    spaceReq = WORD_SZB*(j+1+3);
+/* FIXME: for large strings, we should be allocating them in the 1st generation */
 	    GC_CHECK;
 	  /* allocate the data object */
 	    ML_AllocWrite(msp, 0, MAKE_DESC(j, DTAG_raw32));
@@ -212,6 +222,7 @@ SayDebug(" @ %#x (%d words)\n", res, j);
 	    SEQHDR_ALLOC(msp, res, DESC_string, res, n);
 	  /* push on stack */
 	    LIST_cons(msp, stk, res, stk);
+	    availSpace -= spaceReq;
 	    break;
 	  case I_LIT:
 	    n = GET32(lits); pc += 4;
@@ -239,6 +250,7 @@ SayDebug("]\n");
 	   * the sequence header object.
 	   */
 	    spaceReq = WORD_SZB*(n+1+3);
+/* FIXME: for large vectors, we should be allocating them in the 1st generation */
 	    GC_CHECK;
 	  /* allocate the data object */
 	    ML_AllocWrite(msp, 0, MAKE_DESC(n, DTAG_vec_data));
@@ -254,6 +266,7 @@ SayDebug("]\n");
 SayDebug("...] @ %#x\n", res);
 #endif
 	    LIST_cons(msp, stk, res, stk);
+	    availSpace -= spaceReq;
 	    break;
 	  case I_RECORD:
 	    n = GET32(lits); pc += 4;
@@ -282,6 +295,7 @@ SayDebug("]\n");
 SayDebug("...] @ %#x\n", res);
 #endif
 	    LIST_cons(msp, stk, res, stk);
+	    availSpace -= spaceReq;
 	    break;
 	  case I_RETURN:
 	    ASSERT(pc == len);

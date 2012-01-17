@@ -11,6 +11,7 @@
 #include "ml-heap-image.h"
 #include "c-globals-tbl.h"
 #include "heap-output.h"
+#include <string.h>
 
 
 /* HeapIO_WriteImageHeader:

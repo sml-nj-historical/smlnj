@@ -80,9 +80,9 @@ int main (void)
 
     f = OpenFile ("ml-sizes.h", "_ML_SIZES_");
 
-    fprintf (f, "#define WORD_SZB           %d\n", WORD_SZB);
-    fprintf (f, "#define ADDR_SZB           %d\n", ADDR_SZB);
-    fprintf (f, "#define REALD_SZB          %d\n", sizeof(double));
+    fprintf (f, "#define WORD_SZB           %d\n", (int)WORD_SZB);
+    fprintf (f, "#define ADDR_SZB           %d\n", (int)ADDR_SZB);
+    fprintf (f, "#define REALD_SZB          %d\n", (int)sizeof(double));
     fprintf (f, "#define BITS_PER_WORD      %d\n", 8*WORD_SZB);
     fprintf (f, "#define LOG_BITS_PER_WORD  %d\n", log2(8*WORD_SZB));
     fprintf (f, "#define LOG_BYTES_PER_WORD %d\n", log2(WORD_SZB));

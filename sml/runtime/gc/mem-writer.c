@@ -7,6 +7,7 @@
 
 #include "ml-base.h"
 #include "writer.h"
+#include <string.h>
 
 #ifndef BUFSIZ
 #define BUFSIZ 4096

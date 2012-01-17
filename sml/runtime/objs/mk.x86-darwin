@@ -7,13 +7,18 @@
 # the -D_NONSTD_SOURCE flag is needed for Mac OS X 10.5, because the
 # mcontext field names changed.
 #
+# The SDK variable is set to the SDK minimum Mac OS X version that you want
+# to support.  Note that since Lion, the 10.5 (and 10.6?) SDKs are not part
+# of the Xcode install.
+#
 
 SHELL =		/bin/sh
 
 MAKE =		make
 AS =		/usr/bin/as -arch i386
 CC =		cc -m32 -ansi
-CFLAGS =	-g -O2 -D_DARWIN_C_SOURCE
+SDK =		-isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5
+CFLAGS =	-g -O2 -D_DARWIN_C_SOURCE $(SDK)
 CPP =           cc -x assembler-with-cpp -E -P -ansi
 XOBJS =
 XLIBS =         ../c-libs/dl/libunix-dynload.a
