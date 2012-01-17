@@ -50,6 +50,7 @@ infix 9 sub
 infix -->
 
 val printDepth = Control_Print.printDepth
+val showCulprits = ElabControl.showTypeErrorCulprits
 
 fun refNewDcon(DATACON{name,const,rep,typ,sign,lazyp}) = 
   DATACON{name=name,const=const,rep=rep,typ=refPatType,sign=sign,lazyp=lazyp}
@@ -96,26 +97,28 @@ fun ppRegion ppstrm ((l,u): SourceMap.region) =
      PP.string ppstrm (Int.toString u))
     
 fun ppModeErrorMsg ppstrm (mode: Unify.unifyFail) = 
-    case mode
-      of TYC(tyc1,tyc2,reg1,reg2) =>
-	 (newline ppstrm;
-	  PP.string ppstrm "Mode: tycon mismatch"; newline ppstrm;
-	  PP.string ppstrm "tycon1: ";
-	  ppTycon ppstrm tyc1; newline ppstrm;
-	  PP.string ppstrm "from: "; ppRegion ppstrm reg1; newline ppstrm;
-	  PP.string ppstrm "tycon2: ";
-	  ppTycon ppstrm tyc2; newline ppstrm;
-	  PP.string ppstrm "from: "; ppRegion ppstrm reg2)
-       | TYP(ty1,ty2,reg1,reg2) =>
-	 (newline ppstrm;
-	  PP.string ppstrm "Mode: type mismatch"; newline ppstrm;
-	  PP.string ppstrm "type1: ";
-	  ppType ppstrm ty1; newline ppstrm;
-	  PP.string ppstrm "from: "; ppRegion ppstrm reg1; newline ppstrm;
-	  PP.string ppstrm "type2: ";
-	  ppType ppstrm ty2; newline ppstrm;
-	  PP.string ppstrm "from: "; ppRegion ppstrm reg2)
-	| _ => ()
+    if !showCulprits then
+      (case mode
+	of TYC(tyc1,tyc2,reg1,reg2) =>
+	   (newline ppstrm;
+	    PP.string ppstrm "Mode: tycon mismatch"; newline ppstrm;
+	    PP.string ppstrm "tycon1: ";
+	    ppTycon ppstrm tyc1; newline ppstrm;
+	    PP.string ppstrm "from: "; ppRegion ppstrm reg1; newline ppstrm;
+	    PP.string ppstrm "tycon2: ";
+	    ppTycon ppstrm tyc2; newline ppstrm;
+	    PP.string ppstrm "from: "; ppRegion ppstrm reg2)
+	 | TYP(ty1,ty2,reg1,reg2) =>
+	   (newline ppstrm;
+	    PP.string ppstrm "Mode: type mismatch"; newline ppstrm;
+	    PP.string ppstrm "type1: ";
+	    ppType ppstrm ty1; newline ppstrm;
+	    PP.string ppstrm "from: "; ppRegion ppstrm reg1; newline ppstrm;
+	    PP.string ppstrm "type2: ";
+	    ppType ppstrm ty2; newline ppstrm;
+	    PP.string ppstrm "from: "; ppRegion ppstrm reg2)
+	  | _ => ())
+    else ()
 
 (* setup for recording FLEX tyvars and checking that they are eventually
  * resolved to exact record types. This is to prevent the leakage of

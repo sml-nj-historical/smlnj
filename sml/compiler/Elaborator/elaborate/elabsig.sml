@@ -418,7 +418,7 @@ fun allButLast l = List.take(l,List.length l - 1)
 (* elaborate datatype replication specs. 
  *  Uses DEFtyc wrappings of the rhs datatype in the resulting specs.
  *  Need to check that this will do the "right thing" in instantiate. *)
-fun elabDATArepl(name,path,env,elements,region) =
+fun elabDATAreplSpec(name,path,env,elements,region) =
     if checkDups(name,elements,error region) then
     let val tyc = Lookup.lookTyc(env, SP.SPATH path, error region)
 	(* rhs is not local to current (outermost) signature *)
@@ -658,7 +658,7 @@ fun elabDATATYPEspec(dtycspec, env, elements, region) =
 		  let (* MAJOR GROSS HACK: use the stamp of the type as its 
                        * entVar. This makes possible to reconstruct the
 		       * entPath associated with a RECty when translating the
-		       * types of domains in elabDATArepl.  See >>HACK<< signs.
+		       * types of domains in elabDATAreplSpec.  See >>HACK<< signs.
                        *)
                       val rtev = stamp (* mkStamp() >>HACK<< *)
                       val nfreetycs = map viztc freetycs
@@ -755,7 +755,7 @@ fun elabDATATYPEspec(db as {datatycs,withtycs}, env, elements, region) =
     case datatycs
       of ([spec as Db{rhs=Repl path,tyc=name,tyvars=[],lazyp=false}]) =>
 	  (* LAZY: not allowing datatype replication with lazy keyword *)
-	  elabDATArepl(name,path,env,elements,region)
+	  elabDATAreplSpec(name,path,env,elements,region)
        | (Db{rhs=Constrs _,...}::_) => 
 	  (elabDATATYPEspec0(db,env,elements,region)
            handle TypeDups => (env,elements))
@@ -910,13 +910,17 @@ fun elabSpec (spec, env, elements, slots, region) =
     | DataSpec spec =>
         let val _ = debugmsg "--elabSpec[DataSpec]"
             val (env', elems') =
-              elabDATATYPEspec(spec, env, elements, region)
-	      handle TypeDups => (env,elements)
+                elabDATATYPEspec(spec, env, elements, region)
+	        handle TypeDups => (env,elements)
          in (env', elems', [], [], slots, false)
         end
 
     | DataReplSpec(name,path) =>
-        elabDATArepl(name,path,env,elements,region)
+        let val _ = debugmsg "--elabSpec[DataReplSpec]"
+            val (env', elems') =
+                elabDATAreplSpec(name,path,env,elements,region)
+         in (env', elems', [], [], slots, false)
+        end
 
     | ValSpec specs =>
         let val err = error region
