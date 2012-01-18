@@ -219,7 +219,7 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
                      compInfo as {mkStamp,error,...}: EU.compInfo) =
     let (* predefine datatypes *)
 	val _ = debugmsg ">>elabDATATYPEdec"
-	fun preprocess region (Db{tyc=name,rhs=Constrs def,tyvars,lazyp}) = 
+	fun preprocess region (Db{tyc=name,rhs=def,tyvars,lazyp}) = 
 	    let val tvs = elabTyvList(tyvars,error,region)
 		val strictName =
 		    if lazyp
@@ -245,11 +245,6 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 		     tyc=tyc, binddef=binddef,lazyp=lazyp,
 		     strictName=strictName}
 	    end
-	  | preprocess region (Db{tyc=name,rhs=Repl _,...}) = 
-	     (error region EM.COMPLAIN
-	       ("datatype replication mixed with regular datatypes:" ^ S.name name)
-	       EM.nullErrorBody;
-	      NONE)
 	  | preprocess _ (MarkDb(db',region')) = preprocess region' db'
 
         val dbs = List.mapPartial (preprocess region) datatycs

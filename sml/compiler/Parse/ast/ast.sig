@@ -119,40 +119,38 @@ sig
 	      | MarkFsig of fsigexp * region	(* mark a funsig *)
 
   (* SPECIFICATION FOR SIGNATURE DEFINITIONS *)
-  and spec = StrSpec of (symbol * sigexp * path option) list
-                                                                (* structure *)
-           | TycSpec of ((symbol * tyvar list * ty option) list * bool)
-                                                                (* type *)
+  and spec = StrSpec of (symbol * sigexp * path option) list    (* structure *)
+           | TycSpec of ((symbol * tyvar list * ty option) list * bool) (* type *)
 	   | FctSpec of (symbol * fsigexp) list			(* functor *)
 	   | ValSpec of (symbol * ty) list			(* value *)
 	   | DataSpec of {datatycs: db list, withtycs: tb list}	(* datatype *)
+           | DataReplSpec of symbol * path                      (* datatype replication *)
 	   | ExceSpec of (symbol * ty option) list		(* exception *)
-	   | ShareStrSpec of path list			(* structure sharing *)
-	   | ShareTycSpec of path list			(* type sharing *)
-	   | IncludeSpec of sigexp			(* include specif *)
-	   | MarkSpec of spec * region	(* mark a spec *)
+	   | ShareStrSpec of path list			        (* structure sharing *)
+	   | ShareTycSpec of path list			        (* type sharing *)
+	   | IncludeSpec of sigexp			        (* include specif *)
+	   | MarkSpec of spec * region	                        (* mark a spec *)
 
   (* DECLARATIONS (let and structure) *)
-  and dec = ValDec of (vb list * tyvar list)		(* values *)
-	  | ValrecDec of (rvb list * tyvar list)	(* recursive values *)
-	  | FunDec of (fb list * tyvar list)		(* recurs functions *)
-	  | TypeDec of tb list				(* type dec *)
-	  | DatatypeDec of {datatycs: db list, withtycs: tb list}
-							  (* datatype dec *)
-	  | AbstypeDec of {abstycs: db list, withtycs: tb list, body: dec}
-							  (* abstract type *)
-	  | ExceptionDec of eb list			(* exception *)
-	  | StrDec of strb list				(* structure *)
-	  | AbsDec of strb list				(* abstract struct *)
-	  | FctDec of fctb list				(* functor *)
-	  | SigDec of sigb list				(* signature *)
-	  | FsigDec of fsigb list				(* funsig *)
-	  | LocalDec of dec * dec				(* local dec *)
-	  | SeqDec of dec list				(* sequence of dec *)
-	  | OpenDec of path list			(* open structures *)
-	  | OvldDec of symbol * ty * exp list	(* overloading (internal) *)
+  and dec = ValDec of (vb list * tyvar list)		  (* values *)
+	  | ValrecDec of (rvb list * tyvar list)	  (* recursive values *)
+	  | FunDec of (fb list * tyvar list)		  (* recurs functions *)
+	  | TypeDec of tb list				  (* type dec *)
+	  | DatatypeDec of {datatycs: db list, withtycs: tb list} (* datatype dec *)
+	  | DataReplDec of symbol * path                  (* dt replication *)
+	  | AbstypeDec of {abstycs: db list, withtycs: tb list, body: dec} (* abstract type *)
+	  | ExceptionDec of eb list			  (* exception *)
+	  | StrDec of strb list				  (* structure *)
+	  | AbsDec of strb list				  (* abstract struct *)
+	  | FctDec of fctb list				  (* functor *)
+	  | SigDec of sigb list				  (* signature *)
+	  | FsigDec of fsigb list			  (* funsig *)
+	  | LocalDec of dec * dec			  (* local dec *)
+	  | SeqDec of dec list				  (* sequence of dec *)
+	  | OpenDec of path list			  (* open structures *)
+	  | OvldDec of symbol * ty * exp list	          (* overloading (internal) *)
 	  | FixDec of {fixity: fixity, ops: symbol list}  (* fixity *)
-	  | MarkDec of dec * region		(* mark a dec *)
+	  | MarkDec of dec * region		          (* mark a dec *)
 
   (* VALUE BINDINGS *)
   and vb = Vb of {pat:pat, exp:exp, lazyp:bool}
@@ -175,12 +173,9 @@ sig
 	 | MarkTb of tb * region
 
   (* DATATYPE BINDING *)
-  and db = Db of {tyc : symbol, tyvars : tyvar list, rhs : dbrhs, lazyp: bool}
+  and db = Db of {tyc : symbol, tyvars : tyvar list,
+		  rhs : (symbol * ty option) list, lazyp : bool}
 	 | MarkDb of db * region
-
-  (* DATATYPE BINDING RIGHT HAND SIDE *)
-  and dbrhs = Constrs of (symbol * ty option) list
-            | Repl of symbol list
 
   (* EXCEPTION BINDING *)
   and eb = EbGen of {exn: symbol, etype: ty option} (* Exception definition *)

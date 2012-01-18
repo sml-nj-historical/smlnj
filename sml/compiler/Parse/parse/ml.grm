@@ -88,8 +88,9 @@ val quotedBogusString = "'BOGUS"
        | tyvars of tyvar list
        | tyvarseq of tyvar list
        | tyvar_pc of tyvar list
-       | db of  db list
-       | dbrhs of dbrhs
+       | db of  db
+       | dbs of  db list
+       | dtrepl of symbol * path
        | constrs of (symbol * ty option) list
        | constr of  symbol * ty option
        | eb of  eb list
@@ -245,21 +246,21 @@ exp	: exp HANDLE match	(HandleExp{expr=exp,rules=match})
 
         | exp ORELSE exp        (OrelseExp(markexp(exp1,exp1left,exp1right),
 					   markexp(exp2,exp2left,exp2right)))
-	 | exp ANDALSO exp      (AndalsoExp(markexp(exp1,exp1left,exp1right),
+	| exp ANDALSO exp       (AndalsoExp(markexp(exp1,exp1left,exp1right),
 					    markexp(exp2,exp2left,exp2right)))
-	 | exp COLON ty	        (ConstraintExp{expr=exp,constraint=ty})
-	 | app_exp	        (FlatAppExp(app_exp))
-	 | FN match	        (markexp(FnExp match, FNleft,matchright))
-	 | CASE exp OF match	(markexp(CaseExp{expr=exp, rules=match},
+	| exp COLON ty	        (ConstraintExp{expr=exp,constraint=ty})
+	| app_exp	        (FlatAppExp(app_exp))
+	| FN match	        (markexp(FnExp match, FNleft,matchright))
+	| CASE exp OF match	(markexp(CaseExp{expr=exp, rules=match},
 					 CASEleft,matchright))
-	 | WHILE exp DO exp	(WhileExp
+	| WHILE exp DO exp	(WhileExp
                                    {test=markexp(exp1, exp1left, exp1right),
 				    expr=markexp(exp2, exp2left, exp2right)})
-	 | IF exp THEN exp ELSE exp (IfExp{test=exp1,
+	| IF exp THEN exp ELSE exp (IfExp{test=exp1,
 				   thenCase=markexp(exp2,exp2left,exp2right),
 				   elseCase=markexp(exp3,exp3left,exp3right)})
-	 | RAISE exp	     (markexp(markexp(RaiseExp exp, expleft,expright),
-				      RAISEleft,expright))
+	| RAISE exp	        (markexp(markexp(RaiseExp exp, expleft,expright),
+					 RAISEleft,expright))
 
 app_exp	: aexp	        ([{item=markexp(aexp,aexpleft,aexpright),
 			   region=(aexpleft,aexpright), fixity=NONE}])
@@ -442,7 +443,7 @@ clause	: apats constraint EQUALOP exp
 
 tb	: tyvars ID EQUALOP ty	([MarkTb(
 				   Tb{tyvars=tyvars,tyc=tycSymbol ID,def=ty},
-				   (tyleft,tyright))])
+				   (tyvarsleft,tyright))])
 	| tb AND tb		(tb1 @ tb2)
 
 tyvars	: TYVAR			([MarkTyv(Tyv(tyvSymbol TYVAR),
@@ -454,22 +455,24 @@ tyvarseq: TYVAR			([MarkTyv(Tyv(tyvSymbol TYVAR),
 					 (TYVARleft,TYVARright))])
 	| LPAREN tyvar_pc RPAREN  (tyvar_pc)
 
-tyvar_pc: TYVAR	([MarkTyv(Tyv(tyvSymbol TYVAR), (TYVARleft,TYVARright))])
-	| TYVAR COMMA tyvar_pc
-		(MarkTyv(Tyv(tyvSymbol TYVAR),(TYVARleft,TYVARright))
-		 :: tyvar_pc)
+tyvar_pc: TYVAR                 ([MarkTyv(Tyv(tyvSymbol TYVAR), (TYVARleft,TYVARright))])
+	| TYVAR COMMA tyvar_pc  (MarkTyv(Tyv(tyvSymbol TYVAR),(TYVARleft,TYVARright))
+				 :: tyvar_pc)
 
-db	: db AND db			(db1 @ db2)
-	| tyvars ident EQUALOP dbrhs	([Db{tyc=tycSymbol ident,
-					     tyvars=tyvars,
-					     rhs=dbrhs,lazyp=false}])
-        | LAZY tyvars ident EQUALOP dbrhs   
-	                                ([Db{tyc=tycSymbol ident,
-                                             tyvars=tyvars,
-                                             rhs=dbrhs,lazyp=true}])
+dtrepl  : ID EQUALOP DATATYPE tycon      ((tycSymbol ID, tycon))
 
-dbrhs   : constrs			(Constrs constrs)
-        | DATATYPE tycon		(Repl tycon)
+dbs     : db                             ([db])
+        | db AND dbs                     (db :: dbs)
+
+db	: ID EQUALOP constrs	         (Db{tyc=tycSymbol ID,
+					     tyvars=nil,
+					     rhs=constrs,lazyp=false})
+	| tyvarseq ID EQUALOP constrs	 (Db{tyc=tycSymbol ID,
+					     tyvars=tyvarseq,
+					     rhs=constrs,lazyp=false})
+        | LAZY tyvars ID EQUALOP constrs (Db{tyc=tycSymbol ID,
+                                            tyvars=tyvars,
+                                            rhs=constrs,lazyp=true})
 
 constrs : constr		([constr])
 	| constr BAR constrs	(constr :: constrs)
@@ -499,13 +502,14 @@ ldec	: VAL vb		(ValDec(vb,nil))
 	| FUN fb		(FunDec(fb,nil))
 	| FUN tyvarseq fb	(FunDec(fb,tyvarseq))
 	| TYPE tb		(TypeDec tb)
-	| DATATYPE db		(DatatypeDec{datatycs=db,withtycs=[]})
- 	| DATATYPE db WITHTYPE tb  (DatatypeDec{datatycs=db,withtycs=tb})
-	| ABSTYPE db WITH ldecs END (AbstypeDec{abstycs=db,withtycs=[],
-						body=ldecs})
-	| ABSTYPE db WITHTYPE tb WITH ldecs END  (AbstypeDec{abstycs=db,
-							     withtycs=tb,
-							     body=ldecs})
+        | DATATYPE dtrepl       (DataReplDec dtrepl)
+	| DATATYPE dbs		(DatatypeDec{datatycs=dbs,withtycs=[]})
+ 	| DATATYPE dbs WITHTYPE tb  (DatatypeDec{datatycs=dbs,withtycs=tb})
+	| ABSTYPE dbs WITH ldecs END (AbstypeDec{abstycs=dbs,withtycs=[],
+						 body=ldecs})
+	| ABSTYPE dbs WITHTYPE tb WITH ldecs END  (AbstypeDec{abstycs=dbs,
+							      withtycs=tb,
+							      body=ldecs})
 	| EXCEPTION eb		(ExceptionDec eb)
 	| OPEN qid_p		(OpenDec qid_p)
 	| fixity ops		(FixDec{fixity=fixity, ops=ops})
@@ -535,8 +539,9 @@ spec_s	: 			([])
 
 spec	: STRUCTURE strspec	([StrSpec strspec])
         | FUNCTOR fctspec	([FctSpec fctspec])
-	| DATATYPE db		([DataSpec{datatycs=db,withtycs=nil}])
-	| DATATYPE db WITHTYPE tb ([DataSpec{datatycs=db,withtycs=tb}])
+	| DATATYPE dtrepl       ([DataReplSpec dtrepl])
+	| DATATYPE dbs		([DataSpec{datatycs=dbs,withtycs=nil}])
+	| DATATYPE dbs WITHTYPE tb ([DataSpec{datatycs=dbs,withtycs=tb}])
 	| TYPE tyspec		([TycSpec(tyspec,false)])
 	| EQTYPE tyspec		([TycSpec(tyspec,true)])
 	| VAL valspec		([ValSpec valspec])

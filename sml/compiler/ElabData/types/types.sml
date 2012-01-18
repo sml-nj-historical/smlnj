@@ -13,7 +13,9 @@ local structure A  = Access
 in
 
 type label = S.symbol
-type polysign = bool list         (* equality property indicator *)
+
+(* equality property indicators for polymorphically bound tyvars *)
+type polysign = bool list
 
 datatype eqprop = YES | NO | IND | OBJ | DATA | ABS | UNDEF
 

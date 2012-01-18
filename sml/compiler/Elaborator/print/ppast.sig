@@ -36,7 +36,7 @@ sig
 	val ppDb	: StaticEnv.staticEnv * Source.inputSource option
                		 -> PrettyPrintNew.stream -> Ast.db * int -> unit  
 	val ppDbrhs	: StaticEnv.staticEnv * Source.inputSource option
-               		 -> PrettyPrintNew.stream -> Ast.dbrhs * int -> unit
+               		 -> PrettyPrintNew.stream -> (Symbol.symbol * Ast.ty option) list * int -> unit
 	val ppEb	: StaticEnv.staticEnv * Source.inputSource option
                		 -> PrettyPrintNew.stream -> Ast.eb * int -> unit
 	val ppStrb	: StaticEnv.staticEnv * Source.inputSource option

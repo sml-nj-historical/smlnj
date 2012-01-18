@@ -212,7 +212,7 @@ fun ppInvPath ppstream (InvPath.IPATH path: InvPath.path) =
     PP.string ppstream (SymPath.toString (SymPath.SPATH(rev path)))
 
 fun ppBool ppstream b =
-    case b of true => pps ppstream "b" | false => pps ppstream "f"
+    case b of true => pps ppstream "t" | false => pps ppstream "f"
 
 fun ppTycon1 env ppstrm membersOp =
     let val {openHVBox,openHOVBox,closeBox,pps,break,...} = en_pp ppstrm

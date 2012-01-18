@@ -769,6 +769,17 @@ and ppSpec (context as (env,source_opt)) ppstrm =
               ppvlist ppstrm ("val ", "and ", pr, st_list);
               closeBox ()
 	  end 
+        | ppSpec'(DataReplSpec(name,path),d) =
+	  if d = 0 then pps "<DT.repl>"
+          else (openHOVBox 0;
+		 pps "datatype "; ppSym ppstrm name; pps " =";
+		 break ppstrm {nsp=1,offset=0}; pps "datatype ";
+		 ppSequence ppstrm
+		   {sep=(fn ppstrm => (PP.string ppstrm ".")),
+		    pr=ppSym,
+		    style=INCONSISTENT}
+		   path;
+		closeBox ())
 	| ppSpec'(DataSpec{datatycs,withtycs=[]},d) = 
 	  let fun pr ppstrm (dbing) = (ppDb context ppstrm (dbing, d))
 	   in openHVBox 0;
@@ -1124,15 +1135,16 @@ and ppDb (context as (_,source_opt)) ppstrm  =
 	fun pp_tyvar_list (symbol_list, d) =
 	    let fun pr _ (tyvar) = (ppTyvar context ppstrm (tyvar, d))
 	     in ppSequence ppstrm
-		 {sep=(fn ppstrm => (PP.string ppstrm "*";
+		 {sep=(fn ppstrm => (PP.string ppstrm ",";
 				     break ppstrm {nsp=1,offset=0})),
 		  pr=pr,
 		  style=INCONSISTENT}
 		 symbol_list
 	    end
-	fun ppDb'(_,0)= pps "<D.binding>"
+	fun ppDb'(_,0) = pps "<D.binding>"
 	  | ppDb'(Db{tyc,tyvars,rhs,lazyp},d) = 
 	     (openHOVBox ppstrm (PP.Rel 0);
+	      pp_tyvar_list (tyvars,d);
 	      ppSym ppstrm tyc; PP.string ppstrm " =";
 	      break ppstrm {nsp=1,offset=0}; ppDbrhs context ppstrm (rhs,d);
 	      closeBox ppstrm)
@@ -1143,28 +1155,21 @@ and ppDb (context as (_,source_opt)) ppstrm  =
 
 and ppDbrhs (context as (_,source_opt)) ppstrm =
     let val pps = PP.string ppstrm
-	fun ppDbrhs'(_,0)= pps "<dbrhs>"
-	  | ppDbrhs'(Constrs const,d) = 
+	fun ppDbrhs'(_,0)= pps "<DT.rhs>"
+	  | ppDbrhs'(constrs,d) = 
 	    let fun pr ppstrm (sym:symbol, tv:Ast.ty option) =
 		    (case tv
 		       of SOME a =>
 			  (ppSym ppstrm sym; pps" of "; ppTy context ppstrm (a, d))
 		        | NONE =>
 			  (ppSym ppstrm sym))
-	        in  ppSequence ppstrm
-		    {sep=(fn ppstrm => (PP.string ppstrm " |";
-					break ppstrm {nsp=1,offset=0})),
-		     pr=pr,
-		     style=INCONSISTENT}
-		     const
-	        end
-	  | ppDbrhs'(Repl symlist,d) = 
-	     ppSequence ppstrm
-              {sep=(fn ppstrm => (PP.string ppstrm " |";
-                                  break ppstrm {nsp=1,offset=0})),
-               pr=(fn ppstrm => fn sym => ppSym ppstrm sym),
-               style=INCONSISTENT}
-               symlist
+	    in  ppSequence ppstrm
+		  {sep=(fn ppstrm => (PP.string ppstrm " |";
+				      break ppstrm {nsp=1,offset=0})),
+		   pr=pr,
+		   style=INCONSISTENT}
+		  constrs
+	    end
      in ppDbrhs'
     end
 

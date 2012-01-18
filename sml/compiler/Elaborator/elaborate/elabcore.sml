@@ -648,50 +648,34 @@ let
 		  ET.elabTYPEdec(tbs,env,(* EU.TOP,??? *) rpath,region,compInfo)
 	       in noTyvars(dec', env')
 	      end
-	   | DatatypeDec(x as {datatycs,withtycs}) => 
-	     (case datatycs
-		of (Db{rhs=(Constrs _), ...}) :: _ =>
-		     let val (dtycs, wtycs, _, env') =
-			 ET.elabDATATYPEdec(x,env,[],EE.empty,isFree,
-                                            rpath,region,compInfo)
-		      in noTyvars(DATATYPEdec{datatycs=dtycs,withtycs=wtycs}, env')
-		     end
-	         | (Db{tyc=name,rhs=Repl syms,tyvars=nil,lazyp=false}::nil) =>
-		     (* LAZY: not allowing "datatype lazy t = datatype t'" *)
-		     (* BUG: what to do if rhs is lazy "datatype"? (DBM) *)
-		     (case withtycs
-			of nil =>
-			    (case LU.lookTyc(env, SP.SPATH syms, error region)
-			      of (DEFtyc _) =>
-			        (* [GK 5/7/07] Shouldn't we flag an error
-				   if this tyc is a DEFtyc? See bug 1578.1 
-				   (an open bug) *)
-				    ((error region EM.COMPLAIN
-					   "rhs of datatype replication not a \
-					   \datatype"
-					   EM.nullErrorBody);
-				     noTyvars(SEQdec[], SE.empty))
-			       | tyc =>
-				 let 
-				     val dcons = TU.extractDcons tyc
-				     val envDcons =
-					 foldl (fn (d as T.DATACON{name,...},e)=>
-						   SE.bind(name,B.CONbind d, e))
-					       SE.empty 
-					       dcons
-				     val env = SE.bind(name,B.TYCbind tyc,envDcons)
-				 in noTyvars(DATATYPEdec{datatycs=[tyc], 
-							 withtycs=[]},
-					     env)
-				 end)
-			 | _ => (error region EM.COMPLAIN
-				  "withtype not allowed in datatype replication"
-				  EM.nullErrorBody;
-				 noTyvars(SEQdec[],SE.empty)))
-		  | _ => (error region EM.COMPLAIN
-			   "argument type variables in datatype replication"
-			   EM.nullErrorBody;
-			  noTyvars(SEQdec[],SE.empty)))
+	   | DatatypeDec(x) => 
+	      let val (dtycs, wtycs, _, env') =
+		      ET.elabDATATYPEdec(x,env,[],EE.empty,isFree,
+                                         rpath,region,compInfo)
+	       in noTyvars(DATATYPEdec{datatycs=dtycs,withtycs=wtycs}, env')
+	      end
+	   | DataReplDec(name,path) => 
+	     (* LAZY: not allowing "datatype lazy t = datatype t'" *)
+	     (* BUG: what to do if rhs is lazy "datatype"? (DBM) *)
+	      (case LU.lookTyc(env, SP.SPATH path, error region)
+		 of (dtyc as T.GENtyc{kind=T.DATATYPE _,...}) =>
+		    let val dcons = TU.extractDcons dtyc
+			val envDcons =
+			    foldl (fn (d as T.DATACON{name,...},e)=>
+				      SE.bind(name,B.CONbind d, e))
+				  SE.empty 
+				  dcons
+                        (* types of new datacon bindings same as the old *)
+			val env = SE.bind(name,B.TYCbind dtyc,envDcons)
+		     in noTyvars(DATATYPEdec{datatycs=[dtyc], 
+					     withtycs=[]},
+				 env)
+		    end
+		  | _ => (* error if not a datatype (bug 1578.1) *)
+		    ((error region EM.COMPLAIN
+			    "rhs of datatype replication not a datatype"
+			    EM.nullErrorBody);
+		     noTyvars(SEQdec[], SE.empty)))
 	   | AbstypeDec x => 
 	      let val (dec', env') =
   		    elabABSTYPEdec(x,env,EU.TOP,isFree,

@@ -1617,90 +1617,66 @@ and elabDecl0
 	   raise EE.Unbound))
 
    | DatatypeDec (x as {datatycs,withtycs}) =>
-      (case datatycs
-	 of (Db{rhs=(Constrs _), ...}) :: _ =>
-	      let val isFree = 
-                    (case context 
-                      of EU.INFCT _ =>
-                          (fn tyc => 
-                            (case EPC.lookTycPath(epContext, MU.tycId tyc)
-                              of SOME _ => true 
-                               | _ => false))
-                       | _ => (fn _ => false))
+       let val isFree = 
+               (case context 
+                 of EU.INFCT _ =>
+                    (fn tyc => 
+                        (case EPC.lookTycPath(epContext, MU.tycId tyc)
+                          of SOME _ => true 
+                           | _ => false))
+                  | _ => (fn _ => false))
 
-                  val (datatycs,withtycs,_,env) =
-		    ET.elabDATATYPEdec(x, env0, [], EE.empty, isFree, rpath,
-                                       region, compInfo)
-		  val (entEnv, entDec) = 
-		    bindNewTycs(context, epContext, mkStamp, 
-                                datatycs, withtycs, rpath, error region)
-		  val resDec = 
-                    A.DATATYPEdec{datatycs=datatycs,withtycs=withtycs}
-	       in (resDec, entDec, env, entEnv)
-	      end
+           val (datatycs,withtycs,_,env) =
+	       ET.elabDATATYPEdec(x, env0, [], EE.empty, isFree, rpath,
+                                  region, compInfo)
+	   val (entEnv, entDec) = 
+	       bindNewTycs(context, epContext, mkStamp, 
+                           datatycs, withtycs, rpath, error region)
+	   val resDec = 
+               A.DATATYPEdec{datatycs=datatycs,withtycs=withtycs}
+        in (resDec, entDec, env, entEnv)
+       end
 
-	  | (Db{tyc=name,rhs=Repl syms,tyvars=nil,lazyp=false}::nil) => let
-		fun no_datatype () =
-		    (error region EM.COMPLAIN
-			   "rhs of datatype replication not a datatype"
-			   EM.nullErrorBody;
-		     (A.SEQdec[],M.ERRORdec,SE.empty,EE.empty))
-	    in
- 		case withtycs
-		 of _::_ => 
-                    (error region EM.COMPLAIN
-		        "withtype not allowed in datatype replication"
-			 EM.nullErrorBody;
-                     (A.SEQdec[],M.ERRORdec,SE.empty,EE.empty))
-		 | [] =>
-		     let val tyc = L.lookTyc(env0, SP.SPATH syms, error region)
-		      in case tyc
-			  of T.GENtyc {stamp, arity, eq, path, stub,
-			               kind = dt as (T.DATATYPE _)
-				       } =>
-			     let val dcons = TU.extractDcons tyc
-				 val envDcons =
-				     foldl (fn (d as T.DATACON{name,...},
-						e)=>
-					       SE.bind(name,
-						       B.CONbind d, e))
- 					   SE.empty dcons
-				 val env = SE.bind(name, B.TYCbind tyc, 
-						   envDcons)
-				 val ev = mkStamp()
-				 val tyc_id = MU.tycId tyc
-				 val (ee_dec,ee_env) =
-				     case context
-				      of EU.INFCT _ => let
-					     val texp =
-						 case EPC.lookTycPath(epContext,tyc_id)
-						  of NONE => M.CONSTtyc tyc
-						   | SOME entPath =>
-						     M.VARtyc entPath
-			                 in (M.TYCdec(ev,texp),
-					     EE.bind(ev,M.TYCent tyc,
-						     EE.empty))
-					 end
-				       | _ => (M.EMPTYdec,EE.empty)
-				 val tyc' = T.GENtyc{stamp=stamp,
-						     arity=arity,
-						     eq=eq, path=InvPath.extend(InvPath.empty,name),
-						     stub=stub, kind=dt}
-				 val resDec =
-				     A.DATATYPEdec{datatycs=[tyc' (* tyc *)],
-						   withtycs=[]}
-			     in
-				 EPC.bindTycPath(epContext, tyc_id, ev);
-				 (resDec, ee_dec, env, ee_env)
-			     end
-			   | _ => no_datatype ()
-		     end
-	    end
-
-	  | _ => (error region EM.COMPLAIN
-		   "argument type variables in datatype replication"
-		   EM.nullErrorBody;
-		  (A.SEQdec[],M.ERRORdec,SE.empty,EE.empty)))
+   | DataReplDec(name,syms) =>
+       let fun no_datatype () =
+	       (error region EM.COMPLAIN
+		      "rhs of datatype replication not a datatype"
+		      EM.nullErrorBody;
+		(A.SEQdec[],M.ERRORdec,SE.empty,EE.empty))
+           val tyc = L.lookTyc(env0, SP.SPATH syms, error region)
+        in case tyc
+	    of T.GENtyc {stamp, arity, eq, path, stub,
+			 kind = dt as (T.DATATYPE _)} =>
+	       let val dcons = TU.extractDcons tyc
+		   val envDcons =
+		       foldl (fn (d as T.DATACON{name,...}, e) =>
+				 SE.bind(name, B.CONbind d, e))
+ 			     SE.empty dcons
+		   val env = SE.bind(name, B.TYCbind tyc, envDcons)
+		   val ev = mkStamp()
+		   val tyc_id = MU.tycId tyc
+		   val (ee_dec,ee_env) =
+		       case context
+			of EU.INFCT _ =>
+			   let val texp =
+				   case EPC.lookTycPath(epContext,tyc_id)
+				    of NONE => M.CONSTtyc tyc
+				     | SOME entPath =>
+				       M.VARtyc entPath
+			    in (M.TYCdec(ev,texp),
+			        EE.bind(ev, M.TYCent tyc, EE.empty))
+			   end
+			 | _ => (M.EMPTYdec,EE.empty)
+		   val tyc' = T.GENtyc{stamp=stamp, arity=arity,
+				       eq=eq, path=InvPath.extend(InvPath.empty,name),
+				       stub=stub, kind=dt}
+		   val resDec = A.DATATYPEdec{datatycs=[tyc' (* tyc *)],
+					      withtycs=[]}
+	        in EPC.bindTycPath(epContext, tyc_id, ev);
+		   (resDec, ee_dec, env, ee_env)
+	       end
+	     | _ => no_datatype ()
+       end
 
    | AbstypeDec x =>
        (let val isFree = 
