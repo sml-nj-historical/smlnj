@@ -21,6 +21,24 @@ Description:
 
 ----------------------------------------------------------------------
 Name: David MacQueen (dbm@cs.uchicago.edu)
+Date: 2012/1/19
+Revision: 3664, 3665
+Description:
+
+1) Fix for (gforge) bug #60
+   recalculate strictness for DEFtycs in functor bodies when functor
+   is applied  (Elaborator/modules/evalent.sml)
+
+2) Fix for (gforge) bug #77
+   separate ast representations for datatypes and datatype replications
+   in decs and specs (multiple files)
+
+3) set version to 110.74
+
+Details in NOTES/changes/dbm_2012_1.
+
+----------------------------------------------------------------------
+Name: David MacQueen (dbm@cs.uchicago.edu)
 Date: 2012/1/12
 Revision: 3648, 3652
 Description:

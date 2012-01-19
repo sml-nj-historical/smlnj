@@ -57,15 +57,28 @@
 SML/NJ 110.74 provides a number of new library features, including a
 new library for working with S-expressions, as well as many bug fixes. 
 </p>
+<p>
+Changes to the type checker support a preliminary version of enhanced
+type error messages including "culprits" indicating the origins of
+conflicting type constructors. This functionality is not fully
+debugged printing of enhanced error messages needs further refinement,
+so the additional information is not printed by default.
+</p>
 
 <h3>Details:</h3>
 
 <dl>
 
- <dt>CM:</dt>
+ <dt>Compiler:</dt>
  <dd>
    <ul>
       <li>
+     Added cuprit tracking (as described in "A simple and effective
+     method for assigning blame for type errors" at the 2010 ML
+     Workshop) to the type checker.  Further debugging and more refined
+     presentation of the cuprit info are needed, so this functionality
+     is currently off by default.  It is controled by the new flag
+     Control.Elab.showTypeErrorCulprits (default false).
       </li>
    </ul>
  </dd>
@@ -94,8 +107,10 @@ new library for working with S-expressions, as well as many bug fixes.
     for more details.
     </p>
     <table class="buglist">
+      <tr><td class="bugid">60</td><td>Incorrect type inference with functor taking/producing polymorphic type</td></tr>
       <tr><td class="bugid">74</td><td>Errors in ml-lpt manual</td></tr>
       <tr><td class="bugid">76</td><td>blastWrite crashes</td></tr>
+      <tr><td class="bugid">77</td><td>strange error message for syntax error</td></tr>
       <tr><td class="bugid">80</td><td>Installation fails on Linux 3.0</td></tr>
       <tr><td class="bugid">81</td><td>sml/nj does not work with Linux 3.0</td></tr>
       <tr><td class="bugid">83</td><td>No support for Kernel 3.x</td></tr>

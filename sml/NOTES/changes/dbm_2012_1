@@ -1,5 +1,11 @@
-svn commit -m "fix of lexer off-by-one bug, change of SourceMap interface, slight cleanup of match compiler, preliminary modification of type checker to add culprit tracking"
-Committed revision 3648. (therefore diff against r 3647 for changes)
+dbm changes committed 1/2012 (for 110.74)
+
+======================================================================
+revision 3648
+======================================================================
+1. change of SourceMap interface
+2. minor cleanup of match compiler
+3. preliminary modification of type checker to add culprit tracking
 
 cm/bootstrap/build-initdg.sml
    Source.newSource (deleted argument)
@@ -107,13 +113,49 @@ compiler/core.cm
    delete line for FLINT/trans/tempexpn.sml (unused pattern template code)
 
 ======================================================================
-2nd set of commits
+revision 3652
+======================================================================
 
-jura$ svn commit -m "added showTypeErrorCulprit flag in ElabControl (Elaborator/main/elabcontrol.s??)"
-Sending        compiler/Elaborator/basics/elabcontrol.sig
-Sending        compiler/Elaborator/basics/elabcontrol.sml
-Sending        compiler/Elaborator/types/typecheck.sml
-Sending        compiler/FLINT/MAP
-Deleting       compiler/FLINT/trans/tempexpn.sml
-Transmitting file data ....
-Committed revision 3652.
+compiler/Elaborator/basics/elabcontrol.sig
+compiler/Elaborator/basics/elabcontrol.sml
+compiler/Elaborator/types/typecheck.sml
+   added showTypeErrorCulprit flag in ElabControls (Elaborator/main/elabcontrol.s??)
+
+compiler/FLINT/MAP
+compiler/FLINT/trans/tempexpn.sml (deleted)
+   deleted unused code for pattern templates (FLINT/trans/tempexpn.sml)
+
+
+======================================================================
+revision 3664
+======================================================================
+
+config/version
+   bumped version number to 110.74
+
+
+======================================================================
+revision 3665
+======================================================================
+
+cm/smlfile/skel-cvt.sml
+compiler/Elaborator/print/ppast.sml
+compiler/Elaborator/print/ppast.sig
+compiler/Elaborator/elaborate/elabsig.sml
+compiler/Elaborator/elaborate/elabcore.sml
+compiler/Elaborator/elaborate/elabmod.sml
+compiler/Elaborator/elaborate/elabtype.sml
+compiler/Parse/ast/ast.sml
+compiler/Parse/ast/ast.sig
+compiler/Parse/parse/ml.grm
+   Fix for bug #77, separating datatype decs/specs from 
+   datatype replication decs/specs
+
+compiler/Elaborator/modules/evalent.sml
+   Fix for bug #60
+
+compiler/Elaborator/print/pptype.sml
+   Minor fix for ppTycon with internals set (printing strict vals)
+
+compiler/ElabData/types/types.sml
+   Comment edited
