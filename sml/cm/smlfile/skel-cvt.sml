@@ -261,6 +261,8 @@ structure SkelCvt :> SKELCVT = struct
       | spec_dl (ValSpec l, d) = dl_addS (foldl (ty_s o' #2) SS.empty l, d)
       | spec_dl (DataSpec { datatycs, withtycs }, d) =
 	dl_addS (foldl db_s (foldl tb_s SS.empty withtycs) datatycs, d)
+      | spec_dl (DataReplSpec(_,cn), d) =
+	dl_addS (s_addMP (cn, SS.empty), d)
       | spec_dl (ExceSpec l, d) = dl_addS (foldl (tyopt_s o' #2) SS.empty l, d)
       | spec_dl (ShareStrSpec l, d) = foldl dl_addP d l
       | spec_dl (ShareTycSpec l, d) = dl_addS (foldl s_addMP SS.empty l, d)

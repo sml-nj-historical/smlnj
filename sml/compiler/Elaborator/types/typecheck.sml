@@ -181,7 +181,7 @@ fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
 	     else (newline ppstrm; PP.string ppstrm("in "^kindname^":");
 		   break ppstrm {nsp=1,offset=2};
                    kind ppstrm (phrase,!printDepth));
-             newline ppstrm; ppModeErrorMsg ppstrm mode
+             ppModeErrorMsg ppstrm mode
 	 end));
        false)
 
@@ -610,7 +610,7 @@ in
 			    PP.string ppstrm "in expression:";
 			    break ppstrm {nsp=1,offset=2};
 			    ppExp ppstrm (exp,!printDepth);
-			    newline ppstrm; ppModeErrorMsg ppstrm mode));
+			    ppModeErrorMsg ppstrm mode));
 			 (exp,WILDCARDty))
 		   else (err region COMPLAIN
 			  (message("operator is not a function",mode))
@@ -621,7 +621,7 @@ in
 			     PP.string ppstrm "in expression:";
 			     break ppstrm {nsp=1,offset=2};
 			     ppExp ppstrm (exp,!printDepth);
-			     newline ppstrm; ppModeErrorMsg ppstrm mode));
+			     ppModeErrorMsg ppstrm mode));
 			 (exp,WILDCARDty))
 	       end
 	   end
