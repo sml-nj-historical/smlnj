@@ -2093,28 +2093,22 @@ struct
     
             | gen(BRANCH(P.cmp{oper, kind=P.INT 32}, vw, p, e, d), hp) = 
                 branch(p, signedCmp oper, vw, e, d, hp)
-	    | gen(BRANCH(P.fcmp{oper=P.fsgn,size=64}, [v], p, d, e), hp) =
-	      let val trueLab = newLabel ()
-		  val r = fregbind v
-		  val r' = newReg I32
-		  val rReg = M.REG(ity, r')
-	      in (emit(M.MV(ity, r', M.ADD(addrTy, C.allocptr, LI hp)));
+	    | gen(BRANCH(P.fcmp{oper=P.fsgn,size=64}, [v], p, d, e), hp) = let
+	        val trueLab = newLabel ()
+	        val r = fregbind v
+                val r' = newReg I32
+                val rReg = M.REG(ity, r')
+              (* address of the word that contains the sign bit *)
+                val addr = if MachineSpec.bigEndian
+                      then M.ADD(addrTy, C.allocptr, LI hp)
+                      else M.ADD(pty, rReg, LI((fty - pty) div 8))
+                in
+                  emit(M.MV(ity, r', M.ADD(addrTy, C.allocptr, LI hp)));
 	      	  emit(M.FSTORE(fty,rReg,r,R.memory));
-		  (if MachineSpec.bigEndian
-		 		  then (* Big-endian/PPC code *)
-			(emit(M.BCC(M.CMP(ity, M.GTU, 
-					 M.SRL(ity, M.LOAD(ity, rReg, R.memory),
-			  		       LW 0w31), zero), trueLab)))
-		  else (* x86 signbit code *)
-			(emit(M.BCC(M.CMP(ity, M.GT,
-		 			 M.SRL(ity, M.LOAD(ity,
-		 					   M.ADD(pty,rReg, 
-		 						 LI((fty -pty) div 8)), 
-		 			                   R.memory),
-		 			       LW 0w31), zero), trueLab))));
+                  emit(M.BCC(M.CMP(ity, M.LT, M.LOAD(ity, addr, R.memory), zero), trueLab));
 		  genCont(e, hp);
-		  genlab(trueLab, d, hp))
-	      end
+		  genlab(trueLab, d, hp)
+                end
             | gen(BRANCH(P.fcmp{oper,size=64}, [v,w], p, d, e), hp) =
               let val trueLab = newLabel ()
                   val cmp     = real64Cmp(oper, v, w)

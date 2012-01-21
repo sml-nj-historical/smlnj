@@ -19,7 +19,19 @@ Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: yyyy/mm/dd
 Description:
 
+----------------------------------------------------------------------
+Name: David MacQueen (dbm@cs.uchicago.edu)
+Date: 2012/01/20
+Description:
+
 *************************** Version 110.74 ***************************
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/01/20
+Description:
+
+Fixed implementation of Real.signBit on little-endian machines.
 
 ----------------------------------------------------------------------
 Name: David MacQueen (dbm@cs.uchicago.edu)
