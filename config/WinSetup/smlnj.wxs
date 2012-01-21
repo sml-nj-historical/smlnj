@@ -63,12 +63,10 @@
 		<Directory Id='heap' Name='.hea' LongName='.heap'>
 		  <Component Id='SMLNJBinHeap' Guid='2ba5887e-1200-4923-adc6-ce6ff8e35e3e' DiskId='1'>
                     <File Id='mlantlr' Name='antlr.x86' LongName='ml-antlr.x86-win32' src='bin\.heap\ml-antlr.x86-win32' />
-                    <File Id='mlburg' Name='burg.x86' LongName='ml-burg.x86-win32' src='bin\.heap\ml-burg.x86-win32' />
                     <File Id='mllex' Name='lex.x86' LongName='ml-lex.x86-win32' src='bin\.heap\ml-lex.x86-win32' />
                     <File Id='mlnlffigen' Name='ffigen.x86' LongName='ml-nlffigen.x86-win32' src='bin\.heap\ml-nlffigen.x86-win32' />
                     <File Id='mlulex' Name='ulex.x86' LongName='ml-ulex.x86-win32' src='bin\.heap\ml-ulex.x86-win32' />
                     <File Id='mlyacc' Name='yacc.x86' LongName='ml-yacc.x86-win32' src='bin\.heap\ml-yacc.x86-win32' />
-                    <File Id='nowhere' Name='nowhere.x86' LongName='nowhere.x86-win32' src='bin\.heap\nowhere.x86-win32' />
                     <File Id='sml' Name='sml.x86' LongName='sml.x86-win32' src='bin\.heap\sml.x86-win32' />
 		  </Component>
 		</Directory>
@@ -87,12 +85,10 @@
                   <File Id='linksmlbin' Name='link-sml.bat' src='bin\link-sml.bat' />
                   <File Id='mlantlrbin' Name='antlr.bat' LongName='ml-antlr.bat' src='bin\ml-antlr.bat' />
                   <File Id='mlbuildbin' Name='ml-build.bat' src='bin\ml-build.bat' />
-                  <File Id='mlburgbin' Name='ml-burg.bat' src='bin\ml-burg.bat' />
                   <File Id='mllexbin' Name='ml-lex.bat' src='bin\ml-lex.bat' />
                   <File Id='mlnlffigenbin' Name='ffigen.bat' LongName='ml-nlffigen.bat' src='bin\ml-nlffigen.bat' />
                   <File Id='mlulexbin' Name='ml-ulex.bat' src='bin\ml-ulex.bat' />
                   <File Id='mlyaccbin' Name='ml-yacc.bat' src='bin\ml-yacc.bat' />
-                  <File Id='nowherebin' Name='nowhere.bat' src='bin\nowhere.bat' />
                   <File Id='smlbat' Name='sml.bat' src='bin\sml.bat' />
 		</Component>
 	      </Directory>
