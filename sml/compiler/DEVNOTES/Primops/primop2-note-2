@@ -1,0 +1,231 @@
+These notes are my attempt to figure out what appears to be a very kludgy
+treatement of how primops interact with the type checker.  I want to define
+what the basic problem is, understand what the current code is doing to deal
+with the problem, and then either eliminate the problem or find a more elegant
+solution.
+
+1. PrimOp dependency in type checker
+
+The isValue function in TypesUtil needs to check for the CAST primop, which
+it does using InlInfo.pureInfo (badly named function).  Thus
+
+	TypeCheck --> TypesUtil --> InlInfo --> PrimOp
+
+Before, this was factored out by making TypeCheck into a functor TypeCheckFn
+which was then applied (in Semant/types/typecheck.sml) to InlInfo.pureInfo.
+
+The other dependency on ii2ty is eliminated by having VARexp carry the
+whole instantiated type rather than the list of generic meta-type-variables
+(with their instantiations).
+
+
+2. Role of boundtvs
+
+"boundtvs" is a field of the VB (variable binding) record, containing
+a list of tyvars.
+
+Where is boundtvs set?
+
+Most VB constructions throughout the front end (e.g. all in ElabCore)
+set boundtvs to [] or pass a value of boundtvs through
+(Elaborator/elaborate/elabutil.sml).  There are 3 places where it is
+potentially set to a non-nil list:
+
+(1) TypeCheck/decType0 (Elaborator/types/typecheck.sml).
+In the VALdec case, variable bindings are constructed where boundtvs
+is the set of meta tyvars that are generalized by generalizePat
+applied to the pattern.
+
+[From the way generalizePat is written, there can be only one variable
+in the pattern whose type is polymorphic (i.e. has tyvars generalized).]
+
+
+(2) SigMatch/matchElems (Elaborator/modules/sigmatch.sml).
+In the cases for VALspec/VALspec, and VALspec/CONspec. Here the value for
+boundtvs (btvs) is computed by SigMatch/matchTypes, which in turn calls
+SigMatch/eqvTnspTy after checking that the spec type and actual type are
+compatible.
+
+eqvTnspTy (mnemonic for what?) creates a generic instantiation of the
+actual type (actInst, with generic meta-tyvars actInstTvs), a separate
+generic instantiation (specInst, specInstTvs) of the specty type,
+which may be less polymorphic than actualty, and then unifies actInst
+and specInst.  This unification may cause tyvars in actInstTvs to be
+instantiated.  Then specInstTvs is transformed by TU.tyvarType to
+produce the second result, boundTvs.
+
+TU.tyvarType turns type expressions that represent meta type variables
+into the tyvars that they contain, stripping off VARtys and following
+instantiations.  Note that instantiatePoly returns a list of type
+_expressions_ (VARty's) as its second result.
+
+    fun eqvTnspTy (specty: ty, actualty: ty) : (ty * tyvar list) = 
+      let val actualty = TU.prune actualty
+	  val (actInst, actInstTvs) = TU.instantiatePoly actualty
+	  val (specInst, specInstTvs) = TU.instantiatePoly specty
+	  val _ = ((Unify.unifyTy(actInst, specInst))
+		   handle _ => bug "unexpected types in eqvTnspTy")
+	  val boundTvs = map TU.tyvarType specInstTvs
+       in (actInst, boundTvs)
+      end
+
+The unification will cause some tyvars in actInstTvs to be
+instantiated to non-type-variable type terms (subterms of specInst),
+where specty is more specific than actualty). Where corresponding
+subterms are both type variables, the specty tyvar (a member of
+specInstTvs) will be instantiated to the corresponding actualty type
+variable (a member of actInstTvs) because of the right-to-left
+instantiation bias in Unify/unifyTyvars [Elaborator/types/unify.sml].
+
+So the resultant type term actInst may contain (uninstantiated) tyvars
+in specInstTvs as well as some (uninstantiated) tyvars in actInstTvs.
+For the latter tyvars, the matching tyvar in specInstTvs will have
+been instantiated to it.  So the specInstTvs will contain all the
+tyvars occuring in actInst, some of which will be uninstantiated,
+while others will be instantiated to tyvars in actInstTvs.  Applying
+TU.tyvarType will strip off the instantiations, so that the resulting
+boundtvs will contain a mixture of the tyvars from actInstTvs and
+specInstTvs.
+
+Example:
+
+actualty  = 'a * 'b -> 'b -> 'a
+specty    = 'c list * 'c -> 'c -> 'c list
+actInst   = 'X * 'Y -> 'Y -> 'X
+actInstTvs = ['X, 'Y]
+specInst  = 'Z list * 'Z -> 'Z -> 'Z list
+specInstTvs = ['Z]
+-------------------
+after unification:
+-------------------
+actInst   = {{'Y/'Z} list/'X} * 'Y -> {{'Y/'Z} list/'X}
+boundtvs  = [tyvar('Y)]
+
+where {ty/'X} represents the meta type variable 'X instantiated
+to type ty.
+
+If unifyTyvars had a left-to-right instantiation bias instead of a right-to-left
+bias, the unification would instantiate all the tyvars in actInstTvs and none of the
+tyvars in specInstTvs, so the resultant type actInst will be equivalent to specInst
+-- note that in this special case unification will not have to adjust any type
+variable attributes, since all depths will be infinity and the consistency of
+equality properties will already have been guaranteed by the previous call of
+TU.compareTypes in matchTypes.
+
+In this case, eqvTnspTy could just return specInst and specInstTvs without bothering
+to perform the useless unification.  It is not clear why this would not suffice anyway,
+i.e. eqvTnspTy could simply be replaced by TU.instantiatePoly applied to specty,
+with tyvarType then mapped over the resulting specInstTvs. The simplified
+version of eqvTnspTy would be
+
+    fun eqvTnspTy (specty: ty) : (ty * tyvar list) = 
+      let val (specInst, specInstTvs) = TU.instantiatePoly specty
+       in (specInst, map TU.tyvarType specInstTvs)
+      end
+
+and the actualty argument would not be needed.
+
+Maybe the interaction is more complicated if, for instance, specty
+contains type abbreviations that are not used in the corresponding
+places in actualty?  Unification would then cause these type
+abbreviations to be expanded. But how could this matter?
+
+
+(3) SigMatch/packElems in the VALspec case.
+Here the value btvs for boundtvs is calculated by SigMatch/absEqvTy.
+absEqvTy is similar to eqvTnspTy, in that it generically instantiations
+the actual and spec types and then unifies them.
+
+fun absEqvTy (specty: ty, actualty: ty) : (ty * tyvar list * ty * bool) =
+  let val actualty = TU.prune actualty
+      val specty = TU.prune specty
+      val (actInst, actInstTvs) = TU.instantiatePoly actualty
+      val (specInst, specInstTvs) = TU.instantiatePoly specty
+      val _ = ListPair.app Unify.unifyTy (actInstTvs, specInstTvs)
+
+      val res = (Unify.unifyTy(actInst, specInst); true) handle _ => false
+      (* ???? what is this doing? *)
+
+      val boundTvs = map TU.tyvarType actInstTvs
+      (* should I use specInstTvs here instead, why actInstTvs ? *)
+
+   in (actInst, boundtvs, specInst, res)
+  end
+
+This function is defined in a very obscure way, and returns both the
+instantiated actualTy (actInst) and instantiated specTy (specInst),
+after attempting to unify them.  But first, _some_ of the type variables
+of actInstTvs and specInstTvs are identified by the ListPair.app unifyTy
+line (note that these two lists have different lengths, and it is not clear
+why identifying initial segments of these two lists of type variables makes
+sense.
+
+If the unification is successful, then actInst and specInst are essentially
+the same type.  If the unification fails, then we have two inequivalent, but
+partially unified type expressions.  What is going on here?
+
+
+3. VARexp type checking hack for primops.
+
+Here is the code for the VARexp case in expType (Elaborator/types/typecheck.sml):
+
+     case exp
+      of VARexp(r as ref(VALvar{typ, info, ...}), _) =>
+	 (case ii2ty info of
+	      SOME st =>
+              let val (sty, insts) = instantiatePoly(st)
+		  val (nty, _) = instantiatePoly(!typ)
+              in
+		  unifyTy(sty, nty) handle _ => ();  (* ??? *)
+		  (VARexp(r, insts), sty)
+              end
+	    | NONE =>
+	      let val (ty, insts) = instantiatePoly(!typ)
+	      in (VARexp(r, insts), ty)
+	      end)
+
+This uses ii2ty (passed as a parameter to the TypeCheckingFn, but uniquely
+defined to be InlInfo.pureInfo in Semant/types/typecheck.sml) to extract 
+a type from the info field, if possible (i.e. when the VALvar is associated
+with a primop).
+
+The reason for this use of unification seems to be that there are some primops
+(e.g. length) that are used for several different operations (therefore
+different VALvars), and the VALvar types are speciallized instances of a
+more polymorphic type associtated with the primop (in the info field).
+
+
+What is the ultimate consumer of the boundtv field?
+
+
+Relevant Files
+
+  Semant/statenv/prim.sml
+      define static env primEnv, containing primitive types (PrimTypes), 
+      primops (InLine), and unrolled lists (UnrolledList)
+      defs: PRIM_ENV, PrimEnv: PRIM_ENV  
+
+  ElabData/basics/core-ptnum.sml
+      core prim-type numbers (essentially the same as Elaborator/basics/ptnum.sml
+      except only language-standard types are included) 
+      see: Elaborator/basics/ptnum.sml
+      defs: CORE_PRIM_TYC_NUM, CorePrimTycNum
+
+  Elaborator/basics/ptnum.sml
+      prim type numbers, augmenting ElabData/basics/core-ptnum.sml with
+      implementation dependent types
+      see: ElabData/basics/core-ptnum.sml
+      defs: PRIM_TYC_NUM, PrimTycNum: PRIM_TYC_NUM
+
+ primitive types
+  CorePrimTycNum (ElabData/basics/core-ptnum.sml)
+  PrimTycNum     (Elaborator/basics/ptnum.sml)
+  CoreBasicTypes (ElabData/types/core-basictypes.sml)
+  BasicTypes     (Elaborator/types/basictypes.sig,sml)
+  PrimEnv        (Semant/statenv/prim.sml)
+
+ primop
+  PrimOp           (FLINT/kernel/primop.sml)
+  PrimEnv          (Semant/statenv/prim.sml)
+  InLineT	   (../system/init/built-in.sml)
+

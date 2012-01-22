@@ -1,0 +1,25 @@
+Installation instructions for SML/NJ under Cygwin 
+-------------------------------------------------
+
+1. Choose a directory to install SML/NJ.  Note that currently 
+   SML/NJ *must* be installed in a directory mounted in binmode.
+   Installation will fail if you try to install it in a directory
+   mounted in textmode.  See the manpage for 'mount' for details.
+
+2. Set SMLNJ_CYGWIN_RUNTIME=1 and export the environment variable.
+   E.g.,
+
+       SMLNJ_CYGWIN_RUNTIME=1
+       export SMLNJ_CYGWIN_RUNTIME
+
+   in Bourne sh and variants.  Or
+
+       setenv SMLNJ_CYGWIN_RUNTIME 1
+
+   in csh and variants.      
+    
+   When this is set SML/NJ will select the Cygwin runtime instead of
+   the default Windows runtime.
+
+3. Simply treat Cygwin as a Unix, and follow the usual installation
+   instructions.  
