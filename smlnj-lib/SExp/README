@@ -1,0 +1,42 @@
+This library supports the reading and writing of structured data using
+the S-expressions.  It is a work in progress, and does not fully conform with
+any formal S-exp specification.  A few notes:
+
+- The negative sign is either "-" or "~"
+
+- Lists may be delimited by matched pairs of () [] or {}, nested freely.
+
+- List items are separated with [,;\ \t\n\r].  There are two other methods that
+  currently happen to work but are not supported and are _strongly_ discouraged:
+
+  1. to use other characters (e.g., grave `) as delimiters,
+  2. to run in unambiguous sequences of tokens (e.g., (1"2") or (0x))
+
+- The format of a floating point number is
+    [+-]?[0-9]+\.[0-9]+([eE][0-9]+)?
+  Notably, "1." and ".1" are invalid and "1" is an integer---floats must have a
+  dot and it must have digits on both sides.
+
+- The entire input must parse to a single S-expression.
+
+- Symbols are either 
+    '[^\ \t\n\r]+
+  or a string where the first has only characters from
+    [A-Z] | [a-z] | [-\^_/~!@$%&*\\:?.<>|+=']
+  and the rest can be any of the previous characters or a digit 0-9
+
+  The difference between symbols and strings is that symbols are represented as
+  Atom.atom types, so equality comparisons are more efficient.
+
+  Note that the leading-single-quote form of a symbol means that strings MUST
+  be double-quoted.  The input 'foo' would be parsed as a symbol called foo'.
+
+- Please do not use # as a leading character for a symbol, as I may later add
+  support for individual characters in the format  #"0xff".
+
+- Integers may be specified in decimal without any prefix, or in hexadecimal
+  with the prefix "0x".  In hex, the value is assumed to be unsigned, so -255
+  should be written "-0xff" rather than "0x-ff".  
+  
+  N.B. this means that printing the bytes of two's-complement signed integers
+  does not parse correctly: the output of `printf("%x", -1)` parses to INT_MIN.
