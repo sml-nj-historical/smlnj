@@ -63,6 +63,7 @@
 		<Directory Id='heap' Name='.hea' LongName='.heap'>
 		  <Component Id='SMLNJBinHeap' Guid='2ba5887e-1200-4923-adc6-ce6ff8e35e3e' DiskId='1'>
                     <File Id='mlantlr' Name='antlr.x86' LongName='ml-antlr.x86-win32' src='bin\.heap\ml-antlr.x86-win32' />
+                    <File Id='mlburg' Name='burg.x86' LongName='ml-burg.x86-win32' src='bin\.heap\ml-burg.x86-win32' />
                     <File Id='mllex' Name='lex.x86' LongName='ml-lex.x86-win32' src='bin\.heap\ml-lex.x86-win32' />
                     <File Id='mlnlffigen' Name='ffigen.x86' LongName='ml-nlffigen.x86-win32' src='bin\.heap\ml-nlffigen.x86-win32' />
                     <File Id='mlulex' Name='ulex.x86' LongName='ml-ulex.x86-win32' src='bin\.heap\ml-ulex.x86-win32' />
@@ -83,6 +84,7 @@
 		  <Environment Id='SMLNJPathExtension' Action='set' Name='PATH' Part='last' Permanent='no' System='yes' Value='[SMLNJBinFolder]' />
 		  <Environment Id='SMLNJHome' Action='set' Name='SMLNJ_HOME' Permanent='no' System='yes' Value='[INSTALLDIR]' />
                   <File Id='linksmlbin' Name='link-sml.bat' src='bin\link-sml.bat' />
+                  <File Id='mlburgbin' Name='ml-burg.bat' src='bin\ml-burg.bat' />
                   <File Id='mlantlrbin' Name='antlr.bat' LongName='ml-antlr.bat' src='bin\ml-antlr.bat' />
                   <File Id='mlbuildbin' Name='ml-build.bat' src='bin\ml-build.bat' />
                   <File Id='mllexbin' Name='ml-lex.bat' src='bin\ml-lex.bat' />
