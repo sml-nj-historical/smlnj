@@ -91,7 +91,7 @@ request ml-lpt-lib
 
 # build ML-Burg
 #
-#request ml-burg
+request ml-burg
 
 # pre-compile and install the remaining components of the SML/NJ library
 # (everything except smlnj-lib.cm, aka Util, itself)
