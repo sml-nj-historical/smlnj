@@ -19,6 +19,15 @@ Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: yyyy/mm/dd
 Description:
 
+
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/02/05
+Description:
+Fixed bug #88.  The check for valid arcs on Unix systems now allows
+any character other than slash or nul.
+
 ----------------------------------------------------------------------
 Name: David MacQueen (dbm@cs.uchicago.edu)
 Date: 2012/01/20
