@@ -28,7 +28,7 @@ structure OS_Path = OS_PathFn (
       val parentArc  = ".."
       val currentArc = "."
 
-      (* / should also be disabled on windows, but they it is used
+      (* / should also be disabled on windows, but it is used
        * within CM, so we need to allow it.
        *)
       val validArc = CharVector.all (Char.notContains "\\:*?\"<>|")
