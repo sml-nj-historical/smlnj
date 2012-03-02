@@ -264,4 +264,14 @@ If you are running Win32, see WININSTALL.
    to acquire the 32-bit emulation libraries for your particular Linux
    distribution.
 
+   For Debian and Ubuntu, you will need three packages: gcc-multilib, 
+   g++-multilib, and ia32-libs. These can be installed using apt-get:
+
+      apt-get install gcc-multilib g++-multilib ia32-libs
+
+   For Red Hat Fedora (at least Fedora 16), you will need to install
+   glibc-devel(i686):
+
+      yum install glibc-devel.i686
+
 ----------------------------------------------------------------------------
