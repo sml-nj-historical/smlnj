@@ -274,4 +274,11 @@ If you are running Win32, see WININSTALL.
 
       yum install glibc-devel.i686
 
+   For Red Hat Enterprise Linux (or CentOS) 6.2, you may also have to
+   install the rpm package libgcc-multilib, e.g.:
+
+      rpm -ivh libgcc-multilib-4.4.2-5.x86_64.rpm
+
+   where the libgcc-multilib package is downloaded from the rpmseek web site.
+
 ----------------------------------------------------------------------------
