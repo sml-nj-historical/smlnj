@@ -2,6 +2,14 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2012-03-09]
+	Modified PathUtil module to handle the case where the filename is an
+	absolute path.
+
+--------------------------------------------------------------------------------
+SML/NJ 110.73
+-------------------
+
 [2011-11-25]
 	Added hash-table-based implementation of sets (HASH_SET signature and
 	HashSetFn functor).
