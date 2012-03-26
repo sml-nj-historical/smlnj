@@ -366,6 +366,15 @@ structure IntBinarySet :> ORD_SET where type Key.ord_key = Int.int =
             concat(difference(l2,l),difference(r2,r))
           end
 
+    fun subtract (s, item) = difference (s, singleton item)
+    fun subtract' (item, s) = subtract (s, item)
+
+    fun subtractList (l, items) = let
+	  val items' = List.foldl (fn (x, set) => add(set, x)) E items
+	  in
+	    difference (l, items')
+	  end
+
     fun map f set = let
 	  fun map'(acc, E) = acc
 	    | map'(acc, T{elt,left,right,...}) =

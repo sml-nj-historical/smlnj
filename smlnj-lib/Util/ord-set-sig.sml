@@ -24,10 +24,17 @@ signature ORD_SET =
 
     val add  : set * item -> set
     val add' : (item * set) -> set
-	(* Insert an item. *)
+	(* Add an item. *)
 
     val addList : set * item list -> set
-	(* Insert items from list. *)
+	(* Add a list of items. *)
+
+    val subtract  : set * item -> set
+    val subtract' : (item * set) -> set
+	(* Subtract an item from a set; has no effect if the item is not in the set *)
+
+    val subtractList : set * item list -> set
+	(* Subtract a list of items from the set. *)
 
     val delete : set * item -> set
 	(* Remove an item. Raise NotFound if not found. *)

@@ -2,6 +2,10 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2012-03-26]
+	Added subtract, subtract', and subtractList functions to ORD_SET
+	interface and implementations.
+
 [2012-03-09]
 	Modified PathUtil module to handle the case where the filename is an
 	absolute path.

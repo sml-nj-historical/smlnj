@@ -342,6 +342,15 @@ structure WordRedBlackSet :> ORD_SET where type Key.ord_key = word =
 	    SET(n, linkAll result)
 	  end
 
+    fun subtract (s, item) = difference (s, singleton item)
+    fun subtract' (item, s) = subtract (s, item)
+
+    fun subtractList (l, items) = let
+	  val items' = List.foldl (fn (x, set) => add(set, x)) (SET(0, E)) items
+	  in
+	    difference (l, items')
+	  end
+
     fun app f = let
 	  fun appf E = ()
 	    | appf (T(_, a, x, b)) = (appf a; f x; appf b)
