@@ -105,6 +105,7 @@ clean:
 		ml-sizes.h mlstate-offsets.h bc-instr-def.h \
 		system-signals.h unix-sigtbl.c \
 		*.o prim.s primops.s
+	rm -r -f *.dSYM
 	(cd $(MEM_DIR); $(MAKE) MAKE="$(MAKE)" clean)
 	(cd $(CLIB_DIR); $(MAKE) MAKE="$(MAKE)" clean)
 	(cd $(GC_DIR); $(MAKE) MAKE="$(MAKE)" clean)
