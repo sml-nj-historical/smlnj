@@ -38,6 +38,7 @@ structure List : LIST =
     val tl = tl
     val length = length
     val rev = rev
+    val revAppend = revAppend
     val op @ = op @
     val foldr = foldr
     val foldl = foldl
@@ -78,9 +79,6 @@ structure List : LIST =
 
     fun concat [] = []
       | concat (l::r) = l @ concat r
-
-    fun revAppend ([],l) = l
-      | revAppend (h::t,l) = revAppend(t,h::l)
 
     fun mapPartial pred l = let
           fun mapp ([], l) = rev l

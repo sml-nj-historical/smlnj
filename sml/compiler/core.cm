@@ -259,7 +259,6 @@ FLINT/reps/wrapping.sml
 FLINT/trans/matchcomp.sml
 FLINT/trans/mccommon.sml
 FLINT/trans/pequal.sml
-FLINT/trans/tempexpn.sml
 FLINT/trans/primopmap.sml
 FLINT/trans/translate.sml
 FLINT/trans/transtypes.sml

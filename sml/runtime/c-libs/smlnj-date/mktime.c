@@ -8,6 +8,7 @@
 #include "ml-c.h"
 #include "ml-objects.h"
 #include "cfun-proto-list.h"
+#include <string.h>
 
 /* _ml_Date_mktime : (int * int * int * int * int * int * int * int * int)
  *	-> Int32.int

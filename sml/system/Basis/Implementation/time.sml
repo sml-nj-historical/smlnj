@@ -17,7 +17,7 @@ structure TimeImp : sig
     val fromTime_t : SMLBasis.Time_t -> time
     val toTime_t : time -> SMLBasis.Time_t
 
-end = struct
+  end = struct
 
     structure PB = PreBasis
     structure LInt = LargeIntImp

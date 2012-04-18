@@ -11,10 +11,6 @@ local structure EM = ErrorMsg
 
 in
 
-datatype simp 
-  = VARsimp of var 
-  | RECORDsimp of (label * simp) list
-
 type dconinfo = datacon * tyvar list
 
 datatype pcon 

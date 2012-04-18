@@ -21,7 +21,7 @@ ml_val_t _ml_Sock_ctlRCVBUF (ml_state_t *msp, ml_val_t arg)
     int		sz, sts;
 
     if (ctl == OPTION_NONE) {
-	int	optSz = sizeof(int);
+	socklen_t	optSz = sizeof(int);
 	sts = getsockopt (sock, SOL_SOCKET, SO_RCVBUF, (sockoptval_t)&sz, &optSz);
 	ASSERT((sts < 0) || (optSz == sizeof(int)));
     }

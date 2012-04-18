@@ -27,7 +27,7 @@ ml_val_t _ml_Sock_ctlLINGER (ml_state_t *msp, ml_val_t arg)
     int		    sts;
 
     if (ctl == OPTION_NONE) {
-	int	optSz = sizeof(struct linger);
+	socklen_t	optSz = sizeof(struct linger);
 	sts = getsockopt (sock, SOL_SOCKET, SO_LINGER, (sockoptval_t)&optVal, &optSz);
 	ASSERT((sts < 0) || (optSz == sizeof(struct linger)));
     }

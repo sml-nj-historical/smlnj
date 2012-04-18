@@ -120,8 +120,18 @@ ml_val_t _ml_win32_PS_wait_for_single_object(ml_state_t *msp, ml_val_t arg)
  */
 ml_val_t _ml_win32_PS_system(ml_state_t *msp, ml_val_t arg)
 {
-  int ret = system(STR_MLtoC(arg));
+  char *unquoted = STR_MLtoC(arg);
+  int unquotedlen = strlen(unquoted);
+  char *quoted = (char*)malloc((unquotedlen+2)*sizeof(char));
+  int ret;
   ml_val_t res;
+  
+  quoted[0] = '\"';
+  strcpy(&(quoted[1]), unquoted);
+  quoted[unquotedlen+1] = '\"';
+  quoted[unquotedlen+2] = (char)0;
+  ret = system(quoted);
+  free(quoted);
 
   WORD_ALLOC(msp, res, (Word_t)ret);
   return res;

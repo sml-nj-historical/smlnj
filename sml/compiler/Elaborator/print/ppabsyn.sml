@@ -62,10 +62,10 @@ fun strongerR(INfix(_,m),INfix(n,_)) = n > m
 fun prpos(ppstrm: PP.stream,
           source: Source.inputSource, charpos: int) =
     if (!lineprint) then
-      let val (file:string,line:int,pos:int) = Source.filepos source charpos
+      let val {line,column,...} = Source.filepos source charpos
        in PU.ppi ppstrm line;
 	  PU.pps ppstrm ".";
-	  PU.ppi ppstrm pos
+	  PU.ppi ppstrm column
       end
     else PU.ppi ppstrm charpos
 
@@ -177,6 +177,7 @@ fun ppPat env ppstrm =
 	      break ppstrm {nsp=1,offset=2};
 	      ppType env ppstrm t;
 	      closeBox ())
+          | ppPat' (MARKpat(p,region), d) = ppPat' (p,d)
 	  | ppPat' _ = bug "ppPat'"
      in ppPat'
     end
@@ -186,7 +187,9 @@ and ppDconPat(env,ppstrm) =
 	fun lpcond(atom) = if atom then pps "(" else ()
 	fun rpcond(atom) = if atom then pps ")" else ()
 	fun ppDconPat'(_,_,_,0) = pps "<pat>"
-	  | ppDconPat'(CONpat(DATACON{name,...},_),l:fixity,r:fixity,_) =
+	  | ppDconPat'(MARKpat(p,_),l:fixity,r:fixity,d:int) =
+              ppDconPat'(p,l,r,d)
+	  | ppDconPat'(CONpat(DATACON{name,...},_),l,r,_) =
 	      ppSym ppstrm name
 	  | ppDconPat'(CONSTRAINTpat(p,t),l,r,d) =
 	     (openHOVBox 0;

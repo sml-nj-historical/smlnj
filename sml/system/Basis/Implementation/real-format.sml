@@ -126,9 +126,10 @@ structure RealFormat : sig
 	      then {sign = "~", mantissa = rtoa(decompose(~r, 0, pf))}
 	    else if (r > 0.0)
 	      then {sign="", mantissa = rtoa(decompose(r, 0, pf))}
-	    else if (prec = 0)
-	      then {sign="", mantissa = "0"}
-	      else {sign="", mantissa = zeroRPad("0.", I.+(prec, 2))}
+	    else {
+		sign = if (InlineT.Real64.signBit r) then "~" else "",
+		mantissa = if (prec = 0) then "0" else zeroRPad("0.", I.+(prec, 2))
+	      }
 	  end (* realFFormat *)
 
     fun realEFormat (r, prec) = let
@@ -150,9 +151,11 @@ structure RealFormat : sig
 	      then rtoa ("~", decompose(~r, 0, pf))
 	    else if (r > 0.0)
 	      then rtoa ("", decompose(r, 0, pf))
-	    else if (prec = 0)
-	      then {sign = "", mantissa = "0", exp = 0}
-	      else {sign = "", mantissa = zeroRPad("0.", I.+(prec, 2)), exp = 0}
+	    else {
+		sign = if (InlineT.Real64.signBit r) then "~" else "",
+		mantissa = if (prec = 0) then "0" else zeroRPad("0.", I.+(prec, 2)),
+		exp = 0
+	      }
 	  end (* realEFormat *)
 
     fun realGFormat (r, prec) = let
@@ -192,6 +195,8 @@ structure RealFormat : sig
 	      then rtoa("~", decompose(~r, 0, pf))
 	    else if (r > 0.0)
 	      then rtoa("", decompose(r, 0, pf))
+	    else if (InlineT.Real64.signBit r)
+	      then {sign="~", whole="0", frac="", exp=NONE}
 	      else {sign="", whole="0", frac="", exp=NONE}
 	  end (* realGFormat *)
 
@@ -233,7 +238,7 @@ structure RealFormat : sig
 	  end
         else fmtInfNan x
 
-      fun realToGenStr prec r = 
+    fun realToGenStr prec r = 
 	if ~infinity < r andalso r < infinity
 	then let
   	  val {sign, whole, frac, exp} = realGFormat(r, prec)

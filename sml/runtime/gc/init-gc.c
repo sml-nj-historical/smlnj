@@ -79,15 +79,18 @@ heap_params_t *ParseHeapParams (char **argv)
 	if (isRuntimeOption(arg, option, &optionArg)) {
 	    if (MATCH("alloc")) { /* set allocation size */
 		CHECK("alloc");
-		if ((params->allocSz = GetSzOption(ONE_K, optionArg)) < 0) {
+		int allocSz = GetSzOption(ONE_K, optionArg);
+		if (allocSz < 0) {
 		    errFlg = TRUE;
 		    Error ("bad argument for \"@SMLalloc\" option\n");
 		}
-		if (params->allocSz < MIN_ALLOC_SZB) {
+		if (allocSz < MIN_ALLOC_SZB) {
 		    Error ("argument for \"@SMLalloc\" option too small; using %dk\n",
 			MIN_ALLOC_SZB/ONE_K);
 		    params->allocSz = MIN_ALLOC_SZB;
 		}
+		else
+		    params->allocSz = allocSz;
 	    }
 	    else if (MATCH("ngens")) {
 		CHECK("ngens");

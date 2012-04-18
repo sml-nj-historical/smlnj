@@ -82,7 +82,13 @@ SayDebug ("Flip generation %d: (%d GCs)\n", i+1, numGCs);
 		    thisMinSz = 0;
 	    }
 	    minSz = prevOldSz[j] + thisMinSz + ap->reqSizeB;
-	    if (j == PAIR_INDX)
+            if (j == STRING_INDX)
+              /* Strings can require aligment fixups, which in the worst
+               * case are 1/3 the size of the object. Round up the minimum
+               * size to avoid an overrun on the end of TO space.
+               */
+                minSz *= 1.33;
+	    else if (j == PAIR_INDX)
 	      /* first slot isn't used, but may need the space for poly = */
 		minSz += 2*WORD_SZB;
 	    minSize[j] = minSz;

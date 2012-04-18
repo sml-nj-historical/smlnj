@@ -53,6 +53,7 @@ local structure EM = ErrorMsg
     *)
 in
 
+fun cMARKpat (p, r) = if !ElabControl.markabsyn then MARKpat (p, r) else p
 fun cMARKexp (e, r) = if !ElabControl.markabsyn then MARKexp (e, r) else e
 fun cMARKdec (d, r) = if !ElabControl.markabsyn then MARKdec (d, r) else d
 
@@ -381,6 +382,8 @@ let
 				     ORpat(doPat' p1, doPat checkFn p2)
 				 | doPat' (VECTORpat(pats, ty)) =
 				     VECTORpat(map doPat' pats, ty)
+				 | doPat' (MARKpat(pat, region)) =
+				     doPat' pat  (*?? *)
 				 | doPat' pat = pat
 			      in doPat'
 			     end
@@ -427,7 +430,7 @@ let
 	   end
        | MarkPat (pat,region) =>
 	   let val (p,tv) = elabPat(pat, env, region)
-	    in (p,tv)
+	    in (cMARKpat(p,region),tv)
 	   end
        | FlatAppPat pats => elabPat(patParse(pats,env,error), env, region) 
 
@@ -645,50 +648,34 @@ let
 		  ET.elabTYPEdec(tbs,env,(* EU.TOP,??? *) rpath,region,compInfo)
 	       in noTyvars(dec', env')
 	      end
-	   | DatatypeDec(x as {datatycs,withtycs}) => 
-	     (case datatycs
-		of (Db{rhs=(Constrs _), ...}) :: _ =>
-		     let val (dtycs, wtycs, _, env') =
-			 ET.elabDATATYPEdec(x,env,[],EE.empty,isFree,
-                                            rpath,region,compInfo)
-		      in noTyvars(DATATYPEdec{datatycs=dtycs,withtycs=wtycs}, env')
-		     end
-	         | (Db{tyc=name,rhs=Repl syms,tyvars=nil,lazyp=false}::nil) =>
-		     (* LAZY: not allowing "datatype lazy t = datatype t'" *)
-		     (* BUG: what to do if rhs is lazy "datatype"? (DBM) *)
-		     (case withtycs
-			of nil =>
-			    (case LU.lookTyc(env, SP.SPATH syms, error region)
-			      of (DEFtyc _) =>
-			        (* [GK 5/7/07] Shouldn't we flag an error
-				   if this tyc is a DEFtyc? See bug 1578.1 
-				   (an open bug) *)
-				    ((error region EM.COMPLAIN
-					   "rhs of datatype replication not a \
-					   \datatype"
-					   EM.nullErrorBody);
-				     noTyvars(SEQdec[], SE.empty))
-			       | tyc =>
-				 let 
-				     val dcons = TU.extractDcons tyc
-				     val envDcons =
-					 foldl (fn (d as T.DATACON{name,...},e)=>
-						   SE.bind(name,B.CONbind d, e))
-					       SE.empty 
-					       dcons
-				     val env = SE.bind(name,B.TYCbind tyc,envDcons)
-				 in noTyvars(DATATYPEdec{datatycs=[tyc], 
-							 withtycs=[]},
-					     env)
-				 end)
-			 | _ => (error region EM.COMPLAIN
-				  "withtype not allowed in datatype replication"
-				  EM.nullErrorBody;
-				 noTyvars(SEQdec[],SE.empty)))
-		  | _ => (error region EM.COMPLAIN
-			   "argument type variables in datatype replication"
-			   EM.nullErrorBody;
-			  noTyvars(SEQdec[],SE.empty)))
+	   | DatatypeDec(x) => 
+	      let val (dtycs, wtycs, _, env') =
+		      ET.elabDATATYPEdec(x,env,[],EE.empty,isFree,
+                                         rpath,region,compInfo)
+	       in noTyvars(DATATYPEdec{datatycs=dtycs,withtycs=wtycs}, env')
+	      end
+	   | DataReplDec(name,path) => 
+	     (* LAZY: not allowing "datatype lazy t = datatype t'" *)
+	     (* BUG: what to do if rhs is lazy "datatype"? (DBM) *)
+	      (case LU.lookTyc(env, SP.SPATH path, error region)
+		 of (dtyc as T.GENtyc{kind=T.DATATYPE _,...}) =>
+		    let val dcons = TU.extractDcons dtyc
+			val envDcons =
+			    foldl (fn (d as T.DATACON{name,...},e)=>
+				      SE.bind(name,B.CONbind d, e))
+				  SE.empty 
+				  dcons
+                        (* types of new datacon bindings same as the old *)
+			val env = SE.bind(name,B.TYCbind dtyc,envDcons)
+		     in noTyvars(DATATYPEdec{datatycs=[dtyc], 
+					     withtycs=[]},
+				 env)
+		    end
+		  | _ => (* error if not a datatype (bug 1578.1) *)
+		    ((error region EM.COMPLAIN
+			    "rhs of datatype replication not a datatype"
+			    EM.nullErrorBody);
+		     noTyvars(SEQdec[], SE.empty)))
 	   | AbstypeDec x => 
 	      let val (dec', env') =
   		    elabABSTYPEdec(x,env,EU.TOP,isFree,
@@ -803,12 +790,18 @@ let
                * replaced. 
 	       * [DBM] This won't apply if lazyp=true.
                *)
+              fun stripMarksVar (MARKpat(p as VARpat _, reg)) = p
+                | stripMarksVar (MARKpat(p,reg)) = stripMarksVar p
+                | stripMarksVar (CONSTRAINTpat (p, ty)) =
+                    CONSTRAINTpat(stripMarksVar p, ty)
+                | stripMarksVar p = p
+
 	      val pat = 
 		case stripExpAbs exp
 		 of VARexp(ref(VALvar{prim,...}),_) =>
                       (case prim
                          of PrimOpId.Prim _ => 
-		            (case pat
+		            (case stripMarksVar pat
 			      of CONSTRAINTpat(VARpat(VALvar{path,typ,btvs,
                                                              access,...}), ty) =>
 			         CONSTRAINTpat(

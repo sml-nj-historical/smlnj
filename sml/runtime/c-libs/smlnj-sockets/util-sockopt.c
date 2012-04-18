@@ -22,7 +22,7 @@ ml_val_t _util_Sock_ControlFlg (ml_state_t *msp, ml_val_t arg, int option)
     int		flg, sts;
 
     if (ctl == OPTION_NONE) {
-	int	optSz = sizeof(int);
+	socklen_t	optSz = sizeof(int);
 	sts = getsockopt (sock, SOL_SOCKET, option, (sockoptval_t)&flg, &optSz);
 	ASSERT((sts < 0) || (optSz == sizeof(int)));
     }

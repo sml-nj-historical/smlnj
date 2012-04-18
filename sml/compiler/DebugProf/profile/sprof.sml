@@ -63,8 +63,8 @@ fun enter((line_a,line_b),names,exp) =
    let fun dot (a,[z]) = Symbol.name z :: a
 	 | dot (a,x::rest) = dot("." :: Symbol.name x :: a, rest)
 	 | dot _ = err "no path in instrexp"
-       val (fname,lineno_a,charpos_a) = Source.filepos source line_a
-       val (_,lineno_b,charpos_b) = Source.filepos source line_b
+       val {fileName=fname,line=lineno_a,column=charpos_a} = Source.filepos source line_a
+       val {line=lineno_b,column=charpos_b,...} = Source.filepos source line_b
        val position = [fname,":",Int.toString lineno_a,".",
 		       Int.toString charpos_a,"-", Int.toString lineno_b, ".",
 		       Int.toString charpos_b,":"]

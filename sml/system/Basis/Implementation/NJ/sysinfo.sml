@@ -16,7 +16,7 @@ structure SysInfo : SYS_INFO =
 
     datatype os_kind
       = UNIX	(* one of the many flavours of UNIX (incl Mach and NeXTStep) *)
-      | WIN32	(* Win32 API (WindowsNT, Windows 2000, Windows XP, and Vista *)
+      | WIN32	(* Wind32 API (incl. Windows95 and WindowsNT) *)
       | MACOS	(* Macintosh OS *)
       | OS2	(* IBM's OS/2 *)
       | BEOS	(* BeOS from Be *)

@@ -249,4 +249,36 @@ If you are running Win32, see WININSTALL.
 
          $ URLGETTER=myxget config/install.sh  
 
+   3.2. The install fails with a message about 32-bit support
+   ----------------------------------------------------------
+
+   SML/NJ is a 32-bit system.  This means that on a 64-bit architecture,
+   such as the x86-64, there must be support for running 32-bit binaries.
+   On Mac OS X, this is standard, but some 64-bit Linux systems are
+   not configured with 32-bit support.  In such a case, you will get
+   the message
+
+	!!! SML/NJ requires support for 32-bit executables
+
+   during the install process.  To fix this problem, you will need
+   to acquire the 32-bit emulation libraries for your particular Linux
+   distribution.
+
+   For Debian and Ubuntu, you will need three packages: gcc-multilib, 
+   g++-multilib, and ia32-libs. These can be installed using apt-get:
+
+      apt-get install gcc-multilib g++-multilib ia32-libs
+
+   For Red Hat Fedora (at least Fedora 16), you will need to install
+   glibc-devel(i686):
+
+      yum install glibc-devel.i686
+
+   For Red Hat Enterprise Linux (or CentOS) 6.2, you may also have to
+   install the rpm package libgcc-multilib, e.g.:
+
+      rpm -ivh libgcc-multilib-4.4.2-5.x86_64.rpm
+
+   where the libgcc-multilib package is downloaded from the rpmseek web site.
+
 ----------------------------------------------------------------------------

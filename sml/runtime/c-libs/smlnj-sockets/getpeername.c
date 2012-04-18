@@ -17,7 +17,7 @@
 ml_val_t _ml_Sock_getpeername (ml_state_t *msp, ml_val_t arg)
 {
     char	    addr[MAX_SOCK_ADDR_SZB];
-    int		    addrLen = MAX_SOCK_ADDR_SZB;
+    socklen_t	    addrLen = MAX_SOCK_ADDR_SZB;
 
     if (getpeername (INT_MLtoC(arg), (struct sockaddr *)addr, &addrLen) < 0)
 	return RAISE_SYSERR(msp, sts);

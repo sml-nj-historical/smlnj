@@ -35,11 +35,11 @@ ml_val_t _ml_P_IO_fcntl_l (ml_state_t *msp, ml_val_t arg)
 	return RAISE_SYSERR(msp, sts);
 
     REC_ALLOC5(msp, obj,
-	INT_CtoML(flock.l_type),
-	INT_CtoML(flock.l_whence), 
-	INT_CtoML(flock.l_start),
-	INT_CtoML(flock.l_len),
-	INT_CtoML(flock.l_pid));
+	INT_CtoML((int)flock.l_type),
+	INT_CtoML((int)flock.l_whence), 
+	INT_CtoML((int)flock.l_start),
+	INT_CtoML((int)flock.l_len),
+	INT_CtoML((int)flock.l_pid));
 
     return obj;
 

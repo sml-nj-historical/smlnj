@@ -4,9 +4,11 @@
  *
  * Flags controlling the elaborator.
  *)
-structure ElabControl = struct
 
-    local
+structure ElabControl : ELAB_CONTROL =
+struct
+
+  local
 	val priority = [10, 10, 7]
 	val clear = 2
 	val obscure = 6
@@ -15,8 +17,6 @@ structure ElabControl = struct
 	val registry = ControlRegistry.new { help = "elaborator flags" }
 
 	val _ = BasicControl.nest (prefix, registry, priority)
-
-	val bool_cvt = ControlUtil.Cvt.bool
 
 	val nextpri = ref 0
 
@@ -32,53 +32,56 @@ structure ElabControl = struct
 	    nextpri := p + 1;
 	    ControlRegistry.register
 		registry
-		{ ctl = Controls.stringControl bool_cvt ctl,
+		{ ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
 		  envName = SOME (ControlUtil.EnvName.toUpper "ELAB_" n) };
 	    r
 	end
 
 	val cnew = new clear
 	val onew = new obscure
-    in
+  in
 
-    val etdebugging = onew ("et-debugging", "?", false)
+    val etdebugging = onew ("et-debugging", "ElabType debugging", false)
         (* ElabType *)
-    val esdebugging = onew ("es-debugging", "?", false)
+    val esdebugging = onew ("es-debugging", "ElabSig debugging", false)
         (* ElabSig *)
-    val insdebugging = onew ("ins-debugging", "?", false)
+    val insdebugging = onew ("ins-debugging", "Instantiate debugging", false)
         (* Instantiate *)
-    val smdebugging = onew ("sm-debugging", "?", false)
+    val smdebugging = onew ("sm-debugging", "Sigmatch debugging", false)
         (* Sigmatch *)
-    val ecdebugging = onew ("ec-debugging", "?", false)
+    val ecdebugging = onew ("ec-debugging", "ElabCore debugging", false)
         (* ElabCore *)
-    val emdebugging = onew ("em-debugging", "?", false)
+    val emdebugging = onew ("em-debugging", "ElabMod debugging", false)
         (* ElabMod *)
-    val tcdebugging = onew ("tc-debugging", "?", false)
+    val tcdebugging = onew ("tc-debugging", "TypeCheck debugging", false)
         (* Typecheck *)
-    val unidebugging = onew ("uni-debugging", "?", false)
+    val unidebugging = onew ("uni-debugging", "Unify debugging", false)
         (* Unify *)
-    val instantiateSigs = onew ("instantiate-sigs", "?", true)
+    val instantiateSigs = onew ("instantiate-sigs", "instantiate all sigs", true)
         (* ElabMod, Control_MC *)
 
-    val internals = onew ("internals", "?", false)
+    val internals = onew ("internals", "show internal reps", false)
 
-    val markabsyn = onew ("markabsyn", "?", true)
+    val markabsyn = onew ("markabsyn", "mark abstract syntax", true)
         (* ElabCore, ElabTop, ElabUtil, Control_MC *)                    
 
-    val boxedconstconreps = onew ("boxedconstreps", "?", false)
+    val boxedconstconreps = onew ("boxedconstreps", "boxed const constructors", false)
         (* ConRep *)
 
-    val multDefWarn = cnew ("mult-def-warn", "?", false)
+    val multDefWarn = cnew ("mult-def-warn", "warn on multiple defs", false)
         (* Instantiate, Control_MC (TopLevel/main/control.sml) *)
 
-    val shareDefError = cnew ("share-def-error", "?", true)
+    val shareDefError = cnew ("share-def-error", "check share defs", true)
         (* Instantiate, Control_MC *)
 
     val valueRestrictionLocalWarn =
-	cnew ("value-restriction-local-warn", "?", false)
+	cnew ("value-restriction-local-warn", "warn on value restriction for local defs", false)
 
     val valueRestrictionTopWarn =
-	cnew ("value-restriction-top-warn", "?", true)
+	cnew ("value-restriction-top-warn", "warn on value restriction at top level", true)
 
-    end
-end
+    val showTypeErrorCulprits =
+	cnew ("show-type-error-culprits", "show culprits in type error messages", false)
+
+  end (* local *)
+end (* structure ElabControl *)

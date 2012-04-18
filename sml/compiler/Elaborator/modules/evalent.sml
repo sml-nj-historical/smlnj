@@ -92,14 +92,15 @@ fun evalTyc (entv, tycExp, entEnv, epc, rpath,
                end
 	     | _ => bug "unexpected GENtyc in evalTyc")
         | FORMtyc (T.DEFtyc{stamp,tyfun=T.TYFUN{arity, body},strict,path}) =>
-          let val nst = mkStamp()
+          let val newstamp = mkStamp()
 	      (* tycId=stamp (this should perhaps be more abstract some day) *)
-	      val _ = EPC.bindTycPath (epc, nst, entv)
+	      val _ = EPC.bindTycPath (epc, newstamp, entv)
+	      val newbody = MU.transType entEnv body
+	      val newstrict = EU.calc_strictness(arity, newbody)
 	  in
-	      T.DEFtyc{stamp = nst,
-		       tyfun=T.TYFUN{arity=arity, 
- 				     body=MU.transType entEnv body}, 
-		       strict=strict, path=IP.append(rpath,path)}
+	      T.DEFtyc{stamp = newstamp,
+		       tyfun=T.TYFUN{arity=arity, body=newbody},
+		       strict=newstrict, path=IP.append(rpath,path)}
           end
         | VARtyc entPath => 
 	    (debugmsg (">>evalTyc[VARtyc]: "^EP.entPathToString entPath);

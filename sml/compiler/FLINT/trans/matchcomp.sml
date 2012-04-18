@@ -50,7 +50,7 @@ local structure DA = Access
       open VarCon Types
       open Absyn PLambda         
       open PrettyPrintNew
-      open TemplateExpansion MCCommon
+      open MCCommon
 
 in 
 
@@ -94,6 +94,10 @@ fun toDconLty toLty ty =
             else toLty (BT.-->(BT.unitTy, ty)))
 
 (**************************************************************************)
+type ruleno = int   (* the number identifying a rule *)
+type rules = ruleno list  (* a list (set) of rule numbers *)
+(* Which of the int list type in the andor and decision definitions
+ * are rules? *)
 
 datatype andor
   = AND of {bindings : (int * var) list,
@@ -138,15 +142,6 @@ fun lookupVar (v as VALvar{path=p1,...},
   | lookupVar (VALvar _, []) = bug "unbound 18"
   | lookupVar _ = bug "[MC.lookupVar]"
 
-fun pathInstSimpexp varenv (VARsimp v) = lookupVar (v, varenv)
-  | pathInstSimpexp varenv (RECORDsimp labsimps) = 
-      RECORDPATH (map (pathInstSimpexp varenv o #2) labsimps)
-
-fun expandBindings (varenv, pathenv, nil) = nil
-  | expandBindings (varenv, pathenv, v::rest) =
-      (pathInstSimpexp pathenv (fullyExpandBinding varenv (VARsimp v)))
-        :: (expandBindings(varenv, pathenv, rest))
-
 fun boundVariables (VARpat v) = [v]
   | boundVariables (CONSTRAINTpat(pat,_)) = boundVariables pat
   | boundVariables (LAYEREDpat(pat1, pat2)) = 
@@ -156,6 +151,7 @@ fun boundVariables (VARpat v) = [v]
       List.concat (map (boundVariables o #2) fields)
   | boundVariables (VECTORpat(pats,_)) = List.concat (map boundVariables pats)
   | boundVariables (ORpat (pat1,_)) = boundVariables pat1
+  | boundVariables (MARKpat _) = bug "MARKpat"
   | boundVariables _ = nil
 
 fun patternBindings (VARpat v, path) = [(v, path)]
@@ -176,26 +172,16 @@ fun patternBindings (VARpat v, path) = [(v, path)]
                 (patternBindings(pat,VPIPATH(n,t,path))) @ (doGen(n+1,rest))
        in doGen(0, pats)
       end
-  | patternBindings (ORpat _, _) = bug "Unexpected or pattern"
+  | patternBindings (ORpat _, _) = bug "Unexpected OR pattern"
+  | patternBindings (MARKpat _, path) = bug "MARKpat"
   | patternBindings _ = nil
  
-fun patPaths (pat, constrs) =
-  let val patEnv = patternBindings(pat, ROOTPATH)
-      fun constrPaths (nil, env, acc) = 
-            ((ROOTPATH, pat)::(rev acc), env)
-        | constrPaths ((simpexp,cpat)::rest, env, acc) = 
-            let val guardPath = pathInstSimpexp env simpexp
-                val newEnv = patternBindings(cpat, guardPath)
-             in constrPaths(rest, env@newEnv, (guardPath, cpat)::acc)
-            end
-   in constrPaths(constrs, patEnv, nil)
-  end
-
 fun vartolvar (VALvar{access=DA.LVAR v, typ,...}, toLty) = (v, toLty (!typ))
   | vartolvar _ = bug "bug variable in mc.sml"
 
 fun preProcessPat toLty (pat, rhs) =
-  let val bindings = boundVariables pat
+  let val pat = AbsynUtil.stripPatMarks pat
+      val bindings = boundVariables pat
       val fname = mkv()
 
       fun genRHSFun ([], rhs) = FN(mkv(), LT.ltc_unit, rhs)
@@ -219,9 +205,10 @@ fun preProcessPat toLty (pat, rhs) =
       val pats = orExpand pat
       fun expand nil = nil
         | expand (pat::rest) =
-            let val (newpat, constrs, varenv) = templateExpandPattern pat
-                val (newlist, pathenv) = patPaths (newpat, constrs)
-                val bindingPaths = expandBindings(varenv,pathenv,bindings)
+            let val newlist = [(ROOTPATH, pat)]
+		val pathenv = patternBindings(pat, ROOTPATH)
+                val bindingPaths = 
+		    map (fn v => lookupVar(v,pathenv)) bindings
              in (newlist, bindingPaths, fname)::(expand rest)
             end handle CANT_MATCH =>
                   ([(ROOTPATH, NOpat)], nil, fname)::(expand rest)
@@ -338,18 +325,11 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 		cases = [(VLENpcon (length pats, t), [rule], 
 			  multiGen(pats, rule))]}
       | genAndor (CONpat(k,t), rule) =
-	  if abstract k then
-	    LEAF {bindings = nil, constraints = [((k, t), [rule], NONE)]}
-	  else
-	    CASE {bindings = nil, constraints = nil, sign = signOfCon k,
-		  cases = [(DATApcon(k, t), [rule], nil)]}
+	  CASE {bindings = nil, constraints = nil, sign = signOfCon k,
+		cases = [(DATApcon(k, t), [rule], nil)]}
       | genAndor (APPpat(k,t,pat), rule) =
-	  if abstract k then
-	    LEAF {bindings = nil, 
-		  constraints = [((k,t), [rule], SOME(genAndor (pat, rule)))]}
-	  else
-	    CASE {bindings = nil, constraints = nil, sign = signOfCon k,
-		  cases = [(DATApcon(k,t), [rule], [genAndor(pat, rule)])]}
+	  CASE {bindings = nil, constraints = nil, sign = signOfCon k,
+		cases = [(DATApcon(k,t), [rule], [genAndor(pat, rule)])]}
       | genAndor _ =
 	  bug "genandor applied to inapplicable pattern"
 
@@ -375,20 +355,12 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
       | mergeAndor (LAYEREDpat(APPpat(k,t,lpat), bpat), andor, rule) =
 	  addConstraint ((k,t), SOME lpat, rule, mergeAndor(bpat, andor, rule))
       | mergeAndor (CONpat(k,t), LEAF{bindings, constraints}, rule) =
-	  if abstract k then
-	    LEAF {bindings = nil, 
-		  constraints = addAConstraint((k, t), NONE, rule, constraints)}
-	  else
-	    CASE {bindings = nil, constraints = nil, sign = signOfCon k,
-		  cases = [(DATApcon(k,t), [rule], nil)]}
+	  CASE {bindings = nil, constraints = nil, sign = signOfCon k,
+		cases = [(DATApcon(k,t), [rule], nil)]}
       | mergeAndor (APPpat(k,t,pat), LEAF{bindings, constraints}, rule) =
-	  if abstract k then
-	    LEAF {bindings = bindings,
-		  constraints = addAConstraint((k,t), SOME pat, rule, constraints)}
-	  else
-	    CASE {bindings = bindings, constraints = constraints, 
-		  sign = signOfCon k,
-		  cases = [(DATApcon(k,t), [rule], [genAndor(pat, rule)])]}
+	  CASE {bindings = bindings, constraints = constraints, 
+		sign = signOfCon k,
+		cases = [(DATApcon(k,t), [rule], [genAndor(pat, rule)])]}
       | mergeAndor (pat, LEAF{bindings, constraints}, rule) =
 	  (case genAndor(pat, rule)
 	     of CASE{bindings=nil, constraints=nil, sign, cases} =>
@@ -449,30 +421,16 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 		cases = addACase(VLENpcon(length pats, t),pats,rule,cases)}
       | mergeAndor (CONpat(k,t), CASE{bindings, 
 				      cases, constraints, sign}, rule) =
-	  if abstract k then
-	    CASE {bindings=bindings, cases=cases, sign=sign,
-		  constraints=addAConstraint((k,t), NONE, rule, constraints)}
-	  else
-	    CASE {bindings=bindings, constraints=constraints, sign=sign,
-		  cases=addACase(DATApcon(k,t), nil, rule, cases)}
+	  CASE {bindings=bindings, constraints=constraints, sign=sign,
+		cases=addACase(DATApcon(k,t), nil, rule, cases)}
       | mergeAndor (APPpat(k,t,pat), CASE{bindings, cases, 
 					  constraints, sign}, rule) =
-	  if abstract k then
-	    CASE {bindings=bindings, cases=cases,  sign=sign,
-		  constraints=addAConstraint((k,t), SOME pat, rule, constraints)}
-	  else
-	    CASE {bindings=bindings, constraints=constraints, sign=sign,
-		  cases=addACase(DATApcon(k,t), [pat], rule, cases)}
+	  CASE {bindings=bindings, constraints=constraints, sign=sign,
+		cases=addACase(DATApcon(k,t), [pat], rule, cases)}
       | mergeAndor (CONpat(k,t), AND{bindings, constraints, subtrees}, rule) =
-	  if abstract k then
-	    AND {bindings=bindings, subtrees=subtrees,
-		 constraints=addAConstraint((k,t), NONE, rule, constraints)}
-	  else bug "concrete constructor can't match record"
+	  bug "concrete constructor can't match record"
       | mergeAndor (APPpat(k,t,pat), AND{bindings,subtrees,constraints}, rule) =
-	  if abstract k then
-	    AND {bindings=bindings, subtrees=subtrees,
-		 constraints=addAConstraint((k,t), SOME pat, rule, constraints)}
-	  else bug "concrete constructor application can't match record"
+	  bug "concrete constructor application can't match record"
       | mergeAndor _ =
 	  bug "bad pattern merge"
 
@@ -525,12 +483,14 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 in makeAndor' (matchRep,0) (* handle Foo => raise (Internal 99) *)
 end (* fun makeAndor *)
 
+(* addABinding : path * ruleno * decision list -> decision list *)
 fun addABinding (path, rule, nil) = [BINDDEC(path, [rule])]
   | addABinding (path, rule, (bind as BINDDEC(path', rules))::rest) =
       if pathEq(path, path') then BINDDEC(path, rule::rules)::rest
       else bind::(addABinding(path, rule, rest)) 
   | addABinding _ = bug "non BINDDEC in binding list"
 
+(* flattenBindings : (ruleno * ?) list * path * ruleno list -> decision list *)
 fun flattenBindings (nil, path, active) = nil
   | flattenBindings (((rule, v)::rest), path, active) =
       if isthere(rule, active) then 
@@ -538,6 +498,8 @@ fun flattenBindings (nil, path, active) = nil
       else 
 	flattenBindings(rest, path, active)
 
+(* flattenConstraints: (dconinfo * ruleno list * andor) list * path * ruleno list
+		       -> decision list *)
 fun flattenConstraints (nil, path, active) = nil
   | flattenConstraints ((di,rules,NONE)::rest, path, active) = 
       let val yesActive = intersect(active, rules)
@@ -554,6 +516,7 @@ fun flattenConstraints (nil, path, active) = nil
        in (ABSCONDEC(path, di, yesActive, andor', noActive))::rest'
       end     
 
+(* flattenAndor : andor * path * ruleno list -> decision list *)
 and flattenAndor (AND {bindings, subtrees, constraints}, path, active) =
       let val btests = flattenBindings(bindings, path, active)
 	  fun dotree (n, nil) =
@@ -574,6 +537,8 @@ and flattenAndor (AND {bindings, subtrees, constraints}, path, active) =
        in btests@(flattenConstraints(constraints, path, active))
       end
 
+(* flattenACase : (pcon * rules * andor list) * path * rules * rules
+		  -> pcon * rules * decision list *)
 and flattenACase((VLENpcon(n, t), rules, subtrees),path,active,defaults) =
       let val stillActive = intersect(union(rules, defaults), active)
 	  val ruleActive = intersect(rules, active)

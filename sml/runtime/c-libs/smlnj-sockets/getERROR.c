@@ -15,7 +15,8 @@
 ml_val_t _ml_Sock_getERROR (ml_state_t *msp, ml_val_t arg)
 {
     int		sock = INT_MLtoC(arg);
-    int		flg, sts, optSz = sizeof(int);
+    int		flg, sts;
+    socklen_t	optSz = sizeof(int);
 
     sts = getsockopt (sock, SOL_SOCKET, SO_ERROR, (sockoptval_t)&flg, &optSz);
 

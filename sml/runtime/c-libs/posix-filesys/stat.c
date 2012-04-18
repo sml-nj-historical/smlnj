@@ -72,7 +72,7 @@ PVT ml_val_t mkStatRep (ml_state_t *msp, struct stat *buf)
     ML_AllocWrite(msp,  5, nlink);
     ML_AllocWrite(msp,  6, uid);
     ML_AllocWrite(msp,  7, gid);
-    ML_AllocWrite(msp,  8, INT_CtoML(buf->st_size));
+    ML_AllocWrite(msp,  8, INT_CtoML((int)(buf->st_size)));
     ML_AllocWrite(msp,  9, atime);
     ML_AllocWrite(msp, 10, mtime);
     ML_AllocWrite(msp, 11, ctime);

@@ -22,8 +22,8 @@ is
 	$smlnj/smlnj-lib/smlnj-lib.cm
 	$smlnj/cm.cm
 
-	installer/copy.sml
 	installer/generic-install.sml
+
 # if defined (OPSYS_UNIX)
      	installer/nix-install.sml
 #  if defined (structure Posix)

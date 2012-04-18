@@ -31,6 +31,7 @@ structure S = CMSemant
     | INEQSYM of CMSemant.ineqsym
     | TILDE
     | ANDALSO | ORELSE | NOT
+    | TRUE | FALSE
     | STAR | DASH | SOURCE
 
 %nonterm description of S.group
@@ -301,6 +302,8 @@ boolexp : DEFINED LPAREN ml_symbol RPAREN	(S.ml_defined ml_symbol)
 	| aexp INEQSYM aexp                     (S.ineq (aexp1, INEQSYM,
 							 aexp2))
 	| aexp EQSYM aexp                       (S.eq (aexp1, EQSYM, aexp2))
+	| TRUE					(S.boolean true)
+	| FALSE					(S.boolean false)
 
 ml_symbol : STRUCTURE ML_ID			(S.ml_structure ML_ID)
 	  | SIGNATURE ML_ID			(S.ml_signature ML_ID)

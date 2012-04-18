@@ -6,12 +6,12 @@
  */
 
 #include "ml-base.h"
-#include <string.h>
 #include "heap.h"
 #include "ml-values.h"
 #include "ml-heap-image.h"
 #include "c-globals-tbl.h"
 #include "heap-output.h"
+#include <string.h>
 
 
 /* HeapIO_WriteImageHeader:

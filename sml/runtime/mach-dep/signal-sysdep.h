@@ -68,7 +68,11 @@
 #endif
 
 #if defined(HAS_UCONTEXT)
-#include <ucontext.h>
+#ifdef __APPLE__
+#  include <sys/ucontext.h>
+#else
+#  include <ucontext.h>
+#endif
 #ifdef INCLUDE_SIGINFO_H
 #  include INCLUDE_SIGINFO_H
 #endif
@@ -516,12 +520,22 @@ extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
 /* NOTE: MacOS X 10.4.7 sets the code to 0, so we need to test the opcode. */
 #    define INTO_OPCODE		0xce	/* the 'into' instruction is a single */
 					/* instruction that signals Overflow */
-#    define INT_DIVZERO(s, c)	(((s) == SIGFPE) && ((c) == FPE_FLTDIV))
-#    define INT_OVFLW(s, c)	(((s) == SIGFPE) && ((c) == FPE_FLTOVF))
+/* NOTE: In 10.6, Apple finally got it right, but earlier versions either used the
+ * FPE_FLT* codes are set the code to zero.
+ */
+#    define INT_DIVZERO(s, c)	(((s) == SIGFPE) && (((c) == FPE_INTDIV) || ((c) == FPE_FLTDIV)))
+#    define INT_OVFLW(s, c)	(((s) == SIGFPE) && (((c) == FPE_INTOVF) || ((c) == FPE_FLTOVF)))
     /* see /usr/include/mach/i386/thread_status.h */
 #    define SIG_GetCode(info,scp)	((info)->si_code)
-#    define SIG_GetPC(scp)		((scp)->uc_mcontext->ss.eip)
-#    define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext->ss.eip = (int) addr; }
+#    if ((__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ - 1040) <= 0)
+      /* Tiger */
+#      define SIG_GetPC(scp)		((scp)->uc_mcontext->ss.eip)
+#      define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext->ss.eip = (int) addr; }
+#    else
+     /* Leopard or later */
+#      define SIG_GetPC(scp)		((scp)->uc_mcontext->__ss.__eip)
+#      define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext->__ss.__eip = (int) addr; }
+#    endif
 #    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
 
 #  else

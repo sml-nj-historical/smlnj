@@ -418,7 +418,7 @@ fun allButLast l = List.take(l,List.length l - 1)
 (* elaborate datatype replication specs. 
  *  Uses DEFtyc wrappings of the rhs datatype in the resulting specs.
  *  Need to check that this will do the "right thing" in instantiate. *)
-fun elabDATArepl(name,path,env,elements,region) =
+fun elabDATAreplSpec(name,path,env,elements,region) =
     if checkDups(name,elements,error region) then
     let val tyc = Lookup.lookTyc(env, SP.SPATH path, error region)
 	(* rhs is not local to current (outermost) signature *)
@@ -491,7 +491,7 @@ fun elabDATArepl(name,path,env,elements,region) =
 				  * datatypes using the fact that the entVar
 				  * for a datatype spec is the same as the
 				  * stamp of the datatype.
-				  * See elabDATATYPEspec0 *)
+				  * See elabDATATYPEspec *)
 				 | expandTyc tyc = tyc
 
 			       val expand = TU.mapTypeFull expandTyc
@@ -622,7 +622,7 @@ fun elabDATArepl(name,path,env,elements,region) =
 exception TypeDups
 
 (*** elaborating datatype specification ***)
-fun elabDATATYPEspec0(dtycspec, env, elements, region) = 
+fun elabDATATYPEspec(dtycspec, env, elements, region) = 
   let val _ = debugmsg ">>elabDATATYPEspec"
       val err = error region
 
@@ -658,7 +658,7 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
 		  let (* MAJOR GROSS HACK: use the stamp of the type as its 
                        * entVar. This makes possible to reconstruct the
 		       * entPath associated with a RECty when translating the
-		       * types of domains in elabDATArepl.  See >>HACK<< signs.
+		       * types of domains in elabDATAreplSpec.  See >>HACK<< signs.
                        *)
                       val rtev = stamp (* mkStamp() >>HACK<< *)
                       val nfreetycs = map viztc freetycs
@@ -750,18 +750,19 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
   handle TypeDups => (env,elements)
     (* in case of duplicate type specs introduced by the datatype specs,
      * ignore the datatype specs and return original env and elements *)                                                      
-
+(*
 fun elabDATATYPEspec(db as {datatycs,withtycs}, env, elements, region) = 
     case datatycs
       of ([spec as Db{rhs=Repl path,tyc=name,tyvars=[],lazyp=false}]) =>
 	  (* LAZY: not allowing datatype replication with lazy keyword *)
-	  elabDATArepl(name,path,env,elements,region)
+	  elabDATAreplSpec(name,path,env,elements,region)
        | (Db{rhs=Constrs _,...}::_) => 
 	  (elabDATATYPEspec0(db,env,elements,region)
            handle TypeDups => (env,elements))
        | _ => (error region EM.COMPLAIN "ill-formed datatype spec"
 	         EM.nullErrorBody;
 	       (env,elements))
+*)
 
 (*** elaborating structure specification ***)
 fun elabSTRspec((name,sigexp,defOp), env, elements, slots, region) =
@@ -909,7 +910,15 @@ fun elabSpec (spec, env, elements, slots, region) =
     | DataSpec spec =>
         let val _ = debugmsg "--elabSpec[DataSpec]"
             val (env', elems') =
-              elabDATATYPEspec(spec, env, elements, region)
+                elabDATATYPEspec(spec, env, elements, region)
+	        handle TypeDups => (env,elements)
+         in (env', elems', [], [], slots, false)
+        end
+
+    | DataReplSpec(name,path) =>
+        let val _ = debugmsg "--elabSpec[DataReplSpec]"
+            val (env', elems') =
+                elabDATAreplSpec(name,path,env,elements,region)
          in (env', elems', [], [], slots, false)
         end
 

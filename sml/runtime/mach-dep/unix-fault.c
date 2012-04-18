@@ -70,13 +70,14 @@ PVT SigReturn_t FaultHandler (int signal, siginfo_t *si, void *c)
    /* Map the signal to the appropriate ML exception. */
 #if defined(HOST_X86) && defined(OPSYS_DARWIN)
   /* NOTE: early versions of Mac OS X 10.4.x set the code to FPE_FLTDIV or
-   * FPE_FLTOVF, but 10.4.7 sets it to 0, so we need this workaround.
+   * FPE_FLTOVF, but 10.4.7 sets it to 0, so we need this workaround.  With
+   * 10.6, the correct FPE_INTOVF and FPE_INTDIV codes are now used.
    */
     if ((signal == SIGFPE) && (code == 0)) {
 	if (((Byte_t *)SIG_GetPC(scp))[-1] == INTO_OPCODE)
-	    code = FPE_FLTOVF;
+	    code = FPE_INTOVF;
 	else
-	    code = FPE_FLTDIV;
+	    code = FPE_INTDIV;
     }
 #endif
     if (INT_OVFLW(signal, code)) {

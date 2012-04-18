@@ -43,4 +43,6 @@ sig
 
   val valueRestrictionTopWarn : bool ref
 
+  val showTypeErrorCulprits : bool ref
+
 end (* signature ELAB_CONTROL *)

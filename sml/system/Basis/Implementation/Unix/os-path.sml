@@ -22,9 +22,13 @@ structure OS_Path = OS_PathFn (
 
     val currentArc = "."
 
+  (* any character other than "/" and "\000" is allowed by the POSIX spec.  Strictly
+   * speaking, we should also check that the length is less than NAME_MAX characters.
+   *)
     fun validArc arc = let
 	  fun ok #"/" = false
-	    | ok c = Char.isPrint c
+	    | ok #"\000" = false
+	    | ok c = true
 	  in
 	    CharVector.all ok arc
 	  end

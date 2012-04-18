@@ -358,8 +358,8 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
 
 		    if (DumpObjectStrings && (j == CODE_INDX)) {
 		      /* dump the comment string of the code object */
-			Byte_t           *namestring;
-			if ((namestring = BO_GetCodeObjTag(bdp)) != NIL(Byte_t *))
+			char           *namestring;
+			if ((namestring = (char *)BO_GetCodeObjTag(bdp)) != NIL(char *))
 			    SayDebug ("[%6d bytes] %s\n", bdp->sizeB, namestring);
 		    }
 		}
@@ -379,6 +379,11 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
     }
 
     RepairHeap (heap, oldBIBOP, addrOffset, boRegionTbl, externs);
+
+#ifdef CHECK_HEAP
+    SayDebug ("Checking imported heap...\n");
+    CheckHeap (heap, hdr->numGens);
+#endif
 
   /* Adjust the run-time globals that point into the heap */
     *PTR_MLtoC(ml_val_t, PervStruct) = RepairWord (

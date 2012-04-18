@@ -11,6 +11,7 @@ local
 in
 structure OS_Path = OS_PathFn (
   struct
+      structure W32G = Win32_General
       structure C = Char
       structure S = String
       structure SS = Substring
@@ -27,18 +28,14 @@ structure OS_Path = OS_PathFn (
       val parentArc  = ".."
       val currentArc = "."
 
-    fun validArc arc = let
-	  fun ok #"\\" = false
-	    | ok #":" = false
-	    | ok c = Char.isPrint c
-	  in
-	    CharVector.all ok arc
-	  end
+      (* / should also be disabled on windows, but it is used
+       * within CM, so we need to allow it.
+       *)
+      val validArc = CharVector.all (Char.notContains "\\:*?\"<>|")
 
       val volSepChar = #":"
 
-(*      val arcSepChar = W32G.arcSepChar *)
-      val arcSepChar = #"\\"
+      val arcSepChar = W32G.arcSepChar
       val arcSep = S.str arcSepChar
 
       fun volPresent vol = 

@@ -177,20 +177,53 @@ structure StringImp : STRING =
     fun op >= (a,b) = b <= a
     val op > = sgtr
 
-(* FIXME: this code does not work when the string ends in a formatting character
- * escape sequence.  For example:
- *
- *	fromString "0\\ \\"
- *
- * will return NONE, instead of SOME "0".  The problem is that scanChar returns NONE
- * on "\\  \\".  I'm not sure how to fix this problem.
- *)
-    fun fromString' scanChar s = let
+    fun scan getc = let
+	  val cscan = Char.scan getc
+	  fun illegal (strm, chrs) = (case chrs
+		 of [] => NONE (* string starts with illegal escape or non-printing char *)
+		  | _ => SOME(implode(List.rev chrs), strm)
+		(* end case *))
+	  fun scan' (strm, chrs) = (case getc strm
+		 of NONE => SOME(implode(List.rev chrs), strm)
+		  | SOME(#"\\", strm') => (case getc strm'
+		       of SOME(c, strm'') =>
+			    if Char.isSpace c
+			      then let (* skip over the formatting escape *)
+				fun skip strm' = (case getc strm'
+				       of SOME(#"\\", strm') => scan'(strm', chrs)
+					| SOME(c, strm') =>
+					    if Char.isSpace c
+					      then skip strm'
+					      else illegal (strm, chrs)
+					| NONE => illegal (strm, chrs)
+				      (* end case *))
+				in
+				  skip strm''
+				end
+			    (* otherwise use Char.scan to scan the escape character *)
+			      else (case cscan strm
+				 of SOME(c, strm') => scan' (strm', c::chrs)
+				  | NONE => illegal (strm, chrs)
+				(* end case *))
+			| NONE => illegal (strm, chrs)
+		      (* end case *))
+		  | SOME(c, strm') => if Char.isPrint c
+		      then scan' (strm', c::chrs)
+		      else illegal (strm, chrs)
+		(* end case *))
+	  in
+	    fn strm => scan' (strm, [])
+	  end
+
+    val fromString = StringCvt.scanString scan
+    val toString = translate Char.toString
+
+    fun fromCString s = let
 	  val len = size s
 	  fun getc i = if InlineT.DfltInt.<(i, len)
 		then SOME(unsafeSub(s, i), i+1)
 		else NONE
-	  val scanChar = scanChar getc
+	  val scanChar = Char.scanC getc
 	  fun accum (i, chars) = (case (scanChar i)
 		 of NONE => if InlineT.DfltInt.<(i, len)
 		      then NONE (* bad format *)
@@ -201,10 +234,6 @@ structure StringImp : STRING =
 	    accum (0, [])
 	  end
 
-    val fromString = fromString' Char.scan
-    val toString = translate Char.toString
-
-    val fromCString = fromString' Char.scanC
     val toCString = translate Char.toCString
 
   end (* structure String *)	   
