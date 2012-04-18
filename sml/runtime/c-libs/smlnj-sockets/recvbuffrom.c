@@ -21,7 +21,7 @@
 ml_val_t _ml_Sock_recvbuffrom (ml_state_t *msp, ml_val_t arg)
 {
     char	addrBuf[MAX_SOCK_ADDR_SZB];
-    int		addrLen = MAX_SOCK_ADDR_SZB;
+    socklen_t	addrLen = MAX_SOCK_ADDR_SZB;
     int		sock = REC_SELINT(arg, 0);
     ml_val_t	buf = REC_SEL(arg, 1);
     int		nbytes = REC_SELINT(arg, 3);

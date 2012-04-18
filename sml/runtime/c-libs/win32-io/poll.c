@@ -59,7 +59,7 @@ ml_val_t _ml_win32_OS_poll (ml_state_t *msp, ml_val_t arg)
   /* initialize the array */
   for (l=pollList,index=0; l!=LIST_nil; l=LIST_tl(l)) {
     item = LIST_hd (l);
-	handle = (HANDLE) REC_SELWORD(item, 0);
+    handle = (HANDLE) REC_SELWORD(item, 0);
     hArray[index++] = handle;
   }
     

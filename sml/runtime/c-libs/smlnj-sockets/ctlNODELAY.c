@@ -24,7 +24,7 @@ ml_val_t _ml_Sock_ctlNODELAY (ml_state_t *msp, ml_val_t arg)
     int		sts;
 
     if (ctl == OPTION_NONE) {
-	int	optSz = sizeof(int);
+	socklen_t	optSz = sizeof(int);
 	sts = getsockopt (sock, IPPROTO_TCP, TCP_NODELAY, (sockoptval_t)&flg, &optSz);
 	ASSERT((sts < 0) || (optSz == sizeof(int)));
     }

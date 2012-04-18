@@ -359,7 +359,7 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
 		    if (DumpObjectStrings && (j == CODE_INDX)) {
 		      /* dump the comment string of the code object */
 			char           *namestring;
-			if ((namestring = BO_GetCodeObjTag(bdp)) != NIL(char *))
+			if ((namestring = (char *)BO_GetCodeObjTag(bdp)) != NIL(char *))
 			    SayDebug ("[%6d bytes] %s\n", bdp->sizeB, namestring);
 		    }
 		}

@@ -44,7 +44,7 @@ ml_val_t *HeapIO_ReadExterns (inbuf_t *bp)
     for (cp = buf, i = 0;  i < hdr.numExterns;  i++) {
 	if ((externs[i] = ImportCSymbol ((char *)cp)) == ML_unit)
 	    Die ("Run-time system does not provide \"%s\"", cp);
-	cp += (strlen(cp) + 1);
+	cp += (strlen((char *)cp) + 1);
     }
     FREE (buf);
 
