@@ -1,4 +1,8 @@
-(* sourcemap.sml *)
+(* sourcemap.sml
+ *
+ * COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 (* Norman Ramsey: *)
 (* I can imagine at least three implementations: one that doesn't

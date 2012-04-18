@@ -1,6 +1,6 @@
 (* text-prim-io.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2007 Fellowship of SML/NJ
  *
  *)
 

@@ -5,11 +5,14 @@
  *)
 
 structure TimeImp : sig
+
     include TIME
   (* export these for the benefit of, e.g., Posix.ProcEnv.times: *)
+
     val fractionsPerSecond : LargeInt.int
     val toFractions   : time -> LargeInt.int
     val fromFractions : LargeInt.int -> time
+
   end = struct
 
     structure PB = PreBasis

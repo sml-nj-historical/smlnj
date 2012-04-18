@@ -1,5 +1,8 @@
-(* source.sml *)
-(* COPYRIGHT (c) 1996 Bell Laboratories. *)
+(* source.sml
+ *
+ * COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure Source : SOURCE =
 struct

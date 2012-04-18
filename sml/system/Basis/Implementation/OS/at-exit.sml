@@ -1,6 +1,6 @@
 (* at-exit.sml
  *
- * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2007 Fellowship of SML/NJ
  *
  * The (generic) support for the OS.Process.atExit function.
  *)

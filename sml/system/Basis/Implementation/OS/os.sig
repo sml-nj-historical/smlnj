@@ -1,6 +1,7 @@
 (* os.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2007 Fellowship of SML/NJ
+ * All rights reserved.
  *
  *)
 

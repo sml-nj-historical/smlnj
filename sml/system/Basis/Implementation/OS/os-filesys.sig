@@ -1,6 +1,6 @@
 (* os-filesys.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2007 Fellowship of SML/NJ
  *
  * The generic file system interface.
  *

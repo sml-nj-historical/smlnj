@@ -1,4 +1,8 @@
-(* sourcemap.sig *)
+(* sourcemap.sig
+ *
+ * COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 (* Source locations
 
