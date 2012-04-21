@@ -2,7 +2,7 @@
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
- * The string conversion for the largest int and word types.
+ * The string conversion for the largest fixed-size int and word types.
  * All of the other scan functions can be implemented in terms of them.
  *
  *)

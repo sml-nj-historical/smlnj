@@ -28,19 +28,16 @@ end = struct
 	  CInterface.c_function "SMLNJ-Time" "gettime"
 *)
 
-      fun mkTime (s, us) =
-	  Time.fromMicroseconds (1000000 * Int32.toLarge s + Int32.toLarge us)
+      fun mkTime (s, us) = Time.fromMicroseconds (1000000 * Int32.toLarge s + Int32.toLarge us)
     in
     fun getTime () = let
 	val ({seconds = ts, uSeconds = tu}, 
 	     {seconds = ss, uSeconds = su}, 
 	     {seconds = gs, uSeconds = gu}) = gettime' ()
-    in
-	{ nongc = { usr = mkTime (ts, tu),
-		    sys = mkTime (ss, su) },
-	  gc = { usr = mkTime (gs, gu),
-		 sys = Time.zeroTime } }
-    end
+	in {
+	  nongc = { usr = mkTime (ts, tu), sys = mkTime (ss, su) },
+	  gc    = { usr = mkTime (gs, gu), sys = Time.zeroTime }
+	} end
     end (* local *)
 
     fun startCPUTimer () = CPUT (getTime())
