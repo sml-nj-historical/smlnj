@@ -4,11 +4,5 @@ To bootstrap
 
 	export CM_PATHCONFIG=../../../lib/pathconfig
 	cd smlnj.boot.x86-unix
-	.Some notes for working with the new runtime system
-
-To bootstrap
-
-	export CM_PATHCONFIG=../../../lib/pathconfig
-	cd smlnj.boot.x86-unix
 	../../../rt/src/smlnj-boot/smlnj-boot @SMLboot BOOTLIST
 
