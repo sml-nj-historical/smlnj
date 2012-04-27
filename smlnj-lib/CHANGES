@@ -2,6 +2,76 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2012-03-26]
+	Added subtract, subtract', and subtractList functions to ORD_SET
+	interface and implementations.
+
+[2012-03-09]
+	Modified PathUtil module to handle the case where the filename is an
+	absolute path.
+
+--------------------------------------------------------------------------------
+SML/NJ 110.74
+-------------------
+
+[2011-11-25]
+	Added hash-table-based implementation of sets (HASH_SET signature and
+	HashSetFn functor).
+
+[2011-05-23]
+	Added new S-expression library (contributed by Damon Wang)
+
+[2011-05-17]
+	Fixed bug in JSON scanner.  It didn't handle escaped backslash or double
+	quote correctly.
+
+--------------------------------------------------------------------------------
+SML/NJ 110.73
+-------------------
+
+[2011-05-12]
+	Modified the implementation of GetOpt.usageInfo so that if the help
+	string has embedded newlines, then the extra lines are properly
+	indented.
+
+[2011-04-10]
+	Changed the interface of JSONStreamParser to support both parsing files
+	and TextIO.instreams.
+
+[2011-03-16]
+	Added findExe function to PathUtil module.
+
+[2010-06-30]
+	Added HTML4 library.
+
+[2010-03-09]
+	Fixed bug in hashed cons library (bug #55).
+
+--------------------------------------------------------------------------------
+SML/NJ 110.72
+-------------------
+
+[2009-05-13]
+	Added array iterators to DynamicArray module.
+
+[2009-03-15]
+	Added support for the interval syntax to the AWK RE syntax parser (this
+	syntax was not part of the original version of AWK, but is supported by
+	modern variants and the POSIX standard).
+
+[2008-10-03]
+	Improved the error messages in the JSON parser.
+
+[2008-06-11]
+	Added support for begin marks to Thompson engine.
+
+[2008-05-12]
+	Added parsing support to JSON library.
+
+[2008-04-18]
+	First commit of JSON Library.  Printing works, but parsing still needs
+	to be implemented.
+
 [2008-03-18]
 	Committed a major overhaul of the RegExp library.  There is now a new
 	engine that implements Ken Thompson's RE matching algorithm.  The result

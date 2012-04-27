@@ -1,6 +1,7 @@
 (* hash-cons.sml
  *
- * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2011 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 structure HashCons :> HASH_CONS =
@@ -34,6 +35,7 @@ structure HashCons :> HASH_CONS =
 		val id = !nextTag
 		val obj = {nd = term, hash = h, tag = id}
 		in
+		  nextTag := id + 0w1;
 		  Array.update(tbl', i, obj::bucket);
 (* check for table resize *)
 		  obj

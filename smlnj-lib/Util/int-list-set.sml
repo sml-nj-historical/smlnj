@@ -77,6 +77,24 @@ structure IntListSet :> ORD_SET where type Key.ord_key = Int.int =
 	    union (l, items')
 	  end
 
+    fun subtract (l, item) = let
+	  fun f ([], _) = l
+	    | f (elem::r, prefix) = (case Key.compare(item, elem)
+		   of LESS => l
+		    | EQUAL => List.revAppend(prefix, r)
+		    | GREATER => f (r, elem::prefix)
+		  (* end case *))
+	  in
+	    f (l, [])
+	  end
+    fun subtract' (item, l) = subtract (l, item)
+
+    fun subtractList (l, items) = let
+	  val items' = List.foldl (fn (x, set) => add(set, x)) [] items
+	  in
+	    difference (l, items')
+	  end
+
   (* create a set from a list of items; this function works in linear time if the list
    * is in increasing order.
    *)

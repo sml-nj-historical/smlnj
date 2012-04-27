@@ -1,9 +1,9 @@
 (* mono-dynamic-array-sig.sml
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
+ * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
- * Signature for unbounded arrays.
- *
+ * Signature for monomorphic unbounded arrays.
  *)
 
 signature MONO_DYNAMIC_ARRAY =
@@ -58,6 +58,24 @@ signature MONO_DYNAMIC_ARRAY =
       (* truncate (a,sz) makes every entry with index > sz the default value *)
 
 (** what about iterators??? **)
+(*
+    val vector : array -> 'a vector
+    val copy : {di:int, dst:array, src:array} -> unit
+    val copyVec : {di:int, dst:array, src:'a vector} -> unit
+    val appi : (int * 'a -> unit) -> array -> unit
+    val app : ('a -> unit) -> array -> unit
+    val modifyi : (int * 'a -> 'a) -> array -> unit
+    val modify : ('a -> 'a) -> array -> unit
+    val foldli : (int * 'a * 'b -> 'b) -> 'b -> array -> 'b
+    val foldri : (int * 'a * 'b -> 'b) -> 'b -> array -> 'b
+    val foldl : ('a * 'b -> 'b) -> 'b -> array -> 'b
+    val foldr : ('a * 'b -> 'b) -> 'b -> array -> 'b
+    val findi : (int * 'a -> bool) -> array -> (int * 'a) option
+    val find : ('a -> bool) -> array -> 'a option
+    val exists : ('a -> bool) -> array -> bool
+    val all : ('a -> bool) -> array -> bool
+    val collate : ('a * 'a -> order) -> array * array -> order
+*)
 
   end (* MONO_DYNAMIC_ARRAY *)
 

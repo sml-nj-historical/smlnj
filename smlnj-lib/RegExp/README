@@ -61,6 +61,7 @@ for more details.
 FrontEnd/     Implementation of various surface syntaxes
 BackEnd/      Implementation of various matching engines
 Glue/         Glue code
+Tests/        Testing code
 
 
                               FRONT ENDS

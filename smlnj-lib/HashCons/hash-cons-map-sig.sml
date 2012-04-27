@@ -1,6 +1,7 @@
 (* hash-cons-map-sig.sml
  *
- * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies
+ * COPYRIGHT (c) 2011 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 signature HASH_CONS_MAP =

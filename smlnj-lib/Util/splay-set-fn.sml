@@ -238,6 +238,15 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
             SET{root = ref root, nobj = cnt}
           end
 
+    fun subtract (s, item) = difference (s, singleton item)
+    fun subtract' (item, s) = subtract (s, item)
+
+    fun subtractList (l, items) = let
+	  val items' = List.foldl (fn (x, set) => add(set, x)) EMPTY items
+	  in
+	    difference (l, items')
+	  end
+
     fun map f EMPTY = EMPTY
       | map f (SET{root, ...}) = let
 	  fun mapf (acc, SplayNil) = acc

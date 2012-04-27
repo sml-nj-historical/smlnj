@@ -1,9 +1,9 @@
 (* dynamic-array.sml
  *
- * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Polymorhic arrays of unbounded length
- *
  *)
 
 structure DynamicArray :> DYNAMIC_ARRAY =
@@ -92,6 +92,31 @@ structure DynamicArray :> DYNAMIC_ARRAY =
               end
             else fillDflt(bnd,newbnd)
           end
+
+  (* get the array slice that covers the defined portion of the array *)
+    fun slice (BLOCK(arr, _, bnd)) =
+	  ArraySlice.slice(!arr, 0, SOME(!bnd))
+
+  (* we implement the iterators by using the array slice operations *)
+    fun vector arr = ArraySlice.vector (slice arr)
+    fun appi f arr = ArraySlice.appi f (slice arr)
+    fun app f arr = ArraySlice.app f (slice arr)
+    fun modifyi f arr = ArraySlice.modifyi f (slice arr)
+    fun modify f arr = ArraySlice.modify f (slice arr)
+    fun foldli f init arr = ArraySlice.foldli f init (slice arr)
+    fun foldri f init arr = ArraySlice.foldri f init (slice arr)
+    fun foldl f init arr = ArraySlice.foldl f init (slice arr)
+    fun foldr f init arr = ArraySlice.foldr f init (slice arr)
+    fun findi pred arr = ArraySlice.findi pred (slice arr)
+    fun find pred arr = ArraySlice.find pred (slice arr)
+    fun exists pred arr = ArraySlice.exists pred (slice arr)
+    fun all pred arr = ArraySlice.all pred (slice arr)
+    fun collate cmp (arr1, arr2) = ArraySlice.collate cmp (slice arr1, slice arr2)
+
+(* TODO
+    val copy : {di:int, dst:'a array, src:'a array} -> unit
+    val copyVec : {di:int, dst:'a array, src:'a vector} -> unit
+*)
 
   end (* DynamicArrayFn *)
 

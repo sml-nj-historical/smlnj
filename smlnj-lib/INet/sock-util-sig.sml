@@ -8,7 +8,6 @@
 signature SOCK_UTIL =
   sig
 
-(*** Commented out unti socket API is supported by new runtime
     datatype port = PortNumber of int | ServName of string
 	(* a port can be identified by number, or by the name of a service *)
 
@@ -46,6 +45,5 @@ signature SOCK_UTIL =
     val sendVec : ('a stream_sock * Word8Vector.vector) -> unit
     val sendStr : ('a stream_sock * string) -> unit
     val sendArr : ('a stream_sock * Word8Array.array) -> unit
-***)
 
   end;

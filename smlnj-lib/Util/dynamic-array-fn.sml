@@ -1,9 +1,9 @@
 (* dynamic-array-fn.sml
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
+ * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
- * Arrays of unbounded length
- *
+ * Monomorphic arrays of unbounded length
  *)
 
 functor DynamicArrayFn (A : MONO_ARRAY) : MONO_DYNAMIC_ARRAY =
@@ -57,7 +57,7 @@ functor DynamicArrayFn (A : MONO_ARRAY) : MONO_DYNAMIC_ARRAY =
 
     fun bound (BLOCK(_,_,bnd)) = (!bnd)
 
-    fun expand(arr,oldlen,newlen,dflt) = let
+    fun expand (arr,oldlen,newlen,dflt) = let
           fun fillfn i = if i < oldlen then A.sub(arr,i) else dflt
           in
             A.tabulate(newlen, fillfn)
@@ -67,7 +67,7 @@ functor DynamicArrayFn (A : MONO_ARRAY) : MONO_DYNAMIC_ARRAY =
           val len = A.length (!arr)
           in
             if idx >= len 
-              then arr := expand(!arr,len, Int.max(len+len,idx+1),dflt) 
+              then arr := expand(!arr, len, Int.max(len+len,idx+1), dflt) 
               else ();
             A.update(!arr,idx,v);
             if idx > !bnd then bnd := idx else ()

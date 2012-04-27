@@ -6,7 +6,7 @@
 
 find ML-Doc -name "*.mldoc" -print | mk-mldoc-makefile
 
-function mkDirTree {
+mkDirTree () {
   base=$1
   if test ! -d $base ; then
     mkdir $base || (echo "unable to create $base"; exit 1)

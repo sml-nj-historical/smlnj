@@ -4,7 +4,7 @@
  *
  * Sources file for INet library; part of the SML/NJ library suite.
  *
- * This file has beenhacked for the new runtime transition.
+ * This file has been hacked for the new runtime transition.
  *)
 
 Library

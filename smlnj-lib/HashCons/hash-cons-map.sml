@@ -1,6 +1,7 @@
 (* hash-cons-map.sml
  *
- * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies
+ * COPYRIGHT (c) 2011 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * This is an implementation of the HASH_CONS_MAP signature that is built
  * on top of the WordRedBlackMap structure.  Eventually, it will be replaced
