@@ -9,8 +9,6 @@ HTML Library
   Rewrite parser as recursive descent (the ML-Yacc version doesn't handle
   whitespace in the HEAD element very well).
 
-  Update for HTML 4.0 (or later?)
-
 PP Library
 ----------
 
