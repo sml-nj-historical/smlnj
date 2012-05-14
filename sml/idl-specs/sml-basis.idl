@@ -162,7 +162,7 @@ const sml_int SET_POS_END = 2;
 [sml_context] ML_iodesc_t getStdOut ();
 [sml_context] ML_iodesc_t getStdErr ();
 
-/******************** OS support ********************/
+/******************** OS support (basis/api/os.cxx) ********************/
 
 [sml_context] ML_string_t errorName ([in] int err);
 [sml_context] ML_string_t errorMessage ([in] int err);
@@ -183,11 +183,11 @@ void osSleep ([in, ref] Time_t *t);
 [sml_context] void closeDir ([in] ML_directory_t dir);
 [sml_context] void chDir ([in] string path);
 [sml_context] ML_string_t getDir ();
-[sml_context] void mkDir ([in] string path);
-[sml_context] void rmDir ([in] string path);
-[sml_context] ML_bool_t isReg ([in] string path);
-[sml_context] ML_bool_t isDir ([in] string path);
-[sml_context] ML_bool_t isLink ([in] string path);
+void mkDir ([in] string path);
+void rmDir ([in] string path);
+boolean isReg ([in] string path);
+boolean isDir ([in] string path);
+boolean isLink ([in] string path);
 [sml_context] ML_string_t readLink ([in] string path);
 [sml_context] ML_int32_t fileSize ([in] string path);
 /* NOTE: modTime returns the time in seconds! */

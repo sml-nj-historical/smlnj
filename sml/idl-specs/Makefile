@@ -53,10 +53,10 @@ help:
 	@echo "This makefile supports the following targets:"
 	@echo "    help          -- print this message"
 	@echo "    install       -- generate and install all files to the appropriate locations"
-	@echo "    classic-basis -- generate and install C glue code for the classic runtime"
+	@echo "    classic-basis -- generate and install C glue code for the classic basis"
 	@echo "    classic-rt    -- generate and install C glue code for the classic runtime"
-	@echo "    new-rt        -- generate C++ glue code for the new runtime"
-	@echo "    sml           -- generate the SML glue code for either runtime"
+	@echo "    new-rt        -- generate C++ glue code for the new runtime and basis"
+	@echo "    sml           -- generate the SML glue code for either runtime and basis"
 	@echo "    clean         -- remove any generated files"
 
 # generate and install the class version of the basis glue
@@ -81,10 +81,9 @@ sml:
 	  $(ML_IDL) -t smlnj $(ML_IDL_FLAGS) $$f; \
 	done
 
-# generate and install all files.  Note that the class stuff has to be installed
-# after each IDL file is processed because of file-name collisions.
+# generate and install generated files for new runtime system and compiler.
 #
-install:	classic-basis classic-rt new-rt sml
+install:	new-rt sml
 	cp -p $(BASIS_CXX_FILES) $(NEW_RUNTIME_DIR)/src/smlnj-rt/basis/glue
 	cp -p $(RT_CXX_FILES) $(NEW_RUNTIME_DIR)/src/smlnj-rt/runtime/glue
 	if [ ! -d $(BASIS_IMP_DIR)/RuntimeIDL ] ; then \
