@@ -51,13 +51,15 @@ SML_FILES =	sml-basis-sig.sml \
 
 help:
 	@echo "This makefile supports the following targets:"
-	@echo "    help          -- print this message"
-	@echo "    install       -- generate and install all files to the appropriate locations"
-	@echo "    classic-basis -- generate and install C glue code for the classic basis"
-	@echo "    classic-rt    -- generate and install C glue code for the classic runtime"
-	@echo "    new-rt        -- generate C++ glue code for the new runtime and basis"
-	@echo "    sml           -- generate the SML glue code for either runtime and basis"
-	@echo "    clean         -- remove any generated files"
+	@echo "    help           -- print this message"
+	@echo "    install        -- generate and install all files to the appropriate locations"
+	@echo "    install-new-rt -- generate and install C++ glue code for the new runtime and basis"
+	@echo "    new-rt         -- generate C++ glue code for the new runtime and basis"
+	@echo "    install-sml    -- generate and install the SML glue code for the new runtime and basis"
+	@echo "    sml            -- generate the SML glue code for the new runtime and basis"
+	@echo "    classic-basis  -- generate and install C glue code for the classic basis"
+	@echo "    classic-rt     -- generate and install C glue code for the classic runtime"
+	@echo "    clean          -- remove any generated files"
 
 # generate and install the class version of the basis glue
 #
@@ -83,14 +85,18 @@ sml:
 
 # generate and install generated files for new runtime system and compiler.
 #
-install:	new-rt sml
+install:	install-new-rt install-sml
+
+install-new-rt:	new-rt
 	cp -p $(BASIS_CXX_FILES) $(NEW_RUNTIME_DIR)/src/smlnj-rt/basis/glue
 	cp -p $(RT_CXX_FILES) $(NEW_RUNTIME_DIR)/src/smlnj-rt/runtime/glue
+
+install-sml:
 	if [ ! -d $(BASIS_IMP_DIR)/RuntimeIDL ] ; then \
 	  mkdir $(BASIS_IMP_DIR)/RuntimeIDL; \
 	fi
 	cp -p $(SML_FILES) $(BASIS_IMP_DIR)/RuntimeIDL
-
+	
 clean:
 	rm -rf *.h *.c *.hxx *.cxx *.sml *.cm
 
