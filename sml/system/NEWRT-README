@@ -4,5 +4,5 @@ To bootstrap
 
 	export CM_PATHCONFIG=../../../lib/pathconfig
 	cd sml.boot.x86-unix
-	../../../rt/src/smlnj-boot/smlnj-boot @SMLboot BOOTLIST
+	../../../rt/src/smlnj-boot/smlnj-boot @SMLheap=sml @SMLboot=BOOTLIST
 
