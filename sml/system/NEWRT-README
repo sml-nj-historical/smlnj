@@ -6,3 +6,6 @@ To bootstrap
 	cd sml.boot.x86-unix
 	../../../rt/src/smlnj-boot/smlnj-boot @SMLheap=sml @SMLboot=BOOTLIST
 
+To run with bootstrap heap image
+
+	../../rt/src/sml/smlnj @SMLload=sml.x86-darwin
