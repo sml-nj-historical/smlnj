@@ -124,10 +124,12 @@ fun special_char(c,fst,last,errWarn:errWarn) =
 id	= [_A-Za-z][_A-Za-z0-9]*; 
 octdigit	= [0-7];
 hexdigit	= [0-9a-fA-F];
-hexnum	= 0[xX]{hexdigit}+[uUlL]?[uUlL]?; 
-octnum	= 0{octdigit}+[uUlL]?[uUlL]?;
-decnum	= (0|([1-9][0-9]*))[uUlL]?[uUlL]?;
-realnum = (([0-9]+(\.[0-9]+)?)|(\.[0-9]+))([eE][+-]?[0-9]+)?[lL]?;
+integersuffix   = ([uU][lL]?[lL]?|[lL][lL]?[uU]?);
+hexnum	= 0[xX]{hexdigit}+{integersuffix}?; 
+octnum	= 0{octdigit}+{integersuffix}?;
+decnum	= (0|([1-9][0-9]*)){integersuffix}?;
+floatingsuffix  = [flFL];
+realnum = (([0-9]+(\.[0-9]+)?)|(\.[0-9]+))([eE][+-]?[0-9]+)?{floatingsuffix}?;
 ws	= ("\012"|[\t\ ])*;
 
 simplecharconst  = '[^\n\\]';
