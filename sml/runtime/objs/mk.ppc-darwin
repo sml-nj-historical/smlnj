@@ -1,8 +1,8 @@
 # mk.ppc-darwin
 #
-# COPYRIGHT (c) 2007 The SML/NJ Fellowship
+# COPYRIGHT (c) 2012 The SML/NJ Fellowship
 #
-# Makefile for MacOS X 10.2+
+# Makefile for MacOS X 10.5 on PPC
 #
 # the -D_NONSTD_SOURCE flag is needed for Mac OS X 10.5, because the
 # mcontext field names changed.
@@ -18,7 +18,7 @@ XLIBS =         ../c-libs/dl/libunix-dynload.a
 LD_LIBS =       -ldl
 XDEFS =
 BASE_DEFS =
-DEFS		= $(XDEFS) $(BASE_DEFS) -DHOST_PPC -DTARGET_PPC -DOPSYS_UNIX -DOPSYS_DARWIN -DOPSYS_MACOS_10_2 -DDLOPEN
+DEFS		= $(XDEFS) $(BASE_DEFS) -DHOST_PPC -DTARGET_PPC -DOPSYS_UNIX -DOPSYS_DARWIN -DDLOPEN
 TARGET =	PPC
 VERSION =	v-ppc-darwin
 RUNTIME =	run.ppc-darwin

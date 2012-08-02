@@ -197,19 +197,7 @@ typedef int ssize_t;
 extern int	sys_nerr;
 extern char	*sys_errlist[];
 
-#elif defined(OPSYS_DARWIN) && defined(OPSYS_MACOS_10_1) /** MacOS X 10.1 **/
-#  define OS_NAME       "Darwin"
-#  define HAS_POSIX_LIBRARIES
-#  define HAS_POSIX_SIGS
-#  define HAS_GETRUSAGE
-#  define HAS_SETITIMER
-#  define HAS_ANON_MMAP
-#  define HAS_SIGCONTEXT
-#  define HAS_STRERROR
-#  define HAS_SELECT
-#  define MAP_ANONYMOUS MAP_ANON
-
-#elif defined(OPSYS_DARWIN) && defined(OPSYS_MACOS_10_2) /** MacOS X 10.2 **/
+#elif defined(OPSYS_DARWIN) /** MacOS X 10.5 for PPC / 10.6+ for x86 **/
 #  define OS_NAME       "Darwin"
 #  define HAS_POSIX_LIBRARIES
 #  define HAS_POSIX_SIGS

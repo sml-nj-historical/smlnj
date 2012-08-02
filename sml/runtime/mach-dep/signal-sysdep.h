@@ -290,26 +290,13 @@ extern void SetFSR();
 #    define INT_OVFLW(s, c)	 ((s) == SIGTRAP)	/* This needs to be refined */
    /* info about siginfo_t is missing in the include files 4/17/2001 */
 #    define SIG_GetCode(info,scp) 0
-#    if defined(OPSYS_MACOS_10_1)
-       typedef void SigReturn_t;
-#      define SIG_GetPC(scp)	 ((scp)->sc_ir)
-#      define SIG_SetPC(scp, addr) {(scp)->sc_ir = (int) addr;}
-     /* The offset of 17 is hardwired from reverse engineering the contents of
-      * sc_regs. 17 is the offset for register 15.
-      */
-#      define SIG_ZeroLimitPtr(scp)	\
-       {  int * regs = (scp)->sc_regs;	\
-	  regs[17] = 0;			\
-       }
-#    elif defined(OPSYS_MACOS_10_2)
-     /* see /usr/include/mach/ppc/thread_status.h */
-#      define SIG_GetPC(scp)		((scp)->uc_mcontext->ss.srr0)
-#      define SIG_SetPC(scp, addr)	{(scp)->uc_mcontext->ss.srr0 = (int) addr;}
-     /* The offset of 17 is hardwired from reverse engineering the contents of
-      * sc_regs. 17 is the offset for register 15.
-      */
-#      define SIG_ZeroLimitPtr(scp)	{  (scp)->uc_mcontext->ss.r15 = 0; }
-#    endif
+  /* see /usr/include/mach/ppc/thread_status.h */
+#    define SIG_GetPC(scp)		((scp)->uc_mcontext->ss.srr0)
+#    define SIG_SetPC(scp, addr)	{(scp)->uc_mcontext->ss.srr0 = (int) addr;}
+  /* The offset of 17 is hardwired from reverse engineering the contents of
+   * sc_regs. 17 is the offset for register 15.
+   */
+#    define SIG_ZeroLimitPtr(scp)	{  (scp)->uc_mcontext->ss.r15 = 0; }
 #  elif defined(OPSYS_MKLINUX)
     /* RS6000, MkLinux */
 

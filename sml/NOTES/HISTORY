@@ -23,6 +23,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/08/02
+Description:
+Fixed bugs #89 and #96: Build Failure with Xcode 4.3
+Also removed build support for MacOS X pre-10.5 (Leopard) on PPC and
+pre-10.6 (Snow Leopard) on Intel.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2012/02/05
 Description:
 Fixed bug #88.  The check for valid arcs on Unix systems now allows
