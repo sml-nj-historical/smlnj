@@ -69,7 +69,7 @@ smlnj-c		src
 cm		src
 system		src
 
-# Components of the SML/NJ library that are not used by the compiler:
+# Addional components of the SML/NJ library that are not used by the compiler:
 #    (unix-lib.cm is installed only on Unix-like systems)
 smlnj-lib ulib unix-lib.cm      unix-lib.cm      smlnj-lib/Unix
 smlnj-lib  lib inet-lib.cm      inet-lib.cm      smlnj-lib/INet
@@ -78,6 +78,7 @@ smlnj-lib  lib reactive-lib.cm  reactive-lib.cm  smlnj-lib/Reactive
 smlnj-lib  lib hash-cons-lib.cm hash-cons-lib.cm smlnj-lib/HashCons
 smlnj-lib  lib json-lib.cm      json-lib.cm      smlnj-lib/JSON
 smlnj-lib  lib html4-lib.cm	html4-lib.cm	 smlnj-lib/HTML4
+smlnj-lib  lib sexp-lib.cm      sexp-lib.cm      smlnj-lib/SExp
 
 # Concurrent ML:
 cml lib cml core-cml.cm     cml/src
