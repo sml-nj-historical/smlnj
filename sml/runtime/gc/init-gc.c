@@ -78,8 +78,9 @@ heap_params_t *ParseHeapParams (char **argv)
     while ((arg = *argv++) != NIL(char *)) {
 	if (isRuntimeOption(arg, option, &optionArg)) {
 	    if (MATCH("alloc")) { /* set allocation size */
+		int allocSz = 0;
 		CHECK("alloc");
-		int allocSz = GetSzOption(ONE_K, optionArg);
+		allocSz = GetSzOption(ONE_K, optionArg);
 		if (allocSz < 0) {
 		    errFlg = TRUE;
 		    Error ("bad argument for \"@SMLalloc\" option\n");
