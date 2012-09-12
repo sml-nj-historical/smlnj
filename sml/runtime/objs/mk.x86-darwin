@@ -10,8 +10,19 @@
 # to support.  Note that since Lion, the 10.5 (and 10.6?) SDKs are not part
 # of the Xcode install.
 #
+# to support 10.5 and later you will need to have the 10.5 SDK in /Developer/SDKs/MacOSX10.5.sdk
+#
 #SDK =		-isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5
-SDK =		-isysroot /Developer/SDKs/MacOSX10.6.sdk -mmacosx-version-min=10.6
+#
+# to support 10.5 and later you will need to have the 10.6 SDK in /Developer/SDKs/MacOSX10.6.sdk;
+# this should work on Lion, if you had Xcode 4.2 installed.
+#SDK =		-isysroot /Developer/SDKs/MacOSX10.6.sdk -mmacosx-version-min=10.6
+#
+# On Mountain Lion, the earliest version is 10.7, which is to supported by the following line:
+#
+#SDK =		-isysroot Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.7.sdk -mmacosx-version-min=10.7
+
+SDK =		-mmacosx-version-min=10.6
 
 SHELL =		/bin/sh
 
