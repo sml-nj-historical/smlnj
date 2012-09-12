@@ -23,6 +23,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/09/11
+Description:
+Added getu function to ULexBuffer as a way to improve ulex performance.
+This addition allows a fastpath for processing ascii characters, which
+improved lexer performance by 3-4%.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2012/08/02
 Description:
 Fixed bugs #89 and #96: Build Failure with Xcode 4.3
