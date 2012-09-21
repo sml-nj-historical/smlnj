@@ -20,6 +20,20 @@ Date: yyyy/mm/dd
 Description:
 
 
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/10/01
+Description:
+
+*************************** Version 110.75 ***************************
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/09/21
+Description:
+Bug fix in ml-antlr to ensure that the generated toString function
+for tokens is strictly legal SML code (i.e., non-printing characters
+and UTF8 multibyte sequences are properly escaped).
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)

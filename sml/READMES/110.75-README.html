@@ -88,6 +88,11 @@ We expect that 110.75 will be the last release using the current version numberi
       <li>Performance improvements and eliminated the direct dependency of ml-ulex
         lexers on the SML/NJ Library.
       </li>
+      <li>
+        Bug fix in ml-antlr to ensure that the generated toString function
+        for tokens is strictly legal SML code (i.e., non-printing characters
+        and UTF8 multibyte sequences are properly escaped).
+      </li>
     </ul>
   </dd>
 
@@ -98,7 +103,7 @@ We expect that 110.75 will be the last release using the current version numberi
     for more details.
     </p>
     <table class="buglist">
-      <tr><td class="bugid">87</td><td>Buildling SML/NJ on WIndows fails if there is a number in the path</td></tr>
+      <tr><td class="bugid">87</td><td>Buildling SML/NJ on Windows fails if there is a number in the path</td></tr>
       <tr><td class="bugid">88</td><td>Support for UTF8 path names</td></tr>
       <tr><td class="bugid">89</td><td>Building on OS X Lion</td></tr>
       <tr><td class="bugid">94</td><td>Running on OS X Mountain Lion</td></tr>
