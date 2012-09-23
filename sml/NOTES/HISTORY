@@ -19,13 +19,20 @@ Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: yyyy/mm/dd
 Description:
 
-
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2012/10/01
 Description:
 
 *************************** Version 110.75 ***************************
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/09/23
+Description:
+Additions to the SML/NJ Library.  Added exists, existsi, all, and alli
+functions to ORD_MAP signature and implementations, and added all
+function to ORD_SET signature and implementations.
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
