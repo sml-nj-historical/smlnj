@@ -1,5 +1,8 @@
 (* redblack-map-fn.sml
  *
+ * COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
  *
  * This code is based on Chris Okasaki's implementation of
@@ -504,6 +507,40 @@ functor RedBlackMapFn (K : ORD_KEY) :> ORD_MAP where Key = K =
 		(* end case *))
 	  in
 	    foldli f' empty
+	  end
+
+  (* check the elements of a map with a predicate and return true if
+   * any element satisfies the predicate. Return false otherwise.
+   * Elements are checked in key order.
+   *)
+    fun exists pred = let
+	  fun exists' E = false
+	    | exists' (T(_, a, _, x, b)) = exists' a orelse pred x orelse exists' b
+	  in
+	    fn (MAP(_, m)) => exists' m
+	  end
+    fun existsi pred = let
+	  fun exists' E = false
+	    | exists' (T(_, a, k, x, b)) = exists' a orelse pred(k, x) orelse exists' b
+	  in
+	    fn (MAP(_, m)) => exists' m
+	  end
+
+  (* check the elements of a map with a predicate and return true if
+   * they all satisfy the predicate. Return false otherwise.  Elements
+   * are checked in key order.
+   *)
+    fun all pred = let
+	  fun all' E = true
+	    | all' (T(_, a, _, x, b)) = all' a andalso pred x andalso all' b
+	  in
+	    fn (MAP(_, m)) => all' m
+	  end
+    fun alli pred = let
+	  fun all' E = true
+	    | all' (T(_, a, k, x, b)) = all' a andalso pred(k, x) andalso all' b
+	  in
+	    fn (MAP(_, m)) => all' m
 	  end
 
   end;

@@ -94,6 +94,16 @@ signature ORD_SET =
     val filter : (item -> bool) -> set -> set
 
     val exists : (item -> bool) -> set -> bool
+	(* check the elements of a set with a predicate and return true if
+	 * any element satisfies the predicate. Return false otherwise.
+	 * Elements are checked in key order.
+	 *)
+
+    val all : (item -> bool) -> set -> bool
+	(* check the elements of a set with a predicate and return true if
+	 * they all satisfy the predicate. Return false otherwise.  Elements
+	 * are checked in key order.
+	 *)
 
     val find : (item -> bool) -> set -> item option
 

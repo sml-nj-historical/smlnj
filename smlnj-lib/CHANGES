@@ -2,6 +2,13 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2012-09-23]
+	Added exists, existsi, all, and alli functions to ORD_MAP signature and
+	implementations.
+
+[2012-09-23]
+	Added all function to ORD_SET signature and implementations.
+
 [2012-03-26]
 	Added subtract, subtract', and subtractList functions to ORD_SET
 	interface and implementations.

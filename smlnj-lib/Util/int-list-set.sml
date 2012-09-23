@@ -180,6 +180,7 @@ structure IntListSet :> ORD_SET where type Key.ord_key = Int.int =
     val filter = List.filter
     val partition = List.partition
     val exists = List.exists
+    val all = List.all
     val find = List.find
 
   end (* IntListMap *)

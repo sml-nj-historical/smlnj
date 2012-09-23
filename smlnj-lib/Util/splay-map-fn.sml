@@ -1,5 +1,8 @@
 (* splay-map-fn.sml
  *
+ * COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
  *
  * Functor implementing dictionaries using splay trees.
@@ -14,9 +17,9 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
     datatype 'a map
       = EMPTY
       | MAP of {
-        root : (K.ord_key * 'a) splay ref,
-        nobj : int
-      }
+	  root : (K.ord_key * 'a) splay ref,
+	  nobj : int
+	}
 
     fun cmpf k (k', _) = K.compare(k',k)
 
@@ -386,6 +389,43 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
 		else m
 	  in
 	    foldli f empty m
+	  end
+
+  (* check the elements of a map with a predicate and return true if
+   * any element satisfies the predicate. Return false otherwise.
+   * Elements are checked in key order.
+   *)
+    fun exists pred = let
+	  fun exists' SplayNil = false
+	    | exists' (SplayObj{value=(_, x), left, right}) =
+		exists' left orelse pred x orelse exists' right
+	  in
+	    fn EMPTY => false | (MAP{root, ...}) => exists' (!root)
+	  end
+    fun existsi pred = let
+	  fun exists' SplayNil = false
+	    | exists' (SplayObj{value, left, right}) =
+		exists' left orelse pred value orelse exists' right
+	  in
+	    fn EMPTY => false | (MAP{root, ...}) => exists' (!root)
+	  end
+
+  (* check the elements of a map with a predicate and return true if
+   * they all satisfy the predicate. Return false otherwise.  Elements
+   * are checked in key order.
+   *)
+    fun all pred = let
+	  fun all' SplayNil = true
+	    | all' (SplayObj{value=(_, x), left, right}) =
+		all' left andalso pred x andalso all' right
+	  in
+	    fn EMPTY => true | (MAP{root, ...}) => all' (!root)
+	  end
+    fun alli pred = let
+	  fun all' SplayNil = true
+	    | all' (SplayObj{value, left, right}) = all' left andalso pred value andalso all' right
+	  in
+	    fn EMPTY => true | (MAP{root, ...}) => all' (!root)
 	  end
 
   end (* SplayDictFn *)
