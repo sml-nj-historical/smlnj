@@ -28,6 +28,13 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 201209/24
+Description:
+Added Base64 module to SML/NJ Library to support encoding and decoding
+Word8 vectors as base64 strings.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2012/09/23
 Description:
 Additions to the SML/NJ Library.  Added exists, existsi, all, and alli
