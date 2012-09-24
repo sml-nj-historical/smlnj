@@ -11,6 +11,7 @@ Library
 
 signature ARRAY_SORT
 signature ATOM
+signature BASE64
 signature BIT_ARRAY
 signature BIT_VECTOR
 signature CHAR_MAP
@@ -60,6 +61,7 @@ structure AtomRedBlackSet
 structure AtomMap
 structure AtomSet
 structure AtomTable
+structure Base64
 structure BitArray
 (****
 structure BitVector
@@ -142,6 +144,8 @@ atom-map.sml
 atom-set.sml
 atom-table.sml
 atom.sml
+base64-sig.sml
+base64.sml
 binary-map-fn.sml
 binary-set-fn.sml
 bit-array-sig.sml
