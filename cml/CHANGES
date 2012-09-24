@@ -1,6 +1,9 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2012-09-24]
+	Track changes to SML/NJ Library
+
 [2011-05-10]
         Changed the paths used to specify the CML versions of libraries
         in a CM file.  The new scheme is
