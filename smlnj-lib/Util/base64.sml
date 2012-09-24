@@ -26,6 +26,9 @@ structure Base64 : BASE64 =
     val padChar = #"="
     fun incByte b = UCV.sub(encTbl, Word8.toIntX b) 
 
+  (* return true if a character is in the base64 alphabet *)
+    val isBase64 = Char.contains encTbl
+
   (* encode a triple of bytes into four base-64 characters *)
     fun encode3 (b1, b2, b3) = let
 	  val c1 = W8.>>(b1, 0w2)
@@ -54,7 +57,7 @@ structure Base64 : BASE64 =
 	  end
 
     local
-      fun encode (vec, start, len) = let
+      fun encode64 (vec, start, len) = let
 	    val outLen = 4 * Int.quot(len + 2, 3)
 	    val outBuf = Unsafe.CharVector.create outLen
 	    val nTriples = Int.quot(len, 3)
@@ -82,11 +85,21 @@ structure Base64 : BASE64 =
 	    end
     in
 
-    fun encodeVec vec = encode (vec, 0, W8V.length vec)
+    fun encode vec = encode64 (vec, 0, W8V.length vec)
 
-    fun encodeVecSlice slice = encode (Word8VectorSlice.base slice)
+    fun encodeSlice slice = encode64 (Word8VectorSlice.base slice)
 
     end (* local *)
+
+  (* raised if a Base64 string does not end in a complete encoding quantum (i.e., 4
+   * characters including padding characters).
+   *)
+    exception Incomplete
+
+  (* raised if an invalid Base64 character is encountered during decode.  The int
+   * is the position of the character and the char is the invalid character.
+   *)
+    exception Invalid of (int * char)
 
   (* decoding tags *)
     val errCode : W8.word = 0w255
@@ -101,10 +114,66 @@ structure Base64 : BASE64 =
 	    ins(spCode, #"\n");
 	    ins(spCode, #"\r");
 	    ins(spCode, #" ");
+	  (* add pad code *)
+	    ins(padCode, padChar);
 	  (* add decoding codes *)
 	    CharVector.appi (fn (i, c) => ins(Word8.fromInt i, c)) encTbl;
 	  (* convert to vector *)
 	    W8V.tabulate (256, fn i => W8A.sub(tbl, i))
 	  end
+    val strictDecTbl = let
+	  val tbl = W8A.array(256, errCode)
+	  fun ins (w, c) = W8A.update(tbl, Char.ord c, w)
+	  in
+	  (* add pad code *)
+	    ins(padCode, padChar);
+	  (* add decoding codes *)
+	    CharVector.appi (fn (i, c) => ins(Word8.fromInt i, c)) encTbl;
+	  (* convert to vector *)
+	    W8V.tabulate (256, fn i => W8A.sub(tbl, i))
+	  end
+
+    fun decode64 decTbl (s, start, len) = let
+	  fun getc i = if (i < len)
+		then let
+		  val c = String.sub(s, start+i)
+		  val b = W8V.sub(decTbl, Char.ord c)
+		  in
+		    if (b = errCode) then raise Invalid(i, c)
+		    else if (b = spCode) then getc (i+1)
+(* FIXME: we need a better way to handle padding, which should only occur at the end of the string *)
+		    else if (b = padCode) then (0w0, i+1)
+		    else (b, i+1)
+		  end
+		else raise Incomplete
+	(* compute upper bound on number of output bytes *)
+	  val nBytes = 3 * Word.toIntX(Word.>>(Word.fromInt len + 0w3, 0w2))
+	  val buffer = W8A.array(nBytes, 0w0)
+	  fun cvt (inIdx, outIdx) = if (inIdx < len)
+		then let
+		  val (c0, i) = getc inIdx
+		  val (c1, i) = getc inIdx
+		  val (c2, i) = getc inIdx
+		  val (c3, i) = getc inIdx
+		  val b0 = W8.orb(W8.<<(c0, 0w2), W8.>>(c1, 0w4))
+		  val b1 = W8.orb(W8.<<(c1, 0w4), W8.>>(c2, 0w2))
+		  val b2 = W8.orb(W8.<<(c2, 0w6), c3)
+		  in
+		    W8A.update(buffer, outIdx, b0);
+		    W8A.update(buffer, outIdx+1, b1);
+		    W8A.update(buffer, outIdx+2, b2);
+		    cvt (i, outIdx+3)
+		  end
+		else outIdx
+	  val outLen = cvt (0, 0) handle Subscript => raise Incomplete
+	  in
+	    Word8ArraySlice.vector(Word8ArraySlice.slice(buffer, 0, SOME outLen))
+	  end
+
+    fun decode s = decode64 decTbl (s, 0, size s)
+    fun decodeSlice ss = decode64 decTbl (Substring.base ss)
+
+    fun decodeStrict s = decode64 strictDecTbl (s, 0, size s)
+    fun decodeSliceStrict ss = decode64 strictDecTbl (Substring.base ss)
 
   end
