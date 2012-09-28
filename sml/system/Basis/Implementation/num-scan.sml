@@ -1,6 +1,7 @@
 (* num-scan.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * The string conversion for the largest fixed-size int and word types.
  * All of the other scan functions can be implemented in terms of them.
@@ -15,27 +16,44 @@ structure NumScan : sig
 	  -> (char, 'a) StringCvt.reader -> (Int32.int, 'a) StringCvt.reader
     val scanReal : (char, 'a) StringCvt.reader -> (real, 'a) StringCvt.reader 
 	(** should be to LargeReal.real **)
-   
+
+    type prefix_pat = {
+	wOkay : bool,           (* true if 0[wW] prefix is okay; if this is
+                                 * true, then signs (+, -, ~) are not okay.
+                                 *)
+	xOkay : bool,           (* true if 0[xX] prefix is okay *)
+        ptOkay: bool,           (* true if can start with point *)
+	maxDigit : word         (* maximum digit (i.e., 7, 9, or 15) *)
+      }
+
+    val scanPrefix : prefix_pat
+          -> ('a -> (char * 'a) option)
+            -> 'a
+              -> {neg: bool, next: word, rest: 'a} option
+
+  (* map character to its hex value (e.g., #"3" ==> 0w3, #"e" ==> 0w14, etc). *)
+    val code : char -> word
+
   end = struct
     (* val z = InlineT.Word32.toLargeIntX *)
-    
-    structure W = InlineT.Word32
+
+    structure W = InlineT.Word31
+    structure W32 = InlineT.Word32
     structure I = InlineT.Int31
     structure I32 = InlineT.Int32
     structure R = InlineT.Real64
-    type word = Word32.word
+    type word32 = Word32.word
+
+    val toWord32 = W.toLargeWord
 
     val op <  = W.<
     val op >= = W.>=
-    val op +  = W.+
-    val op -  = W.-
-    val op *  = W.* 
 
-    val largestWordDiv10 : word = 0w429496729	(* 2^32-1 divided by 10 *)
-    val largestWordMod10 : word = 0w5		(* remainder *)
+    val largestWordDiv10 : word32 = 0w429496729	(* 2^32-1 divided by 10 *)
+    val largestWordMod10 : word32 = 0w5		(* remainder *)
  
-    val largestNegInt32 : word = 0wx80000000
-    val largestPosInt32 : word = 0wx7fffffff
+    val largestNegInt32 : word32 = 0wx80000000
+    val largestPosInt32 : word32 = 0wx7fffffff
     val minInt32 : Int32.int = ~2147483648
  
   (* A table for mapping digits to values.  Whitespace characters map to
@@ -83,7 +101,7 @@ structure NumScan : sig
 				 *)
 	xOkay : bool,		(* true if 0[xX] prefix is okay *)
         ptOkay: bool,           (* true if can start with point *)
-	isDigit : word -> bool	(* returns true for allowed digits *)
+	maxDigit : word         (* maximum digit (i.e., 7, 9, or 15) *)
       }
 
     (* scanPrefix : prefix_pat -> (char,'a) reader -> 'a
@@ -148,11 +166,11 @@ structure NumScan : sig
 		  else chkDigit (neg, savedCS, arg)
 	  and chkDigit (neg, savedCS, NONE) = finish (neg, savedCS)
 	    | chkDigit (neg, savedCS, SOME(c, cs)) =
-		if ((#isDigit p) c)
+		if (#maxDigit p >= c)
 		  then SOME{neg=neg, next = c, rest = cs}
 		  else finish (neg, savedCS)
 	  and finish (neg, (c, cs)) =
-		if ((#isDigit p) c) orelse ((c = ptCode) andalso (#ptOkay p))
+		if (#maxDigit p >= c) orelse ((c = ptCode) andalso (#ptOkay p))
 		  then SOME{neg=neg, next = c, rest = cs}
 		  else NONE
 	  in
@@ -163,18 +181,18 @@ structure NumScan : sig
    * at the hi (1, 3 or 4) bits.
    *)
     fun chkOverflow mask w =
-	  if (W.andb(mask, w) = 0w0) then () else raise Overflow
+	  if (W32.andb(mask, w) = 0w0) then () else raise Overflow
 
-    fun isBinDigit d = (d < 0w2)
-    fun isOctDigit d = (d < 0w8)
-    fun isDecDigit d = (d < 0w10)
-    fun isHexDigit d = (d < 0w16)
-
-    fun binPat wOkay = {wOkay=wOkay, xOkay=false, ptOkay=false, isDigit=isBinDigit}
-    fun octPat wOkay = {wOkay=wOkay, xOkay=false, ptOkay=false, isDigit=isOctDigit}
-    fun hexPat wOkay = {wOkay=wOkay, xOkay=true,  ptOkay=false, isDigit=isHexDigit}
-    fun decPat (wOkay,ptOkay) = {wOkay=wOkay, xOkay=false, ptOkay=ptOkay,
-				 isDigit=isDecDigit}
+    fun binPat wOkay =
+          {wOkay=wOkay, xOkay=false, ptOkay=false, maxDigit=0w1} : prefix_pat
+    fun octPat wOkay =
+          {wOkay=wOkay, xOkay=false, ptOkay=false, maxDigit=0w7} : prefix_pat
+    fun decPat wOkay =
+          {wOkay=wOkay, xOkay=false, ptOkay=false, maxDigit=0w9} : prefix_pat
+    fun hexPat wOkay =
+          {wOkay=wOkay, xOkay=true,  ptOkay=false, maxDigit=0w15} : prefix_pat
+    val fltPat =
+          {wOkay=false, xOkay=false, ptOkay=true, maxDigit=0w9} : prefix_pat
 
     fun scanBin isWord getc cs = (case (scanPrefix (binPat isWord) getc cs)
 	   of NONE => NONE
@@ -184,15 +202,15 @@ structure NumScan : sig
 		       of NONE => SOME{neg=neg, word=w, rest=rest}
 			| SOME(c, rest') => let val d = code c
 			    in
-			      if (isBinDigit d)
+			      if (d <= 0w1)
 				then (
 				  chkOverflow w;
-				  cvt(W.+(W.lshift(w, 0w1), d), rest'))
+				  cvt(W32.+(W32.lshift(w, 0w1), toWord32 d), rest'))
 				else SOME{neg=neg, word=w, rest=rest}
 			    end
 		      (* end case *))
 		in
-		  cvt (next, rest)
+		  cvt (toWord32 next, rest)
 		end
 	  (* end case *))
  
@@ -204,38 +222,38 @@ structure NumScan : sig
 		       of NONE => SOME{neg=neg, word=w, rest=rest}
 			| SOME(c, rest') => let val d = code c
 			    in
-			      if (isOctDigit d)
+			      if (d <= 0w7)
 				then (
 				  chkOverflow w;
-				  cvt(W.+(W.lshift(w, 0w3), d), rest'))
+				  cvt(W32.+(W32.lshift(w, 0w3), toWord32 d), rest'))
 				else SOME{neg=neg, word=w, rest=rest}
 			    end
 		      (* end case *))
 		in
-		  cvt (next, rest)
+		  cvt (toWord32 next, rest)
 		end
 	  (* end case *))
   
-    fun scanDec isWord getc cs = (case (scanPrefix (decPat(isWord,false)) getc cs)
+    fun scanDec isWord getc cs = (case (scanPrefix (decPat isWord) getc cs)
 	   of NONE => NONE
 	    | (SOME{neg, next, rest}) => let
-		fun cvt (w, rest) = (case (getc rest)
+		fun cvt (w : word32, rest) = (case (getc rest)
 		       of NONE => SOME{neg=neg, word=w, rest=rest}
 			| SOME(c, rest') => let val d = code c
 			    in
-			      if (isDecDigit d)
+			      if (d <= 0w9)
 				then (
-				  if ((w >= largestWordDiv10)
-				  andalso ((largestWordDiv10 < w)
-				    orelse (largestWordMod10 < d)))
+				  if (W32.>=(w, largestWordDiv10)
+				  andalso (W32.<(largestWordDiv10, w)
+				    orelse W32.<(largestWordMod10, toWord32 d)))
 				    then raise Overflow
 				    else ();
-				  cvt (0w10*w+d, rest'))
+				  cvt (W32.+(W32.*(0w10, w), toWord32 d), rest'))
 				else SOME{neg=neg, word=w, rest=rest}
 			    end
 		      (* end case *))
 		in
-		  cvt (next, rest)
+		  cvt (toWord32 next, rest)
 		end
 	  (* end case *))
   
@@ -247,15 +265,15 @@ structure NumScan : sig
 		       of NONE => SOME{neg=neg, word=w, rest=rest}
 			| SOME(c, rest') => let val d = code c
 			    in
-			      if (isHexDigit d)
+			      if (d <= 0w15)
 				then (
 				  chkOverflow w;
-				  cvt(W.+(W.lshift(w, 0w4), d), rest'))
+				  cvt(W32.+(W32.lshift(w, 0w4), toWord32 d), rest'))
 				else SOME{neg=neg, word=w, rest=rest}
 			    end
 		      (* end case *))
 		in
-		  cvt (next, rest)
+		  cvt (toWord32 next, rest)
 		end
 	  (* end case *))
   
@@ -263,7 +281,6 @@ structure NumScan : sig
 	   of NONE => NONE
 	    | (SOME{neg, word, rest}) => SOME(word, rest)
 	  (* end case *))
-  
 
     fun scanWord StringCvt.BIN = finalWord scanBin
       | scanWord StringCvt.OCT = finalWord scanOct
@@ -274,25 +291,22 @@ structure NumScan : sig
       (* Type check Bug test case
 	   fun test x = InlineT.Int32.fromLarge (InlineT.Word32.toLargeIntX x)
        *) 
- 
-       val fromword32 = InlineT.Int32.fromLarge o InlineT.Word32.toLargeIntX
+      val fromWord32 = InlineT.Int32.fromLarge o InlineT.Word32.toLargeIntX
     in
 
     fun finalInt scanFn getc cs = (case (scanFn false getc cs)
-	   of NONE => NONE
+           of NONE => NONE
 	    | (SOME{neg=true, word, rest}) =>
-		if (word < largestNegInt32) then
-		   SOME(InlineT.Int32.~(fromword32 word), rest)
-		else if (largestNegInt32 < word) then
-		   raise Overflow
-		else 
-		   SOME(minInt32, rest)
+		if W32.<(word, largestNegInt32)
+                  then SOME(InlineT.Int32.~(fromWord32 word), rest)
+		else if W32.<(largestNegInt32, word)
+                  then raise Overflow
+                  else SOME(minInt32, rest)
 	    | (SOME{word, rest, ...}) =>
-		if (largestPosInt32 < word) then
-		   raise Overflow
-	        else 
-	           SOME(fromword32 word, rest)
-	  (* end case *))
+		if W32.<(largestPosInt32, word)
+		  then raise Overflow
+                  else SOME(fromWord32 word, rest)
+          (* end case *))
  
     end (* end local *)
 
@@ -310,14 +324,14 @@ structure NumScan : sig
 	  fun scan (accum, n, cs) = (case (getc cs)
 		 of (SOME(c, cs')) => let val d = code c
 		      in
-			if (isDecDigit d)
+			if (d <= 0w9)
 			  then scan(R.+(R.*(10.0, accum), wordToReal d), I.+(n, 1), cs')
 			  else SOME(accum, n, cs)
 		      end
 		  | NONE => SOME(accum, n, cs)
 		(* end case *))
 	  in
-	    if (isDecDigit d) then scan(wordToReal d, 1, cs) else NONE
+	    if (d <= 0w9) then scan(wordToReal d, 1, cs) else NONE
 	  end
 
     local
@@ -359,14 +373,14 @@ structure NumScan : sig
 		      fun scan (accum, cs) = (case (getc cs)
 			     of SOME(c, cs') => let val d = code c
 				  in
-				    if (isDecDigit d)
+				    if (d <= 0w9)
 				      then scan (I.+(I.*(accum, 10), W.toIntX d), cs')
 				      else (accum, cs)
 				  end
 			      | NONE => (accum, cs)
 			    (* end case *))
 		      in
-			if (isDecDigit d)
+			if (d <= 0w9)
 			  then SOME (scan (W.toIntX d, cs))
 			  else NONE
 		      end
@@ -399,7 +413,7 @@ structure NumScan : sig
 		 | NONE => SOME(num, cs)
 	     (* end case *)
 	  in
-	    case (scanPrefix (decPat(false,true)) getc cs)
+	    case (scanPrefix fltPat getc cs)
 	     of NONE => NONE
 	      | (SOME{neg, next, rest}) =>
 		 if (next = ptCode) (* initial point after prefix *)
