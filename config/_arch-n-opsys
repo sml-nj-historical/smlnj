@@ -1,0 +1,145 @@
+#!@SHELL@
+#
+# .arch-n-opsys  -- get architecture and system info
+#
+
+export PATH
+PATH="/bin:/usr/bin"
+
+case `uname -s` in
+  SunOS)
+    case `uname -r` in
+      4.*)
+	OPSYS=sunos
+	case `/usr/bin/arch` in
+	  sun4) ARCH=sparc;;
+	  *) exit 1;;
+	esac
+      ;;
+      5.*)
+	OPSYS=solaris
+	case `uname -p` in
+	  sparc) ARCH=sparc;;
+	  *86) ARCH=x86;;
+	  *) exit 1;;
+	esac
+      ;;
+      *) exit 1;;
+    esac
+    ;;
+  AIX)
+    OPSYS=aix
+    ARCH=ppc
+    ;;
+  Darwin)
+    case `uname -p` in
+      powerpc)
+	ARCH=ppc
+	case `uname -r` in
+	  9*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.5 Leopard
+	  *) exit 1;;
+	esac;;
+      i386) ARCH=x86;
+	case `uname -r` in
+	  9*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.5 Leopard
+	  10*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.6 Snow Leopard
+	  11*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.7 Lion
+	  12*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.8 Mountain Lion
+	  *) exit 1;;
+	esac;;
+    esac
+    ;;
+  Linux)
+    OPSYS=linux
+    case `uname -m` in
+      *86)
+	ARCH=x86
+      # we no longer support Linux before the 2.2 kernel.
+	case `uname -r` in
+	  2.2.*) ;;
+	  2.3.*) ;;
+	  2.4.*) ;;
+	  2.5.*) ;;
+	  2.6.*) ;;
+	  3.*) ;;
+	  *) exit 1 ;;
+	esac
+	;;
+    # As long as we do not natively support the amd64 architecture,
+    # we should fallback to the x86 compatibility mode.  --Stef
+      x86_64) ARCH=x86;;
+      ppc)
+	ARCH=ppc
+	case `uname -r` in
+	  *osfmach*) OPSYS=mklinux ;;
+	  *) ;;
+	esac
+	;;
+      *) exit 1;;
+    esac
+    ;;
+  FreeBSD)
+    OPSYS=freebsd
+    HEAP_OPSYS=bsd
+    case `uname -m` in
+      *86) ARCH=x86;;
+      *) exit 1;;
+    esac
+    ;;
+  NetBSD)
+    case `uname -r` in
+      1.*) exit 1;;
+      2.*) OPSYS=netbsd2;;
+      *) OPSYS=netbsd;;
+    esac
+    HEAP_OPSYS=bsd
+    case `uname -p` in
+      *86) ARCH=x86;;
+      powerpc) ARCH=ppc;;
+      sparc) ARCH=sparc;;
+      *) exit 1;;
+    esac
+    ;;
+  OpenBSD)
+    OPSYS=openbsd
+    HEAP_OPSYS=bsd
+    case `uname -m` in
+      *86) ARCH=x86;;
+      *) exit 1;;
+    esac
+    ;;
+  Windows_NT)
+    OPSYS=win32
+    case `uname -m` in
+      *86) ARCH=x86;;
+      *) exit 1;;
+    esac
+    ;;
+  CYGWIN_NT*)
+    # If the environment variable SMLNJ_CYGWIN_RUNTIME is defined,
+    # use cygwin as the runtime environment.
+    if [ "$SMLNJ_CYGWIN_RUNTIME" != "" ]; then
+       OPSYS=cygwin
+    else
+       OPSYS=win32
+    fi
+    case `uname -m` in
+       *86) ARCH=x86;;
+       *) exit 1;;
+    esac
+    ;;
+  *) exit 1;;
+esac
+
+if [ "$HEAP_OPSYS" = "" ]; then
+  HEAP_SUFFIX="$ARCH-$OPSYS"
+else
+  HEAP_SUFFIX="$ARCH-$HEAP_OPSYS"
+fi
+
+if [ "$ALT_OPSYS" = "" ]; then
+echo "ARCH=$ARCH; OPSYS=$OPSYS; HEAP_SUFFIX=$HEAP_SUFFIX"
+else
+echo "ARCH=$ARCH; OPSYS=$OPSYS; ALT_OPSYS=$ALT_OPSYS; HEAP_SUFFIX=$HEAP_SUFFIX"
+fi
+
