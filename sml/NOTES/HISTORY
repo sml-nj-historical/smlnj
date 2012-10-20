@@ -21,6 +21,12 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/10/20
+Description:
+Fix bug #107 (Bug of Int64 comparison)
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2012/10/01
 Description:
 

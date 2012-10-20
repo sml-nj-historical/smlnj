@@ -17,11 +17,10 @@ structure CoreInt64 = struct
       infix 5 << >> val op << = InLine.w32lshift val op >> = InLine.w32rshiftl
       infix 5 &     val op & = InLine.w32andb
       infix 4 <     val op < = InLine.w32lt
+      infix 4 >     val op > = InLine.w32gt
       infix 4 <>    val op <> = InLine.w32ne
       infix 4 ==    val op == = InLine.w32eq
       val not = InLine.inlnot
-      val ~ = InLine.w32neg
-      val ^ = InLine.w32notb
 
       fun lift1' f = f o InLine.i64p
       fun lift1 f = InLine.p64i o lift1' f
@@ -29,8 +28,8 @@ structure CoreInt64 = struct
       fun lift2 f = InLine.p64i o lift2' f
 
       fun neg64 (0wx80000000, 0w0) = raise Assembly.Overflow
-	| neg64 (hi, 0w0) = (~hi, 0w0)
-	| neg64 (hi, lo) = (^hi, ~lo)
+	| neg64 (hi, 0w0) = (InLine.w32neg hi, 0w0)
+	| neg64 (hi, lo) = (InLine.w32notb hi, InLine.w32neg lo)
 
       fun negbit hi = hi & 0wx80000000
       fun isneg hi = negbit hi <> 0w0
@@ -65,15 +64,16 @@ structure CoreInt64 = struct
 
       fun mod64 (x, y) = sub64 (x, mul64 (div64 (x, y), y))
 
-      fun swap (x, y) = (y, x)
-
-      fun lt64 ((hi1, lo1), (hi2, lo2)) =
-	  let fun normal () = hi1 < hi2 orelse (hi1 == hi2 andalso lo1 < lo2)
-	  in if isneg hi1 then
-		 if isneg hi2 then normal () else true
-	     else normal ()
-	  end
-      val gt64 = lt64 o swap
+      fun lt64 ((hi1, lo1), (hi2, lo2)) = (case (isneg hi1, isneg hi2)
+	     of (true, false) => true
+	      | (false, true) => false
+	      | _ => hi1 < hi2 orelse (hi1 == hi2 andalso lo1 < lo2)
+	    (* end case *))
+      fun gt64 ((hi1, lo1), (hi2, lo2)) = (case (isneg hi1, isneg hi2)
+	     of (true, false) => false
+	      | (false, true) => true
+	      | _ => hi1 > hi2 orelse (hi1 == hi2 andalso lo1 > lo2)
+	    (* end case *))
       val le64 = not o gt64
       val ge64 = not o lt64
 
@@ -90,7 +90,7 @@ structure CoreInt64 = struct
       val mod = lift2 mod64
       val op < = lift2' lt64
       val <= = lift2' le64
-      val > = lift2' gt64
+      val op > = lift2' gt64
       val >= = lift2' ge64
       val abs = lift1 abs64
   end
