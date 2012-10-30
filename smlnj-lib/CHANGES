@@ -1,6 +1,14 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
+[2012-10-30]
+	Fixed bug in DynamicArray iterators because of bad slice dimensions
+	(bug #108).  Also switched to using Array.fromList to implement fromList
+	function.
+
+--------------------------------------------------------------------------------
+SML/NJ 110.75
+-------------------
 
 [2012-09-24]
 	Added Base64 module to support encoding and decoding Word8 vectors as
