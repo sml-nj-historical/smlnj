@@ -23,7 +23,13 @@ Description:
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2012/10/20
 Description:
-Fix bug #107 (Bug of Int64 comparison)
+Fix bug #108 (off-by-one error in Util/dynamic-array.sml; iterators crash)
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/10/20
+Description:
+Fix bug #107 (Bogus Int64 comparison operators)
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
