@@ -530,7 +530,7 @@ in
        | STRINGexp _ => (exp,MARKty(stringTy, region))
        | CHARexp _ => (exp,MARKty(charTy, region))
        | RECORDexp fields =>
-           let fun h(l as LABEL{name,...},exp') = 
+           let fun h(l,exp') = 
                     let val (nexp,nty) = expType(exp',occ,tdepth,region)
                      in ((l,nexp),(l,nty))
                     end
