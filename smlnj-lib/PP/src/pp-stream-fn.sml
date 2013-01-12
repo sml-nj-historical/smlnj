@@ -48,7 +48,7 @@ functor PPStreamFn (
 
     type pp_queue_elem = {	(* elements of the PP queue *)
 	tok : pp_token,
-	sz : int ref,			(* size of blok (set when known) *)
+	sz : int ref,			(* size of block (set when known) *)
 	len : int			(* length of token *)
       }
 

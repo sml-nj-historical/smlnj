@@ -1,11 +1,12 @@
 (* base.sml
  *
- * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2013 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Some common code for testing.
  *)
 
-CM.make(); (* to compile and load the PP library *)
+CM.make "sources.cm"; (* to compile and load the PP library *)
 
 structure TextToken =
   struct
