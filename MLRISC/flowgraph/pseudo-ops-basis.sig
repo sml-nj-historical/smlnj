@@ -27,5 +27,7 @@ signature PSEUDO_OPS_BASIS = sig
      * The location counter is provided in case some pseudo ops are 
      * dependent on alignment considerations.
      *)
+
+  val wordSize : int
 end
 

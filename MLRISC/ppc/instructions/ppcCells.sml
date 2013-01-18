@@ -99,6 +99,7 @@ struct
        val cellKindDescs = [(CellsBasis.GP, desc_GP), (CellsBasis.FP, desc_FP), 
               (CellsBasis.CC, desc_CC), (SPR, desc_SPR), (CellsBasis.MEM, desc_MEM), 
               (CellsBasis.CTRL, desc_CTRL), (CELLSET, desc_CELLSET)]
+       val cellSize = 4
       )
 
    open MyCells

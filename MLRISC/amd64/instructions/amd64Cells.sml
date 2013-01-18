@@ -168,6 +168,7 @@ struct
               (CellsBasis.CC, desc_GP), (EFLAGS, desc_EFLAGS), (FFLAGS, desc_FFLAGS), 
               (CellsBasis.MEM, desc_MEM), (CellsBasis.CTRL, desc_CTRL), (CELLSET, 
               desc_CELLSET)]
+       val cellSize = 8
       )
 
    open MyCells

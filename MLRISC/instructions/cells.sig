@@ -117,6 +117,7 @@ signature CELLS = sig
    val stackptrR     : CellsBasis.cell (* stack pointer register *)
    val asmTmpR       : CellsBasis.cell (* assembly temporary *)
    val fasmTmp       : CellsBasis.cell (* floating point temporary *)
+   val cellSize      : int
 end
 
 

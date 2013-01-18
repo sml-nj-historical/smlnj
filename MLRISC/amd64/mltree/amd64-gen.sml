@@ -272,7 +272,16 @@ functor AMD64Gen (
 	     * We have to spill label expressions to temporaries to be correct.
 	     * TODO: eliminate the extra register-register move from genExpr
 	     *)
-	    and doEALabel (trees, le, b, i, s, d) = let
+            (* Added below pattern to stop infinite loop where (genExpr le)
+               below called addition and addition called address again. *)
+	    and doEALabel (trees, le, SOME base, i, s, I.Immed 0) = let
+                val r = newReg ()
+                val _ = expr (le, r, [])
+                val _ = mark (I.BINARY{binOp=(O.addOp ty), src=operand ty (T.REG(ty,base)), dst=operand ty (T.REG(ty,r))}, [])
+                in
+                doEA(trees, SOME r, i, s, I.Immed 0)
+                end
+	      | doEALabel (trees, le, b, i, s, d) = let
 		val le = (case b
 			    of NONE => le
 			     | SOME base => T.ADD (ty, T.REG (ty, base), le)
@@ -1001,7 +1010,10 @@ functor AMD64Gen (
 		 val r = newFreg ()
 		 val s = falignedOperand (fty, a)
 		 in 
+(* FIXME
 		     fload (fty, T.LABEL l, I.Region.memory, r, an);
+*)
+		     fload (fty, T.ADD (64, T.REG (64, C.rsp), T.LI 208), I.Region.memory, r, an);
 		     mark (I.FBINOP {binOp=fop, dst=r, src=s}, an);
 		     fcopy (fty, [d], [r], an)
 		 end
@@ -1014,7 +1026,10 @@ functor AMD64Gen (
 		 val r = newFreg ()
 		 val s = falignedOperand (fty, a)
 		 in 
+(* FIXME
 		     fload (fty, T.LABEL l, I.Region.memory, r, an);
+*)
+		     fload (fty, T.ADD (64, T.REG (64, C.rsp), T.LI 216), I.Region.memory, r, an);
 		     mark (I.FBINOP {binOp=fop, dst=r, src=s}, an);
 		     fcopy (fty, [d], [r], an)
 		 end

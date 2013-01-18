@@ -128,6 +128,7 @@ struct
               (Y, desc_Y), (PSR, desc_PSR), (FSR, desc_FSR), (CellsBasis.CC, 
               desc_GP), (CellsBasis.MEM, desc_MEM), (CellsBasis.CTRL, desc_CTRL), 
               (CELLSET, desc_CELLSET)]
+       val cellSize = 4
       )
 
    open MyCells

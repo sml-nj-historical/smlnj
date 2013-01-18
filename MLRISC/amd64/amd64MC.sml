@@ -51,6 +51,34 @@ struct
       let val w = toLWord i32
       in [shift(w, 0w0), shift(w,0w8), shift(w,0w16), shift(w,0w24)] end
   end
+  fun eLongLong i64 =
+      let
+      val toLLWord = (Word64.fromLargeInt o Int64.toLarge) 
+      val w = toLLWord i64
+      fun shift64 (w,cnt) = let
+          val shifted = Word64.>>(w, cnt)
+          val masked = Word64.andb(0w255, shifted)
+          in Word8.fromInt (Word64.toInt masked) end
+      in [shift64(w, 0w0),
+          shift64(w, 0w8),
+          shift64(w, 0w16),
+          shift64(w, 0w24),
+          shift64(w, 0w32),
+          shift64(w, 0w40),
+          shift64(w, 0w48),
+          shift64(w, 0w56)]
+      end
+
+  fun eLongLongCut i64 =
+      let
+      val toLLWord = (Word64.fromLargeInt o Int64.toLarge) 
+      val w = toLLWord i64
+      fun shift64 (w,cnt) = let
+          val shifted = Word64.>>(w, cnt)
+          val masked = Word64.andb(0w255, shifted)
+          in Word8.fromInt (Word64.toInt masked) end
+      in [shift64(w, 0w0), shift64(w, 0w8), shift64(w, 0w16), shift64(w, 0w24)]
+      end
 		
   fun emitInstrs instrs = Word8Vector.concat(map emitInstr instrs)
 			   
@@ -99,6 +127,9 @@ struct
 	  fun eREX64 rb = eREX rb + 0wx8
  
           fun eImmedExt (r', I.Direct (_, r)) = 
+	      ( (isExtReg' r', false, isExtReg r), 
+		[modrm{mod=3, reg=getRO r', rm=rNum' r}] )
+            | eImmedExt (r', I.FDirect r) = 
 	      ( (isExtReg' r', false, isExtReg r), 
 		[modrm{mod=3, reg=getRO r', rm=rNum' r}] )
 	    | eImmedExt (r', I.Displace{base=base', disp, ...}) =
@@ -284,6 +315,69 @@ struct
 	    | test(sz, I.Direct (_, r), lsrc) = encodeReg sz (0wx85, r, lsrc)
 	    | test _ = error "test"
 
+	  fun movsd(byte3, r, opnd) =
+	      eBytes (0wxf2::encode32'([0wxf, byte3], reg (rNum r), opnd))
+
+          fun imulq(src,dst) =
+              (case (src, dst) 
+               of (I.Immed(i), I.Direct (_, dstR)) =>
+                  (case size i
+                   of Bits32 => 
+                      encodeLongImm 64 (0wx69, reg (rNum dstR), dst, i)
+                    | _ => encodeByteImm 64 (0wx6b, reg (rNum dstR), dst, i))
+                | (_, I.Direct (_, dstR)) => 
+                  eBytes (encode64' ([0wx0f, 0wxaf], reg (rNum dstR), src))
+                | _ => error "imul")
+
+          (* DEBUG print instructions in stdout
+          fun makestream s = let
+              fun write f slice = let
+                  val t = f slice
+                  val _ = s := (!s)^t
+                  in
+                  String.size t
+                  end
+              val writer =
+                  TextPrimIO.WR
+                  {
+                   name = "stringout",
+                   chunkSize = 512,
+                   writeVec = SOME (write CharVectorSlice.vector),
+                   writeArr = SOME (write CharArraySlice.vector),
+                   writeVecNB = NONE,
+                   writeArrNB = NONE,
+                   block = NONE,
+                   canOutput = NONE,
+                   getPos = NONE,
+                   setPos = NONE,
+                   endPos = NONE,
+                   verifyPos = NONE,
+                   close = (fn () => ()),
+                   ioDesc = NONE
+                  }
+              val stream =
+                  TextIO.StreamIO.mkOutstream (writer, IO.NO_BUF)
+              in
+              TextIO.mkOutstream stream
+              end
+
+          fun instrstring () =
+              let
+              val s = ref ""
+              val stream = makestream s
+              val _ =
+                  AsmStream.withStream stream
+                  (fn _ => let
+                      val AsmEmitter.S.STREAM{emit,...} =
+                          AsmEmitter.makeStream []
+                      in
+                      emit (I.INSTR instr) end) ()
+              val _ = TextIO.closeOut stream
+              in !s end
+
+	  val _ = print (instrstring ())
+          *)
+
       in 
 	  (case instr
 	    of I.UNARY{unOp, opnd} => 
@@ -295,7 +389,7 @@ struct
 		  | I.NOTL => encode32 (0wxff, opcode 2, opnd)
 		  | I.NOTQ => encode64 (0wxff, opcode 2, opnd)
 		  | I.NEGL => encode32 (0wxff, opcode 3, opnd)
-		  | I.NEGQ => encode64 (0wxff, opcode 3, opnd)
+		  | I.NEGQ => encode64 (0wxf7, opcode 3, opnd)
 		  | _ => error "UNARY is not in DEC/INC/NEG,NOT"
 	       (* esac *))
 	     | I.BINARY{binOp, src, dst} => let
@@ -328,7 +422,7 @@ struct
 		     | I.SARQ => shift(64, 7, src)
 		     | I.SHRQ => shift(64, 5, src)
 		     | (I.IMULL | I.MULQ) => 
-		       let val sz = if binOp = I.IMULQ then 64 else 32
+		       let val sz = if binOp = I.MULQ then 64 else 32
 		       in (case (src, dst) 
 			    of (I.Immed(i), I.Direct (_, dstR)) =>
 			       (case size i
@@ -341,6 +435,8 @@ struct
 			     | _ => error "imul"
 			  (* esac *))
 		       end 
+		     | I.IMULQ => imulq(src,dst)
+		     | I.IMULB => error "imulb"
 		     | _ => error "binary"
 	       end
 	     | I.MULTDIV{multDivOp, src} => 
@@ -377,7 +473,7 @@ struct
 	     | I.RET NONE => eByte 0xc3
 	     | I.NOP => eByte 0x90
 	     | I.INTO => eByte(0xcd+4)
-	     | I.CDQ => eByte(0x99)
+	     | I.CDQ => (* eByte(0x99) *) (* XXX this is CQO *) eBytes [0wx48, 0wx99]
 	     | I.SAHF => eByte(0x9e)
 	     | ( I.PUSHL (I.Immed i) | I.PUSHQ (I.Immed i) )=> 
 	       (case size i 
@@ -394,8 +490,36 @@ struct
 	     | I.MOVE{mvOp=mvOp as (I.MOVL | I.MOVQ), src, dst} => 
 	       let val sz = case mvOp of I.MOVL => 32 | I.MOVQ => 64
 		   fun mv(I.Immed(i), I.Direct (_, r)) =
-                       eBytes(Word8.+(0wxb8, Word8.fromInt(rNum r))::eLong(i))
+                   (case sz
+                    of 32 =>
+                       eBytes
+                       (Word8.+(0wxb8, Word8.fromInt(rNum r))::eLong(i))
+                     | 64 => let
+                       val (start, reg) =
+                           if rNum r < 8
+                           then (0wx48, rNum r)
+                           else (0wx49, rNum r - 8)
+                           in
+                           eBytes(start::0wxc7::Word8.+(0wxc0, Word8.fromInt reg)::eLong(i))
+                           end)
 		     | mv(I.Immed(i), _) = encodeLongImm sz (0wxc7, opcode 0, dst, i)
+		     | mv(I.Immed64(i), I.Direct (_, r)) =
+		       if sz = 32
+		       then
+                       let
+                       val (start, reg) =
+                           if rNum r < 8
+                           then ([], rNum r) else ([0wx41], rNum r - 8)
+                       in
+                       eBytes(start@Word8.+(0wxb8, Word8.fromInt reg)::eLongLongCut(i))
+                       end
+		       else
+                       let
+                       val (start, reg) = if rNum r < 8 then (0wx48, rNum r) else (0wx49, rNum r - 8)
+                       in
+                       eBytes(start::Word8.+(0wxb8, Word8.fromInt reg)::eLongLong(i))
+                       end
+		     | mv(I.Immed64(i), _) = error "mv Immed64 _"
 		     | mv(I.ImmedLabel le,dst) = mv(I.Immed(lexp le),dst)
 		     | mv(I.LabelEA le,dst) = error "MOVL: LabelEA"
 		     | mv(src,dst) = arith(sz, 0wx88, opcode 0) (src, dst)
@@ -409,7 +533,40 @@ struct
 	       encodeReg32 (0wx88, r, dst)
 	     | I.MOVE{mvOp=I.MOVB, dst=I.Direct (_, r), src} => 
 	       encodeReg32 (0wx8a, r, src)
+             | I.MOVE{mvOp=I.MOVABSQ, dst, src=I.Immed64 i} => let
+               val I.Direct (_, r) = dst
+               val (start, reg) =
+                   if rNum r < 8 then (0wx48, rNum r) else (0wx49, rNum r - 8)
+               in
+               eBytes(start::(0wxb8+Word8.fromInt reg)::eLongLong(i))
+               end
+             | I.MOVE{mvOp=I.MOVABSQ, dst, src} =>
+               (case dst
+                of I.Direct (_ ,r) =>
+                   let
+                   val p = rNum r
+                   val byte1 = if p < 8 then 0wx48 else 0wx49
+                   val byte2 = 0wxb8 + Word8.fromInt (if p < 8 then p else p - 8)
+                   val labexp = (case src of I.ImmedLabel x => x
+                                           | I.LabelEA _ => (error "MOVABSQc"; Instr.T.???)
+                                           | I.Immed _ => (error "MOVABSQd"; Instr.T.???)
+                                           | I.Immed64 _ => (error "MOVABSQe"; Instr.T.???)
+                                           | _ => (error "MOVABSQa"; Instr.T.???))
+                   val byten = eLong (lexp labexp) (* XXX should be 64 bits *)
+                   val hilong = if (lexp labexp) < 0 then 
+                       [0wxff, 0wxff, 0wxff, 0wxff] else eLong 0
+                   in
+                   Word8Vector.fromList ([byte1, byte2] @ byten @ hilong)
+                   end
+                 | _ => (error "MOVABSQb"; Word8Vector.fromList [])
+               )
 	     | I.MOVE{mvOp, src=I.Immed _, ...} => error "MOVE: Immed"
+	     | I.MOVE{mvOp=I.MOVZBQ, src, dst=I.Direct (ty, r)} => let
+               val (start, re) =
+                   if rNum r < 8 then (0wx48, rNum r) else (0wx49, rNum r - 8)
+               in
+               eBytes(encode64' ([0wxf, 0wxb6], reg (rNum r), src))
+               end
 	     | I.MOVE{mvOp, src, dst=I.Direct (_, r)} =>
 	       let val byte2 = 
 		       case mvOp of
@@ -419,6 +576,8 @@ struct
 			 | I.MOVSWL => 0wxbf 
 			 | _ => error "MOV[SZ]X"
 	       in eBytes (encode32' ([0wx0f, byte2], reg (rNum r), src)) end
+	     | I.MOVE{mvOp=I.MOVW, dst, src=I.Direct (_, r)} =>
+               eBytes (0wx66 :: encode32' ([0wx89], reg (rNum r), dst))
 	     | I.MOVE _ => error "MOVE"
 	     | I.CMOV{cond,src,dst} => 
 	       eBytes (encode32' ([0wx0f, Word8.+(condCode cond,0wx40)], 
@@ -432,7 +591,25 @@ struct
 		   (*esac*))
 	       end
 	       ) handle e => (print "JMP\n"; raise e))
-	     | I.JMP(opnd, _) => encode32(0wxff, opcode 4, opnd)
+	     | I.JMP(opnd, _) => let
+               val ty = (case opnd of I.Direct (ty,_) => ty | _ => ~1)
+               in
+                   if ty = 64
+                   then
+                       let
+                       fun encodejmp (bytes, r', opnd) = let
+                           val (rex, e) = eImmedExt (r', opnd)
+                           in 
+                           (case eREXRegs rex
+                             of SOME rexByte => (eREX rexByte) :: bytes @ e
+                              | NONE => bytes @ e)
+                           end
+                       in
+                           eBytes(encodejmp([0wxff], opcode 4, opnd))
+                       end
+                   else
+                       encode32(0wxff, opcode 4, opnd)
+               end
 	     | I.JCC{cond, opnd=I.Relative i} => 
 	       let val code = condCode cond
 	       in case size (Int32.fromInt(i-2))
@@ -456,7 +633,64 @@ struct
 	     | I.SET{cond,opnd} => 
 	       eBytes (encode32' ([0wx0f, Word8.+(0wx90,condCode cond)], 
 				  reg 0, opnd))
-
+             | I.FMOVE {fmvOp=I.MOVSD, dst=I.FDirect r, src=src} =>
+               movsd(0wx10, r, src)
+             | I.FMOVE {fmvOp=I.MOVSD, dst=dst, src=I.FDirect r} =>
+               movsd(0wx11, r, dst)
+             | I.FMOVE {fmvOp, dst, src} =>
+               (case fmvOp of
+                   I.CVTSI2SD => error "CVTSI2SD not implemented"
+                 | I.CVTSI2SDQ => let
+                   val I.FDirect r = dst
+                   in
+                   eBytes([0wxf2] @ encode64'([0wxf,0wx2a],reg (fNum r),src))
+                   end
+                 | I.CVTSD2SS =>
+                   (case dst
+                    of (I.FDirect r) =>
+                       eBytes([0wxf2] @ encode32'([0wxf,0wx5a],reg (fNum r),src))
+                     | _ => error "CVTSD2SS")
+                 | I.CVTSS2SD =>
+                   (case dst
+                    of (I.FDirect r) =>
+                       eBytes([0wxf3] @ encode32'([0wxf,0wx5a],reg (fNum r),src))
+                     | _ => error "CVTSD2SD")
+                 | I.MOVSS =>
+                   (case src
+                    of (I.FDirect r) =>
+                       eBytes([0wxf3] @ encode32'([0wxf,0wx11],reg (fNum r),dst))
+                     | _ => error "MOVSS")
+                 | _ => error "FMOVE")
+	     | I.FBINOP {binOp, src, dst} =>
+               (case binOp
+                of I.ADDSD =>
+                   eBytes([0wxf2] @ encode32'([0wxf,0wx58],reg (fNum dst),src))
+                 | I.SUBSD =>
+                   eBytes([0wxf2] @ encode32'([0wxf,0wx5c],reg (fNum dst),src))
+                 | I.DIVSD =>
+                   eBytes([0wxf2] @ encode32'([0wxf,0wx5e],reg (fNum dst),src))
+                 | I.MULSD =>
+                   eBytes([0wxf2] @ encode32'([0wxf,0wx59],reg (fNum dst),src))
+                 | I.XORPD =>
+                   eBytes([0wx66] @ encode32'([0wxf,0wx57],reg (fNum dst),src))
+                 | I.ANDPD =>
+                   eBytes([0wx66] @ encode32'([0wxf,0wx54],reg (fNum dst),src))
+                 | _ => error "FBINOP")
+	     | I.FCOM {comOp, src, dst} =>
+               (case comOp
+                of I.UCOMISD =>
+                   eBytes([0wx66] @ encode32'([0wxf,0wx2e],reg (fNum dst),src))
+                 | _ => error "FCOMOP")
+             | I.FSQRTS {dst, src} => let
+               val I.FDirect r = dst
+               in
+                   eBytes([0wxf3] @ encode32'([0wxf,0wx51],reg (fNum r),src))
+               end
+             | I.FSQRTD {dst, src} => let
+               val I.FDirect r = dst
+               in
+                   eBytes([0wxf2] @ encode32'([0wxf,0wx51],reg (fNum r),src))
+               end
 	     | _ => error "emitInstr"
 	  (* esac *))
       end (* emitAMD64Instr *)

@@ -184,6 +184,7 @@ functor AMD64RegAlloc (
          val available = List.map CB.registerId Float.avail
          val first = CB.registerId (I.C.FPReg 0))
 
+(*
     local
       val dedicatedR = Array.array (nGPRegs, false)
       val dedicatedF = Array.array (nFPRegs, false)
@@ -199,6 +200,14 @@ functor AMD64RegAlloc (
       val isDedicatedR = isDedicated dedicatedR
       val isDedicatedF = isDedicated dedicatedF
     end (* local *)
+*)
+    local
+	val dedicatedR = Vector.fromList (List.map CB.registerId Int.dedicated)
+	val dedicatedF = Vector.fromList (List.map CB.registerId Float.dedicated)
+    in
+	fun isDedicatedR r = Vector.exists (fn q => q = r) dedicatedR
+	fun isDedicatedF r = Vector.exists (fn q => q = r) dedicatedF
+    end
 
     fun copy {dst, src, tmp} = I.COPY {k=CB.GP, sz=64, dst=dst, src=src, tmp=tmp}
     fun fcopy{dst, src, tmp} = I.COPY{k=CB.FP, sz=64, dst=dst, src=src, tmp=tmp}

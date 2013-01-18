@@ -317,7 +317,7 @@ struct
          ( emit "$"; 
            emit_labexp lexp )
        | I.LabelEA le => emit_labexp le
-       | I.Relative _ => error "emit_operand"
+       | I.Relative _ => (* error "emit_operand" *) (* XXX *) emit "asdfasdf"
        | I.Direct(ty, r) => emit (CellsBasis.toStringWithSize (r, ty))
        | I.FDirect f => emit (CellsBasis.toString f)
        | I.Displace{base, disp, mem, ...} => 

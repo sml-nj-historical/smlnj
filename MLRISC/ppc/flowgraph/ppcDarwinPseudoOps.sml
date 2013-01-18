@@ -128,4 +128,5 @@ functor PPCDarwinPseudoOps (
 
     fun defineLabel lab = labelToString lab ^ ":"
 
+    val wordSize = 32
   end

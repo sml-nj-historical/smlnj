@@ -35,4 +35,5 @@ functor X86DarwinPseudoOps (
     val toString = POps.toString
     val defineLabel = POps.defineLabel
 
+    val wordSize = 32
   end

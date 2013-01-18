@@ -11,6 +11,7 @@ functor Cells
    (exception Cells
     val firstPseudo   : int
     val cellKindDescs : (CellsBasis.cellkind * CellsBasis.cellkindDesc) list
+    val cellSize      : int
    ) : CELLS = 
 struct
 
@@ -167,4 +168,5 @@ struct
    val stackptrR = GPReg 0
    val asmTmpR = GPReg 0
    val fasmTmp = FPReg 0
+   val cellSize = cellSize
 end

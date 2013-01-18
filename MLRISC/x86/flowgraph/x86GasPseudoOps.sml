@@ -34,4 +34,5 @@ struct
   val lexpToString = GasPseudoOps.lexpToString
   val toString = GasPseudoOps.toString
   val defineLabel = GasPseudoOps.defineLabel
+  val wordSize = 32
 end

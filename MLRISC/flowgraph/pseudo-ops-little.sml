@@ -76,6 +76,10 @@ struct
     in emitWord(w & 0w65535);   emitWord(w ~>> 0w16)
     end
 
+    fun emitQuadX n =
+        (emitLongX n
+        ;if n < 0 then emitLongX ~1 else emitLongX 0)
+
     local 
 	val {sz, en} = nop
 	val toWord = W.fromLargeInt o Word32.toLargeIntX 
@@ -124,6 +128,7 @@ struct
 	  of  8 => app (emitByte o itow) ints
            | 16 => app (emitWord o itow) ints
            | 32 => app emitLongX ints
+           | 64 => app emitQuadX ints
 	   |  _ => error "emitValue: INT 64"
          (*esac*)
        end

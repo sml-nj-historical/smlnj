@@ -34,5 +34,6 @@ functor AMD64DarwinPseudoOps (
     val lexpToString = POps.lexpToString
     val toString = POps.toString
     val defineLabel = POps.defineLabel
+    val wordSize = 64
 
   end

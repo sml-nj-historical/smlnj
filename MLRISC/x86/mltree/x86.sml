@@ -823,6 +823,7 @@ struct
               fun load8s(ea, mem) = genLoad(I.MOVSBL, ea, mem)
               fun load16s(ea, mem) = genLoad(I.MOVSWL, ea, mem)
               fun load32(ea, mem) = genLoad(I.MOVL, ea, mem)
+              fun load64(ea, mem) = genLoad(I.MOVL, ea, mem) (* XXX64 *)
         
                  (* Generate a sign extended loads *)
         
@@ -1053,6 +1054,7 @@ struct
              | T.LOAD(8, ea, mem) => load8(ea, mem)
              | T.LOAD(16, ea, mem) => load16(ea, mem)
              | T.LOAD(32, ea, mem) => load32(ea, mem)
+             | T.LOAD(64, ea, mem) => load64(ea, mem)
 
              | T.SX(32,8,T.LOAD(8,ea,mem)) => load8s(ea, mem)
              | T.SX(32,16,T.LOAD(16,ea,mem)) => load16s(ea, mem)
@@ -1940,6 +1942,8 @@ struct
              store(16, ea, d, mem, an, opcodes16, store16)
         | stmt(T.STORE(32, ea, d, mem), an) = 
              store(32, ea, d, mem, an, opcodes32, store32)
+        | stmt(T.STORE(64, ea, d, mem), an) = 
+             store(32, ea, d, mem, an, opcodes32, store32) (* XXX64 *)
 
         | stmt(T.FSTORE(fty, ea, d, mem), an) = fstore(fty, ea, d, mem, an)
         | stmt(T.BCC(cc, lab), an) = branch(cc, lab, an)

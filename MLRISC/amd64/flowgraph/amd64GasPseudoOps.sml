@@ -33,4 +33,5 @@ functor AMD64GasPseudoOps (
     val lexpToString = GasPseudoOps.lexpToString
     val toString = GasPseudoOps.toString
     val defineLabel = GasPseudoOps.defineLabel
+    val wordSize = 64
   end
