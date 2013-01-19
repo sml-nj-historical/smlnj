@@ -259,6 +259,7 @@ sig
    | POPFD
    | POP of operand
    | CDQ
+   | CQTO
    | INTO
    | FMOVE of {fmvOp:fmove_op, dst:operand, src:operand}
    | FBINOP of {binOp:fbin_op, dst:CellsBasis.cell, src:operand}
@@ -327,6 +328,7 @@ sig
    val popfd : instruction
    val pop : operand -> instruction
    val cdq : instruction
+   val cqto : instruction
    val into : instruction
    val fmove : {fmvOp:fmove_op, dst:operand, src:operand} -> instruction
    val fbinop : {binOp:fbin_op, dst:CellsBasis.cell, src:operand} -> instruction
@@ -602,6 +604,7 @@ struct
    | POPFD
    | POP of operand
    | CDQ
+   | CQTO
    | INTO
    | FMOVE of {fmvOp:fmove_op, dst:operand, src:operand}
    | FBINOP of {binOp:fbin_op, dst:CellsBasis.cell, src:operand}
@@ -668,6 +671,7 @@ struct
    and popfd = INSTR POPFD
    and pop = INSTR o POP
    and cdq = INSTR CDQ
+   and cqto = INSTR CQTO
    and into = INSTR INTO
    and fmove = INSTR o FMOVE
    and fbinop = INSTR o FBINOP

@@ -778,6 +778,9 @@ architecture AMD64 =
     | CDQ
 	``cdq''
 
+    | CQTO
+         ``cqto''
+
     (* the INTO instruction is deprecated in 64-bit mode. *)
     | INTO
 	``int $4''
