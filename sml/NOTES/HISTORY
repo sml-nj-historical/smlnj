@@ -20,6 +20,12 @@ Date: yyyy/mm/dd
 Description:
 
 ----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2013/01/19
+Description:
+Fix AMD64 code generator to properly sign-extend arguments to IDIVQ.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2012/10/20
 Description:
