@@ -20,6 +20,12 @@ Date: yyyy/mm/dd
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2013/04/19
+Description:
+Fix bug #113 (Socket.select waits exactly twice the indicated timeout)
+
+----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
 Date: 2013/01/19
 Description:
