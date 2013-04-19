@@ -100,24 +100,27 @@ structure OS_IO : OS_IO =
                   | NONE => NONE
             end
 	in
-	    fun poll (pdl,t) = 
-		let val timeout =
-			case t of
-			    SOME (t) =>
-			    SOME (Int32.fromLarge (Time.toSeconds (t)),
-				  Int.fromLarge (Time.toMicroseconds t))
-			  | NONE => NONE
-                    fun partDesc (PollDesc (OS.IO.IODesc (_),_)) = true
-                      | partDesc (_) = false
-                    val (pollIOs, pollSocks) = List.partition partDesc pdl
-		    val (infoIO,infoSock) =
+	    fun poll (pdl, timeOut) = let
+                  val timeOut = (case timeOut
+                         of SOME t =>
+                            let val usec = TimeImp.toMicroseconds t
+                                val (sec, usec) = IntInfImp.divMod (usec, 1000000)
+                            in
+                                SOME (Int32.fromLarge sec, Int.fromLarge usec)
+                            end
+                          | NONE => NONE
+                        (* end case *))
+                  fun partDesc (PollDesc(OS.IO.IODesc _, _)) = true
+                    | partDesc _ = false
+                  val (pollIOs, pollSocks) = List.partition partDesc pdl
+                  val (infoIO, infoSock) =
 			poll' (List.map fromPollDescIO pollIOs,
 			       List.map fromPollDescSock pollSocks,
 			       timeout)
-		in
+                  in
 		    List.@ (List.mapPartial (fn (p) => findPollDescFromIO(pollIOs,p)) infoIO,
 			    List.map toPollInfoSock infoSock)
-		end
+                  end
 	end
 		    
         fun isIn (PollInfo(PollDesc(_, flgs))) = #rd flgs

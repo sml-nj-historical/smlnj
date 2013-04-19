@@ -40,7 +40,7 @@ ml_val_t _ml_win32_OS_poll (ml_state_t *msp, ml_val_t arg)
   int count,index;
 
   /* first, convert timeout to milliseconds */
-  if (timeout==OPTION_NONE)
+  if (timeout == OPTION_NONE)
     dwMilliseconds = INFINITE;
   else {
     timeout = OPTION_get(timeout);
