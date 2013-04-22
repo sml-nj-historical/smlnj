@@ -116,7 +116,7 @@ structure OS_IO : OS_IO =
                   val (infoIO, infoSock) =
 			poll' (List.map fromPollDescIO pollIOs,
 			       List.map fromPollDescSock pollSocks,
-			       timeout)
+			       timeOut)
                   in
 		    List.@ (List.mapPartial (fn (p) => findPollDescFromIO(pollIOs,p)) infoIO,
 			    List.map toPollInfoSock infoSock)
