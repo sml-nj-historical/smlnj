@@ -21,6 +21,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2013/05/02
+Description:
+Fix bug #116 (Socket.sameDesc raises Match exception).
+The problem is that on Windows the iodesc datatype (defined in
+Basis/Implementation/Win32/pre-os.sml) has both an IODesc constructor
+and a SockDesc constructor.  Updated the code in Win32/os-io.sml to
+handle the SockDesc constructor.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2013/04/19
 Description:
 Fix bug #113 (Socket.select waits exactly twice the indicated timeout)

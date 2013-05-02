@@ -22,15 +22,18 @@ structure OS_IO : OS_IO =
 
 	exception SysErr = Assembly.SysErr
 
-	type iodesc = OS.IO.iodesc (* IODesc of W32G.hndl ref *) 
+      (* = IODesc of W32G.hndl ref | SockDesc of int *)
+	datatype iodesc = datatype OS.IO.iodesc 
 
 	(* hash: can't assume 32 bits *)
-	fun hash (OS.IO.IODesc (ref (0wxffffffff : W32G.hndl))) = 
-	    0wx7fffffff : word 
-	  | hash (OS.IO.IODesc (ref h)) = (Word.fromInt o W32G.Word.toInt) h
+	fun hash (IODesc(ref (0wxffffffff : W32G.hndl))) = 
+	      0wx7fffffff : word 
+	  | hash (IODesc(ref h)) = (Word.fromInt o W32G.Word.toInt) h
+	  | hash (SockDesc s) = Word.fromInt s
 
-	fun compare (OS.IO.IODesc (ref wa),OS.IO.IODesc (ref wb)) = 
-	    W32G.Word.compare(wa,wb)
+	fun compare (IODesc(ref wa), IODesc(ref wb)) = 
+	      W32G.Word.compare(wa, wb)
+	  | compare (SockDesc s1, SockDesc s2) = Int.compare(s1, s2)
 
         datatype iodesc_kind = K of string
 
@@ -45,13 +48,11 @@ structure OS_IO : OS_IO =
 		val device = K "DEV"
 	    end
 
-	fun kind (OS.IO.IODesc (ref h)) = 
-	    case W32FS.getFileAttributes' h of
-		NONE => 
-		    K "UNKNOWN"
-	      | SOME w =>
-		    if W32FS.isRegularFile h then Kind.file
-		    else Kind.dir
+	fun kind (IODesc(ref h)) = (case W32FS.getFileAttributes' h
+	       of NONE =>  K "UNKNOWN"
+		| SOME w => if W32FS.isRegularFile h then Kind.file else Kind.dir
+	      (* end case *))
+	  | kind (SockDesc _) = K "SOCK"
 
         (* no win32 polling devices for now *)
 	val noPolling = "polling not implemented for win32 for this device/type"
@@ -60,8 +61,8 @@ structure OS_IO : OS_IO =
 	datatype poll_desc = PollDesc of (iodesc * poll_flags)
 	datatype poll_info = PollInfo of poll_desc
 	
-	fun pollDesc id = SOME (PollDesc (id,{rd=false,wr=false,pri=false}))
-	fun pollToIODesc (PollDesc (pd,_)) = pd 
+	fun pollDesc id = SOME(PollDesc(id, {rd=false, wr=false, pri=false}))
+	fun pollToIODesc (PollDesc(pd, _)) = pd 
 
 	exception Poll
 
@@ -78,49 +79,48 @@ structure OS_IO : OS_IO =
 	    fun test (w, b) = (Word.andb(w, b) <> 0w0)
 	    val rdBit = 0w1 and wrBit = 0w2 and priBit = 0w4
 
-	    fun toPollInfoIO (fd,w) = PollInfo (PollDesc (OS.IO.IODesc (ref fd),{rd= test(w,rdBit),
-                                                                               wr= test(w,wrBit),
-                                                                               pri= test(w,priBit)}))
-	    fun toPollInfoSock (i,w) = PollInfo (PollDesc (OS.IO.SockDesc (i),{rd = test(w,rdBit),
-									       wr = test(w,wrBit),
-									       pri = test(w,priBit)}))
-	    fun fromPollDescIO (PollDesc (OS.IO.IODesc (ref w),{rd,wr,pri})) =(w,join (rd,rdBit, join (wr,wrBit, join (pri,priBit,0w0))))
-	    fun fromPollDescSock (PollDesc (OS.IO.SockDesc (i),{rd,wr,pri})) = (i,join (rd,rdBit, join (wr,wrBit, join (pri,priBit,0w0))))
+	    fun toPollInfoIO (fd, w) = PollInfo(PollDesc(IODesc(ref fd), {rd= test(w,rdBit),
+									  wr= test(w,wrBit),
+									  pri= test(w,priBit)}))
+	    fun toPollInfoSock (i, w) = PollInfo(PollDesc(SockDesc i, {rd = test(w,rdBit),
+								       wr = test(w,wrBit),
+								       pri = test(w,priBit)}))
+	    fun fromPollDescIO (PollDesc(IODesc(ref w), {rd,wr,pri})) =
+		  (w, join (rd,rdBit, join (wr,wrBit, join (pri,priBit,0w0))))
+	    fun fromPollDescSock (PollDesc(SockDesc i, {rd,wr,pri})) =
+		  (i, join (rd,rdBit, join (wr,wrBit, join (pri,priBit,0w0))))
 
             (* To preserve equality, return the original PollDesc passed to poll.
              * This is cheesy, but restructuring the IODesc to no longer have a ref
              * cell is a substantial amount of work, as much of the Win32 FS basis
              * relies on mutability.
              *)
-            fun findPollDescFromIO (pollIOs, (fd,w)) = let
-                val desc = List.find (fn (PollDesc (OS.IO.IODesc (ref fd'),_)) => fd'=fd) pollIOs
-            in
-                case desc
-                 of SOME f => SOME(PollInfo f)
-                  | NONE => NONE
-            end
+            fun findPollDescFromIO (pollIOs, (fd, w)) = let
+		  fun same (PollDesc(IODesc(ref fd'), _)) = (fd' = fd)
+		    | same (PollDesc(SockDesc s, _)) = false
+                  val desc = List.find same pollIOs
+		  in
+		    case desc
+		     of SOME f => SOME(PollInfo f)
+		      | NONE => NONE
+		  end
 	in
-	    fun poll (pdl, timeOut) = let
-                  val timeOut = (case timeOut
-                         of SOME t =>
-                            let val usec = TimeImp.toMicroseconds t
-                                val (sec, usec) = IntInfImp.divMod (usec, 1000000)
-                            in
-                                SOME (Int32.fromLarge sec, Int.fromLarge usec)
-                            end
-                          | NONE => NONE
-                        (* end case *))
-                  fun partDesc (PollDesc(OS.IO.IODesc _, _)) = true
-                    | partDesc _ = false
-                  val (pollIOs, pollSocks) = List.partition partDesc pdl
-                  val (infoIO, infoSock) =
-			poll' (List.map fromPollDescIO pollIOs,
-			       List.map fromPollDescSock pollSocks,
-			       timeOut)
-                  in
+	    fun poll (pdl,t) = let
+		  val timeout = (case t
+			 of SOME t => SOME(Int32.fromLarge (Time.toSeconds t), Int.fromLarge (Time.toMicroseconds t))
+			  | NONE => NONE
+			(* end case *))
+		  fun partDesc (PollDesc(IODesc _, _)) = true
+		    | partDesc (PollDesc(SockDesc _, _)) = false
+		  val (pollIOs, pollSocks) = List.partition partDesc pdl
+		  val (infoIO, infoSock) =
+		      poll' (List.map fromPollDescIO pollIOs,
+			     List.map fromPollDescSock pollSocks,
+			     timeout)
+		  in
 		    List.@ (List.mapPartial (fn (p) => findPollDescFromIO(pollIOs,p)) infoIO,
 			    List.map toPollInfoSock infoSock)
-                  end
+		  end
 	end
 		    
         fun isIn (PollInfo(PollDesc(_, flgs))) = #rd flgs
