@@ -1,6 +1,12 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2013-05-05]
+	Added Word64 to CML Basis.  Note that, as with SML/NJ, this is not
+	the LargeWord structure (because of efficiency issues).  Also added
+	some missing SML Basis Library signatures to the CML version of
+	the Basis.
+
 [2012-09-24]
 	Track changes to SML/NJ Library
 
