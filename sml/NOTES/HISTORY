@@ -20,6 +20,31 @@ Date: yyyy/mm/dd
 Description:
 
 ----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2013/06/04
+Description:
+Fix bug #115 (BinPrimIO writer method getPos doesn't work under CML).
+Just needed to port the position update from mkReader code to the
+mkWriter code. 
+
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2013/06/04
+Description:
+Fix bug #111 (Socket.acceptNB returns somewhat broken sockets).
+The problem was that under Win32, sockets returned from accept inherit
+their parents' non-blocking status, whereas on UNIX they are always
+blocking.
+
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2013/05/20
+Description:
+Fix bug #117 (BinIO.openAppend raises IO on non-existent file).
+We were opening the file for append if it existed but not creating it
+if it did not exist.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2013/05/02
 Description:
