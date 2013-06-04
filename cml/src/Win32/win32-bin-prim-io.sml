@@ -165,10 +165,17 @@ structure Win32BinPrimIO : OS_PRIM_IO =
 	  fun withLock' NONE = NONE
 	    | withLock' (SOME f) = SOME(withLock f)
 	  val closed = ref false
+          val {pos, getPos, setPos, endPos, verifyPos} = posFns iod
+	  fun incPos k = pos := Position.+(!pos, pfi k)
 	  fun ensureOpen () = if !closed then raise IO.ClosedStream else ()
 	  fun putV x = W32IO.writeVec x
 	  fun putA x = W32IO.writeArr x
-	  fun write put arg = (ensureOpen(); put(W32FS.IODToHndl iod, arg))
+	  fun write put arg = let
+              val _ = ensureOpen()
+              val v = put(W32FS.IODToHndl iod, arg)
+              in
+                incPos v; v
+              end
 	  val writeEvt =
 		IOManager.ioEvt(OS.IO.pollOut(Option.valOf(OS.IO.pollDesc iod)))
 	  fun eventWrap f x = CML.withNack (fn nack => (
@@ -189,7 +196,6 @@ structure Win32BinPrimIO : OS_PRIM_IO =
 	  fun close () = if !closed
 		then ()
 		else (closed:=true; W32IO.close (W32FS.IODToHndl iod))
-          val {pos, getPos, setPos, endPos, verifyPos} = posFns (iod)
 	  in
 	    BinPrimIO.WR{
 		name		= name,
@@ -225,7 +231,7 @@ structure Win32BinPrimIO : OS_PRIM_IO =
 		  name=name,
 		  access=W32IO.GENERIC_WRITE,
 		  share=shareAll,
-		  mode=W32IO.OPEN_EXISTING,
+		  mode=W32IO.OPEN_ALWAYS,
 		  attrs=W32FS.FILE_ATTRIBUTE_NORMAL
 		})
 	  val _ = W32IO.setFilePointer' (h,0wx0,W32IO.FILE_END)
