@@ -192,20 +192,23 @@ structure SocketImp : SOCKET =
 	    (sock newFD, ADDR addr)
 	  end
     fun accept s = accept0 (sockB, fdB) s
-    fun acceptNB s = let
-        val result = wrapNB_o (accept0 (sockB, fdNB)) s
+    local
+    (*
+     * On Windows, sockets returned from accept inherit their parents' non-blocking
+     * status, unlike normal UNIX sockets, which are always set to blocking.
+     *)
+      val sockIsNB = (SysInfo.WIN32 = SysInfo.getOSKind())
     in
-        (*
-         * On Windows, sockets returned from accept inherit their parents' non-blocking
-         * status, unlike normal UNIX sockets, which are always set to blocking.
-         *)
-        case result
-         of SOME (SOCK {nb, ...},_) => (if SysInfo.WIN32 = SysInfo.getOSKind()
-                                      then nb:=true
-                                      else ())
-          | NONE => ();
-        result
-    end
+    fun acceptNB s = let
+          val result = wrapNB_o (accept0 (sockB, fdNB)) s
+          in
+            case result
+             of SOME(SOCK{nb, ...},_) => (nb := sockIsNB)
+              | NONE => ()
+            (* end case *);
+            result
+          end
+    end (* local *)
 
     fun connect0 getfd (s, ADDR addr) = connect' (getfd s, addr)
     fun connect arg = connect0 fdB arg
