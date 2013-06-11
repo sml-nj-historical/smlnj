@@ -1,6 +1,10 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
+
 --------------------------------------------------------------------------------
+SML/NJ 110.76
+-------------------
+
 [2012-10-30]
 	Fixed bug in DynamicArray iterators because of bad slice dimensions
 	(bug #108).  Also switched to using Array.fromList to implement fromList
