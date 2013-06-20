@@ -45,13 +45,13 @@ case "$VERSION" in
   # application bundle, so we add that as a possible path.
   *x86-darwin*)
     case `uname -r` in
-      11.*) SDK=MacOSX10.7.sdk ;;
-      12.*) SDK=MacOSX10.8.sdk ;;
       13.*) SDK=MacOSX10.9.sdk ;;
       *) SDK=none ;;
     esac
     if test x$SDK != xnone ; then
-      XCODE_DEV_PATH=`xcode-select -p`
+      # note: at some point, we might use "xcrun --show-sdk-path", but that only works
+      # with Xcode 5.x+
+      XCODE_DEV_PATH=`xcode-select --print-path`
       INCLFILE=$XCODE_DEV_PATH/Platforms/MacOSX.platform/Developer/SDKs/$SDK/usr/include/unistd.h
     fi
     ;;
