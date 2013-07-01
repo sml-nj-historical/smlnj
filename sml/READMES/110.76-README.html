@@ -3,6 +3,11 @@
 <head>
 <title>SML/NJ 110.75 NEWS</title>
 <style>
+  div.smlnj-banner {
+    font-weight: bold;
+    font-size: x-large;
+    text-align: center;
+  }
   dd {
     margin-bottom: 0.5em;
   }
@@ -27,17 +32,14 @@
 </head>
 
 <body>
-<div align="center">
-<big><b>
+<div class="smlnj-banner">
                        Standard ML of New Jersey
 <br/>
                           Version 110.76 NEWS
 <br/>
-                            July 1, 2013
+                             July 1, 2013
 <br/>
 <br/>
-</b>
-</big>
 </div>
 <p>
 <hr>
@@ -64,7 +66,13 @@ Mac OS X (10.9/Mavericks).
 <h3>Details:</h3>
 
 <dl>
-
+  <dt>CML:</dt>
+  <dd>
+    Added Word64 to the CML Basis.  Note that, as with SML/NJ, this module is not
+    the LargeWord structure (because of efficiency issues).  Also added
+    some missing SML Basis Library signatures to the CML version of
+    the Basis Library.
+  </dd>
   <dt>Bugs:</dt>
   <dd>
     <p>Here is a list of tracked bugs fixed (or closed) with this release, please see the
@@ -79,6 +87,7 @@ Mac OS X (10.9/Mavericks).
       <tr><td class="bugid">115</td><td>BinPrimIO writer method getPos doesn't work under CML</td></tr>
       <tr><td class="bugid">116</td><td>Socket.sameDesc raises Match exception</td></tr>
       <tr><td class="bugid">117</td><td>BinIO.openAppend raises IO on non-existent file</td></tr>
+      <tr><td class="bugid">118</td><td>Incorrect comparisons of Int64 on amd64 (same as #107)</td></tr>
     </table>
   </dd>
 
