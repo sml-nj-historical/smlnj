@@ -125,7 +125,7 @@ end = struct
   val assert' = TEST.assert'
   val throws' = TEST.throws'
 
-  fun pS str = P.parse (TextIO.openString str)
+  fun pS str = hd (P.parse (TextIO.openString str))
 
   val tests = TEST.SUITE{name="parsing", tests=[
 
@@ -233,7 +233,19 @@ end = struct
         assert' (S.same(pS "x0", S.SYMBOL (Atom.atom "x0")))},
       TEST.CASE{name="quoted", test=fn ()=>
         assert' (S.same(pS "'0", S.SYMBOL (Atom.atom "0")))}
-    ]}
+    ]},
+
+    TEST.SUITE{name="bugs", tests=[
+	TEST.CASE{name="bug01", test= fn () =>
+	    assert' (S.same(
+	      pS "(set pi 3.141592653589793 :documentation \"The value of $\\pi$.\")",
+	      S.LIST[
+		  S.SYMBOL(Atom.atom "set"), S.SYMBOL(Atom.atom "pi"),
+		  S.FLOAT 3.141592653589793, S.SYMBOL(Atom.atom ":documentation"),
+		  S.STRING "The value of $\\pi$."
+		]))
+	  }
+      ]}
   ]}
     
   fun run () = TextIO.print (TEST.summary (TEST.run tests))

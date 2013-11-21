@@ -23,7 +23,7 @@
   fun float s = T.FLOAT(valOf(LargeReal.fromString s))
 (* support for incremental construction of strings *)
   val sbuf : string list ref = ref []
-  fun addStr s = sbuf := s :: !sbuf
+  fun addStr s = (sbuf := s :: !sbuf)
   fun addUChr lit = let
       (* trim the "\u" prefix *)
 	val digits = Substring.triml 2 (Substring.full lit)
@@ -83,7 +83,7 @@
 <INITIAL>{int}			    => ( T.INT(valOf(IntInf.fromString yytext)) );
 
 <INITIAL>{int}{frac}		=> ( float yytext );
-<INITIAL>{int}{exp}		    => ( float yytext );
+<INITIAL>{int}{exp}		=> ( float yytext );
 <INITIAL>{int}{frac}{exp}	=> ( float yytext );
 
 <INITIAL>"\""			=> ( YYBEGIN S; continue() );
@@ -91,9 +91,8 @@
 <INITIAL>{symbol}       	=> ( T.SYMBOL yytext );
 (* TODO backport this to the JSON parser, which hangs if it sees a \\ in a
 * string. *)
-<S>"\\\\"			=> ( addStr "\\"; continue() );
+<S>"\\"				=> ( addStr "\\"; continue() );
 <S>"\\\""			=> ( addStr "\""; continue() );
-<S>"\\/"			=> ( addStr "/"; continue() );
 <S>"\\b"			=> ( addStr "\b"; continue() );
 <S>"\\f"			=> ( addStr "\f"; continue() );
 <S>"\\n"			=> ( addStr "\n"; continue() );
