@@ -37,7 +37,6 @@
 %let digit1_9 = [1-9];
 %let digit = [0-9];
 %let digits = {digit}+;
-(* TODO check if JSON should allow "+1" as a valid encoding of positive one. *)
 %let int = [+-]?({digit} | {digit1_9}{digits}+);
 %let frac = "."{digits};
 %let exp = [eE][+-]?{digits};
@@ -48,9 +47,10 @@
 
 %states S;
 
-<INITIAL>[,;\ \t\n\r]+		=> ( T.WHITE );
+<INITIAL>[ \t\n\r]+		=> ( T.WHITE );
+<INITIAL>";"[^\n\r]*[\n\r]+	=> ( skip() (* comment *));
 
-<INITIAL>"'"([^\ \t\n\r]+)    => ( T.SYMBOL (String.extract(yytext, 1, NONE)) );
+<INITIAL>"'"([^\ \t\n\r]+)	=> ( T.SYMBOL (String.extract(yytext, 1, NONE)) );
 
 <INITIAL>"("			=> ( T.DELIM (T.PAREN, T.OPEN) );
 <INITIAL>")"			=> ( T.DELIM (T.PAREN, T.CLOSE) );
@@ -59,7 +59,7 @@
 <INITIAL>"{"			=> ( T.DELIM (T.BRACE, T.OPEN) );
 <INITIAL>"}"			=> ( T.DELIM (T.BRACE, T.CLOSE) );
 <INITIAL>"#t"			=> ( T.KW_true );
-<INITIAL>"#f"		    => ( T.KW_false );
+<INITIAL>"#f"			=> ( T.KW_false );
 
   (* takes a string of form "0xdeadbeef", strips the leading "0x", and returns
   * an IntInf with hex value deadbeef.  Note that the hex value is unsigned; to
@@ -88,7 +88,7 @@
 
 <INITIAL>"\""			=> ( YYBEGIN S; continue() );
 
-<INITIAL>{symbol}       => ( T.SYMBOL yytext );
+<INITIAL>{symbol}       	=> ( T.SYMBOL yytext );
 (* TODO backport this to the JSON parser, which hangs if it sees a \\ in a
 * string. *)
 <S>"\\\\"			=> ( addStr "\\"; continue() );
@@ -102,8 +102,6 @@
 <S>"\\u"{xdigit}{4}		=> ( addUChr yytext; continue() );
 <S>[^\\"]+			=> ( addStr yytext; continue() );
 <S>"\""				=> ( YYBEGIN INITIAL; finishString() );
-
-<INITIAL>"/*"(~(.*"*/".*))"*/"	=> ( skip() );
 
 (* FIXME: add some error reporting *)
 <INITIAL>.			=> ( skip() );
