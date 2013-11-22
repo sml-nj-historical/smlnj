@@ -42,7 +42,7 @@
 %let exp = [eE][+-]?{digits};
 %let xdigit = {digit}|[a-fA-F];
 %let alpha = ([a-z] | [A-Z]);
-%let punct = [-\^_/~!@$%&*\\:?.<>|+='];
+%let punct = [-\^_/~!@$%&*\\:?.<>|+='#];
 %let symbol = ({alpha} | {punct})({alpha} | {punct} | {digit})*;
 
 %states S;
