@@ -21,6 +21,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2013/11/25
+Description:
+Added PackWord{16,32}{Big,Little} structures to the Unsafe module.
+This change makes the UNSAFE signature closer to the MLton version,
+although we still need the PackReal structures.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2013/07/01
 Description:
 

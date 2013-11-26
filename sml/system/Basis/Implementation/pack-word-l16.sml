@@ -1,6 +1,7 @@
 (* pack-word-l16.sml
  *
- * Copyright (c) 2005 by The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2013 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * This is the non-native implementation of 16-bit little-endian packing
  * operations.

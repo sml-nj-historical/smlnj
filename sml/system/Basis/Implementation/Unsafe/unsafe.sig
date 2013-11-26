@@ -38,6 +38,12 @@ signature UNSAFE =
       where type array = Real64Array.array
       where type elem = Real64Array.elem
 
+  (* unsafe word packing *)
+    structure PackWord16Big : PACK_WORD
+    structure PackWord16Little : PACK_WORD
+    structure PackWord32Big : PACK_WORD
+    structure PackWord32Little : PACK_WORD
+
     val getHdlr : unit -> 'a Cont.cont
     val setHdlr : 'a Cont.cont -> unit
 

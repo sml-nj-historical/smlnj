@@ -77,6 +77,12 @@ structure Unsafe :> UNSAFE =
 	val create = Core.Assembly.A.create_r
       end
 
+  (* unsafe word packing *)
+    structure PackWord16Big = UnsafePackWord16Big
+    structure PackWord16Little = UnsafePackWord16Little
+    structure PackWord32Big = UnsafePackWord32Big
+    structure PackWord32Little = UnsafePackWord32Little
+
     val getVar = InlineT.getvar
     val setVar = InlineT.setvar
 
