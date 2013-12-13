@@ -58,13 +58,19 @@
 <h3>Summary:</h3>
 <blockquote>
 <p>
-The primary purpose of this release are bug fixes.
+The primary purpose of this release is bug fixes, but it does include some new features
 </p>
 </blockquote>
 
 <h3>Details:</h3>
 
 <dl>
+  <dt>SML/NJ compiler</dt>
+  <dd>
+    We added the <tt>PackWord</tt>{<tt>16</tt>,<tt>32</tt>}{<tt>Big</tt>,<tt>Little</tt>}
+    structures to the <tt>Unsafe</tt> module.
+    This change makes SML/NJ's <tt>UNSAFE</tt> signature closer to the MLton version.
+  </dd>
   <dt>ml-lpt</dt>
   <dd>
     Fixed a minor bug where a syntax error in the grammar specification go undetected and
