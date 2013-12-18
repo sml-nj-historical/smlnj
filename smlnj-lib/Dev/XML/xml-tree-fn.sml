@@ -4,11 +4,17 @@
  * All rights reserved.
  *)
 
-functor X<:TreeFn (Schema : XML_SCHEMA) : XML_TREE =
+functor XMLTreeFn (Schema : XML_SCHEMA) : XML_TREE =
   struct
 
     structure Schema = Schema
 
+    datatype doctype = DOCTYPE of string * external_id
+
+    and external_id
+      = SYSTEM of string
+      | PUBLIC of string * string
+	
     datatype content
       = TEXT of string
       | CDATA of string
@@ -19,8 +25,9 @@ functor X<:TreeFn (Schema : XML_SCHEMA) : XML_TREE =
 	  }
 
     type tree = {
-	xmlDecl : Schema.attribute list,	(* empty if there is no decl *)
-	content : content
+	xmlDecl : Schema.attribute list option,	(* NONE if there is no decl *)
+	doctype : doctype option,
+	content : content			(* will be an ELEMENT *)
       }
 
   end

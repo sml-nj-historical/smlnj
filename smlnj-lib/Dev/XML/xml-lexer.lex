@@ -35,25 +35,33 @@
 %let alpha = [a-zA-Z];
 %let idstartchr = [a-zA-Z_:];
 %let idchr = ({idstartchr}|[-.0-9]);
+%let pubidchr1 = [ \n\n\t] | [a-zA-Z0-9] | [-'()+,./:=?;!*#@$_%];
+%let pubidchr2 = [ \n\n\t] | [a-zA-Z0-9] | [-()+,./:=?;!*#@$_%]; (* without ' *)
 
-%states INITIAL COM TAG LIT1 LIT2;
+%states INITIAL COM TAG LIT1 LIT2 DOCTYPE;
 
-<INITIAL>"<!--"			=> (YYBEGIN COM; skip());
-<COM>"-->"			=> (YYBEGIN INITIAL; skip());
-<COM>.				=> (skip());
+<INITIAL>"<!--"			=> (addText yytext; YYBEGIN COM; continue());
+<COM>"-->"			=> (addText yytext; YYBEGIN INITIAL; T.COM(textToString()));
+<COM>.				=> (addText yytext; continue());
 
 <INITIAL>"<"			=> (YYBEGIN TAG; T.OPEN_START_TAG);
 <INITIAL>"</"			=> (YYBEGIN TAG; T.OPEN_END_TAG);
-<INITIAL>"<?xml"		=> (YYBEGIN TAG; T.OPEN_XML_TAG);
+<INITIAL>"<?[xX][mM][lL]"	=> (YYBEGIN TAG; T.OPEN_XML_TAG);
+<INITIAL>"<!DOCTYPE"		=> (YYBEGIN DOCTYPE; T.OPEN_DOCTYPE);
 
-<TAG>{ws}+			=> (skip());
+<TAG,DOCTYPE>{ws}+		=> (skip());
 <TAG>"?>"			=> (YYBEGIN INITIAL; T.CLOSE_XML_TAG);
 <TAG>">"			=> (YYBEGIN INITIAL; T.CLOSE_TAG);
 <TAG>"/>"			=> (YYBEGIN INITIAL; T.CLOSE_EMPTY_TAG);
 <TAG>"="			=> (T.SYM_EQ);
-<TAG>{idstartchr}{idchr}*	=> (T.ID yytext);
+<TAG,DOCTYPE>{idstartchr}{idchr}*
+				=> (T.ID yytext);
 <TAG>"\""			=> (YYBEGIN LIT1; continue());
 <TAG>"'"			=> (YYBEGIN LIT2; continue());
+
+<DOCTYPE>"\""{pubidchr1}*"\""	=> ();
+<DOCTYPE>"'"{pubidchr2"'"	=> ();
+<DOCTYPE>">"			=> (YYBEGIN INITIAL; T.CLOSE_TAG);
 
 <LIT1>"\""			=> (YYBEGIN TAG; T.LIT(textToString()));
 <LIT2>"\'"			=> (YYBEGIN TAG; T.LIT(textToString()));
@@ -70,7 +78,7 @@
 (* we handle whitespace specially, so that initial/trailing whitespace can be preserved
  * when necessary.
  *)
-<INITIAL>{ws}+			=> (T.WS yystring);
+<INITIAL>{ws}+			=> (T.WS yytext);
 <INITIAL>[^ \n\t\r<&]+		=> (T.TEXT yytext);
 <INITIAL>"&quot;"		=> (T.TEXT "\"");
 <INITIAL>"&lt;"			=> (T.TEXT "<");

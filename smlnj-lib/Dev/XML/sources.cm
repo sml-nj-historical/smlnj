@@ -1,0 +1,34 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2013 The SML3d Project (http://sml3d.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * This library implements infrastructure for parsing XML files (without validation)
+ *)
+
+Library
+
+  signature XML_SCHEMA
+  signature XML_TREE
+  signature XML_PARSER
+
+  functor XMLTreeFn
+  functor XMLParserFn
+
+  structure GenericXMLTree
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/ml-lpt-lib.cm
+
+  generic-xml-tree.sml
+
+  xml-parser-fn.sml
+  xml-schema-sig.sml
+  xml-tokens.sml
+  xml-tree-fn.sml
+  xml-tree-sig.sml
+
+  xml-lexer.lex : ml-ulex

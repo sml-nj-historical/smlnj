@@ -15,6 +15,7 @@ A generic XML schema (that allows any element name) is provided.
 For a more complete library for XML processing, use the fxp library.
 
 TODO:
+  handle internal subsets in "<!DOCTYPE ...>" definitions
   support a SAX-type parsing interface
   support a DOM API a la TinyXML (http://www.grinninglizard.com/tinyxml)
   or TinyXML-2 (http://www.grinninglizard.com/tinyxml2/)

@@ -11,6 +11,12 @@ signature XML_TREE =
 
     structure Schema : XML_SCHEMA
 
+    datatype doctype = DOCTYPE of string * external_id
+
+    and external_id
+      = SYSTEM of string
+      | PUBLIC of string * string
+	
     datatype content
       = TEXT of string
       | CDATA of string
@@ -21,8 +27,9 @@ signature XML_TREE =
 	  }
 
     type tree = {
-	xmlDecl : Schema.attribute list,	(* empty if there is no decl *)
-	content : content
+	xmlDecl : Schema.attribute list option,	(* NONE if there is no decl *)
+	doctype : doctype option,
+	content : content			(* will be an ELEMENT *)
       }
 
   end

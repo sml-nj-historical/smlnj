@@ -19,6 +19,9 @@ signature XML_SCHEMA =
   (* should leading and trailing whitespace be preserved in the content of this element? *)
     val preserveWS : element -> bool
 
+  (* should comments be preserved *)
+    val preserveComment : element -> bool
+
   (* equality test *)
     val same : element * element -> bool
 
