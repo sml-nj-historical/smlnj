@@ -2,7 +2,7 @@ This directory contains a small library for parsing XML files.  It does
 not support validation (e.g., against a DTD or Schema).  The basic idea
 is that the user supplies a "schema" module that describes the elements
 and attribute representation of an XML document.  From this, one builds
-and XML tree representation
+an XML tree representation
 
 	structure MyXMLTree = XMLTreeFn (MyXMLSchema);
 

@@ -9,6 +9,9 @@ functor XMLTreeFn (Schema : XML_SCHEMA) : XML_TREE =
 
     structure Schema = Schema
 
+  (* limited support for <!DOCTYPE ...> declarations.  Internal subsets are not
+   * current supported.
+   *)
     datatype doctype = DOCTYPE of string * external_id
 
     and external_id

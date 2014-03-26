@@ -4,12 +4,29 @@
  * All rights reserved.
  *)
 
-library
+Library
 
-  $/basis.cm
+  signature XML_SCHEMA
+  signature XML_TREE
+  signature XML_PARSER
+
+  functor XMLTreeFn
+  functor XMLParserFn
+
+  structure GenericXMLTree
 
 is
 
-  signature XML
-  structure XML
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/ml-lpt-lib.cm
 
+  generic-xml-tree.sml
+
+  xml-parser-fn.sml
+  xml-schema-sig.sml
+  xml-tokens.sml
+  xml-tree-fn.sml
+  xml-tree-sig.sml
+
+  xml-lexer.lex : ml-ulex

@@ -38,6 +38,14 @@
 %let pubidchr1 = [ \n\n\t] | [a-zA-Z0-9] | [-'()+,./:=?;!*#@$_%];
 %let pubidchr2 = [ \n\n\t] | [a-zA-Z0-9] | [-()+,./:=?;!*#@$_%]; (* without ' *)
 
+(* the lexer states:
+ * INITIAL
+ * COM		scanning inside "<!--"
+ * TAG		scanning inside "<" or "<?xml"
+ * LIT1		double-quoted literal
+ * LIT2		single-quoted literal
+ * DOCTYPE	scanning inside "<!DOCTYPE"
+ *)
 %states INITIAL COM TAG LIT1 LIT2 DOCTYPE;
 
 <INITIAL>"<!--"			=> (addText yytext; YYBEGIN COM; continue());
@@ -46,11 +54,11 @@
 
 <INITIAL>"<"			=> (YYBEGIN TAG; T.OPEN_START_TAG);
 <INITIAL>"</"			=> (YYBEGIN TAG; T.OPEN_END_TAG);
-<INITIAL>"<?[xX][mM][lL]"	=> (YYBEGIN TAG; T.OPEN_XML_TAG);
+<INITIAL>"<?"[xX][mM][lL]	=> (YYBEGIN TAG; T.OPEN_XML_TAG);
 <INITIAL>"<!DOCTYPE"		=> (YYBEGIN DOCTYPE; T.OPEN_DOCTYPE);
 
 <TAG,DOCTYPE>{ws}+		=> (skip());
-<TAG>"?>"			=> (YYBEGIN INITIAL; T.CLOSE_XML_TAG);
+<TAG>"?>"			=> (YYBEGIN INITIAL; T.CLOSE_PI_TAG);
 <TAG>">"			=> (YYBEGIN INITIAL; T.CLOSE_TAG);
 <TAG>"/>"			=> (YYBEGIN INITIAL; T.CLOSE_EMPTY_TAG);
 <TAG>"="			=> (T.SYM_EQ);
@@ -59,8 +67,8 @@
 <TAG>"\""			=> (YYBEGIN LIT1; continue());
 <TAG>"'"			=> (YYBEGIN LIT2; continue());
 
-<DOCTYPE>"\""{pubidchr1}*"\""	=> ();
-<DOCTYPE>"'"{pubidchr2"'"	=> ();
+<DOCTYPE>"\""{pubidchr1}*"\""	=> (continue());
+<DOCTYPE>"'"{pubidchr2}*"'"	=> (continue());
 <DOCTYPE>">"			=> (YYBEGIN INITIAL; T.CLOSE_TAG);
 
 <LIT1>"\""			=> (YYBEGIN TAG; T.LIT(textToString()));

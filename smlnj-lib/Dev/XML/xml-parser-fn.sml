@@ -9,7 +9,7 @@ signature XML_PARSER =
 
     structure XMLTree : XML_TREE
 
-    val parseFile : string -> XMLTree.file
+    val parseFile : string -> XMLTree.tree
 
     exception ParseError of string
 
@@ -20,8 +20,7 @@ functor XMLParserFn (XT : XML_TREE) : XML_PARSER =
 
     structure XMLTree = XT
     structure XS = XT.Schema
-
-    datatype token = datatype XMLTokens.token
+    structure Tok = XMLTokens
 
   (***** Error messages *****)
 
@@ -29,15 +28,13 @@ functor XMLParserFn (XT : XML_TREE) : XML_PARSER =
 
     datatype error_tag
       = S of string
-      | ID of string
-      | TK of token
+      | TK of Tok.token
       | E of XT.Schema.element
 
     fun error msg = let
 	  fun cvt (S s, l) = s :: l
-	    | cvt (ID id) = "\"" :: id :: "\"" :: l
-	    | cvt (TK tok) = XMLTokens.toString tok :: l
-	    | cvt (E elem) = XS.toString elem :: l
+	    | cvt (TK tok, l) = XMLTokens.toString tok :: l
+	    | cvt (E elem, l) = XS.toString elem :: l
 	  in
 	    raise ParseError(String.concat(List.foldr cvt [] msg))
 	  end
@@ -50,10 +47,10 @@ functor XMLParserFn (XT : XML_TREE) : XML_PARSER =
     type lexer_state = XMLLexer.prestrm * XMLLexer.yystart_state
 
     datatype token_strm_rep
-      = TOK of {tok : token, span : XMLLexer.span, more : token_strm}
+      = TOK of {tok : Tok.token, span : XMLLexer.span, more : token_strm}
       | MORE of {
 	  state : lexer_state,
-	  get : lexer_state -> token * XMLLexer.span * lexer_state
+	  get : lexer_state -> Tok.token * XMLLexer.span * lexer_state
 	}
 
     withtype token_strm = token_strm_rep ref
@@ -64,52 +61,52 @@ functor XMLParserFn (XT : XML_TREE) : XML_PARSER =
     fun nextTok (ref(TOK{tok, span, more})) = (tok, span, more)
       | nextTok (strm as ref(MORE{state, get})) = let
 	  val (tok, span, state) = get state
-	  val more = ref(MORE{state=state, get=lexFn})
+	  val more = ref(MORE{state=state, get=get})
 	  val rep = TOK{tok=tok, span=span, more=more}
 	  in
 	    strm := rep; (* cache lexer result *)
-	    (tok, more)
+	    (tok, span, more)
 	  end
 
-    datatype content = datatype XT.content
+  (****** Tracking the content of an element *****)
 
-  (***** Stack of open elements *****)
-
-    type stack = (element * attribute list) list
-
-  (****** Parser state *****)
+    type content = XT.content list
 
     type state = {
-	stk : stack,		(* stack of currently open elements *)
-	content : content list,	(* parsed content in reverse order *)
+	content : content,	(* parsed content in reverse order *)
 	preWS : string option	(* preceeding WS when we are not preserving whitespace *)
       }
 
+(* FIXME: this function doesn't seem right *)
     fun mergeWS (NONE, content) = content
       | mergeWS (SOME ws, XT.TEXT txt :: content) = XT.TEXT(txt ^ ws) :: content
       | mergeWS (SOME s, content) = XT.TEXT s :: content
 
-    fun add ({stk, content, preWS}, name, elem) =
-	  {stk = stk, content = XT.ELEMENT elem :: mergeWS (preWS, content), preWS = NONE}
+    fun addElem ({content, preWS}, elem) =
+	  {content = elem :: mergeWS (preWS, content), preWS = NONE}
 
-    fun addWS ({stk, content, preWS}, ws) = (case preWS
-	   of SOME ws' => {stk = stk, content = content, preWS = SOME(ws' ^ ws)}
-	    | NONE => {stk = stk, content = content, preWS = SOME ws}
+    fun addWS ({content, preWS}, ws) = (case preWS
+	   of SOME ws' => {content = content, preWS = SOME(ws' ^ ws)}
+	    | NONE => {content = content, preWS = SOME ws}
 	  (* end case *))
 
-    fun addText ({stk, content, preWS}, txt) = let
+    fun addCom (state, com) = state (* FIXME*)
+
+    fun addText ({content, preWS}, txt) = let
 	  val content = (case (preWS, content)
 		 of (NONE, XT.TEXT txt' :: content) => XT.TEXT(txt' ^ txt) :: content
 		  | (NONE, content) => XT.TEXT txt :: content
-		  | (SOME ws, XT.TEXT txt :: content) => XT.TEXT(concat[txt', ws, txt] :: content)
+		  | (SOME ws, XT.TEXT txt' :: content) => XT.TEXT(concat[txt', ws, txt]) :: content
 		  | (SOME ws, content) => XT.TEXT(txt ^ ws) :: content
 		(* end case *))
 	  in
-	    {stk = stk, content = content, preWS = NONE}
+	    {content = content, preWS = NONE}
 	  end
 
-    fun addCData ({stk, content, preWS}, cdata) =
-	  {stk = stk, content = XT.CDATA cdata :: mergeWS (preWS, content), preWS = NONE}
+    fun addCData ({content, preWS}, cdata) =
+	  {content = XT.CDATA cdata :: mergeWS (preWS, content), preWS = NONE}
+
+    fun finish ({content, preWS} : state) = List.rev content
 
   (***** Parsing *****)
 
@@ -119,74 +116,96 @@ functor XMLParserFn (XT : XML_TREE) : XML_PARSER =
 		error(S "Error [" :: S(AntlrStreamPos.spanToString srcMap span) :: S "]: " :: msg)
 	(* scan an element identifier *)
 	  fun getElementId tokStrm = (case nextTok tokStrm
-		 of (ID id, tokStrm) => (case XS.element id
+		 of (Tok.ID id, span, tokStrm) => (case XS.element id
 		       of SOME elem => (elem, tokStrm)
 			| NONE => err(span, [S "unrecognized element ", S id])
 		      (* end case *))
 		  | (tok, span, _) => err(span, [S "expected identifier, but found ", TK tok])
 		(* end case *))
-	(* parse the content of an element *)
-	  fun parseContent (tokStrm, state) = (case nextTok tokStrm
-		 of (EOF, span, _) => (case (#stk state)
-		       of [] => List.rev content
-			| (elem, _)::_ => err(span, [S "missing close ", E elem])
-		      (* end case *))
-		  | (OPEN_START_TAG, _, tokStrm) => parseStartTag (tokStrm, state)
-		  | (OPEN_END_TAG, _, tokStrm)=> parseEndTag (tokStrm, state)
-		  | (WS s, _, tokStrm) => parseContent (tokStrm, addWS(state, s))
-		  | (TEXT s, _, tokStrm) => parseContent (tokStrm, addText(state, s))
-		  | (COM s, _, tokStrm) => parseContent (tokStrm, addCom(state, s))
-		  | (CDATA s, _, tokStrm) => parseContent (tokStrm, addCData(state, s))
-		  | (tok, span, _) => err(span, [S "impossible: unexpected ", TK tok])
-		(* end case *))
-	(* expect: ID Attributes (">" | "/>") *)
-	  and parseStartTag (tokStrm, state) = let
-		val (elem, tokStrm) = getElementId tokStrm
-		val (attrs, tokStrm) = parsAttributes tokStrm
-		in
-		  case (nextTok tokStrm)
-		   of (CLOSE_TAG, _, tokStrm) =>
-			parseContent (tokStrm, push(state, elem, attrs))
-		    | (CLOSE_EMPTY_TAG, _, tokStrm) =>
-			endElement (tokStrm,
-			  add(state, XT.ELEMENT{name=elem, attrs=attrs, content=[]}))
-		    | (tok, span, _) => err(span, [S "expected \">\" or \"/>\", but found ", TK tok])
-		  (* end case *)
-		end
-	(* expect: ID ">" *)
-	  and parseEndTag (tokStrm, state) = let
-		val (elem, tokStrm) = getElementId tokStrm
-		val (content, attrs, state) = pop (state, elem)
-		in
-		  endElement (tokStrm,
-		    add(state, XT.ELEMENT{name=elem, attrs=attrs, content=content}))
-		end
-	(* handle an end tag or empty element tag *)
-	  and endElement (tokStrm, state) = if emptyStack state
-		then state
-		else parseContent (tokStrm, state)
-	(* expect: (ID "=" LIT)* *)
-	  and parseAttributes (tokStrm, state) = let
+	(* parse the attributes of a start tag.  We expect: (ID "=" LIT)* *)
+	  fun parseAttributes tokStrm = let
 		fun parseAttr (tokStrm, attrs) = (case nextTok tokStrm
-		       of (ID id, _, tokStrm) => (case nextTok tokStrm
-			     of (SYM_EQ, tokStrm) => (case nextTok tokStrm
-				   of (LIT v, _, tokStrm) =>
+		       of (Tok.ID id, _, tokStrm) => (case nextTok tokStrm
+			     of (Tok.SYM_EQ, _, tokStrm) => (case nextTok tokStrm
+				   of (Tok.LIT v, _, tokStrm) =>
 					parseAttr (tokStrm, XS.attribute(id, v)::attrs)
 				    | (tok, span, _) => err(span, [S "expected attribute value, but found ", TK tok])
 				  (* end case *))
 			      | (tok, span, _) => err(span, [S "expected \"=\", but found ", TK tok])
 			    (* end case *))
-			| _ => (tokStrm, List.rev attrs)
+			| _ => (List.rev attrs, tokStrm)
 		      (* end case *))
 		in
 		  parseAttr (tokStrm, [])
 		end
+	(* parse an element.  We assume that the initial "<" has been consumed. *)
+	  fun parseElement tokStrm = let
+		val (elem, tokStrm) = getElementId tokStrm
+		val (attrs, tokStrm) = parseAttributes tokStrm
+		in
+		  case (nextTok tokStrm)
+		   of (Tok.CLOSE_TAG, _, tokStrm) => let
+			val (content, tokStrm) = parseContent (tokStrm, XS.preserveWS elem, XS.preserveComment elem)
+			in
+			  (* here we expect to see the matching close tag for the element *)
+			  case nextTok tokStrm
+			   of (Tok.OPEN_END_TAG, span, tokStrm) => let
+				val (elem', tokStrm) = getElementId tokStrm
+				in
+				  if XS.same(elem, elem')
+				    then (case nextTok tokStrm
+				       of (Tok.CLOSE_TAG, _, tokStrm) =>
+					    (XT.ELEMENT{name=elem, attrs=attrs, content=content}, tokStrm)
+					| (tok, span, _) => err (span, [
+					      S "expected \">\", but found ", TK tok
+					    ])
+				      (* end case *))
+				    else err (span, [
+					S "mismatched close tag: expected ", E elem, S ", but found ", E elem'
+				      ])
+				end
+			    | (tok, span, _) => err(span, [
+				  S "impossible: unexpected ", TK tok,
+				  S " when </", S(XS.toString elem), S "> expected"
+				])
+			  (* end case *)
+			end
+		    | (Tok.CLOSE_EMPTY_TAG, _, tokStrm) =>
+			(XT.ELEMENT{name=elem, attrs=attrs, content=[]}, tokStrm)
+		    | (tok, span, _) => err(span, [S "expected \">\" or \"/>\", but found ", TK tok])
+		  (* end case *)
+		end
+	(* parse the content of an element; we return when we  *)
+	  and parseContent (tokStrm, preserveWS, preserveCom) : (XT.content list * token_strm) = let
+		fun parse (tokStrm, state) = (case nextTok tokStrm
+		       of (Tok.EOF, _, _) => (finish state, tokStrm)
+			| (Tok.OPEN_START_TAG, _, tokStrm) => let
+			    val (elem, tokStrm) = parseElement tokStrm
+			    in
+			      parse (tokStrm, addElem(state, elem))
+			    end
+			| (Tok.OPEN_END_TAG, _, tokStrm) => (finish state, tokStrm)
+			| (Tok.WS s, _, tokStrm) =>
+			    if preserveWS
+			      then parse (tokStrm, addText(state, s))
+			      else parse (tokStrm, addWS(state, s))
+			| (Tok.TEXT s, _, tokStrm) => parse (tokStrm, addText(state, s))
+			| (Tok.COM s, _, tokStrm) =>
+			    if preserveCom
+			      then parse (tokStrm, addCom(state, s))
+			      else parse (tokStrm, state)
+			| (Tok.CDATA s, _, tokStrm) => parse (tokStrm, addCData(state, s))
+			| (tok, span, _) => err(span, [S "impossible: unexpected ", TK tok])
+		      (* end case *))
+		in
+		  parse (tokStrm, {preWS=NONE, content=[]})
+		end
 	(* expect: Attributes "?>" *)
-	  and parseXMLDecl (tokStrm, state) = let
-		val (attrs, tokStrm) = parseAttributes (tokStrm, state)
+	  and parseXMLDecl tokStrm = let
+		val (attrs, tokStrm) = parseAttributes tokStrm
 		in
 		  case nextTok tokStrm
-		   of (CLOSE_XML_TAG, _, tokStrm) => (attrs, tokStrm)
+		   of (Tok.CLOSE_PI_TAG, _, tokStrm) => (SOME attrs, tokStrm)
 		    | (tok, span, _) => err(span, [S "expected \"?>\", but found ", TK tok])
 		  (* end case *)
 		end
@@ -199,22 +218,29 @@ functor XMLParserFn (XT : XML_TREE) : XML_PARSER =
 	(* initialize the token stream *)
 	  val tokStrm = newTokenStrm (
 		XMLLexer.streamifyInstream inStrm,
-		XMLLexer.lex srcMap (fn (pos, msg) => err((pos, pos), msg)))
+		XMLLexer.lex srcMap (fn (pos, msg) => err((pos, pos), List.map S msg)))
 	(* parse the XML Decl (if any) *)
 	  val (xmlDecl, tokStrm) = let
 		fun getXMLDecl tokStrm = (case nextTok tokStrm
-		       of (OPEN_XML_TAG, _, tokStrm) => parseXMLDecl tokStrm
-			| (WS _, _, tokStrm) => getXMLDecl tokStrm
-			| (COM _, _, tokStrm) => getXMLDecl tokStrm
+		       of (Tok.OPEN_XML_TAG, _, tokStrm) => parseXMLDecl tokStrm
+			| (Tok.WS _, _, tokStrm) => getXMLDecl tokStrm
+			| (Tok.COM _, _, tokStrm) => getXMLDecl tokStrm
 			| _ => (NONE, tokStrm)
 		      (* end case *))
 		in
 		  getXMLDecl tokStrm
 		end
-	(* initial parser state *)
-	  val state = initialState()
+(* QUESTION: should we preserve comments at top-level by default? *)
+	  val (body, _) = parseContent (tokStrm, false, false)
 	  in
-raise Fail "FIXME"
+	    case body
+	     of [elem as XT.ELEMENT _] => {
+		    xmlDecl = xmlDecl,
+		    doctype = NONE, (* FIXME *)
+		    content = elem
+		  }
+	      | _ => error [S "body of document is not a single element"]
+	    (* end case *)
 	  end (* parser *)
 
 (*
@@ -222,12 +248,12 @@ raise Fail "FIXME"
 	  and parse tokStrm = let
 		fun parse tokStrm = (case nextTok tokStrm
 		       of (EOF, _) => {xmlDecl = xmlDecl, content = TEXT ""}
-			| (OPEN_START_TAG, tokStrm) => let
+			| (Tok.OPEN_START_TAG, tokStrm) => let
 			    val finalState = parseStartTag (tokStrm, content, stk)
 			    in
 			      {xmlDecl = xmlDecl, content = ??}
 			    end
-			| WS _ => parse tokStrm
+			| Tok.WS _ => parse tokStrm
 			| tok, _) => err(?, [S "impossible: unexpected ", TK tok])
 		      (* end case *))
 		in

@@ -25,6 +25,7 @@ signature XML_SCHEMA =
   (* equality test *)
     val same : element * element -> bool
 
+  (* the string representation of the element (w/o the "<" and ">" brackets) *)
     val toString : element -> string
 
   (* create an attribute from a name/value pair *)
