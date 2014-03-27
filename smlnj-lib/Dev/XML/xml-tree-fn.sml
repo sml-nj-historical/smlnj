@@ -12,7 +12,7 @@ functor XMLTreeFn (Schema : XML_SCHEMA) : XML_TREE =
   (* limited support for <!DOCTYPE ...> declarations.  Internal subsets are not
    * current supported.
    *)
-    datatype doctype = DOCTYPE of string * external_id
+    datatype doctype = DOCTYPE of string * external_id option
 
     and external_id
       = SYSTEM of string

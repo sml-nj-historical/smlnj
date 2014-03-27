@@ -68,6 +68,13 @@ functor XMLParserFn (XT : XML_TREE) : XML_PARSER =
 	    (tok, span, more)
 	  end
 
+  (* skip whitespace and comments *)
+    fun skipWS tokStrm = (case nextTok tokStrm
+	   of (Tok.WS _, _, tokStrm) => skipWS tokStrm
+	    | (Tok.COM _, _, tokStrm) => skipWS tokStrm
+	    | _ => tokStrm
+	  (* end case *))
+
   (****** Tracking the content of an element *****)
 
     type content = XT.content list
@@ -139,13 +146,14 @@ functor XMLParserFn (XT : XML_TREE) : XML_PARSER =
 		  parseAttr (tokStrm, [])
 		end
 	(* parse an element.  We assume that the initial "<" has been consumed. *)
-	  fun parseElement tokStrm = let
+	  fun parseElement (tokStrm, preserveWS) = let
 		val (elem, tokStrm) = getElementId tokStrm
 		val (attrs, tokStrm) = parseAttributes tokStrm
 		in
 		  case (nextTok tokStrm)
 		   of (Tok.CLOSE_TAG, _, tokStrm) => let
-			val (content, tokStrm) = parseContent (tokStrm, XS.preserveWS elem, XS.preserveComment elem)
+			val preserveWS = preserveWS orelse XS.preserveWS elem
+			val (content, tokStrm) = parseContent (tokStrm, preserveWS, XS.preserveComment elem)
 			in
 			  (* here we expect to see the matching close tag for the element *)
 			  case nextTok tokStrm
@@ -180,11 +188,11 @@ functor XMLParserFn (XT : XML_TREE) : XML_PARSER =
 		fun parse (tokStrm, state) = (case nextTok tokStrm
 		       of (Tok.EOF, _, _) => (finish state, tokStrm)
 			| (Tok.OPEN_START_TAG, _, tokStrm) => let
-			    val (elem, tokStrm) = parseElement tokStrm
+			    val (elem, tokStrm) = parseElement (tokStrm, preserveWS)
 			    in
 			      parse (tokStrm, addElem(state, elem))
 			    end
-			| (Tok.OPEN_END_TAG, _, tokStrm) => (finish state, tokStrm)
+			| (Tok.OPEN_END_TAG, _, _) => (finish state, tokStrm)
 			| (Tok.WS s, _, tokStrm) =>
 			    if preserveWS
 			      then parse (tokStrm, addText(state, s))
@@ -214,29 +222,58 @@ functor XMLParserFn (XT : XML_TREE) : XML_PARSER =
 	 *	ExternalID ::= 'SYSTEM' LIT
 	 *	            |  'PUBLIC' LIT LIT
 	 *)
-	  fun parseDoctype (tokStrm, state) = raise Fail "FIXME"
+	  fun parseDOCTYPE tokStrm = let
+		val (id, tokStrm) = (case nextTok tokStrm
+		       of (Tok.ID id, _, tokStrm) => (id, tokStrm)
+			| (tok, span, _) => err(span, [S "expected identifier, but found ", TK tok])
+		      (* end case *))
+		fun getLiteral tokStrm = (case nextTok tokStrm
+		       of (Tok.LIT lit, _, tokStrm) => (lit, tokStrm)
+			| (tok, span, _) => err (span, [S "expected literal, but found ", TK tok])
+		      (* end case *))
+		val (external, tokStrm) = (case nextTok tokStrm
+		       of (Tok.SYSTEM, _, tokStrm) => let
+			    val (lit, tokStrm) = getLiteral tokStrm
+			    in
+			      (SOME(XT.SYSTEM lit), tokStrm)
+			    end
+			| (Tok.PUBLIC, _, tokStrm) => let
+			    val (lit1, tokStrm) = getLiteral tokStrm
+			    val (lit2, tokStrm) = getLiteral tokStrm
+			    in
+			      (SOME(XT.PUBLIC(lit1, lit2)), tokStrm)
+			    end
+			| _ => (NONE, tokStrm)
+		      (* end case *))
+		in
+		(* expect ">" *)
+		  case nextTok tokStrm
+		   of (Tok.CLOSE_TAG, _, tokStrm) => (SOME(XT.DOCTYPE(id, external)), tokStrm)
+		    | (tok, span, tokStrm) => err(span, [S "expected \">\", but found ", TK tok])
+		  (* end case *)
+		end
 	(* initialize the token stream *)
 	  val tokStrm = newTokenStrm (
 		XMLLexer.streamifyInstream inStrm,
 		XMLLexer.lex srcMap (fn (pos, msg) => err((pos, pos), List.map S msg)))
 	(* parse the XML Decl (if any) *)
-	  val (xmlDecl, tokStrm) = let
-		fun getXMLDecl tokStrm = (case nextTok tokStrm
-		       of (Tok.OPEN_XML_TAG, _, tokStrm) => parseXMLDecl tokStrm
-			| (Tok.WS _, _, tokStrm) => getXMLDecl tokStrm
-			| (Tok.COM _, _, tokStrm) => getXMLDecl tokStrm
-			| _ => (NONE, tokStrm)
-		      (* end case *))
-		in
-		  getXMLDecl tokStrm
-		end
+	  val (xmlDecl, tokStrm) = (case nextTok (skipWS tokStrm)
+		 of (Tok.OPEN_XML_TAG, _, tokStrm) => parseXMLDecl tokStrm
+		  | _ => (NONE, tokStrm)
+		(* end case *))
+	(* parse the DOCTYPE (if any) *)
+	  val (doctype, tokStrm) = (case nextTok (skipWS tokStrm)
+		 of (Tok.OPEN_DOCTYPE, _, tokStrm) => parseDOCTYPE tokStrm
+		  | _ => (NONE, tokStrm)
+		(* end case *))
 (* QUESTION: should we preserve comments at top-level by default? *)
-	  val (body, _) = parseContent (tokStrm, false, false)
+	  val (body, _) = parseContent (skipWS tokStrm, false, false)
 	  in
 	    case body
-	     of [elem as XT.ELEMENT _] => {
+	     of [] => error [S "empty document"]
+	      | [elem as XT.ELEMENT _] => {
 		    xmlDecl = xmlDecl,
-		    doctype = NONE, (* FIXME *)
+		    doctype = doctype,
 		    content = elem
 		  }
 	      | _ => error [S "body of document is not a single element"]

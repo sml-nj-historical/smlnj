@@ -16,7 +16,11 @@ signature XML_SCHEMA =
   (* create an element; returns NONE if the element name is unrecognized *)
     val element : string -> element option
 
-  (* should leading and trailing whitespace be preserved in the content of this element? *)
+  (* If this function returns true for an element, then all whitespace in the
+   * element's content is preserved.  Otherwise, whitespace between tags is
+   * not preserved.  Note that if true, this property is inherited by any
+   * nested elements.
+   *)
     val preserveWS : element -> bool
 
   (* should comments be preserved *)

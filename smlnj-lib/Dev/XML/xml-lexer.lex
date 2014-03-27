@@ -4,6 +4,8 @@
  * All rights reserved.
  *
  * An ML-ULex parser for parsing XML files.
+ *
+ * TODO: line ending normalization?
  *)
 
 %name XMLLexer;
@@ -41,10 +43,10 @@
 (* the lexer states:
  * INITIAL
  * COM		scanning inside "<!--"
- * TAG		scanning inside "<" or "<?xml"
+ * TAG		scanning inside "<" or "<?xml"; whitespace is skipped.
  * LIT1		double-quoted literal
  * LIT2		single-quoted literal
- * DOCTYPE	scanning inside "<!DOCTYPE"
+ * DOCTYPE	scanning inside "<!DOCTYPE"; whitespace is skipped.
  *)
 %states INITIAL COM TAG LIT1 LIT2 DOCTYPE;
 
@@ -57,6 +59,14 @@
 <INITIAL>"<?"[xX][mM][lL]	=> (YYBEGIN TAG; T.OPEN_XML_TAG);
 <INITIAL>"<!DOCTYPE"		=> (YYBEGIN DOCTYPE; T.OPEN_DOCTYPE);
 
+<DOCTYPE>[pP][uU][bB][lL][iI][cC]
+				=> (T.PUBLIC);
+<DOCTYPE>[sS][yY][sS][tT][eE][mM]
+				=> (T.SYSTEM);
+<DOCTYPE>"\""{pubidchr1}*"\""	=> (T.LIT(String.substring(yytext, 1, size yytext - 2)));
+<DOCTYPE>"'"{pubidchr2}*"'"	=> (T.LIT(String.substring(yytext, 1, size yytext - 2)));
+<DOCTYPE>">"			=> (YYBEGIN INITIAL; T.CLOSE_TAG);
+
 <TAG,DOCTYPE>{ws}+		=> (skip());
 <TAG>"?>"			=> (YYBEGIN INITIAL; T.CLOSE_PI_TAG);
 <TAG>">"			=> (YYBEGIN INITIAL; T.CLOSE_TAG);
@@ -66,10 +76,6 @@
 				=> (T.ID yytext);
 <TAG>"\""			=> (YYBEGIN LIT1; continue());
 <TAG>"'"			=> (YYBEGIN LIT2; continue());
-
-<DOCTYPE>"\""{pubidchr1}*"\""	=> (continue());
-<DOCTYPE>"'"{pubidchr2}*"'"	=> (continue());
-<DOCTYPE>">"			=> (YYBEGIN INITIAL; T.CLOSE_TAG);
 
 <LIT1>"\""			=> (YYBEGIN TAG; T.LIT(textToString()));
 <LIT2>"\'"			=> (YYBEGIN TAG; T.LIT(textToString()));

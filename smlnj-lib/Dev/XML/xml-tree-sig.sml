@@ -11,7 +11,7 @@ signature XML_TREE =
 
     structure Schema : XML_SCHEMA
 
-    datatype doctype = DOCTYPE of string * external_id
+    datatype doctype = DOCTYPE of string * external_id option
 
     and external_id
       = SYSTEM of string
