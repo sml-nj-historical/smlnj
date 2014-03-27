@@ -105,11 +105,15 @@
                                         "bad character `", String.toString yytext, "'"
                                       ]);
                                     continue());
+<DOCTYPE>.		        => (lexErr(yypos, [
+                                        "bad character `", String.toString yytext, "' in DOCTYPE"
+                                      ]);
+                                    continue());
 <TAG>.		                => (lexErr(yypos, [
-                                        "bad character in tag `", String.toString yytext, "'"
+                                        "bad character `", String.toString yytext, "' in tag"
                                       ]);
                                     continue());
 <LIT1,LIT2>.		        => (lexErr(yypos, [
-                                        "bad character in attribute value`", String.toString yytext, "'"
+                                        "bad character `", String.toString yytext, "' in attribute value"
                                       ]);
                                     continue());
