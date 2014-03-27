@@ -79,6 +79,7 @@ smlnj-lib  lib hash-cons-lib.cm hash-cons-lib.cm smlnj-lib/HashCons
 smlnj-lib  lib json-lib.cm      json-lib.cm      smlnj-lib/JSON
 smlnj-lib  lib html4-lib.cm	html4-lib.cm	 smlnj-lib/HTML4
 smlnj-lib  lib sexp-lib.cm      sexp-lib.cm      smlnj-lib/SExp
+smlnj-lib  lib xml-lib.cm       xml-lib.cm       smlnj-lib/XML
 
 # Concurrent ML:
 cml lib cml core-cml.cm     cml/src
