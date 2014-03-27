@@ -17,7 +17,7 @@ structure GenericXMLTree =
 	  type attribute = (Atom.atom * string)
 
 	(* create an element; returns NONE if the element name is unrecognized *)
-	  val element = SOME o Atom.atom
+	  fun element s = SOME(Atom.atom(CharVector.map Char.toUpper s))
 
 	(* should leading and trailing whitespace be preserved in the content of this element? *)
 	  fun preserveWS _ = false
