@@ -1,6 +1,13 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
+[2014-03-27]
+	Added XML library, which is a lightweight library for parsing XML
+	files.  The library does not support validation and will immediatly
+	raise an exception on syntax errors.  Its purpose is to ease the
+	writing of applications that must process data files that are
+	in XML syntax.
+
 [2013-11-20]
 	Changes to S-expression parsing library.  Allow multiple top-level
 	values in a file (parsing now returns a list).  Handle LISP/Scheme-style
