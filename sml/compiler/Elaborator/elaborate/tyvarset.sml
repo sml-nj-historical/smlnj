@@ -37,7 +37,7 @@ fun mem(a as ref(UBOUND{name=name_a,eq=eq_a,depth=depth_a}),
       if a=b then true
       else if Symbol.eq(name_a,name_b) then
 	    (if eq_a<>eq_b then
-		err EM.COMPLAIN ("type variable " ^ (Symbol.name name_a) ^
+		err EM.COMPLAIN ("type variable '" ^ (Symbol.name name_a) ^
 			      " occurs with different equality properties \
 			       \in the same scope")
 		    EM.nullErrorBody
