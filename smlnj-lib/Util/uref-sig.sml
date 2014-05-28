@@ -22,7 +22,7 @@
  * introduction          ref                   uref
  * elimination           !                     !!
  * equality              =                     equal
- * updating              :=                    ::=
+ * updating              :=                    update
  * unioning                                    link, union, unify
  * -------------------------------------------------------------------
  *
@@ -49,10 +49,8 @@ signature UREF =
     type 'a uref
 	(* type of uref-elements with contents of type 'a *)  
 
-      
     val uRef: 'a -> 'a uref
 	(* uref x creates a new element with contents x *)
-
 
     val equal: 'a uref * 'a uref -> bool
 	(* equal (e, e') returns true if and only if e and e' are either made by
@@ -64,7 +62,6 @@ signature UREF =
 	 * Note: if 'a is an equality type then !!(uref x) = x, and 
 	 * equal(uref (!!x), x) = false.
 	 *)
-
 
     val update : 'a uref * 'a -> unit
 	(* update(e, x) updates the contents of e to be x *)
