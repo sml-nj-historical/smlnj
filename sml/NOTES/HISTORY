@@ -21,6 +21,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/06/07
+Description:
+Fixed a long-standing bug in Socket.recvVec, which prevented the result
+from being used in a string pattern match (thanks to Vesa Norrman
+for the fix).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2013/11/25
 Description:
 Added PackWord{16,32}{Big,Little} structures to the Unsafe module.
