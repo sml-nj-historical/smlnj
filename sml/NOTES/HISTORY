@@ -29,6 +29,13 @@ for the fix).
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/05/01
+Description:
+Fixed minor issue in an error message; type variable name should be
+printed with leading '
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2013/11/25
 Description:
 Added PackWord{16,32}{Big,Little} structures to the Unsafe module.
