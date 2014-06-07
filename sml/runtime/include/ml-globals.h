@@ -7,7 +7,7 @@
  */
 
 #ifndef _ML_GLOBALS_
-#define ML_GLOBALS_
+#define _ML_GLOBALS_
 
 #ifndef _ML_VALUES_
 #include "ml-values.h"
