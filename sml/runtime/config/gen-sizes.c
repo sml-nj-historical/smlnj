@@ -24,7 +24,7 @@ static union {
     unsigned long   l;
 } U;
 
-int log2 (int x)
+int ilog2 (int x)
 {
     int		i, j;
 
@@ -33,7 +33,7 @@ int log2 (int x)
 
     return i-1;
 
-} /* end of log2 */
+} /* end of ilog2 */
 
 int main (void)
 {
@@ -84,8 +84,8 @@ int main (void)
     fprintf (f, "#define ADDR_SZB           %d\n", (int)ADDR_SZB);
     fprintf (f, "#define REALD_SZB          %d\n", (int)sizeof(double));
     fprintf (f, "#define BITS_PER_WORD      %d\n", 8*WORD_SZB);
-    fprintf (f, "#define LOG_BITS_PER_WORD  %d\n", log2(8*WORD_SZB));
-    fprintf (f, "#define LOG_BYTES_PER_WORD %d\n", log2(WORD_SZB));
+    fprintf (f, "#define LOG_BITS_PER_WORD  %d\n", ilog2(8*WORD_SZB));
+    fprintf (f, "#define LOG_BYTES_PER_WORD %d\n", ilog2(WORD_SZB));
     fprintf (f, "\n");
 
     U.bytes[0] = 0x01;
