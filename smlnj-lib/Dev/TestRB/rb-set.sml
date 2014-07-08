@@ -46,8 +46,7 @@ structure RBSet =
 
     fun singleton x = SET(1, T(B, E, x, E))
 
-    fun add (SET(_, E), x) = SET(1, T(B, E, x, E))
-      | add (SET(nItems, m), x) = let
+    fun add (SET(nItems, m), x) = let
 	  val nItems' = ref nItems
 	  fun ins E = (nItems' := nItems+1; T(R, E, x, E))
             | ins (s as T(color, a, y, b)) =
@@ -56,15 +55,13 @@ structure RBSet =
 		     of T(R, c, z, d) =>
 			  if (x < z)
 			    then (case ins c
-			       of T(R, e, w, f) =>
-				    T(R, T(B,e,w,f), z, T(B,d,y,b))
+			       of T(R, e, w, f) => T(R, T(B,e,w,f), z, T(B,d,y,b))
                 		| c => T(B, T(R,c,z,d), y, b)
 			      (* end case *))
 			  else if (x = z)
 			    then T(color, T(R, c, x, d), y, b)
 			    else (case ins d
-			       of T(R, e, w, f) =>
-				    T(R, T(B,c,z,e), w, T(B,f,y,b))
+			       of T(R, e, w, f) => T(R, T(B,c,z,e), w, T(B,f,y,b))
                 		| d => T(B, T(R,c,z,d), y, b)
 			      (* end case *))
 		      | _ => T(B, ins a, y, b)
@@ -75,22 +72,20 @@ structure RBSet =
 		     of T(R, c, z, d) =>
 			  if (x < z)
 			    then (case ins c
-			       of T(R, e, w, f) =>
-				    T(R, T(B,a,y,e), w, T(B,f,z,d))
+			       of T(R, e, w, f) => T(R, T(B,a,y,e), w, T(B,f,z,d))
 				| c => T(B, a, y, T(R,c,z,d))
 			      (* end case *))
 			  else if (x = z)
 			    then T(color, a, y, T(R, c, x, d))
 			    else (case ins d
-			       of T(R, e, w, f) =>
-				    T(R, T(B,a,y,c), z, T(B,e,w,f))
+			       of T(R, e, w, f) => T(R, T(B,a,y,c), z, T(B,e,w,f))
 				| d => T(B, a, y, T(R,c,z,d))
 			      (* end case *))
 		      | _ => T(B, a, y, ins b)
 		    (* end case *))
-	  val m = ins m
+	  val T(_, a, y, b) = ins m
 	  in
-	    SET(!nItems', m)
+	    SET(!nItems', T(B, a, y, b))
 	  end
     fun add' (x, m) = add (m, x)
 
@@ -109,8 +104,9 @@ structure RBSet =
 	    | zip (LEFT(color, x, b, z), a) = zip(z, T(color, a, x, b))
 	    | zip (RIGHT(color, a, x, z), b) = zip(z, T(color, a, x, b))
 	(* bbZip propagates a black deficit up the tree until either the top
-	 * is reached, or the deficit can be covered.  It returns a boolean
-	 * that is true if there is still a deficit and the zipped tree.
+	 * is reached, or the deficit can be covered.  It returns a pair
+	 * of a boolean, which is true if there is still a deficit, and the
+	 * zipped tree.
 	 *)
 	  fun bbZip (TOP, t) = (true, t)
 	    | bbZip (LEFT(B, x, T(R, c, y, d), z), a) = (* case 1L *)
@@ -439,9 +435,11 @@ structure ChkSet :> ORD_SET where type Key.ord_key = int =
 		| c2s B = "B"
 	      fun pr (n, T(color, l, v, r)) = (
 		    prl (n, [c2s color, ": ", Int.toString v]);
-		    pr (n+1, l);
-		    pr (n+1, r))
-		| pr (n, E) = ()
+		    case (l, r)
+		     of (E, E) => ()
+		      | _ => (pr (n+1, l); pr (n+1, r))
+		    (* end case *))
+		| pr (n, E) = prl (n, ["E"])
 	      in
 		prl(0, ["SET; ", Int.toString n, " items:"]);
 		pr (1, tr)
@@ -495,7 +493,11 @@ structure ChkSet :> ORD_SET where type Key.ord_key = int =
     val subtract = (check "subtract") o RBSet.subtract
     val subtract' = (check "subtract'") o RBSet.subtract'
     val subtractList = (check "subtractList") o RBSet.subtractList
+(*
     val delete = (check "delete") o RBSet.delete
+*)
+fun delete (s, x) = check (concat["delete(_, ", Int.toString x, ")"]) (RBSet.delete (s, x))
+handle ex => (dump s; raise ex)
 
     val member = RBSet.member
     val isEmpty = RBSet.isEmpty
@@ -564,4 +566,13 @@ val s03_1 = repeat (addOrDelete 5) (5000, empty)
 val s03_2 = repeat (addOrDelete 10) (10000, empty)
 val s03_3 = repeat (addOrDelete 50) (50000, empty)
 val s03_4 = repeat (addOrDelete 100) (100000, empty)
+(* an example from Achim D. Brucker and Burkhart Wolff that was known to produce an invalid tree *)
+val s04 = let
+      val s = add(empty, 5)
+      val s = add(s, 6)
+      val s = add(s, 8)
+      val s = add(s, 2)
+      in
+        delete(s, 8)
+      end
 end (* end local *)
