@@ -1,429 +1,16 @@
 (* rb-set.sml
  *
- * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
- *
- * This code is based on Chris Okasaki's implementation of
- * red-black trees.  The linear-time tree construction code is
- * based on the paper "Constructing red-black trees" by Hinze,
- * and the delete function is based on the description in Cormen,
- * Leiserson, and Rivest.
- *
- * A red-black tree should satisfy the following two invariants:
- *
- *   Red Invariant: each red node has a black parent.
- *
- *   Black Condition: each path from the root to an empty node has the
- *     same number of black nodes (the tree's black height).
- *
- * The Red condition implies that the root is always black and the Black
- * condition implies that any node with only one child will be black and
- * its child will be a red leaf.
+ * Test that the invariants are being preserved in the red-black set implementation.
  *)
 
-structure RBSet =
-  struct
+use "int-redblack-set.sml";
 
-    structure Key =
-      struct
-	type ord_key = int
-	val compare = Int.compare
-      end
-
-    type item = int
-
-    datatype color = R | B
-
-    datatype tree
-      = E
-      | T of (color * tree * item * tree)
-
-    datatype set = SET of (int * tree)
-
-    fun isEmpty (SET(_, E)) = true
-      | isEmpty _ = false
-
-    val empty = SET(0, E)
-
-    fun singleton x = SET(1, T(B, E, x, E))
-
-    fun add (SET(nItems, m), x) = let
-	  val nItems' = ref nItems
-	  fun ins E = (nItems' := nItems+1; T(R, E, x, E))
-            | ins (s as T(color, a, y, b)) =
-		if (x < y)
-		  then (case a
-		     of T(R, c, z, d) =>
-			  if (x < z)
-			    then (case ins c
-			       of T(R, e, w, f) => T(R, T(B,e,w,f), z, T(B,d,y,b))
-                		| c => T(B, T(R,c,z,d), y, b)
-			      (* end case *))
-			  else if (x = z)
-			    then T(color, T(R, c, x, d), y, b)
-			    else (case ins d
-			       of T(R, e, w, f) => T(R, T(B,c,z,e), w, T(B,f,y,b))
-                		| d => T(B, T(R,c,z,d), y, b)
-			      (* end case *))
-		      | _ => T(B, ins a, y, b)
-		    (* end case *))
-		else if (x = y)
-		  then T(color, a, x, b)
-		  else (case b
-		     of T(R, c, z, d) =>
-			  if (x < z)
-			    then (case ins c
-			       of T(R, e, w, f) => T(R, T(B,a,y,e), w, T(B,f,z,d))
-				| c => T(B, a, y, T(R,c,z,d))
-			      (* end case *))
-			  else if (x = z)
-			    then T(color, a, y, T(R, c, x, d))
-			    else (case ins d
-			       of T(R, e, w, f) => T(R, T(B,a,y,c), z, T(B,e,w,f))
-				| d => T(B, a, y, T(R,c,z,d))
-			      (* end case *))
-		      | _ => T(B, a, y, ins b)
-		    (* end case *))
-	  val T(_, a, y, b) = ins m
-	  in
-	    SET(!nItems', T(B, a, y, b))
-	  end
-    fun add' (x, m) = add (m, x)
-
-    fun addList (s, []) = s
-      | addList (s, x::r) = addList(add(s, x), r)
-
-  (* Remove an item.  Raises LibBase.NotFound if not found. *)
-    local
-      datatype zipper
-	= TOP
-	| LEFT of (color * int * tree * zipper)
-	| RIGHT of (color * tree * int * zipper)
-    in
-    fun delete (SET(nItems, t), k) = let
-	  fun zip (TOP, t) = t
-	    | zip (LEFT(color, x, b, z), a) = zip(z, T(color, a, x, b))
-	    | zip (RIGHT(color, a, x, z), b) = zip(z, T(color, a, x, b))
-	(* bbZip propagates a black deficit up the tree until either the top
-	 * is reached, or the deficit can be covered.  It returns a pair
-	 * of a boolean, which is true if there is still a deficit, and the
-	 * zipped tree.
-	 *)
-	  fun bbZip (TOP, t) = (true, t)
-	    | bbZip (LEFT(B, x, T(R, c, y, d), z), a) = (* case 1L *)
-		bbZip (LEFT(R, x, c, LEFT(B, y, d, z)), a)
-	    | bbZip (LEFT(color, x, T(B, T(R, c, y, d), w, e), z), a) = (* case 3L *)
-		bbZip (LEFT(color, x, T(B, c, y, T(R, d, w, e)), z), a)
-	    | bbZip (LEFT(color, x, T(B, c, y, T(R, d, w, e)), z), a) = (* case 4L *)
-		(false, zip (z, T(color, T(B, a, x, c), y, T(B, d, w, e))))
-	    | bbZip (LEFT(R, x, T(B, c, y, d), z), a) = (* case 2L *)
-		(false, zip (z, T(B, a, x, T(R, c, y, d))))
-	    | bbZip (LEFT(B, x, T(B, c, y, d), z), a) = (* case 2L *)
-		bbZip (z, T(B, a, x, T(R, c, y, d)))
-	    | bbZip (RIGHT(color, T(R, c, y, d), x, z), b) = (* case 1R *)
-		bbZip (RIGHT(R, d, x, RIGHT(B, c, y, z)), b)
-	    | bbZip (RIGHT(color, T(B, T(R, c, w, d), y, e), x, z), b) = (* case 3R *)
-		bbZip (RIGHT(color, T(B, c, w, T(R, d, y, e)), x, z), b)
-	    | bbZip (RIGHT(color, T(B, c, y, T(R, d, w, e)), x, z), b) = (* case 4R *)
-		(false, zip (z, T(color, c, y, T(B, T(R, d, w, e), x, b))))
-	    | bbZip (RIGHT(R, T(B, c, y, d), x, z), b) = (* case 2R *)
-		(false, zip (z, T(B, T(R, c, y, d), x, b)))
-	    | bbZip (RIGHT(B, T(B, c, y, d), x, z), b) = (* case 2R *)
-		bbZip (z, T(B, T(R, c, y, d), x, b))
-	    | bbZip (z, t) = (false, zip(z, t))
-	  fun delMin (T(R, E, y, b), z) = (y, (false, zip(z, b)))
-	    | delMin (T(B, E, y, b), z) = (y, bbZip(z, b))
-	    | delMin (T(color, a, y, b), z) = delMin(a, LEFT(color, y, b, z))
-	    | delMin (E, _) = raise Match
-	  fun join (R, E, E, z) = zip(z, E)
-	    | join (_, a, E, z) = #2(bbZip(z, a))	(* color = black *)
-	    | join (_, E, b, z) = #2(bbZip(z, b))	(* color = black *)
-	    | join (color, a, b, z) = let
-		val (x, (needB, b')) = delMin(b, TOP)
-		in
-		  if needB
-		    then #2(bbZip(z, T(color, a, x, b')))
-		    else zip(z, T(color, a, x, b'))
-		end
-	  fun del (E, z) = raise LibBase.NotFound
-	    | del (T(color, a, y, b), z) =
-		if (k < y)
-		  then del (a, LEFT(color, y, b, z))
-		else if (k = y)
-		  then join (color, a, b, z)
-		  else del (b, RIGHT(color, a, y, z))
-	  in
-	    SET(nItems-1, del(t, TOP))
-	  end
-    end (* local *)
-
-  (* Return true if and only if item is an element in the set *)
-    fun member (SET(_, t), k) = let
-	  fun find' E = false
-	    | find' (T(_, a, y, b)) =
-		(k = y) orelse ((k < y) andalso find' a) orelse find' b
-	  in
-	    find' t
-	  end
-
-  (* Return the number of items in the map *)
-    fun numItems (SET(n, _)) = n
-
-    fun foldl f = let
-	  fun foldf (E, accum) = accum
-	    | foldf (T(_, a, x, b), accum) =
-		foldf(b, f(x, foldf(a, accum)))
-	  in
-	    fn init => fn (SET(_, m)) => foldf(m, init)
-	  end
-
-    fun foldr f = let
-	  fun foldf (E, accum) = accum
-	    | foldf (T(_, a, x, b), accum) =
-		foldf(a, f(x, foldf(b, accum)))
-	  in
-	    fn init => fn (SET(_, m)) => foldf(m, init)
-	  end
-
-  (* return an ordered list of the items in the set. *)
-    fun listItems s = foldr (fn (x, l) => x::l) [] s
-
-  (* functions for walking the tree while keeping a stack of parents
-   * to be visited.
-   *)
-    fun next ((t as T(_, _, _, b))::rest) = (t, left(b, rest))
-      | next _ = (E, [])
-    and left (E, rest) = rest
-      | left (t as T(_, a, _, _), rest) = left(a, t::rest)
-    fun start m = left(m, [])
-
-  (* Return true if and only if the two sets are equal *)
-    fun equal (SET(_, s1), SET(_, s2)) = let
-	  fun cmp (t1, t2) = (case (next t1, next t2)
-		 of ((E, _), (E, _)) => true
-		  | ((E, _), _) => false
-		  | (_, (E, _)) => false
-		  | ((T(_, _, x, _), r1), (T(_, _, y, _), r2)) =>
-		      (x = y) andalso cmp (r1, r2)
-		(* end case *))
-	  in
-	    cmp (start s1, start s2)
-	  end
-
-  (* Return the lexical order of two sets *)
-    fun compare (SET(_, s1), SET(_, s2)) = let
-	  fun cmp (t1, t2) = (case (next t1, next t2)
-		 of ((E, _), (E, _)) => EQUAL
-		  | ((E, _), _) => LESS
-		  | (_, (E, _)) => GREATER
-		  | ((T(_, _, x, _), r1), (T(_, _, y, _), r2)) =>
-		      if (x = y)
-			then cmp (r1, r2)
-		      else if (x < y)
-			then LESS
-			else GREATER
-		(* end case *))
-	  in
-	    cmp (start s1, start s2)
-	  end
-
-  (* Return true if and only if the first set is a subset of the second *)
-    fun isSubset (SET(_, s1), SET(_, s2)) = let
-	  fun cmp (t1, t2) = (case (next t1, next t2)
-		 of ((E, _), (E, _)) => true
-		  | ((E, _), _) => true
-		  | (_, (E, _)) => false
-		  | ((T(_, _, x, _), r1), (T(_, _, y, _), r2)) =>
-		      ((x = y) andalso cmp (r1, r2))
-		      orelse ((x > y) andalso cmp (t1, r2))
-		(* end case *))
-	  in
-	    cmp (start s1, start s2)
-	  end
-
-  (* support for constructing red-black trees in linear time from increasing
-   * ordered sequences (based on a description by R. Hinze).  Note that the
-   * elements in the digits are ordered with the largest on the left, whereas
-   * the elements of the trees are ordered with the largest on the right.
-   *)
-    datatype digit
-      = ZERO
-      | ONE of (int * tree * digit)
-      | TWO of (int * tree * int * tree * digit)
-  (* add an item that is guaranteed to be larger than any in l *)
-    fun addItem (a, l) = let
-	  fun incr (a, t, ZERO) = ONE(a, t, ZERO)
-	    | incr (a1, t1, ONE(a2, t2, r)) = TWO(a1, t1, a2, t2, r)
-	    | incr (a1, t1, TWO(a2, t2, a3, t3, r)) =
-		ONE(a1, t1, incr(a2, T(B, t3, a3, t2), r))
-	  in
-	    incr(a, E, l)
-	  end
-  (* link the digits into a tree *)
-    fun linkAll t = let
-	  fun link (t, ZERO) = t
-	    | link (t1, ONE(a, t2, r)) = link(T(B, t2, a, t1), r)
-	    | link (t, TWO(a1, t1, a2, t2, r)) =
-		link(T(B, T(R, t2, a2, t1), a1, t), r)
-	  in
-	    link (E, t)
-	  end
-
-  (* create a set from a list of items; this function works in linear time if the list
-   * is in increasing order.
-   *)
-    fun fromList [] = empty
-      | fromList (first::rest) = let
-	  fun add (prev, x::xs, n, accum) = if (prev < x)
-		then add(x, xs, n+1, addItem(x, accum))
-		else (* list not in order, so fall back to addList code *)
-		    addList(SET(n, linkAll accum), x::xs)
-	    | add (_, [], n, accum) = SET(n, linkAll accum)
-	  in
-	    add (first, rest, 1, addItem(first, ZERO))
-	  end
-
-  (* return the union of the two sets *)
-    fun union (SET(_, s1), SET(_, s2)) = let
-	  fun ins ((E, _), n, result) = (n, result)
-	    | ins ((T(_, _, x, _), r), n, result) =
-		ins(next r, n+1, addItem(x, result))
-	  fun union' (t1, t2, n, result) = (case (next t1, next t2)
-		 of ((E, _), (E, _)) => (n, result)
-		  | ((E, _), t2) => ins(t2, n, result)
-		  | (t1, (E, _)) => ins(t1, n, result)
-		  | ((T(_, _, x, _), r1), (T(_, _, y, _), r2)) =>
-		      if (x < y)
-			then union' (r1, t2, n+1, addItem(x, result))
-		      else if (x = y)
-			then union' (r1, r2, n+1, addItem(x, result))
-			else union' (t1, r2, n+1, addItem(y, result))
-		(* end case *))
-	  val (n, result) = union' (start s1, start s2, 0, ZERO)
-	  in
-	    SET(n, linkAll result)
-	  end
-
-  (* return the intersection of the two sets *)
-    fun intersection (SET(_, s1), SET(_, s2)) = let
-	  fun intersect (t1, t2, n, result) = (case (next t1, next t2)
-		 of ((T(_, _, x, _), r1), (T(_, _, y, _), r2)) =>
-		      if (x < y)
-			then intersect (r1, t2, n, result)
-		      else if (x = y)
-			then intersect (r1, r2, n+1, addItem(x, result))
-			else intersect (t1, r2, n, result)
-		  | _ => (n, result)
-		(* end case *))
-	  val (n, result) = intersect (start s1, start s2, 0, ZERO)
-	  in
-	    SET(n, linkAll result)
-	  end
-
-  (* return the set difference *)
-    fun difference (SET(_, s1), SET(_, s2)) = let
-	  fun ins ((E, _), n, result) = (n, result)
-	    | ins ((T(_, _, x, _), r), n, result) =
-		ins(next r, n+1, addItem(x, result))
-	  fun diff (t1, t2, n, result) = (case (next t1, next t2)
-		 of ((E, _), _) => (n, result)
-		  | (t1, (E, _)) => ins(t1, n, result)
-		  | ((T(_, _, x, _), r1), (T(_, _, y, _), r2)) =>
-		      if (x < y)
-			then diff (r1, t2, n+1, addItem(x, result))
-		      else if (x = y)
-			then diff (r1, r2, n, result)
-			else diff (t1, r2, n, result)
-		(* end case *))
-	  val (n, result) = diff (start s1, start s2, 0, ZERO)
-	  in
-	    SET(n, linkAll result)
-	  end
-
-    fun subtract (s, item) = difference (s, singleton item)
-    fun subtract' (item, s) = subtract (s, item)
-
-    fun subtractList (l, items) = let
-	  val items' = List.foldl (fn (x, set) => add(set, x)) (SET(0, E)) items
-	  in
-	    difference (l, items')
-	  end
-
-    fun app f = let
-	  fun appf E = ()
-	    | appf (T(_, a, x, b)) = (appf a; f x; appf b)
-	  in
-	    fn (SET(_, m)) => appf m
-	  end
-
-    fun map f = let
-	  fun addf (x, m) = add(m, f x)
-	  in
-	    foldl addf empty
-	  end
-
-  (* Filter out those elements of the set that do not satisfy the
-   * predicate.  The filtering is done in increasing map order.
-   *)
-    fun filter pred (SET(_, t)) = let
-	  fun walk (E, n, result) = (n, result)
-	    | walk (T(_, a, x, b), n, result) = let
-		val (n, result) = walk(a, n, result)
-		in
-		  if (pred x)
-		    then walk(b, n+1, addItem(x, result))
-		    else walk(b, n, result)
-		end
-	  val (n, result) = walk (t, 0, ZERO)
-	  in
-	    SET(n, linkAll result)
-	  end
-
-    fun partition pred (SET(_, t)) = let
-	  fun walk (E, n1, result1, n2, result2) = (n1, result1, n2, result2)
-	    | walk (T(_, a, x, b), n1, result1, n2, result2) = let
-		val (n1, result1, n2, result2) = walk(a, n1, result1, n2, result2)
-		in
-		  if (pred x)
-		    then walk(b, n1+1, addItem(x, result1), n2, result2)
-		    else walk(b, n1, result1, n2+1, addItem(x, result2))
-		end
-	  val (n1, result1, n2, result2) = walk (t, 0, ZERO, 0, ZERO)
-	  in
-	    (SET(n1, linkAll result1), SET(n2, linkAll result2))
-	  end
-
-    fun exists pred = let
-	  fun test E = false
-	    | test (T(_, a, x, b)) = test a orelse pred x orelse test b
-	  in
-	    fn (SET(_, t)) => test t
-	  end
-
-    fun all pred = let
-	  fun test E = true
-	    | test (T(_, a, x, b)) = test a andalso pred x andalso test b
-	  in
-	    fn (SET(_, t)) => test t
-	  end
-
-    fun find pred = let
-	  fun test E = NONE
-	    | test (T(_, a, x, b)) = (case test a
-		 of NONE => if pred x then SOME x else test b
-		  | someItem => someItem
-		(* end case *))
-	  in
-	    fn (SET(_, t)) => test t
-	  end
-
-  end;
-
-structure ChkSet :> ORD_SET where type Key.ord_key = int =
+structure ChkSet (*:> ORD_SET where type Key.ord_key = int*) =
   struct
     local
-      datatype set = datatype RBSet.set
-      datatype color = datatype RBSet.color
-      datatype tree = datatype RBSet.tree
+      datatype set = datatype IntRedBlackSet.set
+      datatype color = datatype IntRedBlackSet.color
+      datatype tree = datatype IntRedBlackSet.tree
       fun dump (SET(n, tr)) = let
 	      fun indent 0 = ()
 		| indent n = (print "  "; indent(n-1))
@@ -450,6 +37,15 @@ structure ChkSet :> ORD_SET where type Key.ord_key = int =
 		    print(concat["***** Error in ", name, ": ", msg, "\n"]);
 		    dump set;
 		    raise Fail msg)
+	      val SOME minInt = Int.minInt
+	      fun cmp (a, b) = (a < b) orelse ((a = b) andalso (a = minInt))
+	      fun chkOrder (prev, E) = prev
+		| chkOrder (prev, T(_, E, x, r)) =
+		    if cmp(prev, x) then chkOrder(x, r) else error "Order invariant failure"
+		| chkOrder (prev, T(_, l, x, r)) =
+		    if cmp(chkOrder(prev, l), x)
+		      then chkOrder(x, r)
+		      else error "Order invariant failure"
 	      fun chk (parentColor, T(color, l, _, r)) = let
 		    val (n1, bd1) = chk(color, l)
 		    val (n2, bd2) = chk(color, r)
@@ -464,110 +60,109 @@ structure ChkSet :> ORD_SET where type Key.ord_key = int =
 			| _ => (n, bd1)
 		      (* end case *)
 		    end
-		| chk (_, E) = (0, 0)
+		| chk (_, E) = (0, 1)
+	      val _ = chkOrder (minInt, tr)
 	      val (n', _) = chk (B, tr)
 	      in
-		case tr
-		 of T(R, _, _, _) => error "Root is not black"
-		  | _ => ()
-		(* end case *);
 		if (n <> n')
 		  then error "Incorrect item count"
 		  else set
 	      end
 
     in
-    structure Key = RBSet.Key
+    structure Key = IntRedBlackSet.Key
 
     type item = Key.ord_key
-    type set = RBSet.set
+    type set = IntRedBlackSet.set
 
-    val empty = check "empty" RBSet.empty
+val dump = dump
 
-    val singleton = (check "singleton") o RBSet.singleton
+    val empty = check "empty" IntRedBlackSet.empty
 
-    val fromList = (check "fromList") o RBSet.fromList
-    val add = (check "add") o RBSet.add
-    val add' = (check "add'") o RBSet.add'
-    val addList = (check "addList") o RBSet.addList
-    val subtract = (check "subtract") o RBSet.subtract
-    val subtract' = (check "subtract'") o RBSet.subtract'
-    val subtractList = (check "subtractList") o RBSet.subtractList
-(*
-    val delete = (check "delete") o RBSet.delete
-*)
-fun delete (s, x) = check (concat["delete(_, ", Int.toString x, ")"]) (RBSet.delete (s, x))
-handle ex => (dump s; raise ex)
+    val singleton = (check "singleton") o IntRedBlackSet.singleton
 
-    val member = RBSet.member
-    val isEmpty = RBSet.isEmpty
-    val equal = RBSet.equal
-    val compare = RBSet.compare
-    val isSubset = RBSet.isSubset
-    val numItems = RBSet.numItems
-    val listItems = RBSet.listItems
+    val fromList = (check "fromList") o IntRedBlackSet.fromList
+    val add = (check "add") o IntRedBlackSet.add
+    val add' = (check "add'") o IntRedBlackSet.add'
+    val addList = (check "addList") o IntRedBlackSet.addList
+    val subtract = (check "subtract") o IntRedBlackSet.subtract
+    val subtract' = (check "subtract'") o IntRedBlackSet.subtract'
+    val subtractList = (check "subtractList") o IntRedBlackSet.subtractList
+    val delete = (check "delete") o IntRedBlackSet.delete
 
-    val union = (check "union") o RBSet.union
-    val intersection = (check "intersection") o RBSet.intersection
-    val difference = (check "difference") o RBSet.difference
+    val member = IntRedBlackSet.member
+    val isEmpty = IntRedBlackSet.isEmpty
+    val equal = IntRedBlackSet.equal
+    val compare = IntRedBlackSet.compare
+    val isSubset = IntRedBlackSet.isSubset
+    val numItems = IntRedBlackSet.numItems
+    val listItems = IntRedBlackSet.listItems
 
-    fun map f = (check "map") o (RBSet.map f)
-    val app = RBSet.app
-    val foldl = RBSet.foldl
-    val foldr = RBSet.foldr
+    val union = (check "union") o IntRedBlackSet.union
+    val intersection = (check "intersection") o IntRedBlackSet.intersection
+    val difference = (check "difference") o IntRedBlackSet.difference
+
+    fun map f = (check "map") o (IntRedBlackSet.map f)
+    val app = IntRedBlackSet.app
+    val foldl = IntRedBlackSet.foldl
+    val foldr = IntRedBlackSet.foldr
 
     fun partition pred s = let
-	  val (s1, s2) = RBSet.partition pred s
+	  val (s1, s2) = IntRedBlackSet.partition pred s
 	  in
 	    check "partition(true)" s1;
 	    check "partition(false)" s2;
 	    (s1, s2)
 	  end
 
-    fun filter pred = (check "filter") o (RBSet.filter pred)
+    fun filter pred = (check "filter") o (IntRedBlackSet.filter pred)
 
-    val exists = RBSet.exists
-    val all = RBSet.all
-    val find = RBSet.find
+    val exists = IntRedBlackSet.exists
+    val all = IntRedBlackSet.all
+    val find = IntRedBlackSet.find
 
     end (* local *)
-  end
+  end;
 
 local
-  open ChkSet
-  val randSrc = Random.rand(17, 42)
-  fun addOrDelete limit s = let
-	val pct = real(numItems s) / real limit
-	in
-	  if (Random.randReal randSrc < pct)
-	    then let
-	    (* pick an item at random to delete *)
-	      val item = List.nth(listItems s, Random.randRange (0, numItems s - 1) randSrc)
-	      in
-		delete (s, item)
-	      end
-	    else add (s, Random.randInt randSrc)
-	end
-  fun repeat (f : set -> set) (0, s : set) = s
-    | repeat f (i, s) = repeat f (i-1, f s)
+  open IntRedBlackSet
 in
-(* building sets from sorted lists *)
-val s01_1 = fromList(List.tabulate(5, fn i => i))
-val s01_2 = fromList(List.tabulate(10, fn i => i))
-val s01_3 = fromList(List.tabulate(50, fn i => i))
-val s01_4 = fromList(List.tabulate(100, fn i => i))
-(* building sets from random lists *)
-val s02_1 = fromList(List.tabulate(5, fn _ => Random.randInt randSrc))
-val s02_2 = fromList(List.tabulate(10, fn _ => Random.randInt randSrc))
-val s02_3 = fromList(List.tabulate(50, fn _ => Random.randInt randSrc))
-val s02_4 = fromList(List.tabulate(100, fn _ => Random.randInt randSrc))
-(* sequences of random add/subtract operations *)
-val s03_1 = repeat (addOrDelete 5) (5000, empty)
-val s03_2 = repeat (addOrDelete 10) (10000, empty)
-val s03_3 = repeat (addOrDelete 50) (50000, empty)
-val s03_4 = repeat (addOrDelete 100) (100000, empty)
+val _ = print "***** Regression tests *****\n"
+val s1 = SET(7,
+	  T(B,
+	    T(R,
+	      T(B, T(R, E, ~801, E), ~708, E),
+	      ~595,
+	      T(B, E, ~372, E)),
+	    ~38,
+	    T(B, T(R, E, 91, E), 578, E)))
+val _ = ChkSet.dump s1
+val _ = ChkSet.delete(s1, ~595)
+val s2 = SET(5,
+	  T(B,
+	    T(R,
+	      T(B, E, ~103, E),
+	      ~98,
+	      T(B, E, ~29, E)),
+	    25,
+	    T(B, E, 75, E)))
+val _ = ChkSet.dump s2
+val _ = ChkSet.delete(s2, ~98)
+val s3 = SET(6,
+	  T(B,
+	    T(R,
+	      T(B, E, ~1032, E),
+	      ~584,
+	      T(B,
+		T(R, E, ~407, E),
+		~305,
+		E)),
+	    ~22,
+	    T(B, E, 74, E)))
+val _ = ChkSet.dump s3
+val _ = ChkSet.delete(s3, ~22)
 (* an example from Achim D. Brucker and Burkhart Wolff that was known to produce an invalid tree *)
-val s04 = let
+val s4 = let
       val s = add(empty, 5)
       val s = add(s, 6)
       val s = add(s, 8)
@@ -575,4 +170,158 @@ val s04 = let
       in
         delete(s, 8)
       end
+end;
+
+local
+  open ChkSet
+  val randSrc = Random.rand(17, 42)
+  datatype oper = ADD of int | DEL of int
+  exception ERROR of oper list
+  fun prTrace [] = print "empty"
+    | prTrace (ADD n :: tr) = (
+	print "add("; prTrace tr; print(concat[", ", Int.toString n, ")"]))
+    | prTrace (DEL n :: tr) = (
+	print "delete("; prTrace tr; print(concat[", ", Int.toString n, ")"]))
+  fun addOrDelete limit (s, trace) = let
+	val pct = real(numItems s) / real limit
+	in
+	  if (Random.randReal randSrc < pct)
+	    then let
+	    (* pick an item at random to delete *)
+	      val item = List.nth(listItems s, Random.randRange (0, numItems s - 1) randSrc)
+	      val trace = DEL item :: trace
+	      in
+		(delete (s, item), trace) handle _ => raise ERROR trace
+	      end
+	    else let
+	      val item = Random.randInt randSrc
+	      val trace = ADD item :: trace
+	      in
+		(add (s, item), trace) handle _ => raise ERROR trace
+	      end
+	end
+  fun repeat f n = let
+	fun lp (0, s : set, _) = s
+	  | lp (i, s, trace) = let
+	      val (s, trace) = f (s, trace)
+		    handle ex as (ERROR trace) => (
+		      case hd trace
+		       of ADD n => print(concat["Failed on ADD ", Int.toString n, "\n"])
+			| DEL n => print(concat["Failed on DEL ", Int.toString n, "\n"])
+		      (* end case *);
+		      print "Set prior to failure:\n"; ChkSet.dump s; raise ex)
+	      in
+		lp (i-1, s, trace)
+	      end
+	in
+	  lp (n, empty, [])
+	end
+in
+(* building sets from sorted lists *)
+val _ = print "***** Sorted insertion tests *****\n"
+val s01_1 = fromList(List.tabulate(5, fn i => i))
+val s01_2 = fromList(List.tabulate(10, fn i => i))
+val s01_3 = fromList(List.tabulate(50, fn i => i))
+val s01_4 = fromList(List.tabulate(100, fn i => i))
+(* tear down sets in order *)
+val s02_1 = List.foldl (fn (i, s) => delete(s, i)) s01_1 (List.tabulate(5, fn i => i))
+val s02_2 = List.foldl (fn (i, s) => delete(s, i)) s01_2 (List.tabulate(10, fn i => i))
+val s02_3 = List.foldl (fn (i, s) => delete(s, i)) s01_3 (List.tabulate(50, fn i => i))
+val s02_4 = List.foldl (fn (i, s) => delete(s, i)) s01_4 (List.tabulate(100, fn i => i))
+val _ = print "***** Sorted insertion tests *****\n"
+val s03_1 = fromList(List.tabulate(5, fn i => i))
+val s03_2 = fromList(List.tabulate(10, fn i => i))
+val s03_3 = fromList(List.tabulate(50, fn i => i))
+val s03_4 = fromList(List.tabulate(100, fn i => i))
+(* building sets from random lists *)
+val _ = print "***** Random insertion tests *****\n"
+val s04_1 = fromList(List.tabulate(5, fn _ => Random.randInt randSrc))
+val s04_2 = fromList(List.tabulate(10, fn _ => Random.randInt randSrc))
+val s04_3 = fromList(List.tabulate(50, fn _ => Random.randInt randSrc))
+val s04_4 = fromList(List.tabulate(100, fn _ => Random.randInt randSrc))
+(* sequences of random add/subtract operations *)
+val _ = print "***** Random operation tests *****\n"
+val s05_1 = repeat (addOrDelete 5) 5000
+val s05_2 = repeat (addOrDelete 10) 10000
+val s05_3 = repeat (addOrDelete 50) 50000
+val s05_4 = repeat (addOrDelete 100) 100000
+val s05_5 = repeat (addOrDelete 500) 500000
+val _ = print "***** Union tests *****\n"
+val s06_11 = union(s05_1, s05_1)
+val s06_12 = union(s05_1, s05_2)
+val s06_13 = union(s05_1, s05_3)
+val s06_14 = union(s05_1, s05_4)
+val s06_15 = union(s05_1, s05_5)
+val s06_21 = union(s05_2, s05_1)
+val s06_22 = union(s05_2, s05_2)
+val s06_23 = union(s05_2, s05_3)
+val s06_24 = union(s05_2, s05_4)
+val s06_25 = union(s05_2, s05_5)
+val s06_31 = union(s05_3, s05_1)
+val s06_32 = union(s05_3, s05_2)
+val s06_33 = union(s05_3, s05_3)
+val s06_34 = union(s05_3, s05_4)
+val s06_35 = union(s05_3, s05_5)
+val s06_41 = union(s05_4, s05_1)
+val s06_42 = union(s05_4, s05_2)
+val s06_43 = union(s05_4, s05_3)
+val s06_44 = union(s05_4, s05_4)
+val s06_45 = union(s05_4, s05_5)
+val s06_51 = union(s05_5, s05_1)
+val s06_52 = union(s05_5, s05_2)
+val s06_53 = union(s05_5, s05_3)
+val s06_54 = union(s05_5, s05_4)
+val s06_55 = union(s05_5, s05_5)
+val _ = print "***** Intersection tests *****\n"
+val s07_11 = intersection(s05_1, s05_1)
+val s07_12 = intersection(s05_1, s05_2)
+val s07_13 = intersection(s05_1, s05_3)
+val s07_14 = intersection(s05_1, s05_4)
+val s07_15 = intersection(s05_1, s05_5)
+val s07_21 = intersection(s05_2, s05_1)
+val s07_22 = intersection(s05_2, s05_2)
+val s07_23 = intersection(s05_2, s05_3)
+val s07_24 = intersection(s05_2, s05_4)
+val s07_25 = intersection(s05_2, s05_5)
+val s07_31 = intersection(s05_3, s05_1)
+val s07_32 = intersection(s05_3, s05_2)
+val s07_33 = intersection(s05_3, s05_3)
+val s07_34 = intersection(s05_3, s05_4)
+val s07_35 = intersection(s05_3, s05_5)
+val s07_41 = intersection(s05_4, s05_1)
+val s07_42 = intersection(s05_4, s05_2)
+val s07_43 = intersection(s05_4, s05_3)
+val s07_44 = intersection(s05_4, s05_4)
+val s07_45 = intersection(s05_4, s05_5)
+val s07_51 = intersection(s05_5, s05_1)
+val s07_52 = intersection(s05_5, s05_2)
+val s07_53 = intersection(s05_5, s05_3)
+val s07_54 = intersection(s05_5, s05_4)
+val s07_55 = intersection(s05_5, s05_5)
+val _ = print "***** Difference tests *****\n"
+val s08_11 = difference(s05_1, s05_1)
+val s08_12 = difference(s05_1, s05_2)
+val s08_13 = difference(s05_1, s05_3)
+val s08_14 = difference(s05_1, s05_4)
+val s08_15 = difference(s05_1, s05_5)
+val s08_21 = difference(s05_2, s05_1)
+val s08_22 = difference(s05_2, s05_2)
+val s08_23 = difference(s05_2, s05_3)
+val s08_24 = difference(s05_2, s05_4)
+val s08_25 = difference(s05_2, s05_5)
+val s08_31 = difference(s05_3, s05_1)
+val s08_32 = difference(s05_3, s05_2)
+val s08_33 = difference(s05_3, s05_3)
+val s08_34 = difference(s05_3, s05_4)
+val s08_35 = difference(s05_3, s05_5)
+val s08_41 = difference(s05_4, s05_1)
+val s08_42 = difference(s05_4, s05_2)
+val s08_43 = difference(s05_4, s05_3)
+val s08_44 = difference(s05_4, s05_4)
+val s08_45 = difference(s05_4, s05_5)
+val s08_51 = difference(s05_5, s05_1)
+val s08_52 = difference(s05_5, s05_2)
+val s08_53 = difference(s05_5, s05_3)
+val s08_54 = difference(s05_5, s05_4)
+val s08_55 = difference(s05_5, s05_5)
 end (* end local *)
