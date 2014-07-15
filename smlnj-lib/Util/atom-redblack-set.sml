@@ -1,4 +1,4 @@
-(* atom-redblack-map.sml
+(* atom-redblack-set.sml
  *
  * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
  *

@@ -3,7 +3,9 @@
  * Test that the invariants are being preserved in the red-black set implementation.
  *)
 
+(*
 use "int-redblack-set.sml";
+*)
 
 structure ChkSet (*:> ORD_SET where type Key.ord_key = int*) =
   struct

@@ -1,6 +1,14 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
+[2014-07-15]
+	Reimplementation of delete/remove operations in red-black-tree
+	versions of sets and maps.  The previous implementation could
+	result in violations of the data-structure invariants, which
+	was leading to unbalanced trees and loss of performance.  Note
+	that the order invariants were correctly maintained, so correctness
+	of the operations was not an issue.
+
 [2014-03-27]
 	Added XML library, which is a lightweight library for parsing XML
 	files.  The library does not support validation and will immediatly

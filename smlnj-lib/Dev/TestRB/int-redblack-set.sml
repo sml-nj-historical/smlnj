@@ -30,7 +30,7 @@ structure IntRedBlackSet =
 	val compare = Int.compare
       end
 
-    type item = int
+    type item = Key.ord_key
 
     datatype color = R | B
 
@@ -97,8 +97,8 @@ structure IntRedBlackSet =
     local
       datatype zipper
 	= TOP
-	| LEFT of (color * int * tree * zipper)
-	| RIGHT of (color * tree * int * zipper)
+	| LEFT of (color * item * tree * zipper)
+	| RIGHT of (color * tree * item * zipper)
     in
     fun delete (SET(nItems, t), k) = let
 	(* zip the zipper *) 
@@ -152,6 +152,8 @@ structure IntRedBlackSet =
 	  (* push deficit up the tree by recoloring a black node as red *)
 	    | fixupZip (LEFT(_, y, E, p), t) = fixupZip (p, T(R, t, y, E))
 	    | fixupZip (RIGHT(_, E, y, p), t) = fixupZip (p, T(R, E, y, t))
+	  (* impossible cases that violate the red invariant *)
+	    | fixupZip _ = raise Fail "Red invariant violation"
 	(* delete the minimum value from a non-empty tree, returning a triple
 	 * (elem, bd, tr), where elem is the minimum element, tr is the residual
 	 * tree with elem removed, and bd is true if tr has a black-depth that is
@@ -301,8 +303,8 @@ structure IntRedBlackSet =
    *)
     datatype digit
       = ZERO
-      | ONE of (int * tree * digit)
-      | TWO of (int * tree * int * tree * digit)
+      | ONE of (item * tree * digit)
+      | TWO of (item * tree * item * tree * digit)
   (* add an item that is guaranteed to be larger than any in l *)
     fun addItem (a, l) = let
 	  fun incr (a, t, ZERO) = ONE(a, t, ZERO)

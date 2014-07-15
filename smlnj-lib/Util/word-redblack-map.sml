@@ -1,6 +1,6 @@
 (* word-redblack-map.sml
  *
- * COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2014 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * COPYRIGHT (c) 2000 Bell Labs, Lucent Technologies.
@@ -13,14 +13,14 @@
  *
  * A red-black tree should satisfy the following two invariants:
  *
- *   Red Invariant: each red node has a black parent.
+ *   Red Invariant: each red node has black children (empty nodes are
+ *	considered black).
  *
- *   Black Condition: each path from the root to an empty node has the
+ *   Black Invariant: each path from the root to an empty node has the
  *     same number of black nodes (the tree's black height).
  *
- * The Red condition implies that the root is always black and the Black
- * condition implies that any node with only one child will be black and
- * its child will be a red leaf.
+ * The Black invariant implies that any node with only one child
+ * will be black and its child will be a red leaf.
  *)
 
 structure WordRedBlackMap :> ORD_MAP where type Key.ord_key = word =
@@ -33,9 +33,10 @@ structure WordRedBlackMap :> ORD_MAP where type Key.ord_key = word =
       end
 
     datatype color = R | B
-    and 'a tree
+
+    datatype 'a tree
       = E
-      | T of (color * 'a tree * word * 'a * 'a tree)
+      | T of (color * 'a tree * Key.ord_key * 'a * 'a tree)
 
     datatype 'a map = MAP of (int * 'a tree)
 
@@ -44,7 +45,7 @@ structure WordRedBlackMap :> ORD_MAP where type Key.ord_key = word =
 
     val empty = MAP(0, E)
 
-    fun singleton (xk, x) = MAP(1, T(R, E, xk, x, E))
+    fun singleton (xk, x) = MAP(1, T(B, E, xk, x, E))
 
     fun insert (MAP(nItems, m), xk, x) = let
 	  val nItems' = ref nItems
@@ -55,15 +56,13 @@ structure WordRedBlackMap :> ORD_MAP where type Key.ord_key = word =
 		     of T(R, c, zk, z, d) =>
 			  if (xk < zk)
 			    then (case ins c
-			       of T(R, e, wk, w, f) =>
-				    T(R, T(B,e,wk,w,f), zk, z, T(B,d,yk,y,b))
+			       of T(R, e, wk, w, f) => T(R, T(B,e,wk,w,f), zk, z, T(B,d,yk,y,b))
                 		| c => T(B, T(R,c,zk,z,d), yk, y, b)
 			      (* end case *))
 			  else if (xk = zk)
 			    then T(color, T(R, c, xk, x, d), yk, y, b)
 			    else (case ins d
-			       of T(R, e, wk, w, f) =>
-				    T(R, T(B,c,zk,z,e), wk, w, T(B,f,yk,y,b))
+			       of T(R, e, wk, w, f) => T(R, T(B,c,zk,z,e), wk, w, T(B,f,yk,y,b))
                 		| d => T(B, T(R,c,zk,z,d), yk, y, b)
 			      (* end case *))
 		      | _ => T(B, ins a, yk, y, b)
@@ -74,22 +73,20 @@ structure WordRedBlackMap :> ORD_MAP where type Key.ord_key = word =
 		     of T(R, c, zk, z, d) =>
 			  if (xk < zk)
 			    then (case ins c
-			       of T(R, e, wk, w, f) =>
-				    T(R, T(B,a,yk,y,e), wk, w, T(B,f,zk,z,d))
+			       of T(R, e, wk, w, f) => T(R, T(B,a,yk,y,e), wk, w, T(B,f,zk,z,d))
 				| c => T(B, a, yk, y, T(R,c,zk,z,d))
 			      (* end case *))
 			  else if (xk = zk)
 			    then T(color, a, yk, y, T(R, c, xk, x, d))
 			    else (case ins d
-			       of T(R, e, wk, w, f) =>
-				    T(R, T(B,a,yk,y,c), zk, z, T(B,e,wk,w,f))
+			       of T(R, e, wk, w, f) => T(R, T(B,a,yk,y,c), zk, z, T(B,e,wk,w,f))
 				| d => T(B, a, yk, y, T(R,c,zk,z,d))
 			      (* end case *))
 		      | _ => T(B, a, yk, y, ins b)
 		    (* end case *))
-	  val m = ins m
+	  val T(_, a, yk, y, b) = ins m
 	  in
-	    MAP(!nItems', m)
+	    MAP(!nItems', T(B, a, yk, y, b))
 	  end
     fun insert' ((xk, x), m) = insert (m, xk, x)
 
@@ -134,67 +131,119 @@ structure WordRedBlackMap :> ORD_MAP where type Key.ord_key = word =
     local
       datatype 'a zipper
 	= TOP
-	| LEFT of (color * word * 'a * 'a tree * 'a zipper)
-	| RIGHT of (color * 'a tree * word * 'a * 'a zipper)
+	| LEFT of (color * Key.ord_key * 'a * 'a tree * 'a zipper)
+	| RIGHT of (color * 'a tree * Key.ord_key * 'a * 'a zipper)
     in
     fun remove (MAP(nItems, t), k) = let
+	(* zip the zipper *)
 	  fun zip (TOP, t) = t
 	    | zip (LEFT(color, xk, x, b, z), a) = zip(z, T(color, a, xk, x, b))
 	    | zip (RIGHT(color, a, xk, x, z), b) = zip(z, T(color, a, xk, x, b))
-	(* bbZip propagates a black deficit up the tree until either the top
-	 * is reached, or the deficit can be covered.  It returns a boolean
-	 * that is true if there is still a deficit and the zipped tree.
+	(* zip the zipper while resolving a black deficit *)
+	  fun fixupZip (TOP, t) = (true, t)
+	  (* case 1 from CLR *)
+	    | fixupZip (LEFT(B, xk, x, T(R, a, yk, y, b), p), t) = (case a
+		 of T(_, T(R, a11, wk, w, a12), zk, z, a2) => (* case 1L ==> case 3L ==> case 4L *)
+		      (false, zip (p, T(B, T(R, T(B, t, xk, x, a11), wk, w, T(B, a12, zk, z, a2)), yk, y, b)))
+		  | T(_, a1, zk, z, T(R, a21, wk, w, t22)) => (* case 1L ==> case 4L *)
+		      (false, zip (p, T(B, T(R, T(B, t, xk, x, a1), zk, z, T(B, a21, wk, w, t22)), yk, y, b)))
+		  | T(_, a1, zk, z, a2) => (* case 1L ==> case 2L; rotate + recolor fixes deficit *)
+		      (false, zip (p, T(B, T(B, t, xk, x, T(R, a1, zk, z, a2)), yk, y, b)))
+		  | _ => fixupZip (LEFT(R, xk, x, a, LEFT(B, yk, y, b, p)), t)
+		(* end case *))
+	    | fixupZip (RIGHT(B, T(R, a, xk, x, b), yk, y, p), t) = (case b
+		 of T(_, b1, zk, z, T(R, b21, wk, w, b22)) => (* case 1R ==> case 3R ==> case 4R *)
+		      (false, zip (p, T(B, a, xk, x, T(R, T(B, b1, zk, z, b21), wk, w, T(B, b22, yk, y, t)))))
+		  | T(_, T(R, b11, wk, w, b12), zk, z, b2) => (* case 1R ==> case 4R *)
+		      (false, zip (p, T(B, a, xk, x, T(R, T(B, b11, wk, w, b12), zk, z, T(B, b2, yk, y, t)))))
+		  | T(_, b1, zk, z, b2) => (* case 1L ==> case 2L; rotate + recolor fixes deficit *)
+		      (false, zip (p, T(B, a, xk, x, T(B, T(R, b1, zk, z, b2), yk, y, t))))
+		  | _ => fixupZip (RIGHT(R, b, yk, y, RIGHT(B, a, xk, x, p)), t)
+		(* end case *))
+	  (* case 3 from CLR *)
+	    | fixupZip (LEFT(color, xk, x, T(B, T(R, a1, yk, y, a2), zk, z, b), p), t) =
+	      (* case 3L ==> case 4L *)
+		(false, zip (p, T(color, T(B, t, xk, x, a1), yk, y, T(B, a2, zk, z, b))))
+	    | fixupZip (RIGHT(color, T(B, a, xk, x, T(R, b1, yk, y, b2)), zk, z, p), t) =
+	      (* case 3R ==> case 4R; rotate, recolor, plus rotate fixes deficit *)
+		(false, zip (p, T(color, T(B, a, xk, x, b1), yk, y, T(B, b2, zk, z, t))))
+	  (* case 4 from CLR *)
+	    | fixupZip (LEFT(color, xk, x, T(B, a, yk, y, T(R, b1, zk, z, b2)), p), t) =
+		(false, zip (p, T(color, T(B, t, xk, x, a), yk, y, T(B, b1, zk, z, b2))))
+	    | fixupZip (RIGHT(color, T(B, T(R, a1, zk, z, a2), xk, x, b), yk, y, p), t) =
+		(false, zip (p, T(color, T(B, a1, zk, z, a2), xk, x, T(B, b, yk, y, t))))
+	  (* case 2 from CLR; note that "a" and "b" are guaranteed to be black, since we did
+	   * not match cases 3 or 4.
+	   *)
+	    | fixupZip (LEFT(R, xk, x, T(B, a, yk, y, b), p), t) =
+		(false, zip (p, T(B, t, xk, x, T(R, a, yk, y, b))))
+	    | fixupZip (LEFT(B, xk, x, T(B, a, yk, y, b), p), t) =
+		fixupZip (p, T(B, t, xk, x, T(R, a, yk, y, b)))
+	    | fixupZip (RIGHT(R, T(B, a, xk, x, b), yk, y, p), t) =
+		(false, zip (p, T(B, T(R, a, xk, x, b), yk, y, t)))
+	    | fixupZip (RIGHT(B, T(B, a, xk, x, b), yk, y, p), t) =
+		fixupZip (p, T(B, T(R, a, xk, x, b), yk, y, t))
+	  (* push deficit up the tree by recoloring a black node as red *)
+	    | fixupZip (LEFT(_, yk, y, E, p), t) = fixupZip (p, T(R, t, yk, y, E))
+	    | fixupZip (RIGHT(_, E, yk, y, p), t) = fixupZip (p, T(R, E, yk, y, t))
+	  (* impossible cases that violate the red invariant *)
+	    | fixupZip _ = raise Fail "Red invariant violation"
+	(* delete the minimum value from a non-empty tree, returning a 4-tuple
+	 * (key, elem, bd, tr), where key is the minimum key, elem is the element
+	 * named by key, tr is the residual tree with elem removed, and bd is true
+	 * if tr has a black-depth that is less than the original tree.
 	 *)
-	  fun bbZip (TOP, t) = (true, t)
-	    | bbZip (LEFT(B, xk, x, T(R, c, yk, y, d), z), a) = (* case 1L *)
-		bbZip (LEFT(R, xk, x, c, LEFT(B, yk, y, d, z)), a)
-	    | bbZip (LEFT(color, xk, x, T(B, T(R, c, yk, y, d), wk, w, e), z), a) =
-	      (* case 3L *)
-		bbZip (LEFT(color, xk, x, T(B, c, yk, y, T(R, d, wk, w, e)), z), a)
-	    | bbZip (LEFT(color, xk, x, T(B, c, yk, y, T(R, d, wk, w, e)), z), a) =
-	      (* case 4L *)
-		(false, zip (z, T(color, T(B, a, xk, x, c), yk, y, T(B, d, wk, w, e))))
-	    | bbZip (LEFT(R, xk, x, T(B, c, yk, y, d), z), a) = (* case 2L *)
-		(false, zip (z, T(B, a, xk, x, T(R, c, yk, y, d))))
-	    | bbZip (LEFT(B, xk, x, T(B, c, yk, y, d), z), a) = (* case 2L *)
-		bbZip (z, T(B, a, xk, x, T(R, c, yk, y, d)))
-	    | bbZip (RIGHT(color, T(R, c, yk, y, d), xk, x, z), b) = (* case 1R *)
-		bbZip (RIGHT(R, d, xk, x, RIGHT(B, c, yk, y, z)), b)
-	    | bbZip (RIGHT(color, T(B, T(R, c, wk, w, d), yk, y, e), xk, x, z), b) =
-	      (* case 3R *)
-		bbZip (RIGHT(color, T(B, c, wk, w, T(R, d, yk, y, e)), xk, x, z), b)
-	    | bbZip (RIGHT(color, T(B, c, yk, y, T(R, d, wk, w, e)), xk, x, z), b) =
-	      (* case 4R *)
-		(false, zip (z, T(color, c, yk, y, T(B, T(R, d, wk, w, e), xk, x, b))))
-	    | bbZip (RIGHT(R, T(B, c, yk, y, d), xk, x, z), b) = (* case 2R *)
-		(false, zip (z, T(B, T(R, c, yk, y, d), xk, x, b)))
-	    | bbZip (RIGHT(B, T(B, c, yk, y, d), xk, x, z), b) = (* case 2R *)
-		bbZip (z, T(B, T(R, c, yk, y, d), xk, x, b))
-	    | bbZip (z, t) = (false, zip(z, t))
-	  fun delMin (T(R, E, yk, y, b), z) = (yk, y, (false, zip(z, b)))
-	    | delMin (T(B, E, yk, y, b), z) = (yk, y, bbZip(z, b))
+	  fun delMin (T(R, E, yk, y, b), p) =
+	      (* replace the node by its right subtree (which must be E) *)
+		(yk, y, false, zip(p, b))
+	    | delMin (T(B, E, yk, y, T(R, a', yk', y', b')), p) =
+	      (* replace the node with its right child, while recoloring the child black to
+	       * preserve the black invariant.
+	       *)
+		(yk, y, false, zip (p, T(B, a', yk', y', b')))
+	    | delMin (T(B, E, yk, y, E), p) = let
+	      (* delete the node, which reduces the black-depth by one, so we attempt to fix
+	       * the deficit on the path back.
+	       *)
+		val (blkDeficit, t) = fixupZip (p, E)
+		in
+		  (yk, y, blkDeficit, t)
+		end
 	    | delMin (T(color, a, yk, y, b), z) = delMin(a, LEFT(color, yk, y, b, z))
 	    | delMin (E, _) = raise Match
-	  fun join (R, E, E, z) = zip(z, E)
-	    | join (_, a, E, z) = #2(bbZip(z, a))	(* color = black *)
-	    | join (_, E, b, z) = #2(bbZip(z, b))	(* color = black *)
-	    | join (color, a, b, z) = let
-		val (xk, x, (needB, b')) = delMin(b, TOP)
-		in
-		  if needB
-		    then #2(bbZip(z, T(color, a, xk, x, b')))
-		    else zip(z, T(color, a, xk, x, b'))
-		end
-	  fun del (E, z) = raise LibBase.NotFound
-	    | del (T(color, a, yk, y, b), z) =
+	  fun del (E, p) = raise LibBase.NotFound
+	    | del (T(color, a, yk, y, b), p) =
 		if (k < yk)
-		  then del (a, LEFT(color, yk, y, b, z))
+		  then del (a, LEFT(color, yk, y, b, p))
 		else if (k = yk)
-		  then (y, join (color, a, b, z))
-		  else del (b, RIGHT(color, a, yk, y, z))
+		  then (case (color, a, b)
+		     of (R, E, E) => (y, zip(p, E))
+		      | (B, E, E) => (y, #2 (fixupZip (p, E)))
+		      | (_, T(_, a', yk', y', b'), E) =>
+			(* node is black and left child is red; we replace the node with its
+			 * left child recolored to black.
+			 *)
+			  (y, zip(p, T(B, a', yk', y', b')))
+		      | (_, E, T(_, a', yk', y', b')) => 
+			(* node is black and right child is red; we replace the node with its
+			 * right child recolored to black.
+			 *)
+			  (y, zip(p, T(B, a', yk', y', b')))
+		      | _ => let
+			  val (minKey, minElem, blkDeficit, b) = delMin (b, TOP)
+			  in
+			    if blkDeficit
+			      then (y, #2 (fixupZip (RIGHT(color, a, minKey, minElem, p), b)))
+			      else (y, zip (p, T(color, a, minKey, minElem, b)))
+			  end
+		    (* end case *))
+		  else del (b, RIGHT(color, a, yk, y, p))
 	  val (item, t) = del(t, TOP)
 	  in
-	    (MAP(nItems-1, t), item)
+	    case t
+	     of T(R, a, xk, x, b) => (MAP(nItems-1, T(B, a, xk, x, b)), item)
+	      | t => (MAP(nItems-1, t), item)
+	    (* end case *)
 	  end
     end (* local *)
 
@@ -291,8 +340,8 @@ structure WordRedBlackMap :> ORD_MAP where type Key.ord_key = word =
    *)
     datatype 'a digit
       = ZERO
-      | ONE of (word * 'a * 'a tree * 'a digit)
-      | TWO of (word * 'a * 'a tree * word * 'a * 'a tree * 'a digit)
+      | ONE of (Key.ord_key * 'a * 'a tree * 'a digit)
+      | TWO of (Key.ord_key * 'a * 'a tree * Key.ord_key * 'a * 'a tree * 'a digit)
   (* add an item that is guaranteed to be larger than any in l *)
     fun addItem (ak, a, l) = let
 	  fun incr (ak, a, t, ZERO) = ONE(ak, a, t, ZERO)
