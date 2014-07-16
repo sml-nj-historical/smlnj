@@ -66,7 +66,7 @@ and adds support for Mac OS X 10.10 (Yosemite).
 <h3>Details:</h3>
 
 <dl>
-  <dt>SML/NJ compiler</dt>
+  <dt>SML/NJ compiler:</dt>
   <dd>
     We added the <tt>PackWord</tt>{<tt>16</tt>,<tt>32</tt>}{<tt>Big</tt>,<tt>Little</tt>}
     structures to the <tt>Unsafe</tt> module.
@@ -80,7 +80,21 @@ and adds support for Mac OS X 10.10 (Yosemite).
   <dd>
     Improvements to the documentation.
   </dd>
-  <dt>SML/NJ Library</dt>
+  <dt>SML/NJ Library:</dt>
+  <dd>
+    Added new library for parsing XML files.  The library does not support validation
+    or the full XML syntax.  It is designed to for applications that need to process
+    XML-format data files.  To include the library in a project, add the following
+    line in your CM file:
+    <blockquote class="code">
+      $/xml-lib.cm
+    </blockquote>
+  </dd>
+  <dd>
+    Reimplementation of delete/remove operations in red-black-tree
+    versions of sets and maps.  The previous implementation had a bug
+    that could result in violations of the data-structure invariants,
+    which was leading to unbalanced trees and loss of performance.
   <dd>
     Fixes and improvements to the S-expression parsing library.  The supported syntax
     is now a proper subset of that found in Lisp-like languages.
@@ -92,8 +106,22 @@ and adds support for Mac OS X 10.10 (Yosemite).
     for more details.
     </p>
     <table class="buglist">
+      <tr><td class="bugid">127</td><td>Crash on windows with OS.Process.system</td></tr>
       <tr><td class="bugid">XXX</td><td>DESCRIPTION</td></tr>
     </table>
+    <p>The following unnumbered bugs were also fixed:
+    </p>
+    <ul>
+      <li>
+        Fixed a long-standing bug in Socket.recvVec, which prevented the result
+	from being used in a string pattern match (thanks to Vesa Norrman
+	for the fix).
+      </li>
+      <li>
+        Fixed minor issue in an error message; type variable name should be
+	printed with leading <tt>'</tt>
+      </li>
+    </ul>
   </dd>
 
 </body>
