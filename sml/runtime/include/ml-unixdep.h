@@ -256,6 +256,7 @@ extern char     *sys_errlist[];
 #  define HAS_GETRUSAGE
 #  define HAS_SETITIMER
 #  define HAS_MMAP
+#  define HAS_ANON_MMAP
 #  define HAS_PARTIAL_MUNMAP
 #  define HAS_SELECT
 #  define HAS_UCONTEXT
