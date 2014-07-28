@@ -21,6 +21,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/07/28
+Description:
+Switch to using MAP_ANONYMOUS to allocate memory on Linux systems.
+This change avoids problems when "/dev" does not support execute
+permission (as seems to be the case with some versions of Linux
+running on ChromeBooks; bug #120).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2014/06/28
 Description:
 Fix for bug 127 (Crash on windows with OS.Process.system).
