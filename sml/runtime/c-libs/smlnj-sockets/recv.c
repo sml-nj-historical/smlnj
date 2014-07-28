@@ -39,8 +39,9 @@ ml_val_t _ml_Sock_recv (ml_state_t *msp, ml_val_t arg)
     else if (n == 0)
 	return ML_string0;
 
-  // pad the last word of the vector with zero bytes so that string pattern
-  // matching on the result will work.
+  /* pad the last word of the vector with zero bytes so that string pattern
+   * matching on the result will work.
+   */
     for (m = n;  (m & (WORD_SZB-1)) != 0;  m++) {
 	s[m] = '\0';
     }
