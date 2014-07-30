@@ -1,6 +1,11 @@
 # COPYRIGHT(c) 1996 Bell Laboratories, Lucent Technologies
 #
 # this is the win32-specific main makefile for the SML/NJ runtime system
+# To actually build the runtime, use the command
+#
+#	nmake -f mk.x86-win32
+#
+# which will invoke this makefile with the correct arguments
 #
 
 SHELL =
