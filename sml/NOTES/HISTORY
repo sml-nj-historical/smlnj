@@ -21,6 +21,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/14
+Description:
+Fixed a problem in the CPS contraction phase.  An optimization that
+eliminates construction of a record that already exists was not
+checking that the existing record was the same record kind (bug #119).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2014/07/28
 Description:
 Switch to using MAP_ANONYMOUS to allocate memory on Linux systems.
