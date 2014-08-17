@@ -23,6 +23,13 @@ Description:
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2014/08/17
 Description:
+Added patches to support OpenBSD on PPC.  The patches were contributed
+by Jasper Lievisse Adriaanse (fixes bug #124).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/17
+Description:
 Use mkstemp to implement OS.FileSys.tmpName() on systems that support
 it (should be all modern versions of Unix).  This change fixes bug #128.
 (Thanks to Johannes 5 Joemann).

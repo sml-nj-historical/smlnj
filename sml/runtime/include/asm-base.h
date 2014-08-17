@@ -126,6 +126,17 @@
 #    define DOUBLE(V)	.double V
 #    define LABEL(ID)	ID:
 #    define __SC__      @
+
+#  elif (defined(OPSYS_OPENBSD) && defined(TARGET_PPC))
+#    define CFUNSYM(ID) CSYM(ID)
+#    define CGLOBAL(ID)  .globl  CSYM(ID)
+#    define TEXT        .text
+#    define DATA        .data
+#    define RO_DATA     .data
+#    define ALIGN4      .align 2
+#    define ALIGN8	.align 3
+#    define DOUBLE(V)	.double V
+#    define LABEL(ID)	ID:
 #  endif
 
 #  define CENTRY(ID)		\
