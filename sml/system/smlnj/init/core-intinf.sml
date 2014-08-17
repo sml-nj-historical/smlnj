@@ -78,6 +78,9 @@ structure CoreIntInf :> sig
     val lowValue : intinf -> int
     val neg_base_as_int : int
 
+  (* add one to a list of digits *)
+    val natinc : word list -> word list
+
     (* Various primitive operations for use by the pervasive environment,
      * plus stuff that we have to implement here anyway, so the
      * real structure IntInf can pick them up: *)

@@ -21,6 +21,13 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/17
+Description:
+Fixed a bug in IntInf.~>>, which did not handle negative arguments
+correctly (bug #110).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2014/08/14
 Description:
 Fixed a problem in the CPS contraction phase.  An optimization that

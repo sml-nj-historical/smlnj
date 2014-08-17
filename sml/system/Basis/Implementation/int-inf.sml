@@ -231,36 +231,55 @@ structure IntInfImp :> INT_INF = struct
 	    end
 
     (* Right shift. *)
-    fun rshift (i, w) =
-	case concrete i of
-	    BI { digits = [], negative } => i (* i = 0 *)
-	  | BI { digits, negative } => let
+    fun rshift (i, 0w0) = i
+      | rshift (i, w) = (case concrete i
+	   of BI{ digits = [], negative } => i (* i = 0 *)
+	    | BI{ digits, negative } => let
 		val { bytes, bits } = shiftAmount w
 		val bits' = CoreIntInf.baseBits - bits
-		fun drop (0w0, i) = i 
-		  | drop (n, []) = []
-		  | drop (n, x :: xs) = drop (n-0w1, xs)
+	      (* drop digits while checking to see is they are all 0w0 (==> pow2)*)
+		fun drop (0w0, allZero, i) = (allZero, i) 
+		  | drop (n, allZero, []) = (allZero, [])
+		  | drop (n, allZero, 0w0 :: xs) = drop (n-0w1, allZero, xs)
+		  | drop (n, _, x :: xs) = drop (n-0w1, false, xs)
 		fun shift [] = ([], 0w0)
-		  | shift (x :: xs) =
-		    let val (zs, borrow) = shift xs
-			val z = borrow || (x >> bits)
-			val borrow' = (x << bits') && CoreIntInf.maxDigit
-		    in
+		  | shift (x :: xs) = let
+		      val (zs, borrow) = shift xs
+		      val z = borrow || (x >> bits)
+		      val borrow' = (x << bits') && CoreIntInf.maxDigit
+		      in
 			(* strip leading 0 *)
-			case (z, zs) of
-			    (0w0, []) => ([], borrow')
+			case (z, zs)
+			 of (0w0, []) => ([], borrow')
 			  | _ => (z :: zs, borrow')
-		    end
-			
-		val digits =
-		    if bits = 0w0 then drop (bytes, digits)
-		    else #1 (shift (drop (bytes, digits)))
-	    in
-		abstract (case digits of
-			      [] => BI { negative = false, digits = [] }
-			    | _ => BI { negative = negative,
-					digits = digits })
-	    end
+			(* end case *)
+		      end
+	      (* first drop any whole digits while checking for if they are all zero *)
+		val (allZero, digits) = drop (bytes, true, digits)
+	      (* shift the remaining digits by bits *)
+		val (allZero, digits) = if bits = 0w0
+		      then (allZero, digits)
+		      else (case digits
+			 of [] => (allZero, digits)
+			  | (d::_) => let
+			      val allZero = allZero andalso ((((0w1 << bits) - 0w1) && d) = 0w0)
+			      val (digits, _) = shift digits
+			      in
+				(allZero, digits)
+			      end
+			(* end case *))
+		in
+		(* if i is negative and we shifted some non-zero bits, then we will need to subtract
+		 * one from the shift result to satisfy the SML Basis semantics.
+		 *)
+		  if (negative andalso not allZero)
+		    then abstract (BI { negative = true, digits = CoreIntInf.natinc digits })
+		    else (case digits
+		       of [] => abstract (BI{ negative = false, digits = [] })
+			| _ => abstract (BI{ negative = negative, digits = digits })
+		      (* end case *))
+		end
+	  (* end case *))
 
     fun startscan (doit, hex) getchar s = let
 	fun hexprefix (neg, s) =
