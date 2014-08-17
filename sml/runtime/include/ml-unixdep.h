@@ -138,6 +138,7 @@ extern char	*sys_errlist[];
 #  define HAS_UCONTEXT
 #  define INCLUDE_SIGINFO_H <siginfo.h>
 #  define HAS_STRERROR
+#  define HAS_MKSTEMP
 
 /* These declarations are not in <errno.h> */
 extern int	sys_nerr;
@@ -208,6 +209,7 @@ extern char	*sys_errlist[];
 #  define HAS_STRERROR
 #  define HAS_SELECT
 #  define MAP_ANONYMOUS MAP_ANON
+#  define HAS_MKSTEMP
 
 #elif defined(OPSYS_HPUX9)  /** HPUX 9.0 **/
 #  define OS_NAME       "HPUX"
@@ -261,6 +263,7 @@ extern char     *sys_errlist[];
 #  define HAS_SELECT
 #  define HAS_UCONTEXT
 #  define HAS_STRERROR
+#  define HAS_MKSTEMP
 #  define __USE_GNU
 
 #include <features.h>
@@ -321,6 +324,7 @@ extern char     *sys_errlist[];
 #  define HAS_ILOGB
 #  define HAS_UCONTEXT
 #  define HAS_STRERROR
+#  define HAS_MKSTEMP
 
 #elif defined(OPSYS_OPENBSD)
 #  define OS_NAME	"BSD"
@@ -334,6 +338,7 @@ extern char     *sys_errlist[];
 #  define HAS_ILOGB
 #  define HAS_SIGCONTEXT
 #  define HAS_STRERROR
+#  define HAS_MKSTEMP
 
 #elif (defined(TARGET_X86) && defined(OPSYS_CYGWIN))
 #  define OS_NAME	"Cygwin" 

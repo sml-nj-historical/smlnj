@@ -37,7 +37,7 @@
 <br/>
                           Version 110.77 NEWS
 <br/>
-                            August 1, 2014
+                            August 25, 2014
 <br/>
 <br/>
 </div>
@@ -91,7 +91,7 @@ and adds support for Mac OS X 10.10 (Yosemite).
     </blockquote>
   </dd>
   <dd>
-    Reimplementation of delete/remove operations in red-black-tree
+    Reimplementation of delete/remove operations in the red-black-tree
     versions of sets and maps.  The previous implementation had a bug
     that could result in violations of the data-structure invariants,
     which was leading to unbalanced trees and loss of performance.
@@ -110,6 +110,7 @@ and adds support for Mac OS X 10.10 (Yosemite).
       <tr><td class="bugid">119</td><td>Conversion from vector of tuple to vector of vector causes a crash</td></tr>
       <tr><td class="bugid">120</td><td>Install fails w/ map failure on Chromebook</td></tr>
       <tr><td class="bugid">127</td><td>Crash on windows with <tt>OS.Process.system</tt></td></tr>
+      <tr><td class="bugid">128</td><td>Basis spec violation, race condition in <tt>OS.Filesys.tmpName()</tt></td></tr>
       <tr><td class="bugid">XXX</td><td>DESCRIPTION</td></tr>
     </table>
     <p>The following unnumbered bugs were also fixed:

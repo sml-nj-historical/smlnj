@@ -23,6 +23,14 @@ Description:
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2014/08/17
 Description:
+Use mkstemp to implement OS.FileSys.tmpName() on systems that support
+it (should be all modern versions of Unix).  This change fixes bug #128.
+(Thanks to Johannes 5 Joemann).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/17
+Description:
 Fixed a bug in IntInf.~>>, which did not handle negative arguments
 correctly (bug #110).
 
