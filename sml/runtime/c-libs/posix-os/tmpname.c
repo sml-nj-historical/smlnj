@@ -1,6 +1,7 @@
-/* exit.c
+/* tmpname.c
  *
- * COPYRIGHT (c) 1994 by AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2014 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  */
 
 #include "ml-unixdep.h"
@@ -12,7 +13,7 @@
 #include "cfun-proto-list.h"
 
 #if defined(HAS_MKSTEMP) && defined(P_tmpdir)
-#  define TEMPLATE	P_tmpdir "SMLNJ-XXXXXX"
+#  define TEMPLATE	P_tmpdir "/SMLNJ-XXXXXX"
 #endif
 
 /* _ml_OS_tmpname:
@@ -39,8 +40,6 @@ ml_val_t _ml_OS_tmpname (ml_state_t *msp, ml_val_t arg)
 #else
   // for old systems
     char	buf[L_tmpnam];
-
-printf("using old tmpnam\n");
 
     tmpnam (buf);
 
