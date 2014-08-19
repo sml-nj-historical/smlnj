@@ -423,7 +423,8 @@ extern void SetFSR();
 
 #  define LIMITPTR_X86OFFSET	3	/* offset (words) of limitptr in ML stack */
 					/* frame (see X86.prim.asm) */
-extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
+   extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
+   extern void FPEEnable ();		/* defined in X86.prim.asm */
 #  define SIG_InitFPE()    FPEEnable()
 
 #  if (defined(TARGET_X86) && defined(OPSYS_LINUX))
