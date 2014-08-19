@@ -68,40 +68,54 @@ and adds support for Mac OS X 10.10 (Yosemite).
 <dl>
   <dt>SML/NJ compiler:</dt>
   <dd>
+    <p>
     We added the <tt>PackWord</tt>{<tt>16</tt>,<tt>32</tt>}{<tt>Big</tt>,<tt>Little</tt>}
     structures to the <tt>Unsafe</tt> module.
     This change makes SML/NJ's <tt>UNSAFE</tt> signature closer to the MLton version.
+    </p>
   </dd>
   <dt>ml-lpt</dt>
   <dd>
+    <p>
     Fixed a minor bug where a syntax error in the grammar specification could go undetected and
     result in a syntatically incorrect output file.
-  </dd>
-  <dd>
+    </p>
+    <p>
+    Added the actionToString' and repairToString' functions
+    to the AntlrRepair structure.  These functions allow one to
+    specialize the printing of tokens based on whether they are
+    being added or deleted.
+    </p>
+    <p>
     Improvements to the documentation.
+    </p>
   </dd>
   <dt>SML/NJ Library:</dt>
   <dd>
+    <p>
     Added new library for parsing XML files.  The library does not support validation
     or the full XML syntax.  It is designed to for applications that need to process
     XML-format data files.  To include the library in a project, add the following
     line in your CM file:
+    </p>
     <blockquote class="code">
       $/xml-lib.cm
     </blockquote>
-  </dd>
-  <dd>
-    Reimplementation of delete/remove operations in the red-black-tree
+    <p>
+    Reimplementation of the delete/remove operations in the red-black-tree
     versions of sets and maps.  The previous implementation had a bug
     that could result in violations of the data-structure invariants,
     which was leading to unbalanced trees and loss of performance.
-  <dd>
+    </p>
+    <p>
     Fixes and improvements to the S-expression parsing library.  The supported syntax
     is now a proper subset of that found in Lisp-like languages.
+    </p>
   </dd>
   <dt>Bugs:</dt>
   <dd>
-    <p>Here is a list of tracked bugs fixed (or closed) with this release, please see the
+    <p>
+    Here is a list of tracked bugs fixed (or closed) with this release, please see the
     <a href="https://smlnj-gforge.cs.uchicago.edu/projects/smlnj-bugs/">bug tracker</a>
     for more details.
     </p>

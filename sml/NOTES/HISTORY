@@ -21,6 +21,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/19
+Description:
+Added the actionToString' and repairToString' functions
+to the AntlrRepair structure.  These functions allow one to
+specialize the printing of tokens based on whether they are
+being added or deleted.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2014/08/17
 Description:
 Added patches to support OpenBSD on PPC.  The patches were contributed
