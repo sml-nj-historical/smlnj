@@ -8,7 +8,11 @@
     font-size: x-large;
     text-align: center;
   }
+  dt.component {
+    font-weight: bold;
+  }
   dd {
+    margin-left: 2em;
     margin-bottom: 0.5em;
   }
   li {
@@ -20,7 +24,7 @@
     font-size: smaller;
   }
   table.buglist {
-    margin-left: 1em;
+    margin-left: 2em;
   }
   td.bugid {
     font-weight: bold;
@@ -56,17 +60,15 @@
 <hr>
 
 <h3>Summary:</h3>
-<blockquote>
 <p>
 The primary purpose of this release is bug fixes, but it does include some new features
 and adds support for Mac OS X 10.10 (Yosemite).
 </p>
-</blockquote>
 
 <h3>Details:</h3>
 
 <dl>
-  <dt>SML/NJ compiler:</dt>
+  <dt class="component">SML/NJ compiler:</dt>
   <dd>
     <p>
     We added the <tt>PackWord</tt>{<tt>16</tt>,<tt>32</tt>}{<tt>Big</tt>,<tt>Little</tt>}
@@ -74,23 +76,38 @@ and adds support for Mac OS X 10.10 (Yosemite).
     This change makes SML/NJ's <tt>UNSAFE</tt> signature closer to the MLton version.
     </p>
   </dd>
-  <dt>ml-lpt</dt>
+  <dt class="component">ml-lpt</dt>
   <dd>
+    <p>
+    Fixed an inconsistency in the way that ml-antlr and ml-ulex handled the contents of
+    a <tt>%defs</tt> declaration.  Ml-ulex made these definitions visible in the <tt>UserDeclarations</tt>
+    substructure, whereas ml-antlr hid them.  We have changed the behavior of ml-ulex to match
+    that of ml-antlr (<i>i.e.</i>, hide the user definitions).  We chose to hide the user definitions
+    in ml-ulex because they are usually not useful outside the lexer, hiding them reduces The
+    size of the generated code, and definitions that are needed outside the lexer can be
+    defined in an external module.  Note that the previous behavior remains when ml-ulex is
+    run in ml-lex compatibility mode.  (This change addresses bug #79).
+    </p>
+    <p>
+    Added the <tt>actionToString'</tt> and <tt>repairToString'</tt> functions
+    to the <tt>AntlrRepair</tt> structure.  These functions allow one to
+    specialize the printing of tokens based on whether they are
+    being added or deleted.
+    </p>
+    <p>
+    Removed the <tt>toksToString</tt> function from the tokens structure that ml-antlr
+    generates.  It was originally for use by the <tt>AntlrRepair</tt> structure, but that
+    structure does not use it.
+    </p>
     <p>
     Fixed a minor bug where a syntax error in the grammar specification could go undetected and
     result in a syntatically incorrect output file.
     </p>
     <p>
-    Added the actionToString' and repairToString' functions
-    to the AntlrRepair structure.  These functions allow one to
-    specialize the printing of tokens based on whether they are
-    being added or deleted.
-    </p>
-    <p>
     Improvements to the documentation.
     </p>
   </dd>
-  <dt>SML/NJ Library:</dt>
+  <dt class="component">SML/NJ Library:</dt>
   <dd>
     <p>
     Added new library for parsing XML files.  The library does not support validation
@@ -99,7 +116,7 @@ and adds support for Mac OS X 10.10 (Yosemite).
     line in your CM file:
     </p>
     <blockquote class="code">
-      $/xml-lib.cm
+$/xml-lib.cm
     </blockquote>
     <p>
     Reimplementation of the delete/remove operations in the red-black-tree
@@ -112,14 +129,17 @@ and adds support for Mac OS X 10.10 (Yosemite).
     is now a proper subset of that found in Lisp-like languages.
     </p>
   </dd>
-  <dt>Bugs:</dt>
-  <dd>
+  </dd>
+
+<h3>Bugs:</h3>
     <p>
     Here is a list of tracked bugs fixed (or closed) with this release, please see the
     <a href="https://smlnj-gforge.cs.uchicago.edu/projects/smlnj-bugs/">bug tracker</a>
     for more details.
     </p>
     <table class="buglist">
+      <tr><td class="bugid">79</td><td>ml-lpt: inconsistent treatment of %defs directive between ml-antlr and ml-ulex</td></tr>
+      <tr><td class="bugid">85</td><td>top-level identfiers in generated code clash with legacy code</td></tr>
       <tr><td class="bugid">110</td><td><tt>IntInf.~&gt;&gt;</tt> returns the wrong answer on negative input</td></tr>
       <tr><td class="bugid">119</td><td>Conversion from vector of tuple to vector of vector causes a crash</td></tr>
       <tr><td class="bugid">120</td><td>Install fails w/ map failure on Chromebook</td></tr>
@@ -127,22 +147,43 @@ and adds support for Mac OS X 10.10 (Yosemite).
       <tr><td class="bugid">125</td><td>build script is broken on Cygwin-x86</td></tr>
       <tr><td class="bugid">127</td><td>Crash on windows with <tt>OS.Process.system</tt></td></tr>
       <tr><td class="bugid">128</td><td>Basis spec violation, race condition in <tt>OS.Filesys.tmpName()</tt></td></tr>
-      <tr><td class="bugid">XXX</td><td>DESCRIPTION</td></tr>
+<!--      <tr><td class="bugid">XXX</td><td>DESCRIPTION</td></tr> -->
     </table>
     <p>The following unnumbered bugs were also fixed:
     </p>
     <ul>
-      <li>
-        Fixed a long-standing bug in Socket.recvVec, which prevented the result
+      <li class="bug">
+        Fixed a long-standing bug in <tt>Socket.recvVec</tt>, which prevented the result
 	from being used in a string pattern match (thanks to Vesa Norrman
 	for the fix).
       </li>
-      <li>
+      <li class="bug">
         Fixed minor issue in an error message; type variable name should be
 	printed with leading <tt>'</tt>.
       </li>
     </ul>
-  </dd>
+
+<h3>Supported systems:</h3>
+<blockquote>
+<p>
+We have verified that the system builds and runs on the following systems.
+It may run on other systems, but we do not have the means to test them.
+</pp>
+<div">
+<table>
+  <tr><th>Architecture</th> <th>Operating System</th></td>
+  <tr><td>PowerPC</td> <td>Mac OS X 10.6 (Snow Leopard)</td></tr>
+  <tr><td>&nbsp;</td> <td>&nbsp;</td></tr>
+  <tr><td>x86</td> <td>Mac OS X 10.7 (Lion)</td></tr>
+  <tr><td></td> <td>Mac OS X 10.8 (Mountain Lion)</td></tr>
+  <tr><td></td> <td>Mac OS X 10.8 (Mavericks)</td></tr>
+  <tr><td></td> <td>Mac OS X 10.8 (Yosemite)</td></tr>
+  <tr><td></td> <td>Ubuntu 12.04.4 (GNU/Linux 3.2.0) </td></tr>
+  <tr><td></td> <td>Windows 7</td></tr>
+  <tr><td></td> <td>Cygwin (hosted on Windows 7)</td></tr>
+</table>
+</div>
+</blockquote>
 
 </body>
 </html>
