@@ -129,7 +129,16 @@ $/xml-lib.cm
     is now a proper subset of that found in Lisp-like languages.
     </p>
   </dd>
+  <dt class="component">Build scripts</dt>
+  <dd>
+    Changed how the system handles running on Cygwin.  Previously, the default behavior
+    was to run the Win32 version of the runtime.  Now the default behavior is to run
+    the Cygwin (<i>i.e.</i>, Unix) version of the runtime.  Setting the shell variable
+    <tt>SMLNJ_WINDOWS_RUNTIME</tt> to any non-empty value will cause the Win32 runtime
+    to be used.  The script <tt>config/build-windows.sh</tt> has been added to make
+    using Cygwin to build the windows version more convenient.
   </dd>
+</ul>
 
 <h3>Bugs:</h3>
     <p>
