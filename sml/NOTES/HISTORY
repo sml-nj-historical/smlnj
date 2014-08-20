@@ -23,6 +23,15 @@ Description:
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2014/08/19
 Description:
+Compiling the runtime system on cygwin was failing because the file
+exceptions.h was missing.  It appears to have been part of previous
+versions, so a version has been incorporated verbatim in the
+runtime/mach-base/cygwin-fault.c file (fixes bug #125).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/19
+Description:
 Added the actionToString' and repairToString' functions
 to the AntlrRepair structure.  These functions allow one to
 specialize the printing of tokens based on whether they are
