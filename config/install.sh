@@ -1,10 +1,9 @@
 #!/bin/sh
 #
 # Copyright (c) 1994 AT&T Bell Laboratories.
-# Copyright (c) 2003 The Fellowship of SML/NJ
+# Copyright (c) 2014 The Fellowship of SML/NJ
 #
-# Installation script for SML/NJ and related tools; this is a temporary
-# placeholder until the configuration tool is finished.
+# Installation script for SML/NJ and related tools.
 #
 # Significant changes to take advantage of a new portable installer
 # script for everything after booting the interactive system.
