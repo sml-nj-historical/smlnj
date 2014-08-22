@@ -434,7 +434,8 @@ installdriver _ml-build ml-build
 cd "$ROOT"
 
 #
-# Now do all the rest using the precompiled installer:
+# Now do all the rest using the precompiled installer
+# (see base/system/smlnj/installer for details)
 #
 if [ $nolib = false ] ; then
     echo $this: Installing other libraries and programs:

@@ -167,7 +167,12 @@ request ml-nlffigen
 
 # Build and install 'heap2asm' - an experimental component of
 # a new facility for producing true stand-alone executables.
+#
 #request heap2asm
+
+# Download the documentation directory.
+#
+#request doc
 
 # Note: autoloading is always enabled.
 #   In order to customize what is being pre-registered for autoloading

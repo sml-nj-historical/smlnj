@@ -105,8 +105,9 @@ case `uname -s` in
   OpenBSD)
     OPSYS=openbsd
     HEAP_OPSYS=bsd
-    case `uname -m` in
+    case `uname -p` in
       *86) ARCH=x86;;
+      powerpc) ARCH=ppc;;
       *) exit 1;;
     esac
     ;;

@@ -68,6 +68,7 @@ compiler	src
 smlnj-c		src
 cm		src
 system		src
+doc		src
 
 # Addional components of the SML/NJ library that are not used by the compiler:
 #    (unix-lib.cm is installed only on Unix-like systems)
