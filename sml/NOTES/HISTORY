@@ -21,6 +21,13 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/22
+Description:
+
+*************************** Version 110.77 ***************************
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2014/08/19
 Description:
 Compiling the runtime system on cygwin was failing because the file
