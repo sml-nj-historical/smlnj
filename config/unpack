@@ -283,8 +283,7 @@ do
 	unpack "utilities for language processing tools" "$ROOT" ml-lpt ml-lpt
 	;;
       doc)
-	echo Package doc is currently unavailable.
-	# unpack Doc $ROOT doc doc
+	unpack "documentation" $ROOT doc doc
         # cd $ROOT/doc
 	# build $ROOT
 	;;
