@@ -15,6 +15,9 @@
     margin-left: 2em;
     margin-bottom: 0.5em;
   }
+  ul.buglist {
+    margin-left: 1em;
+  }
   li {
     margin-bottom: 0.5em;
   }
@@ -131,12 +134,14 @@ $/xml-lib.cm
   </dd>
   <dt class="component">Build scripts</dt>
   <dd>
+    <p>
     Changed how the system handles running on Cygwin.  Previously, the default behavior
     was to run the Win32 version of the runtime.  Now the default behavior is to run
     the Cygwin (<i>i.e.</i>, Unix) version of the runtime.  Setting the shell variable
     <tt>SMLNJ_WINDOWS_RUNTIME</tt> to any non-empty value will cause the Win32 runtime
     to be used.  The script <tt>config/build-windows.sh</tt> has been added to make
     using Cygwin to build the windows version more convenient.
+    </p>
   </dd>
   <dt class="component">Documentation</dt>
   <dd>
@@ -168,7 +173,7 @@ $/xml-lib.cm
     </table>
     <p>The following unnumbered bugs were also fixed:
     </p>
-    <ul>
+    <ul class="buglist">
       <li class="bug">
         Fixed a long-standing bug in <tt>Socket.recvVec</tt>, which prevented the result
 	from being used in a string pattern match (thanks to Vesa Norrman
