@@ -165,8 +165,8 @@ end = struct
 
 	(* ------------------------------ *)
 
-	datatype action =
-	    RegLib of { anchor: string, relname: string, dir: string,
+	datatype action
+	  = RegLib of { anchor: string, relname: string, dir: string,
 			altanchor: string option }
 		      * bool (* true = only on Unix *)
 	  | Anchor of { anchor: string, path: string }
@@ -233,26 +233,28 @@ end = struct
 	(* ------------------------------ *)
 
 	(* parse the targets file *)
-	fun loop (ml, allsrc) =
+	fun loop (ml, srcReqs, allsrc) =
 	    case getInputTokens s of
-		NONE => (TextIO.closeIn s; (ml, allsrc))
+		NONE => (TextIO.closeIn s; (ml, srcReqs, allsrc))
 	      | SOME [x as ("dont_move_libraries" | "move_libraries")] =>
   		  (warn ["\"", x, "\" no longer supported",
 			 " (installer always moves libraries)\n"];
-		   loop (ml, allsrc))
-	      | SOME ["request", "src-smlnj"] => loop (ml, true)
-	      | SOME ["request", module] => loop (module :: ml, allsrc)
-	      | SOME [] => loop (ml, allsrc)
+		   loop (ml, srcReqs, allsrc))
+	      | SOME ["request", "src-smlnj"] => loop (ml, srcReqs, true)
+	      | SOME ["request", module] => if SS.member(allmoduleset, module)
+		  then loop (ml, module :: srcReqs, allsrc)
+		  else loop (module :: ml, srcReqs, allsrc)
+	      | SOME [] => loop (ml, srcReqs, allsrc)
 	      | SOME l => fail ["ill-formed targets line: ", tokenLine l, "\n"]
 
-	val (modules, allsrc) = loop ([], false)
+	val (modules, srcReqs, allsrc) = loop ([], [], false)
 
 	(* now resolve dependencies; get full list of modules
 	 * in correct build order: *)
 	val modules = resolve (modules, depfile)
 	val moduleset = SS.addList (SS.empty, modules)
 	val srcmoduleset = if allsrc then SS.union (moduleset, allmoduleset)
-			   else moduleset
+			   else SS.addList (moduleset, srcReqs)
 
 	(* fetch and unpack source trees, using auxiliary helper command
 	 * which takes the root directory as its first and the module
