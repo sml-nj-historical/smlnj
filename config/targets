@@ -172,7 +172,7 @@ request ml-nlffigen
 
 # Download the documentation directory.
 #
-#request doc
+request doc
 
 # Note: autoloading is always enabled.
 #   In order to customize what is being pre-registered for autoloading
