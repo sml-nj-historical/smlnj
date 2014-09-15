@@ -1,6 +1,8 @@
-(* ______________________________________________________________________
-   html4-lex-test-toks.sml
-   ______________________________________________________________________ *)
+(* html4-lex-test-toks.sml
+ *
+ * COPYRIGHT (c) 2014 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure HTML4Tokens = struct
 

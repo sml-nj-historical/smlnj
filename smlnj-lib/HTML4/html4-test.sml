@@ -1,6 +1,8 @@
-(* ______________________________________________________________________
-   html4-test.sml
-   ______________________________________________________________________ *)
+(* html4-test.sml
+ *
+ * COPYRIGHT (c) 2014 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure Test = struct
 

@@ -1,6 +1,8 @@
-(* ______________________________________________________________________
-   html4-printer.sml
-   ______________________________________________________________________ *)
+(* html4-printer.sml
+ *
+ * COPYRIGHT (c) 2014 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure HTML4Printer : sig
     val toString : HTML4.html -> string

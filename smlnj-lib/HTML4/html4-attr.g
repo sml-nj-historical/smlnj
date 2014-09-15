@@ -1,8 +1,10 @@
-(* ______________________________________________________________________
-   html4-attr.g
-
-   Grammar for parsing HTML 4 attributes.
-   ______________________________________________________________________ *)
+(* html4-attr.g
+ *
+ * COPYRIGHT (c) 2014 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Grammar for parsing HTML 4 attributes.
+ *)
 
 %name HTML4Attr;
 

@@ -1,8 +1,10 @@
-(* ______________________________________________________________________
-   html4.sml
-
-   Defines the main HTML4 structure.
-   ______________________________________________________________________ *)
+(* html4.sml
+ *
+ * COPYRIGHT (c) 2014 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Defines the main HTML4 structure.
+ *)
 
 structure HTML4 : HTML4 = struct
 

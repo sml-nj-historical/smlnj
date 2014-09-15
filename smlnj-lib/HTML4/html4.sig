@@ -1,8 +1,10 @@
-(* ______________________________________________________________________
-   html4.sig
-
-   Main signature for the HTML4 library.
-   ______________________________________________________________________ *)
+(* html4.sig
+ *
+ * COPYRIGHT (c) 2014 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Main signature for the HTML4 library.
+ *)
 
 signature HTML4 = sig
 

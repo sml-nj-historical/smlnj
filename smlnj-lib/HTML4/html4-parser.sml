@@ -1,11 +1,12 @@
-(* ______________________________________________________________________
-   html4-parser.sml
-
-   Defines the HTML4Parser structure, which defunctorizes the
-   automatically generated parser, defines an additional set of
-   utilities for working with the parser.
-
-   ______________________________________________________________________ *)
+(* html4-parser.sml
+ *
+ * COPYRIGHT (c) 2014 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Defines the HTML4Parser structure, which defunctorizes the
+ * automatically generated parser, defines an additional set of
+ * utilities for working with the parser.
+ *)
 
 structure HTML4Parser = struct
 

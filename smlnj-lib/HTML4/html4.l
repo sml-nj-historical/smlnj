@@ -1,6 +1,8 @@
-(* ______________________________________________________________________
-   html4.l
-   ______________________________________________________________________ *)
+(* html4.l
+ *
+ * COPYRIGHT (c) 2014 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 %name HTML4Lexer;
 
