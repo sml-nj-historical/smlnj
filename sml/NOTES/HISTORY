@@ -21,6 +21,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/10/11
+Description:
+
+Added -D_FILE_OFFSET_BITS=64 flag to x86-linux makefile.  This flag
+is necessary to avoid spurious EOVERFLOW errors on some versions of
+Linux.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2014/09/13
 Description:
 
