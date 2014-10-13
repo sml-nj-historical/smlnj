@@ -26,7 +26,8 @@ Description:
 
 Added -D_FILE_OFFSET_BITS=64 flag to x86-linux makefile.  This flag
 is necessary to avoid spurious EOVERFLOW errors on some versions of
-Linux.
+Linux.  The problem appears to be limited to large file systems that
+have more than 2^32 inodes.
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
