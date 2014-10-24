@@ -21,6 +21,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/10/23
+Description:
+
+Improved error messages in ml-ulex for unclosed strings.  Also made
+documentation improvements.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2014/10/11
 Description:
 
