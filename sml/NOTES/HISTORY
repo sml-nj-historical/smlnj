@@ -42,7 +42,7 @@ Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2014/09/13
 Description:
 
-Added %keyword directive to ml-antlr; this addition improves the
+Added %value directive to ml-antlr; this addition improves the
 error repair choices by allowing non-nullary tokens to be inserted
 when making repairs.
 
