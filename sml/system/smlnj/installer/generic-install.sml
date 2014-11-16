@@ -241,9 +241,9 @@ end = struct
 			 " (installer always moves libraries)\n"];
 		   loop (ml, srcReqs, allsrc))
 	      | SOME ["request", "src-smlnj"] => loop (ml, srcReqs, true)
-	      | SOME ["request", module] => if SS.member(allmoduleset, module)
-		  then loop (ml, module :: srcReqs, allsrc)
-		  else loop (module :: ml, srcReqs, allsrc)
+	      | SOME ["request", module] => if SM.inDomain(actions, module)
+		  then loop (module :: ml, srcReqs, allsrc)
+		  else loop (ml, module :: srcReqs, allsrc) (* assume a src module *)
 	      | SOME [] => loop (ml, srcReqs, allsrc)
 	      | SOME l => fail ["ill-formed targets line: ", tokenLine l, "\n"]
 
