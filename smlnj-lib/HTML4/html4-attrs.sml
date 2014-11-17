@@ -144,8 +144,10 @@ structure HTML4Attrs =
     fun alt (v : string) = (a_alt, SOME v)
     fun archive (v : string) = (a_archive, SOME v)
     fun axis (v : string) = (a_axis, SOME v)
+(* DEPRECATED
     fun background (v : string) = (a_background, SOME v) (* deprecated *)
     fun bgcolor (v : string) = (a_bgcolor, SOME v) (* deprecated *)
+*)
     fun border (v : string) = (a_border, SOME v)
     fun cellpadding (v : string) = (a_cellpadding, SOME v)
     fun cellspacing (v : string) = (a_cellspacing, SOME v)
@@ -163,7 +165,9 @@ structure HTML4Attrs =
     fun color (v : string) = (a_color, SOME v)
     fun cols (v : string) = (a_cols, SOME v)
     fun colspan (v : string) = (a_colspan, SOME v)
+(* DEPRECATED
     val compact = (a_compact, NONE) (* deprecated *)
+*)
     fun content (v : string) = (a_content, SOME v)
     fun coords (v : string) = (a_coords, SOME v)
     fun data (v : string) = (a_data, SOME v)
@@ -173,7 +177,9 @@ structure HTML4Attrs =
     fun dir (v : string) = (a_dir, SOME v)
     val disabled = (a_disabled, NONE)
     fun enctype (v : string) = (a_enctype, SOME v)
+(* DEPRECATED
     fun face (v : string) = (a_face, SOME v) (* deprecated *)
+*)
     fun for (v : string) = (a_for, SOME v)
     fun frame (v : string) = (a_frame, SOME v)
     fun frameborder (v : string) = (a_frameborder, SOME v)
@@ -187,8 +193,10 @@ structure HTML4Attrs =
     fun ismap (v : string) = (a_ismap, SOME v)
     fun label (v : string) = (a_label, SOME v)
     fun lang (v : string) = (a_lang, SOME v)
+(* DEPRECATED
     fun language (v : string) = (a_language, SOME v) (* deprecated *)
     fun link (v : string) = (a_link, SOME v) (* deprecated *)
+*)
     fun longdesc (v : string) = (a_longdesc, SOME v)
     fun marginheight (v : string) = (a_marginheight, SOME v)
     fun marginwidth (v : string) = (a_marginwidth, SOME v)
@@ -199,9 +207,11 @@ structure HTML4Attrs =
     fun name (v : string) = (a_name, SOME v)
     val nohref = (a_nohref, NONE)
     val noresize = (a_noresize, NONE)
+(* DEPRECATED
     val noshade = (a_noshade, NONE) (* deprecated *)
     val nowrap = (a_nowrap, NONE) (* deprecated *)
     fun object (v : string) = (a_object, SOME v) (* deprecated *)
+*)
     fun onblur (v : string) = (a_onblur, SOME v)
     fun onchange (v : string) = (a_onchange, SOME v)
     fun onclick (v : string) = (a_onclick, SOME v)
@@ -221,7 +231,9 @@ structure HTML4Attrs =
     fun onsubmit (v : string) = (a_onsubmit, SOME v)
     fun onunload (v : string) = (a_onunload, SOME v)
     fun profile (v : string) = (a_profile, SOME v)
+(* DEPRECATED
     fun prompt (v : string) = (a_prompt, SOME v) (* deprecated *)
+*)
     val readonly = (a_readonly, NONE)
     fun rel (v : string) = (a_rel, SOME v)
     fun rev (v : string) = (a_rev, SOME v)
@@ -237,7 +249,9 @@ structure HTML4Attrs =
     fun span (v : string) = (a_span, SOME v)
     fun src (v : string) = (a_src, SOME v)
     fun standby (v : string) = (a_standby, SOME v)
+(* DEPRECATED
     fun start (v : string) = (a_start, SOME v) (* deprecated *)
+*)
     fun style (v : string) = (a_style, SOME v)
     fun summary (v : string) = (a_summary, SOME v)
     fun tabindex (v : string) = (a_tabindex, SOME v)
@@ -250,7 +264,9 @@ structure HTML4Attrs =
     fun value (v : string) = (a_value, SOME v)
     fun valuetype (v : string) = (a_valuetype, SOME v)
     fun version (v : string) = (a_version, SOME v)
+(* DEPRECATED
     fun vlink (v : string) = (a_vlink, SOME v) (* deprecated *)
+*)
     fun vspace (v : string) = (a_vspace, SOME v)
     fun width (v : string) = (a_width, SOME v)
     end (* local *)
