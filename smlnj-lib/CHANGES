@@ -1,6 +1,10 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
+[2014-11-17]
+	Added HTML4Attrs module to HTML4 library.  This module provides
+	utility functions for building attribute-value pairs.
+
 --------------------------------------------------------------------------------
 SML/NJ 110.77
 -------------------

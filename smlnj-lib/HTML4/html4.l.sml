@@ -2,6 +2,8 @@ structure HTML4Lexer  = struct
 
     datatype yystart_state = 
 COM1 | COM2 | INTAG | INITIAL
+    local
+
     structure UserDeclarations = 
       struct
 
@@ -29,10 +31,8 @@ fun entityText crntYYText =
     in String.extract(crntYYText, start, stop) end
 
 
-
       end
 
-    local
     datatype yymatch 
       = yyNO_MATCH
       | yyMATCH of ULexBuffer.stream * action * yymatch
@@ -76,7 +76,7 @@ Vector.fromList []
         (* start position of token -- can be updated via skip() *)
 	  val yystartPos = ref (yygetPos())
 	(* get one char of input *)
-	  fun yygetc strm = (case UTF8.getu ULexBuffer.getc strm
+	  fun yygetc strm = (case ULexBuffer.getu strm
                 of (SOME (0w10, s')) => 
 		     (AntlrStreamPos.markNewLine yysm (ULexBuffer.getpos strm);
 		      SOME (0w10, s'))
@@ -110,7 +110,7 @@ Vector.fromList []
 		(fn (~1, _, oldMatches) => yystuck oldMatches
 		  | (curState, strm, oldMatches) => let
 		      val (transitions, finals') = Vector.sub (yytable, curState)
-		      val finals = map (fn i => Vector.sub (actTable, i)) finals'
+		      val finals = List.map (fn i => Vector.sub (actTable, i)) finals'
 		      fun tryfinal() = 
 		            yystuck (yyactsToMatches (strm, finals, oldMatches))
 		      fun find (c, []) = NONE

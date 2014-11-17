@@ -545,9 +545,6 @@ HTML4Tokens = struct
   | (OPENTAG(_)) => false
 (* end case *))
 
-
-  fun toksToString toks = String.concatWith " " (map toString toks)
-
   fun isEOF EOF = true
     | isEOF _ = false
 
@@ -558,8 +555,8 @@ functor HTML4ParseFn(Lex : ANTLR_LEXER) = struct
   local
     structure Tok = 
 HTML4Tokens
-    structure UserCode = struct
-
+    structure UserCode =
+      struct
 
 
 open HTML4Utils
@@ -571,336 +568,334 @@ fun optListToList NONE = []
   | optListToList (SOME thing) = thing
 
 
-
 fun document_PROD_1_SUBRULE_1_PROD_1_ACT (cdata_opt, DOCTYPE, cdata_opt_SPAN : (Lex.pos * Lex.pos), DOCTYPE_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.DOCTYPE DOCTYPE)) :: cdata_opt)
+  ((Lf (Tok.DOCTYPE DOCTYPE)) :: cdata_opt)
 fun document_PROD_1_SUBRULE_2_PROD_1_ACT (SR1, cdata_opt, STARTHTML, SR1_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), STARTHTML_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.STARTHTML STARTHTML)) :: cdata_opt)
+  ((Lf (Tok.STARTHTML STARTHTML)) :: cdata_opt)
 fun document_PROD_1_SUBRULE_4_PROD_1_ACT (SR1, SR2, SR3, head, ENDHTML, cdata_opt, SR1_SPAN : (Lex.pos * Lex.pos), SR2_SPAN : (Lex.pos * Lex.pos), SR3_SPAN : (Lex.pos * Lex.pos), head_SPAN : (Lex.pos * Lex.pos), ENDHTML_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.ENDHTML)) :: cdata_opt)
+  ((Lf (Tok.ENDHTML)) :: cdata_opt)
 fun document_PROD_1_ACT (SR1, SR2, SR3, SR4, head, cdata_opt, SR1_SPAN : (Lex.pos * Lex.pos), SR2_SPAN : (Lex.pos * Lex.pos), SR3_SPAN : (Lex.pos * Lex.pos), SR4_SPAN : (Lex.pos * Lex.pos), head_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "document", 
+  (Nd (Atom.atom "document", 
                    cdata_opt @ (optListToList SR1) @ (optListToList SR2) @
                    (head :: SR3 :: (optListToList SR4))))
 fun head_PROD_1_SUBRULE_1_PROD_1_ACT (cdata_opt, STARTHEAD, cdata_opt_SPAN : (Lex.pos * Lex.pos), STARTHEAD_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.STARTHEAD STARTHEAD)) :: cdata_opt)
+  ((Lf (Tok.STARTHEAD STARTHEAD)) :: cdata_opt)
 fun head_PROD_1_SUBRULE_2_PROD_1_ACT (SR1, cdata_opt, head_content, SR1_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), head_content_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( head_content :: cdata_opt)
+  (head_content :: cdata_opt)
 fun head_PROD_1_SUBRULE_3_PROD_1_ACT (SR1, SR2, ENDHEAD, cdata_opt, SR1_SPAN : (Lex.pos * Lex.pos), SR2_SPAN : (Lex.pos * Lex.pos), ENDHEAD_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.ENDHEAD)) :: cdata_opt)
+  ((Lf (Tok.ENDHEAD)) :: cdata_opt)
 fun head_PROD_1_ACT (SR1, SR2, SR3, SR1_SPAN : (Lex.pos * Lex.pos), SR2_SPAN : (Lex.pos * Lex.pos), SR3_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "head",
+  (Nd (Atom.atom "head",
                (optListToList SR1) @ (foldr op@ [] SR2) @ (optListToList SR3)))
 fun title_PROD_1_ACT (ENDTITLE, STARTTITLE, cdata_opt, ENDTITLE_SPAN : (Lex.pos * Lex.pos), STARTTITLE_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "title",
+  (Nd (Atom.atom "title",
                 (Lf (Tok.STARTTITLE STARTTITLE)) ::
                 (cdata_opt @ [Lf (Tok.ENDTITLE)])))
 fun base_PROD_1_ACT (STARTBASE, STARTBASE_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "base", [Lf (Tok.STARTBASE STARTBASE)]))
+  (Nd (Atom.atom "base", [Lf (Tok.STARTBASE STARTBASE)]))
 fun script_PROD_1_ACT (STARTSCRIPT, cdata_opt, ENDSCRIPT, STARTSCRIPT_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), ENDSCRIPT_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "script",
+  (Nd (Atom.atom "script",
                  (Lf (Tok.STARTSCRIPT STARTSCRIPT)) ::
                  (cdata_opt @ [Lf (Tok.ENDSCRIPT)])))
 fun style_PROD_1_ACT (ENDSTYLE, STARTSTYLE, cdata_opt, ENDSTYLE_SPAN : (Lex.pos * Lex.pos), STARTSTYLE_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "style",
+  (Nd (Atom.atom "style",
                  (Lf (Tok.STARTSTYLE STARTSTYLE)) ::
                  (cdata_opt @ [Lf (Tok.ENDSTYLE)])))
 fun meta_PROD_1_ACT (STARTMETA, STARTMETA_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "meta", [Lf (Tok.STARTMETA STARTMETA)]))
+  (Nd (Atom.atom "meta", [Lf (Tok.STARTMETA STARTMETA)]))
 fun link_PROD_1_ACT (STARTLINK, STARTLINK_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "link", [Lf (Tok.STARTLINK STARTLINK)]))
+  (Nd (Atom.atom "link", [Lf (Tok.STARTLINK STARTLINK)]))
 fun object_PROD_1_ACT (SR, STARTOBJECT, ENDOBJECT, SR_SPAN : (Lex.pos * Lex.pos), STARTOBJECT_SPAN : (Lex.pos * Lex.pos), ENDOBJECT_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "object",
+  (Nd (Atom.atom "object",
                  (Lf (Tok.STARTOBJECT STARTOBJECT)) ::
                  (SR @ [Lf (Tok.ENDOBJECT)])))
 fun param_PROD_1_ACT (STARTPARAM, STARTPARAM_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "param", [(Lf (Tok.STARTPARAM STARTPARAM))]))
+  (Nd (Atom.atom "param", [(Lf (Tok.STARTPARAM STARTPARAM))]))
 fun body_PROD_1_ACT (body_rest, STARTBODY, body_rest_SPAN : (Lex.pos * Lex.pos), STARTBODY_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "body",
+  (Nd (Atom.atom "body",
                (Lf (Tok.STARTBODY STARTBODY)) :: body_rest))
 fun body_PROD_2_ACT (SR, body_rest, SR_SPAN : (Lex.pos * Lex.pos), body_rest_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "body", SR :: body_rest))
+  (Nd (Atom.atom "body", SR :: body_rest))
 fun body_rest_PROD_1_SUBRULE_2_PROD_1_ACT (SR1, ENDBODY, cdata_opt, SR1_SPAN : (Lex.pos * Lex.pos), ENDBODY_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.ENDBODY)) :: cdata_opt)
+  ((Lf (Tok.ENDBODY)) :: cdata_opt)
 fun body_rest_PROD_1_ACT (SR1, SR2, SR1_SPAN : (Lex.pos * Lex.pos), SR2_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( SR1 @ (optListToList SR2))
+  (SR1 @ (optListToList SR2))
 fun a_PROD_1_ACT (ENDA, STARTA, inline, ENDA_SPAN : (Lex.pos * Lex.pos), STARTA_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "a",
+  (Nd (Atom.atom "a",
                  (Lf (Tok.STARTA STARTA)) :: (inline @ [Lf (Tok.ENDA)])))
 fun abbr_PROD_1_ACT (ENDABBR, inline, STARTABBR, ENDABBR_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), STARTABBR_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "abbr",
+  (Nd (Atom.atom "abbr",
                  (Lf (Tok.STARTABBR STARTABBR)) ::
                  (inline @ [Lf (Tok.ENDABBR)])))
 fun acronym_PROD_1_ACT (STARTACRONYM, ENDACRONYM, inline, STARTACRONYM_SPAN : (Lex.pos * Lex.pos), ENDACRONYM_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "acronym",
+  (Nd (Atom.atom "acronym",
                  (Lf (Tok.STARTACRONYM STARTACRONYM)) ::
                  (inline @ [Lf (Tok.ENDACRONYM)])))
 fun address_PROD_1_ACT (STARTADDRESS, ENDADDRESS, inline, STARTADDRESS_SPAN : (Lex.pos * Lex.pos), ENDADDRESS_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "address",
+  (Nd (Atom.atom "address",
                  (Lf (Tok.STARTADDRESS STARTADDRESS)) ::
                  (inline @ [Lf (Tok.ENDADDRESS)])))
 fun applet_PROD_1_ACT (SR, ENDAPPLET, STARTAPPLET, SR_SPAN : (Lex.pos * Lex.pos), ENDAPPLET_SPAN : (Lex.pos * Lex.pos), STARTAPPLET_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "applet",
+  (Nd (Atom.atom "applet",
                  (Lf (Tok.STARTAPPLET STARTAPPLET)) ::
                  (SR @ [Lf (Tok.ENDAPPLET)])))
 fun area_PROD_1_ACT (STARTAREA, STARTAREA_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "area", [Lf (Tok.STARTAREA STARTAREA)]))
+  (Nd (Atom.atom "area", [Lf (Tok.STARTAREA STARTAREA)]))
 fun b_PROD_1_ACT (ENDB, STARTB, inline, ENDB_SPAN : (Lex.pos * Lex.pos), STARTB_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "b",
+  (Nd (Atom.atom "b",
                  (Lf (Tok.STARTB STARTB)) :: (inline @ [Lf (Tok.ENDB)])))
 fun basefont_PROD_1_ACT (STARTBASEFONT, STARTBASEFONT_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "basefont", [Lf (Tok.STARTBASEFONT STARTBASEFONT)]))
+  (Nd (Atom.atom "basefont", [Lf (Tok.STARTBASEFONT STARTBASEFONT)]))
 fun bdo_PROD_1_ACT (STARTBDO, inline, ENDBDO, STARTBDO_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), ENDBDO_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "bdo",
+  (Nd (Atom.atom "bdo",
                  (Lf (Tok.STARTBDO STARTBDO)) ::
                  (inline @ [Lf (Tok.ENDBDO)])))
 fun big_PROD_1_ACT (STARTBIG, inline, ENDBIG, STARTBIG_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), ENDBIG_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "big",
+  (Nd (Atom.atom "big",
                  (Lf (Tok.STARTBIG STARTBIG)) ::
                  (inline @ [Lf (Tok.ENDBIG)])))
 fun blockquote_PROD_1_ACT (SR, ENDBLOCKQUOTE, STARTBLOCKQUOTE, SR_SPAN : (Lex.pos * Lex.pos), ENDBLOCKQUOTE_SPAN : (Lex.pos * Lex.pos), STARTBLOCKQUOTE_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "blockquote",
+  (Nd (Atom.atom "blockquote",
                  (Lf (Tok.STARTBLOCKQUOTE STARTBLOCKQUOTE)) ::
                  (SR @ [Lf (Tok.ENDBLOCKQUOTE)])))
 fun br_PROD_1_ACT (STARTBR, STARTBR_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "br", [Lf (Tok.STARTBR STARTBR)]))
+  (Nd (Atom.atom "br", [Lf (Tok.STARTBR STARTBR)]))
 fun button_PROD_1_ACT (STARTBUTTON, flow, ENDBUTTON, STARTBUTTON_SPAN : (Lex.pos * Lex.pos), flow_SPAN : (Lex.pos * Lex.pos), ENDBUTTON_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "button",
+  (Nd (Atom.atom "button",
                  (Lf (Tok.STARTBUTTON STARTBUTTON)) ::
                  (flow @ [Lf (Tok.ENDBUTTON)])))
 fun caption_PROD_1_ACT (STARTCAPTION, inline, ENDCAPTION, STARTCAPTION_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), ENDCAPTION_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "caption",
+  (Nd (Atom.atom "caption",
                   (Lf (Tok.STARTCAPTION STARTCAPTION)) ::
                   (inline @ [Lf (Tok.ENDCAPTION)])))
 fun center_PROD_1_ACT (flow, STARTCENTER, ENDCENTER, flow_SPAN : (Lex.pos * Lex.pos), STARTCENTER_SPAN : (Lex.pos * Lex.pos), ENDCENTER_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "center",
+  (Nd (Atom.atom "center",
                  (Lf (Tok.STARTCENTER STARTCENTER)) ::
                  (flow @ [Lf (Tok.ENDCENTER)])))
 fun cite_PROD_1_ACT (ENDCITE, inline, STARTCITE, ENDCITE_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), STARTCITE_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "cite",
+  (Nd (Atom.atom "cite",
                (Lf (Tok.STARTCITE STARTCITE)) ::
                (inline @ [Lf (Tok.ENDCITE)])))
 fun code_PROD_1_ACT (ENDCODE, inline, STARTCODE, ENDCODE_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), STARTCODE_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "code",
+  (Nd (Atom.atom "code",
                (Lf (Tok.STARTCODE STARTCODE)) ::
                (inline @ [Lf (Tok.ENDCODE)])))
 fun col_PROD_1_ACT (STARTCOL, STARTCOL_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "col", [Lf (Tok.STARTCOL STARTCOL)]))
+  (Nd (Atom.atom "col", [Lf (Tok.STARTCOL STARTCOL)]))
 fun colgroup_PROD_1_SUBRULE_1_PROD_1_ACT (col, STARTCOLGROUP, cdata_opt, col_SPAN : (Lex.pos * Lex.pos), STARTCOLGROUP_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( col :: cdata_opt)
+  (col :: cdata_opt)
 fun colgroup_PROD_1_SUBRULE_2_PROD_1_ACT (SR1, STARTCOLGROUP, ENDCOLGROUP, cdata_opt, SR1_SPAN : (Lex.pos * Lex.pos), STARTCOLGROUP_SPAN : (Lex.pos * Lex.pos), ENDCOLGROUP_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Lf (Tok.ENDCOLGROUP))
+  (Lf (Tok.ENDCOLGROUP))
 fun colgroup_PROD_1_ACT (SR1, SR2, STARTCOLGROUP, cdata_opt, SR1_SPAN : (Lex.pos * Lex.pos), SR2_SPAN : (Lex.pos * Lex.pos), STARTCOLGROUP_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "colgroup",
+  (Nd (Atom.atom "colgroup",
                    (Lf (Tok.STARTCOLGROUP STARTCOLGROUP)) ::
                    (cdata_opt @ (foldr op@ [] SR1) @ (optToList SR2))))
 fun dd_PROD_1_SUBRULE_2_PROD_1_ACT (STARTDD, flow, ENDDD, STARTDD_SPAN : (Lex.pos * Lex.pos), flow_SPAN : (Lex.pos * Lex.pos), ENDDD_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Lf (Tok.ENDDD))
+  (Lf (Tok.ENDDD))
 fun dd_PROD_1_ACT (SR, STARTDD, flow, SR_SPAN : (Lex.pos * Lex.pos), STARTDD_SPAN : (Lex.pos * Lex.pos), flow_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "dd",
+  (Nd (Atom.atom "dd",
              (Lf (Tok.STARTDD STARTDD)) :: (flow @ (optToList SR))))
 fun del_PROD_1_ACT (flow, STARTDEL, ENDDEL, flow_SPAN : (Lex.pos * Lex.pos), STARTDEL_SPAN : (Lex.pos * Lex.pos), ENDDEL_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "del",
+  (Nd (Atom.atom "del",
               (Lf (Tok.STARTDEL STARTDEL)) ::
               (flow @ [Lf (Tok.ENDDEL)])))
 fun dfn_PROD_1_ACT (STARTDFN, inline, ENDDFN, STARTDFN_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), ENDDFN_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "dfn",
+  (Nd (Atom.atom "dfn",
               (Lf (Tok.STARTDFN STARTDFN)) ::
               (inline @ [Lf (Tok.ENDDFN)])))
 fun dir_PROD_1_ACT (li, STARTDIR, ENDDIR, cdata_opt, li_SPAN : (Lex.pos * Lex.pos), STARTDIR_SPAN : (Lex.pos * Lex.pos), ENDDIR_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "dir",
+  (Nd (Atom.atom "dir",
               (Lf (Tok.STARTDIR STARTDIR)) ::
               (cdata_opt @ li @ [Lf (Tok.ENDDIR)])))
 fun div_PROD_1_ACT (flow, STARTDIV, ENDDIV, flow_SPAN : (Lex.pos * Lex.pos), STARTDIV_SPAN : (Lex.pos * Lex.pos), ENDDIV_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "div",
+  (Nd (Atom.atom "div",
               (Lf (Tok.STARTDIV STARTDIV)) ::
               (flow @ [Lf (Tok.ENDDIV)])))
 fun dl_PROD_1_ACT (SR, STARTDL, ENDDL, cdata_opt, SR_SPAN : (Lex.pos * Lex.pos), STARTDL_SPAN : (Lex.pos * Lex.pos), ENDDL_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "dl",
+  (Nd (Atom.atom "dl",
              (Lf (Tok.STARTDL STARTDL)) ::
              (cdata_opt @ SR @ [Lf (Tok.ENDDL)])))
 fun dt_PROD_1_SUBRULE_2_PROD_1_ACT (STARTDT, ENDDT, inline, STARTDT_SPAN : (Lex.pos * Lex.pos), ENDDT_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Lf (Tok.ENDDT))
+  (Lf (Tok.ENDDT))
 fun dt_PROD_1_ACT (SR, STARTDT, inline, SR_SPAN : (Lex.pos * Lex.pos), STARTDT_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "dt",
+  (Nd (Atom.atom "dt",
              (Lf (Tok.STARTDT STARTDT)) :: (inline @ (optToList SR))))
 fun em_PROD_1_ACT (STARTEM, ENDEM, inline, STARTEM_SPAN : (Lex.pos * Lex.pos), ENDEM_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "em",
+  (Nd (Atom.atom "em",
              (Lf (Tok.STARTEM STARTEM)) :: (inline @ [Lf (Tok.ENDEM)])))
 fun fieldset_PROD_1_ACT (flow, STARTFIELDSET, ENDFIELDSET, legend, cdata_opt, flow_SPAN : (Lex.pos * Lex.pos), STARTFIELDSET_SPAN : (Lex.pos * Lex.pos), ENDFIELDSET_SPAN : (Lex.pos * Lex.pos), legend_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "fieldset",
+  (Nd (Atom.atom "fieldset",
                    (Lf (Tok.STARTFIELDSET STARTFIELDSET)) ::
                    (cdata_opt @ [legend] @ flow @
                     [Lf (Tok.ENDFIELDSET)])))
 fun font_PROD_1_ACT (ENDFONT, inline, STARTFONT, ENDFONT_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), STARTFONT_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "font",
+  (Nd (Atom.atom "font",
                (Lf (Tok.STARTFONT STARTFONT)) ::
                (inline @ [Lf (Tok.ENDFONT)])))
 fun form_PROD_1_ACT (SR, ENDFORM, STARTFORM, SR_SPAN : (Lex.pos * Lex.pos), ENDFORM_SPAN : (Lex.pos * Lex.pos), STARTFORM_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "form",
+  (Nd (Atom.atom "form",
                (Lf (Tok.STARTFORM STARTFORM)) ::
                (SR @ [Lf (Tok.ENDFORM)])))
 fun frame_PROD_1_ACT (STARTFRAME, STARTFRAME_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "frame", [Lf (Tok.STARTFRAME STARTFRAME)]))
+  (Nd (Atom.atom "frame", [Lf (Tok.STARTFRAME STARTFRAME)]))
 fun frameset_PROD_1_SUBRULE_2_PROD_1_ACT (SR1, noframes, STARTFRAMESET, cdata_opt, SR1_SPAN : (Lex.pos * Lex.pos), noframes_SPAN : (Lex.pos * Lex.pos), STARTFRAMESET_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( noframes::cdata_opt)
+  (noframes::cdata_opt)
 fun frameset_PROD_1_ACT (SR1, SR2, STARTFRAMESET, ENDFRAMESET, SR1_SPAN : (Lex.pos * Lex.pos), SR2_SPAN : (Lex.pos * Lex.pos), STARTFRAMESET_SPAN : (Lex.pos * Lex.pos), ENDFRAMESET_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "frameset",
+  (Nd (Atom.atom "frameset",
                    (Lf (Tok.STARTFRAMESET STARTFRAMESET)) ::
                    (SR1 @ (optListToList SR2) @ [Lf (Tok.ENDFRAMESET)])))
 fun h1_PROD_1_ACT (STARTH1, ENDH1, inline, STARTH1_SPAN : (Lex.pos * Lex.pos), ENDH1_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "h1",
+  (Nd (Atom.atom "h1",
              (Lf (Tok.STARTH1 STARTH1)) :: (inline @ [Lf (Tok.ENDH1)])))
 fun h2_PROD_1_ACT (STARTH2, ENDH2, inline, STARTH2_SPAN : (Lex.pos * Lex.pos), ENDH2_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "h2",
+  (Nd (Atom.atom "h2",
              (Lf (Tok.STARTH2 STARTH2)) :: (inline @ [Lf (Tok.ENDH2)])))
 fun h3_PROD_1_ACT (STARTH3, ENDH3, inline, STARTH3_SPAN : (Lex.pos * Lex.pos), ENDH3_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "h3",
+  (Nd (Atom.atom "h3",
              (Lf (Tok.STARTH3 STARTH3)) :: (inline @ [Lf (Tok.ENDH3)])))
 fun h4_PROD_1_ACT (STARTH4, ENDH4, inline, STARTH4_SPAN : (Lex.pos * Lex.pos), ENDH4_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "h4",
+  (Nd (Atom.atom "h4",
              (Lf (Tok.STARTH4 STARTH4)) :: (inline @ [Lf (Tok.ENDH4)])))
 fun h5_PROD_1_ACT (STARTH5, ENDH5, inline, STARTH5_SPAN : (Lex.pos * Lex.pos), ENDH5_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "h5",
+  (Nd (Atom.atom "h5",
              (Lf (Tok.STARTH5 STARTH5)) :: (inline @ [Lf (Tok.ENDH5)])))
 fun h6_PROD_1_ACT (STARTH6, ENDH6, inline, STARTH6_SPAN : (Lex.pos * Lex.pos), ENDH6_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "h6",
+  (Nd (Atom.atom "h6",
              (Lf (Tok.STARTH6 STARTH6)) :: (inline @ [Lf (Tok.ENDH6)])))
 fun hr_PROD_1_ACT (STARTHR, STARTHR_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "hr", [Lf (Tok.STARTHR STARTHR)]))
+  (Nd (Atom.atom "hr", [Lf (Tok.STARTHR STARTHR)]))
 fun i_PROD_1_ACT (ENDI, STARTI, inline, ENDI_SPAN : (Lex.pos * Lex.pos), STARTI_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "i",
+  (Nd (Atom.atom "i",
                  (Lf (Tok.STARTI STARTI)) ::
                  (inline @ [Lf (Tok.ENDI)])))
 fun iframe_PROD_1_ACT (flow, STARTIFRAME, ENDIFRAME, flow_SPAN : (Lex.pos * Lex.pos), STARTIFRAME_SPAN : (Lex.pos * Lex.pos), ENDIFRAME_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "iframe",
+  (Nd (Atom.atom "iframe",
                  (Lf (Tok.STARTIFRAME STARTIFRAME)) ::
                  (flow @ [Lf (Tok.ENDIFRAME)])))
 fun img_PROD_1_ACT (STARTIMG, STARTIMG_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "img", [Lf (Tok.STARTIMG STARTIMG)]))
+  (Nd (Atom.atom "img", [Lf (Tok.STARTIMG STARTIMG)]))
 fun input_PROD_1_ACT (STARTINPUT, STARTINPUT_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "input", [Lf (Tok.STARTINPUT STARTINPUT)]))
+  (Nd (Atom.atom "input", [Lf (Tok.STARTINPUT STARTINPUT)]))
 fun ins_PROD_1_ACT (flow, STARTINS, ENDINS, flow_SPAN : (Lex.pos * Lex.pos), STARTINS_SPAN : (Lex.pos * Lex.pos), ENDINS_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "ins",
+  (Nd (Atom.atom "ins",
                  (Lf (Tok.STARTINS STARTINS)) ::
                  (flow @ [Lf (Tok.ENDINS)])))
 fun isindex_PROD_1_ACT (STARTISINDEX, STARTISINDEX_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "isindex", [Lf (Tok.STARTISINDEX STARTISINDEX)]))
+  (Nd (Atom.atom "isindex", [Lf (Tok.STARTISINDEX STARTISINDEX)]))
 fun kbd_PROD_1_ACT (STARTKBD, inline, ENDKBD, STARTKBD_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), ENDKBD_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "kbd",
+  (Nd (Atom.atom "kbd",
                  (Lf (Tok.STARTKBD STARTKBD)) ::
                  (inline @ [Lf (Tok.ENDKBD)])))
 fun label_PROD_1_ACT (ENDLABEL, STARTLABEL, inline, ENDLABEL_SPAN : (Lex.pos * Lex.pos), STARTLABEL_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "label",
+  (Nd (Atom.atom "label",
                  (Lf (Tok.STARTLABEL STARTLABEL)) ::
                  (inline @ [Lf (Tok.ENDLABEL)])))
 fun legend_PROD_1_ACT (STARTLEGEND, inline, ENDLEGEND, STARTLEGEND_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), ENDLEGEND_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "legend",
+  (Nd (Atom.atom "legend",
                  (Lf (Tok.STARTLEGEND STARTLEGEND)) ::
                  (inline @ [Lf (Tok.ENDLEGEND)])))
 fun li_PROD_1_SUBRULE_2_PROD_1_ACT (STARTLI, flow, ENDLI, STARTLI_SPAN : (Lex.pos * Lex.pos), flow_SPAN : (Lex.pos * Lex.pos), ENDLI_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Lf (Tok.ENDLI))
+  (Lf (Tok.ENDLI))
 fun li_PROD_1_ACT (SR, STARTLI, flow, SR_SPAN : (Lex.pos * Lex.pos), STARTLI_SPAN : (Lex.pos * Lex.pos), flow_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "li",
+  (Nd (Atom.atom "li",
              (Lf (Tok.STARTLI STARTLI)) :: (flow @ (optToList SR))))
 fun map_PROD_1_ACT (SR, STARTMAP, ENDMAP, SR_SPAN : (Lex.pos * Lex.pos), STARTMAP_SPAN : (Lex.pos * Lex.pos), ENDMAP_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "map",
+  (Nd (Atom.atom "map",
               (Lf (Tok.STARTMAP STARTMAP)) :: (SR @ [Lf (Tok.ENDMAP)])))
 fun menu_PROD_1_ACT (li, ENDMENU, cdata_opt, STARTMENU, li_SPAN : (Lex.pos * Lex.pos), ENDMENU_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), STARTMENU_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "menu",
+  (Nd (Atom.atom "menu",
                (Lf (Tok.STARTMENU STARTMENU)) ::
                (cdata_opt @ li @ [Lf (Tok.ENDMENU)])))
 fun noframes_PROD_1_ACT (body, STARTNOFRAMES, ENDNOFRAMES, body_SPAN : (Lex.pos * Lex.pos), STARTNOFRAMES_SPAN : (Lex.pos * Lex.pos), ENDNOFRAMES_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "noframes",
+  (Nd (Atom.atom "noframes",
                    [Lf (Tok.STARTNOFRAMES STARTNOFRAMES), body,
                     Lf (Tok.ENDNOFRAMES)]))
 fun noscript_PROD_1_ACT (SR, STARTNOSCRIPT, ENDNOSCRIPT, SR_SPAN : (Lex.pos * Lex.pos), STARTNOSCRIPT_SPAN : (Lex.pos * Lex.pos), ENDNOSCRIPT_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "noscript",
+  (Nd (Atom.atom "noscript",
                    (Lf (Tok.STARTNOSCRIPT STARTNOSCRIPT)) ::
                    (SR @ [Lf (Tok.ENDNOSCRIPT)])))
 fun ol_PROD_1_ACT (li, STARTOL, ENDOL, cdata_opt, li_SPAN : (Lex.pos * Lex.pos), STARTOL_SPAN : (Lex.pos * Lex.pos), ENDOL_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "ol",
+  (Nd (Atom.atom "ol",
              (Lf (Tok.STARTOL STARTOL)) ::
              (cdata_opt @ li @ [Lf (Tok.ENDOL)])))
 fun optgroup_PROD_1_ACT (cdata_opt1, cdata_opt2, STARTOPTGROUP, ENDOPTGROUP, option, cdata_opt1_SPAN : (Lex.pos * Lex.pos), cdata_opt2_SPAN : (Lex.pos * Lex.pos), STARTOPTGROUP_SPAN : (Lex.pos * Lex.pos), ENDOPTGROUP_SPAN : (Lex.pos * Lex.pos), option_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "optgroup",
+  (Nd (Atom.atom "optgroup",
                    (Lf (Tok.STARTOPTGROUP STARTOPTGROUP)) ::
                    (cdata_opt1 @ option @ ((Lf (Tok.ENDOPTGROUP))
                                            :: cdata_opt2))))
 fun option_PROD_1_SUBRULE_1_PROD_1_ACT (STARTOPTION, ENDOPTION, cdata_opt, STARTOPTION_SPAN : (Lex.pos * Lex.pos), ENDOPTION_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.ENDOPTION)) ::
+  ((Lf (Tok.ENDOPTION)) ::
                                   cdata_opt)
 fun option_PROD_1_ACT (SR, STARTOPTION, cdata_opt, SR_SPAN : (Lex.pos * Lex.pos), STARTOPTION_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "option",
+  (Nd (Atom.atom "option",
                  (Lf (Tok.STARTOPTION STARTOPTION)) ::
                  (cdata_opt @ (optListToList SR))))
 fun p_PROD_1_ACT (ENDP, STARTP, inline, ENDP_SPAN : (Lex.pos * Lex.pos), STARTP_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "p",
+  (Nd (Atom.atom "p",
             (Lf (Tok.STARTP STARTP)) :: (inline @ [Lf (Tok.ENDP)])))
 fun pre_PROD_1_ACT (STARTPRE, inline, ENDPRE, STARTPRE_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), ENDPRE_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "pre",
+  (Nd (Atom.atom "pre",
               (Lf (Tok.STARTPRE STARTPRE)) ::
               (inline @ [Lf (Tok.ENDPRE)])))
 fun q_PROD_1_ACT (ENDQ, STARTQ, inline, ENDQ_SPAN : (Lex.pos * Lex.pos), STARTQ_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "q",
+  (Nd (Atom.atom "q",
             (Lf (Tok.STARTQ STARTQ)) :: (inline @ [Lf (Tok.ENDQ)])))
 fun s_PROD_1_ACT (ENDS, STARTS, inline, ENDS_SPAN : (Lex.pos * Lex.pos), STARTS_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "s",
+  (Nd (Atom.atom "s",
             (Lf (Tok.STARTS STARTS)) :: (inline @ [Lf (Tok.ENDS)])))
 fun samp_PROD_1_ACT (ENDSAMP, inline, STARTSAMP, ENDSAMP_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), STARTSAMP_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "samp",
+  (Nd (Atom.atom "samp",
                (Lf (Tok.STARTSAMP STARTSAMP)) ::
                (inline @ [Lf (Tok.ENDSAMP)])))
 fun select_PROD_1_ACT (SR, STARTSELECT, cdata_opt, ENDSELECT, SR_SPAN : (Lex.pos * Lex.pos), STARTSELECT_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), ENDSELECT_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "select",
+  (Nd (Atom.atom "select",
                  (Lf (Tok.STARTSELECT STARTSELECT)) ::
                  (cdata_opt @ SR @ [Lf (Tok.ENDSELECT)])))
 fun small_PROD_1_ACT (ENDSMALL, STARTSMALL, inline, ENDSMALL_SPAN : (Lex.pos * Lex.pos), STARTSMALL_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "small",
+  (Nd (Atom.atom "small",
                 (Lf (Tok.STARTSMALL STARTSMALL)) ::
                 (inline @ [Lf (Tok.ENDSMALL)])))
 fun span_PROD_1_ACT (ENDSPAN, inline, STARTSPAN, ENDSPAN_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), STARTSPAN_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "span",
+  (Nd (Atom.atom "span",
                (Lf (Tok.STARTSPAN STARTSPAN)) ::
                (inline @ [Lf (Tok.ENDSPAN)])))
 fun strike_PROD_1_ACT (STARTSTRIKE, inline, ENDSTRIKE, STARTSTRIKE_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), ENDSTRIKE_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "strike",
+  (Nd (Atom.atom "strike",
                  (Lf (Tok.STARTSTRIKE STARTSTRIKE)) ::
                  (inline @ [Lf (Tok.ENDSTRIKE)])))
 fun strong_PROD_1_ACT (STARTSTRONG, inline, ENDSTRONG, STARTSTRONG_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), ENDSTRONG_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "strong",
+  (Nd (Atom.atom "strong",
                  (Lf (Tok.STARTSTRONG STARTSTRONG)) ::
                  (inline @ [Lf (Tok.ENDSTRONG)])))
 fun sub_PROD_1_ACT (STARTSUB, inline, ENDSUB, STARTSUB_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), ENDSUB_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "sub",
+  (Nd (Atom.atom "sub",
               (Lf (Tok.STARTSUB STARTSUB)) ::
               (inline @ [Lf (Tok.ENDSUB)])))
 fun sup_PROD_1_ACT (STARTSUP, inline, ENDSUP, STARTSUP_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), ENDSUP_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "sup",
+  (Nd (Atom.atom "sup",
               (Lf (Tok.STARTSUP STARTSUP)) ::
               (inline @ [Lf (Tok.ENDSUP)])))
 fun table_PROD_1_SUBRULE_1_PROD_1_ACT (STARTTABLE, cdata_opt, caption, STARTTABLE_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), caption_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( caption :: cdata_opt)
+  (caption :: cdata_opt)
 fun table_PROD_1_ACT (SR, ENDTABLE, STARTTABLE, col_or_colgroups, table_content, cdata_opt, SR_SPAN : (Lex.pos * Lex.pos), ENDTABLE_SPAN : (Lex.pos * Lex.pos), STARTTABLE_SPAN : (Lex.pos * Lex.pos), col_or_colgroups_SPAN : (Lex.pos * Lex.pos), table_content_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "table",
+  (Nd (Atom.atom "table",
                 (Lf (Tok.STARTTABLE STARTTABLE)) ::
                 (cdata_opt @ (optListToList SR) @ col_or_colgroups @
                  table_content @ [Lf (Tok.ENDTABLE)])))
 fun table_content_PROD_1_ACT (tbodies, tfoot, thead, tbodies_SPAN : (Lex.pos * Lex.pos), tfoot_SPAN : (Lex.pos * Lex.pos), thead_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( thead :: ((optToList tfoot)) @ tbodies)
+  (thead :: ((optToList tfoot)) @ tbodies)
 fun table_content_PROD_2_ACT (tbodies, tfoot, tbodies_SPAN : (Lex.pos * Lex.pos), tfoot_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( tfoot :: tbodies)
+  (tfoot :: tbodies)
 fun col_or_colgroups_PROD_1_ACT (FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( [])
+  ([])
 fun col_or_colgroups_PROD_2_SUBRULE_1_PROD_1_ACT (col, cdata_opt, col_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( col :: cdata_opt)
+  (col :: cdata_opt)
 fun col_or_colgroups_PROD_2_ACT (SR, SR_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( foldr op@ [] SR)
+  (foldr op@ [] SR)
 fun tbodies_nostart_PROD_1_SUBRULE_1_PROD_1_ACT (STARTTBODY, cdata_opt, STARTTBODY_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  (
-                   (Lf (Tok.STARTTBODY STARTTBODY)) :: cdata_opt)
+  ((Lf (Tok.STARTTBODY STARTTBODY)) :: cdata_opt)
 fun tbodies_nostart_PROD_1_ACT (SR, tr, tbodies_rest, SR_SPAN : (Lex.pos * Lex.pos), tr_SPAN : (Lex.pos * Lex.pos), tbodies_rest_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( let val (tbody_rest, tbody_peers) =
+  (let val (tbody_rest, tbody_peers) =
                               case tbodies_rest of
                                   NONE => ([], [])
                                 | SOME tbodies_tup => tbodies_tup
@@ -908,16 +903,16 @@ fun tbodies_nostart_PROD_1_ACT (SR, tr, tbodies_rest, SR_SPAN : (Lex.pos * Lex.p
                               (optListToList SR) @ tr @ tbody_rest)) ::
                          tbody_peers end)
 fun tbodies_PROD_1_ACT (tr, STARTTBODY, tbodies_rest, cdata_opt, tr_SPAN : (Lex.pos * Lex.pos), STARTTBODY_SPAN : (Lex.pos * Lex.pos), tbodies_rest_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( let val (tbody_rest, tbody_peers) = tbodies_rest
+  (let val (tbody_rest, tbody_peers) = tbodies_rest
               in (Nd (Atom.atom "tbodies",
                       (Lf (Tok.STARTTBODY STARTTBODY)) ::
                       (cdata_opt @ tr @ tbody_rest))) ::
                  tbody_peers end)
 fun tbodies_rest_PROD_1_ACT (ENDTBODY, tbodies, cdata_opt, ENDTBODY_SPAN : (Lex.pos * Lex.pos), tbodies_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.ENDTBODY)) :: cdata_opt,
+  ((Lf (Tok.ENDTBODY)) :: cdata_opt,
                    optListToList tbodies)
 fun tbodies_rest_PROD_2_ACT (tr, STARTTBODY, tbodies_rest, cdata_opt, tr_SPAN : (Lex.pos * Lex.pos), STARTTBODY_SPAN : (Lex.pos * Lex.pos), tbodies_rest_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( let val (tbody_rest, tbody_peers) =
+  (let val (tbody_rest, tbody_peers) =
                            case tbodies_rest of NONE => ([], [])
                                               | SOME tbodies_tup => tbodies_tup
                    in ([], (Nd (Atom.atom "tbodies_rest",
@@ -925,79 +920,78 @@ fun tbodies_rest_PROD_2_ACT (tr, STARTTBODY, tbodies_rest, cdata_opt, tr_SPAN : 
                                 (cdata_opt @ tr @ tbody_rest))) :: tbody_peers)
                    end)
 fun td_PROD_1_SUBRULE_2_PROD_1_ACT (STARTTD, flow, ENDTD, cdata_opt, STARTTD_SPAN : (Lex.pos * Lex.pos), flow_SPAN : (Lex.pos * Lex.pos), ENDTD_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.ENDTD)) :: cdata_opt)
+  ((Lf (Tok.ENDTD)) :: cdata_opt)
 fun td_PROD_1_ACT (SR, STARTTD, flow, SR_SPAN : (Lex.pos * Lex.pos), STARTTD_SPAN : (Lex.pos * Lex.pos), flow_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "td",
+  (Nd (Atom.atom "td",
              (Lf (Tok.STARTTD STARTTD)) :: (flow @ (optListToList SR))))
 fun textarea_PROD_1_ACT (ENDTEXTAREA, cdata_opt, STARTTEXTAREA, ENDTEXTAREA_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), STARTTEXTAREA_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "textarea",
+  (Nd (Atom.atom "textarea",
                    (Lf (Tok.STARTTEXTAREA STARTTEXTAREA)) ::
                    (cdata_opt @ [Lf (Tok.ENDTEXTAREA)])))
 fun tfoot_PROD_1_SUBRULE_2_PROD_1_ACT (tr, ENDTFOOT, STARTTFOOT, cdata_opt, tr_SPAN : (Lex.pos * Lex.pos), ENDTFOOT_SPAN : (Lex.pos * Lex.pos), STARTTFOOT_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.ENDTFOOT)) :: cdata_opt)
+  ((Lf (Tok.ENDTFOOT)) :: cdata_opt)
 fun tfoot_PROD_1_ACT (SR, tr, STARTTFOOT, cdata_opt, SR_SPAN : (Lex.pos * Lex.pos), tr_SPAN : (Lex.pos * Lex.pos), STARTTFOOT_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "tfoot",
+  (Nd (Atom.atom "tfoot",
                 (Lf (Tok.STARTTFOOT STARTTFOOT)) :: (cdata_opt @ tr @
                                                      (optListToList SR))))
 fun th_PROD_1_SUBRULE_2_PROD_1_ACT (STARTTH, flow, ENDTH, cdata_opt, STARTTH_SPAN : (Lex.pos * Lex.pos), flow_SPAN : (Lex.pos * Lex.pos), ENDTH_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.ENDTH)) :: cdata_opt)
+  ((Lf (Tok.ENDTH)) :: cdata_opt)
 fun th_PROD_1_ACT (SR, STARTTH, flow, SR_SPAN : (Lex.pos * Lex.pos), STARTTH_SPAN : (Lex.pos * Lex.pos), flow_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "th",
+  (Nd (Atom.atom "th",
              (Lf (Tok.STARTTH STARTTH)) :: (flow @ (optListToList SR))))
 fun thead_PROD_1_SUBRULE_2_PROD_1_ACT (tr, ENDTHEAD, STARTTHEAD, cdata_opt, tr_SPAN : (Lex.pos * Lex.pos), ENDTHEAD_SPAN : (Lex.pos * Lex.pos), STARTTHEAD_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.ENDTHEAD)) :: cdata_opt)
+  ((Lf (Tok.ENDTHEAD)) :: cdata_opt)
 fun thead_PROD_1_ACT (SR, tr, STARTTHEAD, cdata_opt, SR_SPAN : (Lex.pos * Lex.pos), tr_SPAN : (Lex.pos * Lex.pos), STARTTHEAD_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "thead",
+  (Nd (Atom.atom "thead",
                 (Lf (Tok.STARTTHEAD STARTTHEAD)) :: (cdata_opt @ tr @
                                                      (optListToList SR))))
 fun tr_PROD_1_SUBRULE_2_PROD_1_ACT (SR1, STARTTR, ENDTR, cdata_opt, SR1_SPAN : (Lex.pos * Lex.pos), STARTTR_SPAN : (Lex.pos * Lex.pos), ENDTR_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf (Tok.ENDTR)) :: cdata_opt)
+  ((Lf (Tok.ENDTR)) :: cdata_opt)
 fun tr_PROD_1_ACT (SR1, SR2, STARTTR, cdata_opt, SR1_SPAN : (Lex.pos * Lex.pos), SR2_SPAN : (Lex.pos * Lex.pos), STARTTR_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "tr",
+  (Nd (Atom.atom "tr",
              (Lf (Tok.STARTTR STARTTR)) :: (cdata_opt @ SR1 @
                                             (optListToList SR2))))
 fun tt_PROD_1_ACT (STARTTT, ENDTT, inline, STARTTT_SPAN : (Lex.pos * Lex.pos), ENDTT_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "tt",
+  (Nd (Atom.atom "tt",
              (Lf (Tok.STARTTT STARTTT)) :: (inline @ [Lf (Tok.ENDTT)])))
 fun u_PROD_1_ACT (ENDU, STARTU, inline, ENDU_SPAN : (Lex.pos * Lex.pos), STARTU_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "u",
+  (Nd (Atom.atom "u",
             (Lf (Tok.STARTU STARTU)) :: (inline @ [Lf (Tok.ENDU)])))
 fun ul_PROD_1_ACT (li, STARTUL, ENDUL, cdata_opt, li_SPAN : (Lex.pos * Lex.pos), STARTUL_SPAN : (Lex.pos * Lex.pos), ENDUL_SPAN : (Lex.pos * Lex.pos), cdata_opt_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "ul",
+  (Nd (Atom.atom "ul",
              ((Lf (Tok.STARTUL STARTUL)) :: (cdata_opt @ li @
                                              [Lf (Tok.ENDUL)]))))
 fun var_PROD_1_ACT (STARTVAR, inline, ENDVAR, STARTVAR_SPAN : (Lex.pos * Lex.pos), inline_SPAN : (Lex.pos * Lex.pos), ENDVAR_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Nd (Atom.atom "var",
+  (Nd (Atom.atom "var",
               (Lf (Tok.STARTVAR STARTVAR)) :: (inline @
                                                [Lf (Tok.ENDVAR)])))
 fun cdata_PROD_1_SUBRULE_1_PROD_1_ACT (PCDATA, PCDATA_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Tok.PCDATA PCDATA)
+  (Tok.PCDATA PCDATA)
 fun cdata_PROD_1_SUBRULE_1_PROD_2_ACT (CHAR_REF, CHAR_REF_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Tok.CHAR_REF CHAR_REF)
+  (Tok.CHAR_REF CHAR_REF)
 fun cdata_PROD_1_SUBRULE_1_PROD_3_ACT (ENTITY_REF, ENTITY_REF_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Tok.ENTITY_REF ENTITY_REF)
+  (Tok.ENTITY_REF ENTITY_REF)
 fun cdata_PROD_1_SUBRULE_1_PROD_4_ACT (COMMENT, COMMENT_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( Tok.COMMENT COMMENT)
+  (Tok.COMMENT COMMENT)
 fun cdata_PROD_1_ACT (SR, SR_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Lf SR) : HTML4Tokens.token parsetree)
+  ((Lf SR) : HTML4Tokens.token parsetree)
 fun cdata_opt_PROD_1_ACT (cdata, cdata_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( cdata : HTML4Tokens.token parsetree list)
-
-    end
+  (cdata : HTML4Tokens.token parsetree list)
+      end (* UserCode *)
 
     structure Err = AntlrErrHandler(
       structure Tok = Tok
       structure Lex = Lex)
-    structure EBNF = AntlrEBNF(struct
-			         type strm = Err.wstream
-			         val getSpan = Err.getSpan
-			       end)
+    structure EBNF = AntlrEBNF(
+      struct
+	type strm = Err.wstream
+	val getSpan = Err.getSpan
+      end)
 
     fun mk lexFn = let
 fun getS() = {}
 fun putS{} = ()
-fun unwrap (ret, strm, repairs) = (ret, strm, repairs)
-        val (eh, lex) = Err.mkErrHandler {get = getS, put = putS}
+fun unwrap (ret, strm, repairs) = (ret, strm, repairs)        val (eh, lex) = Err.mkErrHandler {get = getS, put = putS}
 	fun fail() = Err.failure eh
 	fun tryProds (strm, prods) = let
 	  fun try [] = fail()

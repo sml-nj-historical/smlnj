@@ -9,6 +9,7 @@
 Library
     signature HTML4
     structure HTML4
+    structure HTML4Attrs
     structure HTML4Parser
     structure HTML4Tokens
     structure HTML4TokenUtils
@@ -28,6 +29,8 @@ is
 
     html4-attr.g : ml-antlr
     html4-attr.l : ml-ulex
+
+    html4-attrs.sml
 
     html4-token-utils.sml
     html4-utils.sml

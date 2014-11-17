@@ -29,9 +29,6 @@ HTML4AttrTokens = struct
   | (NAME(_)) => false
 (* end case *))
 
-
-  fun toksToString toks = String.concatWith " " (map toString toks)
-
   fun isEOF EOF = true
     | isEOF _ = false
 
@@ -42,39 +39,37 @@ functor HTML4AttrParseFn(Lex : ANTLR_LEXER) = struct
   local
     structure Tok = 
 HTML4AttrTokens
-    structure UserCode = struct
-
-
+    structure UserCode =
+      struct
 
 fun attr_PROD_1_SUBRULE_1_PROD_1_ACT (NAME, attr_value, EQUALS, NAME_SPAN : (Lex.pos * Lex.pos), attr_value_SPAN : (Lex.pos * Lex.pos), EQUALS_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( attr_value)
+  (attr_value)
 fun attr_PROD_1_ACT (SR, NAME, SR_SPAN : (Lex.pos * Lex.pos), NAME_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (NAME, SR))
+  ((NAME, SR))
 fun attr_value_PROD_2_SUBRULE_1_PROD_1_ACT (DOT, NAME, DOT_SPAN : (Lex.pos * Lex.pos), NAME_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( NAME)
+  (NAME)
 fun attr_value_PROD_2_ACT (SR, NAME, SR_SPAN : (Lex.pos * Lex.pos), NAME_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( (Atom.toString NAME) ^ (String.concatWith "."
+  ((Atom.toString NAME) ^ (String.concatWith "."
                                          (map Atom.toString SR)))
 fun attr_value_PROD_3_SUBRULE_1_PROD_1_ACT (DOT, NUMBER, DOT_SPAN : (Lex.pos * Lex.pos), NUMBER_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( NUMBER)
+  (NUMBER)
 fun attr_value_PROD_3_ACT (SR, NUMBER, SR_SPAN : (Lex.pos * Lex.pos), NUMBER_SPAN : (Lex.pos * Lex.pos), FULL_SPAN : (Lex.pos * Lex.pos)) = 
-  ( NUMBER ^ (String.concatWith "." SR))
-
-    end
+  (NUMBER ^ (String.concatWith "." SR))
+      end (* UserCode *)
 
     structure Err = AntlrErrHandler(
       structure Tok = Tok
       structure Lex = Lex)
-    structure EBNF = AntlrEBNF(struct
-			         type strm = Err.wstream
-			         val getSpan = Err.getSpan
-			       end)
+    structure EBNF = AntlrEBNF(
+      struct
+	type strm = Err.wstream
+	val getSpan = Err.getSpan
+      end)
 
     fun mk lexFn = let
 fun getS() = {}
 fun putS{} = ()
-fun unwrap (ret, strm, repairs) = (ret, strm, repairs)
-        val (eh, lex) = Err.mkErrHandler {get = getS, put = putS}
+fun unwrap (ret, strm, repairs) = (ret, strm, repairs)        val (eh, lex) = Err.mkErrHandler {get = getS, put = putS}
 	fun fail() = Err.failure eh
 	fun tryProds (strm, prods) = let
 	  fun try [] = fail()
