@@ -1,6 +1,13 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
+[2014-12-07]
+	New implementation of ListMergeSort.  This implementation is
+	better on sorted data (both ascending and descending) and
+	faster on smaller lists.  It is slower than the previous
+	implementation on very large lists (e.g., 10^6 elements
+	or more).
+
 [2014-11-17]
 	Added HTML4Attrs module to HTML4 library.  This module provides
 	utility functions for building attribute-value pairs.
