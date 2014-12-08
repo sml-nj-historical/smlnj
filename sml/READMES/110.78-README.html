@@ -44,7 +44,7 @@
 <br/>
                           Version 110.78 NEWS
 <br/>
-                            December 1, 2014
+                           December 15, 2014
 <br/>
 <br/>
 </div>
@@ -64,7 +64,7 @@
 
 <h3>Summary:</h3>
 <p>
-The primary purpose of this release is bug fixes.
+The primary purpose of this release is bug fixes and performance improvements.
 </p>
 
 <h3>Details:</h3>
@@ -75,13 +75,28 @@ The primary purpose of this release is bug fixes.
     <p>
     </p>
   </dd>
+  <dt class="component">SML/NJ Library:</dt>
+  <dd>
+    <p>
+    A number of improvements and changes to the HTML4 library.
+    Added the <tt>HTML4Attrs</tt> module, which provides help for constructing attribute-value
+    pairs, and the <tt>HTML4Entities</tt> modules, which provides names for the standard
+    HTML4 entities.
+    </p>
+    <p>
+    New implementation of <tt>ListMergeSort</tt>.  This implementation is
+    better than the previous implementation on sorted data (both ascending and descending) and
+    faster on smaller lists.  It is slower than the previous
+    implementation on very large lists (<i>e.g.</i>, 10<sup>6</sup> elements
+    or more).
+  </dd>
   <dt class="component">SML/NJ runtime:</dt>
   <dd>
     <p>
     Added <tt>-D_FILE_OFFSET_BITS=64</tt> flag to <tt>x86-linux</tt> makefile.  This flag
     is necessary to avoid spurious <tt>EOVERFLOW</tt> errors on some versions of
     Linux.  The problem appears to be limited to large file systems that
-    have more than 2^32 inodes.
+    have more than 2<sup>32</sup> inodes.
     </p>
   </dd>
   <dt class="component">ml-lpt</dt>
