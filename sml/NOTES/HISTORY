@@ -221,7 +221,7 @@ Also made minor improvements to the NumScan module.
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
-Date: 201209/24
+Date: 2012/09/24
 Description:
 Added Base64 module to SML/NJ Library to support encoding and decoding
 Word8 vectors as base64 strings.
@@ -281,7 +281,7 @@ Fixed implementation of Real.signBit on little-endian machines.
 
 ----------------------------------------------------------------------
 Name: David MacQueen (dbm@cs.uchicago.edu)
-Date: 2012/1/19
+Date: 2012/01/19
 Revision: 3664, 3665
 Description:
 
@@ -299,7 +299,7 @@ Details in NOTES/changes/dbm_2012_1.
 
 ----------------------------------------------------------------------
 Name: David MacQueen (dbm@cs.uchicago.edu)
-Date: 2012/1/12
+Date: 2012/01/12
 Revision: 3648, 3652
 Description:
 
