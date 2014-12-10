@@ -213,7 +213,7 @@ structure Win32BinPrimIO : OS_PRIM_IO =
 					        name=name,
 						access=W32IO.GENERIC_WRITE,
 					        share=shareAll,
-					        mode=W32IO.OPEN_EXISTING,
+					        mode=W32IO.OPEN_ALWAYS,
 					        attrs=W32FS.FILE_ATTRIBUTE_NORMAL
 					    })
 		val _ = announce "setFilePointer'"

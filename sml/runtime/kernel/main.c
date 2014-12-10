@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 #include "ml-base.h"
 #include "ml-options.h"
 #include "ml-limits.h"

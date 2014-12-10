@@ -1,6 +1,7 @@
 (* pack-word-b32.sml
  *
- * Copyright (c) 2005 by The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2013 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * This is the non-native implementation of 32-bit big-endian packing
  * operations.

@@ -95,6 +95,8 @@ sig
  
   val sortFields : (Absyn.numberedLabel * 'a) list
         -> (Absyn.numberedLabel * 'a) list
+  val projectField : Symbol.symbol * Types.ty -> Types.ty option
+
   val mapUnZip : ('a -> 'b * 'c) -> 'a list -> 'b list * 'c list
 
   type tycset

@@ -13,8 +13,9 @@ structure Win32_FileSys : WIN32_FILESYS =
 
 	type word = W32G.word
 
-	fun hndlToIOD h = OS.IO.IODesc (ref h)
-	fun IODToHndl (OS.IO.IODesc (ref h)) = h
+	fun hndlToIOD h = OS.IO.IODesc(ref h)
+	fun IODToHndl (OS.IO.IODesc(ref h)) = h
+	  | IODToHndl (OS.IO.SockDesc _) = raise Fail "IODToHndl: socket"
 
 	fun rebindIOD (OS.IO.IODesc hr,h) = hr := h
 

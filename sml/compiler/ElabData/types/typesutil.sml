@@ -816,10 +816,23 @@ fun isVarTy(VARty(ref(INSTANTIATED ty))) = isVarTy ty
    (typecheck.sml, mtderiv.sml, reconstruct.sml) *)
 
 fun sortFields fields =
-    ListMergeSort.sort (fn ((Absyn.LABEL{number=n1,...},_),
-		   (Absyn.LABEL{number=n2,...},_)) => n1>n2)
-              fields
+    ListMergeSort.sort
+	(fn ((Absyn.LABEL{number=n1,...},_),
+	     (Absyn.LABEL{number=n2,...},_)) => n1>n2)
+        fields
 
+(* projectField : symbol * ty -> ty option *)
+fun projectField (label: S.symbol, CONty(RECORDtyc fieldNames, fieldTypes)) =
+    let fun search (nil, _) = NONE
+	  | search (n::ns, t::ts) =
+	    if Symbol.eq (label,n) then SOME t
+	    else search(ns,ts)
+	  | search _ = bug "projectField - bad record type"
+     in search (fieldNames, fieldTypes)
+    end
+  | projectField _ = bug "projectField - not record type"
+
+(* mapUnZip : ('a -> 'b * 'c) -> 'a list -> 'b list * 'c list *)
 fun mapUnZip f nil = (nil,nil)
   | mapUnZip f (hd::tl) =
      let val (x,y) = f(hd)

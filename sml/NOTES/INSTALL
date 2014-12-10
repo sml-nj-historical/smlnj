@@ -109,7 +109,7 @@ If you are running Win32, see WININSTALL.
           nowhere                  |
             requires: mlrisc-tools |
                                    |
-          doc                      | - (currently unavailable)
+          doc                      | doc.tgz
 
    2.2.  Tweaking "preloads"...
    ----------------------------

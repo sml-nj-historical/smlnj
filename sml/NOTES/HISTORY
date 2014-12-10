@@ -19,7 +19,244 @@ Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: yyyy/mm/dd
 Description:
 
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/10/23
+Description:
 
+Improved error messages in ml-ulex for unclosed strings.  Also made
+documentation improvements.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/10/11
+Description:
+
+Added -D_FILE_OFFSET_BITS=64 flag to x86-linux makefile.  This flag
+is necessary to avoid spurious EOVERFLOW errors on some versions of
+Linux.  The problem appears to be limited to large file systems that
+have more than 2^32 inodes.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/09/13
+Description:
+
+Added %value directive to ml-antlr; this addition improves the
+error repair choices by allowing non-nullary tokens to be inserted
+when making repairs.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/22
+Description:
+
+*************************** Version 110.77 ***************************
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/19
+Description:
+Compiling the runtime system on cygwin was failing because the file
+exceptions.h was missing.  It appears to have been part of previous
+versions, so a version has been incorporated verbatim in the
+runtime/mach-base/cygwin-fault.c file (fixes bug #125).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/19
+Description:
+Added the actionToString' and repairToString' functions
+to the AntlrRepair structure.  These functions allow one to
+specialize the printing of tokens based on whether they are
+being added or deleted.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/17
+Description:
+Added patches to support OpenBSD on PPC.  The patches were contributed
+by Jasper Lievisse Adriaanse (fixes bug #124).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/17
+Description:
+Use mkstemp to implement OS.FileSys.tmpName() on systems that support
+it (should be all modern versions of Unix).  This change fixes bug #128.
+(Thanks to Johannes 5 Joemann).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/17
+Description:
+Fixed a bug in IntInf.~>>, which did not handle negative arguments
+correctly (bug #110).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/08/14
+Description:
+Fixed a problem in the CPS contraction phase.  An optimization that
+eliminates construction of a record that already exists was not
+checking that the existing record was the same record kind (bug #119).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/07/28
+Description:
+Switch to using MAP_ANONYMOUS to allocate memory on Linux systems.
+This change avoids problems when "/dev" does not support execute
+permission (as seems to be the case with some versions of Linux
+running on ChromeBooks; bug #120).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/06/28
+Description:
+Fix for bug 127 (Crash on windows with OS.Process.system).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/06/07
+Description:
+Fixed a long-standing bug in Socket.recvVec, which prevented the result
+from being used in a string pattern match (thanks to Vesa Norrman
+for the fix).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2014/05/01
+Description:
+Fixed minor issue in an error message; type variable name should be
+printed with leading '
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2013/11/25
+Description:
+Added PackWord{16,32}{Big,Little} structures to the Unsafe module.
+This change makes the UNSAFE signature closer to the MLton version,
+although we still need the PackReal structures.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2013/07/01
+Description:
+
+*************************** Version 110.76 ***************************
+
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2013/06/04
+Description:
+Fix bug #115 (BinPrimIO writer method getPos doesn't work under CML).
+Just needed to port the position update from mkReader code to the
+mkWriter code. 
+
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2013/06/04
+Description:
+Fix bug #111 (Socket.acceptNB returns somewhat broken sockets).
+The problem was that under Win32, sockets returned from accept inherit
+their parents' non-blocking status, whereas on UNIX they are always
+blocking.
+
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2013/05/20
+Description:
+Fix bug #117 (BinIO.openAppend raises IO on non-existent file).
+We were opening the file for append if it existed but not creating it
+if it did not exist.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2013/05/02
+Description:
+Fix bug #116 (Socket.sameDesc raises Match exception).
+The problem is that on Windows the iodesc datatype (defined in
+Basis/Implementation/Win32/pre-os.sml) has both an IODesc constructor
+and a SockDesc constructor.  Updated the code in Win32/os-io.sml to
+handle the SockDesc constructor.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2013/04/19
+Description:
+Fix bug #113 (Socket.select waits exactly twice the indicated timeout)
+
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2013/01/19
+Description:
+Fix AMD64 code generator to properly sign-extend arguments to IDIVQ.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/10/20
+Description:
+Fix bug #108 (off-by-one error in Util/dynamic-array.sml; iterators crash)
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/10/20
+Description:
+Fix bug #107 (Bogus Int64 comparison operators)
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/10/01
+Description:
+
+*************************** Version 110.75 ***************************
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/09/28
+Description:
+Fixed bug #92.  IntInf.scan now handles the "0x" prefix correctly.
+Also made minor improvements to the NumScan module.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 201209/24
+Description:
+Added Base64 module to SML/NJ Library to support encoding and decoding
+Word8 vectors as base64 strings.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/09/23
+Description:
+Additions to the SML/NJ Library.  Added exists, existsi, all, and alli
+functions to ORD_MAP signature and implementations, and added all
+function to ORD_SET signature and implementations.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/09/21
+Description:
+Bug fix in ml-antlr to ensure that the generated toString function
+for tokens is strictly legal SML code (i.e., non-printing characters
+and UTF8 multibyte sequences are properly escaped).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/09/11
+Description:
+Added getu function to ULexBuffer as a way to improve ulex performance.
+This addition allows a fastpath for processing ascii characters, which
+improved lexer performance by 3-4%.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2012/08/02
+Description:
+Fixed bugs #89 and #96: Build Failure with Xcode 4.3
+Also removed build support for MacOS X pre-10.5 (Leopard) on PPC and
+pre-10.6 (Snow Leopard) on Intel.
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)

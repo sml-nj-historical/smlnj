@@ -1,9 +1,9 @@
 (* int-inf.sml
  *
+ * COPYRIGHT (c) 2012 by The SML/NJ Fellowship.
+ *
  * COPYRIGHT (c) 1995 by AT&T Bell Laboratories.
  *     See COPYRIGHT file for details.
- *
- * COPYRIGHT (c) 2003 by The SML/NJ Fellowship.
  *
  * Author of the current code: Matthias Blume (blume@tti-c.org)
  *
@@ -231,36 +231,55 @@ structure IntInfImp :> INT_INF = struct
 	    end
 
     (* Right shift. *)
-    fun rshift (i, w) =
-	case concrete i of
-	    BI { digits = [], negative } => i (* i = 0 *)
-	  | BI { digits, negative } => let
+    fun rshift (i, 0w0) = i
+      | rshift (i, w) = (case concrete i
+	   of BI{ digits = [], negative } => i (* i = 0 *)
+	    | BI{ digits, negative } => let
 		val { bytes, bits } = shiftAmount w
 		val bits' = CoreIntInf.baseBits - bits
-		fun drop (0w0, i) = i 
-		  | drop (n, []) = []
-		  | drop (n, x :: xs) = drop (n-0w1, xs)
+	      (* drop digits while checking to see is they are all 0w0 (==> pow2)*)
+		fun drop (0w0, allZero, i) = (allZero, i) 
+		  | drop (n, allZero, []) = (allZero, [])
+		  | drop (n, allZero, 0w0 :: xs) = drop (n-0w1, allZero, xs)
+		  | drop (n, _, x :: xs) = drop (n-0w1, false, xs)
 		fun shift [] = ([], 0w0)
-		  | shift (x :: xs) =
-		    let val (zs, borrow) = shift xs
-			val z = borrow || (x >> bits)
-			val borrow' = (x << bits') && CoreIntInf.maxDigit
-		    in
+		  | shift (x :: xs) = let
+		      val (zs, borrow) = shift xs
+		      val z = borrow || (x >> bits)
+		      val borrow' = (x << bits') && CoreIntInf.maxDigit
+		      in
 			(* strip leading 0 *)
-			case (z, zs) of
-			    (0w0, []) => ([], borrow')
+			case (z, zs)
+			 of (0w0, []) => ([], borrow')
 			  | _ => (z :: zs, borrow')
-		    end
-			
-		val digits =
-		    if bits = 0w0 then drop (bytes, digits)
-		    else #1 (shift (drop (bytes, digits)))
-	    in
-		abstract (case digits of
-			      [] => BI { negative = false, digits = [] }
-			    | _ => BI { negative = negative,
-					digits = digits })
-	    end
+			(* end case *)
+		      end
+	      (* first drop any whole digits while checking for if they are all zero *)
+		val (allZero, digits) = drop (bytes, true, digits)
+	      (* shift the remaining digits by bits *)
+		val (allZero, digits) = if bits = 0w0
+		      then (allZero, digits)
+		      else (case digits
+			 of [] => (allZero, digits)
+			  | (d::_) => let
+			      val allZero = allZero andalso ((((0w1 << bits) - 0w1) && d) = 0w0)
+			      val (digits, _) = shift digits
+			      in
+				(allZero, digits)
+			      end
+			(* end case *))
+		in
+		(* if i is negative and we shifted some non-zero bits, then we will need to subtract
+		 * one from the shift result to satisfy the SML Basis semantics.
+		 *)
+		  if (negative andalso not allZero)
+		    then abstract (BI { negative = true, digits = CoreIntInf.natinc digits })
+		    else (case digits
+		       of [] => abstract (BI{ negative = false, digits = [] })
+			| _ => abstract (BI{ negative = negative, digits = digits })
+		      (* end case *))
+		end
+	  (* end case *))
 
     fun startscan (doit, hex) getchar s = let
 	fun hexprefix (neg, s) =
@@ -280,143 +299,102 @@ structure IntInfImp :> INT_INF = struct
 	sign (StringCvt.skipWS getchar s)
     end
 
-    fun bitscan (bits, digVal, hex) getchar s = let
-
-	fun dcons (0w0, []) = []
-	  | dcons (x, xs) = x :: xs
-
-	fun checkFirstDigit (neg, s) = let
-	    val pos0 = CoreIntInf.baseBits - bits
-	    val maxVal = CoreIntInf.maxDigit
-
-	    fun digloop (d, pos, nat, s) = let
-		fun done () = let
-		    val i =
-			case dcons (d, nat) of
-			    [] => BI { negative = false, digits = [] }
-			  | nat => BI { negative = neg, digits = nat }
-		    val i = abstract i
-		in
-		    SOME (if pos = 0w0 then i else (rshift (i, pos)), s)
-		end
-	    in
-		case getchar s of
-		    NONE => done ()
-		  | SOME (c, s') =>
-		    (case digVal c of
-			 NONE => done ()
-		       | SOME v =>
-			 if pos < bits then
-			     if pos = 0w0 then
-				 digloop (v << pos0, pos0, dcons (d, nat), s')
-			     else
-				 digloop ((v << (pos0 + pos)) && maxVal,
-					  pos0 + pos,
-					  dcons (d || (v >> (bits - pos)), nat),
-					  s')
-			 else
-			     digloop (d || (v << (pos - bits)), pos - bits,
-				      nat, s'))
-	    end
-	in
-	    case getchar s of
-		NONE => NONE
-	      | SOME (c, s') =>
-		  (case digVal c of
-		       SOME v => digloop (v << pos0, pos0, [], s')
-		     | NONE => NONE)
-	end
-				   
-    in
-	startscan (checkFirstDigit, hex) getchar s
-    end
+    fun bitscan (bits, xOkay) getchar = let
+          fun dcons (0w0, []) = []
+            | dcons (x, xs) = x :: xs
+          val pos0 = CoreIntInf.baseBits - bits
+          val maxVal = CoreIntInf.maxDigit
+          val maxDigit = (0w1 << bits) - 0w1
+          val scanPrefix = NumScan.scanPrefix
+                {wOkay=false, xOkay=xOkay, ptOkay=false, maxDigit=maxDigit}
+                  getchar
+          fun scan s = (case scanPrefix s
+                 of SOME{neg, next, rest} => let
+                      fun digloop (d, pos, nat, s) = let
+                            fun done () = let
+                                  val i = (case dcons (d, nat)
+                                         of [] => BI{negative = false, digits = []}
+                                          | nat => BI{negative = neg, digits = nat}
+                                        (* end case *))
+                                  val i = abstract i
+                                  in
+                                    SOME(if pos = 0w0 then i else (rshift (i, pos)), s)
+                                  end
+                            in
+                              case getchar s
+                               of NONE => done ()
+                                | SOME (c, s') => let
+                                    val v = NumScan.code c
+                                    in
+                                      if (maxDigit < v)
+                                        then done()
+                                      else if (pos < bits)
+                                        then if pos = 0w0
+                                          then digloop (v << pos0, pos0, dcons (d, nat), s')
+                                          else digloop ((v << (pos0 + pos)) && maxVal,
+                                                        pos0 + pos,
+                                                        dcons (d || (v >> (bits - pos)), nat),
+                                                        s')
+                                        else digloop (d || (v << (pos - bits)), pos - bits,
+                                                      nat, s')
+                                    end
+                              (* end case *)
+                            end
+                      in
+                        digloop (next << pos0, pos0, [], rest)
+                      end
+                  | NONE => NONE
+                (* end case *))
+          in
+            scan
+          end
 
     fun decscan getchar s = let
-	fun digVal #"0" = SOME 0w0
-	  | digVal #"1" = SOME 0w1
-	  | digVal #"2" = SOME 0w2
-	  | digVal #"3" = SOME 0w3
-	  | digVal #"4" = SOME 0w4
-	  | digVal #"5" = SOME 0w5
-	  | digVal #"6" = SOME 0w6
-	  | digVal #"7" = SOME 0w7
-	  | digVal #"8" = SOME 0w8
-	  | digVal #"9" = SOME 0w9
-	  | digVal _ = NONE
-
-	fun digloop (negative, nat, fact, v, s) = let
-	    fun done () = let
-		val i = case CoreIntInf.natmadd (fact, nat, v) of
-			    [] => abstract (BI { negative = false,
-						 digits = [] })
-			  | digits => abstract (BI { negative = negative,
-						     digits = digits })
-	    in
-		SOME (i, s)
-	    end
-	in
-	    case getchar s of
-		SOME (c, s') =>
-		(case digVal c of
-		     SOME v' =>
-		     if fact = decBase then
-			 digloop (negative,
-				  CoreIntInf.natmadd (fact, nat, v),
-				  0w10, v', s')
-		     else
-			 digloop (negative,
-				  nat, fact * 0w10, v * 0w10 + v', s')
-		   | NONE => done ())
-	      | NONE => done ()
-	end
-
-	fun checkFirstDigit (negative, s) =
-	    case getchar s of
-		NONE => NONE
-	      | SOME (c, s') =>
-		  (case digVal c of
-		       SOME v => digloop (negative, [], 0w10, v, s')
-		     | NONE => NONE)
-    in
-	startscan (checkFirstDigit, false) getchar s
-    end
-
-    fun binDigVal #"0" = SOME 0w0
-      | binDigVal #"1" = SOME 0w1
-      | binDigVal _ = NONE
-
-    fun octDigVal #"0" = SOME 0w0
-      | octDigVal #"1" = SOME 0w1
-      | octDigVal #"2" = SOME 0w2
-      | octDigVal #"3" = SOME 0w3
-      | octDigVal #"4" = SOME 0w4
-      | octDigVal #"5" = SOME 0w5
-      | octDigVal #"6" = SOME 0w6
-      | octDigVal #"7" = SOME 0w7
-      | octDigVal _ = NONE
-
-    fun hexDigVal #"0" = SOME 0wx0
-      | hexDigVal #"1" = SOME 0wx1
-      | hexDigVal #"2" = SOME 0wx2
-      | hexDigVal #"3" = SOME 0wx3
-      | hexDigVal #"4" = SOME 0wx4
-      | hexDigVal #"5" = SOME 0wx5
-      | hexDigVal #"6" = SOME 0wx6
-      | hexDigVal #"7" = SOME 0wx7
-      | hexDigVal #"8" = SOME 0wx8
-      | hexDigVal #"9" = SOME 0wx9
-      | hexDigVal (#"a" | #"A") = SOME 0wxa
-      | hexDigVal (#"b" | #"B") = SOME 0wxb
-      | hexDigVal (#"c" | #"C") = SOME 0wxc
-      | hexDigVal (#"d" | #"D") = SOME 0wxd
-      | hexDigVal (#"e" | #"E") = SOME 0wxe
-      | hexDigVal (#"f" | #"F") = SOME 0wxf
-      | hexDigVal _ = NONE
+          fun digVal c = let val d = NumScan.code c
+                in
+                  if (d <= 0w9) then SOME d else NONE
+                end
+          fun digloop (negative, nat, fact, v, s) = let
+                fun done () = let
+                    val i = (case CoreIntInf.natmadd (fact, nat, v)
+                             of [] => abstract (BI{negative = false, digits = []})
+                              | digits => abstract (BI{negative = negative, digits = digits })
+                            (* end case *))
+                    in
+                      SOME (i, s)
+                    end
+                in
+                  case getchar s
+                   of SOME(c, s') => let
+                        val v' = NumScan.code c
+                        in
+                          if (v' > 0w9)
+                            then done()
+                          else if (fact = decBase)
+                            then digloop (negative,
+                              CoreIntInf.natmadd (fact, nat, v),
+                              0w10, v', s')
+                            else digloop (negative,
+                              nat, fact * 0w10, v * 0w10 + v', s')
+                        end
+                    | NONE => done ()
+                  (* end case *)
+                end
+          fun checkFirstDigit (negative, s) = (case getchar s
+                 of NONE => NONE
+                  | SOME (c, s') => (case digVal c
+                       of SOME v => digloop (negative, [], 0w10, v, s')
+                        | NONE => NONE
+                      (* end case *))
+                (* end case *))
+          in
+            startscan (checkFirstDigit, false) getchar s
+          end
 
     fun scan StringCvt.DEC = decscan
-      | scan StringCvt.HEX = bitscan (0w4, hexDigVal, true)
-      | scan StringCvt.OCT = bitscan (0w3, octDigVal, false)
-      | scan StringCvt.BIN = bitscan (0w1, binDigVal, false)
+      | scan StringCvt.HEX = bitscan (0w4, true)
+      | scan StringCvt.OCT = bitscan (0w3, false)
+      | scan StringCvt.BIN = bitscan (0w1, false)
 
     val ~ = CoreIntInf.~
     val op + = CoreIntInf.+

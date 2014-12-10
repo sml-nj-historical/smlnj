@@ -25,21 +25,40 @@ CPP=${CPP:-/lib/cpp}
 PFIX=$1      # prefix: _SC_ or _PC_
 OUTF=$2      # name of output file
 
-# linux uses enums for the _SC_ constants. 
-# In this case, we cannot use the #ifdef check to avoid symbols
-# that are not really defined in unistd.h.
+INCLFILE="none"
+USED_ENUMS="FALSE"
+
+# target specific workarounds
+#
 case "$VERSION" in
-  *linux*) USED_ENUMS=TRUE ;;
-  *) USED_ENUMS="" ;;
+  # linux uses enums for the _SC_ constants, so we cannot use the #ifdef check to avoid symbols
+  # that are not really defined in unistd.h.
+  *linux*)
+      USED_ENUMS="TRUE"
+      INCLFILE=tmp$$.h
+      SRCFILE=tmp$$.c
+      echo "#include <unistd.h>" > $SRCFILE
+      $CPP $SRCFILE > $INCLFILE
+      rm -f $SRCFILE
+    ;;
+  # newer versions of the Mac OS X developer tools keep the include files inside the Xcode
+  # application bundle, so we add that as a possible path.
+  *x86-darwin*)
+    case `uname -r` in
+      13.*) SDK=MacOSX10.9.sdk ;;
+      *) SDK=none ;;
+    esac
+    if test x$SDK != xnone ; then
+      # note: at some point, we might use "xcrun --show-sdk-path", but that only works
+      # with Xcode 5.x+
+      XCODE_DEV_PATH=`xcode-select --print-path`
+      INCLFILE=$XCODE_DEV_PATH/Platforms/MacOSX.platform/Developer/SDKs/$SDK/usr/include/unistd.h
+    fi
+    ;;
+  *) ;;
 esac
 
-if [ "$USED_ENUMS" = "TRUE" ]; then
-  INCLFILE=tmp$$
-  SRCFILE=tmp$$.c
-  echo "#include <unistd.h>" > $SRCFILE
-  $CPP $SRCFILE > $INCLFILE
-  rm -f $SRCFILE
-else
+if test x$INCLFILE = xnone ; then
 # search the possible include files looking for a source
 # of the constants.
   FILES="\
@@ -48,7 +67,6 @@ else
 	/usr/include/bsd/unistd.h \
 	/usr/include/confname.h \
     "
-  INCLFILE="none"
   for f in $FILES ; do
     if test -r $f ; then
       grep $PFIX $f > /dev/null
@@ -58,10 +76,10 @@ else
       fi
     fi
   done
-fi
-if test x$INCLFILE = xnone ; then
-  echo "gen-posix-names.sh: unable to find <unistd.h>"
-  exit 1
+  if test x$INCLFILE = xnone ; then
+    echo "gen-posix-names.sh: unable to find <unistd.h>"
+    exit 1
+  fi
 fi
 
 echo "/* $OUTF" >> $OUTF

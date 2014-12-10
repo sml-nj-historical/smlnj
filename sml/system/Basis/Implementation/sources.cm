@@ -268,6 +268,10 @@ is
 	Unsafe/unsafe-vector.sig
 	Unsafe/unsafe-mono-array.sig
 	Unsafe/unsafe-mono-vector.sig
+	Unsafe/unsafe-pack-word-b16.sml
+	Unsafe/unsafe-pack-word-b32.sml
+	Unsafe/unsafe-pack-word-l16.sml
+	Unsafe/unsafe-pack-word-l32.sml
 	Unsafe/unsafe.sig
 	Unsafe/unsafe.sml
 

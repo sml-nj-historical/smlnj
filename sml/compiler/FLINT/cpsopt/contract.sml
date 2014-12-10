@@ -18,8 +18,8 @@ Constant folding:
  PURE expressions          RSTUVWYZ0123456789  arithopt
  BRANCH expressions                   nopvw    comparefold
 
-Dead variable elimination:         [down,up]           [down,up]
- RECORDs                              [b,B]        [deadvars,deadup]
+Dead variable elimination:         [down,up]       [down,up]
+ RECORDs                              [b,B1,B2]    [deadvars,deadup]
  SELECTs                              [c,s]        [deadvars,deadup]
  Functions                            [g,f]
  LOOKERs                              [m,*]        [deadvars,deadup]
@@ -177,7 +177,7 @@ datatype info = FNinfo of {args: lvar list,
 			   specialuse: int ref option ref,
 			   liveargs : bool list option ref
 			   }
-	      | RECinfo of (value * accesspath) list
+	      | RECinfo of record_kind * (value * accesspath) list
 	      | SELinfo of int * value * cty
 	      | OFFinfo of int * value
               | WRPinfo of P.pure * value
@@ -322,7 +322,7 @@ fun call_and_clobber(VAR v) =
   | call_and_clobber(LABEL v) = call(VAR v)
   | call_and_clobber _ = ()
 
-fun enterREC(w,vl) = enter(w,{info=RECinfo vl, called=ref 0,used=ref 0})
+fun enterREC(w,kind,vl) = enter(w,{info=RECinfo(kind,vl), called=ref 0,used=ref 0})
 fun enterMISC (w,ct) = enter(w,{info=MISCinfo ct, called=ref 0, used=ref 0})
 val miscBOG = MISCinfo BOGt
 fun enterMISC0 w = enter(w,{info=miscBOG, called=ref 0, used=ref 0})
@@ -368,7 +368,7 @@ fun checkFunction(_,f,vl,_,_) =
 val rec pass1 = fn cexp => p1 false cexp
 and p1 = fn no_inline =>
 let val rec g1 =
- fn RECORD(_,vl,w,e) => (enterREC(w,vl); app (use o #1) vl; g1 e)
+ fn RECORD(kind,vl,w,e) => (enterREC(w,kind,vl); app (use o #1) vl; g1 e)
   | SELECT (i,v,w,ct,e) => 
       (enter(w,{info=SELinfo(i,v,ct), called=ref 0, used=ref 0});
        use v; g1 e)
@@ -490,54 +490,62 @@ fun cvtPreCondition_inf(x, v2) =
 val rec reduce = fn cexp => g NONE cexp
 and g = fn hdlr =>
 let val rec g' =
-  fn RECORD (k,vl,w,e) =>
+  fn RECORD (kind,vl,w,e) =>
       let val {used,...} = get w
 	  val vl' = map (map1 ren) vl
        in if !used=0 andalso !CG.deadvars
 	  then (click "b"; app (use_less o #1) vl'; g' e)
-          else (let fun objlen(VAR z) =
-                          (case (#info (get z))
-                            of SELinfo(_,_,PTRt(RPT k)) => k
-                             | SELinfo(_,_,PTRt(FPT k)) => k
-                             | MISCinfo(PTRt(RPT k)) => k
-                             | MISCinfo(PTRt(FPT k)) => k
-                             | RECinfo l => length l
-                             | _ => ~1)
-                      | objlen _ = ~1
+          else let
+	  (* Check to see if this record is recreating an existing record.
+	   * We need to be careful that the existing record has the same
+	   * kind as this record (as well as the same size and content).
+	   *)
+	    fun objInfo (VAR z) =(case (#info (get z))
+		   of SELinfo(_,_,PTRt(RPT k)) => (SOME RK_RECORD, k)
+		    | SELinfo(_,_,PTRt(FPT k)) => (NONE, k)
+		    | MISCinfo(PTRt(RPT k)) => (SOME RK_RECORD, k)
+		    | MISCinfo(PTRt(FPT k)) => (NONE, k)
+		    | RECinfo(kind, l) => (SOME kind, length l)
+		    | _ => (NONE, ~1))
+	      | objInfo _ = (NONE, ~1)
                              
-                    fun samevar(VAR x,VAR y) = (x=y)
-                      | samevar _ = false
- 
-                    fun check1((VAR z)::r,k,a) = 
-                          (case (get z) 
-                            of {info=SELinfo(i,b,_),...} => 
-                                   (if ((i=k) andalso (samevar(ren b,a)))
-                                    then check1(r,k+1,a) else NONE)
-                             | _ => NONE)
-                      | check1(_::r,k,_) = NONE 
-                      | check1([],k,a) = 
-                          if ((objlen a)=k) then SOME a else NONE
- 
-                    fun check((VAR z)::r) = 
-                          (case (get z)
-                            of {info=SELinfo(0,a,_),...} => 
-                                  check1(r,1,ren a)
-                             | _ => NONE)
-                      | check _ = NONE
- 
-                    val vl'' = map #1 vl'
- 
-                 in case (check(vl'')) 
-                     of NONE => 
-                         (let val e' = g' e
-                           in if !used=0 andalso deadup
-                              then (click "B"; app use_less vl''; e')
-                              else RECORD(k, vl', w, e')
-                          end)
-                      | SOME z => 
-                         (newname(w,z); click "B"; (*** ? ***)
-                          app use_less vl''; g' e)
-                end)
+	    fun samevar(VAR x,VAR y) = (x=y)
+	      | samevar _ = false
+
+	    fun check1((VAR z)::r,j,a) = 
+		  (case (get z) 
+		    of {info=SELinfo(i,b,_),...} => 
+			   (if ((i=j) andalso (samevar(ren b,a)))
+			    then check1(r,j+1,a) else NONE)
+		     | _ => NONE)
+	      | check1(_::r,j,_) = NONE 
+	      | check1([],j,a) = (case objInfo a
+		   of (SOME kind', n) => if (kind = kind') andalso (n = j)
+			then SOME a
+			else NONE
+		    | (NONE, _) => NONE
+		  (* end case *))
+
+	    fun check((VAR z)::r) = 
+		  (case (get z)
+		    of {info=SELinfo(0,a,_),...} => 
+			  check1(r,1,ren a)
+		     | _ => NONE)
+	      | check _ = NONE
+
+	    val vl'' = map #1 vl'
+
+	     in case (check(vl'')) 
+		 of NONE => 
+		     (let val e' = g' e
+		       in if !used=0 andalso deadup
+			  then (click "B1"; app use_less vl''; e')
+			  else RECORD(kind, vl', w, e')
+		      end)
+		  | SOME z => 
+		     (newname(w,z); click "B2"; (*** ? ***)
+		      app use_less vl''; g' e)
+	    end
       end
    | SELECT(i,v,w,t,e) =>
       let val {used,...} = get w
@@ -549,7 +557,7 @@ let val rec g' =
 	  else let val z = (case v'
 			      of VAR v'' =>
 				  (case get v''
-				     of {info=RECinfo vl,...} =>
+				     of {info=RECinfo(_, vl),...} =>
 					 (let val z = #1(List.nth(vl,i))
 					      val z' = ren z
 					  in 
