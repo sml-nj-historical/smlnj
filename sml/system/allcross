@@ -3,10 +3,8 @@
 unset VERSIONTOOL_BUMP_RELEASE
 
 ../../bin/sml \$smlnj/compiler/all.cm <<stop
-(*
-Alpha32UnixCMB.make () before Alpha32UnixCMB.reset () andalso
-HppaUnixCMB.make () before HppaUnixCMB.reset () andalso
-*)
+# Alpha32UnixCMB.make () before Alpha32UnixCMB.reset () andalso
+# HppaUnixCMB.make () before HppaUnixCMB.reset () andalso
 PPCUnixCMB.make () before PPCUnixCMB.reset () andalso
 SparcUnixCMB.make () before SparcUnixCMB.reset () andalso
 X86UnixCMB.make () before X86UnixCMB.reset () andalso
