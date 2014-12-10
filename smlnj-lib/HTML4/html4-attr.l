@@ -27,7 +27,6 @@ type lex_result = token
 [\"][^\"]*[\"] => (STRINGLIT yytext);
 [\'][^\']*[\'] => (STRINGLIT yytext);
 
-
 {ws}+ => (continue());
 
 . => ((* error; invalid character *) continue());

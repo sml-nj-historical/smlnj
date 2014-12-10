@@ -18,25 +18,6 @@ val buffer = ref ([] : string list)
 fun addStr s = (buffer := s :: !buffer)
 fun getStr () = (String.concat(List.rev(!buffer)) before (buffer := []))
 
-(* extract the text between the leading "&", "&#", or "&#x" and the optional terminating ";"
- * of an HTML entity, and return it as a substring.
- *)
-fun entityText ss = let
-      val ss = Substring.triml 1 ss (* string without leading "&" *)
-      val ss = (case Substring.getc ss
-	     of SOME(#"#", ss') => (case Substring.getc ss'
-		   of SOME(#"x", ss'') => ss'' (* trim leading "&#x" *)
-		    | SOME(#"X", ss'') => ss'' (* trim leading "&#X" *)
-		    | _ => ss' (* trim leading "&#" *)
-		  (* end case *))
-	      | _ => ss
-	    (* end case *))
-      in
-	if Substring.sub(ss, Substring.size ss - 1) = #";"
-	  then Substring.trimr 1 ss
-	  else ss
-      end
-
 (* trim an optional ";" from a non-empty substring *)
 fun trimSemi ss = if Substring.sub(ss, Substring.size ss - 1) = #";"
       then Substring.trimr 1 ss
@@ -110,8 +91,7 @@ Vector.fromList []
 	  fun yymkunicode(strm) = yygetList Substring.getc (yymksubstr strm)
           open UserDeclarations
           fun lex () = let
-            fun yystuck (yyNO_MATCH) =
-		  raise Fail("HTML4 lexer reached a stuck state at " ^ Int.toString(yygetPos()))
+            fun yystuck (yyNO_MATCH) = raise Fail "lexer reached a stuck state"
 	      | yystuck (yyMATCH (strm, action, old)) = 
 		  action (strm, old)
 	    val yypos = yygetPos()
