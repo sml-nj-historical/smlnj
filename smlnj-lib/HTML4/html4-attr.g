@@ -4,6 +4,8 @@
  * All rights reserved.
  *
  * Grammar for parsing HTML 4 attributes.
+ *
+ * FIXME: we could probably just do this in the scanner!!!
  *)
 
 %name HTML4Attr;

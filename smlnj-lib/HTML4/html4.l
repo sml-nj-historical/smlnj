@@ -17,24 +17,38 @@ val buffer = ref ([] : string list)
 fun addStr s = (buffer := s :: !buffer)
 fun getStr () = (String.concat(List.rev(!buffer)) before (buffer := []))
 
-fun entityText crntYYText =
-    let val exploded = String.explode crntYYText
-        val size = String.size crntYYText
-        val start = if (size > 1) andalso
-                       ((List.nth (exploded, 2)) = #"#")
-                    then 2
-                    else 1
-        val stop = if (List.last exploded) = #";"
-                   then SOME (size - (start + 1))
-                   else NONE
-    in String.extract(crntYYText, start, stop) end
+(* extract the text between the leading "&", "&#", or "&#x" and the optional terminating ";"
+ * of an HTML entity, and return it as a substring.
+ *)
+fun entityText ss = let
+      val ss = Substring.triml 1 ss (* string without leading "&" *)
+      val ss = (case Substring.getc ss
+	     of SOME(#"#", ss') => (case Substring.getc ss'
+		   of SOME(#"x", ss'') => ss'' (* trim leading "&#x" *)
+		    | SOME(#"X", ss'') => ss'' (* trim leading "&#X" *)
+		    | _ => ss' (* trim leading "&#" *)
+		  (* end case *))
+	      | _ => ss
+	    (* end case *))
+      in
+	if Substring.sub(ss, Substring.size ss - 1) = #";"
+	  then Substring.trimr 1 ss
+	  else ss
+      end
 
+(* trim an optional ";" from a non-empty substring *)
+fun trimSemi ss = if Substring.sub(ss, Substring.size ss - 1) = #";"
+      then Substring.trimr 1 ss
+      else ss
+val scanInt = #1 o valOf o IntInf.scan StringCvt.DEC Substring.getc
+val scanHex = #1 o valOf o IntInf.scan StringCvt.HEX Substring.getc
 );
 
 %states INITIAL, INTAG, COM1, COM2;
 
 %let alpha=[A-Za-z];
 %let digit=[0-9];
+%let hexdigit=[0-9a-fA-F];
 %let namechar=[-.A-Za-z0-9.];
 %let tag={alpha}{namechar}*;
 %let ws=[\ \t];
@@ -71,10 +85,12 @@ fun entityText crntYYText =
 
 (* Entities *)
 
-<INITIAL>"&#"[0-9]+";"? => (CHAR_REF (valOf (IntInf.fromString
-                                                 (entityText yytext))));
-
-<INITIAL>"&"{tag}";"? => (ENTITY_REF (Atom.atom (entityText yytext)));
+<INITIAL>"&#"{digit}+";"?
+		=> (CHAR_REF(scanInt (trimSemi (Substring.slice(yysubstr, 2, NONE)))));
+<INITIAL>"&#x"{hexdigit}+";"?
+		=> (CHAR_REF(scanHex (trimSemi (Substring.slice(yysubstr, 3, NONE)))));
+<INITIAL>"&"{tag}";"?
+		=> (ENTITY_REF(Atom.atom (Substring.string (Substring.slice(yysubstr, 1, NONE)))));
 
 (* Character data *)
 

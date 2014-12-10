@@ -378,11 +378,11 @@ in
       | ppTh_or_td ppstrm (TH content) =
         ppTagAndChildren ppstrm ppFlow S.TH content
     and ppOptgroup_or_option ppstrm (OPTGROUP content) =
-        ppTagAndChildren ppstrm ppHtml_option S.OPTGROUP content
-      | ppOptgroup_or_option ppstrm (OptgroupOrOption_OPTION option) =
-        ppHtml_option ppstrm option
-    and ppHtml_option ppstrm (OPTION content) =
-        ppTagAndChildren ppstrm ppCdata S.OPTION content
+        ppTagAndChildren ppstrm
+	   (fn pstrm => fn opt => ppTagAndChildren ppstrm ppCdata S.OPTION opt)
+	   S.OPTGROUP content
+      | ppOptgroup_or_option ppstrm (OPTION content) =
+	ppTagAndChildren ppstrm ppCdata S.OPTION content
     and ppFlow_or_param ppstrm (FlowOrParam_FLOW flow) = ppFlow ppstrm flow
       | ppFlow_or_param ppstrm (FlowOrParam_PARAM param) = ppParam ppstrm param
     and ppBlock_or_script ppstrm (BlockOrScript_BLOCK block) =

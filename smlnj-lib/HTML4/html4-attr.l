@@ -19,14 +19,18 @@ type lex_result = token
 %let digit=[0-9];
 %let ws=[\ \t\r\n];
 
-{alpha}({alpha}|{digit}|"-")* => (NAME (Atom.atom yytext));
+(* some XHTML attributes have ":" in their name *)
+{alpha}({alpha}|{digit}|[-.:])* => (NAME (Atom.atom yytext));
 {digit}+ => (NUMBER yytext);
-"=" => (DOT);
+"=" => (EQUALS);
 "." => (DOT);
 [\"][^\"]*[\"] => (STRINGLIT yytext);
 [\'][^\']*[\'] => (STRINGLIT yytext);
 
+
 {ws}+ => (continue());
+
+. => ((* error; invalid character *) continue());
 
 (* ______________________________________________________________________
    End of html4-attr.l

@@ -7,39 +7,36 @@
  *)
 
 Library
-    signature HTML4
-    structure HTML4
-    structure HTML4Attrs
-    structure HTML4Parser
-    structure HTML4Tokens
-    structure HTML4TokenUtils
-    structure HTML4Utils
-    structure HTML4Printer
+
+  signature HTML4
+  structure HTML4
+  structure HTML4Attrs
+  structure HTML4Entities
+  structure HTML4Parser
+  structure HTML4Tokens
+  structure HTML4TokenUtils
+  structure HTML4Utils
+  structure HTML4Print
+
 is
-    $/basis.cm
-    $/smlnj-lib.cm
-    $/ml-lpt-lib.cm
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/ml-lpt-lib.cm
 
-    (* XXX IMO, the following should not be required to be able to
-    "see" the PrettyPrint structure. *)
-    $smlnj/compiler/current.cm
+  html4.g : ml-antlr
+  html4.l : ml-ulex
 
-    html4.g : ml-antlr
-    html4.l : ml-ulex
+  html4-attr.g : ml-antlr
+  html4-attr.l : ml-ulex
 
-    html4-attr.g : ml-antlr
-    html4-attr.l : ml-ulex
-
-    html4-attrs.sml
-
-    html4-token-utils.sml
-    html4-utils.sml
-
-    html4.sig
-    html4.sml
-
-    html4-parser.sml
-    html4-printer.sml
+  html4.sig
+  html4.sml
+  html4-attrs.sml
+  html4-entities.sml
+  html4-parser.sml
+  html4-print.sml
+  html4-token-utils.sml
+  html4-utils.sml
 
 (* ______________________________________________________________________
    End of html4-lib.cm
