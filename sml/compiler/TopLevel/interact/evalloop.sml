@@ -68,9 +68,29 @@ fun evalLoop source = let
         else ()
 
     fun oneUnit () = (* perform one transaction  *)
-	case parser () of
-	    NONE => raise EndOfFile
-	  | SOME ast => let
+	case parser ()
+	  of NONE => raise EndOfFile
+	   | SOME ast =>
+	     let
+		(* diagnostic printing of Ast and Absyn *)
+		val printDepth = Control_Print.printDepth
+				 
+		fun debugPrint (debugging: bool)
+                    (msg: string, printfn: PP.stream -> 'a -> unit, arg: 'a) =
+                    if debugging then
+                        with_pp (EM.defaultConsumer())
+                                (fn ppstrm =>
+                                    (openHVBox ppstrm (PP.Rel 0);
+                                     PP.string ppstrm msg;
+                                     newline ppstrm;
+                                     openHVBox ppstrm (PP.Rel 0);
+                                     printfn ppstrm arg;
+                                     closeBox ppstrm;
+                                     newline ppstrm;
+                                     closeBox ppstrm;
+                                     flushStream ppstrm))
+                    else ()
+
 		val loc = EnvRef.loc ()
 		val base = EnvRef.base ()
 		val _ = #manageImport (!compManagerHook) (ast, loc)
@@ -79,6 +99,13 @@ fun evalLoop source = let
 
                 val {static=statenv, dynamic=dynenv, symbolic=symenv} =
 		    getenv ()
+
+		(* conditional diagnostic code to print ast - could it be involked from parser?
+                   if so, what statenv would be used? *)
+		val _ = let fun ppAstDec ppstrm d = 
+                                PPAst.ppDec (statenv,NONE) ppstrm (d,!printDepth)
+			in debugPrint (!Control.printAst) ("AST::", ppAstDec, ast)
+			end
 
                 val splitting = Control.LambdaSplitting.get ()
                 val {csegments, newstatenv, absyn, exportPid, exportLvars,
@@ -94,6 +121,12 @@ fun evalLoop source = let
                     they hold on things unnecessarily; this must be 
                     fixed in the long run. (ZHONG)
                  *)
+
+		(* conditional diagnostic printing of absyn -- should be done in elaborator? *)
+	        val _ = let fun ppAbsynDec ppstrm d = 
+                                PPAbsyn.ppDec (statenv,NONE) ppstrm (d,!printDepth)
+			in debugPrint (!Control.printAbsyn) ("ABSYN::", ppAbsynDec, absyn)
+			end
 
                 val executable = Execute.mkexec
 				     { cs = csegments,
@@ -116,38 +149,6 @@ fun evalLoop source = let
                        have changed its contents *)
 
 
-		(* start adding testing code of ppast.ppdec here *)
-		val debugging = ref true
-
-		val printDepth = Control_Print.printDepth
-				 
-		fun debugPrint (debugging: bool ref)
-                    (msg: string, printfn: PP.stream -> 'a -> unit, arg: 'a) =
-                    if (!debugging) then
-                        with_pp (EM.defaultConsumer())
-                                (fn ppstrm =>
-                                    (openHVBox ppstrm (PP.Rel 0);
-                                     PP.string ppstrm msg;
-                                     newline ppstrm;
-                                     openHVBox ppstrm (PP.Rel 0);
-                                     printfn ppstrm arg;
-                                     closeBox ppstrm;
-                                     newline ppstrm;
-                                     closeBox ppstrm;
-                                     flushStream ppstrm))
-                    else ()
-
-		fun ppAstDebug (msg,dec) =
-		    let fun ppAstDec ppstrm d = 
-                            PPAst.ppDec (statenv,NONE) ppstrm (d,!printDepth)
-                     in debugPrint (Control.printAst) (msg, ppAstDec, dec)
-                    end
-		    
-		fun ppAbsynDebug (msg,dec) =
-		    let fun ppAbsynDec ppstrm d = 
-                            PPAbsyn.ppDec (statenv,NONE) ppstrm (d,!printDepth)
-                     in debugPrint (Control.printAbsyn) (msg, ppAbsynDec, dec)
-                    end
 
 		(* we install the new local env first before we go about
 		 * printing, otherwise we find ourselves in trouble if
@@ -183,11 +184,6 @@ fun evalLoop source = let
 				   symbolic = E.symbolicPart e0,
 				   dynamic = E.dynamicPart e0 }
             in
-		(* testing code to print ast *)
-		ppAstDebug("AST::",ast);
-		(* testing code to print absyn *)
-		ppAbsynDebug("ABSYN::",absyn);
-
 		PP.with_pp
 		    (#errConsumer source)
 		    (fn ppstrm => PPDec.ppDec e1 ppstrm (absyn, exportLvars))

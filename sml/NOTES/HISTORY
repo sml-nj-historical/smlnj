@@ -28,6 +28,22 @@ Improved error messages in ml-ulex for unclosed strings.  Also made
 documentation improvements.
 
 ----------------------------------------------------------------------
+Name: David MacQueen (http://cs.uchicago.edu/~dbm)
+Date: 2014/12/13
+Description: preliminary cleanups before changes to overloading
+
+Minor cleanup in Elaborator/elaborate/elabcore (fun elabOVERLOADdec)
+and in ElabData/types/typesutil.sml (fun matchScheme). Preparing for
+new method of handling type checking of overloaded operators. [Note
+that there is no reason for the options field of OVLDvar to be a
+reference -- it is never updated. Changing this requires corresponding
+change in pickling.]
+
+Also added an etopdebugging flag (ElabControl) for debugging in elabtop.sml.
+Modified elabcontrol.s?? and elabtop.sml. Also rearranged ast and absyn
+printing in evalloop.sml.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
 Date: 2014/10/11
 Description:

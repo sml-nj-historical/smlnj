@@ -395,46 +395,31 @@ fun dconType (tyc,domain) =
 
 (* matching a scheme against a target type -- used declaring overloadings *)
 fun matchScheme (TYFUN{arity,body}: tyfun, target: ty) : ty =
-    let val tyenv = array(arity,UNDEFty)
-	fun matchTyvar(i:int, ty: ty) : unit = 
-	    case tyenv sub i
-	      of UNDEFty => update(tyenv,i,ty)
+    (* Assert: arity = 1; target is a (pruned) monomorphic type *)
+    let val tyinst = ref UNDEFty
+	fun matchTyvar(ty: ty) : unit = 
+	    case !tyinst
+	      of UNDEFty => tyinst := ty
 	       | ty' => if equalType(ty,ty')
-			then () 
+			then ()
  			else bug("this compiler was inadvertantly \
 			          \distributed to a user who insists on \
  				  \playing with 'overload' declarations.")
-        fun match(scheme:ty, target:ty) =
-	    case (prune scheme,prune(target))
-	      of (WILDCARDty, _) => ()		(* Wildcards match any type *)
-	       | (_, WILDCARDty) => ()		(* Wildcards match any type *)
-	       | ((IBOUND i),ty) => matchTyvar(i,ty)
-	       | (CONty(tycon1,args1), pt as CONty(tycon2,args2)) =>
+        fun match(scheme:ty, target:ty) : unit =
+	    case (prune scheme, prune target)
+	      of ((IBOUND 0),ty) => matchTyvar ty
+	       | (CONty(tycon1,args1), CONty(tycon2,args2)) =>
 		   if eqTycon(tycon1,tycon2)
 		   then ListPair.app match (args1, args2)
 		   else (match(reduceType scheme, target)
 			 handle ReduceType =>
-			   (match(scheme, reduceType pt)
+			   (match(scheme, reduceType target)
 			    handle ReduceType =>
-			      bug "matchScheme, match -- tycons "))
-               | (MARKty(ty1,region1), MARKty(ty2,region2)) => match(ty1,ty2)
-               | (MARKty(ty1,region1), ty2) => match(ty1,ty2)
-               | (ty1, MARKty(ty2,region2)) => match(ty1,ty2)
-	       | _ => bug "matchScheme, match"
-     in case prune target
-	  of POLYty{sign,tyfun=TYFUN{arity=arity',body=body'}} =>
-	       (match(body,body');
-	        POLYty{sign = sign,
-		       tyfun = TYFUN{arity = arity',
-			        body = if arity>1
-				    then BT.tupleTy(Array.foldr (op ::)
-								nil tyenv)
-				    else tyenv sub 0}})
-	   | ty => 
-	       (match(body,ty);
-	        if arity>1
-		then BT.tupleTy(Array.foldr (op ::) nil tyenv)
-		else tyenv sub 0)
+				   bug "matchScheme, match -- tycons "))
+	       | _ => bug "TypesUtil.matchScheme > match"
+    in 
+        match(body,target);
+	!tyinst
     end
 
 val rec compressTy =

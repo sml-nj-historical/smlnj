@@ -81,7 +81,7 @@ fun failMessage (failure: unifyFail) =
        | OVLD _ =>   "overload"
        | UBVE _ =>   "UBOUND, equality mismatch"
        | UBV _ =>    "UBOUND match"
-       | SCH _ =>      "SCHEME, equality mismatch"
+       | SCH _ =>    "SCHEME, equality mismatch"
        | REC =>      "record labels"
 
 exception Unify of unifyFail
@@ -91,6 +91,7 @@ exception Unify of unifyFail
 
 val eqLabel = Symbol.eq
 
+(* eqLitKind : litKind -> bool.  Does a litKind support equality? *)
 fun eqLitKind (lk : T.litKind) =
     case lk of (INT | WORD | CHAR | STRING) => true | REAL => false
 
@@ -428,7 +429,7 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}), ty, reg1, reg2) =
                  | ty' as CONty(tyc,nil) => var := INSTANTIATED ty'
                  (* valid potential resolution type. Could check more precisely
                   * for membership in the allowed basic types
-                  * (e.g. int, real, ...) *)
+                  * (e.g. int, real, ...). [Must do this for bug #52] *)
                  | WILDCARDty => ()
 		 | MARKty(ty1, reg2') => instTyvar(var, ty1, reg1, reg2')
                  | _ => raise Unify(OVLD ty))

@@ -59,6 +59,8 @@ struct
         (* Unify *)
     val instantiateSigs = onew ("instantiate-sigs", "instantiate all sigs", true)
         (* ElabMod, Control_MC *)
+    val etopdebugging = onew ("etop-debugging", "ElabTop debugging", false)
+        (* ElabTop *)
 
     val internals = onew ("internals", "show internal reps", false)
 

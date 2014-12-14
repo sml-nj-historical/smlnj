@@ -712,23 +712,23 @@ let
 
     (**** OVERLOADING ****)
 
-    and elabOVERLOADdec((id,typ,exps),env,rpath,region) =
-	let val (body,tyvars) = ET.elabType(typ,env,error,region)
-	    val tvs = TS.elements tyvars
+    and elabOVERLOADdec((id,typeScheme,exps),env,rpath,region) =
+	(* exps are simple variables or paths, with monomorphic types;
+	 * typ is a type scheme with a single type variable parameter,
+	 * which matches the type of each exp *)
+	let val (body,tyvars) = ET.elabType(typeScheme,env,error,region)
+	    val tvs = TS.elements tyvars (* ASSERT: length tyvars = 1 *)
 	    val scheme = (TU.bindTyvars tvs; TU.compressTy body;
 			  TYFUN{arity=length tvs, body=body})
 	    fun option (MARKexp(e,_)) = option e
 	      | option (VARexp(ref (v as VALvar{typ,...}),_)) =
 		  {indicator = TU.matchScheme(scheme,!typ), variant = v}
-	      | option _ = bug "makeOVERLOADdec.option"
-	    val exps = map (fn exp => elabExp(exp,env,region)) exps
-	    val exps1 = map #1 exps
-	    and exps3 = map #3 exps
-	    fun updt tv: unit = app (fn f => f tv) exps3
+	      | option _ = bug "evalOVERLOADdec.option"
+	    val options = map (fn exp => option(#1(elabExp(exp,env,region)))) exps
 	    val ovldvar = OVLDvar{name=id,scheme=scheme,
-				  options=ref(map option exps1)}
+				  options=ref(options)}
 	 in (OVLDdec ovldvar, SE.bind(id,B.VALbind ovldvar,SE.empty),
-             TS.empty, updt)
+             TS.empty, no_updt)
 	end
 
     (**** LOCAL ****)

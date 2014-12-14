@@ -38,7 +38,7 @@ in
 
 (* debugging *)
 val say = Control_Print.say
-val debugging = ref false
+val debugging = ElabControl.etopdebugging (* default false *)
 fun debugmsg (msg: string) =
   if !debugging then (say msg; say "\n") else ()
 val debugPrint = (fn x => ElabDebug.debugPrint debugging x)
@@ -55,7 +55,7 @@ fun bug msg = ErrorMsg.impossible("ElabTop: "^msg)
  * these code should become obsolete. (ZHONG)
  *)
 fun makeOpenDecls (str, spath) =
-  let fun build (name, dl) = 
+    let fun build (name, dl) = 
         (case S.nameSpace name
           of S.VALspace =>
               let val v = MU.getValPath(str, SP.SPATH[name],
@@ -90,12 +90,12 @@ fun makeOpenDecls (str, spath) =
 
            | _ => dl)
 
-      val nds = foldr build [] (MU.getStrSymbols str)
+        val nds = foldr build [] (MU.getStrSymbols str)
 
-   in LocalDec(StrDec[Strb{name=localStrName, def=VarStr(spath),
-                           constraint=NoSig}],
-               SeqDec nds)
-  end 
+     in LocalDec(StrDec[Strb{name=localStrName, def=VarStr(spath),
+                             constraint=NoSig}],
+		 SeqDec nds)
+    end
 
 (*
  * The main purpose of having a separate layer of elabTop above elabDecl
@@ -128,10 +128,10 @@ fun elab(SeqDec decs, env0, top, region) =
       end
 
   | elab(MarkDec(dec,region'), env, top, region) = 
-	       let val (d,env)= elab(dec,env,top,region')
-		in (if !ElabControl.markabsyn then A.MARKdec(d,region')
-		    else d, env)
-	       end
+      let val (d,env)= elab(dec,env,top,region')
+       in (if !ElabControl.markabsyn then A.MARKdec(d,region')
+	   else d, env)
+      end
 
   | elab(OpenDec paths, env, top, region) = 
       let val _ = debugPrint("top level open: ",

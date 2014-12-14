@@ -28,7 +28,7 @@ exception SoftUnify
 
 fun copyScheme (tyfun as TYFUN{arity,...}) : ty * ty =
   let fun typeArgs n = if n>0 then TU.mkSCHEMEty() :: typeArgs(n-1) else []
-      val tvs = typeArgs arity
+      val tvs = typeArgs arity  (* invariant: arity = 1 *)
    in (TU.applyTyfun(tyfun,tvs),if arity>1 then BT.tupleTy tvs else hd tvs)
   end
 
@@ -114,9 +114,10 @@ fun softUnify(ty1: ty, ty2: ty): unit =
     end
 
 (* overloaded functions *)
-fun new () = let
-    val overloaded = ref (nil: (var ref * ErrorMsg.complainer * ty) list)
-    fun push (refvar as ref(OVLDvar{options,scheme,...}), err) = 
+fun new () =
+let val overloaded = ref (nil: (var ref * ErrorMsg.complainer * ty) list)
+
+    fun push (refvar as ref(OVLDvar{scheme,...}), err) = 
 	let val (scheme',ty) = copyScheme(scheme)
 	in
 	    overloaded := (refvar,err,ty) :: !overloaded;

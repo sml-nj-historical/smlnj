@@ -24,6 +24,7 @@ sig
       (* Unify *)
   val instantiateSigs : bool ref
       (* ElabMod, Control_MC *)
+  val etopdebugging : bool ref
 
   val internals : bool ref
 
