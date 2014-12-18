@@ -1,6 +1,15 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
+--------------------------------------------------------------------------------
+SML/NJ 110.78
+-------------------
+
+[2014-12-07]
+	Added HTML4Entities structure to HTML4 library.  various
+	performance improvements to HTML4 parsing (but the code still
+	needs work).  Also rewrote the HTML4 pretty printer.
+
 [2014-12-07]
 	New implementation of ListMergeSort.  This implementation is
 	better on sorted data (both ascending and descending) and
