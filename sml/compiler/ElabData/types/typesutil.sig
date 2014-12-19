@@ -10,8 +10,8 @@ sig
   val mkMETA : int -> Types.tvKind
   val mkFLEX : ((Symbol.symbol * Types.ty) list) * int -> Types.tvKind
   val mkUBOUND : Symbol.symbol -> Types.tvKind
-  val mkLITERALty : Types.litKind * SourceMap.region -> Types.ty
-  val mkSCHEMEty : unit -> Types.ty
+(*  val mkLITERALty : Types.litKind * SourceMap.region -> Types.ty
+ *  moved to ElabCore *)
   val mkMETAty : unit -> Types.ty
   val mkMETAtyBounded : int -> Types.ty
 
@@ -38,9 +38,8 @@ sig
   val applyPoly : Types.ty * Types.ty list -> Types.ty
   val reduceType : Types.ty -> Types.ty
   val headReduceType : Types.ty -> Types.ty
-  val nullReduceType : Types.ty -> Types.ty
   val equalType  : Types.ty * Types.ty -> bool
-  val equalTypeP  : Types.ty * Types.ty -> bool
+  val equalTypeP : Types.ty * Types.ty -> bool
   val equalTycon : Types.tycon * Types.tycon -> bool
 
   (* making a "generic" copy of a type *)
@@ -50,10 +49,9 @@ sig
   val dconTyc : Types.datacon -> Types.tycon
   val dconType : Types.tycon * Types.ty option  -> Types.ty
 
-  (* matching a scheme against a target type -- used declaring overloadings *)
-  val matchScheme : Types.tyfun * Types.ty -> Types.ty
+  val inClass : Types.ty * Types.ty list -> bool
 
-  (* get rid of INSTANTIATED indirections in a type *)
+  (* get rid of INSTANTIATED indirections throughout a type *)
   val compressTy : Types.ty -> unit  
 
   type occ
@@ -98,6 +96,8 @@ sig
   val projectField : Symbol.symbol * Types.ty -> Types.ty option
 
   val mapUnZip : ('a -> 'b * 'c) -> 'a list -> 'b list * 'c list
+  (* this is obviously a generic list utility fn, so should be in
+   * a more general utility module *)
 
   type tycset
   val mkTycSet : unit -> tycset

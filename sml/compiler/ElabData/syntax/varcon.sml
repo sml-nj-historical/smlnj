@@ -20,9 +20,9 @@ datatype var
        prim : PrimOpId.primId}
   | OVLDvar of       	      	      (* overloaded identifier *)
       {name : S.symbol,
-       options: {indicator: T.ty, variant: var} list ref,
+       options: {indicator: T.ty, variant: var} list,
        scheme: T.tyfun}
-  | ERRORvar
+  | ERRORvar                          (* error variables *)
 
 type datacon = T.datacon                     
 

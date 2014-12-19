@@ -142,7 +142,7 @@ fun ppDebugVar ii2string ppstrm env  =
 		   ppcomma_nl ppstrm;
 		   pps " variant =";
 		   ppDebugVar ii2string ppstrm env variant; pps "}"))
-	       (!options));
+	       options);
 	      pps "]"; ppcomma_nl ppstrm;
 	      pps "scheme="; ppTyfun env ppstrm scheme; pps "})";
 	      closeBox();
@@ -159,7 +159,7 @@ fun ppVariable ppstrm  =
 	       if !internals then ppAccess ppstrm access else ();
 	       pps " : "; ppType env ppstrm (!typ);
 	       closeBox())
-	  | ppV (env,OVLDvar {name,options=ref optl,scheme=TYFUN{body,...}}) =
+	  | ppV (env,OVLDvar {name,options=optl,scheme=TYFUN{body,...}}) =
 	      (openHVBox 0;
 	       ppSym ppstrm (name); pps " : "; ppType env ppstrm body; 
 	       pps " as ";

@@ -113,8 +113,16 @@ fun annotate (name,annotation,depthOp) =
 		      | NONE => nil))
     else name
 
-fun tyvarPrintname (tyvar) = let
-    fun prKind info =
+fun sourcesToString (OVAR(name,_)::_) = Symbol.name name
+  | sourcesToString (OLIT(kind,_,_)::_) =
+      (case kind
+        of INT => "int"
+         | WORD => "word"
+         | _ => "?")
+  | sourcesToString nil = bug "sourcesToString"
+
+fun tyvarPrintname (tyvar) =
+let fun prKind info =
 	case info of
 	    INSTANTIATED(VARty(tyvar)) => tyvarPrintname tyvar
 	  | INSTANTIATED _ => "<INSTANTIATED ?>"
@@ -124,10 +132,9 @@ fun tyvarPrintname (tyvar) = let
 				SOME depth))
 	  | UBOUND{name,depth,eq} =>
 	    tvHead(eq,annotate(Symbol.name name,"U",SOME depth))
-	  | LITERAL{kind,...} =>
-	    annotate(litKindPrintName kind,"L",NONE)
-	  | SCHEME eq =>
-	    tvHead(eq,annotate(metaTyvarName tyvar,"S",NONE))
+	  | OVLD{sources,options} =>
+	    annotate("["^sourcesToString sources ^ " ty]",
+		     "O:" ^ Int.toString(length options),NONE)
 	  | LBOUND{depth,eq,index} => 
 	      (if eq then "<LBDeq" else "<LBD")^Int.toString depth^"."
 	      ^Int.toString index^">"
@@ -135,14 +142,6 @@ in
     prKind (!tyvar)
 end
 
-(*
-fun ppkind ppstrm kind =
-    pps ppstrm
-      (case kind
-	 of PRIMITIVE _ => "PRIMITIVE" | FORMAL => "FORMAL"
-          | FLEXTYC _ => "FLEXTYC" | ABSTRACT _ => "ABSTYC"
-	  | DATATYPE _ => "DATATYPE" | TEMP => "TEMP")
-*)
 fun ppkind ppstrm kind =
     pps ppstrm
       (case kind

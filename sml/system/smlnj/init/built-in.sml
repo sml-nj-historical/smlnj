@@ -13,13 +13,13 @@ structure PrimTypes = struct open PrimTypes end
    (* this silliness is to prevent elabstr.sml from sticking a NO_ACCESS
       in the wrong place [dbm: presumably this NO_ACCESS is derived from
       the dummy access value (NO_ACCESS) in the hand-built PrimTypes module.]
-      How and why does this access value get propagated into the code. *)
+      How and why does this access value get propagated into the code? *)
 
 local
     open PrimTypes
 in
 (* [dbm, 6/21/06] If this is elaborated in the primEnv environment, there is
-already an opened PrimType, so is the above code redundnat? By experimentation,
+already an opened PrimType, so is the above code redundant? By experimentation,
 it appears that the "local open PrimTypes in ..." is not necessary. *)
 
   structure Assembly = Core.Assembly

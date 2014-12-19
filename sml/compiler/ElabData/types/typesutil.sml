@@ -62,10 +62,7 @@ fun mkUBOUND(id : Symbol.symbol) : tvKind =
      in UBOUND{name=Symbol.tyvSymbol name, depth=infinity, eq=eq}
     end
 
-fun mkLITERALty (k: litKind, r: SourceMap.region) : ty =
-    VARty(mkTyvar(LITERAL{kind=k,region=r}))
-
-fun mkSCHEMEty () : ty = VARty(mkTyvar(SCHEME false))
+(* mkLITERALty moved to ElabCore because of use of OverloadLit *)
 
 (*
  * mkMETAty:
@@ -152,6 +149,7 @@ fun eqTycon (GENtyc g, GENtyc g') = Stamps.eq (#stamp g, #stamp g')
       Stamps.eq(s1,s2)
   | eqTycon _ = false
 
+(* prune: ty -> ty; eliminates INSTANTIATED indirections *)
 fun prune(VARty(tv as ref(INSTANTIATED ty)) |
           MARKty(VARty(tv as ref(INSTANTIATED ty)),_)) : ty =
       let val pruned = prune ty
@@ -193,8 +191,8 @@ fun shareMap f nil = raise SHARE
       (f x) :: ((shareMap f l) handle SHARE => l)
       handle SHARE => x :: (shareMap f l)
 
-(*** This function should be merged with instantiatePoly soon --zsh
-     dbm: don't agree! ***)
+(* applyTyfun is more general than instantiatePoly and has
+   many uses beyond applyPoly *)
 fun applyTyfun(TYFUN{arity,body}, args: ty list) =
   let fun subst(IBOUND n) = List.nth(args,n)
         | subst(CONty(tyc,args)) = CONty(tyc, shareMap subst args)
@@ -246,23 +244,23 @@ exception ReduceType
 fun reduceType(CONty(DEFtyc{tyfun,...}, args)) = applyTyfun(tyfun,args)
   | reduceType(POLYty{sign=[],tyfun=TYFUN{arity=0,body}}) = body
   | reduceType(VARty(ref(INSTANTIATED ty))) = ty
-  | reduceType(MARKty(ty, region)) = reduceType ty
+  | reduceType(MARKty(ty, region)) = ty
   | reduceType _ = raise ReduceType
 
 fun headReduceType ty = headReduceType(reduceType ty) handle ReduceType => ty
 
-(* used in SCHEME tyvar case of instTyvar in Unify. Reduce until we have
- * either a noninstantiated tyvar, or a "null CONty", which is guaranteed
- * to be closed (tyvar free) *)
-fun nullReduceType ty =
-    (case ty
-       of CONty(DEFtyc{tyfun,...}, nil) => ty
-        | _ => nullReduceType(reduceType ty))
-    handle ReduceType => ty
-
 fun equalType(ty: ty,ty': ty) : bool =
     let fun eq(IBOUND i1, IBOUND i2) = i1 = i2
-	  | eq(VARty(tv),VARty(tv')) = eqTyvar(tv,tv')
+	  | eq(ty1 as VARty(tv1), ty2 as VARty(tv2)) =
+	    eqTyvar(tv1,tv2) orelse
+	    (case (tv1,tv2)
+	      of (ref(INSTANTIATED ty1'), ref(INSTANTIATED ty2')) =>
+		  equalType(ty1', ty2')
+	       | (ref(INSTANTIATED ty1'), _) =>
+		  equalType(ty1',ty2)
+	       | (_, ref(INSTANTIATED ty2')) =>
+		  equalType(ty1,ty2')
+	       | _ => false)
 	  | eq(ty as CONty(tycon, args), ty' as CONty(tycon', args')) =
 	      if eqTycon(tycon, tycon') then
                  (case tycon
@@ -280,12 +278,13 @@ fun equalType(ty: ty,ty': ty) : bool =
                      | _ => ListPair.all equalType(args,args'))
 	      else (eq(reduceType ty, ty')
 		    handle ReduceType =>
-		      (eq(ty,reduceType ty') handle ReduceType => false))
+		      (eq(ty,reduceType ty')
+			handle ReduceType => false))
 	  | eq(ty1 as (VARty _ | IBOUND _), ty2 as CONty _) =
-	      (eq(ty1,reduceType ty2)
+	      (eq(prune ty1,reduceType ty2)
 	       handle ReduceType => false)
 	  | eq(ty1 as CONty _, ty2 as (VARty _ | IBOUND _)) =
-	      (eq(reduceType ty1, ty2)
+	      (eq(reduceType ty1, prune ty2)
 	       handle ReduceType => false)
 	  | eq(WILDCARDty,_) = true
 	  | eq(_,WILDCARDty) = true
@@ -393,34 +392,11 @@ fun dconType (tyc,domain) =
                                       | SOME dom =>
                                         dom --> CONty(tyc,boundargs(arity))}})
 
-(* matching a scheme against a target type -- used declaring overloadings *)
-fun matchScheme (TYFUN{arity,body}: tyfun, target: ty) : ty =
-    (* Assert: arity = 1; target is a (pruned) monomorphic type *)
-    let val tyinst = ref UNDEFty
-	fun matchTyvar(ty: ty) : unit = 
-	    case !tyinst
-	      of UNDEFty => tyinst := ty
-	       | ty' => if equalType(ty,ty')
-			then ()
- 			else bug("this compiler was inadvertantly \
-			          \distributed to a user who insists on \
- 				  \playing with 'overload' declarations.")
-        fun match(scheme:ty, target:ty) : unit =
-	    case (prune scheme, prune target)
-	      of ((IBOUND 0),ty) => matchTyvar ty
-	       | (CONty(tycon1,args1), CONty(tycon2,args2)) =>
-		   if eqTycon(tycon1,tycon2)
-		   then ListPair.app match (args1, args2)
-		   else (match(reduceType scheme, target)
-			 handle ReduceType =>
-			   (match(scheme, reduceType target)
-			    handle ReduceType =>
-				   bug "matchScheme, match -- tycons "))
-	       | _ => bug "TypesUtil.matchScheme > match"
-    in 
-        match(body,target);
-	!tyinst
-    end
+(* inClass: ty * ty list -> bool
+ * inClass(ty,tys) tests whether ty occurs in the list tys;
+ * used in overloading resolution for operators and literals *)
+fun inClass(ty, tys) = List.exists (fn ty' => equalType(ty,ty')) tys
+
 
 val rec compressTy =
    fn t as VARty(x as ref(INSTANTIATED(VARty(ref v)))) =>

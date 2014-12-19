@@ -68,19 +68,19 @@ local
 in
 overload ~ :   ('a -> 'a)
    as  I31.~ and I32.~ and CI64.~ and CII.~
-   and w8neg and W31.~ and W32.~ and CW64.~
+   and W31.~ and w8neg and W32.~ and CW64.~
    and R64.~
 overload + :   ('a * 'a -> 'a)
   as  I31.+ and I32.+ and CI64.+ and CII.+
-  and w8plus and W31.+ and W32.+ and CW64.+
+  and W31.+ and w8plus and W32.+ and CW64.+
   and R64.+
 overload - :   ('a * 'a -> 'a)
   as  I31.- and I32.- and CI64.- and CII.-
-  and w8minus and W31.- and W32.- and CW64.-
+  and W31.- and w8minus and W32.- and CW64.-
   and R64.-
 overload * :   ('a * 'a -> 'a)
   as  I31.* and I32.* and CI64.* and CII.*
-  and w8times and W31.* and W32.* and CW64.*
+  and W31.* and w8times and W32.* and CW64.*
   and R64.*
 (*
 overload / : ('a * 'a -> 'a)
@@ -89,31 +89,31 @@ overload / : ('a * 'a -> 'a)
 val op / = R64./		(* temporary hack around overloading bug *)
 overload div : ('a * 'a -> 'a)
   as  I31.div and I32.div and CI64.div and CII.div
-  and W8.div and W31.div and W32.div and CW64.div
+  and W31.div and W8.div and W32.div and CW64.div
 overload mod : ('a * 'a -> 'a)
   as  I31.mod and I32.mod and CI64.mod and CII.mod
-  and W8.mod and W31.mod and W32.mod and CW64.mod
+  and W31.mod and W8.mod and W32.mod and CW64.mod
 overload < :   ('a * 'a -> bool)
   as  I31.< and I32.< and CI64.< and CII.<
-  and W8.< and W31.< and W32.< and CW64.<
+  and W31.< and W8.< and W32.< and CW64.<
   and R64.<
   and InlineT.Char.<
   and stringlt
 overload <= :   ('a * 'a -> bool)
   as  I31.<= and I32.<= and CI64.<= and CII.<=
-  and W8.<= and W31.<= and W32.<= and CW64.<=
+  and W31.<= and W8.<= and W32.<= and CW64.<=
   and R64.<=
   and InlineT.Char.<=
   and stringle
 overload > :   ('a * 'a -> bool)
   as  I31.> and I32.> and CI64.> and CII.>
-  and W8.> and W31.> and W32.> and CW64.>
+  and W31.> and W8.> and W32.> and CW64.>
   and R64.>
   and InlineT.Char.>
   and stringgt
 overload >= :   ('a * 'a -> bool)
   as  I31.>= and I32.>= and CI64.>= and CII.>=
-  and W8.>= and W31.>= and W32.>= and CW64.>=
+  and W31.>= and W8.>= and W32.>= and CW64.>=
   and R64.>=
   and InlineT.Char.>=
   and stringge

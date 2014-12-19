@@ -3,6 +3,7 @@
 
 signature ELABDEBUG =
 sig
+  val debugMsg : bool ref -> string -> unit
   val debugPrint : bool ref 
                    -> (string *
 		       (PrettyPrintNew.stream -> 'a -> unit) *
@@ -30,22 +31,33 @@ local
 
 in 
 
+fun debugMsg (debugging: bool ref) (msg: string) =
+    if (!debugging)
+    then with_default_pp
+	  (fn ppstrm =>
+	    (openHVBox ppstrm (PP.Rel 0);
+	     PP.string ppstrm msg;
+	     closeBox ppstrm;
+	     newline ppstrm;
+	     PP.flushStream ppstrm))
+    else ()
+
 fun debugPrint (debugging: bool ref)
                (msg: string, printfn: PP.stream -> 'a -> unit, arg: 'a) =
-  if (!debugging) then
-       with_default_pp
-	(fn ppstrm =>
-	  (openHVBox ppstrm (PP.Rel 0);
-	   PP.string ppstrm msg;
-	   newline ppstrm;
-	   PP.nbSpace ppstrm 2;
-	   openHVBox ppstrm (PP.Rel 0);
-	   printfn ppstrm arg;
-	   closeBox ppstrm;
-	   newline ppstrm;
-	   closeBox ppstrm;
-	   PP.flushStream ppstrm))
-  else ()
+    if (!debugging)
+    then with_default_pp
+	  (fn ppstrm =>
+	    (openHVBox ppstrm (PP.Rel 0);
+	     PP.string ppstrm msg;
+	     newline ppstrm;
+	     PP.nbSpace ppstrm 2;
+	     openHVBox ppstrm (PP.Rel 0);
+	     printfn ppstrm arg;
+	     closeBox ppstrm;
+	     newline ppstrm;
+	     closeBox ppstrm;
+	     PP.flushStream ppstrm))
+    else ()
 
 fun ppSymList ppstrm (syms: S.symbol list) = 
      PU.ppClosedSequence ppstrm

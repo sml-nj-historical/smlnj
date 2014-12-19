@@ -22,6 +22,8 @@ sig
       (* Typecheck *)
   val unidebugging : bool ref
       (* Unify *)
+  val ovlddebugging : bool ref
+      (* Overload *)
   val instantiateSigs : bool ref
       (* ElabMod, Control_MC *)
   val etopdebugging : bool ref

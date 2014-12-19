@@ -194,7 +194,7 @@ fun ppVariable ppstrm  =
 	       if !internals then PPVal.ppAccess ppstrm access else ();
 	       pps " : "; ppType env ppstrm (!typ);
 	       closeBox())
-	  | ppV (V.OVLDvar {name,options=ref optl,scheme=T.TYFUN{body,...}},env) =
+	  | ppV (V.OVLDvar {name,options=optl,scheme=T.TYFUN{body,...}},env) =
 	      (openHVBox 0;
 	       ppSym ppstrm (name); pps " : "; ppType env ppstrm body; 
 	       pps " as ";

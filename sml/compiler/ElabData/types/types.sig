@@ -17,12 +17,20 @@ datatype openTvKind
   = META
   | FLEX of (label * ty) list
 
+and ovldSource
+  = OVAR of Symbol.symbol * SourceMap.region   (* overloaded variable *)
+  | OLIT of litKind * IntInf.int * SourceMap.region
+     (* overloaded int or word literal *)
+  (* in future, may need to add real, char, string literals as sources *)
+
 and tvKind
   = INSTANTIATED of ty
   | OPEN of {depth: int, eq: bool, kind: openTvKind}
   | UBOUND of {depth: int, eq: bool, name: Symbol.symbol}
-  | LITERAL of {kind: litKind, region: SourceMap.region}
-  | SCHEME of bool
+  | OVLD of (* overloaded operator type scheme variable,
+	     * representing one of a finite set of ground type options *)
+     {sources: ovldSource list,   (* name of overloaded variable *)
+      options: ty list} (* possible resolution types *)
   (* for marking a type variable so that it can be easily identified
    * (A type variable's ref cell provides an identity already, but
    * since ref cells are unordered, this is not enough for efficient
@@ -30,7 +38,9 @@ and tvKind
    * a hack for the benefit of later translation phases (FLINT),
    * but unlike the old "LBOUND" thing, it does not need to know about
    * specific types used by those phases. In any case, we should figure
-   * out how to get rid of it altogether.) *)
+   * out how to get rid of it altogether.)
+   ** DBM: confusing and apparently obsolete comment. Sounds like TV_MARK
+   ** was supposed to replace LBOUND *)
   | LBOUND of {depth: int, eq: bool, index: int}
      (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
       * associated with polymorphic bindings (including val bindings and
