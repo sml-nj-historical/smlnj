@@ -9,6 +9,7 @@ signature ORD_SET =
   sig
 
     structure Key : ORD_KEY
+	(* the set elements and their comparison function *)
 
     type item = Key.ord_key
     type set
@@ -90,8 +91,16 @@ signature ORD_SET =
          *)
 
     val partition : (item -> bool) -> set -> (set * set)
+	(* partition a set into two based using the given predicate.  Returns two
+	 * sets, where the first contains those elements for which the predicate is
+	 * true and the second contains those elements for which the predicate is
+	 * false.
+	 *)
 
     val filter : (item -> bool) -> set -> set
+	(* filter a set by the given predicate returning only those elements for
+	 * which the predicate is true.
+	 *)
 
     val exists : (item -> bool) -> set -> bool
 	(* check the elements of a set with a predicate and return true if
@@ -106,5 +115,6 @@ signature ORD_SET =
 	 *)
 
     val find : (item -> bool) -> set -> item option
+	(* find an element in the set for which the predicate is true *)
 
   end (* ORD_SET *)

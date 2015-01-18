@@ -13,6 +13,7 @@ signature ORD_MAP =
   sig
 
     structure Key : ORD_KEY
+	(* the map's domain and its comparison function *)
 
     type 'a map
 
