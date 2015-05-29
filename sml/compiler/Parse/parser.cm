@@ -24,13 +24,16 @@ is
 	ast/astutil.sml
 
 	lex/tokentable.sml
+	lex/user.sml
 
 #if defined (NO_PLUGINS)
         lex/ml.lex.sml
+        lex/sml.lex.sml
 	parse/ml.grm.sig
 	parse/ml.grm.sml
 #else
 	lex/ml.lex : MLLex
+	lex/sml.lex : MLLex
 	parse/ml.grm : MLYacc
 #endif
 

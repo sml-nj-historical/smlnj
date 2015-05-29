@@ -4,41 +4,11 @@
  *)
 
 open ErrorMsg;
-
-structure TokTable = TokenTable(Tokens);
-type svalue = Tokens.svalue
-type pos = int
-type lexresult = (svalue,pos) Tokens.token
-type lexarg = {
-	comLevel : int ref, 
-	sourceMap : SourceMap.sourcemap,
-	charlist : string list ref,
-	stringtype : bool ref,
-	stringstart : int ref, (* start of current string or comment*)
-	brack_stack : int ref list ref, (* for frags *)
-	err : pos*pos -> ErrorMsg.complainer
-      }
-type arg = lexarg
-type ('a,'b) token = ('a,'b) Tokens.token
-fun eof ({comLevel,err,charlist,stringstart,sourceMap, ...} : lexarg) = let
-      val pos = Int.max(!stringstart+2, SourceMap.lastLinePos sourceMap)
-      in
-	if !comLevel>0
-	  then err (!stringstart,pos) COMPLAIN "unclosed comment" nullErrorBody
-          else if !charlist <> []
-            then err (!stringstart,pos) COMPLAIN
-                  "unclosed string, character, or quotation" nullErrorBody
-
-	    else ();
-	Tokens.EOF(pos,pos)
-      end	
-fun addString (charlist,s:string) = charlist := s :: (!charlist)
-fun addChar (charlist, c:char) = addString(charlist, String.str c)
-fun makeString charlist = (concat(rev(!charlist)) before charlist := nil)
+open UserDeclarations;
 
 local
   fun cvt radix (s, i) =
-	#1(valOf(IntInf.scan radix Substring.getc (Substring.triml i (Substring.full s))))
+	#1(valOf(IntInf.scan radix Substring.getc (Substring.extract(s, i, NONE))))
 in
 val atoi = cvt StringCvt.DEC
 val xtoi = cvt StringCvt.HEX
@@ -55,18 +25,14 @@ fun mysynch (srcmap, initpos, pos, args) =
            | _ => impossible "ill-formed args in (*#line...*)"
     end
 
-fun has_quote s =
-    let fun loop i = ((String.sub(s,i) = #"`") orelse loop (i+1))
-	             handle _ => false
-     in loop 0
-    end
+fun has_quote s = CharVector.exists (fn #"`" => true | _ => false) s
 
 fun inc (ri as ref i) = (ri := i+1)
 fun dec (ri as ref i) = (ri := i-1)
 %% 
 %reject
 %s A S F Q AQ L LL LLC LLCQ;
-%header (functor MLLexFun(structure Tokens : ML_TOKENS));
+%structure MLLex;
 %arg ({
   comLevel,
   sourceMap,
