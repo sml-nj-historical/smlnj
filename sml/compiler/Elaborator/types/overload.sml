@@ -1,14 +1,24 @@
 (* COPYRIGHT 1996 AT&T Bell Laboratories. *)
 (* overload.sml *)
 
-signature OVERLOAD = sig
-    val new : unit ->
-	      { push : VarCon.var ref * ErrorMsg.complainer -> Types.ty,
-		resolve : StaticEnv.staticEnv -> unit }
+signature OVERLOAD =
+sig
+  (* matching a scheme against a target type -- used declaring overloadings *)
+  val matchScheme : Types.tyfun * Types.ty -> Types.ty
+
+  val new : unit ->
+	    { pushv : VarCon.var ref * SourceMap.region * ErrorMsg.complainer
+		      -> Types.ty,
+	      pushl : Types.ty -> unit,
+	      resolve : StaticEnv.staticEnv -> unit }
+
+  val debugging : bool ref (* = ElabControl.debugging = Control.Elab.debugging *)
 end  (* signature OVERLOAD *)
 
 structure Overload : OVERLOAD = 
 struct
+
+val debugging = ElabControl.ovlddebugging
 
 local 
   structure EM = ErrorMsg
@@ -20,140 +30,122 @@ local
   open VarCon Types
 in
 
-fun bug msg = EM.impossible("Overload: "^msg)
+fun bug msg = ErrorMsg.impossible("Unify: "^msg)
 
-type subst = (tyvar * tvKind) list
+fun debugMsg (msg: string) =
+    ED.debugMsg debugging msg
 
-exception SoftUnify
+val ppType = PPType.ppType StaticEnv.empty
+fun debugPPType (msg,ty) =
+    ED.debugPrint debugging (msg, ppType, ty)
 
-fun copyScheme (tyfun as TYFUN{arity,...}) : ty * ty =
-  let fun typeArgs n = if n>0 then TU.mkSCHEMEty() :: typeArgs(n-1) else []
-      val tvs = typeArgs arity
-   in (TU.applyTyfun(tyfun,tvs),if arity>1 then BT.tupleTy tvs else hd tvs)
-  end
-
-fun rollBack subst =
-  let fun loop (nil,trace) = trace
-        | loop (((tv as ref kind),oldkind)::subst,trace) =
-            (tv := oldkind;
-             loop(subst,(tv,kind)::trace))
-   in loop(subst,nil)
-  end
-
-fun redoSubst nil = ()
-  | redoSubst ((tv as ref(OPEN{kind=META, ...}),INSTANTIATED ty)::rest) =
-      (tv := INSTANTIATED ty; redoSubst rest)
-  | redoSubst (_) = bug "Overload--redoSubst"
-
-fun softUnify(ty1: ty, ty2: ty): unit =
-  let val subst: subst ref = ref nil
-      fun softInst(tv as ref info: tyvar, ty: ty) : unit =
-	    let fun scan eq (ty: ty) : unit =  (* simple occurrence check *)
-		    case ty
-		      of VARty(tv') => 
-			   if TU.eqTyvar(tv, tv')
-			   then raise SoftUnify
-			   else (case tv'
-				   of ref(OPEN{kind=FLEX fields,...}) =>
-					(* DBM: can this happen? *)
-					app (fn (_,ty') => scan eq ty') fields
-				    | _ => ())
-		       | CONty(tycon, args) =>
-			 (* check equality property if necessary *)
-			   if eq
-			   then (case tycon
-			           of DEFtyc _ => 
-				       scan eq (TU.headReduceType ty)
-		                    | GENtyc gt =>
-				       (case ! (#eq gt)
-                                          of YES => app (scan eq) args
-					   | OBJ => app (scan false) args
-					      (* won't happen *)
-					   | _ => raise SoftUnify)
-                                    | _ => raise SoftUnify) (* won't happen? *)
-			   else app (scan eq) args
-		       | MARKty(tyc, region) => scan eq tyc
-		       | ty => ()  (* propagate error *)
-	     in case info
-		  of (SCHEME eq | OPEN{kind=META,eq,...}) =>
-		      (scan eq ty;
-		       subst := (tv, info)::(!subst);
-		       tv := INSTANTIATED ty)
-		   | _ => raise SoftUnify
-	    end
-	
-	fun unify(ty1: ty, ty2: ty): unit =
-	    let val ty1 = TU.prune ty1
-		and ty2 = TU.prune ty2
-	     in case (ty1,ty2)
-		  of (WILDCARDty, _) => ()  (* wildcards unify with anything *)
-		   | (_, WILDCARDty) => ()  (* wildcards unify with anything *)
-		   | (VARty(tv1),VARty(tv2)) =>
-		       if TU.eqTyvar(tv1,tv2) then () else softInst(tv1,ty2)
-		   | (VARty(tv1),_) => softInst(tv1,ty2)
-		   | (_,VARty(tv2)) => softInst(tv2,ty1)
-		   | (CONty(tycon1, args1), CONty(tycon2, args2)) =>
-		       if TU.eqTycon(tycon1, tycon2)
-		       then unifyLists(args1, args2)
-		       else (unify(TU.reduceType ty1, ty2)
-			     handle TU.ReduceType => 
-			       unify(ty1, TU.reduceType ty2)
-			       handle TU.ReduceType => raise SoftUnify)
-		   | (MARKty(ty1, region), ty2) => unify(ty1, ty2)
-		   | (ty1, MARKty(ty2,region)) => unify(ty1, ty2)
-		   | _ => raise SoftUnify
-	    end
-	
-	and unifyLists([],[]) = ()
-	  | unifyLists(ty1::rest1, ty2::rest2) = 
-	      (unify(ty1,ty2); unifyLists(rest1,rest2))
-	  | unifyLists(_) = raise SoftUnify
-
-     in unify(ty1,ty2)
-	  handle SoftUnify => (rollBack(!subst); raise SoftUnify)
+(* matching a scheme against a target type to extract an indicator type
+   for an overload declaration (in ElabCore) *)
+fun matchScheme (TYFUN{arity,body}: tyfun, target: ty) : ty =
+    (* Assert: arity = 1; target is a (pruned) monomorphic type *)
+    let val tyref = ref UNDEFty (* holds unique instantiation of IBOUND 0 *)
+	fun matchTyvar(ty: ty) : unit = 
+	    case !tyref
+	      of UNDEFty => tyref := ty
+	       | ty' => if TU.equalType(ty,ty')
+			then ()
+ 			else bug("this compiler was inadvertantly \
+			          \distributed to a user who insists on \
+ 				  \playing with 'overload' declarations.")
+        fun match(scheme:ty, target:ty) : unit =
+	    case (TU.prune scheme, TU.prune target)
+	      of ((IBOUND 0),ty) => matchTyvar ty
+	       | (CONty(tycon1,args1), CONty(tycon2,args2)) =>
+		   if TU.eqTycon(tycon1,tycon2)
+		   then ListPair.app match (args1, args2)
+		   else (match(TU.reduceType scheme, target)
+			 handle TU.ReduceType =>
+			   (match(scheme, TU.reduceType target)
+			    handle TU.ReduceType =>
+				   bug "matchScheme, match -- tycons "))
+	       | _ => bug "TypesUtil.matchScheme > match"
+    in 
+        match(body,target);
+	debugPPType("matchScheme type:", !tyref);
+	!tyref
     end
 
 (* overloaded functions *)
-fun new () = let
-    val overloaded = ref (nil: (var ref * ErrorMsg.complainer * ty) list)
-    fun push (refvar as ref(OVLDvar{options,scheme,...}), err) = 
-	let val (scheme',ty) = copyScheme(scheme)
+fun new () =
+let val overloadedvars = ref (nil: (var ref * ErrorMsg.complainer * tyvar) list)
+    val overloadedlits = ref (nil: ty list)
+    fun pushvar (refvar as ref(OVLDvar{name,options,scheme}), region, err) = 
+	let val indicators = map #indicator options
+	    val tyvar = ref(OVLD{sources=[OVAR(name,region)],options=indicators})
+	    val scheme' = TU.applyTyfun(scheme,[VARty tyvar])
 	in
-	    overloaded := (refvar,err,ty) :: !overloaded;
+	    debugMsg ">>ovld-push";
+	    map (fn ty => debugPPType("%%%",ty)) indicators;
+	    overloadedvars := (refvar,err,tyvar) :: !overloadedvars;
+	    debugPPType("<<ovld-push "^Symbol.name name, scheme');
 	    scheme'
 	end
-      | push _ = bug "overload.1"
+      | pushvar _ = bug "Overload.push"
 
-    (* this resolveOverloaded implements defaulting behavior -- if more
-     * than one variant matches the context type, the first one matching
-     * (which will always be the first variant) is used as the default *)
+    fun pushlit ty_err =
+	overloadedlits := ty_err :: !overloadedlits
+
     fun resolve env  =
+       (* this resolveOverloaded implements defaulting behavior -- if more
+	* than one variant matches the context type, the first one matching
+	* (which will always be the first variant) is used as the default.
+	* For defaulting to work correctly when matching different OVLD tyvars,
+	* it is assumed that the ordering of options is consistent (e.g. between
+	* operators like +, -, * ). *)
 	let fun resolveOVLDvar(rv as ref(OVLDvar{name,options,...}),err,context) =
-		let fun firstMatch({indicator, variant}::rest) =
-			let val (nty,_) = TU.instantiatePoly indicator
-			in (softUnify(nty, context); rv := variant)
-			   handle SoftUnify => firstMatch(rest)
-			end
-		      | firstMatch(nil) =
-			(err EM.COMPLAIN "overloaded variable not defined at type"
-			     (fn ppstrm =>
-				 (PPType.resetPPType();
-				  PP.newline ppstrm;
-				  PP.string ppstrm "symbol: "; 
-				  PU.ppSym ppstrm name;
-				  PP.newline ppstrm;
-				  PP.string ppstrm "type: ";
-				  PPType.ppType env ppstrm context));
-			     ())
-
-		in firstMatch(!options)
+		let val contextTy = TU.headReduceType(VARty context)
+		    val _ = debugPPType(">>resolveOVLDvar " ^ Symbol.name name ^
+					", contextTy:", contextTy)
+		    val (isCompatible, instantiate) =
+			case contextTy
+			 of VARty(tvar as ref(OVLD{options,...})) =>
+			     (map (fn ty => debugPPType("$$$",ty)) options;
+			      ((fn ty => TU.inClass(ty,options)),
+			       (fn ty => tvar := INSTANTIATED ty)))
+			  | _ =>
+			    ((fn ty => TU.equalType(contextTy, ty)),
+			     (fn ty => ()))
+		    fun select ({indicator,variant}::rest) =
+			if isCompatible indicator
+			then (debugPPType("@resolveOVLDvar: match",indicator);
+			      instantiate indicator;
+			      rv := variant)
+			else (debugPPType("@resolveOVLDvar: no match",indicator);
+			      select rest)
+		      | select nil =
+			  err EM.COMPLAIN "overloaded variable not defined at type"
+			    (fn ppstrm =>
+			      (PPType.resetPPType();
+			       PP.newline ppstrm;
+			       PP.string ppstrm "symbol: "; 
+			       PU.ppSym ppstrm name;
+			       PP.newline ppstrm;
+			       PP.string ppstrm "type: ";
+			       PPType.ppType env ppstrm (VARty context)))
+		in select options
 		end
-	      | resolveOVLDvar _ = bug "overload.2"
+
+	    fun resolveOVLDlit ty =
+		case ty
+		  of VARty(tyvar as ref(OVLD{sources,options})) =>
+		     (case options
+		       of ty::_ =>
+			  tyvar := INSTANTIATED(ty) (* default *)
+			| nil => bug "resolveOVLDlit 1")
+		   | VARty(ref(INSTANTIATED _)) => ()
+		       (* already resolved by type checking *)
+		   | _ => bug "resolveOVLDlit 2"
 	in
-	    app resolveOVLDvar (!overloaded)
+	    app resolveOVLDlit (rev(!overloadedlits));
+	    app resolveOVLDvar (rev(!overloadedvars))
 	end
-in
-    { push = push, resolve = resolve }
+ in
+    {pushv = pushvar, pushl = pushlit, resolve = resolve}
 end (* new *)
 
 end (* local *)

@@ -151,7 +151,7 @@ Group
 	structure Susp
 	structure Lazy
 
-(**** To be added later ****
+(**** To be added later **** [NEW-RT]
 #if defined(OPSYS_UNIX) orelse defined(OPSYS_WIN32)
 	(* Sockets (common part) *)
 	signature NET_HOST_DB
@@ -172,7 +172,7 @@ Group
 #endif
 *)
 
-(**** To be added later ****
+(**** To be added later **** [NEW-RT]
 #if defined(OPSYS_UNIX)
 	(* Posix *)
 	signature POSIX_ERROR
@@ -404,7 +404,7 @@ is
 	bit-flags.sig
 	bit-flags-fn.sml
 
-(**** To be added later ****
+(**** To be added later **** [NEW-RT]
 #if defined(OPSYS_UNIX)
 	Unix/pre-os.sml
 	Posix/posix-prelude.sml
@@ -521,7 +521,7 @@ is
 	IO/text-io.sml
 	IO/text-io.sig
 
-(**** To be added later ****
+(**** To be added later **** [NEW-RT]
 #if defined(OPSYS_UNIX) orelse defined(OPSYS_WIN32)
 	Sockets/pre-sock.sml
 	Sockets/prot-db.sig

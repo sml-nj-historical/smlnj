@@ -69,8 +69,7 @@ fun decType(env,dec,tdepth,toplev,err,anyErrors,region) =
 let
 
 (* setup for recording and resolving overloaded variables and literals *)
-val { push = oll_push, resolve = oll_resolve } = OverloadLit.new ()
-val { push = ol_push, resolve = ol_resolve } = Overload.new ()
+val { pushv = olv_push, pushl = oll_push, resolve = ol_resolve } = Overload.new ()
 
 val ppType = PPType.ppType env
 val ppTycon = PPType.ppTycon env
@@ -312,7 +311,7 @@ fun generalizeTy(VALvar{typ,path,btvs,...}, userbound: tyvar list,
 			     tv := INSTANTIATED WILDCARDty;
 			     WILDCARDty))
 		  else (debugmsg "is not local"; ty))
-	      | (VARty(ref(LITERAL _)) | VARty(ref(SCHEME _))) => ty
+	      | VARty(ref(OVLD _)) => ty
 	      | CONty(tyc,args) => CONty(tyc, map gen args) (*shareMap*)
 	      | WILDCARDty => WILDCARDty
 	      | MARKty(ty, region) =>
@@ -518,14 +517,14 @@ in
 	    in (VARexp(r, insts), MARKty(ty, region))
 	   end
        | VARexp(refvar as ref(OVLDvar _),_) =>
- 	   (exp, ol_push (refvar, err region))
+ 	   (exp, olv_push (refvar, region, err region))
        | VARexp(r as ref ERRORvar, _) => (exp, WILDCARDty)
        | CONexp(dcon as DATACON{typ,...},_) => 
            let val (ty,insts) = instantiatePoly typ
             in (CONexp(dcon, insts), MARKty(ty, region))
            end
-       | INTexp (_,ty) => (oll_push ty; (exp, MARKty(ty, region)))
-       | WORDexp (_,ty) => (oll_push ty; (exp,MARKty(ty, region)))
+       | INTexp (_,ty)  => (oll_push ty; (exp, MARKty(ty, region)))
+       | WORDexp (_,ty) => (oll_push ty; (exp, MARKty(ty, region)))
        | REALexp _ => (exp,MARKty(realTy, region))
        | STRINGexp _ => (exp,MARKty(stringTy, region))
        | CHARexp _ => (exp,MARKty(charTy, region))
@@ -970,7 +969,7 @@ and strbType (occ,tdepth,region) (STRB{str,def,name}) =
 val _ = debugmsg ">>decType: calling decType0"
 val dec' = decType0(dec, if toplev then Root else (LetDef Root), tdepth, region);
 in
-    oll_resolve (); 
+(*    oll_resolve ();  -- literal overloading resolution merged with operator resolution *)
     ol_resolve env;
     checkFlex ();
     debugmsg "<<decType: returning";

@@ -20,6 +20,7 @@ type polysign = bool list
 datatype eqprop = YES | NO | IND | OBJ | DATA | ABS | UNDEF
 
 datatype litKind = INT | WORD | REAL | CHAR | STRING 
+(* currently only INT and WORD literal overloading are implemented *)
 
 datatype openTvKind 	
   = META                          (* metavariables: 
@@ -27,16 +28,22 @@ datatype openTvKind
                                      depth < infinity for lambda bound *)
   | FLEX of (label * ty) list     (* flex record variables *)
 
+and ovldSource
+  = OVAR of S.symbol * SourceMap.region   (* overloaded variable *)
+  | OLIT of litKind * IntInf.int * SourceMap.region
+     (* overloaded int or word literal *)
+  (* in future, may need to add real, char, string literals as sources *)
+
 and tvKind		  
   = INSTANTIATED of ty (* instantiation of an OPEN *)
   | OPEN of
      {depth: int, eq: bool, kind: openTvKind}
   | UBOUND of (* explicit type variables *)
      {depth: int, eq: bool, name: S.symbol}
-  | LITERAL of (* type of a literal *)
-     {kind: litKind, region: SourceMap.region}
-  | SCHEME of bool (* overloaded operator type scheme variable
-		   * arg is true if must be instantiated to equality type *)
+  | OVLD of (* overloaded operator type scheme variable,
+	     * representing one of a finite set of ground type options *)
+     {sources: ovldSource list,   (* name of overloaded variable or literal value *)
+      options: ty list} (* potential resolution types *)
   | LBOUND of {depth: int, eq: bool, index: int}
      (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
       * associated with polymorphic bindings (including val bindings and

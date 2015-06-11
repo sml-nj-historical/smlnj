@@ -26,7 +26,7 @@ is
 
 # if defined (OPSYS_UNIX)
      	installer/nix-install.sml
-#  if defined (structure Posix)
+#  if defined (structure Posix) (* [NEW-RT] *)
       	installer/symlink.sml
 #  else
         installer/cmdlinelink.sml

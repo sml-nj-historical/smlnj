@@ -974,7 +974,7 @@ in
 	val op $ = PU.$ VAR
 	fun var (V.VALvar { access = a, prim, path, typ = ref t, ...}) =
 	    "1" $ [access a, primId prim, spath path, ty t]
-	  | var (V.OVLDvar { name, options = ref p,
+	  | var (V.OVLDvar { name, options = p,
 			     scheme = T.TYFUN { arity, body } }) =
 	    "2" $ [symbol name, list overld p, int arity, ty body]
 	  | var V.ERRORvar = "3" $ []

@@ -11,16 +11,14 @@ sig
         (* tycon mismatch *)
     | TYP of Types.ty * Types.ty * SourceMap.region * SourceMap.region
         (* type mismatch *)
-    | LIT of Types.tvKind * Types.ty * SourceMap.region * SourceMap.region
-        (* literal *)
     | UBV of Types.tvKind * Types.ty * SourceMap.region * SourceMap.region
         (* UBOUND match *)
-    | SCH of Types.tvKind * Types.tvKind * SourceMap.region * SourceMap.region
-        (* SCHEME, equality mismatch  *)
-    | OVLD of Types.ty        (* overload scheme *)
-    | EQ                      (* equality type required *)
-    | REC                     (* record labels *)
-    | UBVE of Types.tvKind    (* UBOUND, equality mismatch -- never used *)
+    | OVLD_F of Types.ovldSource list   (* overload mismatch *)
+    | OVLD_EQ of Types.ovldSource list  (* overload - equality mismatch *)
+    | OVLD_UB of Types.ovldSource list  (* overload and user-bound ty var mismatch *)
+    | EQ                                (* equality type required *)
+    | REC                               (* record labels *)
+    | UBVE of Types.tvKind              (* UBOUND, equality mismatch -- never used *)
 
   exception Unify of unifyFail
 
@@ -32,25 +30,26 @@ sig
 
 end (* signature UNIFY *)
 
-
+(*** type unification ***)
 structure Unify: UNIFY =
 struct
 
-(*** type unification ***)
 val debugging = ElabControl.unidebugging
 
 local
+  structure S = Symbol
   structure T = Types
   structure TU = TypesUtil
   structure OLL = OverloadLit
   structure ED = ElabDebug
   open Types 
 
+  fun bug msg = ErrorMsg.impossible("Unify: "^msg)
+
   (* debugging *)
   val say = Control_Print.say
-  fun debugmsg (msg: string) = if !debugging then (say msg; say "\n") else ()
-
-  fun bug msg = ErrorMsg.impossible("Unify: "^msg)
+  fun debugMsg (msg: string) =
+      ED.debugMsg debugging msg
 
   val ppType = PPType.ppType StaticEnv.empty
   fun debugPPType (msg,ty) =
@@ -60,15 +59,16 @@ in
 
 (* for the time being, not region instrumenting the EQ and REC failures *)
 datatype unifyFail
-  = CIRC of Types.tyvar * Types.ty * SourceMap.region * SourceMap.region  (* circularity *)
+  = CIRC of tyvar * ty * SourceMap.region * SourceMap.region  (* circularity *)
   | EQ                               (* equality type required *)
-  | TYC of Types.tycon * Types.tycon * SourceMap.region * SourceMap.region (* tycon mismatch *)
-  | TYP of Types.ty * Types.ty * SourceMap.region * SourceMap.region      (* type mismatch *)
-  | LIT of Types.tvKind * Types.ty * SourceMap.region * SourceMap.region             (* literal *)
-  | OVLD of Types.ty                 (* overload scheme *)
-  | UBV of Types.tvKind * Types.ty * SourceMap.region * SourceMap.region  (* UBOUND match *)
-  | UBVE of Types.tvKind             (* UBOUND, equality mismatch -- never used *)
-  | SCH of Types.tvKind * Types.tvKind * SourceMap.region * SourceMap.region  (* SCHEME, equality mismatch  *)
+  | TYC of tycon * tycon * SourceMap.region * SourceMap.region
+                                     (* tycon mismatch *)
+  | TYP of ty * ty * SourceMap.region * SourceMap.region     (* type mismatch *)
+  | OVLD_F of Types.ovldSource list  (* overload mismatch *)
+  | OVLD_EQ of Types.ovldSource list (* overload - equality mismatch *)
+  | OVLD_UB of Types.ovldSource list (* mismatch of OVLD and UBOUND tyvars *)
+  | UBV of tvKind * ty * SourceMap.region * SourceMap.region  (* UBOUND match *)
+  | UBVE of tvKind                   (* UBOUND, equality mismatch -- never used *)
   | REC                              (* record labels *)
 
 fun failMessage (failure: unifyFail) =
@@ -77,11 +77,10 @@ fun failMessage (failure: unifyFail) =
        | EQ =>       "equality type required"
        | TYC _ =>    "tycon mismatch"
        | TYP _ =>    "type mismatch"
-       | LIT _ =>    "literal"
-       | OVLD _ =>   "overload"
+       | OVLD_F _ => "overload conflict"
+       | OVLD_EQ _ => "overload - equality mismatch"
        | UBVE _ =>   "UBOUND, equality mismatch"
        | UBV _ =>    "UBOUND match"
-       | SCH _ =>      "SCHEME, equality mismatch"
        | REC =>      "record labels"
 
 exception Unify of unifyFail
@@ -91,6 +90,7 @@ exception Unify of unifyFail
 
 val eqLabel = Symbol.eq
 
+(* eqLitKind : litKind -> bool.  Does a litKind support equality? *)
 fun eqLitKind (lk : T.litKind) =
     case lk of (INT | WORD | CHAR | STRING) => true | REAL => false
 
@@ -142,13 +142,20 @@ fun fieldwise(_,just2,_,[],fields2) = map (fn (n,t) => (n,just2 t)) fields2
 	(n2,just2 t2)::(fieldwise(just1,just2,combine,r1,rest2))
 
 
+(* filter out the non-equality-types from a list of types *)
+fun filterEq (nil) = nil
+  | filterEq (ty::tys) =
+    if EqTypes.isEqType ty then ty :: filterEq tys
+    else filterEq tys
+
+
 (*************** adjust function *****************************************)
 
 (* propagate depth and eq while checking for circularities in the
  * type ty that is going to unify with tyvar var *)
 
-(* ASSERT: VARty var <> ty *)
 fun adjustType (var,depth,eq,ty,reg1,reg2) =
+    (* ASSERT: VARty var <> ty *)
     (* reg1 is for var, reg2 is for ty and may update through iter *)
     let val _ = debugPPType(">>adjustType: ",ty)
 	fun iter _ (WILDCARDty,_) = ()
@@ -156,7 +163,7 @@ fun adjustType (var,depth,eq,ty,reg1,reg2) =
 	  | iter eq (ty' as VARty(var' as ref(info)), reg2) =
 	      (case info
 		 of INSTANTIATED ty => 
-		      (debugmsg "adjustType INSTANTIATED";
+		      (debugMsg "adjustType INSTANTIATED";
 		       iter eq (ty,reg2))
 		  | OPEN{kind=k,depth=d,eq=e} =>
 		      (* check for circularity, propagage eq and depth *)
@@ -177,16 +184,16 @@ fun adjustType (var,depth,eq,ty,reg1,reg2) =
 		      else if depth < d
 		      then var' := UBOUND{depth=depth,eq=e,name=name}
 		      else ()
-		  | SCHEME eq' =>
+		  | OVLD{sources,options} =>
 		      if TU.eqTyvar(var,var')
-		      then raise Unify (CIRC(var,ty',reg1,reg2))
-		      else if eq andalso not eq'
-		      then var' := SCHEME eq
-		      else ()
-		  | LITERAL{kind=k,...} =>
-		      (* check if eq is compatible *)
-		      if eq andalso not(eqLitKind k)
-		      then raise Unify EQ
+		      then bug "Unify.adjustType[OVLD]"
+		         (* can't happen, because var can't be OVLD *)
+		      else if eq
+		      then (case filterEq options
+		             of nil => (* no equality types in options *)
+				raise Unify (OVLD_EQ sources)
+			      | options' =>
+			        var' := OVLD{sources=sources, options=options'})
 		      else ()
 		  | LBOUND _ => bug "unify:adjustType:LBOUND")
 	  | iter eq (ty as CONty(DEFtyc{tyfun=TYFUN{body,...},...}, args), reg2) =
@@ -213,31 +220,29 @@ fun adjustType (var,depth,eq,ty,reg1,reg2) =
 		    else app (fn t => iter false (t,reg2)) args)
  (* BUG? why don't these cases blow up (in tyconEqprop) when iter is applied
     to arguments that are unreduced applications of DEFtycs? *)
-          | iter _ (POLYty _, _) = bug "adjustType 1"
-          | iter _ (IBOUND _, _) = bug "adjustType 2"
+          | iter _ (POLYty _, _) = bug "Unify.adjustType[POLYty]"
+          | iter _ (IBOUND _, _) = bug "Unify.adjustType[IBOUND]"
 	  | iter _ _ = bug "adjustType 3"
-     in iter eq (ty,reg2); debugmsg "<<adjustType"
+     in iter eq (ty,reg2); debugMsg "<<adjustType"
     end
 
 (*************** unify functions *****************************************)
 
-(* LITERAL can be instantiated to a compatible LITERAL or a monotype of
- *   its LITERAL class
+(* OVLD can be instantiated to a compatible monotype or a narrowed
+ *   OVLD (when unified with another OVLD)
  * UBOUND cannot be instantiated, but it's depth property can be reduced
- * FLEX can merge with another FLEX or instantiate a META
- * META can be instantiated to anything
+ * OPEN/FLEX can merge with another FLEX or instantiate a META
+ * OPEN/META can be instantiated to anything
  *)
 
 (* reorder two tyvars in descending order according to the ordering
- * LITERAL > UBOUND > SCHEME > OPEN/FLEX > OPEN/META *)
+ * OVLD > UBOUND > OPEN/FLEX > OPEN/META *)
 fun sortVars(v1 as ref i1, v2 as ref i2) =
     case (i1,i2)
-      of (LITERAL _, _) => (v1,v2)
-       | (_, LITERAL _) => (v2,v1)
+      of (OVLD _, _) => (v1,v2)
+       | (_, OVLD _) => (v2,v1)
        | (UBOUND _, _) => (v1,v2)
        | (_, UBOUND _) => (v2,v1)
-       | (SCHEME _, _) => (v1,v2)
-       | (_, SCHEME _) => (v2,v1)
        | (OPEN{kind=FLEX _,...}, _) => (v1,v2)
        | (_, OPEN{kind=FLEX _,...}) => (v2,v1)
        | _ => (v1,v2) (* both OPEN/META *)
@@ -250,16 +255,17 @@ fun unifyTy(type1, type2, reg1, reg2) =
 	val _ = debugPPType(">>unifyTy: type1: ",type1)
 	val _ = debugPPType(">>unifyTy: type2: ",type2)
 	fun unifyRaw(type1, type2, reg1, reg2) = 
-	 case (type1, type2)
-	  of (MARKty (ty1, reg1'), _) => unifyRaw(TU.prune ty1, type2, reg1', reg2)
-	   | (_, MARKty (ty2, reg2')) => unifyRaw(type1, TU.prune ty2, reg1, reg2')
+	 case (TU.prune type1, TU.prune type2)
+	  of (MARKty (ty1, reg1'), type2) => unifyRaw(TU.prune ty1, type2, reg1', reg2)
+	   | (type1, MARKty (ty2, reg2')) => unifyRaw(type1, TU.prune ty2, reg1, reg2')
 	      (* missing region args to unify, so MARKs are discarded *)
 	   | (VARty var1, VARty var2) =>
-	       unifyTyvars(var1, var2, reg1, reg2)   (* used to take type1 and type2 as args *)
-	   | (VARty var1, _) =>       (* type2 may be WILDCARDty *)
+	       unifyTyvars(var1, var2, reg1, reg2)
+	         (* this used to take type1 and type2 as args *)
+	   | (VARty var1, type2) =>       (* type2 may be WILDCARDty *)
 	       instTyvar(var1, type2, reg1, reg2)
-	   | (_, VARty var2) =>       (* type1 may be WILDCARDty *)
-	       instTyvar(var2, type1, reg1, reg2)
+	   | (type1, VARty var2) =>       (* type1 may be WILDCARDty *)
+	       instTyvar(var2, type1, reg2, reg1)
 	   | (CONty(tycon1,args1), CONty(tycon2,args2)) =>
 	       if TU.eqTycon(tycon1,tycon2) then
 		   (* Because tycons are equal, they must have the 
@@ -278,7 +284,8 @@ fun unifyTy(type1, type2, reg1, reg2) =
 				  bug "unifyTy: arg ty lists wrong length"
 			in unifyArgs(strict,args1,args2)
 			end
-		      | _ => ListPair.app (fn (t1,t2) => unifyTy(t1,t2,reg1,reg2)) (args1,args2))
+		      | _ => ListPair.app (fn (t1,t2) => unifyTy(t1,t2,reg1,reg2))
+					  (args1,args2))
 	       else raise Unify (TYC(tycon1,tycon2,reg1,reg2))
 	  (* if one of the types is WILDCARDty, propagate it down into the
 	   * other type to eliminate tyvars that might otherwise cause
@@ -305,22 +312,40 @@ fun unifyTy(type1, type2, reg1, reg2) =
 
 and unifyTyvars (var1: tyvar, var2: tyvar, reg1, reg2) =
     let fun unify(var1 as ref i1, var2 as ref i2) =
-	    (* ASSERT: var1 <> var2  -- see body of unifyTyvars *)
+	    (* ASSERT: var1 <> var2  -- cf equality test in let-body of unifyTyvars, and
+	     *         var1 =< var2 by sortVars, same reason
+	     *         var1 and var2 are pruned, i.e. are not INSTANTIATED *)
 	    case i1
-	      of LITERAL{kind,region} =>
-		  (case i2
-		     of LITERAL{kind=kind',...} =>
-			 if kind = kind'
-			 then var2 := INSTANTIATED (MARKty(VARty var1, reg1))
-			 else raise Unify (LIT(i1,VARty(var2),reg1,reg2))
-		      | (OPEN{kind=META,eq=e2,...} | SCHEME e2) =>
-			 (* check eq compatibility *)
-			 if not e2 orelse eqLitKind kind
-			 then var2 := INSTANTIATED (MARKty(VARty var1, reg1))
-			 else raise Unify (LIT(i1, VARty(var2), reg1, reg2))
-		      | _ => raise Unify (LIT(i1, VARty(var2), reg1, reg2)))
+	      of OVLD{sources,options} =>
+		 (case i2
+		   of OVLD{sources=sources2,options=options2} =>
+		      (debugMsg ("@unifyTyvars[OVLD/OVLD] options: " ^
+				 Int.toString(length options) ^ ", options2: " ^
+				 Int.toString(length options2));
+		       case (List.filter (fn ty => TU.inClass(ty,options2)) options)
+			of nil =>
+			   (debugMsg ("<<unifyTyvars[OVLD/OVLD] no options");
+			    raise Unify (OVLD_F (sources@sources2)))
+			 | options' =>
+			   (debugMsg ("<<unifyTyvars[OVLD/OVLD] options': " ^
+				      Int.toString(length options'));
+			    var1 := OVLD{sources=sources@sources2,options=options'};
+			    var2 := INSTANTIATED(MARKty(VARty var1, reg1))))
+		    | OPEN{eq,...} =>
+		      (debugMsg ("@unifyTyvars[OVLD/OPEN] eq: "^Bool.toString eq);
+		       if eq then
+			  (case filterEq options
+			    of nil => raise Unify (OVLD_EQ sources)
+			     | options' =>
+			       (debugMsg ("<<unifyTyvars[OVLD/OPEN] " ^
+					  Bool.toString(length options' < length options));
+				var1 := OVLD{sources=sources, options=options'};
+				var2 := INSTANTIATED(MARKty(VARty var1, reg1))))
+		       else var2 := INSTANTIATED(MARKty(VARty var1, reg1)))
+		    | UBOUND _ => raise Unify (OVLD_UB sources))
 
 	       | UBOUND {depth=d1,eq=e1,name} =>
+		 (* Note: UBOUND tyvars unify only if equal *)
 		  (case i2
 		     of OPEN{kind=META,eq=e2,depth=d2} =>
 			 if e1 orelse (not e2)
@@ -330,18 +355,6 @@ and unifyTyvars (var1: tyvar, var2: tyvar, reg1, reg2) =
 			       var2 := INSTANTIATED (MARKty(VARty var1, reg1)))
 			 else raise Unify (UBV(i1,VARty var2,reg1,reg2))
 		      | _ => raise Unify (UBV(i1,VARty var2,reg1,reg2)))
-
-	       | SCHEME e1 =>
-		  (case i2
-		     of SCHEME e2 =>
-			 if e1 orelse not e2 then var2 := INSTANTIATED (MARKty(VARty var1, reg1))
-			 else var1 := INSTANTIATED(MARKty(VARty var2, reg2))
-		      | OPEN{kind=META,eq=e2,depth=d2} =>
-			 if e1 orelse (not e2)
-			 then var2 := INSTANTIATED (MARKty(VARty var1, reg1))
-		         else (var1 := SCHEME e2;
-			       var2 := INSTANTIATED (MARKty(VARty var1, reg1)))
-		      | _ => raise Unify (SCH(i1,i2,reg1,reg2)))
 
 	       | OPEN{kind=k1 as FLEX f1,depth=d1,eq=e1} =>
 		  (case i2
@@ -374,7 +387,7 @@ and unifyTyvars (var1: tyvar, var2: tyvar, reg1, reg2) =
 		      | _ => bug "unifyTyvars 3")
 
 	       | _ => bug "unifyTyvars 4"
-        val _ = debugmsg ">>unifyTyvars"			 
+        val _ = debugMsg ">>unifyTyvars"			 
      in if TU.eqTyvar(var1,var2) then ()
         else unify(sortVars(var1,var2))
     end
@@ -389,9 +402,9 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}), ty, reg1, reg2) =
          of WILDCARDty => ()
 	  | MARKty(ty1, reg2') => instTyvar (var, ty1, reg1, reg2')
 	  | _ => adjustType(var, depth, eq, ty, reg1, reg2);
-       debugPPType("instTyvar ", VARty var);
-       debugPPType("instTyvar to ", ty);
-       (* Also need to check for circularity with ty here *)
+       debugPPType("@instTyvar[OPEN] from:", VARty var);
+       debugPPType("@instTyvar[OPEN] to:", ty);
+       (* Also need to check for circularity with ty here -- done by adjustType. *)
        var := INSTANTIATED ty)
 
   | instTyvar (var as ref(OPEN{kind=FLEX fields,depth,eq}), ty, reg1, reg2) =
@@ -409,46 +422,26 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}), ty, reg1, reg2) =
             | _ => raise Unify (TYP(VARty(var), ty, reg1, reg2))
       end
 
-  (* special handling of SCHEME tyvar instantiation:
-   * ty must reduce to either a tyvar, var', in which case we unify
-   * var and var' (in that order!), or
-   * ty must reduce to a (basic) constant type, in which case ty
-   * does not contain any type variables, and the occurrence check
-   * (i.e. adjustType) is not necessary *)                                     
-  | instTyvar (var as ref(i as SCHEME eq), ty, reg1, reg2) =
-      (case ty
-         of VARty var1 => unifyTyvars(var, var1, reg1, reg2)
-              (* because of asymmetric handling of SCHEME tyvars in
-               * unifyTyvars -- here SCHEME must be first arg *)
-	  | MARKty(ty1, reg2') => instTyvar(var, ty1, reg1, reg2')
-          | CONty(tyc,nil) => var := INSTANTIATED ty
-          | CONty(tyc,_) => (* nonnull arguments *)
-             (case TU.nullReduceType ty
-                of VARty var1 => unifyTyvars(var, var1, reg1, reg2)
-                 | ty' as CONty(tyc,nil) => var := INSTANTIATED ty'
-                 (* valid potential resolution type. Could check more precisely
-                  * for membership in the allowed basic types
-                  * (e.g. int, real, ...) *)
-                 | WILDCARDty => ()
-		 | MARKty(ty1, reg2') => instTyvar(var, ty1, reg1, reg2')
-                 | _ => raise Unify(OVLD ty))
-          | WILDCARDty => ()
-          | _ => bug "instTyvar: SCHEME")
-
-  | instTyvar (var as ref(i as LITERAL{kind,...}), ty, reg1, reg2) =
-      (case TU.headReduceType ty
+  | instTyvar (var as ref(i as OVLD{sources,options}), ty, reg1, reg2) =
+      (debugPPType(">>instTyvar[OVLD]",ty);
+       case TU.headReduceType ty
 	 of WILDCARDty => ()
 	  | MARKty(ty1, reg2') => instTyvar(var, ty1, reg1, reg2')
-	  | ty' => 
-	     if OLL.isLiteralTy(kind,ty')
-	     then var := INSTANTIATED (TU.nullReduceType ty)
-	     else raise Unify (LIT(i, ty', reg1, reg2)))   (* could return the ty for error msg*)
+	  | ty' =>
+	    (debugPPType("instTyvar[OVLD 3]",ty');
+            if TU.inClass(ty',options)
+	    then (debugPPType("instTyvar[OVLD-inClass]",ty');
+		  var := INSTANTIATED(ty'))
+	    else (debugMsg ("instTyvar[OVLD] bad options ["^Int.toString(length options)^"]");
+		  app (fn t => debugPPType("***", t)) options;
+		  raise Unify (OVLD_F sources))))
 
   | instTyvar (var as ref(i as UBOUND _), ty, reg1, reg2) =
       (case ty
          of WILDCARDty => ()
 	  | MARKty(ty1, reg2') => instTyvar(var, ty1, reg1, reg2')
-          | _ =>  raise Unify (UBV(i, ty, reg1, reg2)))   (* could return the ty for error msg*)
+          | _ => raise Unify (UBV(i, ty, reg1, reg2)))
+              (* could return the ty for error msg*)
 
   | instTyvar (ref(INSTANTIATED _),_,_,_) = bug "instTyvar: INSTANTIATED"
   | instTyvar (ref(LBOUND _),_,_,_) = bug "instTyvar: LBOUND"

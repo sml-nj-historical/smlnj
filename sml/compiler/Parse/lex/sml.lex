@@ -1,18 +1,59 @@
-(* ml.lex
+(* sml.lex
  *
- * Copyright 1989 by AT&T Bell Laboratories
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * This version of the lexer supports the following SuccessorML lexical extensions:
+ *
+ *	- "_" as a separator in numeric literals; e.g., '123_456', '0xff_ff_ff_f3',
+ *	  '123_456.1', ...
+ *
+ *	- end-of-line comments
+ *
+ *	- binary literals; e.g., '0b0101_1110'
+ *)
+
+(* The states that we use are as listed below.
+ *
+ * LCOM	-- SuccessorML end-of-line comment
+ * A	-- bracketed comments
+ * ALC  -- end-of-line comment inside bracketed comment
+ * S	-- strings
+ * F	-- formatting characters in a string
+ * Q	-- quotation (extension)
+ * AQ	-- antiquotation (extension)
+ * L	-- #line comment
+ * LL	-- more #line comment processing
+ * LLC	-- rest of #line comment processing
+ * LLCQ	-- quoted string in #line comment
+ *
+ * Note that this comment cannot appear where the states are defined, because
+ * ml-lex's parser is broken.
  *)
 
 open ErrorMsg;
 open UserDeclarations;
 
 local
-  fun cvt radix (s, i) =
-	#1(valOf(IntInf.scan radix Substring.getc (Substring.extract(s, i, NONE))))
+  fun cvt radix (s, i) = let
+      (* strip any "_" separators *)
+	val digits = Substring.foldr
+	      (fn (#"_", ds) => ds | (d, ds) => d::ds)
+		[]
+		  (Substring.extract(s, i, NONE))
+      (* convert to a IntInf.int value *)
+	val SOME(n, _) = IntInf.scan radix List.getItem digits
+	in
+	  n
+	end
 in
+val btoi = cvt StringCvt.BIN
 val atoi = cvt StringCvt.DEC
 val xtoi = cvt StringCvt.HEX
 end (* local *)
+
+(* strip "_" out of real literal *)
+fun stripReal s = String.translate (fn #"_" => "" | c => str c) s
 
 fun mysynch (srcmap, initpos, pos, args) =
     let fun cvt digits = getOpt(Int.fromString digits, 0)
@@ -25,14 +66,18 @@ fun mysynch (srcmap, initpos, pos, args) =
            | _ => impossible "ill-formed args in (*#line...*)"
     end
 
-fun has_quote s = CharVector.exists (fn #"`" => true | _ => false) s
+fun has_quote s =
+    let fun loop i = ((String.sub(s,i) = #"`") orelse loop (i+1))
+	             handle _ => false
+     in loop 0
+    end
 
 fun inc (ri as ref i) = (ri := i+1)
 fun dec (ri as ref i) = (ri := i-1)
 %% 
 %reject
-%s A S F Q AQ L LL LLC LLCQ;
-%structure MLLex;
+%s A LCOM ALC S F Q AQ L LL LLC LLCQ;
+%structure SMLLex;
 %arg ({
   comLevel,
   sourceMap,
@@ -50,11 +95,14 @@ some_sym=[!%&$+/:<=>?@~|#*]|\-|\^;
 sym={some_sym}|"\\";
 quote="`";
 full_sym={sym}|{quote};
-num=[0-9]+;
+digit=[0-9]+;
+xdigit=[0-9a-fA-F];
+num={digit}("_"{digit}|{digit})*;
 frac="."{num};
 exp=[eE](~?){num};
 real=(~?)(({num}{frac}?{exp})|({num}{frac}{exp}?));
-hexnum=[0-9a-fA-F]+;
+binnum=[01]+("_"[01]|[01]+)*;
+hexnum={xdigit}+("_"{xdigit}|{xdigit})*;
 %%
 <INITIAL>{ws}	=> (continue());
 <INITIAL>{eol}	=> (SourceMap.newline sourceMap yypos; continue());
@@ -100,13 +148,16 @@ hexnum=[0-9a-fA-F]+;
                                      COMPLAIN "quotation implementation error"
 				     nullErrorBody;
                                   Tokens.BEGINQ(yypos,yypos+1)));
-<INITIAL>{real}	=> (Tokens.REAL(yytext,yypos,yypos+size yytext));
+<INITIAL>{real}	=> (Tokens.REAL(stripReal yytext, yypos, yypos+size yytext));
 <INITIAL>[1-9][0-9]* => (Tokens.INT(atoi(yytext, 0),yypos,yypos+size yytext));
 <INITIAL>{num}	=> (Tokens.INT0(atoi(yytext, 0),yypos,yypos+size yytext));
 <INITIAL>~{num}	=> (Tokens.INT0(atoi(yytext, 0),yypos,yypos+size yytext));
+<INITIAL>"0b"{binnum} => (Tokens.INT0(btoi(yytext, 2),yypos,yypos+size yytext));
+<INITIAL>"~0b"{binnum} => (Tokens.INT0(IntInf.~(btoi(yytext, 3)),yypos,yypos+size yytext));
 <INITIAL>"0x"{hexnum} => (Tokens.INT0(xtoi(yytext, 2),yypos,yypos+size yytext));
 <INITIAL>"~0x"{hexnum} => (Tokens.INT0(IntInf.~(xtoi(yytext, 3)),yypos,yypos+size yytext));
 <INITIAL>"0w"{num} => (Tokens.WORD(atoi(yytext, 2),yypos,yypos+size yytext));
+<INITIAL>"0wb"{binnum} => (Tokens.WORD(btoi(yytext, 3),yypos,yypos+size yytext));
 <INITIAL>"0wx"{hexnum} => (Tokens.WORD(xtoi(yytext, 3),yypos,yypos+size yytext));
 <INITIAL>\"	=> (charlist := [""]; stringstart := yypos;
                     stringtype := true; YYBEGIN S; continue());
@@ -114,6 +165,9 @@ hexnum=[0-9a-fA-F]+;
                     stringtype := false; YYBEGIN S; continue());
 <INITIAL>"(*#line"{nrws}  => 
                    (YYBEGIN L; stringstart := yypos; comLevel := 1; continue());
+<INITIAL>"(*)"	=> (YYBEGIN LCOM; continue());
+<LCOM>{eol}	=> (SourceMap.newline sourceMap yypos; YYBEGIN INITIAL; continue());
+<LCOM>.		=> (continue());
 <INITIAL>"(*"	=> (YYBEGIN A; stringstart := yypos; comLevel := 1; continue());
 <INITIAL>"*)"	=> (err (yypos,yypos+1) COMPLAIN "unmatched close comment"
 		        nullErrorBody;
@@ -140,9 +194,12 @@ hexnum=[0-9a-fA-F]+;
 <L,LLC,LLCQ>.    => (err (!stringstart, yypos+1) WARN 
                        "ill-formed (*#line...*) taken as comment" nullErrorBody;
                      YYBEGIN A; continue());
+<A>"(*)"	=> (YYBEGIN ALC; continue());
+<ALC>{eol}	=> (SourceMap.newline sourceMap yypos; YYBEGIN A; continue());
+<ALC>.		=> (continue());
 <A>"(*"		=> (inc comLevel; continue());
 <A>{eol}	=> (SourceMap.newline sourceMap yypos; continue());
-<A>"*)" => (dec comLevel; if !comLevel=0 then YYBEGIN INITIAL else (); continue());
+<A>"*)" 	=> (dec comLevel; if !comLevel=0 then YYBEGIN INITIAL else (); continue());
 <A>.		=> (continue());
 <S>\"	        => (let val s = makeString charlist
                         val s = if size s <> 1 andalso not(!stringtype)

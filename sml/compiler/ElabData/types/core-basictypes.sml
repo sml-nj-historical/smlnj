@@ -90,11 +90,10 @@ end = struct
 		   kind = T.PRIMITIVE ptn,
 		   stub = NONE }
 
-    fun pt2tct args = let
-	val tyc = pt2tc args
-    in
-	(tyc, tc2t tyc)
-    end
+    fun pt2tct args =
+	let val tyc = pt2tc args
+	in (tyc, tc2t tyc)
+	end
 
     val (intTycon, intTy) = pt2tct ("int", 0, T.YES, PTN.ptn_int)
     val (stringTycon, stringTy) = pt2tct ("string", 0, T.YES, PTN.ptn_string)

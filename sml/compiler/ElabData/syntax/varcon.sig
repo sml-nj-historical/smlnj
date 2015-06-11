@@ -14,7 +14,7 @@ sig
          prim   : PrimOpId.primId}
     | OVLDvar of			(* overloaded identifier *)
         {name : Symbol.symbol,
-	 options: {indicator: Types.ty, variant: var} list ref,
+	 options: {indicator: Types.ty, variant: var} list,
 	 scheme: Types.tyfun}
     | ERRORvar
 

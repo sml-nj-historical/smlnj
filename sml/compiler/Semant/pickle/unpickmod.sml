@@ -752,7 +752,7 @@ structure UnpickMod : UNPICKMOD = struct
 		    val (b, btr) = ty' ()
 		in
 		    (V.OVLDvar { name = n,
-				 options = ref ol,
+				 options = ol,
 				 scheme = T.TYFUN { arity = ar, body = b } },
 		     branch [oltr, btr])
 		end

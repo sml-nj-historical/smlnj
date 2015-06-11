@@ -2,6 +2,7 @@
  *
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
+
 structure MLParser : MLPARSER = struct 
 
 structure MLLrVals = MLLrValsFun(structure Token = LrParser.Token)

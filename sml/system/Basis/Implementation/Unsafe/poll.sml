@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
  *)
 
-(* FIXME
+(* FIXME [NEW-RT]
 structure Poll : POLL = 
   struct
     exception BadPollFreq

@@ -18,7 +18,7 @@ Group is
 	dummy-servers.sml
 # endif
 *)
-dummy-servers.sml (* FIXME *)
+dummy-servers.sml (* FIXME [NEW-RT] *)
 	../util/sources.cm
 	$smlnj/basis/basis.cm
 	$smlnj/internal/srcpath-lib.cm

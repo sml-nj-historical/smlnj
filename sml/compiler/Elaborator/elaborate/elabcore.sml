@@ -41,16 +41,10 @@ local structure EM = ErrorMsg
       structure TS = TyvarSet
       structure ET = ElabType
       structure S = Symbol
-      (* structure II = InlInfo *)
       structure A = Access
-
       structure Tbl = SymbolHashTable
 
       open Absyn Ast BasicTypes Access ElabUtil Types VarCon
-   (*
-      open BasicTypes Symbol Absyn Ast PrintUtil AstUtil BasicTypes TyvarSet
-           Types EqTypes TypesUtil Access ElabUtil
-    *)
 in
 
 fun cMARKpat (p, r) = if !ElabControl.markabsyn then MARKpat (p, r) else p
@@ -72,6 +66,10 @@ fun showDec(msg,dec,env) =
 		 dec)(* ) *)
 
 infix -->
+
+fun mkLITERALty (k: litKind, v: IntInf.int, r: SourceMap.region) : ty =
+    VARty(mkTyvar(OVLD{sources=[OLIT(k,v,r)],
+		       options=OverloadLit.litTypes(k)}))
 
 (* tyvarset management *)
 type tyvUpdate = TS.tyvarset -> unit
@@ -304,8 +302,8 @@ let
 	   (clean_pat (error region) 
               (pat_id(SP.SPATH path, env, error region, compInfo)),
 	    TS.empty)
-       | IntPat s => (INTpat(s,TU.mkLITERALty(T.INT,region)),TS.empty)
-       | WordPat s => (WORDpat(s,TU.mkLITERALty(T.WORD,region)),TS.empty)
+       | IntPat s => (INTpat(s,mkLITERALty(T.INT,s,region)),TS.empty)
+       | WordPat s => (WORDpat(s,mkLITERALty(T.WORD,s,region)),TS.empty)
        | StringPat s => (STRINGpat s,TS.empty)
        | CharPat s => (CHARpat s,TS.empty)
        | RecordPat {def,flexibility} =>
@@ -475,9 +473,9 @@ let
 		      else CONexp(d, [])), 
 		TS.empty, no_updt)
 	   | IntExp s => 
-               (INTexp(s,TU.mkLITERALty(T.INT,region)),TS.empty,no_updt)
+               (INTexp(s,mkLITERALty(T.INT,s,region)),TS.empty,no_updt)
            | WordExp s => 
-               (WORDexp(s,TU.mkLITERALty(T.WORD,region)),TS.empty,no_updt)
+               (WORDexp(s,mkLITERALty(T.WORD,s,region)),TS.empty,no_updt)
 	   | RealExp r => (REALexp r,TS.empty,no_updt)
 	   | StringExp s => (STRINGexp s,TS.empty,no_updt)
 	   | CharExp s => (CHARexp s,TS.empty,no_updt)
@@ -712,23 +710,28 @@ let
 
     (**** OVERLOADING ****)
 
-    and elabOVERLOADdec((id,typ,exps),env,rpath,region) =
-	let val (body,tyvars) = ET.elabType(typ,env,error,region)
-	    val tvs = TS.elements tyvars
+    and elabOVERLOADdec((id,typeScheme,exps),env,rpath,region) =
+	(* exps are simple variables or paths, with monomorphic types;
+	 * typescheme is a type scheme with a single type variable parameter,
+	 * which matches the type of each exp *)
+	let val _ = Control_Print.say (">>elabOVERLOADdec "^Symbol.name id^" "
+		    ^Int.toString(length exps)^"\n")
+	    val (body,tyvars) = ET.elabType(typeScheme,env,error,region)
+	    val tvs = TS.elements tyvars (* ASSERT: length tyvars = 1 *)
 	    val scheme = (TU.bindTyvars tvs; TU.compressTy body;
 			  TYFUN{arity=length tvs, body=body})
 	    fun option (MARKexp(e,_)) = option e
 	      | option (VARexp(ref (v as VALvar{typ,...}),_)) =
-		  {indicator = TU.matchScheme(scheme,!typ), variant = v}
-	      | option _ = bug "makeOVERLOADdec.option"
-	    val exps = map (fn exp => elabExp(exp,env,region)) exps
-	    val exps1 = map #1 exps
-	    and exps3 = map #3 exps
-	    fun updt tv: unit = app (fn f => f tv) exps3
+		  {indicator = Overload.matchScheme(scheme,!typ), variant = v}
+	      | option _ = bug "evalOVERLOADdec.option"
+	    val options =
+		map (fn exp => option(#1(elabExp(exp,env,region)))) exps
 	    val ovldvar = OVLDvar{name=id,scheme=scheme,
-				  options=ref(map option exps1)}
-	 in (OVLDdec ovldvar, SE.bind(id,B.VALbind ovldvar,SE.empty),
-             TS.empty, updt)
+				  options=options}
+	in Control_Print.say
+	      ("<<elabOVERLOADdec #options = "^Int.toString(length options)^"\n");
+	    (OVLDdec ovldvar, SE.bind(id,B.VALbind ovldvar,SE.empty),
+             TS.empty, no_updt)
 	end
 
     (**** LOCAL ****)

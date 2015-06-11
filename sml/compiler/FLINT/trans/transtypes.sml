@@ -263,7 +263,7 @@ and toTyc d t =
 	       generalized.  E.g. val x = ([],1); -- the unification variable
                introduced by the generic instantiation of the type of [] is
                neither instantiated nor generalized. *)
-        | h _ = bug "toTyc:h" (* LITERAL and SCHEME should not occur *)
+        | h _ = bug "toTyc:h" (* OVLD should not occur *)
 
       and g (VARty tv) = (* h(!tv) *) lookTv tv
         | g (CONty(RECORDtyc _, [])) = LT.tcc_unit
