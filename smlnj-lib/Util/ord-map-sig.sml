@@ -1,5 +1,8 @@
 (* ord-map-sig.sml
  *
+ * COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * COPYRIGHT (c) 1996 by AT&T Research.  See COPYRIGHT file for details.
  *
  * Abstract signature of an applicative-style finite maps (dictionaries)
@@ -10,6 +13,7 @@ signature ORD_MAP =
   sig
 
     structure Key : ORD_KEY
+	(* the map's domain and its comparison function *)
 
     type 'a map
 
@@ -114,6 +118,20 @@ signature ORD_MAP =
     val mapPartiali : (Key.ord_key * 'a -> 'b option) -> 'a map -> 'b map
 	(* map a partial function over the elements of a map in increasing
 	 * map order.
+	 *)
+
+    val exists : ('a -> bool) -> 'a map -> bool
+    val existsi : (Key.ord_key * 'a -> bool) -> 'a map -> bool
+	(* check the elements of a map with a predicate and return true if
+	 * any element satisfies the predicate. Return false otherwise.
+	 * Elements are checked in key order.
+	 *)
+
+    val all : ('a -> bool) -> 'a map -> bool
+    val alli : (Key.ord_key * 'a -> bool) -> 'a map -> bool
+	(* check the elements of a map with a predicate and return true if
+	 * they all satisfy the predicate. Return false otherwise.  Elements
+	 * are checked in key order.
 	 *)
 
   end (* ORD_MAP *)

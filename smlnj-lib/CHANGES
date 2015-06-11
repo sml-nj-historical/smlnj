@@ -1,6 +1,73 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
+
 --------------------------------------------------------------------------------
+SML/NJ 110.78
+-------------------
+
+[2014-12-07]
+	Added HTML4Entities structure to HTML4 library.  various
+	performance improvements to HTML4 parsing (but the code still
+	needs work).  Also rewrote the HTML4 pretty printer.
+
+[2014-12-07]
+	New implementation of ListMergeSort.  This implementation is
+	better on sorted data (both ascending and descending) and
+	faster on smaller lists.  It is slower than the previous
+	implementation on very large lists (e.g., 10^6 elements
+	or more).
+
+[2014-11-17]
+	Added HTML4Attrs module to HTML4 library.  This module provides
+	utility functions for building attribute-value pairs.
+
+--------------------------------------------------------------------------------
+SML/NJ 110.77
+-------------------
+
+[2014-07-15]
+	Reimplementation of delete/remove operations in red-black-tree
+	versions of sets and maps.  The previous implementation could
+	result in violations of the data-structure invariants, which
+	was leading to unbalanced trees and loss of performance.  Note
+	that the order invariants were correctly maintained, so correctness
+	of the operations was not an issue.
+
+[2014-03-27]
+	Added XML library, which is a lightweight library for parsing XML
+	files.  The library does not support validation and will immediatly
+	raise an exception on syntax errors.  Its purpose is to ease the
+	writing of applications that must process data files that are
+	in XML syntax.
+
+[2013-11-20]
+	Changes to S-expression parsing library.  Allow multiple top-level
+	values in a file (parsing now returns a list).  Handle LISP/Scheme-style
+	comments ("; ...").
+
+--------------------------------------------------------------------------------
+SML/NJ 110.76
+-------------------
+
+[2012-10-30]
+	Fixed bug in DynamicArray iterators because of bad slice dimensions
+	(bug #108).  Also switched to using Array.fromList to implement fromList
+	function.
+
+--------------------------------------------------------------------------------
+SML/NJ 110.75
+-------------------
+
+[2012-09-24]
+	Added Base64 module to support encoding and decoding Word8 vectors as
+	base64 strings.
+
+[2012-09-23]
+	Added exists, existsi, all, and alli functions to ORD_MAP signature and
+	implementations.
+
+[2012-09-23]
+	Added all function to ORD_SET signature and implementations.
 
 [2012-03-26]
 	Added subtract, subtract', and subtractList functions to ORD_SET

@@ -1,5 +1,8 @@
 (* int-binary-map.sml
  *
+ * COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
  *
  * This code was adapted from Stephen Adams' binary tree implementation
@@ -425,6 +428,44 @@ in
 		(* end case *))
 	  in
 	    foldli g empty m
+	  end
+
+  (* check the elements of a map with a predicate and return true if
+   * any element satisfies the predicate. Return false otherwise.
+   * Elements are checked in key order.
+   *)
+    fun exists pred = let
+	  fun exists' E = false
+	    | exists' (T{value, left, right, ...}) =
+		exists' left orelse pred value orelse exists' right
+	  in
+	    exists'
+	  end
+    fun existsi pred = let
+	  fun exists' E = false
+	    | exists' (T{key, value, left, right, ...}) =
+		exists' left orelse pred(key, value) orelse exists' right
+	  in
+	    exists'
+	  end
+
+  (* check the elements of a map with a predicate and return true if
+   * they all satisfy the predicate. Return false otherwise.  Elements
+   * are checked in key order.
+   *)
+    fun all pred = let
+	  fun all' E = true
+	    | all' (T{value, left, right, ...}) =
+		all' left andalso pred value andalso all' right
+	  in
+	    all'
+	  end
+    fun alli pred = let
+	  fun all' E = true
+	    | all' (T{key, value, left, right, ...}) =
+		all' left andalso pred(key, value) andalso all' right
+	  in
+	    all'
 	  end
 
   end

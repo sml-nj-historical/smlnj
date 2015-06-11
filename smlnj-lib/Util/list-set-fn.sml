@@ -178,6 +178,7 @@ functor ListSetFn (K : ORD_KEY) :> ORD_SET where type Key.ord_key = K.ord_key =
     val filter = List.filter
     val partition = List.partition
     val exists = List.exists
+    val all = List.all
     val find = List.find
 
   end (* IntListMap *)

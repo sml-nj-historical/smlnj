@@ -323,13 +323,17 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
     fun exists p EMPTY = false
       | exists p (SET{root,...}) = let
           fun ex SplayNil = false
-            | ex (SplayObj{value=v,left=l,right=r}) =
-                if p v then true
-                else case ex l of
-                       false => ex r
-                     | _ => true 
+            | ex (SplayObj{value=v,left=l,right=r}) = ex l orelse p v orelse ex r
           in
             ex (!root)
+          end
+
+    fun all p EMPTY = false
+      | all p (SET{root,...}) = let
+          fun all' SplayNil = false
+            | all' (SplayObj{value=v,left=l,right=r}) = all' l andalso p v andalso all' r
+          in
+            all' (!root)
           end
 
     fun find p EMPTY = NONE
@@ -343,6 +347,5 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
           in
             ex (!root)
           end
-
 
   end (* SplaySet *)

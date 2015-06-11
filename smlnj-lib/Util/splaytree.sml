@@ -9,13 +9,13 @@
 structure SplayTree : SPLAY_TREE = 
   struct
 
-    datatype 'a splay = 
-      SplayObj of {
-        value : 'a,
-        right : 'a splay,
-        left : 'a splay
-      }
-    | SplayNil
+    datatype 'a splay
+      = SplayObj of {
+	  value : 'a,
+	  right : 'a splay,
+	  left : 'a splay
+	}
+      | SplayNil
 
     datatype 'a ans_t = No | Eq of 'a | Lt of 'a | Gt of 'a
 

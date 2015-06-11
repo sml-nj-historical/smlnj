@@ -1,5 +1,8 @@
 (* int-list-map.sml
  *
+ * COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * COPYRIGHT (c) 1996 by AT&T Research.  See COPYRIGHT file for details.
  *
  * An implementation of finite maps on integer keys, which uses a sorted list
@@ -240,6 +243,40 @@ structure IntListMap :> ORD_MAP where type Key.ord_key = Int.int =
 	    List.mapPartial f' l
 	  end
     fun mapPartial f l = mapPartiali (fn (_, item) => f item) l
+
+  (* check the elements of a map with a predicate and return true if
+   * any element satisfies the predicate. Return false otherwise.
+   * Elements are checked in key order.
+   *)
+    fun exists pred = let
+	  fun exists' [] = false
+	    | exists' ((_, x)::r) = pred x orelse exists' r
+	  in
+	    exists'
+	  end
+    fun existsi pred = let
+	  fun exists' [] = false
+	    | exists' (arg::r) = pred arg orelse exists' r
+	  in
+	    exists'
+	  end
+
+  (* check the elements of a map with a predicate and return true if
+   * they all satisfy the predicate. Return false otherwise.  Elements
+   * are checked in key order.
+   *)
+    fun all pred = let
+	  fun all' [] = false
+	    | all' ((_, x)::r) = pred x andalso all' r
+	  in
+	    all'
+	  end
+    fun alli pred = let
+	  fun all' [] = false
+	    | all' (arg::r) = pred arg andalso all' r
+	  in
+	    all'
+	  end
 
   end (* IntListMap *)
 

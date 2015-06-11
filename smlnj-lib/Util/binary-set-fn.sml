@@ -414,6 +414,14 @@ functor BinarySetFn (K : ORD_KEY) : ORD_SET =
 	    )
 	      (empty, empty) set
 
+    fun exists p E = false
+      | exists p (T{elt, left, right,...}) =
+	  (exists p left) orelse (p elt) orelse (exists p right)
+
+    fun all p E = true
+      | all p (T{elt, left, right,...}) =
+	  (all p left) andalso (p elt) andalso (all p right)
+
     fun find p E = NONE
       | find p (T{elt,left,right,...}) = (case find p left
 	   of NONE => if (p elt)
@@ -421,9 +429,5 @@ functor BinarySetFn (K : ORD_KEY) : ORD_SET =
 		else find p right
 	    | a => a
 	  (* end case *))
-
-    fun exists p E = false
-      | exists p (T{elt, left, right,...}) =
-	  (exists p left) orelse (p elt) orelse (exists p right)
 
   end (* BinarySetFn *)

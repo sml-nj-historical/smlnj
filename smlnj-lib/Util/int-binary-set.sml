@@ -420,6 +420,14 @@ structure IntBinarySet :> ORD_SET where type Key.ord_key = Int.int =
 	    )
 	      (empty, empty) set
 
+    fun exists p E = false
+      | exists p (T{elt, left, right,...}) =
+	  (exists p left) orelse (p elt) orelse (exists p right)
+
+    fun all p E = true
+      | all p (T{elt, left, right,...}) =
+	  (all p left) andalso (p elt) andalso (all p right)
+
     fun find p E = NONE
       | find p (T{elt,left,right,...}) = (case find p left
 	   of NONE => if (p elt)
@@ -427,9 +435,5 @@ structure IntBinarySet :> ORD_SET where type Key.ord_key = Int.int =
 		else find p right
 	    | a => a
 	  (* end case *))
-
-    fun exists p E = false
-      | exists p (T{elt, left, right,...}) =
-	  (exists p left) orelse (p elt) orelse (exists p right)
 
   end (* IntBinarySet *)

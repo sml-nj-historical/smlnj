@@ -175,3 +175,38 @@ fun t40 () = withPP ("Test 20 [C code]", 20) (fn strm => (
 	PP.string strm "}";
       PP.closeBox strm));
 
+(* a test of VBox *)
+fun t50 () = withPP ("Test 40 [vbox]", 20) (fn strm => let
+      fun pp l = let
+	    fun pp' [] = ()
+	      | pp' [s] = PP.string strm s
+	      | pp' (s::r) = (PP.string strm s; PP.space strm 1; pp' r)
+	    in
+	      PP.openHBox strm; pp' l; PP.closeBox strm
+	    end
+      in
+	  PP.openVBox strm (PP.Abs 0);
+	    pp ["0:", "line", "1"]; PP.newline strm;
+	    pp ["0:", "line", "2"]; PP.newline strm;
+	    PP.openVBox strm (PP.Abs 2);
+	      pp ["2:", "line", "3"]; PP.newline strm;
+	      pp ["2:", "line", "4"];
+	    PP.closeBox strm;
+	    PP.newline strm;
+	    PP.openVBox strm (PP.Abs 2);
+	      pp ["2:", "line", "5"]; PP.newline strm;
+	      pp ["2:", "line", "6"];
+	    PP.closeBox strm;
+	    PP.newline strm;
+	    pp ["0:", "line", "7"]; PP.newline strm;
+	    pp ["0:", "line", "8"]; PP.newline strm;
+	    PP.openVBox strm (PP.Abs 4);
+	      pp ["4:", "line", "9"]; PP.newline strm;
+	      pp ["4:", "line", "10"];
+	    PP.closeBox strm;
+	    PP.newline strm;
+	    pp ["0:", "line", "11"]; PP.newline strm;
+	    pp ["0:", "line", "12"]; PP.newline strm;
+	  PP.closeBox strm
+      end)
+
