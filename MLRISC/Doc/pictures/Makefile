@@ -19,6 +19,27 @@ EPS=	eps/big-pict.eps \
 	eps/uncol.eps \
 	eps/viewer.eps
 
+PDF=	pdf/big-pict.pdf \
+	pdf/big-pict2.pdf \
+	pdf/cfg-rev.pdf \
+	pdf/cfg.pdf \
+	pdf/compiler-2.pdf \
+	pdf/compiler.pdf \
+	pdf/compiler2.pdf \
+	pdf/hyperblock-formation.pdf \
+	pdf/if-conversion.pdf \
+	pdf/layers.pdf \
+	pdf/mlrisc-ir-archive.pdf \
+	pdf/mlrisc-IR.pdf \
+	pdf/phg.pdf \
+	pdf/region-builder.pdf \
+	pdf/subgraph.pdf \
+	pdf/tail-dupl.pdf \
+	pdf/tail-duplication.pdf \
+	pdf/trace.pdf \
+	pdf/uncol.pdf \
+	pdf/viewer.pdf
+
 PNG=	png/compiler-1.png \
 	png/compiler-2.png \
 	png/hof-1.png \
@@ -33,17 +54,20 @@ PNG=	png/compiler-1.png \
 	png/uncol2.png
 
 
-all:	mkdir $(EPS) $(PNG)
+all:	mkdir $(PNG) $(PDF)
 
 clean:	
-	rm -f $(EPS) $(PNG)
+	rm -f $(EPS) $(PNG) $(PDF)
 
 mkdir:
+	# @if [ ! -d eps ]; then mkdir eps; fi
+	@if [ ! -d pdf ]; then mkdir pdf; fi
 	@if [ ! -d png ]; then mkdir png; fi
-	@if [ ! -d eps ]; then mkdir eps; fi
 
 eps/%.eps:	fig/%.fig
 	fig2dev -L ps $< $@
+pdf/%.pdf:	fig/%.fig
+	fig2dev -L pdf $< $@
 jpeg/%.jpg:	fig/%.fig
 	fig2dev -L jpeg $< $@
 png/%.png:	fig/%.fig
