@@ -305,11 +305,11 @@ app_exp	: aexp	        ([{item=markexp(aexp,aexpleft,aexpright),
         | AQID                  (VarExp([varSymbol AQID]))
         | quote                 (ListExp quote)
 
-quote   : BEGINQ ENDQ           ([QuoteExp ENDQ])
-        | BEGINQ ot_list ENDQ   (ot_list @ [QuoteExp ENDQ])
+quote   : BEGINQ ENDQ           ([quoteExp ENDQ])
+        | BEGINQ ot_list ENDQ   (ot_list @ [quoteExp ENDQ])
 
-ot_list : OBJL aexp             ([QuoteExp OBJL,AntiquoteExp aexp])
-        | OBJL aexp ot_list     (QuoteExp OBJL :: AntiquoteExp aexp ::
+ot_list : OBJL aexp             ([quoteExp OBJL, antiquoteExp aexp])
+        | OBJL aexp ot_list     (quoteExp OBJL :: antiquoteExp aexp ::
                                             ot_list)
 
 exp_2c	: exp COMMA exp_2c	(exp :: exp_2c)

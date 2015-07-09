@@ -22,9 +22,9 @@ signature ASTUTIL =
     val unitPat : Ast.pat
 
     (* QUOTES *)
-    val QuoteExp : string -> Ast.exp
-    val AntiquoteExp : Ast.exp -> Ast.exp
+    val quoteExp : string -> Ast.exp
+    val antiquoteExp : Ast.exp -> Ast.exp
 
-end  (* signature ASTUTIL *)
+  end  (* signature ASTUTIL *)
 
 
