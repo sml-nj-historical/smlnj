@@ -3,36 +3,19 @@
 #
 
 TEX= sml.tex mlrisc.tex mltexdoc.tex
-DVI=	$(TEX:.tex=.dvi)
-PS=	$(TEX:.tex=.ps)
 PDF=	$(TEX:.tex=.pdf)
 
-all:	pictures $(DVI) $(PS)
+all:	pictures $(PDF)
 
 pictures:
 	(cd ../pictures; make)
 
-again:	cleandvi bib
-	make
-
-cleandvi:
-	rm -f $(TEX:.tex=.dvi)
-
-bib:
-	for f in $(TEX:.tex=) ; do bibtex $$f; done
-
 pdf:	$(PDF)
 
-%.dvi:	%.tex sml.sty mltex.sty
-	latex $(@:.dvi=.tex)
+%.pdf:
+	latexmk -bibtex -ps- -pdf $(@:.pdf=.tex)
 
-%.ps:	%.dvi
-	dvips -D 600 -t letter $(@:.ps=.dvi) -o
-
-%.pdf:	%.ps
-	ps2pdf $<
-
-mlrisc.dvi: annotations.tex graphics.tex instructions.tex mltree.tex \
+mlrisc.pdf: annotations.tex graphics.tex instructions.tex mltree.tex \
 	delayslots.tex cells.tex cluster.tex constants.tex \
 	pseudo-ops.tex streams.tex labelexp.tex labels.tex regions.tex \
 	regmap.tex graphs.tex mlrisc-ir.tex compiler-graphs.tex \
@@ -46,7 +29,7 @@ mlrisc.dvi: annotations.tex graphics.tex instructions.tex mltree.tex \
 	sparc.tex alpha.tex x86.tex ppc.tex mips.tex hppa.tex C6.tex \
 	mltree-ext.tex mltree-util.tex
 
-mltexdoc.dvi:	mltex.tex
+mltexdoc.pdf:	mltex.tex
 
-clean:	
-	/bin/rm -f $(DVI) *.aux *.log *.bbl *.blg
+clean:
+	rm -f $(PDF) *.aux *.log *.bbl *.blg
