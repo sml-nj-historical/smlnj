@@ -37,8 +37,7 @@ ml_val_t _ml_OS_tmpname (ml_state_t *msp, ml_val_t arg)
 	return ML_CString (msp, template);
     }
 
-#else
-  // for old systems
+#else /* for old systems */
     char	buf[L_tmpnam];
 
     tmpnam (buf);
