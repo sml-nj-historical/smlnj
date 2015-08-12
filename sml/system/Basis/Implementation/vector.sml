@@ -1,10 +1,10 @@
 (* vector.sml
  *
- * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *)
 
-structure Vector : VECTOR =
+structure Vector : VECTOR_2015 =
   struct
 
 (*
@@ -32,11 +32,11 @@ structure Vector : VECTOR =
 
     fun tabulate (0, _) = Assembly.vector0
       | tabulate (n, f) = let
-	    fun tab i = if i = n then [] else f i :: tab (i++1)
-	in
+	  fun tab i = if i = n then [] else f i :: tab (i++1)
+	  in
 	    checkLen n;
 	    Assembly.A.create_v(n, tab 0)
-	end
+	  end
 
     val length : 'a vector -> int = InlineT.PolyVector.length
     val sub : 'a vector * int -> 'a = InlineT.PolyVector.chkSub
@@ -209,4 +209,39 @@ structure Vector : VECTOR =
     in
 	col 0
     end
+
+  (* added for Basis Library proposal 2015-003 *)
+    local
+    (* utility function for extracting the elements of a vector as a list *)
+      fun getList (_, 0, l) = l
+	| getList (vec, i, l) = let val i = i -- 1
+	    in
+	      getList (vec, i, usub(vec, i) :: l)
+	    end
+    in
+
+    fun toList vec = let
+	  val n = length vec
+	  in
+	    getList (vec, n, [])
+	  end
+
+    fun append (vec, x) = let
+	  val n = length vec
+	  val n' = n ++ 1
+	  in
+	    checkLen n';
+	    Assembly.A.create_v(n', getList(vec, n, [x]))
+	  end
+
+    fun prepend (x, vec) = let
+	  val n = length vec
+	  val n' = n ++ 1
+	  in
+	    checkLen n';
+	    Assembly.A.create_v(n', x :: getList(vec, n, []))
+	  end
+
+    end (* local *)
+
   end  (* Vector *)

@@ -1,7 +1,7 @@
 (* vector.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 signature VECTOR = 
@@ -33,4 +33,14 @@ signature VECTOR =
     val exists  : ('a -> bool) -> 'a vector -> bool
     val all     : ('a -> bool) -> 'a vector -> bool
     val collate : ('a * 'a -> order) -> 'a vector * 'a vector -> order
+  end
+
+signature VECTOR_2015 =
+  sig
+    include VECTOR
+
+    val toList  : 'a vector -> 'a list
+    val append  : 'a vector * 'a -> 'a vector
+    val prepend : 'a * 'a vector -> 'a vector
+
   end

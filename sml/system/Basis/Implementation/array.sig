@@ -1,7 +1,7 @@
 (* array.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 signature ARRAY =
@@ -38,4 +38,14 @@ signature ARRAY =
     val exists  : ('a -> bool) -> 'a array -> bool
     val all     : ('a -> bool) -> 'a array -> bool
     val collate : ('a * 'a -> order) -> 'a array * 'a array -> order
+  end
+
+signature ARRAY_2015 =
+  sig
+    include ARRAY
+
+    val toList     : 'a array -> 'a list
+    val fromVector : 'a vector -> 'a array
+    val toVector   : 'a array -> 'a vector
+
   end

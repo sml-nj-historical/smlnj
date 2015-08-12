@@ -1,10 +1,10 @@
 (* array.sml
  *
- * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
-structure Array : ARRAY = struct
+structure Array : ARRAY_2015 = struct
 
     type 'a array = 'a PrimTypes.array
     type 'a vector = 'a PrimTypes.vector
@@ -200,10 +200,34 @@ structure Array : ARRAY = struct
 	coll 0
     end
 
+  (* added for Basis Library proposal 2015-003 *)
+    fun toList arr = foldr op :: [] arr
+
     (* FIXME: this is inefficient (going through intermediate list) *)
     fun vector arr =
 	case length arr of
 	    0 => Assembly.vector0
-	  | len => Assembly.A.create_v (len, foldr op :: [] arr)
+	  | len => Assembly.A.create_v (len, toList arr)
+
+  (* added for Basis Library proposal 2015-003 *)
+    fun fromVector vec = let
+	  val n = InlineT.PolyVector.length vec
+	  in
+	    if (n = 0)
+	      then InlineT.PolyArray.newArray0()
+	      else let
+		val arr = array(n, InlineT.PolyVector.sub(vec, 0))
+		fun fill i = if (i < n)
+		      then (
+			InlineT.PolyArray.update(arr, i, InlineT.PolyVector.sub(vec, i));
+			fill (i ++ 1))
+		      else arr
+		in
+		  fill 1
+		end
+	  end
+
+  (* added for Basis Library proposal 2015-003 *)
+    val toVector = vector
 
 end (* structure Array *)
