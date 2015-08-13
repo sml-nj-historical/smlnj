@@ -40,6 +40,7 @@ signature ARRAY =
     val collate : ('a * 'a -> order) -> 'a array * 'a array -> order
   end
 
+(* includes Basis Library proposal 2015-003 *)
 signature ARRAY_2015 =
   sig
     include ARRAY

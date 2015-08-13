@@ -35,6 +35,7 @@ signature VECTOR =
     val collate : ('a * 'a -> order) -> 'a vector * 'a vector -> order
   end
 
+(* includes Basis Library proposal 2015-003 *)
 signature VECTOR_2015 =
   sig
     include VECTOR
