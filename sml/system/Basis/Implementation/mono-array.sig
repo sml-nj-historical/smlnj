@@ -1,9 +1,9 @@
 (* mono-array.sig
  *
- * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Generic interface for monomorphic array structures.
- *
  *)
 
 signature MONO_ARRAY =
@@ -51,4 +51,8 @@ signature MONO_ARRAY =
 signature MONO_ARRAY_2015 =
   sig
     include MONO_ARRAY
+
+    val toList     : array -> elem list
+    val fromVector : vector -> array
+    val toVector   : array -> vector
   end

@@ -54,6 +54,8 @@ Group
 	signature SML90
 	signature BIT_FLAGS
 
+	signature EITHER	(* proposal 2015-002 *)
+
 	(* basis signatures with extensions from proposal 2015-003 added *)
 	signature ARRAY_2015
 	signature MONO_ARRAY_2015
@@ -144,6 +146,8 @@ Group
 	structure Real64VectorSlice
 	structure SML90
 	structure ExnName
+
+	structure Either	(* proposal 2015-002 *)
 
 	functor PrimIO
 
@@ -379,6 +383,10 @@ is
 	option.sml
 	exn-name.sml
 	sml90.sml
+
+      (* basis proposal 2015-002 *)
+	either.sig
+	either.sml
 
 	bind-int-32.sml
 	bind-word-32.sml

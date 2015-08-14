@@ -78,7 +78,7 @@ structure StringImp : STRING_2015 =
 	  fun newVec n = let
 		val newV = Assembly.A.create_s n
 		fun fill i = if (i < n)
-		      then (unsafeUpdate(newV, i, unsafeSub(v, base+i)); fill(i+1))
+		      then (unsafeUpdate(newV, i, unsafeSub(v, base ++ i)); fill(i ++ 1))
 		      else ()
 		in
 		  fill 0; newV
@@ -95,11 +95,11 @@ structure StringImp : STRING_2015 =
 		      then ""
 		      else newVec (len - base)
 	      | (_, SOME 1) =>
-		  if ((base < 0) orelse (len < base+1))
+		  if ((base < 0) orelse (len < (base ++ 1)))
 		    then raise General.Subscript
 		    else str(unsafeSub(v, base))
 	      | (_, SOME n) =>
-		  if ((base < 0) orelse (n < 0) orelse (len < (base+n)))
+		  if ((base < 0) orelse (n < 0) orelse (len < (base ++ n)))
 		    then raise General.Subscript
 		    else newVec n
 	    (* end case *)
@@ -109,7 +109,7 @@ structure StringImp : STRING_2015 =
     fun concatWith _ [] = ""
       | concatWith _ [x] = x
       | concatWith sep (h :: t) =
-	concat (listRev (foldl (fn (x, l) => x :: sep :: l) [h] t, []))
+	  concat (listRev (foldl (fn (x, l) => x :: sep :: l) [h] t, []))
 
     fun map f vec = (case (size vec)
 	   of 0 => ""
@@ -133,23 +133,23 @@ structure StringImp : STRING_2015 =
 	  val n = size s
 	  fun substr (i, j, l) = if (i = j)
 		then l
-		else PreString.unsafeSubstring(s, i, j-i)::l
+		else PreString.unsafeSubstring(s, i, j -- i)::l
 	  fun scanTok (i, j, toks) = if (j < n)
 		  then if (isDelim (unsafeSub (s, j)))
-		    then skipSep(j+1, substr(i, j, toks))
-		    else scanTok (i, j+1, toks)
+		    then skipSep(j ++ 1, substr(i, j, toks))
+		    else scanTok (i, j ++ 1, toks)
 		  else substr(i, j, toks)
 	  and skipSep (j, toks) = if (j < n)
 		  then if (isDelim (unsafeSub (s, j)))
-		    then skipSep(j+1, toks)
-		    else scanTok(j, j+1, toks)
+		    then skipSep(j ++ 1, toks)
+		    else scanTok(j, j ++ 1, toks)
 		  else toks
 	  in
 	    listRev (scanTok (0, 0, []), [])
 	  end
     fun fields isDelim s = let
 	  val n = size s
-	  fun substr (i, j, l) = PreString.unsafeSubstring(s, i, j-i)::l
+	  fun substr (i, j, l) = PreString.unsafeSubstring(s, i, j -- i)::l
 	  fun scanTok (i, j, toks) = if (j < n)
 		  then if (isDelim (unsafeSub (s, j)))
 		    then scanTok (j+1, j+1, substr(i, j, toks))

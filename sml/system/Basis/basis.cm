@@ -2,8 +2,9 @@
  *
  *   The Standard ML Basis Library.
  *
- * Copyright (c) 2004 by The Fellowship of SML/NJ
+ * Copyright (c) 2015 by The Fellowship of SML/NJ
  *)
+
 (primitive)
 Library
 	(* Basis *)
@@ -54,6 +55,8 @@ Library
 	signature TEXT
 	signature SML90
 	signature BIT_FLAGS
+
+	signature EITHER	(* proposal 2015-002 *)
 
 	(* SML/NJ specific *)
 	signature SIGNALS
@@ -144,6 +147,8 @@ Library
 	structure Real64VectorSlice
 	structure Text
 	structure SML90
+
+	structure Either	(* proposal 2015-002 *)
 
 	functor PrimIO
 

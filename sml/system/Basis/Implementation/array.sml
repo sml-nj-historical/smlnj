@@ -204,10 +204,10 @@ structure Array : ARRAY_2015 = struct
     fun toList arr = foldr op :: [] arr
 
     (* FIXME: this is inefficient (going through intermediate list) *)
-    fun vector arr =
-	case length arr of
-	    0 => Assembly.vector0
-	  | len => Assembly.A.create_v (len, toList arr)
+    fun vector arr = (case length arr
+	   of 0 => Assembly.vector0
+	    | len => Assembly.A.create_v (len, toList arr)
+	  (* end case *))
 
   (* added for Basis Library proposal 2015-003 *)
     fun fromVector vec = let
