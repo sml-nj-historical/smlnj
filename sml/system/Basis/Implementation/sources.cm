@@ -54,6 +54,15 @@ Group
 	signature SML90
 	signature BIT_FLAGS
 
+	(* basis signatures with extensions from proposal 2015-003 added *)
+	signature ARRAY_2015
+	signature MONO_ARRAY_2015
+	signature MONO_VECTOR_2015
+	signature STRING_2015
+	signature TEXT_2015
+	signature VECTOR_2015
+(* TODO: LIST_2015 and LIST_PAIR_2015 *)
+
 	(* SML/NJ specific *)
 	signature SIGNALS
 

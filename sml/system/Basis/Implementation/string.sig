@@ -1,6 +1,7 @@
 (* string.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 signature STRING =
@@ -45,5 +46,17 @@ signature STRING =
     val fromString  : String.string -> string option
     val toCString   : string -> String.string
     val fromCString : String.string -> string option
+
+  end
+
+(* includes Basis Library proposal 2015-003 *)
+signature STRING_2015 =
+  sig
+    include STRING
+
+    val rev           : string -> string
+    val implodeRev    : char list -> string
+
+    val concatWithMap : string -> ('a -> string) -> 'a list -> string
 
   end

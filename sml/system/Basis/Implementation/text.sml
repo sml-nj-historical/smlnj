@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies.
  *)
 
-structure Text : TEXT =
+structure Text : TEXT_2015 =
   struct
     structure Char = Char
     structure String = StringImp

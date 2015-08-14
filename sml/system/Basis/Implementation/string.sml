@@ -1,13 +1,19 @@
 (* string.sml
  *
- * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *)
 
-structure StringImp : STRING =
+structure StringImp : STRING_2015 =
   struct
-    val op + = InlineT.DfltInt.+
-    val op - = InlineT.DfltInt.-
+
+  (* fast add/subtract avoiding the overflow test *)
+    infix -- ++
+    fun x -- y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x -
+					     InlineT.Word31.copyf_int31 y)
+    fun x ++ y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x +
+					     InlineT.Word31.copyf_int31 y)
+
     val op < = InlineT.DfltInt.<
     val op <= = InlineT.DfltInt.<=
     val op > = InlineT.DfltInt.>
@@ -15,10 +21,9 @@ structure StringImp : STRING =
 (*    val op = = InlineT.= *)
     val unsafeSub = InlineT.CharVector.sub
     val unsafeUpdate = InlineT.CharVector.update
-
   (* list reverse *)
-    fun rev ([], l) = l
-      | rev (x::r, l) = rev (r, x::l)
+    fun listRev ([], l) = l
+      | listRev (x::r, l) = listRev (r, x::l)
 
     type char = char
     type string = string
@@ -39,6 +44,27 @@ structure StringImp : STRING =
     fun create n = if (InlineT.DfltInt.ltu(maxSize, n))
 	  then raise General.Size
 	  else Assembly.A.create_s n
+
+  (* added for Basis Library proposal 2015-003 *)
+    fun implodeRev [] = ""
+      | implodeRev l = let
+	  fun length l = let
+		fun loop (n, []) = n
+		  | loop (n, [_]) = n ++ 1
+		  | loop (n, _ :: _ :: l) = loop (n ++ 2, l)
+		in
+		  loop (0, l)
+		end
+	  val n = length l
+	  val s = create n
+	  fun fill ([], _) = s
+	    | fill (c::cs, i) = (
+		unsafeUpdate(s, i, c);
+		fill (cs, i -- 1))
+	  in
+	    fill (l, n -- 1)
+	  end
+  (* end Basis Library proposal 2015-003 *)
 
   (* convert a character into a single character string *)
     fun str (c : Char.char) : string =
@@ -83,7 +109,7 @@ structure StringImp : STRING =
     fun concatWith _ [] = ""
       | concatWith _ [x] = x
       | concatWith sep (h :: t) =
-	concat (rev (foldl (fn (x, l) => x :: sep :: l) [h] t, []))
+	concat (listRev (foldl (fn (x, l) => x :: sep :: l) [h] t, []))
 
     fun map f vec = (case (size vec)
 	   of 0 => ""
@@ -119,7 +145,7 @@ structure StringImp : STRING =
 		    else scanTok(j, j+1, toks)
 		  else toks
 	  in
-	    rev (scanTok (0, 0, []), [])
+	    listRev (scanTok (0, 0, []), [])
 	  end
     fun fields isDelim s = let
 	  val n = size s
@@ -130,7 +156,7 @@ structure StringImp : STRING =
 		    else scanTok (i, j+1, toks)
 		  else substr(i, j, toks)
 	  in
-	    rev (scanTok (0, 0, []), [])
+	    listRev (scanTok (0, 0, []), [])
 	  end
 
   (* String comparisons *)
@@ -172,19 +198,14 @@ structure StringImp : STRING =
 	    cmp 0
 	  end
 
-    fun op <= (a,b) = if sgtr(a,b) then false else true
-    fun op < (a,b) = sgtr(b,a)
-    fun op >= (a,b) = b <= a
-    val op > = sgtr
-
     fun scan getc = let
 	  val cscan = Char.scan getc
 	  fun illegal (strm, chrs) = (case chrs
 		 of [] => NONE (* string starts with illegal escape or non-printing char *)
-		  | _ => SOME(implode(List.rev chrs), strm)
+		  | _ => SOME(implodeRev chrs, strm)
 		(* end case *))
 	  fun scan' (strm, chrs) = (case getc strm
-		 of NONE => SOME(implode(List.rev chrs), strm)
+		 of NONE => SOME(implodeRev chrs, strm)
 		  | SOME(#"\\", strm') => (case getc strm'
 		       of SOME(c, strm'') =>
 			    if Char.isSpace c
@@ -227,7 +248,7 @@ structure StringImp : STRING =
 	  fun accum (i, chars) = (case (scanChar i)
 		 of NONE => if InlineT.DfltInt.<(i, len)
 		      then NONE (* bad format *)
-		      else SOME(implode(List.rev chars))
+		      else SOME(implodeRev chars)
 		  | (SOME(c, i')) => accum(i', c::chars)
 		(* end case *))
 	  in
@@ -235,6 +256,63 @@ structure StringImp : STRING =
 	  end
 
     val toCString = translate Char.toCString
+
+  (* added for Basis Library proposal 2015-003 *)
+    fun rev s = let
+	  val n = size s
+	  in
+	    if (n < 2)
+	      then s
+	      else let
+		val s' = unsafeCreate n
+		fun fill i = if (i < n)
+		      then (unsafeUpdate(s', i, unsafeSub(s, n--i--1)); fill(i++1))
+		      else ()
+		in
+		  fill 0; s'
+		end
+	  end
+
+    fun concatWithMap sep cvtFn = let
+	  fun concat' [] = ""
+	    | concat' [x] = cvtFn x
+	    | concat' (x::xs) = let
+		val sepLen = size sep
+		fun cvt ([], strs, len) = let
+		      val s' = unsafeCreate len
+		      fun fill ([], _) = s'
+			| fill (s::ss, i) = let
+			    val n = size s
+			    val i = i -- n
+			    fun copy j = if j < n
+				  then (unsafeUpdate(s', i++j, unsafeSub(s, j)); copy(j++1))
+				  else fill (ss, i)
+			    in
+			      copy 0
+			    end
+		      in
+			fill (strs, len)
+		      end
+		  | cvt (x::xs, strs, len) = let
+		      val s = cvtFn x
+		      val len = len ++ sepLen ++ size s
+		      in
+			if len > maxSize then raise General.Size else ();
+			cvt (xs, s::sep::strs, len)
+		      end
+		val s = cvtFn x
+		in
+		  cvt (xs, [s], size s)
+		end
+	  in
+	    concat'
+	  end
+  (* end Basis Library proposal 2015-003 *)
+
+    fun op <= (a,b) = if sgtr(a,b) then false else true
+    fun op < (a,b) = sgtr(b,a)
+    fun op >= (a,b) = b <= a
+    val op > = sgtr
 
   end (* structure String *)	   
 

@@ -46,3 +46,9 @@ signature MONO_ARRAY =
     val collate : (elem * elem -> order) -> array * array -> order
 
   end
+
+(* includes Basis Library proposal 2015-003 *)
+signature MONO_ARRAY_2015 =
+  sig
+    include MONO_ARRAY
+  end
