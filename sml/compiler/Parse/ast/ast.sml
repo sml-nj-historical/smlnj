@@ -65,24 +65,25 @@ datatype exp
 and rule = Rule of {pat:pat,exp:exp}
 
 (* PATTERN *)
-and pat = WildPat				(* empty pattern *)
-	| VarPat of path			(* variable pattern *)
-	| IntPat of literal			(* integer *)
-	| WordPat of literal			(* word literal *)
-	| StringPat of string			(* string *)
-	| CharPat of string			(* char *)
-	| RecordPat of {def:(symbol * pat) list, flexibility:bool}
-						(* record *)
-        | ListPat of pat list		       (*  [list,in,square,brackets] *)
-	| TuplePat of pat list			(* tuple *)
-        | FlatAppPat of pat fixitem list (* patterns before fixity parsing *)
-	| AppPat of {constr:pat,argument:pat}	(* application *)
-	| ConstraintPat of {pattern:pat,constraint:ty}
-						(* constraint *)
-	| LayeredPat of {varPat:pat,expPat:pat}	(* as expressions *)
-	| MarkPat of pat * region	(* mark a pattern *)
-        | VectorPat of pat list                 (* vector pattern *)
-	| OrPat of pat list			(* or-pattern *)
+and pat
+  = WildPat				(* empty pattern *)
+  | VarPat of path			(* variable pattern *)
+  | IntPat of literal			(* integer *)
+  | WordPat of literal			(* word literal *)
+  | StringPat of string			(* string *)
+  | CharPat of string			(* char *)
+  | RecordPat of {def:(symbol * pat) list, flexibility:bool}
+					(* record *)
+  | ListPat of pat list			(* [list,in,square,brackets] *)
+  | TuplePat of pat list		(* tuple *)
+  | FlatAppPat of pat fixitem list	(* patterns before fixity parsing *)
+  | AppPat of {constr:pat,argument:pat}	(* constructor application *)
+  | ConstraintPat of {pattern:pat,constraint:ty}
+					(* constraint *)
+  | LayeredPat of {varPat:pat,expPat:pat} (* as patterns *)
+  | MarkPat of pat * region		(* mark a pattern *)
+  | VectorPat of pat list		(* vector pattern *)
+  | OrPat of pat list			(* or-pattern *)
 
 (* STRUCTURE EXPRESSION *)
 and strexp = VarStr of path			(* variable structure *)
