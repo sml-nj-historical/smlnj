@@ -1,6 +1,7 @@
 (* list.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Available (unqualified) at top level:
  *   type list
@@ -62,3 +63,10 @@ signature LIST =
 
   end (* signature LIST *)
 
+(* includes Basis Library proposal 2015-003 *)
+signature LIST_2015 =
+  sig
+
+    include LIST
+
+  end

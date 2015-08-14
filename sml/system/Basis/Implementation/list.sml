@@ -1,6 +1,6 @@
 (* list.sml
  *
- * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * Available (unqualified) at top level:
@@ -17,7 +17,7 @@
  *
  *)
 
-structure List : LIST =
+structure List : LIST_2015 =
   struct
 
     val op +  = InlineT.DfltInt.+
