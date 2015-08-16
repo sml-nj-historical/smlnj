@@ -23,6 +23,10 @@ signature EITHER =
     val app : ('left -> unit) * ('right -> unit)
 	      -> ('left, 'right) either
 		-> unit
+    val fold : ('left * 'b -> 'b) * ('right * 'b -> 'b)
+               -> 'b -> ('left, 'right) either -> 'b
+
+    val proj : ('a, 'a) either -> 'a
 
     val partition : (('left, 'right) either) list -> ('left list * 'right list)
 

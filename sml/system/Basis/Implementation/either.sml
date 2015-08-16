@@ -26,10 +26,18 @@ structure Either : EITHER =
 	    | INR x => INR(fr x)
 	  (* end case *))
 
-    fun app  (fl, fr) sum = (case sum
+    fun app (fl, fr) sum = (case sum
 	   of INL x => fl x
 	    | INR x => fr x
 	  (* end case *))
+
+    fun fold (fl, fr) init sum = (case sum
+	   of INL x => fl (x, init)
+	    | INR x => fr (x, init)
+	  (* end case *))
+
+    fun proj (INL x) = x
+      | proj (INR x) = x
 
     fun partition sums = let
 	  fun lp ([], ls, rs) = (List.rev ls, List.rev rs)
