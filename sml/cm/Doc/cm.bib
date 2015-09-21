@@ -31,11 +31,32 @@ Eidgen\"ossische Technische Hochschule}}
 @string{JACM={{J}ournal of the {A}ssociation for {C}omputing {M}achinery}}
 @string{TOPLAS={{ACM} {T}rans. on {P}rogramming {L}anguages and {S}ystems}}
 
-@unpublished{reppy99:basis,
-  author="John Reppy and Emden Gansner",
-  title="{S}tandard {ML} {B}asis {L}ibrary",
-  year=1999,
-  note="(not yet in paper form)"}
+@book{
+  reppy99:basis,
+  editor="Emden Gansner and John Reppy",
+  title="The {S}tandard {ML} {B}asis {L}ibrary",
+  publisher = "Cambridge University Press",
+  year=2004,
+  note="Available online at \url{http://sml-family.org/Basis/}"}
+
+@inproceedings{appel91:sml,
+  author="Andrew W. Appel and David B. MacQueen",
+  title="{S}tandard {ML} of {N}ew {J}ersey",
+  booktitle="3rd International Symp. on Prog. Lang. Implementation and Logic Programming",
+  editor="Martin Wirsing",
+  pages = "1-13",
+  publisher = "Springer-Verlag",
+  address="New York",
+  year = 1991, month = aug
+  }
+
+@inproceedings{appel94:sepcomp,
+  author="Andrew W. Appel and David B. MacQueen",
+  title="Separate compilation for {S}tandard {ML}",
+  booktitle="Proc. {SIGPLAN} '94 Symp. on Prog. Language Design and Implementation",
+  pages="13--23",
+  year=1994, month=jun,
+  publisher ={ACM Press}}
 
 @article{blume:appel:cm99,
   author="Matthias Blume and Andrew W. Appel",
@@ -1413,3 +1434,51 @@ author = "Aleksandar Nanevski and Amal Ahmed and Greg Morrisett and Lars Birkeda
 booktitle = {ESOP'07},
 year = {2007},
 pages = "189--204"}
+
+@manual{appel89:lex,
+  author="Andrew W. Appel and James S. Mattson and David R. Tarditi",
+  title="A lexical analyzer generator for {Standard ML}",
+  year=1989, month=dec,
+  note="Available from \url{http://smlnj.org}"
+}
+
+@manual{tarditi90:yacc,
+  author="David R. Tarditi and Andrew W. Appel",
+  title="{ML}-{Y}acc, version 2.0",
+  year = 1990, month = apr,
+  note="Available from \url{http://smlnj.org}"
+}
+
+@article{tichy94,
+  author="Rolf Adams and Walter Tichy and Annette Weinert",
+  title="The cost of selective recompilation and environment processing",
+  journal="{ACM} {TOSEM}",
+  volume = 3, number = 1,
+  year = 1994, month = jan,
+  pages = "3-28"
+}
+
+@incollection{feldman79,
+  author="S. I. Feldman",
+  title="Make -- a program for maintaining computer programs",
+  booktitle="Unix Programmer's Manual, Seventh Edition",
+  volume="{2A}",
+  publisher="Bell Laboratories",
+  year=1979
+}
+
+@manual{mlburg93,
+  author="Florent Guillaume and Lal George",
+  title="{ML-Burg} Documentation",
+  organization="AT\&T Bell Laboratories",
+  year = 1993,
+  note="Available from \url{http://smlnj.org}"
+}
+
+@techreport{harper94:irm,
+  author="Robert Harper and Peter Lee and Frank Pfenning and Eugene Rollins",
+  title="Incremental recompilation for {Standard ML} of {New Jersey}",
+  number="CMU-CS-94-116",
+  institution="Department of Computer Science, Carnegie-Mellon University",
+  year = 1994, month=feb
+}
