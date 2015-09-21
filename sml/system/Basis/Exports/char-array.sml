@@ -4,4 +4,4 @@
  * All rights reserved.
  *)
 
-structure CharArray : MONO_ARRAY_2015 = Text.CharArray
+structure CharArray : MONO_ARRAY = Text.CharArray

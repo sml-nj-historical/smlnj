@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure Option : OPTION_2015 =
+structure Option : OPTION =
   struct
 
     datatype option = datatype Assembly.option

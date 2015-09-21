@@ -8,7 +8,7 @@
  *
  *)
 
-structure ListPair : LIST_PAIR_2015 =
+structure ListPair : LIST_PAIR =
   struct
 
     exception UnequalLengths

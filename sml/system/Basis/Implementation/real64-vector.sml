@@ -8,7 +8,7 @@
  * representation for this type.
  *)
 
-structure Real64Vector : MONO_VECTOR_2015
+structure Real64Vector : MONO_VECTOR
     where type elem = Real64.real
   = struct
     type elem = Real64.real

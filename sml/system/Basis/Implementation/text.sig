@@ -3,13 +3,13 @@
  * COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies.
  *)
 
-signature TEXT =
+signature TEXT_2004 =
   sig
     structure Char            : CHAR
-    structure String          : STRING
+    structure String          : STRING_2004
     structure Substring       : SUBSTRING
-    structure CharVector      : MONO_VECTOR
-    structure CharArray       : MONO_ARRAY
+    structure CharVector      : MONO_VECTOR_2004
+    structure CharArray       : MONO_ARRAY_2004
     structure CharVectorSlice : MONO_VECTOR_SLICE
     structure CharArraySlice  : MONO_ARRAY_SLICE
     sharing type Char.char = String.char = Substring.char
@@ -40,4 +40,6 @@ signature TEXT_2015 =
     sharing type CharArray.array = CharArraySlice.array
     sharing type CharArraySlice.vector_slice = CharVectorSlice.slice
   end;
+
+signature TEXT = TEXT_2015
 

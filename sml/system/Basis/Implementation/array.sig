@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-signature ARRAY =
+signature ARRAY_2004 =
   sig
     type 'a array
     type 'a vector
@@ -43,10 +43,12 @@ signature ARRAY =
 (* includes Basis Library proposal 2015-003 *)
 signature ARRAY_2015 =
   sig
-    include ARRAY
+    include ARRAY_2004
 
     val toList     : 'a array -> 'a list
     val fromVector : 'a vector -> 'a array
     val toVector   : 'a array -> 'a vector
 
   end
+
+signature ARRAY = ARRAY_2015

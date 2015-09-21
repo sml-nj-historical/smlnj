@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-signature OPTION =
+signature OPTION_2004 =
   sig
     datatype 'a option = NONE | SOME of 'a
 
@@ -27,9 +27,11 @@ signature OPTION =
 signature OPTION_2015 =
   sig
 
-    include OPTION
+    include OPTION_2004
 
     val isNone : 'a option -> bool
     val fold : ('a * 'b -> 'b) -> 'b -> 'a option -> 'b
 
   end
+
+signature OPTION = OPTION_2015

@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure Word8Array : MONO_ARRAY_2015 =
+structure Word8Array : MONO_ARRAY =
   struct
 
     structure A = InlineT.Word8Array

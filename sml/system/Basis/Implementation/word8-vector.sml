@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure Word8Vector : MONO_VECTOR_2015 =
+structure Word8Vector : MONO_VECTOR =
   struct
 
     structure V = InlineT.Word8Vector

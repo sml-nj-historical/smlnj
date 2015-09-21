@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure Real64Array : MONO_ARRAY_2015 =
+structure Real64Array : MONO_ARRAY =
   struct
 
     (* fast add/subtract avoiding the overflow test *)

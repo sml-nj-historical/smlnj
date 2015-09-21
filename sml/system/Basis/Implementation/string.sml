@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure StringImp : STRING_2015 =
+structure StringImp : STRING =
   struct
 
   (* fast add/subtract avoiding the overflow test *)

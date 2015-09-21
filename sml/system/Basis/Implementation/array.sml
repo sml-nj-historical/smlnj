@@ -4,7 +4,8 @@
  * All rights reserved.
  *)
 
-structure Array : ARRAY_2015 = struct
+structure Array : ARRAY =
+  struct
 
     type 'a array = 'a PrimTypes.array
     type 'a vector = 'a PrimTypes.vector

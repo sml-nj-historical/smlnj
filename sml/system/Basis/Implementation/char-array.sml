@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure CharArray : MONO_ARRAY_2015 =
+structure CharArray : MONO_ARRAY =
   struct
     structure String = StringImp
     structure A = InlineT.CharArray

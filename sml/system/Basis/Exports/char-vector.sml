@@ -4,4 +4,4 @@
  * All rights reserved.
  *)
 
-structure CharVector : MONO_VECTOR_2015 = Text.CharVector
+structure CharVector : MONO_VECTOR = Text.CharVector

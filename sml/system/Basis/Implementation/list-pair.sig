@@ -8,7 +8,7 @@
  *
  *)
 
-signature LIST_PAIR =
+signature LIST_PAIR_2004 =
   sig
 
     exception UnequalLengths
@@ -33,7 +33,7 @@ signature LIST_PAIR =
 signature LIST_PAIR_2015 =
   sig
 
-    include LIST_PAIR
+    include LIST_PAIR_2004
 
     val appi		: (int * 'a * 'b -> unit) -> 'a list * 'b list -> unit
     val appiEq		: (int * 'a * 'b -> unit) -> 'a list * 'b list -> unit
@@ -49,3 +49,5 @@ signature LIST_PAIR_2015 =
     val foldriEq	: (int * 'a * 'b * 'c -> 'c) -> 'c -> 'a list * 'b list -> 'c
 
   end
+
+signature LIST_PAIR = LIST_PAIR_2015

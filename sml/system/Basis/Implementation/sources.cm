@@ -62,14 +62,25 @@ Group
 	signature FN		(* proposal 2015-005 *)
 	signature REF		(* proposal 2015-007 *)
 
-	(* basis signatures with extensions from proposal 2015-003 added *)
+      (* old versions of basis signatures from the 2004 published spec *)
+	signature ARRAY_2004
+	signature LIST_2004
+	signature LIST_PAIR_2004
+	signature MONO_ARRAY_2004
+	signature MONO_VECTOR_2004
+	signature STRING_2004
+	signature TEXT_2004
+	signature VECTOR_2004
+
+      (* basis signatures with extensions from proposal 2015-003 added *)
 	signature ARRAY_2015
+	signature LIST_2015
+	signature LIST_PAIR_2015
 	signature MONO_ARRAY_2015
 	signature MONO_VECTOR_2015
 	signature STRING_2015
 	signature TEXT_2015
 	signature VECTOR_2015
-(* TODO: LIST_2015 and LIST_PAIR_2015 *)
 
 	(* SML/NJ specific *)
 	signature SIGNALS

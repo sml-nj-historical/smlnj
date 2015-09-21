@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-signature STRING =
+signature STRING_2004 =
   sig
     eqtype char
     eqtype string
@@ -52,7 +52,7 @@ signature STRING =
 (* includes Basis Library proposal 2015-003 *)
 signature STRING_2015 =
   sig
-    include STRING
+    include STRING_2004
 
     val rev           : string -> string
     val implodeRev    : char list -> string
@@ -60,3 +60,6 @@ signature STRING_2015 =
     val concatWithMap : string -> ('a -> string) -> 'a list -> string
 
   end
+
+signature STRING = STRING_2015
+

@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure Vector : VECTOR_2015 =
+structure Vector : VECTOR =
   struct
 
 (*

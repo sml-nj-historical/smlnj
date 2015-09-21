@@ -6,7 +6,7 @@
  * Vectors of characters (aka strings).
  *)
 
-structure CharVector : MONO_VECTOR_2015 =
+structure CharVector : MONO_VECTOR =
   struct
 
     structure String = StringImp

@@ -17,7 +17,7 @@
  *
  *)
 
-signature LIST =
+signature LIST_2004 =
   sig
 
     datatype 'a list = nil | :: of ('a * 'a list)
@@ -67,6 +67,8 @@ signature LIST =
 signature LIST_2015 =
   sig
 
-    include LIST
+    include LIST_2004
 
   end
+
+signature LIST = LIST_2015

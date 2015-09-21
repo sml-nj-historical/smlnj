@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-signature VECTOR = 
+signature VECTOR_2004 = 
   sig
     eqtype 'a vector
 
@@ -38,10 +38,12 @@ signature VECTOR =
 (* includes Basis Library proposal 2015-003 *)
 signature VECTOR_2015 =
   sig
-    include VECTOR
+    include VECTOR_2004
 
     val toList  : 'a vector -> 'a list
     val append  : 'a vector * 'a -> 'a vector
     val prepend : 'a * 'a vector -> 'a vector
 
   end
+
+signature VECTOR = VECTOR_2015

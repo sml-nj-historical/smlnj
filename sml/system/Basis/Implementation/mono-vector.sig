@@ -6,7 +6,7 @@
  * Generic interface for monomorphic vector structures.
  *)
 
-signature MONO_VECTOR =
+signature MONO_VECTOR_2004 =
   sig
 
     type vector
@@ -44,10 +44,12 @@ signature MONO_VECTOR =
 (* includes Basis Library proposal 2015-003 *)
 signature MONO_VECTOR_2015 =
   sig
-    include MONO_VECTOR
+    include MONO_VECTOR_2004
 
     val toList  : vector -> elem list
     val append  : vector * elem -> vector
     val prepend : elem * vector -> vector
 
   end
+
+signature MONO_VECTOR = MONO_VECTOR_2015
