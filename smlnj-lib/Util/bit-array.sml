@@ -691,7 +691,19 @@ structure BitArray :> BIT_ARRAY =
                 in
                   loop sbit
                 end
-      
+
+	(* additional operation from Basis Library proposal 2015-003 *)
+	  fun toList (BA{nbits, bits}) = let
+		fun loop (~1, a) = a
+		  | loop (i, a) = let
+		      val b = ((Word8Array.sub (bits,byteOf i)) & (bit i)) <> 0w0
+		      in
+			loop (i-1, b :: a)
+		      end
+		in
+		  loop (nbits-1, [])
+		end
+
           end (* local *)
         end (* structure Vector *)
 
@@ -762,4 +774,14 @@ structure BitArray :> BIT_ARRAY =
 	col 0
     end
 
-end (* structure BitArray *)
+  (* additional operations from Basis Library proposal 2015-003 *)
+    fun fromVector (Vector.BA{nbits, bits}) = let
+	  val newBits = Unsafe.Word8Array.create(Word8Array.length bits)
+	  in
+	    Word8Array.copy{di = 0, dst = newBits, src = bits};
+	    BA{nbits = nbits, bits = newBits}
+	  end
+
+    val toVector = fromVector
+
+  end (* structure BitArray *)

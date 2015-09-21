@@ -2,6 +2,15 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
+SML/NJ 110.79
+-------------------
+
+[2015-09-21]
+	Added additional array operations toList, fromVector, and toVector to
+	BitArray module so that it matches the new proposed Basis Library
+	specification (Proposal 2015-003).
+
+--------------------------------------------------------------------------------
 SML/NJ 110.78
 -------------------
 
