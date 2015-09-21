@@ -3,7 +3,7 @@
 # See base/system/smlnj/installer/generic-install.sml for how this file
 # is to be interpreted.
 #
-# (C) 2006-2011 The Fellowship of SML/NJ
+# (C) 2006-2015 The Fellowship of SML/NJ
 #
 # Each action is on a single line and has one of the following forms:
 #
