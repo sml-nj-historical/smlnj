@@ -1,6 +1,10 @@
 (* sources.cm
  *
- *   The implementation of the Basis.
+ * The implementation of the Basis.  Also see the file
+ *
+ *	base/system/Basis/basis.cm
+ *
+ * which controls the external visibility of the basis library.
  *
  * Copyright (c) 2004 by The Fellowship of SML/NJ
  *)
@@ -55,6 +59,8 @@ Group
 	signature BIT_FLAGS
 
 	signature EITHER	(* proposal 2015-002 *)
+	signature FN		(* proposal 2015-005 *)
+	signature REF		(* proposal 2015-007 *)
 
 	(* basis signatures with extensions from proposal 2015-003 added *)
 	signature ARRAY_2015
@@ -148,6 +154,8 @@ Group
 	structure ExnName
 
 	structure Either	(* proposal 2015-002 *)
+	structure Fn		(* proposal 2015-005 *)
+	structure Ref		(* proposal 2015-007 *)
 
 	functor PrimIO
 
@@ -387,6 +395,12 @@ is
       (* basis proposal 2015-002 *)
 	either.sig
 	either.sml
+      (* basis proposal 2015-005 *)
+	fn.sig
+	fn.sml
+      (* basis proposal 2015-007 *)
+	ref.sig
+	ref.sml
 
 	bind-int-32.sml
 	bind-word-32.sml

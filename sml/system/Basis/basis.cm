@@ -57,6 +57,8 @@ Library
 	signature BIT_FLAGS
 
 	signature EITHER	(* proposal 2015-002 *)
+	signature FN		(* proposal 2015-005 *)
+	signature REF		(* proposal 2015-007 *)
 
 	(* SML/NJ specific *)
 	signature SIGNALS
@@ -149,6 +151,8 @@ Library
 	structure SML90
 
 	structure Either	(* proposal 2015-002 *)
+	structure Fn		(* proposal 2015-005 *)
+	structure Ref		(* proposal 2015-007 *)
 
 	functor PrimIO
 
