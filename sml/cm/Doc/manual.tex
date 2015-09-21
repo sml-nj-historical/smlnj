@@ -1,42 +1,57 @@
 \documentclass[titlepage,letterpaper]{article}
-\usepackage{times}
-\usepackage{hyperref}
 
-\marginparwidth0pt\oddsidemargin0pt\evensidemargin0pt\marginparsep0pt
-\topmargin0pt\advance\topmargin by-\headheight\advance\topmargin by-\headsep
-\textwidth6.7in\textheight9.1in
+\usepackage[text={6.7in,9.1in},centering]{geometry}
+
+\input{defs}
+
+%\marginparwidth0pt\oddsidemargin0pt\evensidemargin0pt\marginparsep0pt
+%\topmargin0pt\advance\topmargin by-\headheight\advance\topmargin by-\headsep
+%\textwidth6.7in\textheight9.1in
 \columnsep0.25in
 
 \newcommand{\smlmj}{110}
-\newcommand{\smlmn}{40}
+\newcommand{\smlmn}{79}
 
-\author{Matthias Blume \\
-Lucent Technologies, Bell Labs}
+\author{
+  Matthias Blume \\
+  \texttt{matthias\char`\_blume@mac.com}\\[0.5em]
+  John Reppy\\
+  \texttt{jhr@cs.chicago.edu}}
+\date{Revised: September 2015}
 
-\title{{\bf CM}\\
-The SML/NJ Compilation and Library Manager \\
-{\it\small (for SML/NJ version \smlmj.\smlmn~and later)} \\
-User Manual}
+\title{
+  \textbf{CM}\\
+  The SML/NJ Compilation and Library Manager \\
+  \textit{\small (for SML/NJ version \smlmj.\smlmn~and later)} \\
+  User Manual
+}
 
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{6pt plus 3pt minus 2pt}
-
-\newcommand{\nt}[1]{{\it #1}}
-\newcommand{\tl}[1]{{\underline{\bf #1}}}
-\newcommand{\ttl}[1]{{\underline{\tt #1}}}
-\newcommand{\ar}{$\rightarrow$\ }
-\newcommand{\vb}{~$|$~}
 
 \begin{document}
 
 \bibliographystyle{alpha}
 
+%%%%%%%%%% FRONT MATTER %%%%%%%%%%
+
 \maketitle
 
+\phantom{.}
+\vspace{\stretch{1}}
+\thispagestyle{empty}
+	
+\noindent Copyright \copyright{}2015.  Fellowship of SML/NJ.  All rights reserved.
+	
+\vskip 12pt
+\noindent This document was written with support from NSF grant CNS-0454136,
+``CRI: Standard ML Software Infrastructure.''
+	
 \pagebreak
 
 \tableofcontents
 
+%%%%%%%%%% FRONT MATTER %%%%%%%%%%
 \pagebreak
 
 \input{01-intro}
@@ -57,6 +72,7 @@ User Manual}
 \input{16-dynlink}
 \input{17-history}
 
+%%%%%%%%%% BACK MATTER %%%%%%%%%%
 \pagebreak
 
 \bibliography{cm}
