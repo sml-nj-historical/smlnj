@@ -32,7 +32,7 @@ fun dec (ri as ref i) = (ri := i-1)
 %% 
 %reject
 %s A S F Q AQ L LL LLC LLCQ;
-%structure MLLex;
+%structure MLLex
 %arg ({
   comLevel,
   sourceMap,

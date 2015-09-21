@@ -77,7 +77,7 @@ fun dec (ri as ref i) = (ri := i-1)
 %% 
 %reject
 %s A LCOM ALC S F Q AQ L LL LLC LLCQ;
-%structure SMLLex;
+%structure SMLLex
 %arg ({
   comLevel,
   sourceMap,
@@ -95,13 +95,15 @@ some_sym=[!%&$+/:<=>?@~|#*]|\-|\^;
 sym={some_sym}|"\\";
 quote="`";
 full_sym={sym}|{quote};
-digits=[0-9]+;
-num={digits}("_"{digits})*;
+digit=[0-9]+;
+bdigit=[0-1]+;
+xdigit=[0-9a-fA-F];
+num={digit}("_"*{digit})*;
+binnum={bdigit}("_"*{bdigit})*;
+hexnum={xdigit}("_"*{xdigit})*;
 frac="."{num};
 exp=[eE](~?){num};
 real=(~?)(({num}{frac}?{exp})|({num}{frac}{exp}?));
-binnum=[01]+("_"[01]+)*;
-hexnum=[0-9a-fA-F]+("_"[0-9a-fA-F]+)*;
 %%
 <INITIAL>{ws}	=> (continue());
 <INITIAL>{eol}	=> (SourceMap.newline sourceMap yypos; continue());
