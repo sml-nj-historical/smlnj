@@ -1,18 +1,24 @@
-(*
+(* dynamic-array.sml
+ *
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Dynamic (dense) array.
  *
  * -- Allen
  *)
 
-structure DynArray : 
-  sig include ARRAY
-      val fromArray : 'a Array.array * 'a * int -> 'a array
-      val baseArray : 'a array -> 'a Array.array
-      val checkArray: 'a array * 'a Array.array -> unit
-      val clear     : 'a array * int -> unit
-      val expandTo  : 'a array * int -> unit
-  end =
-  struct
+structure DynArray : sig
+
+    include ARRAY
+
+    val fromArray : 'a Array.array * 'a * int -> 'a array
+    val baseArray : 'a array -> 'a Array.array
+    val checkArray: 'a array * 'a Array.array -> unit
+    val clear     : 'a array * int -> unit
+    val expandTo  : 'a array * int -> unit
+
+  end = struct
      structure A = Array
      structure AS = ArraySlice
      type 'a vector = 'a A.vector 
@@ -61,7 +67,7 @@ structure DynArray :
          let val array   = A.fromList l
              val default = A.sub(array,0)
          in
-             ARRAY(ref array, default, ref (List.length l))
+             ARRAY(ref array, default, ref (A.length array))
          end handle _ => raise Size
 
      fun slice (ARRAY (ref a, _, ref n)) = AS.slice (a, 0, SOME n)
@@ -87,4 +93,18 @@ structure DynArray :
      fun all p arr = AS.all p (slice arr)
      fun collate c (a1, a2) = AS.collate c (slice a1, slice a2)
      fun vector arr = AS.vector (slice arr)
+
+   (* additional operations from Basis Library proposal 2015-003 *)
+     fun toList arr = foldr (op ::) [] arr
+
+     fun fromVector v = let
+	    val arr = A.fromVector v
+	    val default = A.sub(arr, 0)
+	    in
+	      ARRAY(ref arr, default, ref (A.length arr))
+	    end
+	      handle _ => raise Size
+
+     val toVector = vector
+
 end

@@ -1,19 +1,26 @@
-(*
+(* hash-array.sml
+ *
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Dynamic (sparse) array that uses hashing
  *
  * -- Allen
  *)
 
-structure HashArray : 
-     sig include ARRAY
-         val array' : int * (int -> 'a) -> 'a array
-         val array'': int * (int -> 'a) -> 'a array
-         val clear  : 'a array -> unit 
-         val remove : 'a array * int -> unit
-         val dom    : 'a array -> int list
-         val copy_array : 'a array -> 'a array
-     end =
-struct
+structure HashArray : sig
+
+    include ARRAY
+
+    val array' : int * (int -> 'a) -> 'a array
+    val array'': int * (int -> 'a) -> 'a array
+    val clear  : 'a array -> unit 
+    val remove : 'a array * int -> unit
+    val dom    : 'a array -> int list
+    val copy_array : 'a array -> 'a array
+
+  end = struct
+
     structure A = Array
 
     datatype 'a default = V of 'a | F of int -> 'a | U of int -> 'a
@@ -182,4 +189,29 @@ struct
     fun collate _ _ = raise Fail "HashArray.collate unimplemented"
 
     fun vector arr = Vector.fromList (rev (foldl op :: [] arr))
+
+  (* additional operations from Basis Library proposal 2015-003 *)
+    fun toList arr = foldr (op ::) [] arr
+
+    fun fromVector v = let
+	  val n = Vector.length v
+	  val N = n*n+1
+	  val N = if N < 16 then 16 else roundsize N
+	  val a = A.array(N, [])
+	  fun ins (i, x) = let
+		val pos = index(a, i)
+		in
+		  A.update(a, pos, (i,x)::A.sub(a, pos)); x
+		end
+	  fun lp i = if (i < n)
+		  then (ins (i, Vector.sub(v, i)); lp(i+1))
+		else if (i = 0)
+		  then F(fn _ => raise Subscript)
+		  else V(Vector.sub(v, i-1))
+	  in
+	    ARRAY(ref a, lp 0, ref n, ref n)
+	  end
+
+     val toVector = vector
+
 end
