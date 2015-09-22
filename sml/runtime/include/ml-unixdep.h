@@ -279,6 +279,8 @@ extern char     *sys_errlist[];
 #  define HAS_PARTIAL_MUNMAP
 #  define HAS_SELECT
 #  define HAS_STRERROR
+#  define HAS_MKSTEMP
+#  define __USE_GNU
 
 #include <features.h>
 
