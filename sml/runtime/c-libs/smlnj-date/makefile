@@ -21,8 +21,9 @@ VERSION =	v-dummy
 OBJS =		smlnj-date-lib.o \
 		asctime.o \
 		gmtime.o \
-		mktime.o \
+		localoffset.o \
 		localtime.o \
+		mktime.o \
 		strftime.o
 
 $(LIBRARY)	: $(VERSION) $(OBJS)
