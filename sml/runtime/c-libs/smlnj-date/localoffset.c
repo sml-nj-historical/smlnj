@@ -40,7 +40,7 @@ ml_val_t _ml_Date_localoffset (ml_state_t *msp, ml_val_t arg)
     ml_val_t	res;
 
   /* get the current time in seconds */
-    now = time(NIL(time_t *));
+    now = time (NIL(time_t *));
 
   /* get the local timezone's daylight saving's time info */
     tm = localtime (&now);
