@@ -781,25 +781,25 @@ structure FContract :> FCONTRACT =
 					 fcexp (S.add(ifs, g)) m nle cont
 				     end
 
-			     in if C.usenb gi = 1
+			         in if C.usenb gi = 1
 				   (* Not sure why/if this is needed.  *)
 				   andalso not(S.member(ifs, g))
-				then simpleinline()
-				else case inline of
-				    F.IH_SAFE => noinline()
-				  | F.IH_UNROLL => noinline()
-				  | F.IH_ALWAYS => copyinline()
-				  | F.IH_MAYBE(min,ws) =>
-				    let fun value w _ (Val _ | Con _ | Record _) = w
-					  | value w v (Fun (f,_,args,_,_)) =
-					    if C.usenb(C.get v) = 1 then w * 2 else w
-					  | value w _ _ = 0
-					val s = (OU.foldl3 (fn (sv,w,(v,t),s) => value w v sv + s)
-							   0 (svs,ws,args))
-						    handle OU.Unbalanced => 0
-				    in if s > min then copyinline() else noinline()
-				    end
-			     end
+				    then simpleinline()
+				    else case inline of
+					F.IH_SAFE => noinline()
+				      | F.IH_UNROLL => noinline()
+				      | F.IH_ALWAYS => copyinline()
+				      | F.IH_MAYBE(min,ws) =>
+					let fun value w _ (Val _ | Con _ | Record _) = w
+					      | value w v (Fun (f,_,args,_,_)) =
+						if C.usenb(C.get v) = 1 then w * 2 else w
+					      | value w _ _ = 0
+					    val s = (OU.foldl3 (fn (sv,w,(v,t),s) => value w v sv + s)
+							       0 (svs,ws,args))
+							handle OU.Unbalanced => 0
+					in if s > min then copyinline() else noinline()
+					end
+			         end
 			   | sv => cont(m, F.APP(sval2val svf, map sval2val svs))
 		      end (* fcApp *)
 		  | fcApp (f, vs) = let
