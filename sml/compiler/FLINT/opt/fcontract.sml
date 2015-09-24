@@ -1,5 +1,12 @@
-(* copyright 1998 YALE FLINT PROJECT *)
-(* monnier@cs.yale.edu *)
+(* fcontract.sml
+ *
+ * copyright 1998 YALE FLINT PROJECT
+ *
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Author: monnier@cs.yale.edu
+ *)
 
 signature FCONTRACT =
   sig
