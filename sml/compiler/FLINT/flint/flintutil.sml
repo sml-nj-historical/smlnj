@@ -1,7 +1,7 @@
 (* Copyright 1997 (c) by YALE FLINT PROJECT *)
 (* flintutil.sml *)
 
-structure FLINTIntMap = IntBinaryMap
+structure FLINTIntMap = IntRedBlackMap (* IntBinaryMap *)
 
 signature FLINTUTIL = 
 sig
