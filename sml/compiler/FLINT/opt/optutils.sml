@@ -14,10 +14,6 @@ sig
     (* this is a known APL function, but I don't know its real name *)
     val filter : bool list -> 'a list -> 'a list
 
-    (* A less brain-dead version of ListPair.all: returns false if
-     * length l1 <> length l2 *)
-    val ListPair_all : ('a * 'b -> bool) -> 'a list * 'b list -> bool
-
     val pow2 : int -> int
 
     (* This is not a proper transposition in that the order is reversed
@@ -55,13 +51,6 @@ in
       | filter (true::fs) (x::xs)  = x::(filter fs xs)
       | filter (false::fs) (x::xs) = (filter fs xs)
       | filter _ _ = bug "unmatched list length in filter"
-
-    fun ListPair_all pred =
-	let fun allp (a::r1, b::r2) = pred(a, b) andalso allp (r1, r2)
-	      | allp ([],[]) = true
-	      | allp _ = false
-	in allp
-	end
 
     fun pow2 n = Word.toInt(Word.<<(Word.fromInt 1, Word.fromInt n))
 
