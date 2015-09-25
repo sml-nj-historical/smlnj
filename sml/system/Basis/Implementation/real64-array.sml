@@ -29,7 +29,7 @@ structure Real64Array : MONO_ARRAY =
     val maxLen = Core.max_length
 
     fun array (0, _) = InlineT.Real64Array.newArray0()
-      | array (len, v) =if (InlineT.DfltInt.ltu(maxLen, len))
+      | array (len, v) = if (InlineT.DfltInt.ltu(maxLen, len))
 	    then raise General.Size
 	    else let
 	      val arr = Assembly.A.create_r len
