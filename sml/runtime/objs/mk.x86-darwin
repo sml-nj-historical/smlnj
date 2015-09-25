@@ -27,7 +27,7 @@ SDK =		-mmacosx-version-min=10.6
 SHELL =		/bin/sh
 
 MAKE =		make
-AS =		/usr/bin/as -arch i386
+AS =		/usr/bin/as -arch i386 $(SDK)
 CC =		cc -m32 -std=c99
 CFLAGS =	-g -O2 -D_DARWIN_C_SOURCE $(SDK)
 CPP =           cc -x assembler-with-cpp -E -P -std=c99
