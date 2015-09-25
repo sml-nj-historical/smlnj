@@ -18,6 +18,7 @@ local structure LD = LtyDef
       structure DI = DebIndex
       structure PT = PrimTyc
       structure PF = PFlatten
+      structure IntMap = IntBinaryMap
       open FLINT
 in
 
@@ -369,16 +370,16 @@ fun addsmap (tvks, ts, smap) =
 (***** end of the substitution intmapf hack *********************)
 
 (***** the nvar-depth intmapf: named variable -> DI.depth *********)
-type nmap = DI.depth IntBinaryMap.map
-val initnmap = IntBinaryMap.empty
+type nmap = DI.depth IntMap.map
+val initnmap = IntMap.empty
 fun addnmap (tvks, d, nmap) = 
   let fun h ((tv,_)::xs, nmap) = 
-           h(xs, IntBinaryMap.insert(nmap, tv, d))
+           h(xs, IntMap.insert(nmap, tv, d))
         | h ([], nmap) = nmap
    in h(tvks, nmap)
   end 
 fun looknmap nmap nvar = 
-    case IntBinaryMap.find(nmap, nvar) of SOME d => d | NONE => DI.top
+    case IntMap.find(nmap, nvar) of SOME d => d | NONE => DI.top
      (*  bug "unexpected case in looknmap") *)
 (***** end of the substitution intmapf hack *********************)
 
