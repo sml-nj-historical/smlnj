@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
- * Bind Pack* structures for big-endian architectures.
+ * Bind Pack* structures for little-endian architectures.
  *)
 
 structure PackReal64Big =
