@@ -17,7 +17,7 @@
  *
  *)
 
-structure List : LIST_2015 =
+structure List : LIST =
   struct
 
     val op +  = InlineT.DfltInt.+
