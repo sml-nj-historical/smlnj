@@ -48,7 +48,6 @@ end = struct
     val movlist  : (unit -> unit) list ref = ref []
     val salist : (unit -> unit) list ref = ref []
 
-
     (* move a stable library file to its final location *)
     fun movelib src dst () =
 	(U.mkdir (P.dir dst); U.rename { old = src, new = dst })
@@ -252,8 +251,10 @@ end = struct
 	(* now resolve dependencies; get full list of modules
 	 * in correct build order: *)
 	val modules = resolve (modules, depfile)
-	val moduleset = SS.addList (SS.empty, modules)
-	val srcmoduleset = if allsrc then SS.union (moduleset, allmoduleset)
+	val moduleset = SS.fromList modules
+
+	(* add requested source modules *)
+	val moduleset = if allsrc then SS.union (moduleset, allmoduleset)
 			   else SS.addList (moduleset, srcReqs)
 
 	(* fetch and unpack source trees, using auxiliary helper command
@@ -262,9 +263,8 @@ end = struct
 	val _ = case unpack of
 		    NONE => ()		(* archives must exist *)
 		  | SOME upck =>
-		      if upck (SS.listItems srcmoduleset) then ()
+		      if upck (SS.listItems moduleset) then ()
 		      else fail ["unpacking failed\n"]
-
 
 	(* at the end, read lib/pathconfig and eliminate duplicate entries *)
 	fun uniqconfig () = let
