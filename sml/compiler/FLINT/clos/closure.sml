@@ -10,7 +10,7 @@
  *                   at most ONE continuation function definition per FIX;  *
  *                                                                          *
  *               (3) The outermost function is always a non-recursive       *
- *                   escaping funciton.                                     *
+ *                   escaping function.                                     *
  *                                                                          *
  ****************************************************************************)
 
@@ -402,9 +402,9 @@ fun printEnv(Env(valueL,closureL,dispL,whatMap)) =
  * Environment Lookup (whatIs, returning object type)                       *
  ****************************************************************************)
 
-exception Lookup of lvar * env
+exception Lookup of string * lvar * env
 fun whatIs(env as Env(_,_,_,whatMap),v) =
-  IntHashTable.lookup whatMap v handle NotBound => raise Lookup(v,env)
+  IntHashTable.lookup whatMap v handle NotBound => raise Lookup("whatIs", v,env)
 
 (* Add v to the access environment, v must be in whatMap already *)
 fun augvar(v,e as Env(valueL,closureL,dispL,whatMap)) = 
@@ -418,7 +418,7 @@ fun augvar(v,e as Env(valueL,closureL,dispL,whatMap)) =
  ****************************************************************************)
 
 fun whereIs(env as Env(valueL,closureL,_,whatMap),target) =
-  let fun bfs(nil,nil) = raise Lookup(target,env)
+  let fun bfs(nil,nil) = raise Lookup("whereIs",target,env)
 	| bfs(nil,next) = bfs(next,nil)
 	| bfs((h, ox as (_, CR(off, {functions,values,
                                      closures,stamp,...})))::m, next) =
@@ -1925,8 +1925,8 @@ end
 
 fun closefix(fk,f,vl,cl,ce,env,sn,csg,csf,ret) =
   ((fk,f,vl,cl,close(ce,env,sn,csg,csf,ret))
-       handle Lookup(v,env) => (pr "LOOKUP FAILS on "; vp v;
-                                     pr "\nin environment:\n";
+       handle Lookup(f,v,env) => (pr(concat["LOOKUP FAILS on ", f, " "]); vp v;
+				pr "\nin environment:\n";
                                 printEnv env;
                                 pr "\nin function:\n";
                                 PPCps.prcps ce;
