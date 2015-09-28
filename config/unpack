@@ -3,7 +3,8 @@
 # This script was extracted from install.sh and deals with the fetching
 # and unpacking of source/bootfile trees.  The first argument must be
 # the installation root directory.  Subsequent arguments are the names
-# of modules whose source trees are required.
+# of modules whose source trees are required.  It is invoked by both the
+# config/install.sh script and by base/system/smlnj/installer/generic-install.sml.
 #
 # (C) 2003 The Fellowship of SML/NJ
 #
@@ -230,6 +231,9 @@ do
 	;;
       cm)
 	unpack compiler "$ROOT"/base cm cm
+	;;
+      old-basis)
+	unpack "Old Basis Libraries" "$ROOT"/base old-basis old-basis
 	;;
       system)
 	unpack compiler "$ROOT"/base system system

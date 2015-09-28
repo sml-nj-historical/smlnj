@@ -21,6 +21,10 @@
 #
 #request src-smlnj
 
+# include backward-compatible versions of the Basis Library.
+#
+#request old-basis
+
 # build new (Unicode-capable) ML-ULex
 #
 request ml-ulex

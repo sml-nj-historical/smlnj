@@ -70,6 +70,10 @@ cm		src
 system		src
 doc		src
 
+# Backwards compatible views of the SML Basis Library
+#
+old-basis lib basis-2004.cm basis-2004.cm base/old-basis/2004
+
 # Addional components of the SML/NJ library that are not used by the compiler:
 #    (unix-lib.cm is installed only on Unix-like systems)
 smlnj-lib ulib unix-lib.cm      unix-lib.cm      smlnj-lib/Unix
