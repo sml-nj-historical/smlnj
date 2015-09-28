@@ -18,7 +18,7 @@ local structure LD = LtyDef
       structure DI = DebIndex
       structure PT = PrimTyc
       structure PF = PFlatten
-      structure IntMap = IntBinaryMap
+      structure IntMap = IntRedBlackMap (* IntBinaryMap *)
       open FLINT
 in
 
