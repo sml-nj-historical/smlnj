@@ -1,6 +1,6 @@
-(* basis.cm
+(* basis-2004.cm
  *
- *   The Standard ML Basis Library.
+ * The 2004 version of the Standard ML Basis Library.
  *
  * Copyright (c) 2015 by The Fellowship of SML/NJ
  *)
@@ -146,10 +146,6 @@ Library
 	structure Word8ArraySlice
 	structure Word8Vector
 	structure Word8VectorSlice
-
-	structure Either	(* proposal 2015-002 *)
-	structure Fn		(* proposal 2015-005 *)
-	structure Ref		(* proposal 2015-007 *)
 
 	structure SML90
 
