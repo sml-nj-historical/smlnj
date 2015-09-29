@@ -286,9 +286,17 @@ structure PrivateTools : PRIVATETOOLS = struct
 	loop (options, StringMap.empty, [])
     end
 
-    fun smlrule enforce_lazy
-	    { spec, context, native2pathmaker, defaultClassOf, sysinfo } =
-    let val { name, mkpath, opts = oto, derived, ... } : spec = spec
+  (* a controller that wraps a bool ref *)
+    fun flagController flg = {
+	    save'restore = fn () => let val orig = !flg in fn () => flg := orig end,
+	    set = fn () => flg := true
+	  }
+
+  (* dialects of SML that are handled by the smlrule function *)
+    datatype lang = StandardML | LazySML | SuccessorML
+
+    fun smlrule language {spec, context, native2pathmaker, defaultClassOf, sysinfo} = let
+        val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	val tool = "sml"
 	fun err s = raise ToolError { tool = tool, msg = s }
 	fun fail s = raise Fail ("(SML Tool) " ^ s)
@@ -298,20 +306,22 @@ structure PrivateTools : PRIVATETOOLS = struct
 	val kw_noguid = "noguid"
 	val kw_local = "local"
 	val kw_lazy = "lazy"
+	val kw_succML = "succ-ml"
 	val UseDefault = NONE
 	val Suggest = SOME
-	val lazy_controller =
-	    { save'restore =
-	      fn () => let val orig = !Control.lazysml
-		       in
-			fn () => Control.lazysml := orig
-		       end,
-	      set = fn () => Control.lazysml := true }
+	val lazy_controller = flagController Control.lazysml
+	val succML_controller = flagController Control.succML
 	val (srq, setup, splitting, noguid, locl, controllers) =
 	    case oto of
-		NONE => (Sharing.DONTCARE, (NONE, NONE), UseDefault,
-			 false, false, if enforce_lazy then [lazy_controller]
-				       else [])
+		NONE => let
+		  val controllers = (case language
+			 of StandardML => []
+			  | LazySML => [lazy_controller]
+			  | SuccessorML => [succML_controller]
+			(* end case *))
+		  in
+		    (Sharing.DONTCARE, (NONE, NONE), UseDefault, false, false, controllers)
+		  end
 	      | SOME to => let
 		    val { matches, restoptions } =
 			parseOptions { tool = tool,
@@ -330,21 +340,21 @@ structure PrivateTools : PRIVATETOOLS = struct
 			  | ["shared"] => Sharing.SHARED
 			  | ["private"] => Sharing.PRIVATE
 			  | _ => err "invalid option(s)"
-		    fun isKW kw s = String.compare (kw, s) = EQUAL
-		    val (locls, restoptions) =
-			List.partition (isKW kw_local) restoptions
-		    val (noguids, restoptions) =
-			List.partition (isKW kw_noguid) restoptions
-		    val (lazies, restoptions) =
-			List.partition (isKW kw_lazy) restoptions
+		    fun isKW (kw : string) s = (kw = s)
+		  (* check for 'local' option *)
+		    val (locls, restoptions) = List.partition (isKW kw_local) restoptions
 		    val locl = not (List.null locls)
+		  (* check for 'noguid' option *)
+		    val (noguids, restoptions) = List.partition (isKW kw_noguid) restoptions
 		    val noguid = not (List.null noguids)
-		    val lazysml = enforce_lazy orelse not (List.null lazies)
+		  (* check for 'lazy' option *)
+		    val (lazies, restoptions) = List.partition (isKW kw_lazy) restoptions
+		    val lazysml = (language = LazySML) orelse not (List.null lazies)
+		  (* check for 'succ-ml' option *)
+		    val (succMLs, restoptions) = List.partition (isKW kw_succML) restoptions
+		    val succML = (language = SuccessorML) orelse not (List.null succMLs)
 		    val _ = if List.null restoptions then ()
-			    else err (concat
-					  ("invalid option(s): " ::
-					   foldr (fn (x, l) => " " :: x :: l)
-						 [] restoptions))
+			    else err (String.concatWith " " ("invalid option(s): " :: restoptions))
 		    val setup =
 			case matches kw_setup of
 			    NONE => (NONE, NONE)
@@ -427,9 +437,11 @@ structure PrivateTools : PRIVATETOOLS = struct
 			  | SOME [STRING x] => spec x
 			  | _ => invalid ()
 		    end
-		    val controllers =
-			if lazysml then lazy_controller :: controllers
-			else controllers
+		    val controllers = (case language
+			   of StandardML => controllers
+			    | LazySML => lazy_controller :: controllers
+			    | SuccessorML => succML_controller :: controllers
+			  (* end case *))
 		in
 		    (srq, setup, splitting, noguid, locl, controllers)
 		end
@@ -558,8 +570,9 @@ structure PrivateTools : PRIVATETOOLS = struct
 	fun sfx (s, c) =
 	    registerClassifier (stdSfxClassifier { sfx = s, class = c })
     in
-	val _ = registerClass ("sml", smlrule false)
-	val _ = registerClass ("lazysml", smlrule true)
+	val _ = registerClass ("sml", smlrule StandardML)
+	val _ = registerClass ("lazysml", smlrule LazySML)
+	val _ = registerClass ("succ-ml", smlrule SuccessorML)
 	val _ = registerClass ("cm", cmrule)
 
 	val _ = sfx ("sml", "sml")
