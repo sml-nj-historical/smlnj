@@ -17,8 +17,8 @@ structure Lex =
   struct
     structure UserDeclarations = UserDeclarations
     fun makeLexer getData arg = if !ParserControl.succML
-	  then MLLex.makeLexer getData arg
-	  else SMLLex.makeLexer getData arg
+	  then SMLLex.makeLexer getData arg
+	  else MLLex.makeLexer getData arg
   end
 
 structure MLP = JoinWithArg(structure ParserData = MLLrVals.ParserData
