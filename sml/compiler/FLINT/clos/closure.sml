@@ -417,37 +417,37 @@ fun augvar(v,e as Env(valueL,closureL,dispL,whatMap)) =
  * Environment Access (whereIs, returning object access path)               *
  ****************************************************************************)
 
-fun whereIs(env as Env(valueL,closureL,_,whatMap),target) =
-  let fun bfs(nil,nil) = raise Lookup("whereIs",target,env)
-	| bfs(nil,next) = bfs(next,nil)
-	| bfs((h, ox as (_, CR(off, {functions,values,
-                                     closures,stamp,...})))::m, next) =
-            let fun cls(nil, _, next) = bfs(m,next)
-		  | cls((u as (v,cr))::t, i, next) =
-                        if target=v then h(SELp(i, OFFp 0), [])
-                     else let val nh = fn (p,z) => h(SELp(i, p), u::z)
-                           in cls(t, i+1, (nh,u)::next)
-                          end
-                fun vls(nil,i) = cls(closures, i, next)
-                  | vls(v::t,i) =
-                     if target=v then h(SELp(i, OFFp 0), [])
-                     else vls(t, i+1)
-                fun fns(nil,i) = vls(values, adjOff(i,off))
-                  | fns((v,l)::t,i) =
-                     if target=v then 
-                       if i = off then h(OFFp 0, [])
-                       else h(OFFp(i-off),[ox]) 
-                     else fns(t,i+1)
+fun whereIs (env as Env(valueL,closureL,_,whatMap), target) = let
+      fun bfs (nil, nil) = raise Lookup("whereIs",target,env)
+	| bfs (nil, next) = bfs(next,nil)
+	| bfs ((h, ox as (_, CR(off, {functions,values, closures,stamp,...})))::m, next) = let
+            fun cls(nil, _, next) = bfs(m,next)
+	      | cls((u as (v,cr))::t, i, next) =
+		 if target=v then h(SELp(i, OFFp 0), [])
+		 else let val nh = fn (p,z) => h(SELp(i, p), u::z)
+		       in cls(t, i+1, (nh,u)::next)
+		      end
+	    fun vls(nil,i) = cls(closures, i, next)
+	      | vls(v::t,i) =
+		 if target=v then h(SELp(i, OFFp 0), [])
+		 else vls(t, i+1)
+	    fun fns(nil,i) = vls(values, adjOff(i,off))
+	      | fns((v,l)::t,i) =
+		 if target=v then 
+		   if i = off then h(OFFp 0, [])
+		   else h(OFFp(i-off),[ox]) 
+		 else fns(t,i+1)
              in if target=stamp
                 then if off = 0 then h(OFFp 0, [])
                      else h(OFFp(~off), [ox]) 
                 else fns(functions, 0)
             end
-      fun search closures =
-        let val s = map (fn x => (fn (p,z) => (#1 x,p,z), x)) closures
-         in Path (bfs(s,nil))
-        end
-      fun withTgt(v,CR(_,{free,...})) = member free target
+      fun search closures = let
+            val s = map (fn x => (fn (p,z) => (#1 x,p,z), x)) closures
+	    in
+	      Path (bfs(s,nil))
+            end
+      fun withTgt (v,CR(_,{free,...})) = member free target
       fun lookC ((v,cr)::tl) =
             if target=v then Direct 
             else (case cr
@@ -461,12 +461,13 @@ fun whereIs(env as Env(valueL,closureL,_,whatMap),target) =
       fun lookV (v::tl) =
             if target=v then Direct else lookV tl
         | lookV nil = search closureL
-   in case whatIs(env,target)
+   in case whatIs (env, target)
        of Function _ => Direct
         | Callee _ => Direct
         | Closure _ => lookC closureL
         | Value _ => lookV valueL
   end
+
 
 
 (****************************************************************************
