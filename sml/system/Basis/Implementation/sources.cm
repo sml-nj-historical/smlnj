@@ -67,6 +67,7 @@ Group
 	signature LIST_PAIR_2004
 	signature MONO_ARRAY_2004
 	signature MONO_VECTOR_2004
+	signature OPTION_2004
 	signature STRING_2004
 	signature TEXT_2004
 	signature VECTOR_2004
@@ -77,6 +78,7 @@ Group
 	signature LIST_PAIR_2015
 	signature MONO_ARRAY_2015
 	signature MONO_VECTOR_2015
+	signature OPTION_2015
 	signature STRING_2015
 	signature TEXT_2015
 	signature VECTOR_2015

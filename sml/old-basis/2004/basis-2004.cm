@@ -223,4 +223,8 @@ Library
 
 is
 
-  $/basis.cm
+(* the basis with the old versions of the APIs *)
+  $SMLNJ-BASIS/basis-common.cm
+
+(* code to rebind modules and signatures to the old APIs *)
+  basis.sml

@@ -1,11 +1,14 @@
-(* basis.cm
+(* basis-common.cm
  *
- * This is the default SML/NJ Basis, which includes the latest updates (and proposed changes)
- * to the Standard ML Basis Library (see https://github.com/SMLFamily/BasisLibrary).
+ * This is the full SML/NJ Basis with both the latest Basis Library APIs as
+ * well as the signatures for previous versions (e.g., the version published
+ * in 2004).  It is included in the base/system/Basis/basis.cm file, but is
+ * also used to implement the libraries in the old-basis package (base/old-basis).
  *
  * Copyright (c) 2015 by The Fellowship of SML/NJ
  *)
 
+(primitive)
 Library
       (* Basis *)
 	signature ARRAY
@@ -58,6 +61,17 @@ Library
 	signature EITHER	(* proposal 2015-002 *)
 	signature FN		(* proposal 2015-005 *)
 	signature REF		(* proposal 2015-007 *)
+
+      (* backward compatible signatures *)
+	signature ARRAY_2004
+	signature LIST_2004
+	signature LIST_PAIR_2004
+	signature MONO_ARRAY_2004
+	signature MONO_VECTOR_2004
+	signature OPTION_2004
+	signature STRING_2004
+	signature TEXT_2004
+	signature VECTOR_2004 
 
 	signature SML90
 
@@ -231,4 +245,42 @@ Library
 #endif
 
 is
-	basis-common.cm
+	Implementation/sources.cm
+
+	Exports/string.sml
+	Exports/char.sml
+	Exports/substring.sml
+	Exports/char-array.sml
+	Exports/char-vector.sml
+
+	Exports/int.sml
+	Exports/int31.sml
+	Exports/int32.sml
+	Exports/int-inf.sml
+	Exports/largeint.sml
+	Exports/fixedint.sml
+	Exports/largereal.sml
+	Exports/largeword.sml
+	Exports/position.sml
+	Exports/real.sml
+	Exports/real64.sml
+	Exports/sysword.sml
+	Exports/word.sml
+	Exports/word8.sml
+	Exports/word31.sml
+	Exports/word32.sml
+	Exports/time.sml
+	Exports/general.sml
+
+	Exports/os.sml
+
+	Exports/real-array.sml
+	Exports/real-array-slice.sml
+	Exports/real-vector.sml
+	Exports/real-vector-slice.sml
+
+	Exports/smlnj.sml
+
+#if defined(OPSYS_UNIX) orelse defined(OPSYS_WIN32)
+	Exports/socket.sml
+#endif
