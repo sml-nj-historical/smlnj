@@ -23,7 +23,7 @@
 
 # include backward-compatible versions of the Basis Library.
 #
-#request old-basis
+request old-basis
 
 # build new (Unicode-capable) ML-ULex
 #
