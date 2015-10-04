@@ -15,22 +15,6 @@ MAIN_HEAP_DIR=$twoup/bin/.heap
 MAIN_LIB_DIR=$twoup/lib
 MAIN_CONFIG_DIR=$twoup/config
 
-if [ $# -gt 0 ] ; then
-    STEM=$1
-else
-    STEM=sml
-fi
-
-if [ -f $twoup/bin/.arch-n-opsys ]; then
-  ARCH_N_OPSYS=`$twoup/bin/.arch-n-opsys`
-  if [ "$?" = "0" ]; then
-    eval $ARCH_N_OPSYS
-  else
-    echo "$this: Cannot determine architecture/os."
-    exit 1
-  fi
-fi
-
 # A function to move all stable library files to a parallel directory
 # hierarchy.
 # The first argument must be a simple path (no / inside), and
@@ -55,6 +39,31 @@ move() {
     fi
 }
 
+#
+# Parse command line
+#
+if test x"$1" = x-clean ; then
+  shift
+  CLEAN=true
+else
+  CLEAN=false
+fi
+if [ $# -gt 0 ] ; then
+    STEM=$1
+else
+    STEM=sml
+fi
+
+if [ -f $twoup/bin/.arch-n-opsys ]; then
+  ARCH_N_OPSYS=`$twoup/bin/.arch-n-opsys`
+  if [ "$?" = "0" ]; then
+    eval $ARCH_N_OPSYS
+  else
+    echo "$this: Cannot determine architecture/os."
+    exit 1
+  fi
+fi
+
 HEAP_FILE=$STEM.$HEAP_SUFFIX
 LIB_DIR=$STEM.lib
 
@@ -66,6 +75,11 @@ fi
 if [ ! -d $LIB_DIR ] ; then
     echo "$this: The library directory $LIB_DIR is missing."
     exit 1
+fi
+
+if $CLEAN ; then
+    echo "cleaning $twoup/lib and $MAIN_HEAP_DIR"
+    rm -rf $twoup/lib/* $MAIN_HEAP_DIR/*
 fi
 
 #
