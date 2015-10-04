@@ -10,54 +10,59 @@ Library
  * environment in its place.  The pervasive environment is implicit and
  * one cannot re-export from it.  Therefore, re-exports from $/basis.cm
  * are conditional on NEW_CM. *)
-#if defined(NEW_CM)
 	(* Basis *)
 	signature ARRAY
 	signature ARRAY_SLICE
 	signature ARRAY2
-	signature VECTOR
-	signature VECTOR_SLICE
-	signature GENERAL
-	signature INTEGER
+	signature BIN_IO
+	signature BIT_FLAGS
 	signature BOOL
+	signature BYTE
 	signature CHAR
-	signature STRING
-	signature SUBSTRING
-	signature STRING_CVT
+	signature COMMAND_LINE
+	signature DATE
+	signature GENERAL
+	signature IEEE_REAL
+	signature IMPERATIVE_IO
+	signature INT_INF
+	signature INTEGER
+	signature IO
 	signature LIST
+	signature LIST_PAIR
+	signature MATH
 	signature MONO_ARRAY
 	signature MONO_ARRAY_SLICE
 	signature MONO_ARRAY2
 	signature MONO_VECTOR
 	signature MONO_VECTOR_SLICE
-	signature WORD
-	signature BYTE
-	signature COMMAND_LINE
-	signature DATE
-	signature IEEE_REAL
 	signature OPTION
-	signature LIST_PAIR
-	signature REAL
-	signature TIME
-	signature TIMER
-	signature MATH
 	signature OS
 	signature OS_FILE_SYS
 	signature OS_IO
 	signature OS_PATH
 	signature OS_PROCESS
-	signature BIN_IO
-	signature IMPERATIVE_IO
-	signature IO
+	signature PACK_REAL
+	signature PACK_WORD
 	signature PRIM_IO
+	signature REAL
 	signature STREAM_IO
+	signature STRING
+	signature STRING_CVT
+	signature SUBSTRING
+	signature TEXT
 	signature TEXT_IO
 	signature TEXT_STREAM_IO
-	signature PACK_WORD
-	signature PACK_REAL
-	signature TEXT
+	signature TIME
+	signature TIMER
+	signature VECTOR
+	signature VECTOR_SLICE
+	signature WORD
+
+	signature EITHER	(* proposal 2015-002 *)
+	signature FN		(* proposal 2015-005 *)
+	signature REF		(* proposal 2015-007 *)
+
 	signature SML90
-	signature BIT_FLAGS
 
 	(* SML/NJ specific *)
 	signature SIGNALS
@@ -80,66 +85,73 @@ Library
 	signature UNSAFE
 
 	(* Basis *)
-	structure Vector
-	structure VectorSlice
-	structure General
-	structure StringCvt
-	structure Substring
-	structure String
-	structure Char
+	structure Array
+	structure Array2
+	structure ArraySlice
+	structure Bool
 	structure Byte
-	structure List
-	structure ListPair
+	structure Char
 	structure CharArray
 	structure CharArraySlice
 	structure CharVector
 	structure CharVectorSlice
-	structure Array
-	structure ArraySlice
-	structure Array2
+	structure CommandLine
+	structure Date
+	structure General
 	structure IEEEReal
 	structure Int
 	structure Int31
 	structure Int32
 	structure Int64
 	structure IntInf
+	structure IO
 	structure LargeInt
 	structure LargeReal
 	structure LargeWord
+	structure List
+	structure ListPair
 	structure Math
+	structure Option
+	structure PackReal64Big
+	structure PackReal64Little
+	structure PackWord16Big
+	structure PackWord16Little
+	structure PackWord32Big
+	structure PackWord32Little
 	structure Position
 	structure Real
 	structure Real64
+	structure Real64Array
+	structure Real64ArraySlice
+	structure Real64Vector
+	structure Real64VectorSlice
+	structure RealArray
+	structure RealArraySlice
+	structure RealVector
+	structure RealVectorSlice
+	structure String
+	structure StringCvt
+	structure Substring
+	structure SysWord
+	structure Text
+	structure Time
+	structure Timer
+	structure Vector
+	structure VectorSlice
 	structure Word
 	structure Word31
 	structure Word32
 	structure Word64
-	structure SysWord
-	structure Bool
 	structure Word8
 	structure Word8Array
 	structure Word8ArraySlice
 	structure Word8Vector
 	structure Word8VectorSlice
-	structure CommandLine
-	structure Time
-	structure Timer
-	structure IO
-	structure Option
-	structure PackWord16Big
-	structure PackWord16Little
-	structure PackWord32Big
-	structure PackWord32Little
-	structure Date
-	structure RealArray
-	structure RealArraySlice
-	structure RealVector
-	structure RealVectorSlice
-	structure Real64Array
-	structure Real64ArraySlice
-	structure Real64Vector
-	structure Real64VectorSlice
-	structure Text
+
+	structure Either	(* proposal 2015-002 *)
+	structure Fn		(* proposal 2015-005 *)
+	structure Ref		(* proposal 2015-007 *)
+
 	structure SML90
 
 	(* SML/NJ specific *)
@@ -195,8 +207,6 @@ Library
 	structure Win32
 #endif
 
-#endif
-
 	(* Here are the things that have a CML-specific implementation: *)
 	signature OS_PROCESS
 	signature OS_IO
@@ -218,9 +228,6 @@ Library
 	structure Unix
 #endif
 is
-#if defined(NEW_CM)
+
   basis-sub-basis.cm
   $cml/cml-internal.cm
-#else
-  cml-internal.cm
-#endif
