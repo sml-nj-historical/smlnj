@@ -21,7 +21,9 @@ end (* signature CLOSURE *)
 functor Closure(MachSpec : MACH_SPEC) : CLOSURE = struct
 
 local 
-  open CPS AllocProf SortedList
+  open CPS
+  structure AP = AllocProf
+  structure SL = SortedList
   structure CGoptions = Control.CG
   structure SProf = StaticProf(MachSpec)
   structure LV = LambdaVar
@@ -35,6 +37,38 @@ local
   val zip = ListPair.zip
   val pr = Control.Print.say
   fun inc (ri as ref i) = ri := i+1
+
+(* there is a bug in "CLOSURE SHARING VIA THINNING" where the code is
+ * sensitive to the sorting of equal items.  Specifically, the code works
+ * using the old (pre 110.78) version of ListMergeSort.sort, which reverses
+ * the original order of equal items, whereas it breaks on Twelf (bug #140)
+ * when using the new implementation, which is stable.
+ *
+ * Therefore, we include the old sorting code here for now and use it in that
+ * one place in the thinning code.
+ *)
+  fun oldSort (op > : 'a * 'a -> bool) ls = let 
+	fun merge([],ys) = ys
+	  | merge(xs,[]) = xs
+	  | merge(x::xs,y::ys) =
+	      if x > y then y::merge(x::xs,ys) else x::merge(xs,y::ys)
+	fun mergepairs(ls as [l], k) = ls
+	  | mergepairs(l1::l2::ls,k) =
+	      if k mod 2 = 1 then l1::l2::ls
+	      else mergepairs(merge(l1,l2)::ls, k div 2)
+	  | mergepairs _ = raise LibBase.Impossible "ListSort.sort"
+	fun nextrun(run,[])    = (rev run,[])
+	  | nextrun(run,x::xs) = if x > hd run then nextrun(x::run,xs)
+				 else (rev run,x::xs)
+	fun samsorting([], ls, k)    = hd(mergepairs(ls,0))
+	  | samsorting(x::xs, ls, k) = let 
+	      val (run,tail) = nextrun([x],xs)
+	      in samsorting(tail, mergepairs(run::ls,k+1), k+1)
+	      end
+	in 
+	  case ls of [] => [] | _ => samsorting(ls, [], 0)
+	end
+
 in 
 
 
@@ -70,9 +104,9 @@ fun clean l =
    in vars(nil,l)
   end
 
-fun uniqvar l = uniq(clean l)
+fun uniqvar l = SL.uniq(clean l)
 
-fun entervar(VAR v,l) = enter(v,l)
+fun entervar(VAR v,l) = SL.enter(v,l)
   | entervar(_,l) = l
 
 fun member l (v:int) =
@@ -188,16 +222,16 @@ fun sortlud2(l,vl) =
 fun partvnum(l,n) =
   let fun h(vl,[],n) = (vl,[])
         | h(vl,s as ((a,_,_)::r),n) = 
-             if n <= 0 then (vl,s) else h(enter(a,vl),r,n-1)
+             if n <= 0 then (vl,s) else h(SL.enter(a,vl),r,n-1)
    in h([],l,n)
   end
 
 (* spill (into sbase) if too many free variables (>n) *)
 fun spillFree(free,n,vbase,sbase) = 
   let val len = length free
-   in if (len < n) then (merge(map #1 free,vbase),sbase)
+   in if (len < n) then (SL.merge(map #1 free,vbase),sbase)
       else (let val (nfree,nspill) = partvnum(sortlud1 free,n)
-             in (merge(nfree,vbase),uniqV(nspill@sbase))
+             in (SL.merge(nfree,vbase),uniqV(nspill@sbase))
             end)
   end
 
@@ -207,7 +241,7 @@ fun get_vn([],v) = NONE
        else if v = a then SOME (m,n) else NONE  
 
 (* check if x is a subset of y, x and y must be sorted lists *)
-fun subset (x,y) = (case difference(x,y) of [] => true | _ => false)
+fun subset (x,y) = (case SL.difference(x,y) of [] => true | _ => false)
 
 (* check if a CPS type is a small constant size object *)
 fun smallObj(FLTt | INTt) = true
@@ -387,7 +421,7 @@ fun printEnv(Env(valueL,closureL,dispL,whatMap)) =
 		     case values
 		       of nil => ()
 		        | _ => (indent(); pr "  Vals:"; ilist values);
-		     p(fn() => (indent();pr "  "),closures,enter(stamp,seen))))
+		     p(fn() => (indent();pr "  "),closures,SL.enter(stamp,seen))))
 	 in app c l
 	end
   in  pr "Values:"; ilist valueL;
@@ -488,7 +522,7 @@ fun extractClosures (l,n,base) =
       fun s([],vl,r) = r
         | s((u as (v,_))::z,vl,r) = 
              if member vl v then s(z,vl,r)
-             else s(z,enter(v,vl),u::r)
+             else s(z,SL.enter(v,vl),u::r)
 
    in s(h(n,l,l@base),[],[])
   end 
@@ -496,8 +530,8 @@ fun extractClosures (l,n,base) =
 (* fetch all free variables residing above level n in the closure cr *)
 fun fetchFree(v,CR(_,{closures,functions,values,...}),n) = 
   if n <= 0 then [v]
-  else (let fun g((x,cr),z) = merge(fetchFree(x,cr,n-1),z)
-         in foldr g (uniq (v::values@(map #1 functions))) closures
+  else (let fun g((x,cr),z) = SL.merge(fetchFree(x,cr,n-1),z)
+         in foldr g (SL.uniq (v::values@(map #1 functions))) closures
         end)
 
 (* filter out all closures in the current env that are safe to reuse *)
@@ -505,7 +539,7 @@ fun fetchClosures(env as Env(_,closureL,_,_),lives,fkind) =
   let val (closlist,lives) = 
              foldr (fn (v,(z,l)) => case whatIs(env,v) 
                      of (Closure (cr as (CR(_,{free,...})))) => 
-                                           ((v,cr)::z,merge(free,l))
+                                           ((v,cr)::z,SL.merge(free,l))
                       | _ => (z,l)) ([],lives) lives
 
       fun reusable (v,CR(_,{core,kind,...})) = 
@@ -613,7 +647,7 @@ fun fillCSformals(gpbase,fpbase,env,ft) =
 (* get all free variables in cs regs, augment the environment *)
 fun varsCSregs(gpbase,fpbase,env) =
  let fun h(NONE,(e,l)) = (e,l)
-       | h(SOME v,(e,l)) = (augvar(v,e),enter(v,l))
+       | h(SOME v,(e,l)) = (augvar(v,e),SL.enter(v,l))
 
      val (env,gfree) = foldr h (env,[]) gpbase
      val (env,ffree) = foldr h (env,[]) fpbase
@@ -625,7 +659,7 @@ fun freevCSregs(gpbase,env) =
  let fun h(NONE,l) = l
        | h(SOME v,l) = case whatIs(env,v) 
           of (Closure (CR(_,{free,kind=(RK_CONT|RK_FCONT),...}))) =>
-                 (merge(free,l))
+                 (SL.merge(free,l))
            | _ => l
   in foldr h [] gpbase
  end
@@ -641,7 +675,7 @@ fun partnull l =
 (* create a template of the base callee-save registers (n : extra cs regs) *)
 fun mkbase(regs,free,n) = 
   let fun h((VAR v),(r,z)) = 
-             if member free v then ((SOME v)::r,enter(v,z))
+             if member free v then ((SOME v)::r,SL.enter(v,z))
              else (dumcs::r,z)
         | h(_,(r,z)) = (dumcs::r,z)
    in foldr h (extraDummy(n),[]) regs
@@ -650,7 +684,7 @@ fun mkbase(regs,free,n) =
 (* modify the base, retain only those variables in free *)
 fun modifybase(base,free,n) = 
   let fun h(s as (SOME v),(r,z,m)) = 
-             if member free v then (s::r,rmv(v,z),m)
+             if member free v then (s::r,SL.rmv(v,z),m)
              else (if m > 0 then (s::r,z,m-1) else (dumcs::r,z,m))
         | h(NONE,(r,z,m)) = (NONE::r,z,m)
    in foldr h ([],free,n) base
@@ -764,7 +798,7 @@ and recordEl(rk, l, w, env) =
 
       val (rl,cl,hdr,env) = foldr g (nil,nil,fn ce => ce,env) l
       val hdr = if (!CGoptions.allocprof) 
-                then hdr o (profRecLinks cl) else hdr
+                then hdr o (AP.profRecLinks cl) else hdr
       val nhdr = fn ce => hdr (RECORD(rk, rl, w, ce))
    in (nhdr, env)
   end
@@ -799,7 +833,7 @@ fun fixAccess(args,env) =
                                        fn ce => SETTER(P.acclink,
                                                 [INT n,VAR rootvar],ce)))
                                  else (fn ce => ce))
-                           else profLinks(n)
+                           else AP.profLinks(n)
                       in (env, header o profL(lenp path))
                      end
            end
@@ -838,7 +872,7 @@ fun fixArgs(args,env) =
                                            fn ce => SETTER(P.acclink,
                                                   [INT n,VAR rootvar],ce))
                                      else (fn ce => ce)
-                                   else profLinks(n)
+                                   else AP.profLinks(n)
                                in (z::res,env,hdr o profL(lenp path))
                               end)
            end
@@ -857,7 +891,7 @@ fun disposeFrames(env) =
          val (env,hdr) = fixAccess(map VAR vl,env)
          fun g(v::r,h) = g(r,h o (fn ce => SETTER(P.free,[VAR v],ce)))
            | g([],h) = if (!CGoptions.allocprof) 
-                       then ((profRefCell(length vl)) o hdr o h)
+                       then ((AP.profRefCell(length vl)) o hdr o h)
                        else hdr o h
       in (env,g(vl,hdr))
      end)
@@ -875,9 +909,9 @@ fun mkClosure(cname,contents,cr,rkind,fkind,env) =
       val (hdr, env) = recordEl(rkind, l, cname, env)
       val nhdr = 
         if (!CGoptions.allocprof) then
-             let val prof = case fkind of KNOWN => profKClosure
-                                          | ESCAPE => profClosure
-                                          | _ => profCClosure
+             let val prof = case fkind of KNOWN => AP.profKClosure
+                                          | ESCAPE => AP.profClosure
+                                          | _ => AP.profCClosure
               in (prof (length contents)) o hdr
              end
         else hdr
@@ -893,7 +927,7 @@ fun closureUbGen(cn, free, rk, fk, env) =
   let val nfree = map (fn (v, _, _) => v) free
       val ul = map VAR nfree
       val cr = CR(0,{functions=[],closures=[],values=nfree,
-                     core=[],free=enter(cn,nfree),kind=rk,stamp=cn})
+                     core=[],free=SL.enter(cn,nfree),kind=rk,stamp=cn})
    in (mkClosure(cn, ul, cr, rk, fk, env), cr)
   end
 
@@ -923,7 +957,7 @@ fun closureUnboxed(cn,int32free,otherfree,fk,env) =
               val ncs = [(cn1,cr1), (cn2,cr2)]
               val ul = map VAR nfs
               val cr = CR(0, {functions=[],closures=ncs,values=[],
-                              core=[],free=enter(cn,nfs@nfree),
+                              core=[],free=SL.enter(cn,nfs@nfree),
                               kind=rk,stamp=cn})
               val (nh, env, nfs) = mkClosure(cn, ul, cr, rk, fk, env)
            in (nh1 o nh2 o nh, env, nfs)
@@ -940,7 +974,7 @@ fun closureUnboxed(cn,int32free,otherfree,fk,env) =
  *                | (_,[]) => RK_I32BLOCK
  *                | _ => bug "unimplemented int32 + float (nclosure.1)"
  *     val cr = CR(0,{functions=[],closures=[],values=nfree,
- *                    core=[],free=enter(cn,nfree),kind=rk,stamp=cn})
+ *                    core=[],free=SL.enter(cn,nfree),kind=rk,stamp=cn})
  *  in mkClosure(cn,ul,cr,rk,fk,env)
  * end
  *)
@@ -967,10 +1001,10 @@ fun partKind(cfree,env) =
   let fun g(v,(vls,cls,fv,cv)) =
         let val obj = whatIs(env,v)
          in case obj
-             of Value t => (v::vls,cls,enter(v,fv),
-                            if (smallObj t) then cv else enter(v,cv))
+             of Value t => (v::vls,cls,SL.enter(v,fv),
+                            if (smallObj t) then cv else SL.enter(v,cv))
               | Closure (cr as CR (_,{free,core,...})) => 
-                  (vls,(v,cr)::cls,merge(free,fv),merge(core,cv))
+                  (vls,(v,cr)::cls,SL.merge(free,fv),SL.merge(core,cv))
               | _ => bug "unexpected obj in kind in cps/closure.sml"
         end  
    in foldr g (nil,nil,nil,nil) cfree
@@ -985,7 +1019,7 @@ fun flat(env,cfree,rk,fk) =
       fun g((cn,free),(env,hdr,nf)) = 
         let val (vls,cls,fvs,cvs) = partKind(free,env)
             val cr = CR(0,{functions=[],values=vls,closures=cls,
-                           kind=rk,stamp=cn,core=cvs,free=enter(cn,fvs)})
+                           kind=rk,stamp=cn,core=cvs,free=SL.enter(cn,fvs)})
             val ul = (map VAR vls) @ (map (VAR o #1) cls)
             val (nh,env,nf2) = mkClosure(cn,ul,cr,rk,fk,env)
          in (env,hdr o nh,nf2@nf)
@@ -1004,7 +1038,7 @@ fun link(env,cfree,rk,fk) =
        let val notIn = sublist (not o (member free)) cfree
         in if (length(notIn) = length(cfree))
            then flat(env,cfree,rk,fk)
-           else flat(env,enter(z,cfree),rk,fk)
+           else flat(env,SL.enter(z,cfree),rk,fk)
        end
 
 (* partition a set of free variables into layered groups based on their lud *)
@@ -1014,24 +1048,24 @@ fun partLayer(free,ccl) =
 
       (* current limit of a new layer : 3 *)
       fun m([],t,b) = bug "unexpected case in partLayer in closure"
-        | m([v],t,b) = (enter(v,t),b)
-        | m([v,w],t,b) = (enter(v,enter(w,t)),b)
+        | m([v],t,b) = (SL.enter(v,t),b)
+        | m([v,w],t,b) = (SL.enter(v,SL.enter(w,t)),b)
         | m(r,t,b) = (case find(r,ccl) 
             of NONE => 
-                 let val nc = closureLvar() in (enter(nc,t),(nc,r)::b) end
-             | SOME v => (enter(v,t),b))
+                 let val nc = closureLvar() in (SL.enter(nc,t),(nc,r)::b) end
+             | SOME v => (SL.enter(v,t),b))
 
       (* process the rest groups in free *)
       fun h([],i:int,r,t,b) = m(r,t,b)
         | h((v,_,j)::z,i,r,t,b) = 
-            if j = i then h(z,i,enter(v,r),t,b)
+            if j = i then h(z,i,SL.enter(v,r),t,b)
             else let val (nt,nb) = m(r,t,b)
                   in h(z,j,[v],nt,nb)
                  end
 
       (* cut out the top group and then process the rest *)
       fun g((v,_,i)::z,j,t) = 
-             if i = j then g(z,j,enter(v,t)) else h(z,i,[v],t,[]) 
+             if i = j then g(z,j,SL.enter(v,t)) else h(z,i,[v],t,[]) 
         | g([],j,t) = (t,[])
 
       val (topfv,botclos) = 
@@ -1048,7 +1082,7 @@ fun layer(env,cfree,rk,fk,ccl) =
       fun g((cn,vfree),(bh,env,nf)) = 
         let val (cls,vls,nh1,env,fvs,cvs,nf1) = flat(env,vfree,rk,fk)
             val cr = CR(0,{functions=[],values=vls,closures=cls,
-                           kind=rk,stamp=cn,core=cvs,free=enter(cn,fvs)})
+                           kind=rk,stamp=cn,core=cvs,free=SL.enter(cn,fvs)})
             val ul = (map VAR vls) @ (map (VAR o #1) cls)
             val (nh2,env,nf2) = mkClosure(cn,ul,cr,rk,fk,env)
          in (bh o nh1 o nh2, env, nf2@nf1@nf)
@@ -1077,7 +1111,7 @@ fun closureBoxed(cn, fns, free, fk, ccl, env) =
                  | _ =>
                      let val nv = closureLvar()
                          val ul = (map VAR vls) @ (map (VAR o #1) cls)
-                         val nfvs = enter(nv, fvs)
+                         val nfvs = SL.enter(nv, fvs)
                          val cr = CR(0,{functions=[],values=vls,closures=cls,
                                         kind=rk,stamp=nv,core=cvs,free=nfvs})
                          val (nh, nenv, nf) = mkClosure(nv,ul,cr,rk,fk,env)
@@ -1087,7 +1121,7 @@ fun closureBoxed(cn, fns, free, fk, ccl, env) =
           end
         else (cls, vls, hdr, env, fvs, cvs, frames, map (LABEL o #2) fns)
 
-      val nfvs = foldr enter (enter(cn,fvs)) (map #1 fns)
+      val nfvs = foldr SL.enter (SL.enter(cn,fvs)) (map #1 fns)
       val cr = CR(0,{functions=fns,values=vls,closures=cls,
                      kind=rk,stamp=cn,core=cvs,free=nfvs})
       val ul = labels @ (map VAR vls) @ (map (VAR o #1) cls)
@@ -1103,7 +1137,7 @@ fun closureBoxed(cn, fns, free, fk, ccl, env) =
 fun shortenFree([],[],_) = ([],[])
   | shortenFree(gpfree,fpfree,cclist) = 
       let fun g((v,free),l) =
-            if member3 gpfree v then merge(rmv(v,free),l) else l
+            if member3 gpfree v then SL.merge(SL.rmv(v,free),l) else l
           val all = foldr g [] cclist
        in (removeV(all,gpfree),removeV(all,fpfree))
       end
@@ -1116,7 +1150,7 @@ fun thinFree(vfree,vlen,closlist,limit) =
         let val (zl,m,n) = foldr g ([],0,0) free
          in if m < limit then x else (v,zl,m*10000-n)::x 
         end
-      fun worse((_,_,i),(_,_,j)) = (i<j) 
+      fun worse ((_,_,i), (_,_,j) : (lvar * int list * int)) = (i<j) 
       fun m([],s,r,k) = (s,r)
         | m((v,x,_)::y,s,r,k) = 
            if k < limit then (s,r)
@@ -1124,7 +1158,11 @@ fun thinFree(vfree,vlen,closlist,limit) =
                   in if len < limit then m(y,s,r,k)
                      else m(y,addV([v],i,n,s),removeV(nx,r),k-len)
                  end)
+(* !!! the following call to sort has issues !!! *)
+(*
       val clist = ListMergeSort.sort worse (foldr h [] closlist)
+*)
+      val clist = oldSort worse (foldr h [] closlist)
    in m(clist,[],vfree,vlen)
   end
 
@@ -1144,7 +1182,7 @@ fun thinAll([],_,_) = []
      let val vfree = map (fn (v,_,_) => v) free
          fun g((v,nfree),(x,y)) = 
            if not (subset(vfree,nfree)) then (x,y)
-           else (let val len = length(difference(nfree,vfree))
+           else (let val len = length(SL.difference(nfree,vfree))
                   in if len < y then (SOME v,len) else (x,y)
                  end)
          val (res,_) = foldr g (NONE,100000) cclist
@@ -1358,8 +1396,8 @@ val (escapeB,calleeB,kcontB) =
   if (numCSgpregs > 0) then (escapeB,calleeB,kcontB)
   else (escapeB@calleeB,[],[])
 
-val escapeV = uniq(map #2 escapeB)
-val knownV = uniq(map #2 knownB)
+val escapeV = SL.uniq(map #2 escapeB)
+val knownV = SL.uniq(map #2 knownB)
 fun knownlvar3(v,_,_) = member knownV v
 
 (*** check whether the basic closure assumptions are valid or not ***)
@@ -1468,7 +1506,7 @@ val _ = COMMENT(fn() => (pr "*** Current Stage number and fun kind: ";
           of SOME _ => 
                let fun h((v,_,_),l) = 
                      case whatIs(initEnv,v)
-                      of (Closure (CR(_,{free,...}))) => merge(rmv(v,free),l)
+                      of (Closure (CR(_,{free,...}))) => SL.merge(SL.rmv(v,free),l)
                        | _ => l
                    val gpfree = removeV(foldr h [] gpfree, gpfree)
                    val gpfreePart = 
@@ -1503,7 +1541,7 @@ val _ = COMMENT(fn() => (pr "*** Current Spilled Known Free Variables: ";
             | ([(z,_,_)],[]) => 
                 if callc then 
                   ((x,gpfree,fpfree,gpspill,[],callc,sn,fns)::zz)
-                else ((x,enter(z,gpfree),fpfree,[],[],false,sn,fns)::zz)
+                else ((x,SL.enter(z,gpfree),fpfree,[],[],false,sn,fns)::zz)
  *)
             | _ => ((x,gpfree,fpfree,gpspill,fpspill,true,sn,fns)::zz)),nflag)
     end) ([],false) knownB
@@ -1600,16 +1638,16 @@ val (gpcallee,fpcallee) = freeAnalysis(gpcallee,fpcallee,initEnv)
 
 (* get all sharable closures from the enclosing environment *)
 val (gpclist,fpclist) = 
-  let val lives = merge(map #1 gpcallee, map #1 gpFree)
+  let val lives = SL.merge(map #1 gpcallee, map #1 gpFree)
       val lives = case (knownB,escapeB) 
-                   of ([{gpfree=gv,...}],[]) => merge(gv,lives)
+                   of ([{gpfree=gv,...}],[]) => SL.merge(gv,lives)
                     | _ => lives
    in fetchClosures(initEnv,lives,fixKind)
   end
 
 (* initializing the callee-save register default *)
-val safev = merge(uniq(map #1 gpclist),uniq(map #1 fpclist))
-val (gpbase,gpsrc) = mkbase(bcsg,merge(safev,map #1 gpcallee),gpn)
+val safev = SL.merge(SL.uniq(map #1 gpclist),SL.uniq(map #1 fpclist))
+val (gpbase,gpsrc) = mkbase(bcsg,SL.merge(safev,map #1 gpcallee),gpn)
 val (fpbase,fpsrc) = mkbase(bcsf,map #1 fpcallee,fpn)
 
 (* thinning the set of free variables based on each's contents *)
@@ -1797,7 +1835,7 @@ val nenv = case closureName
                augKnown(v,l,gpfree,fpfree,env)) env knownB)
    | SOME cname =>
       (foldr (fn ({v,l,gpfree,fpfree,callc,...},env) => 
-               if callc then augKnown(v,l,enter(cname,gpfree),fpfree,env)
+               if callc then augKnown(v,l,SL.enter(cname,gpfree),fpfree,env)
                else augKnown(v,l,gpfree,fpfree,env)) env knownB)
 
 val knownFrags : frags =
@@ -1809,7 +1847,7 @@ val knownFrags : frags =
               case (callc,closureName)
                of (false,_) => (inc CGoptions.knownGen; (gpfree,env))
                 | (true,SOME cn) => (inc CGoptions.knownClGen;
-                                     (enter(cn,gpfree),augvar(cn,env)))
+                                     (SL.enter(cn,gpfree),augvar(cn,env)))
                 | (true,NONE) => bug "unexpected 23324 in closure"
                 
             val (nargs,ncl,ncsg,ncsf,nret,env) = adjustArgs(args,cl,env)
@@ -1951,8 +1989,8 @@ and close(ce,env,sn,csg,csf,ret) =
                  in if not(!CGoptions.allocprof)
                     then h(nh(dh(call)))
                     else h(nh(dh(case args
-                                  of [_] => profCntkCall call
-                                   | _ => profStdkCall call)))
+                                  of [_] => AP.profCntkCall call
+                                   | _ => AP.profStdkCall call)))
                 end
              | Function{label,gpfree,fpfree,csdef} =>
                 let val free = map VAR (gpfree@fpfree)
@@ -1962,8 +2000,8 @@ and close(ce,env,sn,csg,csf,ret) =
                  in if not(!CGoptions.allocprof)
                     then h(nh(call))
                     else (case csdef 
-                           of NONE => h(nh(profKnownCall call))
-                            | _ => h(nh(profCSCntkCall call)))
+                           of NONE => h(nh(AP.profKnownCall call))
+                            | _ => h(nh(AP.profCSCntkCall call)))
                 end
              | Callee(label,ncsg,ncsf) =>
                 let val nargs = ncsg@ncsf@args
@@ -1973,8 +2011,8 @@ and close(ce,env,sn,csg,csf,ret) =
                  in if not(!CGoptions.allocprof)
                     then h(nh(call))
                     else (case label 
-                           of LABEL _ => h(nh(profCSCntkCall call))
-                            | _ => h(nh(profCSCntCall call)))
+                           of LABEL _ => h(nh(AP.profCSCntkCall call))
+                            | _ => h(nh(AP.profCSCntCall call)))
                 end
              | Value t =>
                 let val (env,h) = fixAccess([f],env)
@@ -1984,7 +2022,7 @@ and close(ce,env,sn,csg,csf,ret) =
                     val call = SELECT(0,f,l,t,
                                  (APP(VAR l,(VAR l)::f::nargs)))
                  in if not(!CGoptions.allocprof) then h(nh(dh(call)))
-                    else h(nh(dh(profStdCall call)))
+                    else h(nh(dh(AP.profStdCall call)))
                 end
         end
     | SWITCH(v,c,l) =>
@@ -2000,7 +2038,7 @@ and close(ce,env,sn,csg,csf,ret) =
        let val (hdr, env) = recordEl(k, l, v, env)
            val nc = hdr (close(c,augValue(v,BOGt,env),sn,csg,csf,ret))
         in if not(!CGoptions.allocprof) then nc
-           else profRecord (length l) nc
+           else AP.profRecord (length l) nc
        end
     | SELECT(i,v,w,t,c) =>
        let val (env,header) = fixAccess([v],env)
