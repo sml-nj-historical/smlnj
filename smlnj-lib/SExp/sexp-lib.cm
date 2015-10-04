@@ -1,0 +1,25 @@
+(* sexp-lib.cm
+ *
+ * COPYRIGHT (c) 2011 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Author: Damon Wang (with modifications by John Reppy)
+ *)
+
+Library
+
+  structure SExp
+  structure SExpParser
+  structure SExpPrinter
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/ml-lpt-lib.cm
+
+  sexp.lex : ml-ulex
+  sexp.sml
+  sexp-parser.sml
+  sexp-printer.sml
+  sexp-tokens.sml
