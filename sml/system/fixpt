@@ -14,7 +14,7 @@ twoup=`pwd`
 cd $here
 
 SML=$twoup/bin/sml
-ARCH=sparc
+ARCH=x86
 
 #
 # use the arch-n-opsys script to determine the ARCH/OS if possible
