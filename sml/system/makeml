@@ -1,0 +1,204 @@
+#!/bin/sh
+
+this=$0
+here=`pwd`
+cd ../..
+twoup=`pwd`
+cd $here
+
+LINK=$twoup/bin/.link-sml
+
+if [ ! -x $LINK ] ; then
+    echo $this: link script $LINK is not operational.
+    exit 1
+fi
+
+verbosity=${MAKEML_VERBOSITY:-"@SMLverbose"}
+
+ALLOC=1M
+ARCH=x86
+HEAP="sml"
+ARGS=""
+MODE=""
+RUN=""
+
+case $verbosity in
+    true|yes|on|TRUE|YES|ON)
+	VERBOSITY="@SMLverbose"
+	;;
+    false|no|off|FALSE|NO|OFF)
+	VERBOSITY="@SMLquiet"
+	;;
+    @SML*)
+	VERBOSITY=$verbosity
+	;;
+    *)
+	# what?!?
+	VERBOSITY="@SMLverbose"
+	;;
+esac
+
+rebuilt=no
+bare=no
+
+#
+# Set CM_PATHCONFIG to ../../../lib/pathconfig
+# (using an absolute path!)
+# ... unless it was already set at the time we run this script.
+#
+
+CM_PATHCONFIG=${CM_PATHCONFIG:-$twoup/lib/pathconfig}
+export CM_PATHCONFIG
+
+#
+# use the arch-n-opsys script to determine the ARCH/OS if possible
+#
+if [ -f $twoup/bin/.arch-n-opsys ]; then
+    ARCH_N_OPSYS=`$twoup/bin/.arch-n-opsys`
+    if [ "$?" = "0" ]; then
+	eval $ARCH_N_OPSYS
+	echo $this: architecture = $ARCH
+    fi
+fi
+
+# A function to create a directory hierarchy parallel to a given
+# hierarchy where ordinary files are hard-linked (i.e., shared).
+# The first argument must be a simple path (no / inside), and
+# the second argument must be an absolute path.
+link() {
+    if [ -d $1 ] ; then
+	if [ ! -d $2 ] ; then
+	    if [ -f $2 ] ; then
+		echo $this: $2 exists as a non-directory
+		exit 1
+	    fi
+	    mkdir $2
+	fi
+	cd $1
+	for i in * .[a-zA-Z0-9]* ; do
+	    link $i $2/$i
+	done
+	cd ..
+    elif [ -f $1 ] ; then
+	rm -f $2
+	ln $1 $2
+    fi
+}
+
+if [ $OPSYS = win32 ] ; then
+    BOOT_DIR="sml.boot.${ARCH}-win32"
+else
+    BOOT_DIR="sml.boot.${ARCH}-unix"
+fi
+
+while [ "$#" != "0" ] ; do
+    arg=$1; shift
+    case $arg in
+    -run)
+	if [ "$#" = "0" ]; then
+	    echo "$this: missing argument for \"-run\" option"
+	    exit 1
+	fi
+	RUN="@SMLrun=$1"; shift
+	;;
+    -bare)
+	bare=yes
+	MODE="@SMLbare"
+	;;
+    -quiet)
+	VERBOSITY="@SMLquiet"
+	;;
+    -verbose)
+	VERBOSITY="@SMLverbose"
+	;;
+    -rebuild)
+	if [ "$#" = "0" ]; then
+	    echo "$this: missing argument for \"-rebuild\" option"
+	    exit 1
+	fi
+	rebuilt=yes
+	MODE="@SMLrebuild=$1"; shift
+	;;
+    -rebuildlight|-lightrebuild|-light)
+	if [ "$#" = "0" ]; then
+	    echo "$this: missing argument for \"-rebuild\" option"
+	    exit 1
+	fi
+	rebuilt=yes
+	MODE="@SMLlightrebuild=$1"; shift
+	;;
+    -o)
+	if [ "$#" = "0" ]; then
+	    echo "$this: missing argument for \"-o\" option"
+	    exit 1
+	fi
+	HEAP=$1; shift
+	;;
+    -alloc)
+	if [ "$#" = "0" ]; then
+	    echo "$this: missing argument for \"-alloc\" option"
+	    exit 1
+	fi
+	ALLOC=$1; shift
+	;;
+    -boot)
+	if [ "$#" = "0" ]; then
+	    echo "$this: missing argument for \"-boot\" option"
+	    exit 1
+	fi
+	BOOT_DIR=$1; shift
+	;;
+    @SML*)
+	ARGS="$ARGS $arg"
+	;;
+    *)
+	echo "$this: unknown argument \"$arg\""
+	exit 1
+	;;
+    esac
+done
+
+cd $BOOT_DIR
+
+echo $LINK $RUN \
+    @SMLboot=BOOTLIST @SMLheap=$HEAP @SMLalloc=$ALLOC \
+    $VERBOSITY $ARGS $MODE
+if $LINK $RUN \
+    @SMLboot=BOOTLIST @SMLheap=$HEAP @SMLalloc=$ALLOC \
+    $VERBOSITY $ARGS $MODE
+then
+#
+# If this was a -rebuild run, we have to quit now...
+#
+    if [ $rebuilt = yes ] ; then
+	echo $this: New binfiles are ready.
+	exit 0
+    fi
+    echo $this: Heap image generated.
+else
+    echo $this: Something broke.
+    exit 1
+fi
+
+#
+# Now move the libraries, generate the pathconfig file, and delete the bootdir.
+#
+
+cd $here
+if [ $bare = no ] ; then
+    LIB_DIR=`pwd`/${HEAP}.lib
+
+    rm -rf $LIB_DIR
+    mkdir $LIB_DIR
+
+    cd $BOOT_DIR
+
+    for anchor in * ; do
+	if [ -d $anchor ] ; then
+	    link $anchor $LIB_DIR/$anchor
+	    echo $anchor $anchor
+	fi
+    done >$LIB_DIR/pathconfig
+
+    cd $here
+fi
