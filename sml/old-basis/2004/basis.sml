@@ -15,6 +15,7 @@ signature MONO_VECTOR = MONO_VECTOR_2004
 signature OPTION = OPTION_2004
 signature STRING = STRING_2004
 signature TEXT = TEXT_2004
+signature VECTOR = VECTOR_2004
 
 (* rebind basis structures using 2004 signatures *)
 structure Array : ARRAY = Array
