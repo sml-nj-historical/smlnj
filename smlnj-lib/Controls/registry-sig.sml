@@ -1,6 +1,7 @@
 (* registry-sig.sml
  *
- * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * A registry collects together string controls; it supports generation
  * of help messages and initialization from the environment.

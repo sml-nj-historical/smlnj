@@ -1,6 +1,7 @@
 (* control-reps.sml
  *
- * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 structure ControlReps =
@@ -35,6 +36,6 @@ structure ControlReps =
 	toString : 'a -> string
       }
 
-    fun priorityGT priorities =
-	List.collate Int.compare priorities = GREATER
+    fun priorityGT priorities = List.collate Int.compare priorities = GREATER
+
   end
