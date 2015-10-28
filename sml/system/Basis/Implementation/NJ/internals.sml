@@ -40,7 +40,9 @@ structure Internals : INTERNALS = struct
 	fun with_monitors report_final_exn work =
 	    let fun loop [] = work ()
 		  | loop ({ name, monitor } :: ms) =
+(print(concat["with_monitors: ", name, "\n"]);
 		      monitor (report_final_exn, fn () => loop ms)
+)
 	    in
 		loop (!active_monitors)
 	    end
