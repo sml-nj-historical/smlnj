@@ -2,6 +2,21 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
+SML/NJ 110.80
+-------------------
+
+[2015-10-28]
+	Added the function `help` to the Controls module that returns a
+	control's help string.
+
+[2015-10-28]
+	Added the functions mkOptionFlag, mkOptionReqArg, and mkOption
+	to the Controls module to make it easier to package controls
+	as command-line options. These functions provide an alternative
+	to the usual approach of using a "--C<ctl>=<value> form for
+	all of the controls.
+
+--------------------------------------------------------------------------------
 SML/NJ 110.79
 -------------------
 

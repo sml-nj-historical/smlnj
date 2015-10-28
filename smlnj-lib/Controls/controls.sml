@@ -49,8 +49,38 @@ structure Controls : CONTROLS =
     fun get (Ctl{get, ...}) = get()
     fun set (Ctl{set, ...}, v) = set (SOME v) ()
     fun set' (Ctl{set, ...}, v) = set (SOME v)
+    fun help (Ctl{help, ...}) = help
     fun info (Ctl{priority, obscurity, help, ...}) =
-	{ priority = priority, obscurity = obscurity, help = help }
+	  { priority = priority, obscurity = obscurity, help = help }
+
+  (* package a boolean control as a GetOpt option descriptor (NoArg) *)
+    fun mkOptionFlag {ctl=Ctl{set, help, ...}, short, long} = {
+	    short = short,
+	    long = (case long of NONE => [] | SOME opt => [opt]),
+	    desc = GetOpt.NoArg(set (SOME true)),
+	    help = help
+	  }
+
+  (* package a string control as a GetOpt option descriptor with required argument (ReqArg)  *)
+    fun mkOptionReqArg {ctl=Ctl{set, help, ...}, arg, short, long} = {
+	    short = short,
+	    long = (case long of NONE => [] | SOME opt => [opt]),
+	    desc = GetOpt.ReqArg(fn s => set (SOME s) (), arg),
+	    help = help
+	  }
+
+  (* package a string control as a GetOpt option descriptor with an optional argument (OptArg) *)
+    fun mkOption {ctl=Ctl{set, help, ...}, arg, default, short, long} = {
+	    short = short,
+	    long = (case long of NONE => [] | SOME opt => [opt]),
+	    desc = let
+	      fun setFn NONE = set (SOME default) ()
+		| setFn someVal = set someVal ()
+	      in
+		GetOpt.OptArg(setFn, arg)
+	      end,
+	    help = help
+	  }
 
     fun save'restore (Ctl{set,...}) = set NONE
 
