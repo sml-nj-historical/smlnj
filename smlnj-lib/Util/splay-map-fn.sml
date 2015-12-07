@@ -3,8 +3,6 @@
  * COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
- *
  * Functor implementing dictionaries using splay trees.
  *
  *)

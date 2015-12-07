@@ -1,6 +1,7 @@
 (* splaytree.sml
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Splay tree structure.
  *
@@ -86,11 +87,11 @@ structure SplayTree : SPLAY_TREE =
                  ) (* end case *)
               ) (* end case *)
       in
-        case adj root of
-          (No,_,_) => (GREATER,SplayNil)
-        | (Eq v,l,r) => (EQUAL,SplayObj{value=v,left=l,right=r})
-        | (Lt v,l,r) => (LESS,SplayObj{value=v,left=l,right=r})
-        | (Gt v,l,r) => (GREATER,SplayObj{value=v,left=l,right=r})
+        case adj root
+	 of (No,_,_) => (GREATER,SplayNil)
+	  | (Eq v,l,r) => (EQUAL,SplayObj{value=v,left=l,right=r})
+	  | (Lt v,l,r) => (LESS,SplayObj{value=v,left=l,right=r})
+	  | (Gt v,l,r) => (GREATER,SplayObj{value=v,left=l,right=r})
       end
 
     fun lrotate SplayNil = SplayNil

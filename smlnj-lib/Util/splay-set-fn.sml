@@ -1,6 +1,7 @@
 (* splay-set-fn.sml
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Functor implementing ordered sets using splay trees.
  *
@@ -323,15 +324,15 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
     fun exists p EMPTY = false
       | exists p (SET{root,...}) = let
           fun ex SplayNil = false
-            | ex (SplayObj{value=v,left=l,right=r}) = ex l orelse p v orelse ex r
+            | ex (SplayObj{value=v, left=l, right=r}) = p v orelse ex l orelse ex r
           in
             ex (!root)
           end
 
-    fun all p EMPTY = false
+    fun all p EMPTY = true
       | all p (SET{root,...}) = let
-          fun all' SplayNil = false
-            | all' (SplayObj{value=v,left=l,right=r}) = all' l andalso p v andalso all' r
+          fun all' SplayNil = true
+            | all' (SplayObj{value=v, left=l, right=r}) = p v andalso all' l andalso all' r
           in
             all' (!root)
           end
@@ -341,9 +342,10 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
           fun ex SplayNil = NONE
             | ex (SplayObj{value=v,left=l,right=r}) =
                 if p v then SOME v
-                else case ex l of
-                       NONE => ex r
-                     | a => a 
+                else (case ex l
+		    of NONE => ex r
+		     | a => a
+		  (* end case *))
           in
             ex (!root)
           end

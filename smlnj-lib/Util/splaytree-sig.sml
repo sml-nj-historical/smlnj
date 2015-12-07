@@ -1,6 +1,7 @@
 (* splaytree-sig.sml
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Signature for a splay tree data structure.
  *
@@ -8,14 +9,14 @@
 
 signature SPLAY_TREE = 
   sig
-    datatype 'a splay = 
-      SplayObj of {
-        value : 'a,
-        right : 'a splay,
-        left : 'a splay
-      }
-    | SplayNil
 
+    datatype 'a splay
+      = SplayObj of {
+	  value : 'a,
+	  right : 'a splay,
+	  left : 'a splay
+	}
+      | SplayNil
 
     val splay : (('a -> order) * 'a splay) -> (order * 'a splay)
       (* (r,tree') = splay (cmp,tree) 
