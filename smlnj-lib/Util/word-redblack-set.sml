@@ -47,6 +47,22 @@ structure WordRedBlackSet :> ORD_SET where type Key.ord_key = word =
 
     val empty = SET(0, E)
 
+    fun minItem (SET(_, tr)) = let
+	  fun min E = raise Empty
+	    | min (T(_, E, item, _)) = item
+	    | min (T(_, tr, _, _)) = min tr
+	  in
+	    min tr
+	  end
+
+    fun maxItem (SET(_, tr)) = let
+	  fun max E = raise Empty
+	    | max (T(_, _, item, E)) = item
+	    | max (T(_, _, _, tr)) = max tr
+	  in
+	    max tr
+	  end
+
     fun singleton x = SET(1, T(B, E, x, E))
 
     fun add (SET(nItems, m), x) = let
@@ -243,7 +259,7 @@ structure WordRedBlackSet :> ORD_SET where type Key.ord_key = word =
 	  end
 
   (* return an ordered list of the items in the set. *)
-    fun listItems s = foldr (fn (x, l) => x::l) [] s
+    fun toList s = foldr (fn (x, l) => x::l) [] s
 
   (* functions for walking the tree while keeping a stack of parents
    * to be visited.
@@ -473,5 +489,8 @@ structure WordRedBlackSet :> ORD_SET where type Key.ord_key = word =
 	  in
 	    fn (SET(_, t)) => test t
 	  end
+
+  (* deprecated *)
+    val listItems = toList
 
   end;

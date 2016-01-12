@@ -5,6 +5,13 @@ correspond to SML/NJ releases.
 SML/NJ 110.80
 -------------------
 
+[2016-01-12]
+	Added minItem and maxItem to ORD_SET signature.
+
+[2016-01-12]
+	Added toList to ORD_SET signature and marked listItems as
+	deprecated.
+
 [2015-12-07]
 	Fixed bug #144 (Splay sets are broken).
 

@@ -14,12 +14,12 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
 
     type item = K.ord_key
   
-    datatype set = 
-        EMPTY
+    datatype set
+      = EMPTY
       | SET of {
-        root : item splay ref,
-        nobj : int
-      }
+	  root : item splay ref,
+	  nobj : int
+	}
 
     fun cmpf k = fn k' => K.compare(k',k)
 
@@ -91,6 +91,24 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
     fun isEmpty EMPTY = true
       | isEmpty _ = false
 
+    fun minItem EMPTY = raise Empty
+      | minItem (SET{root, ...}) = let
+	  fun min (SplayObj{value, left=SplayNil, ...}) = value
+	    | min (SplayObj{left, ...}) = min left
+	    | min SplayNil = raise Fail "impossible"
+	  in
+	    min (!root)
+	  end
+
+    fun maxItem EMPTY = raise Empty
+      | maxItem (SET{root, ...}) = let
+	  fun max (SplayObj{value, right=SplayNil, ...}) = value
+	    | max (SplayObj{right, ...}) = max right
+	    | max SplayNil = raise Fail "impossible"
+	  in
+	    max (!root)
+	  end
+
     local
       fun member (x,tree) = let
             fun mbr SplayNil = false
@@ -156,8 +174,8 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
     fun numItems EMPTY = 0
       | numItems (SET{nobj,...}) = nobj
 
-    fun listItems EMPTY = []
-      | listItems (SET{root,...}) =
+    fun toList EMPTY = []
+      | toList (SET{root,...}) =
         let fun apply (SplayNil,l) = l
               | apply (SplayObj{value,left,right},l) =
                   apply(left, value::(apply (right,l)))
@@ -349,5 +367,8 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
           in
             ex (!root)
           end
+
+  (* deprecated *)
+    val listItems = toList
 
   end (* SplaySet *)

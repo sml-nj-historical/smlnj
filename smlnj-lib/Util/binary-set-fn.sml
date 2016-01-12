@@ -82,6 +82,14 @@ functor BinarySetFn (K : ORD_KEY) : ORD_SET =
     fun isEmpty E = true
       | isEmpty _ = false
 
+    fun minItem E = raise Empty
+      | minItem (T{elt, left=E, ...}) = elt
+      | minItem (T{left, ...}) = minItem left
+
+    fun maxItem E = raise Empty
+      | maxItem (T{elt, right=E, ...}) = elt
+      | maxItem (T{right, ...}) = maxItem right
+
     fun mkT(v,n,l,r) = T{elt=v,cnt=n,left=l,right=r}
 
       (* N(v,l,r) = T(v,1+numItems(l)+numItems(r),l,r) *)
@@ -401,7 +409,7 @@ functor BinarySetFn (K : ORD_KEY) : ORD_SET =
             foldf (set, b)
           end
 
-    fun listItems set = foldr (op::) [] set
+    fun toList set = foldr (op::) [] set
 
     fun filter pred set =
 	  foldl (fn (item, s) => if (pred item) then add(s, item) else s)
@@ -429,5 +437,8 @@ functor BinarySetFn (K : ORD_KEY) : ORD_SET =
 		else find p right
 	    | a => a
 	  (* end case *))
+
+  (* deprecated *)
+    val listItems = toList
 
   end (* BinarySetFn *)

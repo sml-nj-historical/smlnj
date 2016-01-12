@@ -138,6 +138,11 @@ structure IntListSet :> ORD_SET where type Key.ord_key = Int.int =
     fun isEmpty [] = true
       | isEmpty _ = false
 
+    fun minItem [] = raise Empty
+      | minItem (x::_) = x
+
+    fun maxItem xs = List.last xs
+
     fun equal (s1, s2) = let
 	  fun f ([], []) = true
 	    | f ((x : int)::r1, y::r2) = (x = y) andalso f (r1, r2)
@@ -171,7 +176,7 @@ structure IntListSet :> ORD_SET where type Key.ord_key = Int.int =
     fun numItems l = List.length l
 
   (* Return a list of the items in the set *)
-    fun listItems l = l
+    fun toList l = l
 
     val app = List.app
     fun map f s1 = List.foldl (fn (x, s) => add(s, f x)) [] s1
@@ -182,6 +187,9 @@ structure IntListSet :> ORD_SET where type Key.ord_key = Int.int =
     val exists = List.exists
     val all = List.all
     val find = List.find
+
+  (* deprecated *)
+    val listItems = toList
 
   end (* IntListMap *)
 

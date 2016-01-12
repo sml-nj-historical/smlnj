@@ -23,6 +23,9 @@ signature ORD_SET =
     val fromList : item list -> set
 	(* create a set from a list of items *)
 
+    val toList : set -> item list
+	(* Return an ordered list of the items in the set *)
+
     val add  : set * item -> set
     val add' : (item * set) -> set
 	(* Add an item. *)
@@ -46,6 +49,12 @@ signature ORD_SET =
     val isEmpty : set -> bool
 	(* Return true if and only if the set is empty *)
 
+    val minItem : set -> item
+	(* return the smallest element of the set (raises Empty if the set is empty) *)
+
+    val maxItem : set -> item
+	(* return the largest element of the set (raises Empty if the set is empty) *)
+
     val equal : (set * set) -> bool
 	(* Return true if and only if the two sets are equal *)
 
@@ -59,7 +68,9 @@ signature ORD_SET =
 	(* Return the number of items in the table *)
 
     val listItems : set -> item list
-	(* Return an ordered list of the items in the set *)
+	(* Return an ordered list of the items in the set.
+	 * Deprecated in favor of toList.
+	 *)
 
     val union : set * set -> set
         (* Union *)
