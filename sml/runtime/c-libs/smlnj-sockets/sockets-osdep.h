@@ -52,6 +52,9 @@ typedef void *sockoptval_t;	/* The pointer type used to pass values to */
 #elif defined(OPSYS_WIN32) || defined(OPSYS_CYGWIN)
 #  define INCLUDE_SOCKET_H      <winsock2.h>
 
+/* This type is not defined in winsock2.h */
+typedef int socklen_t;
+
 /* FIXME:  Is ioctlsocket() on Windows really the same as ioctl() on Unix?
    It does seem so, yet the second parameter is of a different type */
 #  define ioctl ioctlsocket

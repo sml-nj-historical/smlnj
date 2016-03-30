@@ -46,6 +46,8 @@ case "$VERSION" in
   *x86-darwin*)
     case `uname -r` in
       13.*) SDK=MacOSX10.9.sdk ;;
+      14.*) SDK=MacOSX10.10.sdk ;;
+      15.*) SDK=MacOSX10.11.sdk ;;
       *) SDK=none ;;
     esac
     if test x$SDK != xnone ; then

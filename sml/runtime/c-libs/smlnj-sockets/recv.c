@@ -22,7 +22,8 @@ ml_val_t _ml_Sock_recv (ml_state_t *msp, ml_val_t arg)
     int		nbytes = REC_SELINT(arg, 1);
     int		flag = 0;
     ml_val_t	vec, res;
-    int		n;
+    int		m, n;
+    char	*s;
 
     if (REC_SEL(arg, 2) == ML_true) flag |= MSG_OOB;
     if (REC_SEL(arg, 3) == ML_true) flag |= MSG_PEEK;
@@ -30,12 +31,20 @@ ml_val_t _ml_Sock_recv (ml_state_t *msp, ml_val_t arg)
   /* allocate the vector; note that this might cause a GC */
     vec = ML_AllocRaw32 (msp, BYTES_TO_WORDS(nbytes));
 
-    n = recv (sock, PTR_MLtoC(char, vec), nbytes, flag);
+    s = PTR_MLtoC(char, vec);
+    n = recv (sock, s, nbytes, flag);
 
     if (n < 0)
 	return RAISE_SYSERR(msp, sts);
     else if (n == 0)
 	return ML_string0;
+
+  /* pad the last word of the vector with zero bytes so that string pattern
+   * matching on the result will work.
+   */
+    for (m = n;  (m & (WORD_SZB-1)) != 0;  m++) {
+	s[m] = '\0';
+    }
 
     if (n < nbytes) {
       /* we need to shrink the vector */

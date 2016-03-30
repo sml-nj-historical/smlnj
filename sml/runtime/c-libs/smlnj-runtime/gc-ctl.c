@@ -6,6 +6,7 @@
  */
 
 #include "ml-base.h"
+#include <string.h>
 #include "ml-values.h"
 #include "ml-state.h"
 #include "memory.h"

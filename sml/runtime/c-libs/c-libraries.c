@@ -13,6 +13,7 @@
 #include "ml-base.h"
 #include "ml-values.h"
 #include "c-library.h"
+#include "c-globals-tbl.h"
 #include <stdio.h>
 
 #define C_LIBRARY(lib)  extern c_library_t lib;

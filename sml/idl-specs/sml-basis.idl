@@ -1,6 +1,7 @@
 /* sml-basis.idl
  *
- * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * This file is a ML-IDL specification of the run-time library
  * that supports the generic system interfaces of the SML'97 Basis.
@@ -234,6 +235,8 @@ void now ([out, ref] Time_t *t);
 void gmTime ([in, ref] Time_t *t, [out, ref] Date_t *date);
 void localTime ([in, ref] Time_t *t, [out, ref] Date_t *date);
 void mkTime ([in, ref] Date_t *date, [out, ref] Time_t *time);
+int localOffset ();
+int localOffsetForTime ([in] int t);
 
 /******************** Timer support ********************/
 

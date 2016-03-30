@@ -22,8 +22,9 @@ VERSION =	v-dummy
 OBJS =		smlnj-date-lib.obj \
 		asctime.obj \
 		gmtime.obj \
-		mktime.obj \
+		localoffset.obj \
 		localtime.obj \
+		mktime.obj \
 		strftime.obj
 
 $(LIBRARY)	: $(VERSION) $(OBJS)
@@ -48,15 +49,17 @@ asctime.obj: asctime.c $(DEPENDENTS)
 gmtime.obj: gmtime.c $(DEPENDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c gmtime.c
 
-mktime.obj: mktime.c $(DEPENDENTS)
-	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c mktime.c
+localoffset.obj: localoffset.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c localoffset.c
 
 localtime.obj: localtime.c $(DEPENDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c localtime.c
+
+mktime.obj: mktime.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c mktime.c
 
 strftime.obj: strftime.c $(DEPENDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c strftime.c
 
 clean :
 	del /F /Q v-* *.obj *.pdb $(LIBRARY)
-
