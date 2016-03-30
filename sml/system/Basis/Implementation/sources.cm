@@ -1,6 +1,10 @@
 (* sources.cm
  *
- *   The implementation of the Basis.
+ * The implementation of the Basis.  Also see the file
+ *
+ *	base/system/Basis/basis.cm
+ *
+ * which controls the external visibility of the basis library.
  *
  * Copyright (c) 2004 by The Fellowship of SML/NJ
  *)
@@ -8,53 +12,81 @@ Group
 	signature ARRAY
 	signature ARRAY_SLICE
 	signature ARRAY2
-	signature VECTOR
-	signature VECTOR_SLICE
-	signature GENERAL
-	signature INTEGER
-	signature INT_INF
+	signature BIN_IO
+	signature BIT_FLAGS
 	signature BOOL
+	signature BYTE
 	signature CHAR
-	signature STRING
-	signature SUBSTRING
-	signature STRING_CVT
+	signature COMMAND_LINE
+	signature DATE
+	signature GENERAL
+	signature IEEE_REAL
+	signature IMPERATIVE_IO
+	signature INT_INF
+	signature INTEGER
+	signature IO
 	signature LIST
+	signature LIST_PAIR
+	signature MATH
 	signature MONO_ARRAY
 	signature MONO_ARRAY_SLICE
 	signature MONO_ARRAY2
 	signature MONO_VECTOR
 	signature MONO_VECTOR_SLICE
-	signature WORD
-	signature BYTE
-	signature COMMAND_LINE
-	signature DATE
-	signature IEEE_REAL
-	signature LIST_PAIR
 	signature OPTION
-	signature REAL
-	signature TIME
-	signature TIMER
-	signature MATH
 	signature OS
 	signature OS_FILE_SYS
 	signature OS_IO
 	signature OS_PATH
 	signature OS_PROCESS
-	signature SIGNALS
-	signature BIN_IO
-	signature IMPERATIVE_IO
-	signature IO
+	signature PACK_REAL
+	signature PACK_WORD
 	signature PRIM_IO
+	signature REAL
+	signature SIGNALS
 	signature STREAM_IO
+	signature STRING
+	signature STRING_CVT
+	signature SUBSTRING
+	signature TEXT
 	signature TEXT_IO
 	signature TEXT_STREAM_IO
-	signature PACK_WORD
-	signature PACK_REAL
-	signature TEXT
-	signature SML90
-	signature BIT_FLAGS
+	signature TIME
+	signature TIMER
+	signature VECTOR
+	signature VECTOR_SLICE
+	signature WORD
 
-	(* SML/NJ specific *)
+	signature EITHER	(* proposal 2015-002 *)
+	signature FN		(* proposal 2015-005 *)
+	signature REF		(* proposal 2015-007 *)
+
+      (* old versions of basis signatures from the 2004 published spec *)
+	signature ARRAY_2004
+	signature LIST_2004
+	signature LIST_PAIR_2004
+	signature MONO_ARRAY_2004
+	signature MONO_VECTOR_2004
+	signature OPTION_2004
+	signature STRING_2004
+	signature TEXT_2004
+	signature VECTOR_2004
+
+      (* basis signatures with extensions from proposal 2015-003 added *)
+	signature ARRAY_2015
+	signature LIST_2015
+	signature LIST_PAIR_2015
+	signature MONO_ARRAY_2015
+	signature MONO_VECTOR_2015
+	signature OPTION_2015
+	signature STRING_2015
+	signature TEXT_2015
+	signature VECTOR_2015
+
+      (* backward compatibility with the SML'90 version of the basis *)
+	signature SML90
+
+      (* SML/NJ specific *)
 	signature SIGNALS
 
 	signature CLEAN_UP
@@ -75,68 +107,75 @@ Group
 	signature UNSAFE_MONO_VECTOR
 	signature UNSAFE
 
-	(* Basis *)
-	structure Vector
-	structure VectorSlice
-	structure General
-	structure StringCvt
-	structure CharVectorSlice
-	structure CharArraySlice
-	structure Text
-	structure List
-	structure ListPair
+      (* Basis structures *)
 	structure Array
-	structure ArraySlice
 	structure Array2
+	structure ArraySlice
+	structure BinIO
+	structure BinPrimIO
+	structure Bool
+	structure Byte
+	structure CharArraySlice
+	structure CharVectorSlice
+	structure CommandLine
+	structure Date
+	structure FixedIntImp
+	structure General
 	structure IEEEReal
-	structure IntImp
 	structure Int31Imp
 	structure Int32Imp
 	structure Int64
+	structure IntImp
 	structure IntInfImp
+	structure IO
 	structure LargeIntImp
-	structure FixedIntImp
 	structure LargeRealImp
 	structure LargeWordImp
+	structure List
+	structure ListPair
 	structure Math
-	structure PositionImp
-	structure RealImp
-	structure Real64Imp
-	structure WordImp
-	structure Word31Imp
-	structure Word32Imp
-	structure Word64
-	structure Bool
-	structure Word8Imp
-	structure Word8Vector
-	structure Word8VectorSlice
-	structure Word8Array
-	structure Word8ArraySlice
-	structure SysWordImp
-	structure TimeImp
-	structure Timer
-	structure Byte
-	structure CommandLine
-	structure OSImp
 	structure Option
-	structure BinIO
-	structure BinPrimIO
-	structure IO
+	structure OSImp
+	structure PackReal64Big
+	structure PackReal64Little
 	structure PackWord16Big
 	structure PackWord16Little
 	structure PackWord32Big
 	structure PackWord32Little
-	structure TextIO
-	structure TextPrimIO
-	structure Date
+	structure PositionImp
 	structure Real64Array
 	structure Real64ArraySlice
+	structure Real64Imp
 	structure Real64Vector
 	structure Real64VectorSlice
-	structure SML90
-	structure ExnName
+	structure RealImp
+	structure StringCvt
+	structure SysWordImp
+	structure Text
+	structure TextIO
+	structure TextPrimIO
+	structure TimeImp
+	structure Timer
+	structure Vector
+	structure VectorSlice
+	structure Word31Imp
+	structure Word32Imp
+	structure Word64
+	structure Word8Array
+	structure Word8ArraySlice
+	structure Word8Imp
+	structure Word8Vector
+	structure Word8VectorSlice
+	structure WordImp
+
+	structure Either	(* proposal 2015-002 *)
+	structure Fn		(* proposal 2015-005 *)
+	structure Ref		(* proposal 2015-007 *)
 
 	functor PrimIO
+
+	structure SML90
+	structure ExnName
 
 	(* SML/NJ specific *)
 	structure Signals
@@ -385,6 +424,32 @@ is
 	exn-name.sml
 	sml90.sml
 
+	pack-real.sig
+	pack-real64-native.sml
+	pack-real64-swap.sml
+
+	pack-word.sig
+	pack-word-b16.sml
+	pack-word-l16.sml
+	pack-word-b32.sml
+	pack-word-l32.sml
+
+#if defined(BIG_ENDIAN)
+	bind-pack-big.sml
+#else
+	bind-pack-little.sml
+#endif
+
+      (* basis proposal 2015-002 *)
+	either.sig
+	either.sml
+      (* basis proposal 2015-005 *)
+	fn.sig
+	fn.sml
+      (* basis proposal 2015-007 *)
+	ref.sig
+	ref.sml
+
 	bind-int-32.sml
 	bind-word-32.sml
 	bind-largeint-32.sml
@@ -495,14 +560,6 @@ is
 #else
 # error OS not supported for this system
 #endif
-
-	pack-word.sig
-	pack-word-b16.sml
-	pack-word-l16.sml
-	pack-word-b32.sml
-	pack-word-l32.sml
-
-	pack-real.sig
 
 	IO/prim-io.sig
 	IO/prim-io-fn.sml

@@ -1,6 +1,15 @@
-(* ml.grm
+(* sml.grm
  *
- * Copyright 1989,1992 by AT&T Bell Laboratories
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * This version of the parser supports the following Successor ML syntactic extensions.
+ *
+ *	optional "|" at the beginning of a match
+ *
+ *	optional ";" at the end of a sequence of statements
+ *
+ *	"do" exp syntax where "val" bindings are allowed.
  *)
 
 open Ast ErrorMsg Symbol FastSymbol AstUtil Fixity 
@@ -57,8 +66,9 @@ val quotedBogusString = "'BOGUS"
        | tuple_ty of ty list
        | ty of ty
        | ty0_pc of ty list
-       | match of  rule list
-       | rule of  rule
+       | match of rule list
+       | match' of rule list
+       | rule of rule
        | elabel of  (symbol * exp)
        | elabels of  (symbol * exp) list
        | exp_ps of  exp list
@@ -92,6 +102,7 @@ val quotedBogusString = "'BOGUS"
        | dbs of  db list
        | dtrepl of symbol * path
        | constrs of (symbol * ty option) list
+       | constrs' of (symbol * ty option) list
        | constr of  symbol * ty option
        | eb of  eb list
        | qid_p of Symbol.symbol list list
@@ -207,12 +218,13 @@ tlabels : tlabel COMMA tlabels	(tlabel :: tlabels)
 
 ty'	: TYVAR		(MarkTy (VarTy(Tyv(tyvSymbol TYVAR)),
 				 (TYVARleft,TYVARright)))
-	| LBRACE tlabels
-		 RBRACE (MarkTy(RecordTy tlabels,(LBRACEleft,RBRACEright)))
+	| LBRACE tlabels RBRACE
+			(MarkTy(RecordTy tlabels,(LBRACEleft,RBRACEright)))
 	| LBRACE RBRACE	(RecordTy [])
 	| LPAREN ty0_pc RPAREN tycon  
 			(MarkTy(ConTy(tycon,ty0_pc),(tyconleft,tyconright)))
-	| LPAREN ty RPAREN	(ty)
+	| LPAREN ty RPAREN
+			(ty)
 	| ty' tycon	(MarkTy(ConTy(tycon,[ty']),(tyconleft,tyconright)))
 	| tycon		(MarkTy(ConTy(tycon,[]),(tyconleft,tyconright)))
 
@@ -226,11 +238,13 @@ ty	: tuple_ty	(TupleTy(tuple_ty))
 ty0_pc	: ty COMMA ty		([ty1,ty2])
 	| ty COMMA ty0_pc 	(ty :: ty0_pc)
 
-match	: rule			([rule])
-	| rule BAR match	(rule :: match)
+match	: BAR match'		(match')
+	| match'		(match')
 
-rule	: pat DARROW exp        (Rule{pat=pat, 
-				      exp=markexp(exp,expleft,expright)})
+match'	: rule			([rule])
+	| rule BAR match'	(rule :: match')
+
+rule	: pat DARROW exp        (Rule{pat=pat, exp=markexp(exp,expleft,expright)})
 
 		(* 	EXPRESSIONS	*)
 
@@ -474,8 +488,11 @@ db	: ID EQUALOP constrs	         (Db{tyc=tycSymbol ID,
                                             tyvars=tyvars,
                                             rhs=constrs,lazyp=true})
 
-constrs : constr		([constr])
-	| constr BAR constrs	(constr :: constrs)
+constrs : constrs'		(constrs')
+	| BAR constrs'		(constrs')
+
+constrs' : constr		([constr])
+	| constr BAR constrs'	(constr :: constrs')
 
 constr	: op_op ident		(varSymbol ident, NONE)
 	| op_op ident OF ty	(varSymbol ident, SOME ty)

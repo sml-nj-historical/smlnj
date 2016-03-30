@@ -1,8 +1,11 @@
 (* pack-real.sig
  *
- * (C) 2004 The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
-signature PACK_REAL = sig
+
+signature PACK_REAL =
+  sig
 
     type real
     val bytesPerElem : int
@@ -13,4 +16,4 @@ signature PACK_REAL = sig
     val subArr : Word8Array.array * int -> real
     val update : Word8Array.array * int * real -> unit
 
-end
+  end

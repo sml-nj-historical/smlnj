@@ -13,7 +13,10 @@ X86UnixCMB.make () before X86UnixCMB.reset () andalso
 X86Win32CMB.make () before X86Win32CMB.reset ();
 stop
 
-for target in alpha32-unix hppa-unix ppc-unix sparc-unix x86-unix x86-win32 ; do
+#TARGETS="alpha32-unix hppa-unix ppc-unix sparc-unix x86-unix x86-win32"
+TARGETS="ppc-unix sparc-unix x86-unix x86-win32"
+
+for target in $TARGETS ; do
   dir=sml.boot.$target
   if test -d $dir ; then
     tar -cf - $dir | gzip > boot.$target.tgz

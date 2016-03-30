@@ -16,7 +16,7 @@ fi
 verbosity=${MAKEML_VERBOSITY:-"@SMLverbose"}
 
 ALLOC=1M
-ARCH=sparc
+ARCH=x86
 HEAP="sml"
 ARGS=""
 MODE=""

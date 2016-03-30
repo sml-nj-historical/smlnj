@@ -14,4 +14,6 @@ sig
     (* defaults to LV.lvarName *)
     val LVarString  : (FLINT.lvar -> string) ref
 
+    val toStringValue : FLINT.value -> string
+
 end (* signature PPFLINT *)

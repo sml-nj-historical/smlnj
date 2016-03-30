@@ -1,12 +1,12 @@
 (* mono-vector.sig
  *
- * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Generic interface for monomorphic vector structures.
- *
  *)
 
-signature MONO_VECTOR =
+signature MONO_VECTOR_2004 =
   sig
 
     type vector
@@ -40,3 +40,16 @@ signature MONO_VECTOR =
     val collate: (elem * elem -> order) -> vector * vector -> order
 
   end
+
+(* includes Basis Library proposal 2015-003 *)
+signature MONO_VECTOR_2015 =
+  sig
+    include MONO_VECTOR_2004
+
+    val toList  : vector -> elem list
+    val append  : vector * elem -> vector
+    val prepend : elem * vector -> vector
+
+  end
+
+signature MONO_VECTOR = MONO_VECTOR_2015

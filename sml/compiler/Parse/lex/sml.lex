@@ -77,7 +77,7 @@ fun dec (ri as ref i) = (ri := i-1)
 %% 
 %reject
 %s A LCOM ALC S F Q AQ L LL LLC LLCQ;
-%structure SMLLex;
+%structure SMLLex
 %arg ({
   comLevel,
   sourceMap,
@@ -96,13 +96,14 @@ sym={some_sym}|"\\";
 quote="`";
 full_sym={sym}|{quote};
 digit=[0-9]+;
+bdigit=[0-1]+;
 xdigit=[0-9a-fA-F];
-num={digit}("_"{digit}|{digit})*;
+num={digit}("_"*{digit})*;
+binnum={bdigit}("_"*{bdigit})*;
+hexnum={xdigit}("_"*{xdigit})*;
 frac="."{num};
 exp=[eE](~?){num};
 real=(~?)(({num}{frac}?{exp})|({num}{frac}{exp}?));
-binnum=[01]+("_"[01]|[01]+)*;
-hexnum={xdigit}+("_"{xdigit}|{xdigit})*;
 %%
 <INITIAL>{ws}	=> (continue());
 <INITIAL>{eol}	=> (SourceMap.newline sourceMap yypos; continue());
@@ -235,16 +236,18 @@ hexnum={xdigit}+("_"{xdigit}|{xdigit})*;
 	(err(yypos,yypos+2) COMPLAIN "illegal control escape; must be one of \
 	  \@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_" nullErrorBody;
 	 continue());
-<S>\\[0-9]{3}	=>
- (let val x = Char.ord(String.sub(yytext,1))*100
-	     +Char.ord(String.sub(yytext,2))*10
-	     +Char.ord(String.sub(yytext,3))
-	     -((Char.ord #"0")*111)
-  in (if x>255
-      then err (yypos,yypos+4) COMPLAIN "illegal ascii escape" nullErrorBody
-      else addChar(charlist, Char.chr x);
-      continue())
-  end);
+<S>\\u{xdigit}{4}
+		=> (addUnicode(charlist, String.substring(yytext, 2, 4)); continue());
+<S>\\[0-9]{3}	=> (let val x = Char.ord(String.sub(yytext,1))*100
+			      + Char.ord(String.sub(yytext,2))*10
+			      + Char.ord(String.sub(yytext,3))
+			      - ((Char.ord #"0")*111)
+		    in
+		      if x>255
+			then err (yypos,yypos+4) COMPLAIN "illegal ascii escape" nullErrorBody
+			else addChar(charlist, Char.chr x);
+		      continue()
+		    end);
 <S>\\		=> (err (yypos,yypos+1) COMPLAIN "illegal string escape"
 		        nullErrorBody; 
 		    continue());

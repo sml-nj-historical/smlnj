@@ -5,8 +5,22 @@
 
 structure MLParser : MLPARSER = struct 
 
+(*
 structure MLLrVals = MLLrValsFun(structure Token = LrParser.Token)
-structure Lex = MLLexFun(structure Tokens = MLLrVals.Tokens)
+structure MLLex = MLLexFun(structure Tokens = MLLrVals.Tokens)
+structure SMLLex = SMLLexFun(structure Tokens = MLLrVals.Tokens)
+*)
+structure MLLrVals = UserDeclarations.MLLrVals
+
+(* a lexer that picks either SML'97 or SuccessorML lexical conventions *)
+structure Lex =
+  struct
+    structure UserDeclarations = UserDeclarations
+    fun makeLexer getData arg = if !ParserControl.succML
+	  then SMLLex.makeLexer getData arg
+	  else MLLex.makeLexer getData arg
+  end
+
 structure MLP = JoinWithArg(structure ParserData = MLLrVals.ParserData
                             structure Lex=Lex
                             structure LrParser = LrParser)

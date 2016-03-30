@@ -1,11 +1,13 @@
 (* option.sml
  *
- * COPYRIGHT (c) 1997 AT&T Labs Research.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 structure Option : OPTION =
   struct
-    open Assembly (* for type 'a option *)
+
+    datatype option = datatype Assembly.option
 
     exception Option = Option
 
@@ -27,6 +29,13 @@ structure Option : OPTION =
       | mapPartial f NONE = NONE
     fun compose (f, g) x = map f (g x)
     fun composePartial (f, g) x = mapPartial f (g x)
+
+  (* added for Basis Library proposal 2015-003 *)
+    fun isNone NONE = true
+      | isNone _ = false
+
+    fun fold f init NONE = init
+      | fold f init (SOME x) = f(x, init);
 
   end;
 

@@ -1,13 +1,14 @@
 (* list-pair.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * If lists are of unequal length, the excess elements from the
  * tail of the longer one are ignored. No exception is raised.
  *
  *)
 
-signature LIST_PAIR =
+signature LIST_PAIR_2004 =
   sig
 
     exception UnequalLengths
@@ -28,3 +29,25 @@ signature LIST_PAIR =
 
   end (* signature LIST_PAIR *)
 
+(* includes Basis Library proposal 2015-003 *)
+signature LIST_PAIR_2015 =
+  sig
+
+    include LIST_PAIR_2004
+
+    val appi		: (int * 'a * 'b -> unit) -> 'a list * 'b list -> unit
+    val appiEq		: (int * 'a * 'b -> unit) -> 'a list * 'b list -> unit
+    val mapi		: (int * 'a * 'b -> 'c) -> 'a list * 'b list -> 'c list
+    val mapiEq		: (int * 'a * 'b -> 'c) -> 'a list * 'b list -> 'c list
+    val mapPartial	: ('a * 'b -> 'c option) -> 'a list * 'b list -> 'c list
+    val mapPartialEq	: ('a * 'b -> 'c option) -> 'a list * 'b list -> 'c list
+    val mapPartiali	: (int * 'a * 'b -> 'c option) -> 'a list * 'b list -> 'c list
+    val mapPartialiEq	: (int * 'a * 'b -> 'c option) -> 'a list * 'b list -> 'c list
+    val foldli		: (int * 'a * 'b * 'c -> 'c) -> 'c -> 'a list * 'b list -> 'c
+    val foldliEq	: (int * 'a * 'b * 'c -> 'c) -> 'c -> 'a list * 'b list -> 'c
+    val foldri		: (int * 'a * 'b * 'c -> 'c) -> 'c -> 'a list * 'b list -> 'c
+    val foldriEq	: (int * 'a * 'b * 'c -> 'c) -> 'c -> 'a list * 'b list -> 'c
+
+  end
+
+signature LIST_PAIR = LIST_PAIR_2015

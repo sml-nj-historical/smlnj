@@ -1,7 +1,7 @@
 (* char-array.sml
  *
- * COPYRIGHT (c) 1994 AT&T Bell Labs.
- *
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 structure CharArray : MONO_ARRAY =
@@ -221,4 +221,25 @@ structure CharArray : MONO_ARRAY =
     in
 	coll 0
     end
+
+  (* added for Basis Library proposal 2015-003 *)
+    fun toList arr = foldr op :: [] arr
+
+    fun fromVector v = let
+	  val n = vlength v
+	  in
+	    if (n = 0)
+	      then A.newArray0()
+	      else let
+		val arr = A.create n
+		fun fill i = if (i < n)
+		      then (uupd(arr, i, vusub(v, i)); fill(i ++ 1))
+		      else arr
+		in
+		  fill 0
+		end
+	  end
+
+    val toVector = vector
+
   end (* CharArray *)

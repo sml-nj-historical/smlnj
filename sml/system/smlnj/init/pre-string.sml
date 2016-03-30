@@ -1,9 +1,10 @@
 (* pre-string.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Some common operations that are used by both the String and
- * Substring structures.
+ * Substring structures, as well as by the pervasive environment.
  *
  *)
 

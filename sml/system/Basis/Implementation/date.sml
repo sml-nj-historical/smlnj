@@ -1,18 +1,30 @@
 (* date.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
+ * The SML Basis Library Date module.  This code is partially based on
+ * ideas from the paper
+ *
+ *	Calendrical Calculations
+ *	by Nachum Dershowitz and Edward M. Reingold
+ *	Software---Practice & Experience,
+ *	vol. 20, no. 9 (September, 1990), pp. 899--928.
+ *
+ * C++, Lisp, and EmacsLisp code from that paper can be found at
+ *
+ *	http://emr.cs.iit.edu/~reingold/calendars.shtml
  *)
 
-local
-  structure Int = IntImp
-  structure Int32 = Int32Imp
-  structure Time = TimeImp
-  structure SS = InitSubstring
-  structure String = StringImp
-in
 structure Date : DATE =
   struct
+
+    structure Int = IntImp
+    structure Int32 = Int32Imp
+    structure IntInf = IntInfImp
+    structure String = StringImp
+    structure Time = TimeImp
+    structure SS = InitSubstring
 
   (* the run-time system indexes the year off this *)
     val baseYear = 1900
@@ -294,7 +306,27 @@ structure Date : DATE =
 	    internalDate () handle Date => d
 	  end
 
-    fun toString d = ascTime (toTM d)
+  (* date comparison does not take into account the offset
+   * thus, it does not compare dates in different time zones
+   *)
+    fun compare (DATE d1, DATE d2) = let
+	  fun cmp (sel, k) = (case Int.compare (sel d1, sel d2)
+		 of EQUAL => k()
+		  | order => order
+		(* end case *))
+	  in
+	    cmp (#year, fn () =>
+	    cmp (monthToInt o #month, fn () =>
+	    cmp (#day, fn () =>
+	    cmp (#hour, fn () =>
+	    cmp (#minute, fn () =>
+	    cmp (#second, fn () => EQUAL))))))
+	  end
+
+
+  (***** String conversions *****)
+
+    fun toString d = ascTime (date2tm d)
 
   (* the size of the runtime system character buffer, not including space for the '\0' *)
     val fmtBuf = 512-1
@@ -374,98 +406,80 @@ structure Date : DATE =
 	    fn d => let val tm = toTM d in String.concat(List.map (fn f => f tm) fmtFns) end
 	  end
 
+  (* Date scanner *)
     fun scan getc s = let
-
 	  fun getword s = StringCvt.splitl Char.isAlpha getc s
-  
-	  fun expect c s f =
-	      case getc s of
-		  NONE => NONE
-		| SOME (c', s') => if c = c' then f s' else NONE
-  
-	  fun getdig s =
-	      case getc s of
-		  NONE => NONE
-		| SOME (c, s') =>
-		    if Char.isDigit c then
-			SOME (Char.ord c - Char.ord #"0", s')
+	(* consume the character c from the stream s and then pass the remaining
+	 * stream to the continuation k.  Returns NONE if a different character
+	 * is encountered.
+	 *)
+	  fun expect c s k = (case getc s
+		 of NONE => NONE
+		  | SOME(c', s') => if c = c' then k s' else NONE
+		(* end case *))
+	  fun getdig s = (case getc s
+		of NONE => NONE
+		 | SOME(c, s') => if Char.isDigit c
+		    then SOME (Char.ord c - Char.ord #"0", s')
 		    else NONE
-  
-	  fun get2dig s =
-	      case getdig s of
-		  SOME (c1, s') =>
-		    (case getdig s' of
-			 SOME (c2, s'') => SOME (10 * c1 + c2, s'')
-		       | NONE => NONE)
-		| NONE => NONE
-  
+  		(* end case *))
+	  fun get2dig s = (case getdig s
+		 of SOME(c1, s') => (case getdig s'
+		       of SOME (c2, s'') => SOME (10 * c1 + c2, s'')
+		        | NONE => NONE
+		      (* end case *))
+		  | NONE => NONE
+    		(* end case *))
 	(* day can be two digits or one digit preceded by a space *)
-	  fun getday s =
-	      case get2dig s
-		of NONE => 
-		     expect #" " s (fn s' => getdig s')
-		 | (res as SOME (n, s')) => res
-
-	  fun year0 (wday, mon, d, hr, mn, sc) s =
-	      case IntImp.scan StringCvt.DEC getc s of
-		  NONE => NONE
-		| SOME (yr, s') =>
-		    (SOME (date { year = yr,
-				  month = mon,
-				  day = d, hour = hr,
-				  minute = mn, second = sc,
-				  offset = NONE },
-			   s')
-		     handle _ => NONE)
-  
+	  fun getday s = (case get2dig s
+		 of NONE => expect #" " s (fn s' => getdig s')
+		  | (res as SOME (n, s')) => res
+  		(* end case *))
+	  fun year0 (wday, mon, d, hr, mn, sc) s = (case Int.scan StringCvt.DEC getc s
+		 of NONE => NONE
+		  | SOME (yr, s') => (SOME(date {
+			year = yr, month = mon, day = d,
+			hour = hr, minute = mn, second = sc,
+			offset = NONE
+		      }, s')) handle _ => NONE
+		(* end case *))
 	  fun year args s = expect #" " s (year0 args)
-  
-	  fun second0 (wday, mon, d, hr, mn) s =
-	      case get2dig s of
-		  NONE => NONE
-		| SOME (sc, s') => year (wday, mon, d, hr, mn, sc) s'
-  
+	  fun second0 (wday, mon, d, hr, mn) s = (case get2dig s
+		 of NONE => NONE
+		  | SOME (sc, s') => year (wday, mon, d, hr, mn, sc) s'
+		(* end case *))
 	  fun second args s = expect #":" s (second0 args)
-  
-	  fun minute0 (wday, mon, d, hr) s =
-	      case get2dig s of
-		  NONE => NONE
-		| SOME (mn, s') => second (wday, mon, d, hr, mn) s'
-  
+	  fun minute0 (wday, mon, d, hr) s = (case get2dig s
+		 of NONE => NONE
+		  | SOME (mn, s') => second (wday, mon, d, hr, mn) s'
+		(* end case *))
 	  fun minute args s = expect #":" s (minute0 args)
-  
-	  fun time0 (wday, mon, d) s =
-	      case get2dig s of
-		  NONE => NONE
-		| SOME (hr, s') => minute (wday, mon, d, hr) s'
-  
+	  fun time0 (wday, mon, d) s = (case get2dig s
+		 of NONE => NONE
+		  | SOME (hr, s') => minute (wday, mon, d, hr) s'
+		(* end case *))
 	  fun time args s = expect #" " s (time0 args)
-  
-	  fun mday0 (wday, mon) s =
-	      case getday s of
-		  NONE => NONE
-		| SOME (d, s') => time (wday, mon, d) s'
-  
+	  fun mday0 (wday, mon) s = (case getday s
+		 of NONE => NONE
+		  | SOME (d, s') => time (wday, mon, d) s'
+  		(* end case *))
 	  fun mday args s = expect #" " s (mday0 args)
-  
-	  fun month0 wday s =
-	      case getword s of
-		  ("Jan", s') => mday (wday, Jan) s'
-		| ("Feb", s') => mday (wday, Feb) s'
-		| ("Mar", s') => mday (wday, Mar) s'
-		| ("Apr", s') => mday (wday, Apr) s'
-		| ("May", s') => mday (wday, May) s'
-		| ("Jun", s') => mday (wday, Jun) s'
-		| ("Jul", s') => mday (wday, Jul) s'
-		| ("Aug", s') => mday (wday, Aug) s'
-		| ("Sep", s') => mday (wday, Sep) s'
-		| ("Oct", s') => mday (wday, Oct) s'
-		| ("Nov", s') => mday (wday, Nov) s'
-		| ("Dec", s') => mday (wday, Dec) s'
-		| _ => NONE
-  
+	  fun month0 wday s = (case getword s
+		 of ("Jan", s') => mday (wday, Jan) s'
+		  | ("Feb", s') => mday (wday, Feb) s'
+		  | ("Mar", s') => mday (wday, Mar) s'
+		  | ("Apr", s') => mday (wday, Apr) s'
+		  | ("May", s') => mday (wday, May) s'
+		  | ("Jun", s') => mday (wday, Jun) s'
+		  | ("Jul", s') => mday (wday, Jul) s'
+		  | ("Aug", s') => mday (wday, Aug) s'
+		  | ("Sep", s') => mday (wday, Sep) s'
+		  | ("Oct", s') => mday (wday, Oct) s'
+		  | ("Nov", s') => mday (wday, Nov) s'
+		  | ("Dec", s') => mday (wday, Dec) s'
+		  | _ => NONE
+		(* end case *))
 	  fun month wday s = expect #" " s (month0 wday)
-  
 	  fun wday s = (case getword s
 		 of ("Sun", s') => month Sun s'
 		  | ("Mon", s') => month Mon s'
@@ -482,15 +496,4 @@ structure Date : DATE =
 
     fun fromString s = StringCvt.scanString scan s
 
-    (* comparison does not take into account the offset
-     * thus, it does not compare dates in different time zones
-     *)
-    fun compare (d1, d2) = let
-	  fun list (DATE{year, month, day, hour, minute, second, ...}) =
-		[year, monthToInt month, day, hour, minute, second]
-	  in
-	    List.collate Int.compare (list d1, list d2)
-	  end
-
   end (* Date *)
-end (* local *)

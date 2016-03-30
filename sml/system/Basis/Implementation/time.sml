@@ -12,10 +12,6 @@ structure TimeImp : sig
     val fractionsPerSecond : LargeInt.int
     val toFractions   : time -> LargeInt.int
     val fromFractions : LargeInt.int -> time
-    
-    (* support for interface to runtime system *)
-    val fromTime_t : SMLBasis.Time_t -> time
-    val toTime_t : time -> SMLBasis.Time_t
 
   end = struct
 
@@ -53,35 +49,49 @@ structure TimeImp : sig
     fun fromReal rsec = PB.TIME{ usec = Real.toLargeInt IEEEReal.TO_ZERO (rsec * 1.0e6) }
     fun toReal (PB.TIME{usec}) = Real.fromLargeInt usec * 1.0e~6
 
+    local
+	val gettimeofday : unit -> (Int32.int * int) =
+	    CInterface.c_function "SMLNJ-Time" "timeofday"
+    in
+        fun now () = let
+	    val (ts, tu) = gettimeofday ()
+	in
+	    fromMicroseconds (1000000 * Int32.toLarge ts + Int.toLarge tu)
+	end
+    end (* local *)
+
     val rndv : LInt.int vector =  #[50000, 5000, 500, 50, 5]
 
-    fun fmt prec (PB.TIME { usec }) = let
-	val (neg, usec) = if usec < 0 then (true, ~usec) else (false, usec)
-	fun fmtInt i = LInt.fmt StringCvt.DEC i
-	fun fmtSec (true, i) = "~" ^ fmtInt i
-	  | fmtSec (false, i) = fmtInt i
-	fun isEven i = LInt.rem (i, 2) = 0
-    in
-	if prec < 0 then raise General.Size
-	else if prec = 0 then
-	    let val (sec, usec) = IntInfImp.quotRem (usec, 1000000)
+    fun fmt' (prec, PB.TIME{ usec }) = let
+	  val (neg, usec) = if usec < 0 then (true, ~usec) else (false, usec)
+	  fun fmtInt i = LInt.fmt StringCvt.DEC i
+	  fun fmtSec (true, i) = "~" ^ fmtInt i
+	    | fmtSec (false, i) = fmtInt i
+	  fun isEven i = LInt.rem (i, 2) = 0
+	  in
+	    if prec = 0
+	      then let
+		val (sec, usec) = IntInfImp.quotRem (usec, 1000000)
 		val sec = (case LInt.compare (usec, 500000)
 		       of LESS => sec
 			| GREATER => sec + 1
 			| EQUAL => if isEven sec then sec else sec + 1
 		      (* end  case *))
-	    in
-		fmtSec (neg, sec)
-	    end
-	else if prec >= 6 then
-	    let val (sec, usec) = IntInfImp.quotRem (usec, 1000000)
-	    in
-		concat [fmtSec (neg, sec), ".",
-			StringCvt.padLeft #"0" 6 (fmtInt usec),
-			StringCvt.padLeft #"0" (prec - 6) ""]
-	    end
-	else
-	    let	val rnd = Vector.sub (rndv, prec - 1)
+		in
+		  fmtSec (neg, sec)
+		end
+	    else if prec >= 6
+	      then let
+	        val (sec, usec) = IntInfImp.quotRem (usec, 1000000)
+		in
+		  concat [
+		      fmtSec (neg, sec), ".",
+		      StringCvt.padLeft #"0" 6 (fmtInt usec),
+		      StringCvt.padLeft #"0" (prec - 6) ""
+		    ]
+		end
+	      else let
+		val rnd = Vector.sub (rndv, prec - 1)
 		val (whole, frac) = IntInfImp.quotRem (usec, 2 * rnd)
 		val whole = (case LInt.compare (frac, rnd)
 		       of LESS => whole
@@ -90,11 +100,13 @@ structure TimeImp : sig
 		      (* end  case *))
 		val rscl = 2 * Vector.sub (rndv, 5 - prec)
 		val (sec, frac) = IntInfImp.quotRem (whole, rscl)
-	    in
-		concat [fmtSec (neg, sec), ".",
-			StringCvt.padLeft #"0" prec (fmtInt frac)]
-	    end
-    end
+		in
+		  concat [fmtSec (neg, sec), ".", StringCvt.padLeft #"0" prec (fmtInt frac)]
+		end
+	  end
+
+    fun fmt prec = if (prec < 0) then raise Size else (fn t => fmt'(prec, t))
+
 
   (* scan a time value; this has the syntax:
    *
@@ -171,17 +183,5 @@ structure TimeImp : sig
     val op >= = binop op >=
 
     end
-
-    fun fromTime_t { seconds, uSeconds } =
-	fromSeconds (Int32.toLarge seconds) + 
-	fromMicroseconds (Int32.toLarge uSeconds)
-    fun toTime_t t = let 
-        val seconds = toSeconds t
-    in
-	{ seconds = Int32.fromLarge seconds,
-	  uSeconds = Int32.fromLarge (toMicroseconds (t - fromSeconds seconds))}
-    end
-
-    val now = fromTime_t o SMLBasis.now
 
   end (* TIME *)

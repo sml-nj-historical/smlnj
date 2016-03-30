@@ -1,6 +1,7 @@
 (* real64-vector.sml
  *
- * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Vectors of Real64.real values.
  * NOTE: currently, we do not have sufficient tag bits to use a packed
@@ -37,5 +38,10 @@ structure Real64Vector : MONO_VECTOR
     val exists  = Vector.exists
     val all     = Vector.all
     val collate = Vector.collate
+
+  (* added for Basis Library proposal 2015-003 *)
+    val toList = Vector.toList
+    val append = Vector.append
+    val prepend = Vector.prepend
 
   end

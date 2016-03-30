@@ -14,7 +14,7 @@ twoup=`pwd`
 cd $here
 
 SML=$twoup/bin/sml
-ARCH=sparc
+ARCH=x86
 
 #
 # use the arch-n-opsys script to determine the ARCH/OS if possible
@@ -33,6 +33,7 @@ ITER=3
 BASE=sml
 REBUILD="-rebuild"
 SETLIGHT=""
+SAVE=false		# should we save intermediate boot and bin directories?
 
 #
 # Function to do one round of compilation to get the initial set of binfiles.
@@ -71,6 +72,9 @@ while [ "$#" != 0 ] ; do
 	REBUILD="-lightrebuild"
 	SETLIGHT='val _ = #set (CMB.symval "LIGHT") (SOME 1);'
 	;;
+    -save)
+	SAVE=true;
+	;;
     *)
 	echo "$this: unknown argument \"$arg\""
 	exit 2
@@ -90,6 +94,17 @@ if initcompile ; then
 	if ./makeml -boot $prevbase$BOOT $REBUILD $iterbase ; then
 	    if diff -r $prevbase$BIN $iterbase$BIN >/dev/null 2>&1 ; then
 		echo "$this: fixpoint reached in round $iter"
+		if $SAVE ; then
+		  echo "$this: results in $iterbase$BOOT $iterbase$BIN"
+		else
+		# get rid of the intermediary results and move the boot/bin files
+		# where they belong
+		  rm -rf $BASE$BOOT $BASE$BIN
+		  mv $iterbase$BOOT $BASE$BOOT
+		  mv $iterbase$BIN $BASE$BIN
+		  rm -rf $BASE[1-9]$BOOT $BASE[1-9]$BIN
+		  echo "$this: results in $BASE$BOOT $BASE$BIN"
+		fi
 		exit 0
 	    fi
 	else

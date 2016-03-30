@@ -1,9 +1,10 @@
 (* option.sig
  *
- * COPYRIGHT (c) 1997 AT&T Labs Research.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
-signature OPTION =
+signature OPTION_2004 =
   sig
     datatype 'a option = NONE | SOME of 'a
 
@@ -22,4 +23,15 @@ signature OPTION =
 
   end;
 
+(* added for Basis Library proposal 2015-003 *)
+signature OPTION_2015 =
+  sig
 
+    include OPTION_2004
+
+    val isNone : 'a option -> bool
+    val fold : ('a * 'b -> 'b) -> 'b -> 'a option -> 'b
+
+  end
+
+signature OPTION = OPTION_2015

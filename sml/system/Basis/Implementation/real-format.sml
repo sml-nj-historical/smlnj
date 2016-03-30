@@ -259,12 +259,17 @@ structure RealFormat : sig
   	  end
         else fmtInfNan r
 
+  (* Note that the SML Basis Library specification requires the Size exception to be
+   * raised as soon as Real.fmt is applied to an invalid format specifier.
+   *)
+    fun checkPrec p = if I.<(p, 0) then raise Size else p
+
     fun fmtReal (StringCvt.SCI NONE) = realToSciStr 6
-      | fmtReal (StringCvt.SCI(SOME prec)) = realToSciStr prec
+      | fmtReal (StringCvt.SCI(SOME prec)) = realToSciStr (checkPrec prec)
       | fmtReal (StringCvt.FIX NONE) = realToFixStr 6
-      | fmtReal (StringCvt.FIX(SOME prec)) = realToFixStr prec
+      | fmtReal (StringCvt.FIX(SOME prec)) = realToFixStr (checkPrec prec)
       | fmtReal (StringCvt.GEN NONE) = realToGenStr 12
-      | fmtReal (StringCvt.GEN(SOME prec)) = realToGenStr prec
+      | fmtReal (StringCvt.GEN(SOME prec)) = realToGenStr (checkPrec prec)
       | fmtReal StringCvt.EXACT =
 	raise Fail "RealFormat: fmtReal: EXACT not supported"
 

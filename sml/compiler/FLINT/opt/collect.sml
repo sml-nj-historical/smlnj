@@ -25,7 +25,7 @@ sig
     val ireset    : info -> unit
 
     (* inc the "true=call,false=use" count *)
-    val use    : FLINT.value list option -> info -> unit
+    val use    : bool -> info -> unit
     (* dec the "true=call,false=use" count and return true if zero *)
     val unuse  : bool -> info -> bool
     (* transfer the counts of var1 to var2 *)
@@ -149,12 +149,7 @@ fun mergearg (NONE,a) = NONE
   | mergearg (SOME(fv,SOME b),a) =
     if a = b orelse a = F.VAR fv then SOME(fv,SOME b) else NONE
 
-fun use call (Info{uses,calls,...}) =
-    (inc uses;
-     case call
-      of NONE => ()
-      | SOME vals =>
-	inc calls)
+fun use call (Info{uses,calls,...}) = (inc uses; if call then inc calls else ())
 
 fun unuse call (Info{uses,calls,...}) =
     (* notice the calls could be dec'd to negative values because a
@@ -206,8 +201,8 @@ fun impurePO (po:F.primop) = PO.effect (#2 po)
 
 val census = let
     (* val use = if inc then use else unuse *)
-    fun call args lv = use args (get lv)
-    val use = fn F.VAR lv => use NONE (get lv) | _ => ()
+    fun call lv = use true (get lv)
+    val use = fn F.VAR lv => use false (get lv) | _ => ()
     fun newv lv = new NONE lv
     fun newf args lv = new args lv
     fun id x = x
@@ -254,14 +249,14 @@ val census = let
 	    end
 	       
 	  | F.APP (F.VAR f,vs) =>
-	    (call (SOME vs) f; app use vs)
+	    (call f; app use vs)
 
 	  | F.TFN ((tfk,tf,args,body),le) =>
 	    let val tfi = newf (SOME[]) tf
 	    in cexp le; if used tfi then cexp body else ()
 	    end
 
-	  | F.TAPP (F.VAR tf,tycs) => call (SOME[]) tf
+	  | F.TAPP (F.VAR tf,tycs) => call tf
 
 	  | F.SWITCH (v,cs,arms,def) =>
 	    (use v; Option.map cexp def;
@@ -314,7 +309,7 @@ fun unuselexp undertaker = let
     fun uncall lv = if unuse true (get lv) then undertaker lv else ()
     val unuse = fn F.VAR lv => if unuse false (get lv) then undertaker lv else ()
 		 | _ => ()
-    fun def i = (use NONE i)
+    fun def i = (use false i)
     fun id x = x
 
     fun cpo (NONE:F.dict option,po,lty,tycs) = ()

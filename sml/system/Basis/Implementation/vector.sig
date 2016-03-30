@@ -1,10 +1,10 @@
 (* vector.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
-signature VECTOR = 
+signature VECTOR_2004 = 
   sig
     eqtype 'a vector
 
@@ -34,3 +34,16 @@ signature VECTOR =
     val all     : ('a -> bool) -> 'a vector -> bool
     val collate : ('a * 'a -> order) -> 'a vector * 'a vector -> order
   end
+
+(* includes Basis Library proposal 2015-003 *)
+signature VECTOR_2015 =
+  sig
+    include VECTOR_2004
+
+    val toList  : 'a vector -> 'a list
+    val append  : 'a vector * 'a -> 'a vector
+    val prepend : 'a * 'a vector -> 'a vector
+
+  end
+
+signature VECTOR = VECTOR_2015

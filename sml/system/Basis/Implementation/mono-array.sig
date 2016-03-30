@@ -1,12 +1,12 @@
 (* mono-array.sig
  *
- * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Generic interface for monomorphic array structures.
- *
  *)
 
-signature MONO_ARRAY =
+signature MONO_ARRAY_2004 =
   sig
 
     eqtype array
@@ -46,3 +46,15 @@ signature MONO_ARRAY =
     val collate : (elem * elem -> order) -> array * array -> order
 
   end
+
+(* includes Basis Library proposal 2015-003 *)
+signature MONO_ARRAY_2015 =
+  sig
+    include MONO_ARRAY_2004
+
+    val toList     : array -> elem list
+    val fromVector : vector -> array
+    val toVector   : array -> vector
+  end
+
+signature MONO_ARRAY = MONO_ARRAY_2015

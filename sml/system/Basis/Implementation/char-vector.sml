@@ -1,9 +1,9 @@
 (* char-vector.sml
  *
- * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Vectors of characters (aka strings).
- *
  *)
 
 structure CharVector : MONO_VECTOR =
@@ -32,12 +32,14 @@ structure CharVector : MONO_VECTOR =
 
     val maxLen = String.maxSize
 
+    fun checkLen n =
+	if InlineT.DfltInt.ltu(maxLen, n) then raise General.Size else ()
+
     val fromList = String.implode
 
     fun tabulate (0, _) = ""
       | tabulate (n, f) = let
-	  val _ = if (InlineT.DfltInt.ltu(maxLen, n)) then raise General.Size
-		  else ()
+	  val _ = checkLen n
 	  val ss = Assembly.A.create_s n
 	  fun fill i =
 	      if i < n then (uupd (ss, i, f i); fill (i ++ 1))
@@ -154,4 +156,49 @@ structure CharVector : MONO_VECTOR =
     in
 	col 0
     end
+
+  (* added for Basis Library proposal 2015-003 *)
+    local
+    (* utility function for extracting the elements of a vector as a list *)
+      fun getList (_, 0, l) = l
+	| getList (vec, i, l) = let val i = i -- 1
+	    in
+	      getList (vec, i, usub(vec, i) :: l)
+	    end
+    in
+
+    fun toList vec = let
+	  val n = length vec
+	  in
+	    getList (vec, n, [])
+	  end
+
+    fun append (vec, x) = let
+	  val n = length vec
+	  val n' = n ++ 1
+	  val _ = checkLen n'
+	  val ss = Assembly.A.create_s n'
+	  fun fill i = if i < n
+		then (uupd (ss, i, usub(vec, i)); fill (i ++ 1))
+	        else ()
+	  in
+	    fill 0; uupd (ss, n, x);
+	    ss
+	  end
+
+    fun prepend (x, vec) = let
+	  val n = length vec
+	  val n' = n ++ 1
+	  val _ = checkLen n'
+	  val ss = Assembly.A.create_s n'
+	  fun fill i = if i < n
+		then (uupd (ss, i ++ 1, usub(vec, i)); fill (i ++ 1))
+	        else ()
+	  in
+	    uupd (ss, 0, x); fill 0;
+	    ss
+	  end
+
+    end (* local *)
+
   end (* CharVector *)

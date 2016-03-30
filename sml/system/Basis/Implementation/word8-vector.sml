@@ -1,7 +1,7 @@
-(* word8vector.sml
+(* word8-vector.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 structure Word8Vector : MONO_VECTOR =
@@ -92,4 +92,10 @@ structure Word8Vector : MONO_VECTOR =
           = InlineT.cast CharVector.all
     val collate : (elem * elem -> order) -> vector * vector -> order
           = InlineT.cast CharVector.collate
+
+  (* added for Basis Library proposal 2015-003 *)
+    val toList : vector -> elem list = InlineT.cast CharVector.toList
+    val append : vector * elem -> vector = InlineT.cast CharVector.append
+    val prepend : elem * vector -> vector = InlineT.cast CharVector.prepend
+
   end
