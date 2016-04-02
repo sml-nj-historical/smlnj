@@ -47,9 +47,11 @@ structure BitArray :> BIT_ARRAY =
          * We maintain the invariant that all bits >= nbits are 0.
          *)
           type elem = bool
-          val maxLen = 8*Word8Array.maxLen
           datatype vector = BA of {nbits : int, bits : W8A.array}
       
+          val maxLen = 8*Word8Array.maxLen
+		handle Overflow => Word8Array.maxLen (* would valOf Int.maxInt be better? *)
+
           fun array (0,init) = BA{nbits=0,bits=W8A.array(0,0w0)}
             | array (len,false) = BA{nbits=len,bits=W8A.array(sizeOf len,0w0)}
             | array (len,true) = let
