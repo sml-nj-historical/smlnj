@@ -97,7 +97,7 @@ fun ppPat (context as (env, source_opt)) ppstrm =
 	fun ppPat' (WildPat,_) = (pps "_")
 	  | ppPat' (VarPat p, d) =  pp_symbol_list(p)
 	  | ppPat' (IntPat i,_) = pps(IntInf.toString i)
-	  | ppPat' (WordPat w,_) = pps(IntInf.toString w)
+	  | ppPat' (WordPat w,_) = pps("0w" ^ IntInf.toString w)
 	  | ppPat' (StringPat s, _) = pp_mlstr ppstrm s
 	  | ppPat' (CharPat s,_) = (pps "#"; pp_mlstr ppstrm s)
 	  | ppPat' (LayeredPat {varPat,expPat},d) =
@@ -282,7 +282,7 @@ and ppExp (context as (env, source_opt)) ppstrm =
                      | _ => parenThunk()
                 end
 	| ppExp' (IntExp i,_,_) = pps (IntInf.toString i)
-	| ppExp' (WordExp w,_,_) = pps (IntInf.toString w)
+	| ppExp' (WordExp w,_,_) = pps ("0w" ^ IntInf.toString w)
 	| ppExp' (RealExp r,_,_) = pps r
 	| ppExp' (StringExp s,_,_) = pp_mlstr ppstrm s
 	| ppExp' (CharExp s,_,_) = (pps "#"; pp_mlstr ppstrm s)

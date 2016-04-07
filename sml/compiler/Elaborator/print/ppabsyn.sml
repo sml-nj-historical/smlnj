@@ -3,13 +3,13 @@
 
 signature PPABSYN =
 sig
-  val ppPat  : StaticEnv.staticEnv -> PrettyPrintNew.stream 
+  val ppPat  : StaticEnv.staticEnv -> PrettyPrintNew.stream
                -> Absyn.pat * int -> unit
   val ppExp  : StaticEnv.staticEnv * Source.inputSource option
                -> PrettyPrintNew.stream -> Absyn.exp * int -> unit
   val ppRule : StaticEnv.staticEnv * Source.inputSource option
                -> PrettyPrintNew.stream -> Absyn.rule * int -> unit
-  val ppVB   : StaticEnv.staticEnv * Source.inputSource option 
+  val ppVB   : StaticEnv.staticEnv * Source.inputSource option
                -> PrettyPrintNew.stream -> Absyn.vb * int -> unit
   val ppRVB  : StaticEnv.staticEnv * Source.inputSource option
                -> PrettyPrintNew.stream -> Absyn.rvb * int -> unit
@@ -26,7 +26,7 @@ sig
 end (* signature PPABSYN *)
 
 
-structure PPAbsyn: PPABSYN = 
+structure PPAbsyn: PPABSYN =
 struct
 
 local structure EM = ErrorMsg
@@ -71,17 +71,17 @@ fun prpos(ppstrm: PP.stream,
 
 
 fun checkpat (n,nil) = true
-  | checkpat (n, (sym,_)::fields) = 
+  | checkpat (n, (sym,_)::fields) =
     S.eq(sym, numlabel n) andalso checkpat(n+1,fields)
 
 fun checkexp (n,nil) = true
-  | checkexp (n, (LABEL{name=sym,...},_)::fields) = 
+  | checkexp (n, (LABEL{name=sym,...},_)::fields) =
 	S.eq(sym, numlabel n) andalso checkexp(n+1,fields)
 
 fun isTUPLEpat (RECORDpat{fields=[_],...}) = false
   | isTUPLEpat (RECORDpat{flex=false,fields,...}) = checkpat(1,fields)
   | isTUPLEpat _ = false
-	
+
 fun isTUPLEexp (RECORDexp [_]) = false
   | isTUPLEexp (RECORDexp fields) = checkexp(1,fields)
   | isTUPLEexp (MARKexp(a,_)) = isTUPLEexp a
@@ -104,7 +104,7 @@ fun ppPat env ppstrm =
 	      pps " :"; break ppstrm {nsp=1,offset=1};
 	      ppType env ppstrm t; pps ")";
 	      end_block ppstrm) *)
-	  | ppPat' (WORDpat(w,t),_) = pps(IntInf.toString w)
+	  | ppPat' (WORDpat(w,t),_) = pps("0w" ^ IntInf.toString w)
 (*	     (openHOVBox 2;
 	      pps "("; pps(IntInf.toString w);
 	      pps " :"; break ppstrm {nsp=1,offset=1};
@@ -143,7 +143,7 @@ fun ppPat env ppstrm =
 		      style=INCONSISTENT}
 		     fields
 	  | ppPat' (VECTORpat(nil,_), d) = pps "#[]"
-	  | ppPat' (VECTORpat(pats,_), d) = 
+	  | ppPat' (VECTORpat(pats,_), d) =
 	      let fun pr _ pat = ppPat'(pat, d-1)
 	       in ppClosedSequence ppstrm
 		    {front=(C PP.string "#["),
@@ -182,7 +182,7 @@ fun ppPat env ppstrm =
      in ppPat'
     end
 
-and ppDconPat(env,ppstrm) = 
+and ppDconPat(env,ppstrm) =
     let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
 	fun lpcond(atom) = if atom then pps "(" else ()
 	fun rpcond(atom) = if atom then pps ")" else ()
@@ -203,7 +203,7 @@ and ppDconPat(env,ppstrm) =
 	      pps " as "; ppPat env ppstrm (p,d-1); pps ")";
 	      closeBox ())
 	  | ppDconPat'(APPpat(DATACON{name,...},_,p),l,r,d) =
-	      let val dname = S.name name 
+	      let val dname = S.name name
 		      (* should really have original path, like for VARexp *)
 		  val thisFix = lookFIX(env,name)
 		  val effFix = case thisFix of NONfix => infFix | x => x
@@ -245,7 +245,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 	  | ppExp'(VARexp(ref var,_),_,_) = ppVar ppstrm var
 	  | ppExp'(CONexp(con,_),_,_) = ppDcon ppstrm con
 	  | ppExp'(INTexp (i,t),_,_) = pps(IntInf.toString i)
-	  | ppExp'(WORDexp(w,t),_,_) = pps(IntInf.toString w)
+	  | ppExp'(WORDexp(w,t),_,_) = pps("0w" ^ IntInf.toString w)
 	  | ppExp'(REALexp r,_,_) = pps r
 	  | ppExp'(STRINGexp s,_,_) = pp_mlstr ppstrm s
 	  | ppExp'(CHARexp s,_,_) = (pps "#"; pp_mlstr ppstrm s)
@@ -288,7 +288,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 		     style=INCONSISTENT}
 		    exps
 	      end
-          | ppExp'(PACKexp (e, t, tcs),atom,d) = 
+          | ppExp'(PACKexp (e, t, tcs),atom,d) =
 	      if !internals then
 		 (openHOVBox 0;
 		  pps "<PACK: "; ppExp'(e,false,d); pps "; ";
@@ -328,7 +328,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 		  (fn ppstrm => fn r => ppRule context ppstrm (r,d-1)), rules);
 	       rpcond(atom);
 	      closeBox ())
-	  | ppExp'(RAISEexp(exp,_),atom,d) = 
+	  | ppExp'(RAISEexp(exp,_),atom,d) =
 	      (openHVBox 0;
 	       lpcond(atom);
 	       pps "raise "; ppExp'(exp,true,d-1);
@@ -338,7 +338,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 	      (openHVBox 0;
 		pps "let ";
 		openHVBox 0;
-		 ppDec context ppstrm (dec,d-1); 
+		 ppDec context ppstrm (dec,d-1);
 		closeBox ();
 		break ppstrm {nsp=1,offset=0};
 		pps "in ";
@@ -352,7 +352,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 	      (openHVBox 0;
 	       pps "(case "; ppExp'(exp,true,d-1); nl_indent ppstrm 2;
 	       ppvlist ppstrm ("of ","   | ",
-		 (fn ppstrm => fn r => ppRule context ppstrm (r,d-1)), 
+		 (fn ppstrm => fn r => ppRule context ppstrm (r,d-1)),
                   trim rules);
 	       rparen();
 	       closeBox ())
@@ -473,7 +473,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 		       of CONexp(DATACON{name,...},_) =>
 		           fixitypp([name],rand,l,r,d)
 		        | VARexp(v,_) =>
-			   let val path = 
+			   let val path =
 			           case !v
 				     of VALvar{path=SymPath.SPATH p,...} => p
 				      | OVLDvar{name,...} => [name]
@@ -518,7 +518,7 @@ and ppVB (context as (env,source_opt)) ppstrm (VB{pat,exp,...},d) =
 	  closeBox ppstrm)
     else PP.string ppstrm "<binding>"
 
-and ppRVB context ppstrm (RVB{var, exp, ...},d) = 
+and ppRVB context ppstrm (RVB{var, exp, ...},d) =
     if d>0
     then (openHOVBox ppstrm (Rel 0);
 	  ppVar ppstrm var; PP.string ppstrm " =";
@@ -545,7 +545,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
 		  (case arity
 		    of 0 => ()
 		     | 1 => (pps "'a ")
-		     | n => (ppTuple ppstrm PP.string (typeFormals n); 
+		     | n => (ppTuple ppstrm PP.string (typeFormals n);
                              pps " ");
 		   ppSym ppstrm (InvPath.last path);
 		   pps " = "; ppType env ppstrm body)
@@ -562,13 +562,13 @@ and ppDec (context as (env,source_opt)) ppstrm =
 		       (case arity
 			 of 0 => ()
 			  | 1 => (pps "'a ")
-			  | n => (ppTuple ppstrm PP.string (typeFormals n); 
+			  | n => (ppTuple ppstrm PP.string (typeFormals n);
 				  pps " ");
 			ppSym ppstrm (InvPath.last path); pps " = ..."(*;
 		        ppSequence ppstrm
 			{sep=(fn ppstrm => (PP.string ppstrm " |";
 					    break ppstrm {nsp=1,offset=0})),
-			 pr=(fn ppstrm => fn (DATACON{name,...}) =>  
+			 pr=(fn ppstrm => fn (DATACON{name,...}) =>
 					     ppSym ppstrm name),
 			 style=INCONSISTENT}
 			dcons*))
@@ -578,7 +578,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
 		  (case arity
 		    of 0 => ()
 		     | 1 => (pps "'a ")
-		     | n => (ppTuple ppstrm PP.string (typeFormals n); 
+		     | n => (ppTuple ppstrm PP.string (typeFormals n);
                              pps " ");
 		   ppSym ppstrm (InvPath.last path);
 		   pps " = "; ppType env ppstrm body)
@@ -637,8 +637,8 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	      fun f ppstrm (FCTB{name=fname, fct=M.FCT { access, ... }, def}) =
                   (ppSym ppstrm fname;
 		   ppAccess ppstrm access;
-		   pps " = "; 
-		   break ppstrm {nsp=1,offset= 2}; 
+		   pps " = ";
+		   break ppstrm {nsp=1,offset= 2};
 		   ppFctexp context ppstrm (def,d-1))
 		| f _ _ = bug "ppDec':FCTdec"
 	  in
@@ -648,7 +648,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	  end
         | ppDec'(SIGdec sigvars,d) = let
 	      fun f ppstrm (M.SIG { name, ... }) =
-		  (pps "signature "; 
+		  (pps "signature ";
 		   case name of
 		       SOME s => ppSym ppstrm s
                      | NONE => pps "ANONYMOUS")
@@ -661,7 +661,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	  end
         | ppDec'(FSIGdec sigvars,d) = let
 	      fun f ppstrm (M.FSIG{kind, ...}) =
-		  (pps "funsig "; 
+		  (pps "funsig ";
                    case kind of SOME s => ppSym ppstrm s
                               | NONE => pps "ANONYMOUS")
 		| f _ _ = bug "ppDec':FSIGdec"
@@ -691,8 +691,8 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	  (openHVBox 0;
 	   case fixity
 	     of NONfix => pps "nonfix "
-	      | INfix (i,_) => 
-		    (if i mod 2 = 0 then 
+	      | INfix (i,_) =>
+		    (if i mod 2 = 0 then
 		       pps "infix "
 		     else pps "infixr ";
 		     if i div 2 > 0 then
@@ -713,13 +713,13 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	   pps "open ";
 	   ppSequence ppstrm
 	     {sep=(fn ppstrm => break ppstrm {nsp=1,offset=0}),
-	      pr=(fn ppstrm => fn (sp,_) => 
+	      pr=(fn ppstrm => fn (sp,_) =>
                         pps (SymPath.toString sp)),
 	      style=INCONSISTENT}
             strbs;
 	   closeBox ())
 
-        | ppDec'(MARKdec(dec,(s,e)),d) = 
+        | ppDec'(MARKdec(dec,(s,e)),d) =
 	  (case source_opt
 	    of SOME source =>
 	       (pps "MARKdec(";
@@ -756,7 +756,7 @@ and ppStrexp (context as (_,source_opt)) ppstrm =
                closeBox ppstrm)
 	| ppStrexp'(LETstr(dec,body),d) =
 	      (openHVBox ppstrm (Rel 0);
-	       pps "let "; ppDec context ppstrm (dec,d-1); 
+	       pps "let "; ppDec context ppstrm (dec,d-1);
                newline ppstrm;
 	       pps " in "; ppStrexp'(body,d-1); newline ppstrm;
 	       pps "end";
@@ -775,21 +775,21 @@ and ppStrexp (context as (_,source_opt)) ppstrm =
    in ppStrexp'
   end
 
-and ppFctexp (context as (_,source_opt)) ppstrm = 
+and ppFctexp (context as (_,source_opt)) ppstrm =
   let val pps = PP.string ppstrm
 
       fun ppFctexp'(_, 0) = pps "<fctexp>"
         | ppFctexp'(VARfct (M.FCT { access, ... }), d) = ppAccess ppstrm access
 
         | ppFctexp'(FCTfct{param=M.STR { access, ... }, def, ...}, d) =
-            (pps " FCT("; 
+            (pps " FCT(";
 	     ppAccess ppstrm access;
 	     pps ") => "; newline ppstrm;
  	     ppStrexp context ppstrm (def,d-1))
 
         | ppFctexp'(LETfct(dec,body),d) =
 	    (openHVBox ppstrm (Rel 0);
-	     pps "let "; ppDec context ppstrm (dec,d-1); 
+	     pps "let "; ppDec context ppstrm (dec,d-1);
              newline ppstrm;
 	     pps " in "; ppFctexp'(body,d-1); newline ppstrm;
 	     pps "end";
