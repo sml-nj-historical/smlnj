@@ -1,6 +1,8 @@
-(* unpickmod.sml *)
-
-(*
+(* unpickmod.sml
+ *
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * The new unpickler (based on the new generic unpickling facility).
  *
  * The unpickler embeds a "modtree" into the unpickled environment.
@@ -216,7 +218,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val intoption = option ioM int
 
 	val pid = UnpickleSymPid.r_pid (session, string)
-	    
+
 	fun access () = let
 	    fun a #"A" = lvar (int ())
 	      | a #"B" = A.EXTERN (pid ())
@@ -498,7 +500,7 @@ structure UnpickMod : UNPICKMOD = struct
 	      | st _ = raise Format
 	in
 	    share stampM st
-	end    
+	end
 
 	val tycId = stamp
 	val sigId = stamp
@@ -714,13 +716,13 @@ structure UnpickMod : UNPICKMOD = struct
 	end
 
         and iilist () = list iiListM inl_info ()
- *)       
-        and primId () = 
+ *)
+        and primId () =
             let
                 fun p #"A" = POI.Prim (string ())
                   | p #"B" = POI.NonPrim
 		  | p _ = raise Format
-            in 
+            in
                 share primIdM p
             end
 
@@ -902,7 +904,7 @@ structure UnpickMod : UNPICKMOD = struct
                     (M.InfTycSpec{name = symbol (), arity = int ()},
                      notree)
                   | tsi _ = raise Format
-             in share tsiM tsi 
+             in share tsiM tsi
             end
 
 	and entity' () = let

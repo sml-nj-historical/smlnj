@@ -1,10 +1,14 @@
-(* pickle-sym-pid.sml *)
+(* pickle-sym-pid.sml
+ *
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure PickleSymPid :>
   sig
     val w_symbol : ('ahm, Symbol.symbol) PickleUtil.pickler
     val w_pid : ('ahm, PersStamps.persstamp) PickleUtil.pickler
-  end = 
+  end =
 
 struct
 

@@ -1,6 +1,7 @@
-(* rehash.sml *)
-(*
- *  (C) 2001 Lucent Technologies, Bell Labs
+(* rehash.sml
+ *
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Compute hash for a library that is the product of filtering
  * a larger environment.  Since every environment (after unpickling)
