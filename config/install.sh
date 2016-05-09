@@ -313,7 +313,7 @@ if [ x"$ARCH" = "xx86" -a x"$OPSYS" = "xlinux" ] ; then
       gcc -m32 -o /tmp/$tmpFile /tmp/$tmpFile.c 2> /dev/null 1>> /dev/null
       if [ "$?" != "0" ] ; then
 	rm -f /tmp/$tmpFile /tmp/$tmpFile.c
-	complain "$this: !!! SML/NJ requires support for 32-bit executables. On Debian Linux, you may need to apt-get install gcc-multilib g++-multilib ia32-libs.  On RH Fedora, try: yum install glibc-devel.i686 libgcc.i686"
+	complain "$this: !!! SML/NJ requires support for 32-bit executables. Please see INSTALL file for more details."
       else
 	rm -f /tmp/$tmpFile /tmp/$tmpFile.c
       fi
