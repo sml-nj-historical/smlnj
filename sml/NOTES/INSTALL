@@ -65,7 +65,7 @@ If you are running Win32, see WININSTALL.
      entire transitive closure.  (If you didn't, the installer will
      kindly remind you.)
 
-          if you select...         |    ... you need 
+          if you select...         |    ... you need
       ---------------------------------------------------------------
           (always)                 | boot.<arch>-<os>.tgz
                                    | runtime.tgz
@@ -163,7 +163,7 @@ If you are running Win32, see WININSTALL.
    2.7.  Can I move files to another directory after the fact?
    -----------------------------------------------------------
 
-   Yes. 
+   Yes.
 
    Here is the procedure:
 
@@ -247,7 +247,7 @@ If you are running Win32, see WININSTALL.
 
       Once you have myxget, simply run:
 
-         $ URLGETTER=myxget config/install.sh  
+         $ URLGETTER=myxget config/install.sh
 
    3.2. The install fails with a message about 32-bit support
    ----------------------------------------------------------
@@ -264,21 +264,39 @@ If you are running Win32, see WININSTALL.
    to acquire the 32-bit emulation libraries for your particular Linux
    distribution.
 
-   For Debian and Ubuntu, you will need three packages: gcc-multilib, 
-   g++-multilib, and ia32-libs. These can be installed using apt-get:
+   For Debian (7.0 Wheezy and later) and recent version of Ubuntu, you will
+   need to enable multiarch support.  See https://wiki.debian.org/Multiarch or
+   https://wiki.ubuntu.com/MultiarchSpec for details, or try the following
+   commands:
 
-      apt-get install gcc-multilib g++-multilib ia32-libs
+	dpkg --add-architecture i386
+	apt-get update
+	apt-get install libc6:i386
+
+   For older versions of Debian and Ubuntu, you will need to install three
+   using apt-get:
+
+	apt-get install gcc-multilib g++-multilib ia32-libs
 
    For Red Hat Fedora (at least Fedora 16), you will need to install
    glibc-devel(i686):
 
-      yum install glibc-devel.i686
+	yum install glibc-devel.i686
 
-   For Red Hat Enterprise Linux (or CentOS) 6.2, you may also have to
+   For Red Hat Enterprise Linux (or CentOS), you may also have to
    install the rpm package libgcc-multilib, e.g.:
 
-      rpm -ivh libgcc-multilib-4.4.2-5.x86_64.rpm
+	yum groupinstall "Development tools"
+	yum install libgcc.i686
+	yum install glibc-devel.i686
 
-   where the libgcc-multilib package is downloaded from the rpmseek web site.
+   Older instructions for RHEL and CentOS: download the libgcc-multilib package
+   from rpmseek.com and then run
+
+	rpm -ivh libgcc-multilib-xxx.x86_64.rpm
+
+   where the libgcc-multilib package is the one you downloaded.
+
+   For openSUSE use the YaST administration tool to install package gcc-32bit.
 
 ----------------------------------------------------------------------------
