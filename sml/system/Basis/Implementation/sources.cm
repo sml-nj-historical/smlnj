@@ -71,6 +71,7 @@ Group
 	signature STRING_2004
 	signature TEXT_2004
 	signature VECTOR_2004
+	signature WORD_2004
 
       (* basis signatures with extensions from proposal 2015-003 added *)
 	signature ARRAY_2015
@@ -82,6 +83,9 @@ Group
 	signature STRING_2015
 	signature TEXT_2015
 	signature VECTOR_2015
+
+      (* basis signatures with extensions from proposal 2016-001 added *)
+	signature WORD_2016
 
       (* backward compatibility with the SML'90 version of the basis *)
 	signature SML90
@@ -381,6 +385,7 @@ is
 	int64.sml
 	int-inf-sig.sml
 	int-inf.sml
+	w32-popcount.sml
 	word31.sml
 	word32.sml
 	word64.sml

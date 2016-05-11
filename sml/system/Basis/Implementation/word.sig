@@ -1,10 +1,10 @@
 (* word.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
-signature WORD = 
+signature WORD_2004 =
   sig
     eqtype word
 
@@ -60,6 +60,15 @@ signature WORD =
     val fmt : StringCvt.radix -> word -> string
     val toString   : word -> string
 
-  end;
+  end
 
+(* includes Basis Library proposal 2016-001 *)
+signature WORD_2016 =
+  sig
+    include WORD_2004
 
+    val popCount : word -> int
+
+  end
+
+signature WORD = WORD_2016

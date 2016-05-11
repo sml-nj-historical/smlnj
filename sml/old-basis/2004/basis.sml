@@ -16,6 +16,7 @@ signature OPTION = OPTION_2004
 signature STRING = STRING_2004
 signature TEXT = TEXT_2004
 signature VECTOR = VECTOR_2004
+signature WORD = WORD_2004
 
 (* rebind basis structures using 2004 signatures *)
 structure Array : ARRAY = Array
@@ -28,6 +29,11 @@ structure Real64Array : MONO_ARRAY = Real64Array
 structure Real64Vector : MONO_VECTOR = Real64Vector
 structure Text : TEXT = Text
 structure Vector : VECTOR = Vector
+structure Word : WORD = Word
+structure Word8 : WORD = Word8
+structure Word31 : WORD = Word31
+structure Word32 : WORD = Word32
+structure Word64 : WORD = Word64
 structure Word8Array : MONO_ARRAY = Word8Array
 structure Word8Vector : MONO_VECTOR = Word8Vector
 

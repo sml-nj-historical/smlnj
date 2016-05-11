@@ -25,7 +25,8 @@ Library
 	signature OPTION_2004
 	signature STRING_2004
 	signature TEXT_2004
-	signature VECTOR_2004 
+	signature VECTOR_2004
+	signature WORD_2004
 	)
 
 is

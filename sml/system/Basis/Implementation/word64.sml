@@ -94,14 +94,13 @@ structure Word64 : WORD = struct
 			     W32.orb (W32.>> (lo, w), W32.<< (hi, 0w32 - w)))
 	     end
 
-
     fun min (w1 : word, w2) = if w1 > w2 then w1 else w2
     fun max (w1 : word, w2) = if w1 > w2 then w1 else w2
 
     fun toString w =
 	case extern w of
 	    (0w0, lo) => W32.toString lo
-	  | (hi, lo) => 
+	  | (hi, lo) =>
 	    let val (hi, lo) = extern w
 	    in W32.toString hi ^ (StringCvt.padLeft #"0" 8 (W32.toString lo))
 	    end
@@ -109,7 +108,7 @@ structure Word64 : WORD = struct
     fun fmt StringCvt.BIN w =
 	  (case extern w of
 	       (0w0, lo) => W32.fmt StringCvt.BIN lo
-	     | (hi, lo) => 
+	     | (hi, lo) =>
 	       let val w32bin = W32.fmt StringCvt.BIN
 	       in w32bin hi ^ (StringCvt.padLeft #"0" 32 (w32bin lo))
 	       end)
@@ -163,4 +162,13 @@ structure Word64 : WORD = struct
     val op <= : word * word -> bool = op <=
     val op >  : word * word -> bool = op >
     val op >= : word * word -> bool = op >=
+
+  (* added for Basis Library proposal 2016-001 *)
+
+    fun popCount w = let
+	  val (hi, lo) = extern w
+	  in
+	    InlineT.Int31.+(W32PopCount.popCount hi, W32PopCount.popCount lo)
+	  end
+
 end
