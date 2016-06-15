@@ -48,6 +48,7 @@ case `uname -s` in
 	  13*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.9 Mavericks
 	  14*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.10 Yosemite
 	  15*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.11 El Capitan
+	  16*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # macOS 10.12 Sierra
 	  *) exit 1;;
 	esac;;
     esac
