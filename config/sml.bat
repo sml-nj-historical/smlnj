@@ -1,4 +1,5 @@
 @echo OFF
+title Standard ML of New Jersey
 setlocal
 if "%SMLNJ_HOME%"=="" set SMLNJ_HOME=%~dp0\..
 if NOT EXIST "%SMLNJ_HOME%\bin\.run\run.x86-win32.exe" set SMLNJ_HOME=%~dp0\..
