@@ -42,7 +42,8 @@ structure MDLClientPseudoOps =
          fun lexpToString _ = ""
          fun defineLabel _ = ""
          fun emitValue _ = () 
-         fun sizeOf _ = 0 
+         fun sizeOf _ = 0
+         val wordSize = 0
       end
       type pseudo_op = unit
       fun toString _ = ""
