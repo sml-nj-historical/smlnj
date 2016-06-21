@@ -259,6 +259,7 @@ sig
    | POPFD
    | POP of operand
    | CDQ
+   | CLTD
    | CQTO
    | INTO
    | FMOVE of {fmvOp:fmove_op, dst:operand, src:operand}
@@ -328,6 +329,7 @@ sig
    val popfd : instruction
    val pop : operand -> instruction
    val cdq : instruction
+   val cltd : instruction
    val cqto : instruction
    val into : instruction
    val fmove : {fmvOp:fmove_op, dst:operand, src:operand} -> instruction
@@ -604,6 +606,7 @@ struct
    | POPFD
    | POP of operand
    | CDQ
+   | CLTD
    | CQTO
    | INTO
    | FMOVE of {fmvOp:fmove_op, dst:operand, src:operand}
@@ -671,6 +674,7 @@ struct
    and popfd = INSTR POPFD
    and pop = INSTR o POP
    and cdq = INSTR CDQ
+   and cltd = INSTR CLTD
    and cqto = INSTR CQTO
    and into = INSTR INTO
    and fmove = INSTR o FMOVE

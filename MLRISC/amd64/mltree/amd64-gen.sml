@@ -57,6 +57,8 @@ functor AMD64Gen (
     fun rcx ty = I.Direct(ty,C.rcx)
     fun rdx ty = I.Direct(ty,C.rdx)
 
+    fun signExtend ty = if ty = 64 then I.CQTO else I.CLTD
+
     val readonly = I.Region.readonly
 
     val newReg  = C.newReg
@@ -530,7 +532,7 @@ functor AMD64Gen (
 		  val l = Label.anon ()
 	      in
 		  move (ty, o1, rax ty);
-		  emit I.CQTO;
+		  emit (signExtend ty);
 		  mark (I.MULTDIV { multDivOp = O.idivOp ty, 
 		                     src = regOrMem (ty, o2) },
 			an);
@@ -568,7 +570,7 @@ functor AMD64Gen (
 		  val l = Label.anon ()
 	      in
 		  move (ty, o1, rax ty);
-		  emit I.CQTO;
+		  emit (signExtend ty);
 		  mark (I.MULTDIV { multDivOp = O.idiv1Op ty, 
 		                    src = regOrMem (ty, o2) },
 			an);
@@ -609,7 +611,7 @@ functor AMD64Gen (
               fun divrem(ty, signed, overflow, e1, e2, resultReg) =
 		  let val (opnd1, opnd2) = (operand ty e1, operand ty e2)
                       val _ = move(ty, opnd1, rax ty)
-                      val oper = if signed then (emit(I.CQTO); O.idiv1Op ty)
+                      val oper = if signed then (emit(signExtend ty); O.idiv1Op ty)
 				 else (zero (ty, rdx ty); O.div1Op ty)
 		  in  mark(I.MULTDIV{multDivOp=oper, src=regOrMem (ty, opnd2)},an);
                       move(ty, resultReg, dstOpnd);

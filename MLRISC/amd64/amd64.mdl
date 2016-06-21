@@ -778,6 +778,9 @@ architecture AMD64 =
     | CDQ
 	``cdq''
 
+    | CLTD
+        ``cltd''
+
     | CQTO
          ``cqto''
 

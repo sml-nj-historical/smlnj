@@ -604,6 +604,7 @@ struct
          ( emit "popq\t"; 
            emit_operand operand )
        | I.CDQ => emit "cdq"
+       | I.CLTD => emit "cltd"
        | I.CQTO => emit "cqto"
        | I.INTO => emit "int $4"
        | I.FMOVE{fmvOp, dst, src} => 
