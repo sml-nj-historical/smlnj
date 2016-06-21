@@ -1,4 +1,8 @@
-(*
+(* mdl-gen-cells.sml
+ *
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Generate the <arch>Cells structure.
  * This structure contains various information about the register
  * properties of the architecture.
@@ -157,6 +161,13 @@ struct
          | mkKindDesc(CELLdecl{alias=SOME x, id, ...}) = 
                TUPLEexp[kindName id, ID("desc_"^x)]
 
+       (* size of general-purpose registers in bytes *)
+       val cellSize = let
+	     val CELLdecl{bits=widthOfGP, ...} = Comp.lookupCellKind md "GP"
+	     in
+		widthOfGP div 8
+	     end
+
        (* create CellsBasis *)
        val applyCellsCommon =
            STRUCTUREdecl("MyCells",[],NONE,
@@ -166,7 +177,8 @@ struct
                   "val firstPseudo = 256"
                  ],
                 VALdecl(map mkDesc nonAliasedCellKinds),
-                VAL("cellKindDescs",LISTexp(map mkKindDesc cellKinds,NONE))
+                VAL("cellKindDescs",LISTexp(map mkKindDesc cellKinds,NONE)),
+		VAL("cellSize", LITexp(INTlit cellSize))
                ]))
 
        (* User defined locations *)
