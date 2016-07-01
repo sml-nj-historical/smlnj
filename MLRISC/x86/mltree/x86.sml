@@ -1,18 +1,18 @@
 (* x86.sml
  *
  * COPYRIGHT (c) 1998 Bell Laboratories.
- * 
+ *
  * This is a revised version that takes into account of
  * the extended x86 instruction set, and has better handling of
- * non-standard types.  I've factored out the integer/floating point 
- * comparison code, added optimizations for conditional moves. 
- * The latter generates SETcc and CMOVcc (Pentium Pro only) instructions. 
- * To avoid problems, I have tried to incorporate as much of 
+ * non-standard types.  I've factored out the integer/floating point
+ * comparison code, added optimizations for conditional moves.
+ * The latter generates SETcc and CMOVcc (Pentium Pro only) instructions.
+ * To avoid problems, I have tried to incorporate as much of
  * Lal's original magic incantations as possible.
  *
  * Some changes:
  *
- *  1.  REMU/REMS are now supported 
+ *  1.  REMU/REMS are now supported
  *  2.  COND is supported by generating SETcc and/or CMOVcc; this
  *      may require at least a Pentium II to work.
  *  3.  Division by a constant has been optimized.   Division by
@@ -23,7 +23,7 @@
  *      is recommended by the Intel Optimization Guide and seems to improve
  *      boxity tests on SML/NJ.
  *
- * More changes for floating point: 
+ * More changes for floating point:
  *  A new mode is implemented which generates pseudo 3-address instructions
  * for floating point.  These instructions are register allocated the
  * normal way, with the virtual registers mapped onto a set of pseudo
@@ -47,12 +47,12 @@ functor X86
 			where T = ExtensionComp.T
     datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
     val arch : arch ref
-    val cvti2f : 
-         {ty: X86Instr.T.ty, 
-          src: X86Instr.operand, 
+    val cvti2f :
+         {ty: X86Instr.T.ty,
+          src: X86Instr.operand,
              (* source operand, guaranteed to be non-memory! *)
           an: Annotations.annotations ref (* cluster annotations *)
-         } -> 
+         } ->
          {instrs : X86Instr.instruction list,(* the instructions *)
           tempMem: X86Instr.operand,         (* temporary for CVTI2F *)
           cleanup: X86Instr.instruction list (* cleanup code *)
@@ -60,10 +60,10 @@ functor X86
     (* When the following flag is set, we allocate floating point registers
      * directly on the floating point stack
      *)
-    val fast_floating_point : bool ref 
-  ) : sig include MLTREECOMP 
+    val fast_floating_point : bool ref
+  ) : sig include MLTREECOMP
           val rewriteMemReg : bool
-      end = 
+      end =
 struct
   structure I = X86Instr
   structure T = I.T
@@ -79,7 +79,7 @@ struct
   type mltreeStream = (T.stm,T.mlrisc list,CFG.cfg) TS.stream
 
   datatype kind = REAL | INTEGER
- 
+
   structure Gen = MLTreeGen
      (structure T = T
       structure Cells = C
@@ -91,22 +91,22 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("X86",msg)
 
-  (* Should we perform automatic MemReg translation?  
+  (* Should we perform automatic MemReg translation?
    * If this is on, we can avoid doing RewritePseudo phase entirely.
    *)
   val rewriteMemReg = rewriteMemReg
 
   (* The following hardcoded *)
-  fun isMemReg r = rewriteMemReg andalso 
+  fun isMemReg r = rewriteMemReg andalso
                    let val r = CB.registerNum r
-                   in  r >= 8 andalso r < 32 
+                   in  r >= 8 andalso r < 32
                    end
   fun isFMemReg r = if enableFastFPMode andalso !fast_floating_point
                     then let val r = CB.registerNum r
                          in r >= 8 andalso r < 32 end
                     else true
-  val isAnyFMemReg = List.exists (fn r => 
-                                  let val r = CB.registerNum r  
+  val isAnyFMemReg = List.exists (fn r =>
+                                  let val r = CB.registerNum r
                                   in  r >= 8 andalso r < 32 end
                                  )
 
@@ -126,14 +126,14 @@ struct
                    SHL=I.SHLL,SHR=I.SHRL,SAR=I.SARL,
                    OR=I.ORL,AND=I.ANDL,XOR=I.XORL}
 
-  (* 
-   * The code generator 
+  (*
+   * The code generator
    *)
-  fun selectInstructions 
+  fun selectInstructions
        (instrStream as
         TS.S.STREAM{emit=emitInstruction,defineLabel,entryLabel,pseudoOp,
 		    annotation,getAnnotations,beginCluster,endCluster,exitBlock,comment,...}) =
-  let 
+  let
       val emit = emitInstruction o I.INSTR
       exception EA
 
@@ -149,12 +149,12 @@ struct
 
       (* Add an overflow trap *)
       fun trap() =
-      let 
-	  val jmp = 
-            case !trapLabel of 
+      let
+	  val jmp =
+            case !trapLabel of
               NONE => let val label = Label.label "trap" ()
-                          val jmp   = 
-			      I.ANNOTATION{i=I.jcc{cond=I.O, 
+                          val jmp   =
+			      I.ANNOTATION{i=I.jcc{cond=I.O,
 						   opnd=I.ImmedLabel(T.LABEL label)},
 					   a=MLRiscAnnotations.BRANCHPROB (Probability.unlikely)}
                       in  trapLabel := SOME(jmp, label); jmp end
@@ -169,29 +169,29 @@ struct
         | fsize 80 = I.FP80
         | fsize _  = error "fsize"
 
-      (* mark an expression with a list of annotations *) 
+      (* mark an expression with a list of annotations *)
       fun mark'(i,[]) = emitInstruction(i)
-        | mark'(i,a::an) = mark'(I.ANNOTATION{i=i,a=a},an) 
+        | mark'(i,a::an) = mark'(I.ANNOTATION{i=i,a=a},an)
 
       (* annotate an expression and emit it *)
       fun mark(i,an) = mark'(I.INSTR i,an)
 
       val emits = app emitInstruction
 
-      (* emit parallel copies for integers 
-       * Translates parallel copies that involve memregs into 
+      (* emit parallel copies for integers
+       * Translates parallel copies that involve memregs into
        * individual copies.
        *)
       fun copy([], [], an) = ()
-        | copy(dst, src, an) = 
-          let fun mvInstr{dst as I.MemReg rd, src as I.MemReg rs} = 
+        | copy(dst, src, an) =
+          let fun mvInstr{dst as I.MemReg rd, src as I.MemReg rs} =
                   if CB.sameColor(rd,rs) then [] else
                   let val tmpR = I.Direct(newReg())
                   in  [I.move{mvOp=I.MOVL, src=src, dst=tmpR},
                        I.move{mvOp=I.MOVL, src=tmpR, dst=dst}]
                   end
-                | mvInstr{dst=I.Direct rd, src=I.Direct rs} = 
-                    if CB.sameColor(rd,rs) then [] 
+                | mvInstr{dst=I.Direct rd, src=I.Direct rs} =
+                    if CB.sameColor(rd,rs) then []
                     else [I.COPY{k=CB.GP, sz=32, dst=[rd], src=[rs], tmp=NONE}]
                 | mvInstr{dst, src} = [I.move{mvOp=I.MOVL, src=src, dst=dst}]
           in
@@ -199,12 +199,12 @@ struct
                {tmp=SOME(I.Direct(newReg())),
                 dst=dst, src=src})
           end
- 
+
       (* conversions *)
       val itow = Word.fromInt
       val wtoi = Word.toInt
       fun toInt32 i = T.I.toInt32(32, i)
-      val w32toi32 = Word32.toLargeIntX 
+      val w32toi32 = Word32.toLargeIntX
       val i32tow32 = Word32.fromLargeInt
 
       (* One day, this is going to bite us when precision(LargeInt)>32 *)
@@ -216,12 +216,12 @@ struct
       val edx = I.Direct(C.edx)
 
       fun immedLabel lab = I.ImmedLabel(T.LABEL lab)
- 
+
       (* Is the expression zero? *)
       fun isZero(T.LI z) = z = 0
         | isZero(T.MARK(e,a)) = isZero e
         | isZero _ = false
-       (* Does the expression set the zero bit? 
+       (* Does the expression set the zero bit?
         * WARNING: we assume these things are not optimized out!
         *)
       fun setZeroBit(T.ANDB _)     = true
@@ -249,23 +249,23 @@ struct
         | setZeroBit2(T.MARK(e, _)) = setZeroBit2 e
         | setZeroBit2 _             = false
 
-      (* emit parallel copies for floating point 
+      (* emit parallel copies for floating point
        * Normal version.
        *)
       fun fcopy'(fty, [], [], _) = ()
-        | fcopy'(fty, dst as [_], src as [_], an) = 
+        | fcopy'(fty, dst as [_], src as [_], an) =
             mark'(I.COPY{k=CB.FP, sz=fty, dst=dst,src=src,tmp=NONE}, an)
-        | fcopy'(fty, dst, src, an) = 
+        | fcopy'(fty, dst, src, an) =
             mark'(I.COPY{k=CB.FP, sz=fty, dst=dst,src=src,tmp=SOME(I.FDirect(newFreg()))}, an)
 
       (* emit parallel copies for floating point.
        * Fast version.
-       * Translates parallel copies that involve memregs into 
+       * Translates parallel copies that involve memregs into
        * individual copies.
        *)
-       
+
       fun fcopy''(fty, [], [], _) = ()
-        | fcopy''(fty, dst, src, an) = 
+        | fcopy''(fty, dst, src, an) =
           if true orelse isAnyFMemReg dst orelse isAnyFMemReg src then
           let val fsize = fsize fty
               fun mvInstr{dst, src} = [I.fmove{fsize=fsize, src=src, dst=dst}]
@@ -282,8 +282,8 @@ struct
                          case dst of
                            [_] => NONE
                          | _   => SOME(I.FPR(newFreg()))}, an)
- 
-      fun fcopy x = if enableFastFPMode andalso !fast_floating_point 
+
+      fun fcopy x = if enableFastFPMode andalso !fast_floating_point
                     then fcopy'' x else fcopy' x
 
       (* Translates MLTREE condition code to x86 condition code *)
@@ -296,24 +296,24 @@ struct
 
       fun zero dst = emit(I.BINARY{binOp=I.XORL, src=dst, dst=dst})
 
-      (* Move and annotate *) 
+      (* Move and annotate *)
       fun move'(src as I.Direct s, dst as I.Direct d, an) =
           if CB.sameColor(s,d) then ()
           else mark'(I.COPY{k=CB.GP, sz=32, dst=[d], src=[s], tmp=NONE}, an)
-        | move'(I.Immed 0, dst as I.Direct d, an) = 
+        | move'(I.Immed 0, dst as I.Direct d, an) =
             mark(I.BINARY{binOp=I.XORL, src=dst, dst=dst}, an)
         | move'(src, dst, an) = mark(I.MOVE{mvOp=I.MOVL, src=src, dst=dst}, an)
 
-      (* Move only! *)  
+      (* Move only! *)
       fun move(src, dst) = move'(src, dst, [])
 
       val readonly = I.Region.readonly
 
-      (* 
-       * Compute an effective address.  
+      (*
+       * Compute an effective address.
        *)
-      fun address(ea, mem) = let 
-          (* Keep building a bigger and bigger effective address expressions 
+      fun address(ea, mem) = let
+          (* Keep building a bigger and bigger effective address expressions
            * The input is a list of trees
            * b -- base
            * i -- index
@@ -322,20 +322,20 @@ struct
            *)
           fun doEA([], b, i, s, d) = makeAddressingMode(b, i, s, d)
             | doEA(t::trees, b, i, s, d) =
-              (case t of 
+              (case t of
                  T.LI n   => doEAImmed(trees, toInt32 n, b, i, s, d)
                | T.CONST _ => doEALabel(trees, t, b, i, s, d)
                | T.LABEL _ => doEALabel(trees, t, b, i, s, d)
                | T.LABEXP le => doEALabel(trees, le, b, i, s, d)
-               | T.ADD(32, t1, t2 as T.REG(_,r)) => 
+               | T.ADD(32, t1, t2 as T.REG(_,r)) =>
                     if isMemReg r then doEA(t2::t1::trees, b, i, s, d)
                     else doEA(t1::t2::trees, b, i, s, d)
                | T.ADD(32, t1, t2) => doEA(t1::t2::trees, b, i, s, d)
-               | T.SUB(32, t1, T.LI n) => 
+               | T.SUB(32, t1, T.LI n) =>
 		    doEA(t1::T.LI(T.I.NEG(32,n))::trees, b, i, s, d)
 	       | T.SLL(32, t1, T.LI n) => let
 		    val n = T.I.toInt(32, n)
-                 in 
+                 in
 		   case n
 		   of 0 => displace(trees, t1, b, i, s, d)
 	  	    | 1 => indexed(trees, t1, t, 1, b, i, s, d)
@@ -344,39 +344,39 @@ struct
 		    | _ => displace(trees, t, b, i, s, d)
                  end
                | t => displace(trees, t, b, i, s, d)
-              ) 
+              )
 
           (* Add an immed constant *)
           and doEAImmed(trees, 0, b, i, s, d) = doEA(trees, b, i, s, d)
-            | doEAImmed(trees, n, b, i, s, I.Immed m) = 
+            | doEAImmed(trees, n, b, i, s, I.Immed m) =
                  doEA(trees, b, i, s, I.Immed(n+m))
-            | doEAImmed(trees, n, b, i, s, I.ImmedLabel le) = 
-                 doEA(trees, b, i, s, 
+            | doEAImmed(trees, n, b, i, s, I.ImmedLabel le) =
+                 doEA(trees, b, i, s,
                       I.ImmedLabel(T.ADD(32,le,T.LI(T.I.fromInt32(32, n)))))
             | doEAImmed(trees, n, b, i, s, _) = error "doEAImmed"
 
           (* Add a label expression *)
-          and doEALabel(trees, le, b, i, s, I.Immed 0) = 
+          and doEALabel(trees, le, b, i, s, I.Immed 0) =
                  doEA(trees, b, i, s, I.ImmedLabel le)
-            | doEALabel(trees, le, b, i, s, I.Immed m) = 
-                 doEA(trees, b, i, s, 
+            | doEALabel(trees, le, b, i, s, I.Immed m) =
+                 doEA(trees, b, i, s,
                       I.ImmedLabel(T.ADD(32,le,T.LI(T.I.fromInt32(32, m))))
                       handle Overflow => error "doEALabel: constant too large")
-            | doEALabel(trees, le, b, i, s, I.ImmedLabel le') = 
+            | doEALabel(trees, le, b, i, s, I.ImmedLabel le') =
                  doEA(trees, b, i, s, I.ImmedLabel(T.ADD(32,le,le')))
             | doEALabel(trees, le, b, i, s, _) = error "doEALabel"
 
           and makeAddressingMode(NONE, NONE, _, disp) = disp
-            | makeAddressingMode(SOME base, NONE, _, disp) = 
+            | makeAddressingMode(SOME base, NONE, _, disp) =
                 I.Displace{base=base, disp=disp, mem=mem}
-            | makeAddressingMode(base, SOME index, scale, disp) = 
+            | makeAddressingMode(base, SOME index, scale, disp) =
                 I.Indexed{base=base, index=index, scale=scale,
                           disp=disp, mem=mem}
 
           (* generate code for tree and ensure that it is not in %esp *)
           and exprNotEsp tree =
               let val r = expr tree
-              in  if CB.sameColor(r, C.esp) then 
+              in  if CB.sameColor(r, C.esp) then
                      let val tmp = newReg()
                      in  move(I.Direct r, I.Direct tmp); tmp end
                   else r
@@ -400,7 +400,7 @@ struct
                   else
                     doEA(trees, b, SOME i, 0, d)
               end
-            | displace(trees, t, SOME base, i, s, d) = (* base and index *) 
+            | displace(trees, t, SOME base, i, s, d) = (* base and index *)
               let val b = expr(T.ADD(32,T.REG(32,base),t))
               in  doEA(trees, SOME b, i, s, d) end
 
@@ -412,15 +412,15 @@ struct
             | indexed(trees, _, t0, _, SOME base, i, s, d) = (*base and index*)
                let val b = expr(T.ADD(32, t0, T.REG(32, base)))
                in  doEA(trees, SOME b, i, s, d) end
-                  
-      in  case doEA([ea], NONE, NONE, 0, I.Immed 0) of 
+
+      in  case doEA([ea], NONE, NONE, 0, I.Immed 0) of
             I.Immed _ => raise EA
           | I.ImmedLabel le => I.LabelEA le
           | ea => ea
       end (* address *)
 
-          (* reduce an expression into an operand *)
-      and operand(T.LI i) = I.Immed(toInt32(i)) 
+     (* reduce an expression into an operand *)
+      and operand(T.LI i) = I.Immed(toInt32(i))
         | operand(x as (T.CONST _ | T.LABEL _)) = I.ImmedLabel x
         | operand(T.LABEXP le) = I.ImmedLabel le
         | operand(T.REG(_,r)) = IntReg r
@@ -450,22 +450,22 @@ struct
         | isImmediate _ = false
 
       and regOrMem opnd = if isImmediate opnd then moveToReg opnd else opnd
- 
-      and isMemOpnd opnd = 
-          (case opnd of 
+
+      and isMemOpnd opnd =
+          (case opnd of
             I.Displace _ => true
-          | I.Indexed _  => true 
-          | I.MemReg _   => true 
-          | I.LabelEA _  => true 
+          | I.Indexed _  => true
+          | I.MemReg _   => true
+          | I.LabelEA _  => true
           | I.FDirect f  => true
           | _            => false
           )
-      
-         (* 
-          * Compute an integer expression and put the result in 
-          * the destination register rd.  
+
+         (*
+          * Compute an integer expression and put the result in
+          * the destination register rd.
           *)
-      and doExpr(exp, rd : CB.cell, an) = 
+      and doExpr(exp, rd : CB.cell, an) =
           let val rdOpnd = IntReg rd
 
               fun equalRd(I.Direct r) = CB.sameColor(r, rd)
@@ -485,15 +485,15 @@ struct
                   in  move(opnd1, tmp);
                       mark(I.BINARY{binOp=binOp, src=opnd2, dst=tmp}, an);
                       move(tmp, rdOpnd)
-                  end 
+                  end
                   else
                      (move(opnd1, rdOpnd);
                       mark(I.BINARY{binOp=binOp, src=opnd2, dst=rdOpnd}, an)
                      )
 
                  (* Generate a binary operator; it may commute *)
-              fun binaryComm(binOp, e1, e2) = 
-              let val (opnd1, opnd2) = 
+              fun binaryComm(binOp, e1, e2) =
+              let val (opnd1, opnd2) =
                       case (operand e1, operand e2) of
                         (x as I.Immed _, y)      => (y, x)
                       | (x as I.ImmedLabel _, y) => (y, x)
@@ -501,30 +501,30 @@ struct
                       | (x, y)                   => (x, y)
               in  genBinary(binOp, opnd1, opnd2)
               end
-        
+
                  (* Generate a binary operator; non-commutative *)
               fun binary(binOp, e1, e2) =
                   genBinary(binOp, operand e1, operand e2)
-        
+
                  (* Generate a unary operator *)
-              fun unary(unOp, e) = 
+              fun unary(unOp, e) =
               let val opnd = operand e
               in  if isMemReg rd andalso isMemOpnd opnd then
                      let val tmp = I.Direct(newReg())
                      in  move(opnd, tmp); move(tmp, rdOpnd)
-                     end 
+                     end
                   else move(opnd, rdOpnd);
                   mark(I.UNARY{unOp=unOp, opnd=rdOpnd}, an)
               end
-        
-                 (* Generate shifts; the shift 
+
+                 (* Generate shifts; the shift
                   * amount must be a constant or in %ecx *)
               fun shift(opcode, e1, e2) =
               let val (opnd1, opnd2) = (operand e1, operand e2)
-              in  case opnd2 of 
+              in  case opnd2 of
                     I.Immed _ => genBinary(opcode, opnd1, opnd2)
-                  | _ => 
-                    if equalRd(opnd2) then 
+                  | _ =>
+                    if equalRd(opnd2) then
                     let val tmpR = newReg()
                         val tmp  = I.Direct tmpR
                     in  move(opnd1, tmp);
@@ -538,7 +538,7 @@ struct
                          mark(I.BINARY{binOp=opcode, src=ecx, dst=rdOpnd},an)
                         )
               end
-        
+
               (* Division or remainder: divisor must be in %edx:%eax pair *)
               fun divrem(signed, overflow, e1, e2, resultReg) =
               let val (opnd1, opnd2) = (operand e1, operand e2)
@@ -625,7 +625,7 @@ struct
 		  move (edx, rdOpnd)
 	      end
 
-	      (* n mod (power-of-2) corresponds to a bitmask (AND). 
+	      (* n mod (power-of-2) corresponds to a bitmask (AND).
 	       * If the power is negative, then we must first negate
 	       * the argument and then again negate the result. *)
 	      fun reminf (e1, e2 as T.LI n') =
@@ -646,7 +646,7 @@ struct
 		       end)
 		| reminf (e1, e2) = reminf0 (e1, e2)
 
-              (* Optimize the special case for division *) 
+              (* Optimize the special case for division *)
               fun divide (signed, overflow, e1, e2 as T.LI n') =
 		  (case analyze n' of
 		       (n, SOME (isneg, a, p)) =>
@@ -728,7 +728,7 @@ struct
                   divrem(signed, false, e1, e2, edx)
 
                   (* Makes sure the destination must be a register *)
-              fun dstMustBeReg f = 
+              fun dstMustBeReg f =
                   if isMemReg rd then
                   let val tmpR = newReg()
                       val tmp  = I.Direct(tmpR)
@@ -736,14 +736,14 @@ struct
                   else f(rd, rdOpnd)
 
                   (* unsigned integer multiplication *)
-              fun uMultiply0 (e1, e2) = 
+              fun uMultiply0 (e1, e2) =
                   (* note e2 can never be (I.Direct edx) *)
                   (move(operand e1, eax);
-                   mark(I.MULTDIV{multDivOp=I.MULL1, 
+                   mark(I.MULTDIV{multDivOp=I.MULL1,
                                   src=regOrMem(operand e2)},an);
                    move(eax, rdOpnd)
                   )
-        
+
 	      fun uMultiply (e1, e2 as T.LI n') =
 		  (case analyze n' of
 		       (_, SOME (false, _, p)) => shift (I.SHLL, e1, p)
@@ -751,19 +751,19 @@ struct
 		| uMultiply (e1 as T.LI _, e2) = uMultiply (e2, e1)
 		| uMultiply (e1, e2) = uMultiply0 (e1, e2)
 
-                  (* signed integer multiplication: 
-                   * The only forms that are allowed that also sets the 
+                  (* signed integer multiplication:
+                   * The only forms that are allowed that also sets the
                    * OF and CF flags are:
                    *
                    *          (dst)  (src1)  (src2)
                    *      imul r32, r32/m32, imm8
-                   *          (dst)  (src) 
+                   *          (dst)  (src)
                    *      imul r32, imm8
                    *      imul r32, imm32
                    *      imul r32, r32/m32
                    * Note: destination must be a register!
                    *)
-              fun multiply (e1, e2) = 
+              fun multiply (e1, e2) =
               dstMustBeReg(fn (rd, rdOpnd) =>
               let fun doit(i1 as I.Immed _, i2 as I.Immed _) =
                       (move(i1, rdOpnd);
@@ -811,12 +811,12 @@ struct
 		| multiply_notrap (e1, e2) = multiply (e1, e2)
 
                  (* Emit a load instruction; makes sure that the destination
-                  * is a register 
+                  * is a register
                   *)
-              fun genLoad(mvOp, ea, mem) = 
+              fun genLoad(mvOp, ea, mem) =
                   dstMustBeReg(fn (_, dst) =>
                      mark(I.MOVE{mvOp=mvOp, src=address(ea, mem), dst=dst},an))
-    
+
                  (* Generate a zero extended loads *)
               fun load8(ea, mem) = genLoad(I.MOVZBL, ea, mem)
               fun load16(ea, mem) = genLoad(I.MOVZWL, ea, mem)
@@ -824,9 +824,9 @@ struct
               fun load16s(ea, mem) = genLoad(I.MOVSWL, ea, mem)
               fun load32(ea, mem) = genLoad(I.MOVL, ea, mem)
               fun load64(ea, mem) = genLoad(I.MOVL, ea, mem) (* XXX64 *)
-        
+
                  (* Generate a sign extended loads *)
-        
+
                  (* Generate setcc instruction:
                   *  semantics:  MV(rd, COND(_, T.CMP(ty, cc, t1, t2), yes, no))
                   * Bug, if eax is either t1 or t2 then problem will occur!!!
@@ -835,12 +835,12 @@ struct
                   * %al, %bl, %cl, %dl and %[abcd]h.  The last four registers
                   * are inaccessible in 32 bit mode.
                   *)
-              fun setcc(ty, cc, t1, t2, yes, no) = 
-              let val (cc, yes, no) = 
+              fun setcc(ty, cc, t1, t2, yes, no) =
+              let val (cc, yes, no) =
                          if yes > no then (cc, yes, no)
                          else (T.Basis.negateCond cc, no, yes)
               in  (* Clear the destination first.
-                   * This this because stupid SETcc 
+                   * This this because stupid SETcc
                    * only writes to the low order
                    * byte.  That's Intel architecture, folks.
                    *)
@@ -857,17 +857,17 @@ struct
                          emit(I.BINARY{binOp=I.SHRL,src=I.Immed 31,dst=rdOpnd})
                      end
                   | (1, 0, _) => (* normal case *)
-                    let val cc = cmp(true, ty, cc, t1, t2, []) 
+                    let val cc = cmp(true, ty, cc, t1, t2, [])
                     in  mark(I.SET{cond=cond cc, opnd=eax}, an);
                         emit(I.BINARY{binOp=I.ANDL,src=I.Immed 255, dst=eax});
                         move(eax, rdOpnd)
                     end
-                  | (C1, C2, _)  => 
-                    (* general case; 
-                     * from the Intel optimization guide p3-5 
+                  | (C1, C2, _)  =>
+                    (* general case;
+                     * from the Intel optimization guide p3-5
                      *)
                     let val _  = zero eax;
-                        val cc = cmp(true, ty, cc, t1, t2, []) 
+                        val cc = cmp(true, ty, cc, t1, t2, [])
 			fun c19 (base, scale) = let
                             val addr = I.Indexed{base=base,
                                                  index=C.eax,
@@ -876,7 +876,7 @@ struct
                                                  mem=readonly}
                             val tmpR = newReg()
                             val tmp  = I.Direct tmpR
-                        in  emit(I.SET{cond=cond cc, opnd=eax}); 
+                        in  emit(I.SET{cond=cond cc, opnd=eax});
                             mark(I.LEA{r32=tmpR, addr=addr}, an);
                             move(tmp, rdOpnd)
                         end
@@ -890,12 +890,12 @@ struct
 			  | 8 => c19 (NONE, 3)
 			  | 9 => c19 (SOME C.eax, 3)
                           | D =>
-                            (emit(I.SET{cond=cond(T.Basis.negateCond cc), 
-					opnd=eax}); 
+                            (emit(I.SET{cond=cond(T.Basis.negateCond cc),
+					opnd=eax});
                              emit(I.UNARY{unOp=I.DECL, opnd=eax});
                              emit(I.BINARY{binOp=I.ANDL,
                                            src=I.Immed D, dst=eax});
-                             if C2 = 0 then 
+                             if C2 = 0 then
 				 move(eax, rdOpnd)
                              else
 				 let val tmpR = newReg()
@@ -910,21 +910,21 @@ struct
                                  end)
                     end
               end (* setcc *)
-    
+
                   (* Generate cmovcc instruction.
                    * on Pentium Pro and Pentium II only
                    *)
-              fun cmovcc(ty, cc, t1, t2, yes, no) = 
-              let fun genCmov(dstR, _) = 
+              fun cmovcc(ty, cc, t1, t2, yes, no) =
+              let fun genCmov(dstR, _) =
                   let val _ = doExpr(no, dstR, []) (* false branch *)
                       val cc = cmp(true, ty, cc, t1, t2, [])  (* compare *)
-                  in  mark(I.CMOV{cond=cond cc, src=regOrMem(operand yes), 
-                                  dst=dstR}, an) 
+                  in  mark(I.CMOV{cond=cond cc, src=regOrMem(operand yes),
+                                  dst=dstR}, an)
                   end
               in  dstMustBeReg genCmov
               end
-        
-              fun unknownExp exp = doExpr(Gen.compileRexp exp, rd, an) 
+
+              fun unknownExp exp = doExpr(Gen.compileRexp exp, rd, an)
 
                   (* Add n to rd *)
               fun addN n =
@@ -935,23 +935,23 @@ struct
                   (* Generate addition *)
               fun addition(e1, e2) =
                   case e1 of
-                    T.REG(_,rs) => if CB.sameColor(rs,rd) then addN e2 
+                    T.REG(_,rs) => if CB.sameColor(rs,rd) then addN e2
                                    else addition1(e1,e2)
                   | _ => addition1(e1,e2)
               and addition1(e1, e2) =
                   case e2 of
-                    T.REG(_,rs) => if CB.sameColor(rs,rd) then addN e1 
+                    T.REG(_,rs) => if CB.sameColor(rs,rd) then addN e1
                                    else addition2(e1,e2)
-                  | _ => addition2(e1,e2) 
-              and addition2(e1,e2) =     
-                (dstMustBeReg(fn (dstR, _) => 
+                  | _ => addition2(e1,e2)
+              and addition2(e1,e2) =
+                (dstMustBeReg(fn (dstR, _) =>
                     mark(I.LEA{r32=dstR, addr=address(exp, readonly)}, an))
                 handle EA => binaryComm(I.ADDL, e1, e2))
 
 
           in  case exp of
-               T.REG(_,rs) => 
-                   if isMemReg rs andalso isMemReg rd then 
+               T.REG(_,rs) =>
+                   if isMemReg rs andalso isMemReg rd then
                       let val tmp = I.Direct(newReg())
                       in  move'(I.MemReg rs, tmp, an);
                           move'(tmp, rdOpnd, [])
@@ -959,9 +959,9 @@ struct
                    else move'(IntReg rs, rdOpnd, an)
 	     | T.LI z => let
 		 val n = toInt32 z
-	       in 
-		 if n=0 then 
-		   (* As per Fermin's request, special optimization for rd := 0. 
+	       in
+		 if n=0 then
+		   (* As per Fermin's request, special optimization for rd := 0.
 		    * Currently we don't bother with the size.
 		    *)
 		   if isMemReg rd then move'(I.Immed 0, rdOpnd, an)
@@ -969,15 +969,15 @@ struct
 		 else
 		   move'(I.Immed(n), rdOpnd, an)
 	       end
-             | (T.CONST _ | T.LABEL _) => 
+             | (T.CONST _ | T.LABEL _) =>
                  move'(I.ImmedLabel exp, rdOpnd, an)
              | T.LABEXP le => move'(I.ImmedLabel le, rdOpnd, an)
 
                (* 32-bit addition *)
 	     | T.ADD(32, e1, e2 as T.LI n) => let
 	         val n = toInt32 n
-               in 
-		 case n 
+               in
+		 case n
 		 of 1  => unary(I.INCL, e1)
 	          | ~1 => unary(I.DECL, e1)
 		  | _ => addition(e1, e2)
@@ -985,7 +985,7 @@ struct
 	     | T.ADD(32, e1 as T.LI n, e2) => let
 	         val n = toInt32 n
 	       in
-		 case n 
+		 case n
 		 of  1 => unary(I.INCL, e2)
 	          | ~1 => unary(I.DECL, e2)
 		  | _ => addition(e1, e2)
@@ -993,7 +993,7 @@ struct
              | T.ADD(32, e1, e2) => addition(e1, e2)
 
                (* 32-bit addition but set the flag!
-                * This is a stupid hack for now.  
+                * This is a stupid hack for now.
                 *)
 	     | T.ADD(0, e, e1 as T.LI n) => let
 	         val n = T.I.toInt(32, n)
@@ -1010,7 +1010,7 @@ struct
 		      else binaryComm(I.ADDL, e1, e)
                end
 	     | T.ADD(0, e1, e2) => binaryComm(I.ADDL, e1, e2)
-	         
+
                (* 32-bit subtraction *)
 	     | T.SUB(32, e1, e2 as T.LI n) => let
 	         val n = toInt32 n
@@ -1021,7 +1021,7 @@ struct
 		  | ~1 => unary(I.INCL, e1)
 		  | _ => binary(I.SUBL, e1, e2)
                end
-	     | T.SUB(32, e1 as T.LI n, e2) => 
+	     | T.SUB(32, e1 as T.LI n, e2) =>
 	         if n = 0 then unary(I.NEGL, e2)
 		 else binary(I.SUBL, e1, e2)
              | T.SUB(32, e1, e2) => binary(I.SUBL, e1, e2)
@@ -1066,7 +1066,7 @@ struct
                   Pentium => setcc(ty, cc, t1, t2, toInt32 yes, toInt32 no)
                 | _ => cmovcc(ty, cc, t1, t2, y, n)
                 )
-             | T.COND(32, T.CMP(ty, cc, t1, t2), yes, no) => 
+             | T.COND(32, T.CMP(ty, cc, t1, t2), yes, no) =>
                 (case !arch of (* PentiumPro and higher has CMOVcc *)
                    Pentium => unknownExp exp
                  | _ => cmovcc(ty, cc, t1, t2, yes, no)
@@ -1075,36 +1075,36 @@ struct
              | T.MARK(e, A.MARKREG f) => (f rd; doExpr(e, rd, an))
              | T.MARK(e, a) => doExpr(e, rd, a::an)
              | T.PRED(e,c) => doExpr(e, rd, A.CTRLUSE c::an)
-             | T.REXT e => 
-                 ExtensionComp.compileRext (reducer()) {e=e, rd=rd, an=an} 
+             | T.REXT e =>
+                 ExtensionComp.compileRext (reducer()) {e=e, rd=rd, an=an}
                (* simplify and try again *)
              | exp => unknownExp exp
           end (* doExpr *)
 
-          (* generate an expression and return its result register 
-           * If rewritePseudo is on, the result is guaranteed to be in a 
+          (* generate an expression and return its result register
+           * If rewritePseudo is on, the result is guaranteed to be in a
            * non memReg register
            *)
-      and expr(exp as T.REG(_, rd)) = 
+      and expr(exp as T.REG(_, rd)) =
           if isMemReg rd then genExpr exp else rd
         | expr exp = genExpr exp
 
-      and genExpr exp = 
+      and genExpr exp =
           let val rd = newReg() in doExpr(exp, rd, []); rd end
 
          (* Compare an expression with zero.
           * On the x86, TEST is superior to AND for doing the same thing,
           * since it doesn't need to write out the result in a register.
           *)
-     and cmpWithZero(cc as (T.EQ | T.NE), e as T.ANDB(ty, a, b), an) = 
+     and cmpWithZero(cc as (T.EQ | T.NE), e as T.ANDB(ty, a, b), an) =
             (case ty of
                8  => test(I.TESTB, a, b, an)
              | 16 => test(I.TESTW, a, b, an)
              | 32 => test(I.TESTL, a, b, an)
-             | _  => doExpr(e, newReg(), an); 
-             cc)  
-        | cmpWithZero(cc, e, an) = 
-          let val e = 
+             | _  => doExpr(e, newReg(), an);
+             cc)
+        | cmpWithZero(cc, e, an) =
+          let val e =
                 case e of (* hack to disable the lea optimization XXX *)
                   T.ADD(_, a, b) => T.ADD(0, a, b)
                 | e => e
@@ -1114,21 +1114,21 @@ struct
            *   The available modes are
            *      r/m, r
            *      r/m, imm
-           * On selecting the right instruction: TESTL/TESTW/TESTB.   
+           * On selecting the right instruction: TESTL/TESTW/TESTB.
            * When anding an operand with a constant
            * that fits within 8 (or 16) bits, it is possible to use TESTB,
-           * (or TESTW) instead of TESTL.   Because x86 is little endian, 
+           * (or TESTW) instead of TESTL.   Because x86 is little endian,
            * this works for memory operands too.  However, with TESTB, it is
-           * not possible to use registers other than 
+           * not possible to use registers other than
            * AL, CL, BL, DL, and AH, CH, BH, DH.  So, the best way is to
            * perform register allocation first, and if the operand registers
-           * are one of EAX, ECX, EBX, or EDX, replace the TESTL instruction 
+           * are one of EAX, ECX, EBX, or EDX, replace the TESTL instruction
            * by TESTB.
            *)
-      and test(testopcode, a, b, an) = 
+      and test(testopcode, a, b, an) =
           let val (_, opnd1, opnd2) = commuteComparison(T.EQ, true, a, b)
               (* translate r, r/m => r/m, r *)
-              val (opnd1, opnd2) = 
+              val (opnd1, opnd2) =
                    if isMemOpnd opnd2 then (opnd2, opnd1) else (opnd1, opnd2)
           in  mark(testopcode{lsrc=opnd1, rsrc=opnd2}, an)
           end
@@ -1138,50 +1138,50 @@ struct
           if CB.sameColor(src, C.eflags) then ()
           else (move(I.Direct src, eax); emit(I.LAHF))
 
-          (* dst <- %eflags *) 
+          (* dst <- %eflags *)
       and moveFromEflags dst =
           if CB.sameColor(dst, C.eflags) then ()
           else (emit(I.SAHF); move(eax, I.Direct dst))
 
-         (* generate a condition code expression 
-          * The zero is for setting the condition code!  
+         (* generate a condition code expression
+          * The zero is for setting the condition code!
           * I have no idea why this is used.
           *)
-      and doCCexpr(T.CMP(ty, cc, t1, t2), rd, an) = 
-          (cmp(false, ty, cc, t1, t2, an); 
+      and doCCexpr(T.CMP(ty, cc, t1, t2), rd, an) =
+          (cmp(false, ty, cc, t1, t2, an);
            moveFromEflags rd
-          ) 
-        | doCCexpr(T.CC(cond,rs), rd, an) = 
+          )
+        | doCCexpr(T.CC(cond,rs), rd, an) =
           if CB.sameColor(rs,C.eflags) orelse CB.sameColor(rd,C.eflags) then
              (moveToEflags rs; moveFromEflags rd)
           else
              move'(I.Direct rs, I.Direct rd, an)
         | doCCexpr(T.CCMARK(e,A.MARKREG f),rd,an) = (f rd; doCCexpr(e,rd,an))
         | doCCexpr(T.CCMARK(e,a), rd, an) = doCCexpr(e,rd,a::an)
-        | doCCexpr(T.CCEXT e, cd, an) = 
-           ExtensionComp.compileCCext (reducer()) {e=e, ccd=cd, an=an} 
+        | doCCexpr(T.CCEXT e, cd, an) =
+           ExtensionComp.compileCCext (reducer()) {e=e, ccd=cd, an=an}
         | doCCexpr _ = error "doCCexpr"
 
      and ccExpr e = error "ccExpr"
 
           (* generate a comparison and sets the condition code;
            * return the actual cc used.  If the flag swapable is true,
-           * we can also reorder the operands. 
+           * we can also reorder the operands.
            *)
-      and cmp(swapable, ty, cc, t1, t2, an) = 
+      and cmp(swapable, ty, cc, t1, t2, an) =
                (* == and <> can be always be reordered *)
           let val swapable = swapable orelse cc = T.EQ orelse cc = T.NE
           in (* Sometimes the comparison is not necessary because
-              * the bits are already set! 
+              * the bits are already set!
               *)
-             if isZero t1 andalso setZeroBit2 t2 then 
+             if isZero t1 andalso setZeroBit2 t2 then
                  if swapable then
                     cmpWithZero(T.Basis.swapCond cc, t2, an)
                  else (* can't reorder the comparison! *)
                     genCmp(ty, false, cc, t1, t2, an)
-             else if isZero t2 andalso setZeroBit2 t1 then 
+             else if isZero t2 andalso setZeroBit2 t1 then
                 cmpWithZero(cc, t1, an)
-             else genCmp(ty, swapable, cc, t1, t2, an) 
+             else genCmp(ty, swapable, cc, t1, t2, an)
           end
 
           (* Give a and b which are the operands to a comparison (or test)
@@ -1191,31 +1191,31 @@ struct
            *        r/m, r
            *        r,   r/m
            *)
-      and commuteComparison(cc, swapable, a, b) = 
+      and commuteComparison(cc, swapable, a, b) =
           let val (opnd1, opnd2) = (operand a, operand b)
           in  (* Try to fold in the operands whenever possible *)
               case (isImmediate opnd1, isImmediate opnd2) of
                 (true, true) => (cc, moveToReg opnd1, opnd2)
-              | (true, false) => 
+              | (true, false) =>
                    if swapable then (T.Basis.swapCond cc, opnd2, opnd1)
                    else (cc, moveToReg opnd1, opnd2)
               | (false, true) => (cc, opnd1, opnd2)
-              | (false, false) => 
+              | (false, false) =>
                  (case (opnd1, opnd2) of
                     (_, I.Direct _) => (cc, opnd1, opnd2)
                   | (I.Direct _, _) => (cc, opnd1, opnd2)
                   | (_, _)          => (cc, moveToReg opnd1, opnd2)
                  )
-          end 
- 
+          end
+
           (* generate a real comparison; return the real cc used *)
-      and genCmp(ty, swapable, cc, a, b, an) = 
+      and genCmp(ty, swapable, cc, a, b, an) =
           let val (cc, opnd1, opnd2) = commuteComparison(cc, swapable, a, b)
-          in  mark(I.CMPL{lsrc=opnd1, rsrc=opnd2}, an); cc 
+          in  mark(I.CMPL{lsrc=opnd1, rsrc=opnd2}, an); cc
           end
 
           (* generate code for jumps *)
-      and jmp(lexp as T.LABEL lab, labs, an) = 
+      and jmp(lexp as T.LABEL lab, labs, an) =
              mark(I.JMP(I.ImmedLabel lexp, [lab]), an)
         | jmp(T.LABEXP le, labs, an) = mark(I.JMP(I.ImmedLabel le, labs), an)
         | jmp(ea, labs, an)          = mark(I.JMP(operand ea, labs), an)
@@ -1223,7 +1223,7 @@ struct
        (* convert mlrisc to cellset:
         *)
        and cellset mlrisc =
-           let val addCCReg = CB.CellSet.add 
+           let val addCCReg = CB.CellSet.add
                fun g([],acc) = acc
                  | g(T.GPR(T.REG(_,r))::regs,acc)  = g(regs,C.addReg(r,acc))
                  | g(T.FPR(T.FREG(_,f))::regs,acc) = g(regs,C.addFreg(f,acc))
@@ -1233,10 +1233,10 @@ struct
            in  g(mlrisc, C.empty) end
 
           (* generate code for calls *)
-      and call(ea, flow, def, use, mem, cutsTo, an, pops) = 
+      and call(ea, flow, def, use, mem, cutsTo, an, pops) =
       let fun return(set, []) = set
             | return(set, a::an) =
-              case #peek A.RETURN_ARG a of 
+              case #peek A.RETURN_ARG a of
                 SOME r => return(CB.CellSet.add(r, set), an)
               | NONE => return(set, an)
       in
@@ -1245,34 +1245,34 @@ struct
 		      pops=pops},an)
       end
 
-          (* generate code for integer stores; first move data to %eax 
+          (* generate code for integer stores; first move data to %eax
            * This is mainly because we can't allocate to registers like
            * ah, dl, dx etc.
            *)
       and genStore(mvOp, ea, d, mem, an) =
-          let val src = 
+          let val src =
                  case immedOrReg(operand d) of
                      src as I.Direct r =>
-                       if CB.sameColor(r,C.eax) 
+                       if CB.sameColor(r,C.eax)
                        then src else (move(src, eax); eax)
                    | src => src
           in  mark(I.MOVE{mvOp=mvOp, src=src, dst=address(ea,mem)},an)
           end
- 
+
           (* generate code for 8-bit integer stores *)
           (* movb has to use %eax as source. Stupid x86! *)
       and store8(ea, d, mem, an) = genStore(I.MOVB, ea, d, mem, an)
-      and store16(ea, d, mem, an) = 
+      and store16(ea, d, mem, an) =
 	mark(I.MOVE{mvOp=I.MOVW, src=immedOrReg(operand d), dst=address(ea, mem)}, an)
-      and store32(ea, d, mem, an) = 
+      and store32(ea, d, mem, an) =
             move'(immedOrReg(operand d), address(ea, mem), an)
 
           (* generate code for branching *)
       and branch(T.CMP(ty, cc, t1, t2), lab, an) =
            (* allow reordering of operands *)
-           let val cc = cmp(true, ty, cc, t1, t2, []) 
+           let val cc = cmp(true, ty, cc, t1, t2, [])
            in  mark(I.JCC{cond=cond cc, opnd=immedLabel lab}, an) end
-        | branch(T.FCMP(fty, fcc, t1, t2), lab, an) = 
+        | branch(T.FCMP(fty, fcc, t1, t2), lab, an) =
            fbranch(fty, fcc, t1, t2, lab, an)
         | branch(ccexp, lab, an) =
            (doCCexpr(ccexp, C.eflags, []);
@@ -1280,34 +1280,34 @@ struct
            )
 
           (* generate code for floating point compare and branch *)
-      and fbranch(fty, fcc, t1, t2, lab, an) = 
+      and fbranch(fty, fcc, t1, t2, lab, an) =
           let fun j cc = mark(I.JCC{cond=cc, opnd=immedLabel lab},an)
           in  fbranching(fty, fcc, t1, t2, j)
           end
 
-      and fbranching(fty, fcc, t1, t2, j) = 
+      and fbranching(fty, fcc, t1, t2, j) =
           let fun ignoreOrder (T.FREG _) = true
                 | ignoreOrder (T.FLOAD _) = true
                 | ignoreOrder (T.FMARK(e,_)) = ignoreOrder e
                 | ignoreOrder _ = false
 
               fun compare'() = (* Sethi-Ullman style *)
-                  (if ignoreOrder t1 orelse ignoreOrder t2 then 
+                  (if ignoreOrder t1 orelse ignoreOrder t2 then
                         (reduceFexp(fty, t2, []); reduceFexp(fty, t1, []))
-                   else (reduceFexp(fty, t1, []); reduceFexp(fty, t2, []); 
+                   else (reduceFexp(fty, t1, []); reduceFexp(fty, t2, []);
                          emit(I.FXCH{opnd=C.ST(1)}));
                    emit(I.FUCOMPP);
                    fcc
                   )
 
-              fun compare''() = 
+              fun compare''() =
                       (* direct style *)
                       (* Try to make lsrc the memory operand *)
                   let val lsrc = foperand(fty, t1)
                       val rsrc = foperand(fty, t2)
                       val fsize = fsize fty
                       fun cmp(lsrc, rsrc, fcc) =
-                      let val i = !arch <> Pentium    
+                      let val i = !arch <> Pentium
                       in  emit(I.FCMP{i=i,fsize=fsize,lsrc=lsrc,rsrc=rsrc});
                           fcc
                       end
@@ -1323,8 +1323,8 @@ struct
                          end
                   end
 
-              fun compare() = 
-                  if enableFastFPMode andalso !fast_floating_point 
+              fun compare() =
+                  if enableFastFPMode andalso !fast_floating_point
                   then compare''() else compare'()
 
               fun andil i = emit(I.BINARY{binOp=I.ANDL,src=I.Immed(i),dst=eax})
@@ -1362,7 +1362,7 @@ struct
                * unordered   1  1  1
                * When it's unordered, all three flags, P, Z, C are set.
                *)
-                
+
               fun fast_branch(fcc) =
                   case fcc
                   of T.==   => orderedOnly(I.EQ)
@@ -1389,13 +1389,13 @@ struct
                   j fcc;
                   defineLabel label
               end
- 
-              val fcc = compare() 
+
+              val fcc = compare()
           in  if !arch <> Pentium andalso
                  (enableFastFPMode andalso !fast_floating_point) then
                 fast_branch(fcc)
               else
-                (emit I.FNSTSW;   
+                (emit I.FNSTSW;
                  branch(fcc)
                 )
           end
@@ -1416,24 +1416,24 @@ struct
         | foldableFexp _ = false
 
         (* Move integer e of size ty into a memory location.
-         * Returns a quadruple: 
-         *  (INTEGER,return ty,effect address of memory location,cleanup code) 
-         *) 
-      and convertIntToFloat(ty, e) = 
-          let val opnd = operand e 
+         * Returns a quadruple:
+         *  (INTEGER,return ty,effect address of memory location,cleanup code)
+         *)
+      and convertIntToFloat(ty, e) =
+          let val opnd = operand e
           in  if isMemOpnd opnd andalso (ty = 16 orelse ty = 32)
               then (INTEGER, ty, opnd, [])
-              else 
-                let val {instrs, tempMem, cleanup} = 
+              else
+                let val {instrs, tempMem, cleanup} =
                         cvti2f{ty=ty, src=opnd, an=getAnnotations()}
                 in  emits instrs;
                     (INTEGER, 32, tempMem, cleanup)
                 end
           end
- 
+
       (*========================================================
-       * Sethi-Ullman based floating point code generation as 
-       * implemented by Lal 
+       * Sethi-Ullman based floating point code generation as
+       * implemented by Lal
        *========================================================*)
 
       and fld(32, opnd) = I.FLDS opnd
@@ -1455,7 +1455,7 @@ struct
         | fstp _         = error "fstp"
 
           (* generate code for floating point stores *)
-      and fstore'(fty, ea, d, mem, an) = 
+      and fstore'(fty, ea, d, mem, an) =
           (case d of
              T.FREG(fty, fs) => emit(fld(fty, I.FDirect fs))
            | _ => reduceFexp(fty, d, []);
@@ -1463,23 +1463,23 @@ struct
           )
 
           (* generate code for floating point loads *)
-      and fload'(fty, ea, mem, fd, an) = 
+      and fload'(fty, ea, mem, fd, an) =
             let val ea = address(ea, mem)
-            in  mark(fld(fty, ea), an); 
-                if CB.sameColor(fd,ST0) then () 
+            in  mark(fld(fty, ea), an);
+                if CB.sameColor(fd,ST0) then ()
                 else emit(fstp(fty, I.FDirect fd))
             end
 
       and fexpr' e = (reduceFexp(64, e, []); C.ST(0))
-          
+
           (* generate floating point expression and put the result in fd *)
-      and doFexpr'(fty, T.FREG(_, fs), fd, an) = 
-            (if CB.sameColor(fs,fd) then () 
+      and doFexpr'(fty, T.FREG(_, fs), fd, an) =
+            (if CB.sameColor(fs,fd) then ()
              else mark'(I.COPY{k=CB.FP, sz=64, dst=[fd], src=[fs], tmp=NONE}, an)
             )
-        | doFexpr'(_, T.FLOAD(fty, ea, mem), fd, an) = 
+        | doFexpr'(_, T.FLOAD(fty, ea, mem), fd, an) =
             fload'(fty, ea, mem, fd, an)
-        | doFexpr'(fty, T.FEXT fexp, fd, an) = 
+        | doFexpr'(fty, T.FEXT fexp, fd, an) =
             (ExtensionComp.compileFext (reducer()) {e=fexp, fd=fd, an=an};
              if CB.sameColor(fd,ST0) then () else emit(fstp(fty, I.FDirect fd))
             )
@@ -1489,24 +1489,24 @@ struct
              else mark(fstp(fty, I.FDirect fd), an)
             )
 
-          (* 
+          (*
            * Generate floating point expression using Sethi-Ullman's scheme:
-           * This function evaluates a floating point expression, 
+           * This function evaluates a floating point expression,
            * and put result in %ST(0).
            *)
-      and reduceFexp(fty, fexp, an)  = 
+      and reduceFexp(fty, fexp, an)  =
           let val ST = I.ST(C.ST 0)
               val ST1 = I.ST(C.ST 1)
               val cleanupCode = ref [] : I.instruction list ref
 
-              datatype su_tree = 
+              datatype su_tree =
                 LEAF of int * T.fexp * ans
               | BINARY of int * T.fty * fbinop * su_tree * su_tree * ans
               | UNARY of int * T.fty * I.funOp * su_tree * ans
               and fbinop = FADD | FSUB | FMUL | FDIV
                          | FIADD | FISUB | FIMUL | FIDIV
               withtype ans = Annotations.annotations
- 
+
               fun label(LEAF(n, _, _)) = n
                 | label(BINARY(n, _, _, _, _, _)) = n
                 | label(UNARY(n, _, _, _, _)) = n
@@ -1529,19 +1529,19 @@ struct
                 | su(T.FSUB(fty, t1, t2)) = suBinary(fty,FSUB,FISUB,t1,t2)
                 | su(T.FDIV(fty, t1, t2)) = suBinary(fty,FDIV,FIDIV,t1,t2)
                 | su _ = error "su"
-         
-              (* Try to fold the the memory operand or integer conversion *) 
+
+              (* Try to fold the the memory operand or integer conversion *)
               and suFold(e as T.FREG _) = (LEAF(0, e, []), false)
                 | suFold(e as T.FLOAD _) = (LEAF(0, e, []), false)
                 | suFold(e as T.CVTI2F(_,(16 | 32),_)) = (LEAF(0, e, []), true)
                 | suFold(T.CVTF2F(_, _, t)) = suFold t
-                | suFold(T.FMARK(t, a)) = 
-                  let val (t, integer) = suFold t 
+                | suFold(T.FMARK(t, a)) =
+                  let val (t, integer) = suFold t
                   in  (annotate(t, a), integer) end
                 | suFold e = (su e, false)
 
               (* Form unary tree *)
-              and suUnary(fty, funary, t) = 
+              and suUnary(fty, funary, t) =
                   let val t = su t
                   in  UNARY(label t, fty, funary, t, [])
                   end
@@ -1554,33 +1554,33 @@ struct
                       val n2 = label t2
                       val n  = if n1=n2 then n1+1 else Int.max(n1,n2)
                       val myOp = if integer then ibinop else binop
-                  in  BINARY(n, fty, myOp, t1, t2, []) 
+                  in  BINARY(n, fty, myOp, t1, t2, [])
                   end
 
-              (* Try to fold in the operand if possible. 
+              (* Try to fold in the operand if possible.
                * This only applies to commutative operations.
                *)
               and suComBinary(fty, binop, ibinop, t1, t2) =
-                  let val (t1, t2) = if foldableFexp t2 
+                  let val (t1, t2) = if foldableFexp t2
                                      then (t1, t2) else (t2, t1)
                   in  suBinary(fty, binop, ibinop, t1, t2) end
 
-              and sameTree(LEAF(_, T.FREG(t1,f1), []), 
-                           LEAF(_, T.FREG(t2,f2), [])) = 
+              and sameTree(LEAF(_, T.FREG(t1,f1), []),
+                           LEAF(_, T.FREG(t2,f2), [])) =
                         t1 = t2 andalso CB.sameColor(f1,f2)
                 | sameTree _ = false
 
               (* Traverse tree and generate code *)
               fun gencode(LEAF(_, t, an)) = mark(fxld(leafEA t), an)
-                | gencode(BINARY(_, _, binop, x, t2 as LEAF(0, y, a1), a2)) = 
+                | gencode(BINARY(_, _, binop, x, t2 as LEAF(0, y, a1), a2)) =
                   let val _          = gencode x
                       val (_, fty, src) = leafEA y
                       fun gen(code) = mark(code, a1 @ a2)
                       fun binary(oper32, oper64) =
-                          if sameTree(x, t2) then 
+                          if sameTree(x, t2) then
                              gen(I.FBINARY{binOp=oper64, src=ST, dst=ST})
                           else
-                             let val oper = 
+                             let val oper =
                                    if isMemOpnd src then
                                       case fty of
                                         32 => oper32
@@ -1590,28 +1590,28 @@ struct
                              in gen(I.FBINARY{binOp=oper, src=src, dst=ST}) end
                       fun ibinary(oper16, oper32) =
                           let val oper = case fty of
-                                           16 => oper16 
-                                         | 32 => oper32 
+                                           16 => oper16
+                                         | 32 => oper32
                                          | _  => error "gencode: IBINARY"
                           in  gen(I.FIBINARY{binOp=oper, src=src}) end
                   in  case binop of
-                        FADD => binary(I.FADDS, I.FADDL) 
-                      | FSUB => binary(I.FDIVS, I.FSUBL) 
-                      | FMUL => binary(I.FMULS, I.FMULL) 
-                      | FDIV => binary(I.FDIVS, I.FDIVL) 
-                      | FIADD => ibinary(I.FIADDS, I.FIADDL) 
-                      | FISUB => ibinary(I.FIDIVS, I.FISUBL) 
-                      | FIMUL => ibinary(I.FIMULS, I.FIMULL) 
-                      | FIDIV => ibinary(I.FIDIVS, I.FIDIVL) 
-                  end  
-                | gencode(BINARY(_, fty, binop, t1, t2, an)) = 
-                  let fun doit(t1, t2, oper, operP, operRP) = 
-                      let (* oper[P] =>  ST(1) := ST oper ST(1); [pop] 
+                        FADD => binary(I.FADDS, I.FADDL)
+                      | FSUB => binary(I.FDIVS, I.FSUBL)
+                      | FMUL => binary(I.FMULS, I.FMULL)
+                      | FDIV => binary(I.FDIVS, I.FDIVL)
+                      | FIADD => ibinary(I.FIADDS, I.FIADDL)
+                      | FISUB => ibinary(I.FIDIVS, I.FISUBL)
+                      | FIMUL => ibinary(I.FIMULS, I.FIMULL)
+                      | FIDIV => ibinary(I.FIDIVS, I.FIDIVL)
+                  end
+                | gencode(BINARY(_, fty, binop, t1, t2, an)) =
+                  let fun doit(t1, t2, oper, operP, operRP) =
+                      let (* oper[P] =>  ST(1) := ST oper ST(1); [pop]
                            * operR[P] => ST(1) := ST(1) oper ST; [pop]
                            *)
                            val n1 = label t1
                            val n2 = label t2
-                      in if n1 < n2 andalso n1 <= 7 then 
+                      in if n1 < n2 andalso n1 <= 7 then
                            (gencode t2;
                             gencode t1;
                             mark(I.FBINARY{binOp=operP, src=ST, dst=ST1}, an))
@@ -1619,7 +1619,7 @@ struct
                            (gencode t1;
                             gencode t2;
                             mark(I.FBINARY{binOp=operRP, src=ST, dst=ST1}, an))
-                         else 
+                         else
                          let (* both labels > 7 *)
                              val fs = I.FDirect(newFreg())
                          in  gencode t2;
@@ -1628,19 +1628,19 @@ struct
                              mark(I.FBINARY{binOp=oper, src=fs, dst=ST}, an)
                          end
                      end
-                  in case binop of 
+                  in case binop of
                        FADD => doit(t1,t2,I.FADDL,I.FADDP,I.FADDP)
                      | FMUL => doit(t1,t2,I.FMULL,I.FMULP,I.FMULP)
                      | FSUB => doit(t1,t2,I.FSUBL,I.FSUBP,I.FSUBRP)
                      | FDIV => doit(t1,t2,I.FDIVL,I.FDIVP,I.FDIVRP)
                      | _ => error "gencode.BINARY"
                   end
-                | gencode(UNARY(_, _, unaryOp, su, an)) = 
+                | gencode(UNARY(_, _, unaryOp, su, an)) =
                    (gencode(su); mark(I.FUNARY(unaryOp),an))
 
               (* Generate code for a leaf.
                * Returns the type and an effective address
-               *) 
+               *)
               and leafEA(T.FREG(fty, f)) = (REAL, fty, I.FDirect f)
                 | leafEA(T.FLOAD(fty, ea, mem)) = (REAL, fty, address(ea, mem))
                 | leafEA(T.CVTI2F(_, 32, t)) = int2real(32, t)
@@ -1648,7 +1648,7 @@ struct
                 | leafEA(T.CVTI2F(_, 8, t))  = int2real(8, t)
                 | leafEA _ = error "leafEA"
 
-              and int2real(ty, e) = 
+              and int2real(ty, e) =
                   let val (_, ty, ea, cleanup) = convertIntToFloat(ty, e)
                   in  cleanupCode := !cleanupCode @ cleanup;
                       (INTEGER, ty, ea)
@@ -1659,58 +1659,58 @@ struct
           end (*reduceFexp*)
 
        (*========================================================
-        * This section generates 3-address style floating 
-        * point code.  
+        * This section generates 3-address style floating
+        * point code.
         *========================================================*)
 
       and isize 16 = I.I16
         | isize 32 = I.I32
         | isize _  = error "isize"
 
-      and fstore''(fty, ea, d, mem, an) = 
+      and fstore''(fty, ea, d, mem, an) =
           (floatingPointUsed := true;
-           mark(I.FMOVE{fsize=fsize fty, dst=address(ea,mem), 
+           mark(I.FMOVE{fsize=fsize fty, dst=address(ea,mem),
                         src=foperand(fty, d)},
                 an)
           )
 
-      and fload''(fty, ea, mem, d, an) = 
+      and fload''(fty, ea, mem, d, an) =
           (floatingPointUsed := true;
-           mark(I.FMOVE{fsize=fsize fty, src=address(ea,mem), 
+           mark(I.FMOVE{fsize=fsize fty, src=address(ea,mem),
                         dst=RealReg d}, an)
           )
 
-      and fiload''(ity, ea, d, an) = 
+      and fiload''(ity, ea, d, an) =
           (floatingPointUsed := true;
            mark(I.FILOAD{isize=isize ity, ea=ea, dst=RealReg d}, an)
           )
 
-      and fexpr''(e as T.FREG(_,f)) = 
+      and fexpr''(e as T.FREG(_,f)) =
           if isFMemReg f then transFexpr e else f
         | fexpr'' e = transFexpr e
 
-      and transFexpr e = 
+      and transFexpr e =
           let val fd = newFreg() in doFexpr''(64, e, fd, []); fd end
 
-         (* 
-          * Process a floating point operand.  Put operand in register 
+         (*
+          * Process a floating point operand.  Put operand in register
           * when possible.  The operand should match the given fty.
           *)
-      and foperand(fty, e as T.FREG(fty', f)) = 
+      and foperand(fty, e as T.FREG(fty', f)) =
              if fty = fty' then RealReg f else I.FPR(fexpr'' e)
         | foperand(fty, T.CVTF2F(_, _, e)) =
              foperand(fty, e) (* nop on the x86 *)
-        | foperand(fty, e as T.FLOAD(fty', ea, mem)) = 
+        | foperand(fty, e as T.FLOAD(fty', ea, mem)) =
              (* fold operand when the precison matches *)
              if fty = fty' then address(ea, mem) else I.FPR(fexpr'' e)
         | foperand(fty, e) = I.FPR(fexpr'' e)
 
-         (* 
-          * Process a floating point operand. 
+         (*
+          * Process a floating point operand.
           * Try to fold in a memory operand or conversion from an integer.
           *)
       and fioperand(T.FREG(fty,f)) = (REAL, fty, RealReg f, [])
-        | fioperand(T.FLOAD(fty, ea, mem)) = 
+        | fioperand(T.FLOAD(fty, ea, mem)) =
              (REAL, fty, address(ea, mem), [])
         | fioperand(T.CVTF2F(_, _, e)) = fioperand(e) (* nop on the x86 *)
         | fioperand(T.CVTI2F(_, ty, e)) = convertIntToFloat(ty, e)
@@ -1718,62 +1718,62 @@ struct
         | fioperand(e) = (REAL, 64, I.FPR(fexpr'' e), [])
 
           (* Generate binary operator.  Since the real binary operators
-           * does not take memory as destination, we also ensure this 
-           * does not happen.  
+           * does not take memory as destination, we also ensure this
+           * does not happen.
            *)
-      and fbinop(targetFty, 
-                 binOp, binOpR, ibinOp, ibinOpR, lsrc, rsrc, fd, an) = 
+      and fbinop(targetFty,
+                 binOp, binOpR, ibinOp, ibinOpR, lsrc, rsrc, fd, an) =
               (* Put the mem operand in rsrc *)
-          let 
+          let
               fun isMemOpnd(T.FREG(_, f)) = isFMemReg f
                 | isMemOpnd(T.FLOAD _) = true
                 | isMemOpnd(T.CVTI2F(_, (16 | 32), _)) = true
                 | isMemOpnd(T.CVTF2F(_, _, t)) = isMemOpnd t
                 | isMemOpnd(T.FMARK(t, _)) = isMemOpnd t
                 | isMemOpnd _ = false
-              val (binOp, ibinOp, lsrc, rsrc) = 
+              val (binOp, ibinOp, lsrc, rsrc) =
                   if isMemOpnd lsrc then (binOpR, ibinOpR, rsrc, lsrc)
                   else (binOp, ibinOp, lsrc, rsrc)
               val lsrc = foperand(targetFty, lsrc)
               val (kind, fty, rsrc, code) = fioperand(rsrc)
               fun dstMustBeFreg f =
                   if targetFty <> 64 then
-                  let val tmpR = newFreg() 
+                  let val tmpR = newFreg()
                       val tmp  = I.FPR tmpR
-                  in  mark(f tmp, an); 
-                      emit(I.FMOVE{fsize=fsize targetFty, 
+                  in  mark(f tmp, an);
+                      emit(I.FMOVE{fsize=fsize targetFty,
                                    src=tmp, dst=RealReg fd})
                   end
                   else mark(f(RealReg fd), an)
           in  case kind of
-                REAL => 
-                  dstMustBeFreg(fn dst => 
-                                   I.FBINOP{fsize=fsize fty, binOp=binOp, 
-                                            lsrc=lsrc, rsrc=rsrc, dst=dst}) 
-              | INTEGER => 
+                REAL =>
+                  dstMustBeFreg(fn dst =>
+                                   I.FBINOP{fsize=fsize fty, binOp=binOp,
+                                            lsrc=lsrc, rsrc=rsrc, dst=dst})
+              | INTEGER =>
                   (dstMustBeFreg(fn dst =>
-                                    I.FIBINOP{isize=isize fty, binOp=ibinOp, 
+                                    I.FIBINOP{isize=isize fty, binOp=ibinOp,
                                               lsrc=lsrc, rsrc=rsrc, dst=dst});
                    emits code
                   )
           end
- 
-      and funop(fty, unOp, src, fd, an) = 
+
+      and funop(fty, unOp, src, fd, an) =
           let val src = foperand(fty, src)
           in  mark(I.FUNOP{fsize=fsize fty,
                            unOp=unOp, src=src, dst=RealReg fd},an)
           end
 
-      and doFexpr''(fty, e, fd, an) = 
+      and doFexpr''(fty, e, fd, an) =
          (floatingPointUsed := true;
           case e of
-            T.FREG(_,fs) => if CB.sameColor(fs,fd) then () 
+            T.FREG(_,fs) => if CB.sameColor(fs,fd) then ()
                             else fcopy''(fty, [fd], [fs], an)
             (* Stupid x86 does everything as 80-bits internally. *)
 
             (* Binary operators *)
-          | T.FADD(_, a, b) => fbinop(fty, 
-                                      I.FADDL, I.FADDL, I.FIADDL, I.FIADDL, 
+          | T.FADD(_, a, b) => fbinop(fty,
+                                      I.FADDL, I.FADDL, I.FIADDL, I.FIADDL,
                                       a, b, fd, an)
           | T.FSUB(_, a, b) => fbinop(fty,
                                       I.FSUBL, I.FSUBRL, I.FISUBL, I.FISUBRL,
@@ -1795,9 +1795,9 @@ struct
 
             (* Type conversions *)
           | T.CVTF2F(_, _, e) => doFexpr''(fty, e, fd, an)
-          | T.CVTI2F(_, ty, e) => 
+          | T.CVTI2F(_, ty, e) =>
             let val (_, ty, ea, cleanup) = convertIntToFloat(ty, e)
-            in  fiload''(ty, ea, fd, an); 
+            in  fiload''(ty, ea, fd, an);
                 emits cleanup
             end
 
@@ -1812,25 +1812,25 @@ struct
        (*========================================================
         * Tie the two styles of fp code generation together
         *========================================================*)
-      and fstore(fty, ea, d, mem, an) = 
-          if enableFastFPMode andalso !fast_floating_point 
+      and fstore(fty, ea, d, mem, an) =
+          if enableFastFPMode andalso !fast_floating_point
           then fstore''(fty, ea, d, mem, an)
           else fstore'(fty, ea, d, mem, an)
-      and fload(fty, ea, d, mem, an) = 
-          if enableFastFPMode andalso !fast_floating_point 
+      and fload(fty, ea, d, mem, an) =
+          if enableFastFPMode andalso !fast_floating_point
           then fload''(fty, ea, d, mem, an)
           else fload'(fty, ea, d, mem, an)
-      and fexpr e = 
-          if enableFastFPMode andalso !fast_floating_point 
+      and fexpr e =
+          if enableFastFPMode andalso !fast_floating_point
           then fexpr'' e else fexpr' e
-      and doFexpr(fty, e, fd, an) = 
-          if enableFastFPMode andalso !fast_floating_point 
+      and doFexpr(fty, e, fd, an) =
+          if enableFastFPMode andalso !fast_floating_point
           then doFexpr''(fty, e, fd, an)
           else doFexpr'(fty, e, fd, an)
 
       (*================================================================
-       * Optimizations for x := x op y 
-       * Special optimizations: 
+       * Optimizations for x := x op y
+       * Special optimizations:
        * Generate a binary operator, result must in memory.
        * The source must not be in memory
        *================================================================*)
@@ -1843,35 +1843,35 @@ struct
       and isOne(T.LI n) = n = 1
         | isOne _ = false
 
-      (* 
-       * Perform optimizations based on recognizing 
+      (*
+       * Perform optimizations based on recognizing
        *    x := x op y    or
-       *    x := y op x 
+       *    x := y op x
        * first.
        *)
-      and store(ty, ea, d, mem, an, 
+      and store(ty, ea, d, mem, an,
                 {INC,DEC,ADD,SUB,NOT,NEG,SHL,SHR,SAR,OR,AND,XOR},
                 doStore
-               ) = 
+               ) =
           let fun default() = doStore(ea, d, mem, an)
-              fun binary1(t, t', unary, binary, ea', x) =  
+              fun binary1(t, t', unary, binary, ea', x) =
                   if t = ty andalso t' = ty then
                      if MLTreeUtils.eqRexp(ea, ea') then
                         if isOne x then unaryMem(unary, ea, mem, an)
                         else binaryMem(binary, x, ea, mem, an)
                       else default()
                   else default()
-              fun unary(t,unOp, ea') = 
+              fun unary(t,unOp, ea') =
                   if t = ty andalso MLTreeUtils.eqRexp(ea, ea') then
                      unaryMem(unOp, ea, mem, an)
-                  else default() 
+                  else default()
               fun binary(t,t',binOp,ea',x) =
                   if t = ty andalso t' = ty andalso
                      MLTreeUtils.eqRexp(ea, ea') then
                       binaryMem(binOp, x, ea, mem, an)
                   else default()
 
-              fun binaryCom1(t,unOp,binOp,x,y) = 
+              fun binaryCom1(t,unOp,binOp,x,y) =
               if t = ty then
               let fun again() =
                     case y of
@@ -1881,17 +1881,17 @@ struct
                            else binaryMem(binOp,x,ea,mem,an)
                         else default()
                     | _ => default()
-              in  case x of 
+              in  case x of
                     T.LOAD(ty',ea',_) =>
                       if ty' = ty andalso MLTreeUtils.eqRexp(ea, ea') then
                          if isOne y then unaryMem(unOp, ea, mem, an)
                          else binaryMem(binOp,y,ea,mem,an)
                       else again()
                   | _ => again()
-              end 
+              end
               else default()
 
-              fun binaryCom(t,binOp,x,y) = 
+              fun binaryCom(t,binOp,x,y) =
               if t = ty then
               let fun again() =
                     case y of
@@ -1900,13 +1900,13 @@ struct
                            binaryMem(binOp,x,ea,mem,an)
                         else default()
                     | _ => default()
-              in  case x of 
+              in  case x of
                     T.LOAD(ty',ea',_) =>
                       if ty' = ty andalso MLTreeUtils.eqRexp(ea, ea') then
                          binaryMem(binOp,y,ea,mem,an)
                       else again()
                   | _ => again()
-              end 
+              end
               else default()
 
           in  case d of
@@ -1922,27 +1922,27 @@ struct
               | T.NOTB(t,T.LOAD(t',ea',_)) => unary(t,NOT,ea')
               | _ => default()
           end (* store *)
- 
+
           (* generate code for a statement *)
       and stmt(T.MV(_, rd, e), an) = doExpr(e, rd, an)
-        | stmt(T.FMV(fty, fd, e), an) = doFexpr(fty, e, fd, an) 
-        | stmt(T.CCMV(ccd, e), an) = doCCexpr(e, ccd, an) 
+        | stmt(T.FMV(fty, fd, e), an) = doFexpr(fty, e, fd, an)
+        | stmt(T.CCMV(ccd, e), an) = doCCexpr(e, ccd, an)
         | stmt(T.COPY(_, dst, src), an) = copy(dst, src, an)
         | stmt(T.FCOPY(fty, dst, src), an) = fcopy(fty, dst, src, an)
         | stmt(T.JMP(e, labs), an) = jmp(e, labs, an)
-        | stmt(T.CALL{funct, targets, defs, uses, region, pops, ...}, an) = 
+        | stmt(T.CALL{funct, targets, defs, uses, region, pops, ...}, an) =
              call(funct,targets,defs,uses,region,[],an, pops)
         | stmt(T.FLOW_TO(T.CALL{funct, targets, defs, uses, region, pops, ...},
-                         cutTo), an) = 
+                         cutTo), an) =
              call(funct,targets,defs,uses,region,cutTo,an, pops)
         | stmt(T.RET _, an) = mark(I.RET NONE, an)
-        | stmt(T.STORE(8, ea, d, mem), an)  = 
+        | stmt(T.STORE(8, ea, d, mem), an)  =
              store(8, ea, d, mem, an, opcodes8, store8)
-        | stmt(T.STORE(16, ea, d, mem), an) = 
+        | stmt(T.STORE(16, ea, d, mem), an) =
              store(16, ea, d, mem, an, opcodes16, store16)
-        | stmt(T.STORE(32, ea, d, mem), an) = 
+        | stmt(T.STORE(32, ea, d, mem), an) =
              store(32, ea, d, mem, an, opcodes32, store32)
-        | stmt(T.STORE(64, ea, d, mem), an) = 
+        | stmt(T.STORE(64, ea, d, mem), an) =
              store(32, ea, d, mem, an, opcodes32, store32) (* XXX64 *)
 
         | stmt(T.FSTORE(fty, ea, d, mem), an) = fstore(fty, ea, d, mem, an)
@@ -1952,18 +1952,19 @@ struct
         | stmt(T.KILL S, an) = mark'(I.KILL{regs=cellset S,spilled=C.empty},an)
         | stmt(T.ANNOTATION(s, a), an) = stmt(s, a::an)
         | stmt(T.EXT s, an) =
-             ExtensionComp.compileSext (reducer()) {stm=s, an=an} 
+             ExtensionComp.compileSext (reducer()) {stm=s, an=an}
         | stmt(s, _) = doStmts(Gen.compileStm s)
 
       and doStmt s = stmt(s, [])
+
       and doStmts ss = app doStmt ss
 
       and beginCluster' _ =
          ((* Must be cleared by the client.
-           * if rewriteMemReg then memRegsUsed := 0w0 else (); 
+           * if rewriteMemReg then memRegsUsed := 0w0 else ();
            *)
           floatingPointUsed := false;
-          trapLabel := NONE; 
+          trapLabel := NONE;
           beginCluster 0
          )
       and endCluster' a =
@@ -1979,7 +1980,7 @@ struct
           endCluster(a)
          )
 
-      and reducer() = 
+      and reducer() =
           TS.REDUCER{reduceRexp    = expr,
                     reduceFexp    = fexpr,
                     reduceCCexp   = ccExpr,
@@ -1988,8 +1989,8 @@ struct
                     reduceOperand = reduceOpnd,
                     addressOf     = fn e => address(e, I.Region.memory), (*XXX*)
                     emit          = mark',
-                    instrStream   = instrStream, 
-                    mltreeStream  = self() 
+                    instrStream   = instrStream,
+                    mltreeStream  = self()
                    }
 
       and self() =
@@ -2007,7 +2008,7 @@ struct
           }
 
   in  self()
-  end 
+  end
 
 end (* functor *)
 
