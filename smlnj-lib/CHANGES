@@ -5,6 +5,13 @@ correspond to SML/NJ releases.
 SML/NJ 110.80
 -------------------
 
+[2016-08-03]
+	Fixed bug #167 (Bug in handling of long options in GetOpt).  The new behavior
+	is to allow long-option prefixes to overlap with other long options, but to
+	favor an exact match over prefix matches.  For example, if the long options
+	are "--foo", "--foobar", and "--foobaz", then "--foo" will match the first,
+	but "--foob" will be flagged as ambiguous.
+
 [2016-01-12]
 	Added minItem and maxItem to ORD_SET signature.
 
