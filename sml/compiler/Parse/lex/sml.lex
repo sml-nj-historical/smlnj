@@ -240,14 +240,22 @@ real=(~?)(({num}{frac}?{exp})|({num}{frac}{exp}?));
 	  \@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_" nullErrorBody;
 	 continue());
 <S>\\u{xdigit}{4}
-		=> (addUnicode(charlist, String.substring(yytext, 2, 4)); continue());
-<S>\\[0-9]{3}	=> (let val x = Char.ord(String.sub(yytext,1))*100
-			      + Char.ord(String.sub(yytext,2))*10
-			      + Char.ord(String.sub(yytext,3))
-			      - ((Char.ord #"0")*111)
+		=> (let
+                    val x = Word.toIntX (valOf (Word.fromString (String.substring(yytext, 2, 4))))
+                    in
+		      if x>255
+			then err (yypos,yypos+4) COMPLAIN (concat[
+                            "illegal string escape '", yytext, "' is too large"
+                          ]) nullErrorBody
+			else addChar(charlist, Char.chr x);
+		      continue()
+		    end);
+<S>\\[0-9]{3}	=> (let val SOME x = Int.fromString (String.substring(yytext, 1, 3))
 		    in
 		      if x>255
-			then err (yypos,yypos+4) COMPLAIN "illegal ascii escape" nullErrorBody
+			then err (yypos,yypos+4) COMPLAIN (concat[
+                            "illegal string escape '", yytext, "' is too large"
+                          ]) nullErrorBody
 			else addChar(charlist, Char.chr x);
 		      continue()
 		    end);

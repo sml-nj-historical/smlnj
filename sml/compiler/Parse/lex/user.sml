@@ -20,7 +20,7 @@ structure UserDeclarations =
     type lexresult = (svalue,pos) Tokens.token
 
     type arg = {
-	    comLevel : int ref, 
+	    comLevel : int ref,
 	    sourceMap : SourceMap.sourcemap,
 	    charlist : string list ref,
 	    stringtype : bool ref,
@@ -43,19 +43,11 @@ structure UserDeclarations =
 
 		else ();
 	    Tokens.EOF(pos,pos)
-	  end	
+	  end
 
   (* support for string literals *)
     fun addString (charlist,s:string) = charlist := s :: (!charlist)
     fun addChar (charlist, c:char) = addString(charlist, String.str c)
     fun makeString charlist = (concat(rev(!charlist)) before charlist := nil)
-  (* add a Unicode character to the charlist as a UTF-8 character sequence; the argument
-   * to this function is expected to be a four-digit hex number.
-   *)
-    fun addUnicode (charlist, s) = let
-	  val SOME w = Word.fromString s
-	  in
-	    charlist := UTF8.encode w :: !charlist
-	  end
 
   end
