@@ -11,11 +11,11 @@
 # Author: Matthias Blume (blume@tti-c.org)
 #
 
-this=$0
-ROOT=$1
+this="$0"
+ROOT="$1"
 shift
 
-CONFIGDIR=$ROOT/config
+CONFIGDIR="$ROOT/config"
 
 VERSION=`cat "$CONFIGDIR"/version`
 . "$CONFIGDIR"/srcarchiveurl
@@ -55,7 +55,7 @@ fetchurl() {
     getter=$1 ; shift
     vsay $this: Fetching $1 from $3. Please stand by...
     fetched=no
-    for base in $2 $VERSION-$2 ; do
+    for base in "$2" "$VERSION-$2" ; do
 	for ext in tgz tar.gz tar.Z tz tar tar.bz2 ; do
 	    try=$base.$ext
 	    vsay $this: Trying $try ...
@@ -287,7 +287,7 @@ do
 	unpack "utilities for language processing tools" "$ROOT" ml-lpt ml-lpt
 	;;
       doc)
-	unpack "documentation" $ROOT doc doc
+	unpack "documentation" "$ROOT" doc doc
         # cd $ROOT/doc
 	# build $ROOT
 	;;
