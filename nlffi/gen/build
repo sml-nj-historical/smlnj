@@ -39,4 +39,4 @@ if [ "$HEAP_IMAGE" = "" ]; then
     HEAP_IMAGE="$ROOT"
 fi
 
-$BUILD ml-nlffigen.cm Main.main $HEAP_IMAGE
+$BUILD ml-nlffigen.cm Main.main "$HEAP_IMAGE"
