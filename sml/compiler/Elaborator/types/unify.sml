@@ -73,15 +73,16 @@ datatype unifyFail
 
 fun failMessage (failure: unifyFail) =
     case failure
-      of CIRC _ =>   "circularity"
-       | EQ =>       "equality type required"
-       | TYC _ =>    "tycon mismatch"
-       | TYP _ =>    "type mismatch"
-       | OVLD_F _ => "overload conflict"
+      of CIRC _ =>    "circularity"
+       | EQ =>        "equality type required"
+       | TYC _ =>     "tycon mismatch"
+       | TYP _ =>     "type mismatch"
+       | OVLD_F _ =>  "overload conflict"
        | OVLD_EQ _ => "overload - equality mismatch"
-       | UBVE _ =>   "UBOUND, equality mismatch"
-       | UBV _ =>    "UBOUND match"
-       | REC =>      "record labels"
+       | OVLD_UB _ => "overload - user bound tyvar" (* DBM: fixes bug 145 *)
+       | UBVE _ =>    "UBOUND, equality mismatch"
+       | UBV _ =>     "UBOUND match"
+       | REC =>       "record labels"
 
 exception Unify of unifyFail
 
