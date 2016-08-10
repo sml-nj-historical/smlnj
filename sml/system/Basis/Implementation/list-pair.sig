@@ -48,6 +48,14 @@ signature LIST_PAIR_2015 =
     val foldri		: (int * 'a * 'b * 'c -> 'c) -> 'c -> 'a list * 'b list -> 'c
     val foldriEq	: (int * 'a * 'b * 'c -> 'c) -> 'c -> 'a list * 'b list -> 'c
 
+  (* added 2015-10-24 *)
+    val unzipMap	: ('a -> 'b * 'c) -> 'a list -> 'b list * 'c list
+    val unzipMapi	: (int * 'a -> 'b * 'c) -> 'a list -> 'b list * 'c list
+
+  (* added 2015-10-27 *)
+    val find		: ('a * 'b -> bool) -> 'a list * 'b list -> ('a * 'b) option
+    val findi		: (int * 'a * 'b -> bool) -> 'a list * 'b list -> (int * 'a * 'b) option
+
   end
 
 signature LIST_PAIR = LIST_PAIR_2015
