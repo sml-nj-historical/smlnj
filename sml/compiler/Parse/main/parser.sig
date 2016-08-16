@@ -1,14 +1,17 @@
 (* parser.sig
  *
- * (C) 2001 Lucent Technologies, Bell Labs
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
-signature MLPARSER = sig
 
-    datatype parseResult =
-	EOF   
-      | ERROR 
-      | ABORT 
+signature (*SMLNJ_PARSER*) MLPARSER = sig
+
+    datatype parseResult
+      = EOF
+      | ERROR
+      | ABORT
       | PARSE of Ast.dec
 
     val parse : Source.inputSource -> unit -> parseResult
-end
+
+  end

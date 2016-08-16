@@ -3,7 +3,7 @@
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
 
-structure MLParser : MLPARSER = struct 
+structure MLParser : MLPARSER = struct
 
 (*
 structure MLLrVals = MLLrValsFun(structure Token = LrParser.Token)
@@ -77,18 +77,18 @@ fun parse (source as {sourceStream,errConsumer,interactive,
              s
          end)
 
-      val lexer = 
-        Lex.makeLexer (if interactive then getline 
+      val lexer =
+        Lex.makeLexer (if interactive then getline
                        else inputc_sourceStream) lexarg
       val lexer' = ref(LrParser.Stream.streamify lexer)
       val lookahead = if interactive then 0 else 30
 
       fun oneparse () =
         let val _ = prompt := !ParserControl.primaryPrompt
-            val (nextToken,rest) = LrParser.Stream.get(!lexer') 
-         in (*if interactive then SourceMap.forgetOldPositions sourceMap 
+            val (nextToken,rest) = LrParser.Stream.get(!lexer')
+         in (*if interactive then SourceMap.forgetOldPositions sourceMap
               else ();*)
-            if MLP.sameToken(nextToken,dummySEMI) 
+            if MLP.sameToken(nextToken,dummySEMI)
             then (lexer' := rest; oneparse ())
             else if MLP.sameToken(nextToken,dummyEOF)
                  then EOF
@@ -96,12 +96,12 @@ fun parse (source as {sourceStream,errConsumer,interactive,
 			  val initialLinePos = SourceMap.lastLinePos sourceMap
                           val (result, lexer'') =
                               MLP.parse(lookahead,!lexer',parseerror,err)
-			  val linesRead = SourceMap.newlineCount sourceMap 
+			  val linesRead = SourceMap.newlineCount sourceMap
 					  (initialLinePos, SourceMap.lastLinePos sourceMap)
                        in addLines(linesRead);
                           lexer' := lexer'';
 			  if !anyErrors then ERROR else PARSE result
-                      end 
+                      end
         end handle LrParser.ParseError => ABORT
                  | AbortLex => ABORT
             (* oneparse *)

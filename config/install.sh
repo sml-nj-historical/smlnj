@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # Copyright (c) 1994 AT&T Bell Laboratories.
-# Copyright (c) 2014 The Fellowship of SML/NJ
+# Copyright (c) 2014-2016 The Fellowship of SML/NJ
 #
 # Installation script for SML/NJ and related tools.
 #
@@ -288,9 +288,22 @@ case $ARCH in
 	;;
 esac
 
+# OS-specific things for building the runtime system
+#
 case $OPSYS in
-    solaris)
-	MAKE=/usr/ccs/bin/make
+    darwin)
+	if [ "$ARCH" = "x86" ] ; then
+            # the /usr/bin/as command does _not_ accept the -mmacosx-version-min
+	    # command-line option prior to MacOS X 10.10 (Yosimite)
+	    case `sw_vers -productVersion` in
+	      10.6*) AS_ACCEPTS_SDK=no ;;
+	      10.7*) AS_ACCEPTS_SDK=no ;;
+	      10.8*) AS_ACCEPTS_SDK=no ;;
+	      10.9*) AS_ACCEPTS_SDK=no ;;
+	      *) AS_ACCEPTS_SDK=yes ;;
+	    esac
+	EXTRA_DEFS="AS_ACCEPTS_SDK=$AS_ACCEPTS_SDK"
+	fi
 	;;
     linux)
 	EXTRA_DEFS=`"$CONFIGDIR/chk-global-names.sh"`
@@ -298,6 +311,9 @@ case $OPSYS in
 	    complain "$this: !!! Problems checking for underscores in asm names."
 	fi
 	EXTRA_DEFS="XDEFS=$EXTRA_DEFS"
+	;;
+    solaris)
+	MAKE=/usr/ccs/bin/make
 	;;
 esac
 

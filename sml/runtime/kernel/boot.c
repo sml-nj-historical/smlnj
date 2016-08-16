@@ -46,9 +46,9 @@ PVT void ShowPerID (char *buf, pers_id_t *perID);
 
 static int HEX(int c)
 {
-  if (isdigit(c)) return c - '0';
-  if (c >= 'a' && c <= 'z') return c - 'a' + 10;
-  return c - 'A' + 10;
+    if (isdigit(c)) return c - '0';
+    if (c >= 'a' && c <= 'z') return c - 'a' + 10;
+    return c - 'A' + 10;
 }
 
 
@@ -385,7 +385,7 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
     size_t          archiveOffset;
     char            *atptr, *colonptr;
     char            *objname = fname;
-    
+
 
     if ((atptr = strchr (fname, '@')) == NULL)
 	archiveOffset = 0;
@@ -528,7 +528,7 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
 	ReadBinFile (file, PTR_MLtoC(char, codeObj), thisSzB, fname);
 
 	FlushICache (PTR_MLtoC(char, codeObj), thisSzB);
-      
+
       /* create closure (taking entry point into account) */
 	REC_ALLOC1 (msp, closure,
 		    PTR_CtoML (PTR_MLtoC (char, codeObj) + thisEntryPoint));

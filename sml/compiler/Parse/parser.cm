@@ -17,6 +17,9 @@ Group
 	structure AstUtil
 	structure MLParser
 	structure SmlFile
+
+structure MLP
+
 is
 	ast/ast.sig
 	ast/ast.sml
@@ -25,6 +28,8 @@ is
 
 	lex/tokentable.sml
 	lex/user.sml
+
+main/ml-parser.sml
 
 #if defined (NO_PLUGINS)
         lex/ml.lex.sml
