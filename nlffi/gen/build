@@ -12,7 +12,7 @@ ROOT="ml-nlffigen"
 HEAP_IMAGE=""
 TWOUP=`pwd`/../..
 BIN=${INSTALLDIR:-$TWOUP}/bin
-BUILD=$BIN/ml-build
+BUILD="$BIN/ml-build"
 
 #
 # process command-line options
@@ -39,4 +39,4 @@ if [ "$HEAP_IMAGE" = "" ]; then
     HEAP_IMAGE="$ROOT"
 fi
 
-$BUILD ml-nlffigen.cm Main.main "$HEAP_IMAGE"
+exec "$BUILD" ml-nlffigen.cm Main.main "$HEAP_IMAGE"
