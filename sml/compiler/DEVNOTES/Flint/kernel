@@ -1,0 +1,129 @@
+Notation:
+
+tenv closure:
+  TC_ENV(tyc,ol,nl,tenv)
+    - tyc : the hashed tyc that is being closed
+    - ol : int -- number of bindings in tenv = length of tenv
+    - nl : int -- 
+           (a) number of lambda bindings between original beta-redex
+           and current site of the closure (roughly the number of
+           lambda bindings the closure has been pushed through by
+	   rule (r10).
+    - tenv : tycEnv -- tyc env mapping deBruijn indexes to teBinders
+
+teBinder:
+  Beta(j,args,ks)
+    - j: int -- lambda nesting level of the beta-redex (relative to
+           original beta-redex site)
+    - args : tyc list -- the redex arguments
+    - ks : tkind list -- the kinds of the redex arguments
+  Lamb(j,ks)
+    - j: int -- lambda nesting level of a "promoted" lambda binding
+    - ks: tkind list -- kinds of the lambda-bound variables
+
+
+Rules for tyc normalization from ltykernel.sml.
+
+Beta reduction:
+
+(r1) TC_APP(TC_FN(ks,tyc),tycs) =>             (beta reduction)
+       TC_ENV(tyc,1,0,Beta(0,tycs,ks)::nil)
+
+Simplification rules:
+
+(r2) TC_ENV(tyc,0,0,nil) => tyc                (null env)
+
+(r3) TC_ENV(tyc,ol,nl,tcenv) => tyc  (if tyc closed)
+
+
+Variable lookup:
+
+(r4) TC_ENV((n,k),ol,nl,tcenv) => (n-ol+nl,k)  if n > ol  (adjust free var)
+    [A reference to a "nonlocal" variable, whose index points outside the
+     closure environment.]
+
+(r5) TC_ENV((n,k),ol,nl,tcenv) => (nl-nl',k)  where tcenv[n] = Lamb(nl',ks)
+    [A reference to a "local" lambda bound variable.]
+
+(r6) TC_ENV((n,k),ol,nl,tcenv) => TC_ENV(tycs[k],0,nl-nl',nil)
+     where tcenv[n] = Beta(nl',tycs,ks)
+    [A reference to a local beta-bound variable.]
+
+Constructors
+
+(r7) TC_ENV(tyc as TC_PRIM _,ol,nl,tcenv) = tyc   (special case of (r3))
+
+Distribution (generalization of rules r8, r9)
+
+(r8a) TC_ENV(TC_* tyc,ol,nl,tcenv) = 
+       TC_* (TC_ENV(tyc,ol,nl,tcenv))
+
+     where TC_* ranges over unary constructors, preserving non-tyc args
+
+(r8b) TC_ENV(TC_* tycs,ol,nl,tcenv) = 
+       TC_*(map (fn tyc => TC_ENV(tyc,ol,nl,tcenv)) tycs)
+
+     where TC_* ranges over n-ary constructors: TC_APP, TC_ARROW, TC_SEQ,
+     TC_SUM, etc.
+     
+(r10) TC_ENV(TC_FN(ks,tyc),ol,nl,tcenv) => 
+        TC_FN(ks, TC_ENV(tyc,ol+1,nl+1,Lamb(nl,ks)))
+
+
+Pushing through lambda
+
+(r11) TC_ENV(TC_ENV(tyc,ol,nl,tcenv),0,nl',nil) =>
+        TC(tyc,ol,nl+nl',tcenv)
+
+
+Closure reuse
+
+(r12) TC_APP(TC_FN(ks,TC_ENV(tyc1,ol,nl,Lamb(nl-1,ks))), tycs2) =>
+        TC_ENV(tyc1,ol,nl-1,Beta(nl-1,tycs2,ks)::tcenv)
+
+
+-----------------
+Assumptions: 
+
+1. reductions are performed top-down. This means that (r1) is never
+applied within the body of a closure, or in other words, (r1) is always
+applied at an outermost redex (where TC_ENV closures count as redexes).
+
+2. In TC_ENV(tyc,ol,nl,tcenv), nl is a count of the (nonreduced)
+lambda abstractions between the original site of tyc and the
+current location of the closure. It can never be negative. 
+
+(a) nl is set to 0 by rule (r1), when a fresh closure is created.
+(b) nl is incremented at (r10) when a closure is pushed through a lambda.
+(c) nl not decreased by (r11), where two nl values are added.
+(d) nl is reduced by subtraction of nl' in rule (r6). We assume
+the invariant that nl >= nl' in this rule, so the new nl value
+will be non-negative.
+
+3. Closure configurations of the form TC_ENV(tyc,0,nl,nil) can
+result from (r6). In such configurations, the nl value is used
+to adjust free variables as in rules (r4) and (r5). The (r6) 
+variable lookup has moved a moved a tyc into a new context nested
+within nl additional lambdas relative to its original site.
+
+
+-----------------
+Invariants:
+
+0. deBruijn indexes start at 1
+
+0a. in (r5), nl > nl'
+
+1. ol and nl are non-negative
+
+	ol >= 0, nl >= 0
+
+1a. in (r6), nl >= nl'
+
+
+2. ol is the length of the environment
+
+	ol = |tenv|
+
+3. ol = nl =>  ???
+
