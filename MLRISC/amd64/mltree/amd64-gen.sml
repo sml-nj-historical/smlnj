@@ -1,25 +1,30 @@
 (* amd64-gen.sml
- * 
+ *
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Translate MLRISC trees into AMD64 instructions.
  *)
 
 functor AMD64Gen (
+
     structure I : AMD64INSTR
     structure MLTreeUtils : MLTREE_UTILS
 	where T = I.T
     structure ExtensionComp : MLTREE_EXTENSION_COMP
         where I = I and T = I.T
 
-    (* Take a number of bits and returns a label that points to a literal with the high bit set.
+    (* Take a number of bits and returns an rexp that points to a literal with the high bit set.
      * We need this literal value for floating-point negation and absolute value (at least
      * until SSE4).
      *)
-    val signBit : int -> Label.label
+    val signBit : int -> MLTreeUtils.T.rexp
     (* Same as signBit, except the high bit is zero and the low bits are 1s. *)
-    val negateSignBit : int -> Label.label
-			       
+    val negateSignBit : int -> MLTreeUtils.T.rexp
+
    (* guaranteeing that floats are stored at 16-byte aligned addresses reduces the number of instructions *)
     val floats16ByteAligned : bool
+
    ) : MLTREECOMP = struct
 
     structure TS = ExtensionComp.TS
@@ -52,7 +57,7 @@ functor AMD64Gen (
 
     fun gpr (ty, r) = I.Direct (ty, r)
     val fpr = I.FDirect
-    
+
     fun rax ty = I.Direct(ty,C.rax)
     fun rcx ty = I.Direct(ty,C.rcx)
     fun rdx ty = I.Direct(ty,C.rdx)
@@ -65,34 +70,34 @@ functor AMD64Gen (
     val newFreg = C.newFreg
 
     (* convert mlrisc to cellset: *)
-    fun cellset mlrisc = let 
-	val addCCReg = CB.CellSet.add 
+    fun cellset mlrisc = let
+	val addCCReg = CB.CellSet.add
         fun g([],acc) = acc
           | g(T.GPR(T.REG(_,r))::regs,acc)  = g(regs,C.addReg(r,acc))
           | g(T.FPR(T.FREG(_,f))::regs,acc) = g(regs,C.addFreg(f,acc))
           | g(T.CCR(T.CC(_,cc))::regs,acc)  = g(regs,addCCReg(cc,acc))
           | g(T.CCR(T.FCC(_,cc))::regs,acc)  = g(regs,addCCReg(cc,acc))
           | g(_::regs, acc) = g(regs, acc)
-      in  
-	g(mlrisc, C.empty) 
+      in
+	g(mlrisc, C.empty)
       end
-      
+
     (* conversions *)
     val itow = Word.fromInt
     val wtoi = Word.toInt
     fun toInt32 i = T.I.toInt32(32, i)
     fun toInt64 i = T.I.toInt64(64, i)
-    val w32toi32 = Word32.toLargeIntX 
-    val i32tow32 = Word32.fromLargeInt		 
+    val w32toi32 = Word32.toLargeIntX
+    val i32tow32 = Word32.fromLargeInt
     (* One day, this is going to bite us when precision(LargeInt)>32 *)
     fun wToInt32 w = Int32.fromLarge(Word32.toLargeIntX w)
 
     fun fitsIn32Bits z = z < IntInf.<< (1, 0w31)
 
     fun move64 (src, dst) = I.move {mvOp=I.MOVABSQ, src=src, dst=dst}
-    
+
     (* analyze for power-of-two-ness *)
-   fun analyze i' = let 
+   fun analyze i' = let
        val i = toInt32 i'
        in
 	  let val (isneg, a, w) =
@@ -131,7 +136,7 @@ functor AMD64Gen (
       | setZeroBit(T.SUBT _)     = true
       | setZeroBit(T.MARK(e, _)) = setZeroBit e
       | setZeroBit _             = false
-				 
+
     fun setZeroBit2(T.ANDB _)     = true
       | setZeroBit2(T.ORB _)      = true
       | setZeroBit2(T.XORB _)     = true
@@ -145,24 +150,24 @@ functor AMD64Gen (
       | setZeroBit2(T.MARK(e, _)) = setZeroBit2 e
       | setZeroBit2 _             = false
 
-    and isMemOpnd opnd = (case opnd 
+    and isMemOpnd opnd = (case opnd
         of  I.Displace _ => true
-          | I.Indexed _  => true 
-          | I.LabelEA _  => true 
+          | I.Indexed _  => true
+          | I.LabelEA _  => true
           | I.FDirect f  => true
           | _            => false
           (* end case *))
 
     fun selectInstructions (instrStream as TS.S.STREAM{
           emit=emitInstr, defineLabel, entryLabel, pseudoOp, annotation,
-          getAnnotations, beginCluster, endCluster, exitBlock, 
+          getAnnotations, beginCluster, endCluster, exitBlock,
           comment, ...
 	}) = let
 	val emit = emitInstr o I.INSTR
 	val emits = app emitInstr
-	(* mark an expression with a list of annotations *) 
+	(* mark an expression with a list of annotations *)
 	fun mark' (i, []) = emitInstr i
-  	  | mark' (i, a::an) = mark'(I.ANNOTATION{i=i,a=a},an) 
+  	  | mark' (i, a::an) = mark'(I.ANNOTATION{i=i,a=a},an)
 	(* annotate an expression and emit it *)
 	fun mark (i, an) = mark' (I.INSTR i, an)
 
@@ -177,10 +182,10 @@ functor AMD64Gen (
 	  | move' (ty, src as I.ImmedLabel _ , dst, an) = let
             val tmp = newReg ()
 	    val tmpR = I.Direct (64, tmp)
-	    in 
+	    in
 		emitInstr (move64 (src, tmpR));
 		mark' (I.move {mvOp=I.MOVQ, src=tmpR, dst=dst}, an)
-	    end	
+	    end
 	  | move' (ty, src, dst, an) =
 	    mark' (I.move {mvOp=O.movOp ty, src=src, dst=dst}, an)
 	(* move with annotation *)
@@ -200,56 +205,56 @@ functor AMD64Gen (
 	    in
 	      emits stms
 	    end (* copy *)
-	
+
         (* Add an overflow trap *)
-	fun trap() = let 
-	    val jmp = (case !trapLabel 
-	        of NONE => let 
+	fun trap() = let
+	    val jmp = (case !trapLabel
+	        of NONE => let
 	           val label = Label.label "trap" ()
 		   val jmp = I.ANNOTATION{i=I.jcc{cond=I.O,
 		         opnd=I.ImmedLabel(T.LABEL label)},
 		         a=MLRiscAnnotations.BRANCHPROB (Probability.unlikely)}
-	           in  
-	             trapLabel := SOME(jmp, label); 
-	             jmp 
+	           in
+	             trapLabel := SOME(jmp, label);
+	             jmp
 	           end
 		 | SOME(jmp, _) => jmp
 		(* end case *))
-	    in 
-	      emitInstr jmp 
+	    in
+	      emitInstr jmp
 	    end (* trap *)
 
 	exception EA
 
-        fun address' ty (ea, mem) = let 
+        fun address' ty (ea, mem) = let
             fun makeAddressingMode (NONE, NONE, _, disp) = disp
-	      | makeAddressingMode(SOME base, NONE, _, disp) = 
+	      | makeAddressingMode(SOME base, NONE, _, disp) =
                 I.Displace{base=base, disp=disp, mem=mem}
-              | makeAddressingMode(base, SOME index, scale, disp) = 
+              | makeAddressingMode(base, SOME index, scale, disp) =
                 I.Indexed{base=base, index=index, scale=scale,
 		          disp=disp, mem=mem}
 
-  	    (* Keep building a bigger and bigger effective address expressions 
+  	    (* Keep building a bigger and bigger effective address expressions
 	     * The input is a list of trees
 	     * b -- base
 	     * i -- index
 	     * s -- scale
 	     * d -- immed displacement
-	     *)	      
+	     *)
 	    fun doEA([], b, i, s, d) = makeAddressingMode(b, i, s, d)
-  	      | doEA(t::trees, b, i, s, d) = (case t 
+  	      | doEA(t::trees, b, i, s, d) = (case t
 	        of T.LI n   => doEAImmed(trees, toInt32 n, b, i, s, d)
 		 | T.CONST _ => doEALabel(trees, t, b, i, s, d)
 		 | T.LABEL _ => doEALabel(trees, t, b, i, s, d)
 		 | T.LABEXP le => doEALabel(trees, le, b, i, s, d)
-		 | T.ADD(ty, t1, t2 as T.REG(_,r)) => 
+		 | T.ADD(ty, t1, t2 as T.REG(_,r)) =>
 		   doEA(t1::t2::trees, b, i, s, d)
 		 | T.ADD(ty, t1, t2) => doEA(t1::t2::trees, b, i, s, d)
-		 | T.SUB(ty, t1, T.LI n) => 
+		 | T.SUB(ty, t1, T.LI n) =>
 		   doEA(t1::T.LI(T.I.NEG(ty,n))::trees, b, i, s, d)
 		 | T.SLL(ty, t1, T.LI n) => let
 		   val n = T.I.toInt(ty, n)
-                   in 
+                   in
 	             case n
 		       of 0 => displace(trees, t1, b, i, s, d)
 	  		| 1 => indexed(trees, t1, t, 1, b, i, s, d)
@@ -262,10 +267,10 @@ functor AMD64Gen (
 
             (* Add an immed constant *)
             and doEAImmed(trees, 0, b, i, s, d) = doEA(trees, b, i, s, d)
- 	      | doEAImmed(trees, n, b, i, s, I.Immed m) = 
+ 	      | doEAImmed(trees, n, b, i, s, I.Immed m) =
                 doEA(trees, b, i, s, I.Immed(n+m))
-              | doEAImmed(trees, n, b, i, s, I.ImmedLabel le) = 
-                doEA(trees, b, i, s, 
+              | doEAImmed(trees, n, b, i, s, I.ImmedLabel le) =
+                doEA(trees, b, i, s,
                      I.ImmedLabel(T.ADD(ty,le,T.LI(T.I.fromInt32(ty, n)))))
               | doEAImmed(trees, n, b, i, s, _) = error "doEAImmed"
 
@@ -291,11 +296,11 @@ functor AMD64Gen (
 	        in
 		  (case d
 		    of I.Immed 0 => doEA(trees, SOME (genExpr le), i, s, I.Immed 0)
-		     | I.Immed m => (doEA (trees, 
-		              SOME (genExpr (T.ADD (ty, le, T.LI(T.I.fromInt32(ty, m))))), 
+		     | I.Immed m => (doEA (trees,
+		              SOME (genExpr (T.ADD (ty, le, T.LI(T.I.fromInt32(ty, m))))),
 		         i, s, I.Immed 0)
 		       handle Overflow => error "doEALabel: constant too large")
-		     | I.ImmedLabel le' => doEA (trees, 
+		     | I.ImmedLabel le' => doEA (trees,
 		              SOME (genExpr (T.ADD (ty, le', le))),
 		         i, s, I.Immed 0)
 		     | _ => error "doEALabel"
@@ -303,14 +308,14 @@ functor AMD64Gen (
 	        end
 
             (* generate code for tree and ensure that it is not in %rsp *)
-            and exprNotRsp tree = let 
+            and exprNotRsp tree = let
 		val r = genExpr tree
-		in  
-		  if CB.sameColor(r, C.rsp) then let 
+		in
+		  if CB.sameColor(r, C.rsp) then let
 		     val tmp = newReg()
-	             in  	
-		       move(ty, I.Direct (ty,r), I.Direct (ty,tmp)); 
-		       tmp 
+	             in
+		       move(ty, I.Direct (ty,r), I.Direct (ty,tmp));
+		       tmp
 		     end
                   else r
 		end
@@ -327,18 +332,18 @@ functor AMD64Gen (
 			  doEA(trees, SOME i, b, 0, d)
 		       else  (* base and index = %rsp! *)
 			  let val index = newReg()
-			  in  
+			  in
 			     move(ty, I.Direct (ty,i), I.Direct (ty,index));
 		             doEA(trees, b, SOME index, 0, d)
 			  end
                     else doEA(trees, b, SOME i, 0, d)
 		end
-             | displace(trees, t, SOME base, i, s, d) = (* base and index *) 
+             | displace(trees, t, SOME base, i, s, d) = (* base and index *)
 	       let val b = genExpr (T.ADD(ty,T.REG(ty,base),t))
-	       in  
-	       	 doEA(trees, SOME b, i, s, d) 
+	       in
+	       	 doEA(trees, SOME b, i, s, d)
 	       end
-		  
+
             (* Add an indexed register *)
             and indexed(trees, t, t0, scale, b, NONE, _, d) = (* no index yet *)
 		doEA(trees, b, SOME(exprNotRsp t), scale, d)
@@ -346,10 +351,10 @@ functor AMD64Gen (
   		doEA(trees, SOME(genExpr t0), i, s, d)
               | indexed(trees, _, t0, _, SOME base, i, s, d) = (*base and index*)
   		let val b = genExpr (T.ADD(ty, t0, T.REG(ty, base)))
-		in  
-		  doEA(trees, SOME b, i, s, d) 
+		in
+		  doEA(trees, SOME b, i, s, d)
 		end
-	  in 
+	  in
 	    case doEA ([ea], NONE, NONE, 0, I.Immed 0)
 	     of I.Immed _ => raise EA
 	      | I.ImmedLabel le => I.Displace {base=genExpr le, disp=I.Immed 0, mem=mem} (* I.LabelEA le*)
@@ -360,17 +365,17 @@ functor AMD64Gen (
 
       (* load the label into a temp register. this operation is necessary, since most instructions
        * can only handle 32-bit immediates *)
-	and loadLabel src = let 
+	and loadLabel src = let
             val tmp = newReg ()
 	    val tmpR = I.Direct (64, tmp)
-	    in 
+	    in
 		emitInstr (move64 (src, tmpR));
 		tmpR
 	    end
 
         (* reduce an expression into an operand *)
         and operand ty (T.LI i) = if (fitsIn32Bits i)
-            then I.Immed (toInt32 i) 
+            then I.Immed (toInt32 i)
             else let
               (* i is a 64-bit operand *)
                val dstR = newReg ()
@@ -406,7 +411,7 @@ functor AMD64Gen (
 	      move (ty, opnd, dst);
 	      dst
 	    end
-	
+
 	and isImmediate(I.Immed _) = true
 (*	  | isImmediate(I.ImmedLabel _) = true *)
 	  | isImmediate _ = false
@@ -428,89 +433,89 @@ functor AMD64Gen (
 	    fun dstMustBeReg f = f (dst, dstOpnd)
 	    fun genLoad (mvOp, ea, mem) = dstMustBeReg (fn (_, dst) =>
    	        mark (I.MOVE {mvOp=mvOp, src=address (ea, mem), dst=dst},an))
-   	    fun unknownExp exp = expr (Gen.compileRexp exp, dst, an) 
-   	    
+   	    fun unknownExp exp = expr (Gen.compileRexp exp, dst, an)
+
    	    (* Generate a unary operator *)
-            fun unary(ty, unOp, e) = let 
+            fun unary(ty, unOp, e) = let
                 val opnd = operand ty e
-		in 
-		  if isMemOpnd opnd then let 
+		in
+		  if isMemOpnd opnd then let
 		     val tmp = I.Direct(ty, newReg())
-		     in 
-		       move(ty, opnd, tmp); 
+		     in
+		       move(ty, opnd, tmp);
 		       move(ty, tmp, dstOpnd)
-		     end 
+		     end
                   else move(ty, opnd, dstOpnd);
                        mark(I.UNARY{unOp=unOp ty, opnd=dstOpnd}, an)
 		end
-		
+
 	    fun genBinary (ty, binOp, opnd1, opnd2) =
                   if (isMemOpnd opnd1 orelse isMemOpnd opnd2) orelse
-                     equalDst(opnd2) then let 
+                     equalDst(opnd2) then let
                      val tmpR = newReg()
 	             val tmp  = I.Direct (ty,tmpR)
-                     in  
+                     in
                        move (ty, opnd1, tmp);
 		       mark (I.BINARY{binOp=binOp ty, src=opnd2, dst=tmp}, an);
 	               move (ty, tmp, dstOpnd)
-                     end 
+                     end
                   else (move (ty, opnd1, dstOpnd);
                        mark(I.BINARY{binOp=binOp ty, src=opnd2, dst=dstOpnd}, an))
 	    (* generate a binary operator that may commute *)
-            fun binaryComm (ty, binOp, e1, e2) = let 
-                val (opnd1, opnd2) = (case (operand ty e1, operand ty e2) 
+            fun binaryComm (ty, binOp, e1, e2) = let
+                val (opnd1, opnd2) = (case (operand ty e1, operand ty e2)
                     of (x as I.Immed _, y)      => (y, x)
 	             | (x as I.ImmedLabel _, y) => (y, x)
 		     | (x, y as I.Direct _)     => (y, x)
 	   	     | (x, y)                   => (x, y)
 	   	    (* end case *))
-		in 
-		  genBinary(ty, binOp, opnd1, opnd2) 
+		in
+		  genBinary(ty, binOp, opnd1, opnd2)
 	        end
             (* Generate a binary operator; non-commutative *)
-            fun binary(ty, binOp, e1, e2) = 
+            fun binary(ty, binOp, e1, e2) =
 		genBinary(ty, binOp, operand ty e1, operand ty e2)
 	    (* Add n to dst *)
-            fun addN (addOp, n) = let 
+            fun addN (addOp, n) = let
                 val n = operand ty n
-                in  
-                  mark (I.BINARY{binOp=addOp, src=n, dst=dstOpnd}, an) 
+                in
+                  mark (I.BINARY{binOp=addOp, src=n, dst=dstOpnd}, an)
                 end
             (* Generate addition *)
-            fun addition(ty, e1, e2) = (case e1 
-                of T.REG(_,rs) => 
-                   if CB.sameColor(rs,dst) 
+            fun addition(ty, e1, e2) = (case e1
+                of T.REG(_,rs) =>
+                   if CB.sameColor(rs,dst)
                       then addN (O.addOp ty, e2)
                       else addition1 (ty, e1,e2)
                  | _ => addition1(ty, e1,e2)
                 (* end case *))
-            and addition1 (ty, e1, e2) = (case e2 
-                of T.REG(_,rs) => 
-                   if CB.sameColor(rs,dst) 
-                      then addN (O.addOp ty, e1) 
+            and addition1 (ty, e1, e2) = (case e2
+                of T.REG(_,rs) =>
+                   if CB.sameColor(rs,dst)
+                      then addN (O.addOp ty, e1)
                       else addition2(ty, e1,e2)
-                 | _ => addition2 (ty, e1,e2) 
+                 | _ => addition2 (ty, e1,e2)
                 (* end case *))
             and addition2 (ty, e1, e2) =
 		(dstMustBeReg(fn (dstR, _) => (case ty
-		  of 32 => mark(I.LEAL{r32=dstR, 
+		  of 32 => mark(I.LEAL{r32=dstR,
 		        addr=address' 32 (e, readonly)}, an)
-		   | 64 => mark(I.LEAQ{r64=dstR, 
+		   | 64 => mark(I.LEAQ{r64=dstR,
 			addr=address' 64 (e, readonly)}, an)
 	          (* end case*)))
                 handle EA => binaryComm(ty, O.addOp, e1, e2))
 
               (* the shift amount must be a constant or in %rcx *)
-              fun shift(ty, opcode, e1, e2) = let 
+              fun shift(ty, opcode, e1, e2) = let
                   val (opnd1, opnd2) = (operand ty e1, operand ty e2)
-                  in  
-                    (case opnd2 
+                  in
+                    (case opnd2
                       of I.Immed _ => genBinary(ty, opcode, opnd1, opnd2)
-                       | _ => 
-                         if equalDst(opnd2) then 
+                       | _ =>
+                         if equalDst(opnd2) then
                          let val tmpR = newReg()
                              val tmp  = I.Direct (ty,tmpR)
-                         in  
+                         in
                            move(ty, opnd1, tmp);
                            move(ty, opnd2, rcx ty);
                            mark(I.BINARY{binOp=opcode ty, src=rcx ty,
@@ -533,7 +538,7 @@ functor AMD64Gen (
 	      in
 		  move (ty, o1, rax ty);
 		  emit (signExtend ty);
-		  mark (I.MULTDIV { multDivOp = O.idivOp ty, 
+		  mark (I.MULTDIV { multDivOp = O.idivOp ty,
 		                     src = regOrMem (ty, o2) },
 			an);
 		  if overflow then trap() else ();
@@ -558,7 +563,7 @@ functor AMD64Gen (
 		     | (_, SOME (true, _, p)) => let
 			   val reg = getExpr e1
 		       in
-			  emit(I.UNARY { unOp = O.negOp ty, 
+			  emit(I.UNARY { unOp = O.negOp ty,
 			            opnd = I.Direct (ty,reg) });
 			  shift (ty, O.sarOp, T.REG (ty, reg), p)
 		       end)
@@ -571,7 +576,7 @@ functor AMD64Gen (
 	      in
 		  move (ty, o1, rax ty);
 		  emit (signExtend ty);
-		  mark (I.MULTDIV { multDivOp = O.idiv1Op ty, 
+		  mark (I.MULTDIV { multDivOp = O.idiv1Op ty,
 		                    src = regOrMem (ty, o2) },
 			an);
 		  app emit [(O.cmpOp ty) { lsrc = rdx ty, rsrc = I.Immed 0 },
@@ -586,7 +591,7 @@ functor AMD64Gen (
 		  move (ty, rdx ty, dstOpnd)
 	      end
 
-	      (* n mod (power-of-2) corrrsponds to a bitmask (AND). 
+	      (* n mod (power-of-2) corrrsponds to a bitmask (AND).
 	       * If the power is negative, then we must first negate
 	       * the argument and then again negate the result. *)
 	      fun reminf (ty, e1, e2 as T.LI n') =
@@ -618,7 +623,7 @@ functor AMD64Gen (
                       if overflow then trap() else ()
 		  end
 
-              (* Optimize the special case for division *) 
+              (* Optimize the special case for division *)
               fun divide (ty, signed, overflow, e1, e2 as T.LI n') =
 		  (case analyze n' of
 		       (n, SOME (isneg, a, p)) =>
@@ -701,14 +706,14 @@ functor AMD64Gen (
 
 
 	      (* unsigned integer multiplication *)
-              fun uMultiply0 (ty, e1, e2) = 
+              fun uMultiply0 (ty, e1, e2) =
                   (* note e2 can never be (I.Direct rdx) *)
                   (move(ty, operand ty e1, rax ty);
-                   mark(I.MULTDIV{multDivOp=O.mul1Op ty, 
+                   mark(I.MULTDIV{multDivOp=O.mul1Op ty,
                                   src=regOrMem(ty, operand ty e2)},an);
                    move(ty, rax ty, dstOpnd)
                   )
-		  
+
 	      fun uMultiply (ty, e1, e2 as T.LI n') =
 		  (case analyze n' of
 		       (_, SOME (false, _, p)) => shift (ty, O.shlOp, e1, p)
@@ -716,19 +721,19 @@ functor AMD64Gen (
 		| uMultiply (ty, e1 as T.LI _, e2) = uMultiply (ty, e2, e1)
 		| uMultiply (ty, e1, e2) = uMultiply0 (ty, e1, e2)
 
-              (* signed integer multiplication: 
-               * The only forms that are allowed that also sets the 
+              (* signed integer multiplication:
+               * The only forms that are allowed that also sets the
                * OF and CF flags are:
                *
                *          (dst)  (src1)  (src2)
                *      imul r64, r64/m64, imm8
-               *          (dst)  (src) 
+               *          (dst)  (src)
                *      imul r64, imm8
                *      imul r64, imm32
                *      imul r64, r32/m64
                * Note: destination must be a register!
                *)
-              fun multiply (ty, e1, e2) = 
+              fun multiply (ty, e1, e2) =
               dstMustBeReg(fn (dst, dstOpnd) =>
               let fun doit(i1 as I.Immed _, i2 as I.Immed _) =
                       (move(ty, i1, dstOpnd);
@@ -779,7 +784,7 @@ functor AMD64Gen (
 		| multiply_notrap (ty, e1, e2) = multiply (ty, e1, e2)
 
 	      (* NOTE: cmovcc encodes its operand lengths implicitly in the operand names: i.e.,
-	       * cmove %rax, %rbx 
+	       * cmove %rax, %rbx
 	       * *)
 	      fun cmovcc (tyCond, tyCmp, cc, t1, t2, y, n) = let
 		  fun gen (dstR, _) = let
@@ -797,7 +802,7 @@ functor AMD64Gen (
               fun fcmovcc (tyCond, fty, cc, t1, t2, y, n) = dstMustBeReg (fn (dstR, _) => let
  		  val _ = expr' (tyCond, n, dstR, [])                 (* false branch *)
                   val src = regOrMem (tyCond, operand tyCond y)       (* true branch *)
-                  fun j cc = mark (I.CMOV {cond=cc, src=src, dst=dstR}, an)				
+                  fun j cc = mark (I.CMOV {cond=cc, src=src, dst=dstR}, an)
                   in
 		      fbranch' (fty, cc, t1, t2, j)
 		  end)
@@ -808,28 +813,28 @@ functor AMD64Gen (
 		 | T.LI z => if (fitsIn32Bits z)
                    then move' (ty, I.Immed (toInt32 z), dstOpnd, an)
                    else mark' (move64 (I.Immed64(toInt64 z), dstOpnd), an)
-		 | (T.CONST _ | T.LABEL _) => 
+		 | (T.CONST _ | T.LABEL _) =>
                    move' (ty, I.ImmedLabel e, dstOpnd, an)
 		 | T.LABEXP le => move' (ty, I.ImmedLabel le, dstOpnd, an)
 		 (* arithmetic operations *)
-		 | T.ADD(ty, e1, e2 as T.LI n) => let 
+		 | T.ADD(ty, e1, e2 as T.LI n) => let
 		   val n = toInt32 n
-		   in 
-		     case n 
+		   in
+		     case n
 		      of 1  => unary(ty, O.incOp, e1)
 		       | ~1 => unary(ty, O.decOp, e1)
 		       | _ => addition (ty, e1, e2)
 		   end
-		 | T.ADD(ty, e1 as T.LI n, e2) => let 
+		 | T.ADD(ty, e1 as T.LI n, e2) => let
 		   val n = toInt32 n
 		   in
-		     case n 
+		     case n
 		      of  1 => unary(ty, O.incOp, e2)
 			| ~1 => unary(ty, O.decOp, e2)
 			| _ => addition (ty, e1, e2)
 		   end
 		 | T.ADD(ty, e1, e2) => addition (ty, e1, e2)
-		 | T.SUB(ty, e1, e2 as T.LI n) => let 
+		 | T.SUB(ty, e1, e2 as T.LI n) => let
 		   val n = toInt32 n
 		   in
 		     case n
@@ -838,7 +843,7 @@ functor AMD64Gen (
 		       | ~1 => unary(ty, O.incOp, e1)
 		       | _ => binary(ty, O.subOp, e1, e2)
 		   end
-		 | T.SUB(ty, e1 as T.LI n, e2) => 
+		 | T.SUB(ty, e1 as T.LI n, e2) =>
 	           if n = 0 then unary(ty, O.negOp, e2)
 		   else binary(ty, O.subOp, e1, e2)
 		 | T.SUB(ty, e1, e2) => binary(ty, O.subOp, e1, e2)
@@ -848,7 +853,7 @@ functor AMD64Gen (
 		 | T.REMU(ty, x, y) => rem(ty, false, x, y)
 		 (* signed *)
 		 | T.MULS(ty, x, y) => multiply_notrap (ty, x, y)
-		 | T.DIVS(T.DIV_TO_ZERO, ty, x, y) => 
+		 | T.DIVS(T.DIV_TO_ZERO, ty, x, y) =>
 		   divide(ty, true, false, x, y)
 		 | T.DIVS(T.DIV_TO_NEGINF, ty, x, y) => divinf (ty, false, x, y)
 		 | T.REMS(T.DIV_TO_ZERO, ty, x, y) => rem(ty, true, x, y)
@@ -857,7 +862,7 @@ functor AMD64Gen (
 		 | T.ADDT(ty, x, y) => (binaryComm(ty, O.addOp, x, y); trap())
 		 | T.SUBT(ty, x, y) => (binary(ty, O.subOp, x, y); trap())
 		 | T.MULT(ty, x, y) => (multiply (ty, x, y); trap ())
-		 | T.DIVT(T.DIV_TO_ZERO, ty, x, y) => 
+		 | T.DIVT(T.DIV_TO_ZERO, ty, x, y) =>
 		   divide(ty, true, true, x, y)
 		 | T.DIVT(T.DIV_TO_NEGINF, ty, x, y) => divinf (ty, true, x, y)
 		 (* bitwise operations *)
@@ -877,15 +882,15 @@ functor AMD64Gen (
 		 | T.SX (tTy, fTy, x) =>
 		   mark (I.MOVE {mvOp=O.loadSXOp (fTy, tTy), src=regOrMem(fTy, operand fTy x), dst=I.Direct(tTy, dst)},an)
 		 (* there is no movslq instruction, but movl suffices. *)
-		 | T.ZX(64, 32, e) => 
+		 | T.ZX(64, 32, e) =>
 		   mark (I.MOVE {mvOp=I.MOVL, src=operand 32 e, dst=I.Direct(32, dst)},an)
 		 (* zero-extended loads *)
-		 | T.ZX(tTy, fTy, e) => 
+		 | T.ZX(tTy, fTy, e) =>
 		   mark (I.MOVE {mvOp=O.loadZXOp (fTy, tTy), src=regOrMem(fTy, operand fTy e), dst=I.Direct(tTy, dst)},an)
 		 | T.CVTF2I (ty, roundingMd, fty, fExp) => let
 		  (* FIXME: handle the rounding mode *)
                    val mvOp = (case (fty, ty)
-                       of (64, 32) => I.CVTSD2SI		      
+                       of (64, 32) => I.CVTSD2SI
 			| (32, 32) => I.CVTSS2SI
 			| (64, 64) => I.CVTSD2SIQ
 			| (32, 64) => I.CVTSS2SIQ
@@ -893,7 +898,7 @@ functor AMD64Gen (
                    in
 		       mark' (I.move {mvOp=mvOp, src=foperand(fty, fExp), dst=dstOpnd}, an)
                    end
-		 | T.COND (tyCond, T.CMP (tyCmp, cc, t1, t2), y, n) => 
+		 | T.COND (tyCond, T.CMP (tyCmp, cc, t1, t2), y, n) =>
 		   cmovcc (tyCond, tyCmp, cc, t1, t2, y, n)
 		 | T.COND (tyCond, T.FCMP (fty, cc, t1, t2), y, n) =>
 		   fcmovcc (tyCond, fty, cc, t1, t2, y, n)
@@ -904,19 +909,19 @@ functor AMD64Gen (
 		 | T.PRED (e, c) => expr' (ty, e, dst, A.CTRLUSE c :: an)
 		 | _ => raise Fail("Unsupported rexp: " ^ MLTreeUtils.rexpToString e)
 	      (* end case *))
-	    end (* expr' *)        
+	    end (* expr' *)
 
 	and expr (e, dst, an) = expr' (TRS.size e, e, dst, an)
-	
+
 	and fcopy (fty, ds, rs, an) = let
-	    fun mvInstr {dst, src} = 
+	    fun mvInstr {dst, src} =
 	    	[I.fmove {fmvOp=O.fmovOp fty, dst=dst, src=src}]
 	    (* eliminate unnecessary copies *)
 	    val (ds, rs) = ListPair.unzip (List.filter (not o CB.sameColor) (ListPair.zip (ds, rs)))
 	    val stms = Shuffle.shuffle {mvInstr=mvInstr, ea=fpr} {dst=ds, src=rs, tmp=NONE}
 	    in
 	      emits stms
-	    end 
+	    end
 
 	(* put a floating-point expression into a register *)
 	and fexpToReg (fty, e) = (case e
@@ -940,14 +945,14 @@ functor AMD64Gen (
             then foperand (fty, e)
             else I.FDirect (fexpToReg (fty, e))
 
-       (* SSE binary ops 
+       (* SSE binary ops
 	*         (src)      (dst)
 	* binOp   freg/m64, freg
 	*)
 	and fbinop (fty, binOp, a, b, d, an) = let
            (* try to move memory operands to src rather than dst if binOp is commutative *)
 	    val (a, b) = (case (binOp, a, b)
-                of ( (I.ADDSS | I.ADDSD | I.MULSS | I.MULSD | I.XORPS | I.XORPD | I.ANDPS | I.ANDPD | I.ORPS | I.ORPD), 		     
+                of ( (I.ADDSS | I.ADDSD | I.MULSS | I.MULSD | I.XORPS | I.XORPD | I.ANDPS | I.ANDPD | I.ORPS | I.ORPD),
 		     T.FLOAD _,
 		     T.FREG _) => (b, a)
 		 | _ => (a, b)
@@ -957,7 +962,7 @@ functor AMD64Gen (
 	      fexpr (fty, d, a, []);
 	      mark (I.FBINOP {binOp=binOp, dst=d, src=src}, an)
 	    end
-	
+
 	and fsqrt (fty, d, a, an) = let
 	    val s = falignedOperand (fty, a)
 	    (* TODO: allow the source operand to be a memory location
@@ -971,7 +976,7 @@ functor AMD64Gen (
 	    in
 	      mark (oper {src=s, dst=I.FDirect d}, an)
 	    end
-	
+
 	and convertf2f (fromTy, toTy, e, d, an) = let
 	    val fmvOp = (case (fromTy, toTy)
 	    of (32, 64) => I.CVTSS2SD
@@ -1003,35 +1008,35 @@ functor AMD64Gen (
 	       | T.FMUL (_, a, b) => fbinop (fty, O.fmulOp fty, a, b, d, an)
 	       | T.FDIV (_, a, b) => fbinop (fty, O.fdivOp fty, a, b, d, an)
 	       (* unary operators *)
-	       | T.FNEG (_, a) => let 
-                 val l = signBit fty
+	       | T.FNEG (_, a) => let
 		 val fop = (case fty
 		     of 32 => I.XORPS
 		      | 64 => I.XORPD
  	             (* end case *))
 		 val r = newFreg ()
 		 val s = falignedOperand (fty, a)
-		 in 
-(* FIXME
+		 in
+(* Two old versions of this code: pre-r3081 and r3081+
 		     fload (fty, T.LABEL l, I.Region.memory, r, an);
-*)
 		     fload (fty, T.ADD (64, T.REG (64, C.rsp), T.LI 208), I.Region.memory, r, an);
+*)
+                     fload (fty, signBit fty, I.Region.memory, r, an);
 		     mark (I.FBINOP {binOp=fop, dst=r, src=s}, an);
 		     fcopy (fty, [d], [r], an)
 		 end
-	       | T.FABS (_, a) => let 
-                 val l = negateSignBit fty
+	       | T.FABS (_, a) => let
 		 val fop = (case fty
 		     of 32 => I.ANDPS
 		      | 64 => I.ANDPD
  	             (* end case *))
 		 val r = newFreg ()
 		 val s = falignedOperand (fty, a)
-		 in 
-(* FIXME
+		 in
+(* Two old versions of this code: pre-r3081 and r3081+
 		     fload (fty, T.LABEL l, I.Region.memory, r, an);
-*)
 		     fload (fty, T.ADD (64, T.REG (64, C.rsp), T.LI 216), I.Region.memory, r, an);
+*)
+                     fload (fty, negateSignBit fty, I.Region.memory, r, an);
 		     mark (I.FBINOP {binOp=fop, dst=r, src=s}, an);
 		     fcopy (fty, [d], [r], an)
 		 end
@@ -1045,21 +1050,21 @@ functor AMD64Gen (
 	       | T.FMARK (e, A.MARKREG f) => (f d; fexpr (fty, d, e, an))
 	       | T.FMARK (e, a) => fexpr (fty, d, e, a::an)
 	       | T.FPRED (e, c) => fexpr (fty, d, e, A.CTRLUSE c::an)
-	       | T.FEXT fexp => ExtensionComp.compileFext (reducer()) {e=fexp, fd=d, an=an} 
+	       | T.FEXT fexp => ExtensionComp.compileFext (reducer()) {e=fexp, fd=d, an=an}
 	       | _ => error "fexpr"
 	      (* end case *))
 
 	and fload (fty, ea, mem, d, an) = mark (
-	    I.FMOVE {fmvOp=O.fmovOp fty, dst=I.FDirect d, 
+	    I.FMOVE {fmvOp=O.fmovOp fty, dst=I.FDirect d,
 	             src=address (ea, mem)}, an)
 
 	and fstore (fty, ea, mem, e, an) = mark (
 	    I.FMOVE {fmvOp=O.fmovOp fty, dst=address (ea, mem),
 	             src=I.FDirect (fexpToReg (fty, e))}, an)
-	
-	and call (ea, flow, def, use, mem, cutsTo, an, pops) = let 
+
+	and call (ea, flow, def, use, mem, cutsTo, an, pops) = let
 	    fun return(set, []) = set
-	      | return(set, a::an) = (case #peek A.RETURN_ARG a 
+	      | return(set, a::an) = (case #peek A.RETURN_ARG a
 	        of SOME r => return(CB.CellSet.add(r, set), an)
 		 | NONE => return(set, an)
 		(* end case *))
@@ -1076,12 +1081,12 @@ functor AMD64Gen (
 		}, an)
 	    end (* call *)
 
-	and jmp (lexp as T.LABEL lab, labs, an) = 
+	and jmp (lexp as T.LABEL lab, labs, an) =
             mark (I.JMP (I.ImmedLabel lexp, [lab]), an)
 	  | jmp (T.LABEXP le, labs, an) = mark (I.JMP (I.ImmedLabel le, labs), an)
           | jmp (ea, labs, an) = mark (I.JMP (operand 64 ea, labs), an)
 
-	and doStore ty (ea, d, mem, an) =  
+	and doStore ty (ea, d, mem, an) =
 	    move' (ty, immedOrReg (ty, operand ty d), address (ea, mem), an)
 
 	and binaryMem(ty, binOp, src, dst, mem, an) =
@@ -1092,29 +1097,29 @@ functor AMD64Gen (
         and isOne(T.LI n) = n = 1
           | isOne _ = false
 
-	and store (ty, ea, d, mem, 
-	      {INC,DEC,ADD,SUB,NOT,NEG,SHL,SHR,SAR,OR,AND,XOR, ...} : O.opcodes, 
+	and store (ty, ea, d, mem,
+	      {INC,DEC,ADD,SUB,NOT,NEG,SHL,SHR,SAR,OR,AND,XOR, ...} : O.opcodes,
 	      doStore, an) = let
 	    fun default () = doStore (ea, d, mem, an)
-	    fun binary1 (t, t', unary, binary, ea', x) =  
+	    fun binary1 (t, t', unary, binary, ea', x) =
                 if t = ty andalso t' = ty then
                    if MLTreeUtils.eqRexp(ea, ea') then
                       if isOne x then unaryMem(ty, unary, ea, mem, an)
                       else binaryMem(ty, binary, x, ea, mem, an)
                     else default()
                 else default()
-              fun unary(t,unOp, ea') = 
+              fun unary(t,unOp, ea') =
                   if t = ty andalso MLTreeUtils.eqRexp(ea, ea') then
                      unaryMem(ty, unOp, ea, mem, an)
-                  else default() 
+                  else default()
               fun binary(t,t',binOp,ea',x) =
                   if t = ty andalso t' = ty andalso
                      MLTreeUtils.eqRexp(ea, ea') then
                       binaryMem(ty, binOp, x, ea, mem, an)
                   else default()
-              fun binaryCom1(t,unOp,binOp,x,y) = 
-             	  if t = ty then let 
-             	     fun again() = (case y 
+              fun binaryCom1(t,unOp,binOp,x,y) =
+             	  if t = ty then let
+             	     fun again() = (case y
              	         of T.LOAD(ty',ea',_) =>
                             if ty' = ty andalso MLTreeUtils.eqRexp(ea, ea') then
                                if isOne x then unaryMem(ty, unOp, ea, mem, an)
@@ -1122,34 +1127,34 @@ functor AMD64Gen (
                             else default()
                           | _ => default()
                          (* end case *))
-                     in 
-                       (case x 
-                         of T.LOAD(ty',ea',_) => if ty' = ty 
+                     in
+                       (case x
+                         of T.LOAD(ty',ea',_) => if ty' = ty
                              andalso MLTreeUtils.eqRexp(ea, ea') then
                                 if isOne y then unaryMem(ty, unOp, ea, mem, an)
                                 else binaryMem(ty, binOp,y,ea,mem,an)
                              else again()
                           | _ => again()
                         (* end case *))
-                     end 
+                     end
                    else default()
               fun binaryCom(t,binOp,x,y) = if t = ty then
-                  let fun again() = (case y 
+                  let fun again() = (case y
                       of T.LOAD(ty',ea',_) =>
                          if ty' = ty andalso MLTreeUtils.eqRexp(ea, ea') then
                            binaryMem(ty, binOp,x,ea,mem,an)
                           else default()
                         | _ => default()
                       (* end case *))
-                  in  
-                    (case x 
+                  in
+                    (case x
                       of T.LOAD(ty',ea',_) =>
                          if ty' = ty andalso MLTreeUtils.eqRexp(ea, ea') then
      	                    binaryMem(ty, binOp,y,ea,mem,an)
                          else again()
                        | _ => again()
                     (* end case *))
-                  end 
+                  end
                   else default()
 	    in
 	      (case d
@@ -1176,7 +1181,7 @@ functor AMD64Gen (
 	    in
 	      fbranch' (fty, fcc, t1, t2, j)
 	    end
-	
+
 	and fbranch' (fty, fcc, x, y, j) = let
             fun branch fcc = (case fcc
                 of T.==   => j I.EQ
@@ -1197,7 +1202,7 @@ functor AMD64Gen (
 				"fbranch(", T.Basis.fcondToString fcc, ")"])
                (* end case *))
 	    (* compare for condition  (x op y)
-	     * 
+	     *
 	     *              (y)          (x)
 	     * ucomiss/d    xmm1/m32,  xmm2
 	     *)
@@ -1230,8 +1235,8 @@ functor AMD64Gen (
 	and moveToEflags src =
 	    if CB.sameColor(src, C.eflags) then ()
 	    else (move(32, I.Direct (32,src), rax 32); emit(I.LAHF))
-	
-	(* dst <- %eflags *) 
+
+	(* dst <- %eflags *)
 	and moveFromEflags dst =
 	    if CB.sameColor(dst, C.eflags) then ()
 	    else (emit(I.SAHF); move(32, rax 32, I.Direct (32,dst)))
@@ -1240,37 +1245,37 @@ functor AMD64Gen (
          *   The available modes are
          *      r/m, r
          *      r/m, imm
-         * On selecting the right instruction: TESTQ/TESTL/TESTW/TESTB.   
+         * On selecting the right instruction: TESTQ/TESTL/TESTW/TESTB.
          * When anding an operand with a constant
          * that fits within 8 (or 16) bits, it is possible to use TESTB,
-         * (or TESTW) instead of TESTL.   Because amd64 is little endian, 
+         * (or TESTW) instead of TESTL.   Because amd64 is little endian,
          * this works for memory operands too.  However, with TESTB, it is
-         * not possible to use registers other than 
+         * not possible to use registers other than
          * AL, CL, BL, DL, and AH, CH, BH, DH.  So, the best way is to
          * perform register allocation first, and if the operand registers
-         * are one of RAX, RCX, RBX, or RDX, replace the TESTL instruction 
+         * are one of RAX, RCX, RBX, or RDX, replace the TESTL instruction
          * by TESTB.
          *)
-        and test(ty, testopcode, a, b, an) = let 
+        and test(ty, testopcode, a, b, an) = let
             val (_, opnd1, opnd2) = commuteComparison(ty, T.EQ, true, a, b)
               (* translate r, r/m => r/m, r *)
-            val (opnd1, opnd2) = 
+            val (opnd1, opnd2) =
                   if isMemOpnd opnd2 then (opnd2, opnd1) else (opnd1, opnd2)
-            in  
+            in
               mark (testopcode {lsrc=opnd1, rsrc=opnd2}, an)
             end
-	  
+
         (* generate a real comparison; return the real cc used *)
-        and genCmp(ty, swapable, cc, a, b, an) = 
+        and genCmp(ty, swapable, cc, a, b, an) =
             let val (cc, opnd1, opnd2) = commuteComparison(ty, cc, swapable, a, b)
-            in 
-	        (case ty 
+            in
+	        (case ty
 		  of 8 => mark(I.CMPB{lsrc=opnd1, rsrc=opnd2}, an)
 		   | 16 => mark(I.CMPW{lsrc=opnd1, rsrc=opnd2}, an)
 		   | 32 => mark(I.CMPL{lsrc=opnd1, rsrc=opnd2}, an)
 		   | 64 => mark(I.CMPQ{lsrc=opnd1, rsrc=opnd2}, an)
 	        (* esac *));
-	        cc 
+	        cc
             end
 
 	(* Give a and b which are the operands to a comparison (or test)
@@ -1280,16 +1285,16 @@ functor AMD64Gen (
 	*        r/m, r
 	*        r,   r/m
 	*)
-	and commuteComparison(ty, cc, swapable, a, b) = let 
+	and commuteComparison(ty, cc, swapable, a, b) = let
 	    val (opnd1, opnd2) = (operand ty a, operand ty b)
 	    in  (* Try to fold in the operands whenever possible *)
-	      (case (isImmediate opnd1, isImmediate opnd2) 
+	      (case (isImmediate opnd1, isImmediate opnd2)
 	        of (true, true) => (cc, moveToReg (ty, opnd1), opnd2)
-	         | (true, false) => 
+	         | (true, false) =>
 		   if swapable then (T.Basis.swapCond cc, opnd2, opnd1)
 		   else (cc, moveToReg (ty, opnd1), opnd2)
 		 | (false, true) => (cc, opnd1, opnd2)
-		 | (false, false) => (case (opnd1, opnd2) 
+		 | (false, false) => (case (opnd1, opnd2)
 		   of (_, I.Direct _) => (cc, opnd1, opnd2)
 		    | (I.Direct _, _) => (cc, opnd1, opnd2)
 		    | (_, _)          => (cc, moveToReg (ty, opnd1), opnd2)
@@ -1297,63 +1302,63 @@ functor AMD64Gen (
 	      (* end case *))
 	    end  (* commuteComparison *)
 
-	(* generate a condition code expression 
-	 * The zero is for setting the condition code!  
+	(* generate a condition code expression
+	 * The zero is for setting the condition code!
 	 * I have no idea why this is used.
 	 *)
 	and doCCexpr(T.CMP(ty, cc, t1, t2), dst, an) = (
-	    cmp(false, ty, cc, t1, t2, an); 
+	    cmp(false, ty, cc, t1, t2, an);
 	    moveFromEflags dst)
- 	  | doCCexpr(T.CC(cond,rs), dst, an) = 
-	    if CB.sameColor(rs,C.eflags) orelse CB.sameColor(dst,C.eflags) 
+ 	  | doCCexpr(T.CC(cond,rs), dst, an) =
+	    if CB.sameColor(rs,C.eflags) orelse CB.sameColor(dst,C.eflags)
 	    then (moveToEflags rs; moveFromEflags dst)
 	    else move'(64, I.Direct (64,rs), I.Direct (64,dst), an)
 	  | doCCexpr(T.CCMARK(e,A.MARKREG f),dst,an) = (f dst; doCCexpr(e,dst,an))
 	  | doCCexpr(T.CCMARK(e,a), dst, an) = doCCexpr(e,dst,a::an)
-	  | doCCexpr(T.CCEXT e, cd, an) = 
-	    ExtensionComp.compileCCext (reducer()) {e=e, ccd=cd, an=an} 
+	  | doCCexpr(T.CCEXT e, cd, an) =
+	    ExtensionComp.compileCCext (reducer()) {e=e, ccd=cd, an=an}
 	  | doCCexpr _ = error "doCCexpr"
 
 	(* Compare an expression with zero.
 	 * On the amd64, TEST is superior to AND for doing the same thing,
 	 * since it doesn't need to write out the result in a register.
 	 *)
-	and cmpWithZero(cc as (T.EQ | T.NE), e as T.ANDB(ty, a, b), an) = 
-		(case ty 
+	and cmpWithZero(cc as (T.EQ | T.NE), e as T.ANDB(ty, a, b), an) =
+		(case ty
 		  of 8 => test(ty, I.TESTB, a, b, an)
 		  | 16 => test(ty, I.TESTW, a, b, an)
 		  | 32 => test(ty, I.TESTL, a, b, an)
 		  | 64 => test(ty, I.TESTQ, a, b, an)
-		  | _  => expr (e, newReg(), an); 
-		cc)  
+		  | _  => expr (e, newReg(), an);
+		cc)
 	 | cmpWithZero(cc, e, an) = (expr (e, newReg(), an); cc)
-	
+
         (* generate a comparison and sets the condition code;
          * return the actual cc used.  If the flag swapable is true,
-         * we can also reorder the operands. 
+         * we can also reorder the operands.
          *)
-        and cmp (swapable, ty, cc, t1, t2, an) = 
+        and cmp (swapable, ty, cc, t1, t2, an) =
             (* == and <> can be always be reordered *)
             let val swapable = swapable orelse cc = T.EQ orelse cc = T.NE
             in (* Sometimes the comparison is not necessary because
-                * the bits are already set! 
+                * the bits are already set!
                 *)
-              if isZero t1 andalso setZeroBit2 t2 then 
+              if isZero t1 andalso setZeroBit2 t2 then
                  if swapable then
                     cmpWithZero(T.Basis.swapCond cc, t2, an)
                  else (* can't reorder the comparison! *)
                     genCmp(ty, false, cc, t1, t2, an)
-             else if isZero t2 andalso setZeroBit2 t1 then 
+             else if isZero t2 andalso setZeroBit2 t1 then
                 cmpWithZero(cc, t1, an)
-             else genCmp(ty, swapable, cc, t1, t2, an) 
+             else genCmp(ty, swapable, cc, t1, t2, an)
             end
 
 	and branch (T.CMP(ty, cc, t1, t2), lab, an) = let
-            val cc = cmp (true, ty, cc, t1, t2, []) 
-            in  
-              mark (I.JCC{cond=cond cc, opnd=immedLabel lab}, an) 
+            val cc = cmp (true, ty, cc, t1, t2, [])
+            in
+              mark (I.JCC{cond=cond cc, opnd=immedLabel lab}, an)
             end
-          | branch (T.FCMP(fty, fcc, t1, t2), lab, an) = 
+          | branch (T.FCMP(fty, fcc, t1, t2), lab, an) =
             fbranch (fty, fcc, t1, t2, lab, an)
           | branch (ccexp, lab, an) = (
             doCCexpr(ccexp, C.eflags, []);
@@ -1372,19 +1377,19 @@ functor AMD64Gen (
                          cutTo) =>
                call (funct, targets, defs, uses, region, cutTo, an, pops)
              | T.RET _ => mark (I.RET NONE, an)
-             | T.STORE (ty, ea, d, mem) => 
+             | T.STORE (ty, ea, d, mem) =>
                store (ty, ea, d, mem, O.opcodes ty, doStore ty, an)
              | T.FSTORE (fty, ea, e, mem) => fstore (fty, ea, mem, e, an)
              | T.BCC(cc, lab) => branch (cc, lab, an)
              | T.DEFINE l => defineLabel l
              | T.LIVE s => mark' (I.LIVE{regs=cellset s,spilled=C.empty},an)
              | T.KILL s => mark' (I.KILL{regs=cellset s,spilled=C.empty},an)
-             | T.ANNOTATION(s, a) => stmt' (s, a::an) 
+             | T.ANNOTATION(s, a) => stmt' (s, a::an)
              | T.EXT s =>
-               ExtensionComp.compileSext (reducer ()) {stm=s, an=an} 
+               ExtensionComp.compileSext (reducer ()) {stm=s, an=an}
              | s => app stmt (Gen.compileStm s)
 	    (* end case *))
-	and stmt s = stmt' (s, []) 
+	and stmt s = stmt' (s, [])
 
 	and beginCluster' _ = (
 	    trapLabel := NONE;
@@ -1418,7 +1423,7 @@ functor AMD64Gen (
 		reduceOperand = reduceOpnd,
 		addressOf     = fn e => address(e, I.Region.memory), (*XXX*)
 		emit          = mark',
-		instrStream   = instrStream, 
+		instrStream   = instrStream,
 		mltreeStream  = self()
 	      }
 
