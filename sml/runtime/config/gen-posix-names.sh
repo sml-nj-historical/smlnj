@@ -44,18 +44,30 @@ case "$VERSION" in
   # newer versions of the Mac OS X developer tools keep the include files inside the Xcode
   # application bundle, so we add that as a possible path.
   *x86-darwin*)
-    case `uname -r` in
-      13.*) SDK=MacOSX10.9.sdk ;;
-      14.*) SDK=MacOSX10.10.sdk ;;
-      15.*) SDK=MacOSX10.11.sdk ;;
-      16.*) SDK=MacOSX10.12.sdk ;;
-      *) SDK=none ;;
-    esac
-    if test x$SDK != xnone ; then
-      # note: at some point, we might use "xcrun --show-sdk-path", but that only works
-      # with Xcode 5.x+
-      XCODE_DEV_PATH=`xcode-select --print-path`
-      INCLFILE=$XCODE_DEV_PATH/Platforms/MacOSX.platform/Developer/SDKs/$SDK/usr/include/unistd.h
+    if test -r /usr/include/unistd.h ; then
+      INCLFILE=/usr/include/unistd.h
+    else
+    # some versions of the Mac OS X developer tools keep the include files inside the Xcode
+    # application bundle, so we add that as a possible path.
+      case `uname -r` in
+	13.*) SDK=MacOSX10.9.sdk ;;
+	14.*) SDK=MacOSX10.10.sdk ;;
+	15.*) SDK=MacOSX10.11.sdk ;;
+	16.*) SDK=MacOSX10.12.sdk ;;
+	*) SDK=none ;;
+      esac
+      if test x$SDK != xnone ; then
+	# note: at some point, we might use "xcrun --show-sdk-path", but that only works
+	# with Xcode 5.x+
+	XCODE_DEV_PATH=`xcode-select --print-path`
+	INCLFILE=$XCODE_DEV_PATH/Platforms/MacOSX.platform/Developer/SDKs/$SDK/usr/include/unistd.h
+        # verify that unistd.h exists at the expected place
+        #
+        if test ! -r /usr/include/unistd.h ; then
+	  echo "gen-posix-names.sh: unable to find <unistd.h>"
+	  exit 1
+	fi
+      fi
     fi
     ;;
   *) ;;
