@@ -59,7 +59,7 @@ fun evalTyc (entv, tycExp, entEnv, epc, rpath,
        of CONSTtyc tycon => tycon
         | FORMtyc (T.GENtyc { kind, arity, eq, path, ... }) =>
 	  (case kind of
-	       T.DATATYPE{index=0, stamps, freetycs, family, root=NONE} =>
+	       T.DATATYPE{index=0, stamps, freetycs, family, root=NONE, stripped} =>
                let val viztyc = MU.transTycon entEnv
                    val nstamps = Vector.map (fn _ => mkStamp()) stamps
                    val nst = Vector.sub(nstamps,0)
@@ -70,14 +70,15 @@ fun evalTyc (entv, tycExp, entEnv, epc, rpath,
                             kind=T.DATATYPE{index=0, stamps=nstamps,
 					    root=NONE,
 					    freetycs=nfreetycs,
-					    family=family},
+					    family=family,
+					    stripped=stripped},
                             path=IP.append(rpath,path), stub=NONE}
                end
-             | T.DATATYPE{index=i, root=SOME rtev, ...} =>
-               let val (nstamps, nfreetycs, nfamily) = 
+             | T.DATATYPE{index=i, root=SOME rtev, stripped, ...} =>
+               let val (nstamps, nfreetycs, nfamily, nstripped) = 
                        case EE.lookTycEnt(entEnv, rtev)
-			of T.GENtyc { kind = T.DATATYPE dt, ... } =>
-			   (#stamps dt, #freetycs dt, #family dt)
+			of T.GENtyc { kind = T.DATATYPE{stamps,freetycs,family,stripped,...}, ... } =>
+			   (stamps, freetycs, family, stripped)
 			 | _ => bug "unexpected case in evalTyc-FMGENtyc (2)"
                    val nst = Vector.sub(nstamps,i)
                    val _ = EPC.bindTycPath (epc, nst, entv)
@@ -86,7 +87,8 @@ fun evalTyc (entv, tycExp, entEnv, epc, rpath,
                             kind=T.DATATYPE{index=i, stamps=nstamps,
 					    root=NONE,
 					    freetycs=nfreetycs,
-					    family=nfamily},
+					    family=nfamily,
+					    stripped=nstripped},
                             path=IP.append(rpath,path),
 			    eq=eq, stub=NONE}
                end

@@ -581,11 +581,12 @@ structure UnpickMod : UNPICKMOD = struct
 	      | tk #"b" = let
 		    val index = int ()
 		    val root = entVarOption ()
+		    val stripped = bool ()
 		    val (stamps, family, freetycs) = dtypeInfo ()
 		in
 		    T.DATATYPE { index = index, root = root,
 				 stamps = stamps, family = family,
-				 freetycs = freetycs }
+				 freetycs = freetycs, stripped = stripped }
 		end
 	      | tk #"c" = T.ABSTRACT (tycon ())
 	      | tk #"d" = T.FORMAL

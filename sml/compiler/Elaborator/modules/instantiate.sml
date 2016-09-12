@@ -1464,7 +1464,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			| T.GENtyc {stamp,arity,eq,path,kind,...} =>
 			  (case kind of
 			       z as T.DATATYPE {index,freetycs,stamps,
-                                                family, root} =>
+                                                family,root,stripped} =>
 			       (let
 			       (* no coordination of stamps between mutually
 				* recursive families of datatypes? *)
@@ -1497,6 +1497,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 				   val nkind =
 				       T.DATATYPE{index=index,
 						  family=family,
+						  stripped=stripped,
 						  stamps=nstamps,
 						  freetycs=nfreetycs,
 						  root=NONE} (* root ??? *)

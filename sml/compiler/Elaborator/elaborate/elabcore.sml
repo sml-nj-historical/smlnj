@@ -656,7 +656,7 @@ let
 	     (* LAZY: not allowing "datatype lazy t = datatype t'" *)
 	     (* BUG: what to do if rhs is lazy "datatype"? (DBM) *)
 	      (case LU.lookTyc(env, SP.SPATH path, error region)
-		 of (dtyc as T.GENtyc{kind=T.DATATYPE _,...}) =>
+		 of (dtyc as T.GENtyc{kind=T.DATATYPE{stripped=false,...},...}) =>
 		    let val dcons = TU.extractDcons dtyc
 			val envDcons =
 			    foldl (fn (d as T.DATACON{name,...},e)=>

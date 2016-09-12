@@ -557,8 +557,8 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	  end
         | ppDec'(DATATYPEdec{datatycs,withtycs},d) = let
 	      fun ppDATA ppstrm (GENtyc { path, arity, kind, ... }) =
-		  (case kind of
-		       DATATYPE(_) =>
+		  (case kind
+		     of DATATYPE(_) =>
 		       (case arity
 			 of 0 => ()
 			  | 1 => (pps "'a ")

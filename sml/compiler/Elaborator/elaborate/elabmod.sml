@@ -246,7 +246,7 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
             (case dtycs
 	      of (T.GENtyc { kind, ... } :: _) =>
 		 (case kind
-		   of T.DATATYPE{index=0,family,freetycs, stamps, root} =>
+		   of T.DATATYPE{index=0,family,freetycs, stamps, root, ...} =>
                       let val rootev = mkStamp()
 			  val rtevOp = SOME rootev
 			  val nfreetycs = map viztc freetycs
@@ -263,7 +263,8 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
 					   T.DATATYPE{index=i, stamps=nstamps,
 						      freetycs=nfreetycs,
 						      root=rtev,
-						      family=family}
+						      family=family,
+						      stripped=false}
                                        (* the rtev field in DATATYPE indicates
 					* how to discover the new stamps when 
 					* such datatypes get evalent-ed *)
@@ -1646,7 +1647,7 @@ and elabDecl0
            val tyc = L.lookTyc(env0, SP.SPATH syms, error region)
         in case tyc
 	    of T.GENtyc {stamp, arity, eq, path, stub,
-			 kind = dt as (T.DATATYPE _)} =>
+			 kind = dt as (T.DATATYPE{stripped=false,...})} =>
 	       let val dcons = TU.extractDcons tyc
 		   val envDcons =
 		       foldl (fn (d as T.DATACON{name,...}, e) =>

@@ -115,7 +115,7 @@ fun expandREC (family as {members: T.dtmember vector, ...}, stamps, freetycs) =
                val s = Vector.sub(stamps, i)
             in GENtyc{stamp=s,arity=arity,eq=ref(YES), 
 		      kind=DATATYPE{index=i, family=family,root=NONE,
-				    stamps=stamps, freetycs=freetycs},
+				    stamps=stamps, freetycs=freetycs, stripped=false},
 		      path=InvPath.IPATH[tycname],
 		      stub = NONE}
 	   end

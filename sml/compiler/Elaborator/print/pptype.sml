@@ -147,7 +147,9 @@ fun ppkind ppstrm kind =
       (case kind
 	 of PRIMITIVE _ => "P" | FORMAL => "F"
           | FLEXTYC _ => "X" | ABSTRACT _ => "A"
-	  | DATATYPE _ => "D" | TEMP => "T")
+	  | TEMP => "T"
+	  | DATATYPE {stripped,...} =>
+	    if stripped then "DS" else "D")
 
 fun effectivePath(path,tyc,env) : string =
     let fun tycPath (GENtyc{path,...} | DEFtyc{path,...} | PATHtyc{path,...}) =

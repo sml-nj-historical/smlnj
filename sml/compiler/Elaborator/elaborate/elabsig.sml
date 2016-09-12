@@ -430,14 +430,14 @@ fun elabDATAreplSpec(name,path,env,elements,region) =
      in case tyc
           of T.PATHtyc{entPath,arity,...} =>
 	      (* local to current outermost signature *)
-	      (* get the spec, using expandTycon. check it is a datatype *)
+	      (* get the spec, using expandTycon. check it is a datatype (not stripped) *)
 	      let val sigContext = elements::sctxt
 		  val tyc' = EX.expandTycon(tyc,sigContext,entEnv)
 	      in case tyc'
                    of T.GENtyc { kind, ... } =>
 		      (case kind of
 			   T.DATATYPE{index, family as {members,...},
-                                      stamps, freetycs, ...} =>
+                                      stamps, freetycs, stripped = false, ...} =>
 		           let val stamp = Vector.sub(stamps,index)
                                val {tycname, arity, dcons, sign, lazyp, ...} =
 			           Vector.sub(members,index)
@@ -654,7 +654,7 @@ fun elabDATATYPEspec(dtycspec, env, elements, region) =
         (case dtycs
           of (T.GENtyc { stamp, kind, ... } :: _) =>
 	     (case kind of
-		  T.DATATYPE{index=0,family,freetycs, stamps, root} =>
+		  T.DATATYPE{index=0,family,freetycs, stamps, root, ...} =>
 		  let (* MAJOR GROSS HACK: use the stamp of the type as its 
                        * entVar. This makes possible to reconstruct the
 		       * entPath associated with a RECty when translating the
@@ -673,7 +673,7 @@ fun elabDATATYPEspec(dtycspec, env, elements, region) =
 				   val nkind = 
 				       T.DATATYPE{index=i, stamps=stamps,
 						  freetycs=nfreetycs,root=rt,
-						  family=family}
+						  family=family,stripped=false}
 				   val ndt =
 				       T.GENtyc{arity=arity, eq=eq,
 						kind=nkind,

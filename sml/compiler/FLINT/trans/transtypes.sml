@@ -181,7 +181,7 @@ and tycTyc(tc, d) =
 *)
 
       fun h (PRIMITIVE pt, _) = LT.tcc_prim (PrimTyc.pt_fromint pt)
-        | h (DATATYPE {index, family, freetycs, stamps, root}, _) = 
+        | h (DATATYPE {index, family, freetycs, stamps, ...}, _) = 
               let val tc = dtsFam (freetycs, family)
                   val n = Vector.length stamps 
                   val names = Vector.map (fn ({tycname,...}: dtmember) => Symbol.name tycname)

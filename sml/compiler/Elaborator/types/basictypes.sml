@@ -258,7 +258,7 @@ val consDom = tupleTy[alpha, CONty(RECtyc 0,[alpha])]
 val listsign = CSIG(1,1) (* [UNTAGGED,CONSTANT 0], [LISTCONS,LISTNIL] *) 
 val listeq = ref YES
 val kind = 
-  DATATYPE{index=0, stamps= #[listStamp], freetycs=[], root=NONE,
+  DATATYPE{index=0, stamps= #[listStamp], freetycs=[], root=NONE, stripped=false,
            family={members= 
                         #[{tycname=listSym, eq=listeq, lazyp=false,
 			   arity=1, sign=listsign, 
@@ -302,7 +302,7 @@ val ulistStamp = Stamps.special "ulist"
 val ulistsign = CSIG(1,1) (* [LISTCONS,LISTNIL] *)
 val ulistEq = ref YES
 val kind = 
-  DATATYPE{index=0, stamps= #[ulistStamp], freetycs=[], root=NONE,
+  DATATYPE{index=0, stamps= #[ulistStamp], freetycs=[], root=NONE, stripped=false,
 	   family={members= #[{tycname=listSym, eq=ulistEq, lazyp=false,
 			       arity=1, sign=ulistsign, 
 			dcons=[{name=consSym,rep=LISTCONS,
@@ -349,7 +349,7 @@ val fragStamp = Stamps.special "frag"
 val fragsign = CSIG(2, 0) (* [TAGGED 0, TAGGED 1] *)
 val frageq = ref YES
 val kind = 
-  DATATYPE{index=0, stamps= #[fragStamp], freetycs=[], root=NONE,
+  DATATYPE{index=0, stamps= #[fragStamp], freetycs=[], root=NONE, stripped=false,
            family={members= #[{tycname=fragSym, eq=frageq, lazyp=false,
 				arity=1, sign=fragsign, 
 				dcons=[{name=antiquoteSym,rep=TAGGED 0,
@@ -396,7 +396,7 @@ val suspStamp = Stamps.special "susp"
 val suspsign = CSIG(1,0)
 val suspEq = ref NO
 val kind =
-   DATATYPE{index=0, stamps= #[suspStamp], freetycs=[], root=NONE,
+   DATATYPE{index=0, stamps= #[suspStamp], freetycs=[], root=NONE, stripped=false,
             family={members= #[{tycname=dollarSym,eq=suspEq, lazyp=false,
                                 arity=1, sign=suspsign, 
                                 dcons=[{name=dollarSym,

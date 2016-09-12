@@ -63,12 +63,13 @@ and tyckind
   | DATATYPE of
      {index: int,
       stamps: Stamps.stamp vector,
-      root : EntPath.entVar option,
-      freetycs: tycon list,
-      family : dtypeFamily}
-  | FLEXTYC of tycpath
-  | FORMAL
-  | TEMP
+      root : EntPath.entVar option,    (* the root field used by type spec only *)
+      freetycs: tycon list,            (* tycs derived from functor params *)
+      family : dtypeFamily,
+      stripped : bool}                 (* true if datatype has matched a simple type spec *)
+  | FLEXTYC of tycpath          (* instantiated formal type constructor *)
+  | FORMAL                      (* used only inside signatures *)
+  | TEMP                        (* used only during datatype elaborations *)
 
 and tycon
   = GENtyc of gtrec

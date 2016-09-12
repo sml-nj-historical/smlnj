@@ -148,6 +148,15 @@ fun exnRep (DA.EXN _, dacc) = DA.EXN dacc
 fun isNamed(SOME _) = true
   | isNamed _ = false
 
+(* stripTycon: used to set stripped flag when a datatype is matched against a simple type spec.
+   called only in checkTycBinding *)
+fun stripTycon (GENtyc{kind=DATATYPE{index,stamps,root,freetycs,family, stripped = false},
+		       stamp, arity, eq, path, stub}) =
+    GENtyc{kind=DATATYPE{index=index,stamps=stamps,root=root,freetycs=freetycs,
+			 family=family,stripped=true},
+	   stamp=stamp, arity=arity, eq=eq, path=path, stub=stub}
+  | stripTycon tyc = tyc
+
 val anonSym = S.strSymbol "<anonymousStr>"
 val anonFsym = S.fctSymbol "<anonymousFct>"
 val paramSym = S.strSymbol "<FsigParamInst>"
@@ -343,12 +352,13 @@ let
      in comp(spec,actual,[],[])
     end
 
-  fun checkTycBinding(_,T.ERRORtyc,_) = ()
+  (* checkTycBinding : T.tycon * T.tycon * entEnv -> tycon *)
+  fun checkTycBinding(_,T.ERRORtyc,_): T.tycon = T.ERRORtyc
     | checkTycBinding(specTycon,strTycon,entEnv) =
     let val specName = S.name(TU.tycName specTycon)
      in case specTycon
-         of GENtyc {stamp=s,arity,kind=specKind,eq=ref eqprop,...} => let
-                fun no_datatype () =
+         of GENtyc {stamp=s,arity,kind=specKind,eq=ref eqprop,...} =>
+            let fun no_datatype () =
                     complain'("type "^specName^" must be a datatype")
             in
               if arity <> TU.tyconArity strTycon
@@ -368,9 +378,8 @@ let
                         *)
                      of (DATATYPE{index,family={members,...},...},
                          GENtyc {arity=a',kind,...}) =>
-                     (case kind of
-                          DATATYPE{index=index', family={members=members',...},
-                                   ...} =>
+                     (case kind
+                        of DATATYPE{index=index', family={members=members',...},...} =>
                           let val specDconSig = #dcons(Vector.sub(members,index))
                               val strDconSig = #dcons(Vector.sub(members',index'))
                               val specnames = map #name specDconSig
@@ -384,7 +393,7 @@ let
 
                           in
                               case compareDcons (specnames, strnames)
-                               of ([],[]) => ()
+                               of ([],[]) => strTycon  (* OK, datacon names match *)
                                 | (s_only, a_only) =>
                                   complain'(concat(List.concat
                                       [["datatype ",specName,
@@ -406,7 +415,7 @@ let
                            if eqprop=YES andalso not(EqTypes.isEqTycon strTycon)
                            then complain'("type " ^ specName ^
                                           " must be an equality type")
-                           else ()
+                           else stripTycon strTycon
                       | _ =>
                            (debugPrint(debugging)("specTycon: ",
                             PPType.ppTycon statenv, specTycon);
@@ -419,7 +428,7 @@ let
                   val specTycon' = DEFtyc{tyfun=ntyfun,strict=strict,
                                           stamp=stamp,path=path}
                in if TU.equalTycon(specTycon',strTycon)
-                  then ()
+                  then strTycon
                   else (debugPrint(debugging)("specTycon': ",
                           PPType.ppTycon statenv, specTycon);
                         debugPrint(debugging)("strTycon: ",
@@ -784,8 +793,8 @@ let
                                    | _ => VARtyc(rev(strEntVar::epath))
 
                      val _ = debugmsg "--matchElems TYCspec >> checkTycBinding"
-                     val _ = checkTycBinding(specTycon, strTycon, entEnv)
-                     val entEnv' = EE.bind(entVar, TYCent strTycon, entEnv) 
+                     val strTycon' = checkTycBinding(specTycon, strTycon, entEnv)
+                     val entEnv' = EE.bind(entVar, TYCent strTycon', entEnv) 
                      val entDecs' = TYCdec(entVar, tycEntExp) :: entDecs
                      val _ = debugmsg "<<matchElems TYCspec << checkTycBinding"
 

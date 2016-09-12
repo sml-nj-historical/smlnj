@@ -179,10 +179,10 @@ let val tycons = ref StampMap.empty
 		if localStamp stamp  (* local spec *)
 		then ((updateMap tycons
 				 (stamp,tyc::applyMap'(tycons,stamp));
-				 tycStampsRef := stamp :: !tycStampsRef;
+		       tycStampsRef := stamp :: !tycStampsRef;
 		       case kind
                         of DATATYPE{index,stamps,family={members,...},
-                                       root,freetycs} =>
+                                    root,freetycs,stripped} =>
                               let val dcons = #dcons(Vector.sub(members,index))
 				  val eqOrig = !eq
 				  val (eqpCalc,deps) =

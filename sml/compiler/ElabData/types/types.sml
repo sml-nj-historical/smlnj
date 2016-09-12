@@ -61,13 +61,14 @@ and tycpath (* FLINT!!! *)
   | TP_SEL of tycpath * int
 
 and tyckind
-  = PRIMITIVE of int
+  = PRIMITIVE of int		(* primitive kinds are abstractly numbered *)
   | DATATYPE of
      {index: int,
       stamps: ST.stamp vector,
       root : EP.entVar option,    (* the root field used by type spec only *)
       freetycs: tycon list,       (* tycs derived from functor params *)
-      family : dtypeFamily}
+      family : dtypeFamily,
+      stripped : bool}            (* true if datatype has matched a simple type spec *)
   | ABSTRACT of tycon
   | FLEXTYC of tycpath            (* instantiated formal type constructor *)
   | FORMAL                        (* used only inside signatures *)

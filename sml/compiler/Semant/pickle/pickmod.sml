@@ -857,8 +857,8 @@ in
 	and tyckind arg = let
 	    val op $ = PU.$ TYCKIND
 	    fun tk (T.PRIMITIVE pt) = "a" $ [int pt]
-	      | tk (T.DATATYPE { index, family, stamps, root,freetycs }) =
-		"b" $ [int index, option entVar root,
+	      | tk (T.DATATYPE { index, family, stamps, root, freetycs, stripped }) =
+		"b" $ [int index, option entVar root, bool stripped,
 		       dtypeInfo (stamps, family, freetycs)]
 	      | tk (T.ABSTRACT tyc) = "c" $ [tycon tyc]
 	      | tk (T.FLEXTYC tps) = "d" $ [] (* "f" $ tycpath tps *)

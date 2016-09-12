@@ -195,7 +195,7 @@ fun transMembers(stamps: Stamps.stamp vector,
 		       path=InvPath.IPATH[tycname], 
 		       kind=T.DATATYPE{index=n,
 				       stamps=stamps, freetycs=freetycs,
-				       root=root, family=family},
+				       root=root, family=family, stripped=false},
 		       stub = NONE } :: l
      in (Vector.foldri dtmemberToTycon nil members,
          freetycs)
@@ -293,7 +293,7 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 		  (PPTable.pp_object ppstrm stamp obj 
 		   handle PP_NOT_INSTALLED => PP.string ppstrm  "-" )
 		| (T.DATATYPE{index,stamps,
-			      family as {members,...}, freetycs, root}, _) =>
+			      family as {members,...}, freetycs, root, stripped}, _) =>
 		  if TU.eqTycon(tyc,BT.ulistTycon) then
 	              ppUrList(obj,hd argtys,membersOp,depth,
 			       !Control.Print.printLength,accu)

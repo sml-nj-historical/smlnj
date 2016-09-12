@@ -386,7 +386,8 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 				      stamps=nstamps,
 				      family=nfamily,
 				      freetycs=nfreetycs,
-				      root=NONE}}}
+				      root=NONE,
+				      stripped=false}}}
 	  | fixDtyc _ = bug "fixDtyc"
 
         val dtycmap = map fixDtyc dbs'  (* maps prelim to final datatycs *)

@@ -956,7 +956,7 @@ val reformat = Stats.doPhase(Stats.makePhase "Compiler 047 reformat") reformat
 *)
 
 fun dtSibling(n,tyc as GENtyc { kind = DATATYPE dt, ... }) =
-    let val {index,stamps,freetycs,root, family as {members,...} } = dt
+    let val {index,stamps,freetycs,root, family as {members,...},stripped} = dt
     in
 	if n = index then tyc
 	else let val {tycname,arity,dcons,eq,lazyp,sign} =
@@ -968,6 +968,7 @@ fun dtSibling(n,tyc as GENtyc { kind = DATATYPE dt, ... }) =
 			 kind=DATATYPE{index=n,stamps=stamps,
 				       freetycs=freetycs,
 				       root=NONE (*!*),
+				       stripped=false,
 				       family=family},
 			 stub = NONE}
 	     end
@@ -980,7 +981,7 @@ fun dtSibling(n,tyc as GENtyc { kind = DATATYPE dt, ... }) =
    fully recovered in dtSibling. (ZHONG)
  *)
 fun extractDcons (tyc as GENtyc { kind = DATATYPE dt, ... }) =
-    let val {index,stamps,freetycs,root,family as {members,...}} = dt
+    let val {index,freetycs,family as {members,...},...} = dt
 	val {dcons,sign,lazyp,...} = Vector.sub(members,index)
 	fun expandTyc(PATHtyc _) =
 	    bug "expandTyc:PATHtyc" (* use expandTycon? *)
