@@ -59,6 +59,7 @@ and pat
 and dec	
   = VALdec of vb list
   | VALRECdec of rvb list
+  | DOdec of exp
   | TYPEdec of Types.tycon list
   | DATATYPEdec of {datatycs: Types.tycon list, withtycs: Types.tycon list}
   | ABSTYPEdec of {abstycs: Types.tycon list, 

@@ -835,6 +835,11 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	   ppvlist ppstrm ("val rec ","and ",
 	     (fn ppstrm => fn rvb => ppRvb context ppstrm (rvb,d-1)),rvbs);
 	   closeBox ())
+	| ppDec'(DoDec exp,d) =
+	  (openHVBox 0;
+	   pps "do";
+	   break ppstrm {nsp=1,offset=2}; ppExp context ppstrm (exp,d-1);
+	   closeBox ())
         | ppDec'(FunDec (fbs,tyvars),d) =
 	  (openHVBox 0;
 	   ppvlist' ppstrm ("fun ","and ",

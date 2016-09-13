@@ -347,6 +347,7 @@ structure SkelCvt :> SKELCVT = struct
 
     and dec_dl (ValDec (l, _), d) = foldl vb_dl d l
       | dec_dl (ValrecDec (l, _), d) = foldl rvb_dl d l
+      | dec_dl (DoDec exp, d) = exp_dl (exp, d)
       | dec_dl (FunDec (l, _), d) = foldl fb_dl d l
       | dec_dl (TypeDec l, d) = dl_addS (foldl tb_s SS.empty l, d)
       | dec_dl (DatatypeDec { datatycs, withtycs }, d) =

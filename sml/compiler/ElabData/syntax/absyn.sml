@@ -71,6 +71,7 @@ and pat
 and dec	
   = VALdec of vb list        (* always a single element list (FLINT normalization) *)
   | VALRECdec of rvb list
+  | DOdec of exp
   | TYPEdec of tycon list
   | DATATYPEdec of {datatycs: tycon list, withtycs: tycon list}
   | ABSTYPEdec of {abstycs: tycon list, withtycs: tycon list, body: dec}

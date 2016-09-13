@@ -532,6 +532,7 @@ ldec	: VAL vb		(ValDec(vb,nil))
 	| fixity ops		(FixDec{fixity=fixity, ops=ops})
 	| OVERLOAD ident COLON ty AS exp_pa
 				(OvldDec(varSymbol ident,ty,exp_pa))
+	| DO exp		(DoDec exp)
 
 exp_pa	: exp			([exp])
 	| exp AND exp_pa	(exp :: exp_pa)

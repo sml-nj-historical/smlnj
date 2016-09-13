@@ -120,12 +120,6 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 			  fixed in the long run. (ZHONG)
 		       *)
 
-		      (* conditional diagnostic printing of absyn -- should be done in elaborator? *)
-		      val _ = let fun ppAbsynDec ppstrm d =
-				      PPAbsyn.ppDec (statenv,NONE) ppstrm (d,!printDepth)
-			      in debugPrint (!Control.printAbsyn) ("ABSYN::", ppAbsynDec, absyn)
-			      end
-
 		      val executable = Execute.mkexec
 					   { cs = csegments,
 					     exnwrapper = ExnDuringExecution }

@@ -48,4 +48,6 @@ sig
 
   val showTypeErrorCulprits : bool ref
 
+  val printAbsyn : bool ref
+
 end (* signature ELAB_CONTROL *)

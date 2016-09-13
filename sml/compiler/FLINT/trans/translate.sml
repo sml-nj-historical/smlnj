@@ -1457,6 +1457,7 @@ and mkFctbs (fbs, d) =
 and mkDec (dec, d) = 
   let fun g (VALdec vbs) = mkVBs(vbs, d)
         | g (VALRECdec rvbs) = mkRVBs(rvbs, d)
+	| g (DOdec exp) = (fn body => LET(mkv(), mkExp(exp, d), body))
         | g (ABSTYPEdec{body,...}) = g body
         | g (EXCEPTIONdec ebs) = mkEBs(ebs, d)
         | g (STRdec sbs) = mkStrbs(sbs, d)

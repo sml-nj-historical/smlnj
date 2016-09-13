@@ -87,5 +87,7 @@ struct
     val showTypeErrorCulprits =
 	cnew ("show-type-error-culprits", "show culprits in type error messages", false)
 
+    val printAbsyn = ref false
+
   end (* local *)
 end (* structure ElabControl *)

@@ -206,21 +206,33 @@ struct
 
       val nextpri = ref 0
 
-      fun new (n, h, d) =
-          let val r = ref d
-              val p = !nextpri
-              val ctl = Controls.control { name = n,
-                                           pri = [p],
-                                           obscurity = obscurity,
-                                           help = h,
-                                           ctl = r }
-           in nextpri := p + 1;
-              ControlRegistry.register
-                  registry
-                  { ctl = Controls.stringControl bool_cvt ctl,
-                    envName = SOME (ControlUtil.EnvName.toUpper "CONTROL_" n) };
-              r
-          end
+      fun register (n, h, r) = let
+	    val p = !nextpri
+	    val ctl = Controls.control {
+		    name = n,
+		    pri = [p],
+		    obscurity = obscurity,
+		    help = h,
+		    ctl = r
+		  }
+	    in
+	      nextpri := p + 1;
+              ControlRegistry.register registry {
+		  ctl = Controls.stringControl bool_cvt ctl,
+		  envName = SOME (ControlUtil.EnvName.toUpper "CONTROL_" n)
+		};
+	      r
+	    end
+
+    (* `new (n, h, d)` defines new control reference with default value `d` and registers
+     * it with name `n` and help message `h`.
+     *)
+      fun new (n, h, d) = let
+	    val r = ref d
+	    in
+	      register (n, h, r)
+	    end
+
   in
 
     structure Print : PRINTCONTROL = Control_Print
@@ -249,8 +261,8 @@ struct
      *)
 
     val debugging = new ("debugging", "?", false)
-    val printAst = new ("printAst", "?", false)
-    val printAbsyn = new ("printAbsyn", "?", false)
+    val printAst = new ("printAst", "whether to print Ast representation", false)
+    val printAbsyn = register ("printAbsyn", "whether to print Absyn representation", ElabControl.printAbsyn)
     val interp = new ("interp", "?", false)
 
     val progressMsgs = new ("progressMsgs", "?", false)

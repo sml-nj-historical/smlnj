@@ -683,6 +683,7 @@ let
 	   | ExceptionDec ebs => elabEXCEPTIONdec(ebs,env,region)
 	   | ValDec(vbs,explicitTvs) =>
 	       elabVALdec(vbs,explicitTvs,env,rpath,region)
+	   | DoDec exp => elabDOdec(exp, env, region)
 	   | FunDec(fbs,explicitTvs) =>
 	       elabFUNdec(fbs,explicitTvs,env,rpath,region)
 	   | ValrecDec(rvbs,explicitTvs) =>
@@ -1043,6 +1044,18 @@ let
 	    then elabVALREClazy(rvbs,etvs,env,region)
 	    else elabVALRECstrict(rvbs,etvs,env,region) 
 	end
+
+    and elabDOdec(exp, env, region) = let
+	  val (exp,ev,updtExp) = elabExp(exp,env,region)
+	  fun updt tv = let
+		val localtyvars = diff (ev, tv, error region)
+		val downtyvars = union (localtyvars, tv, error region)
+		in
+		  updtExp downtyvars
+		end
+	  in
+	    (DOdec exp, env, TS.empty, updt)
+	  end
 
     and elabFUNdec(fb,etvs,env,rpath,region) =
 	let val etvs = TS.mkTyvarset(ET.elabTyvList(etvs,error,region))

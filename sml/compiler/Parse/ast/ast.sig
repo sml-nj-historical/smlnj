@@ -134,6 +134,7 @@ sig
   (* DECLARATIONS (let and structure) *)
   and dec = ValDec of (vb list * tyvar list)		  (* values *)
 	  | ValrecDec of (rvb list * tyvar list)	  (* recursive values *)
+	  | DoDec of exp				  (* 'do' exp *)
 	  | FunDec of (fb list * tyvar list)		  (* recurs functions *)
 	  | TypeDec of tb list				  (* type dec *)
 	  | DatatypeDec of {datatycs: db list, withtycs: tb list} (* datatype dec *)

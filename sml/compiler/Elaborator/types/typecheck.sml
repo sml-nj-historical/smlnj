@@ -78,11 +78,13 @@ val ppExp = PPAbsyn.ppExp(env,NONE)
 val ppRule = PPAbsyn.ppRule(env,NONE)
 val ppVB = PPAbsyn.ppVB(env,NONE)
 val ppRVB = PPAbsyn.ppRVB(env,NONE)
-val ppDec = 
+val ppDec = PPAbsyn.ppDec(env, NONE)
+
+val ppDec' = 
   (fn ppstrm => fn d => PPAbsyn.ppDec (env,NONE) ppstrm (d,!printDepth))
 
 fun ppDecDebug (msg,dec) =
-  ED.withInternals(fn () => ED.debugPrint debugging (msg, ppDec, dec))
+  ED.withInternals(fn () => ED.debugPrint debugging (msg, ppDec', dec))
 
 fun ppTypeDebug (msg,ty) =
   ED.withInternals(fn () => ED.debugPrint debugging (msg, ppType, ty))
@@ -776,7 +778,7 @@ and decType0(decl,occ,tdepth,region) : dec =
 		    val (exp',ety) = expType(exp,occ,DI.next tdepth,region)
                     val generalize = TypesUtil.isValue exp (* orelse isVarTy ety *)
 		    val _ = unifyErr{ty1=pty,ty2=ety, name1="pattern", name2="expression",
-			     message="pattern and expression in val dec don't agree",
+			     message="pattern and expression in val dec do not agree",
 			     region=region,kind=ppVB,kindname="declaration",
 			     phrase=vb};
                    val vb = VB{pat=pat',exp=exp',tyvars=tv,
@@ -890,6 +892,17 @@ and decType0(decl,occ,tdepth,region) : dec =
 	    in EU.recDecs rvbs'
 	   end
 
+       | DOdec exp => let
+	  val (exp',ety) = expType(exp,occ,DI.next tdepth,region)
+	  val _ = unifyErr{
+		    ty1=unitTy, ty2=ety, name1="", name2="expression",
+		    message="do expression does not have type unit",
+		    region=region, kind=ppDec, kindname="declaration",
+		    phrase=decl
+		  }
+	  in
+	    decl
+	  end
        | EXCEPTIONdec(ebs) =>
 	   let fun check(VARty(ref(UBOUND _))) = 
 		     err region COMPLAIN

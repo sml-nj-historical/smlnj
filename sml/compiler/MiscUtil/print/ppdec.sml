@@ -338,6 +338,7 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 	    case (resetPPType(); dec)
 	      of VALdec vbs => app ppVb vbs
 	       | VALRECdec rvbs => app ppRvb rvbs
+	       | DOdec _ => ()
 	       | TYPEdec tbs => app ppTb tbs
 	       | DATATYPEdec{datatycs,withtycs} =>
 		   (app ppDataTyc datatycs; 
