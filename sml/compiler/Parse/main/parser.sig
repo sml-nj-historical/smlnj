@@ -4,14 +4,8 @@
  * All rights reserved.
  *)
 
-signature (*SMLNJ_PARSER*) MLPARSER = sig
+signature SMLNJ_PARSER = sig
 
-    datatype parseResult
-      = EOF
-      | ERROR
-      | ABORT
-      | PARSE of Ast.dec
-
-    val parse : Source.inputSource -> unit -> parseResult
+    val parse : Source.inputSource -> unit -> ParseResult.parseResult
 
   end

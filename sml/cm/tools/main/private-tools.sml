@@ -310,7 +310,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 	val UseDefault = NONE
 	val Suggest = SOME
 	val lazy_controller = flagController Control.lazysml
-	val succML_controller = flagController Control.succML
+	val succML_controller = flagController ParserControl.succML
 	val (srq, setup, splitting, noguid, locl, controllers) =
 	    case oto of
 		NONE => let

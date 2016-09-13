@@ -6,6 +6,16 @@
 open ErrorMsg;
 open UserDeclarations;
 
+structure TokTable = TokenTable(Tokens);
+
+type svalue = Tokens.svalue
+
+type lexresult = (svalue, pos) Tokens.token
+
+type ('a,'b) token = ('a, 'b) Tokens.token
+
+fun eof arg = let val pos = UserDeclarations.eof arg in Tokens.EOF(pos,pos) end
+
 local
   fun cvt radix (s, i) =
 	#1(valOf(IntInf.scan radix Substring.getc (Substring.extract(s, i, NONE))))
@@ -32,7 +42,7 @@ fun dec (ri as ref i) = (ri := i-1)
 %%
 %reject
 %s A S F Q AQ L LL LLC LLCQ;
-%structure MLLex
+%header (functor MLLexFun (structure Tokens : ML_TOKENS));
 %arg ({
   comLevel,
   sourceMap,

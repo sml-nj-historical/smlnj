@@ -1,7 +1,7 @@
 (* tokentable.sml
  *
- * COPYRIGHT (c) 1996 Bell Laboratories.
- *
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 (***************************************************************************
@@ -10,7 +10,7 @@
 
  ***************************************************************************)
 
-functor TokenTable (Tokens:ML_TOKENS) : sig
+functor TokenTable (Tokens : ML_TOKENS) : sig
 
     val checkId : (string * int) -> (Tokens.svalue,int) Tokens.token
     val checkSymId : (string * int) -> (Tokens.svalue,int) Tokens.token
@@ -107,23 +107,23 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 	  val hash = hashStr str
 	  fun mkId () =
 	      Tokens.ID(FastSymbol.rawSymbol(hash,str), yypos, yypos+size(str))
-    in
-	Tbl.lookup idTbl (hash, str) yypos
-	handle NotToken => mkId ()
-    end
+	  in
+	    Tbl.lookup idTbl (hash, str) yypos
+	      handle NotToken => mkId ()
+	  end
 
     fun checkSymId (str, yypos) = let
-	val hash = hashStr str
-    in
-	Tbl.lookup symIdTbl (hash, str) yypos
-	handle NotToken =>
-	       Tokens.ID(FastSymbol.rawSymbol(hash,str), yypos, yypos+size(str))
-    end
+	  val hash = hashStr str
+	  in
+	    Tbl.lookup symIdTbl (hash, str) yypos
+	      handle NotToken =>
+		     Tokens.ID(FastSymbol.rawSymbol(hash,str), yypos, yypos+size(str))
+	  end
 
     fun checkTyvar (str, yypos) = let
-	val hash = hashStr str
-    in
-	Tokens.TYVAR (FastSymbol.rawSymbol(hash,str),yypos,yypos+size (str))
-    end
+	  val hash = hashStr str
+	  in
+	    Tokens.TYVAR (FastSymbol.rawSymbol(hash,str),yypos,yypos+size (str))
+	  end
 
-end
+  end

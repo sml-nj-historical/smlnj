@@ -146,8 +146,6 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 			  (* refetch loc because execution may
 			     have changed its contents *)
 
-
-
 		      (* we install the new local env first before we go about
 		       * printing, otherwise we find ourselves in trouble if
 		       * the autoloader changes the the contents of loc under
@@ -243,6 +241,7 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 		    | (Execute.Link | ExnDuringExecution Execute.Link) =>
 			(flush (); k e)
 		    | ExnDuringExecution EM.Error => (flush(); k e)
+		    | ExnDuringExecution ParserControl.RESET_PARSER => (flush(); k e)
 		    | ExnDuringExecution exn => user_hdl exn
 		  (* the following handle Suspend/Resume on Unix (4 == Posix.Error.intr) *)
 		    | IO.Io{cause=OS.SysErr(_, SOME 4), ...} => (say "\n"; k e)

@@ -34,6 +34,16 @@
 open ErrorMsg;
 open UserDeclarations;
 
+structure TokTable = TokenTable(Tokens);
+
+type svalue = Tokens.svalue
+
+type lexresult = (svalue, pos) Tokens.token
+
+type ('a,'b) token = ('a, 'b) Tokens.token
+
+fun eof arg = let val pos = UserDeclarations.eof arg in Tokens.EOF(pos,pos) end
+
 local
   fun cvt radix (s, i) = let
       (* strip any "_" separators *)
@@ -77,7 +87,7 @@ fun dec (ri as ref i) = (ri := i-1)
 %%
 %reject
 %s A LCOM ALC S F Q AQ L LL LLC LLCQ;
-%structure SMLLex
+%header (functor SMLLexFun (structure Tokens : SML_TOKENS));
 %arg ({
   comLevel,
   sourceMap,
