@@ -10,17 +10,14 @@ signature PARSER_CONTROL =
     val primaryPrompt : string ref
     val secondaryPrompt : string ref
 
-    (* turn on lazy keywords and lazy declaration processing *)
+  (* turn on lazy keywords and lazy declaration processing *)
     val lazysml : bool ref		(* default false *)
 
-    (* controls "overload" as keyword *)
+  (* controls "overload" as keyword *)
     val overloadKW : bool ref
 
-    (* controls backquote quotation *)
+  (* controls backquote quotation *)
     val quotation : bool ref
-
-    (* raised to force a parser switch (e.g., from SML'97 to Succ ML) *)
-    exception RESET_PARSER
 
   (* set/clear Successor ML mode *)
     val setSuccML : bool -> unit
@@ -31,11 +28,15 @@ structure ParserControl : sig
 
     include PARSER_CONTROL
 
-  (* controls Successor-ML features.  This variable is not part of the PARSER_CONTROL
-   * signature, because we do not want it to be visibile in the REPL.  Instead, one
-   * uses the setSuccML function to change language mode.
+  (* the following components are not part of the PARSER_CONTROL
+   * signature, because we do not want it to be visibile in the REPL.
    *)
+
+  (* controls Successor-ML features. *)
     val succML : bool ref
+
+  (* raised to force a parser switch (e.g., from SML'97 to Succ ML) *)
+    exception RESET_PARSER
 
   end = struct
 
