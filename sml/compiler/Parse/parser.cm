@@ -30,6 +30,8 @@ is
         lex/sml.lex.sml
 	parse/ml.grm.sig
 	parse/ml.grm.sml
+	parse/sml.grm.sig
+	parse/sml.grm.sml
 #else
 	lex/ml.lex : MLLex
 	lex/sml.lex : MLLex
