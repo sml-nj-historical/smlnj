@@ -87,6 +87,12 @@ fun showFct(msg,fct,env) =
 		   PPModules.ppFunctor pps (fct', env, 100)),
 		 fct))
 
+fun showDec (msg, dec, env) = let
+      fun ppAbsynDec ppstrm d = PPAbsyn.ppDec (env, NONE) ppstrm (d, !Control_Print.printDepth)
+      in
+	ElabDebug.debugPrint ElabControl.printAbsyn (msg, ppAbsynDec, dec)
+      end
+
 (*
  * Check if an entity declaration is empty in order to avoid the unnecessary
  * recompilation bug reported by Matthias Blume (ZHONG)

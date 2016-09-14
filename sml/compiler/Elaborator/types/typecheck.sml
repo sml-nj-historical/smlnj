@@ -27,7 +27,7 @@ structure Typecheck : TYPECHECK =
 struct
 
 local open Array List Types VarCon BasicTypes TypesUtil Unify Absyn
-	   ErrorMsg PrettyPrintNew PPUtilNew PPType PPAbsyn
+	   ErrorMsg PPUtilNew PPType PPAbsyn
 
   structure SE = StaticEnv
   structure DI = DebIndex
@@ -101,22 +101,22 @@ fun ppModeErrorMsg ppstrm (mode: Unify.unifyFail) =
     if !showCulprits then
       (case mode
 	of TYC(tyc1,tyc2,reg1,reg2) =>
-	   (newline ppstrm;
-	    PP.string ppstrm "Mode: tycon mismatch"; newline ppstrm;
+	   (PP.newline ppstrm;
+	    PP.string ppstrm "Mode: tycon mismatch"; PP.newline ppstrm;
 	    PP.string ppstrm "tycon1: ";
-	    ppTycon ppstrm tyc1; newline ppstrm;
-	    PP.string ppstrm "from: "; ppRegion ppstrm reg1; newline ppstrm;
+	    ppTycon ppstrm tyc1; PP.newline ppstrm;
+	    PP.string ppstrm "from: "; ppRegion ppstrm reg1; PP.newline ppstrm;
 	    PP.string ppstrm "tycon2: ";
-	    ppTycon ppstrm tyc2; newline ppstrm;
+	    ppTycon ppstrm tyc2; PP.newline ppstrm;
 	    PP.string ppstrm "from: "; ppRegion ppstrm reg2)
 	 | TYP(ty1,ty2,reg1,reg2) =>
-	   (newline ppstrm;
-	    PP.string ppstrm "Mode: type mismatch"; newline ppstrm;
+	   (PP.newline ppstrm;
+	    PP.string ppstrm "Mode: type mismatch"; PP.newline ppstrm;
 	    PP.string ppstrm "type1: ";
-	    ppType ppstrm ty1; newline ppstrm;
-	    PP.string ppstrm "from: "; ppRegion ppstrm reg1; newline ppstrm;
+	    ppType ppstrm ty1; PP.newline ppstrm;
+	    PP.string ppstrm "from: "; ppRegion ppstrm reg1; PP.newline ppstrm;
 	    PP.string ppstrm "type2: ";
-	    ppType ppstrm ty2; newline ppstrm;
+	    ppType ppstrm ty2; PP.newline ppstrm;
 	    PP.string ppstrm "from: "; ppRegion ppstrm reg2)
 	  | _ => ())
     else ()
@@ -137,7 +137,7 @@ fun checkFlex (): unit =
 			  "unresolved flex record (hidden)"
 		       (fn ppstrm =>
 			     (PPType.resetPPType();
-			      newline ppstrm;
+			      PP.newline ppstrm;
 			      PP.string ppstrm "type: ";
 			      ppType ppstrm (VARty(tv)))))
                 | INSTANTIATED _ => ()
@@ -171,16 +171,16 @@ fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
 	      val m = if m = "" then name1 ^ " and " ^ name2 ^ " don't agree"
 		      else m   (* but name1 and name2 may be "" ! *)
 	  in if name1="" then ()
-             else (newline ppstrm; 
+             else (PP.newline ppstrm; 
                    PP.string ppstrm (name1 ^ ": " ^ pad1);
 	           ppType ppstrm ty1); 
 	     if name2="" then ()
-	      else (newline ppstrm; 
+	      else (PP.newline ppstrm; 
                     PP.string ppstrm (name2 ^ ": " ^ pad2);
 		    ppType ppstrm ty2);
 	     if kindname="" then ()
-	     else (newline ppstrm; PP.string ppstrm("in "^kindname^":");
-		   break ppstrm {nsp=1,offset=2};
+	     else (PP.newline ppstrm; PP.string ppstrm("in "^kindname^":");
+		   PP.break ppstrm {nsp=1,offset=2};
                    kind ppstrm (phrase,!printDepth));
              ppModeErrorMsg ppstrm mode
 	 end));
@@ -247,7 +247,7 @@ fun generalizeTy(VALvar{typ,path,btvs,...}, userbound: tyvar list,
 			        \names of ALL the fields\n in this context)"
 			    (fn ppstrm =>
 			       (PPType.resetPPType();
-				newline ppstrm;
+				PP.newline ppstrm;
 				PP.string ppstrm "type: ";
 				ppType ppstrm ty));
                             tv := INSTANTIATED WILDCARDty;
@@ -462,12 +462,12 @@ fun patType(pat: pat, depth, region) : pat * ty =
                   (message("constructor and argument don't agree in pattern",mode))
 		  (fn ppstrm =>
 		   (PPType.resetPPType();
-		    newline ppstrm;
+		    PP.newline ppstrm;
 		    PP.string ppstrm "constructor: ";
-		    ppType ppstrm typ; newline ppstrm;
+		    ppType ppstrm typ; PP.newline ppstrm;
 		    PP.string ppstrm "argument:    ";
-		    ppType ppstrm argty; newline ppstrm;
-		    PP.string ppstrm "in pattern:"; break ppstrm {nsp=1,offset=2};
+		    ppType ppstrm argty; PP.newline ppstrm;
+		    PP.string ppstrm "in pattern:"; PP.break ppstrm {nsp=1,offset=2};
 		    ppPat ppstrm (pat,!printDepth)));
 		 (pat,WILDCARDty))
 	   end
@@ -514,10 +514,11 @@ let fun boolUnifyErr { ty, name, message } =
 	end
 in
      case exp
-      of VARexp(r as ref(VALvar{typ, ...}), _) =>
-	   let val (ty, insts) = instantiatePoly(!typ)
-	    in (VARexp(r, insts), MARKty(ty, region))
-	   end
+      of VARexp(r as ref(v as VALvar{typ, ...}), _) => let
+	    val (ty, insts) = instantiatePoly(!typ)
+	    in
+	      (VARexp(r, insts), MARKty(ty, region))
+	    end
        | VARexp(refvar as ref(OVLDvar _),_) =>
  	   (exp, olv_push (refvar, region, err region))
        | VARexp(r as ref ERRORvar, _) => (exp, WILDCARDty)
@@ -554,14 +555,14 @@ in
                   (message("selecting a non-existing field from a record",mode))
                   (fn ppstrm =>
                    (PPType.resetPPType();
-                    newline ppstrm;
+                    PP.newline ppstrm;
                     PP.string ppstrm "the field name: ";
                     (case l of LABEL{name,...} => ppSym ppstrm name);
-                    newline ppstrm;
+                    PP.newline ppstrm;
                     PP.string ppstrm "the record type:    ";
-                    ppType ppstrm nty; newline ppstrm;
+                    ppType ppstrm nty; PP.newline ppstrm;
                     PP.string ppstrm "in expression:"; 
-                    break ppstrm {nsp=1,offset=2};
+                    PP.break ppstrm {nsp=1,offset=2};
                     ppExp ppstrm (exp,!printDepth)));
                     (exp, WILDCARDty))
            end
@@ -602,25 +603,25 @@ in
 		   then (err region COMPLAIN
 			  (message("operator and operand don't agree",mode))
 			  (fn ppstrm =>
-			   (newline ppstrm;
+			   (PP.newline ppstrm;
 			    PP.string ppstrm "operator domain: ";
 			    ppType ppstrm (domain reducedRatorTy);
-			    newline ppstrm;
+			    PP.newline ppstrm;
 			    PP.string ppstrm "operand:         ";
-			    ppType ppstrm randTy; newline ppstrm;
+			    ppType ppstrm randTy; PP.newline ppstrm;
 			    PP.string ppstrm "in expression:";
-			    break ppstrm {nsp=1,offset=2};
+			    PP.break ppstrm {nsp=1,offset=2};
 			    ppExp ppstrm (exp,!printDepth);
 			    ppModeErrorMsg ppstrm mode));
 			 (exp,WILDCARDty))
 		   else (err region COMPLAIN
 			  (message("operator is not a function",mode))
 			  (fn ppstrm =>
-			    (newline ppstrm;
+			    (PP.newline ppstrm;
 			     PP.string ppstrm "operator: ";
-			     ppType ppstrm (ratorTy); newline ppstrm;
+			     ppType ppstrm (ratorTy); PP.newline ppstrm;
 			     PP.string ppstrm "in expression:";
-			     break ppstrm {nsp=1,offset=2};
+			     PP.break ppstrm {nsp=1,offset=2};
 			     ppExp ppstrm (exp,!printDepth);
 			     ppModeErrorMsg ppstrm mode));
 			 (exp,WILDCARDty))
@@ -901,8 +902,9 @@ and decType0(decl,occ,tdepth,region) : dec =
 		    phrase=decl
 		  }
 	  in
-	    decl
+	    DOdec exp'
 	  end
+
        | EXCEPTIONdec(ebs) =>
 	   let fun check(VARty(ref(UBOUND _))) = 
 		     err region COMPLAIN
