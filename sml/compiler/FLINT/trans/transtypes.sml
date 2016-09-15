@@ -87,7 +87,7 @@ fun freeTyc (i) =
       end
 end (* end of recTyc and freeTyc hack *)
 
-fun tpsKnd (TP_VAR x) = #kind (TVI.fromExn x)
+fun tpsKnd (TP_VAR x) = TransTKind.trans(#kind x)
   | tpsKnd _ = bug "unexpected tycpath parameters in tpsKnd"
 
 fun genTT() = 
@@ -95,7 +95,7 @@ fun genTT() =
 
 fun tpsTyc d tp = 
   let fun h (TP_VAR x, cur) =
-	  let val { tdepth, num, ... } = TVI.fromExn x
+	  let val { tdepth, num, ... } = x
 	  in
               LT.tcc_var(DI.calc(cur, tdepth), num)
 	  end

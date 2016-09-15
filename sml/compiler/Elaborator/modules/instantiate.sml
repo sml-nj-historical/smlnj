@@ -31,6 +31,7 @@
  *     Algorithm", J. of Comp. Sys. Sci. 32, 1986, pp. 79-88.
  *)
 
+(* goes away!
 (* This module (and a few others that depend on it) are parameterized
  * over certain backend-specifics (FLINT) to avoid dependencies.
  * This signature describes the parameter: *)
@@ -49,11 +50,12 @@ signature INSTANTIATE_PARAM = sig
     val tvi_exn : { tdepth: DebIndex.depth, num: int, kind: tkind } -> exn
 
 end
+ *)
 
 signature INSTANTIATE =
 sig
 
-  structure Param : INSTANTIATE_PARAM
+(*  structure Param : INSTANTIATE_PARAM *)
 
   (*** instantiation of the functor parameter signatures ***)
   val instParam : 
@@ -98,8 +100,11 @@ sig
 
 end (* signature INSTANTIATE *)
 
+(* no longer functorized
 (* functorized to factor out dependencies on FLINT... *)
 functor InstantiateFn (Param: INSTANTIATE_PARAM) : INSTANTIATE =
+	*)
+structure Instantiate : INSTANTIATE =						       
 struct
 
 local structure A  = Access
@@ -120,10 +125,11 @@ local structure A  = Access
       structure ST = Stamps
       structure T  = Types
       structure TU = TypesUtil
+      structure SPL = SigPropList
       open Modules Types
 in 
 
-structure Param = Param
+(* structure Param = Param *)
 
 (* ----------------------- utility functions ----------------------------- *)
 
@@ -729,7 +735,7 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
     val this_path = 
 	case !this_slot
 	  of InitialStr{path,...} => ConvertPaths.invertIPath path
-	   | _ => bug "buildTycClass: this_slot not InitialTyc"
+	   | _ => bug "buildStrClass: this_slot not InitialTyc"
 
     (* addInst(old,new,depth);
      * (1) Adds new to the current equivalence class in response to a sharing
@@ -1028,8 +1034,7 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 	    (fn (ep,_) => T.ABSTRACT(EE.lookTycEP (entities, ep)))
           | INST_PARAM tdepth => 
               (fn (ep,tk) => 
-                  T.FLEXTYC(T.TP_VAR (Param.tvi_exn
-					  {tdepth=tdepth, num=cnt, kind=tk})))
+                  T.FLEXTYC(T.TP_VAR ({tdepth=tdepth, num=cnt, kind=tk})))
           | INST_FMBD tp => (fn (ep,_) => T.FLEXTYC(T.TP_SEL(tp,cnt)))
  
       fun addInst (slot,depth)=
@@ -1203,7 +1208,7 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 	       of GENtyc {kind,arity,eq,path,...} =>
 		  (case kind
 		    of FORMAL =>
-		       let val tk = Param.tkc_int(arity)
+		       let val tk = TKind.TKCint(arity)
 			   val knd = newTycKind(epath,tk)
 			   val tyc = GENtyc{stamp=mkStamp(), arity=arity,
 					    path=IP.append(rpath,path),
@@ -1248,7 +1253,7 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 
       val _ = addInst(this_slot,infinity)
 
-(* DBM: needs fixing (like the similar case in buildStrClass) *)
+(* FIXME (DBM): needs fixing (like the similar case in buildStrClass) *)
       (* verify that any class definition is defined outside of the
        * outermost sharing constraint *)
       val _ = case !classDef
@@ -1278,7 +1283,7 @@ fun sigToInst (ERRORsig, entEnv, instKind, rpath, err, compInfo) =
   | sigToInst (sign, entEnv, instKind, rpath, err,
 	       compInfo as {mkStamp,...}: EU.compInfo) = 
   let val flextycs : T.tycon list ref = ref []
-      val flexeps : (EP.entPath * Param.tkind) list ref = ref []
+      val flexeps : (EP.entPath * TKind.tkind) list ref = ref []
       val cnt = ref 0
 
       fun addbt NONE = ()
@@ -1419,10 +1424,9 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 		       (fn (sign, ep, rp, nenv) => 
 			 let val tk = getTkFct{sign=sign,entEnv=nenv,
 					       rpath=rp,compInfo=compInfo}
-			     val res = T.TP_VAR (Param.tvi_exn
-						     { tdepth = tdepth,
-						       num = cnt (),
-						       kind = tk })
+			     val res = T.TP_VAR ({ tdepth = tdepth,
+						   num = cnt (),
+						   kind = tk })
 			     val _ = addRes(SOME(ep, tk), res)
 			  in (M.FORMstr sign, SOME res)
 			 end))
@@ -1679,7 +1683,7 @@ and getTkFct{sign as M.FSIG{paramvar, paramsig, bodysig, ...}, entEnv,
       let val (arg_eps, res_eps) =
            (case (paramsig, bodysig)  
              of (SIG psg, SIG bsg) =>
-		(case (Param.sigBoundeps psg, Param.sigBoundeps bsg)
+		(case (SPL.sigBoundeps psg, SPL.sigBoundeps bsg)
 		  of (SOME x, SOME y) => (x, y)
 		   | (_, z) => 
                      let val region=SourceMap.nullRegion
@@ -1721,10 +1725,10 @@ and getTkFct{sign as M.FSIG{paramvar, paramsig, bodysig, ...}, entEnv,
           val arg_tks = map #2 arg_eps
           val res_tks = map #2 res_eps
 
-       in Param.tkc_fun(arg_tks, Param.tkc_seq res_tks)
+       in TKind.TKCfun(arg_tks, TKind.TKCseq res_tks)
       end
 
-  | getTkFct _ = Param.tkc_fun([], Param.tkc_seq [])
+  | getTkFct _ = TKind.TKCfun([], TKind.TKCseq [])
 
 (*** the generic instantiation function ***)
 and instGeneric{sign, entEnv, instKind, rpath, region, 
@@ -1759,8 +1763,8 @@ and instGeneric{sign, entEnv, instKind, rpath, region,
       (* let's memoize the resulting boundeps list *)
       val _ = case sign 
                of M.SIG sr =>
-		  (case Param.sigBoundeps sr of
-		       NONE => Param.setSigBoundeps (sr, SOME all_eps)
+		  (case SPL.sigBoundeps sr of
+		       NONE => SPL.setSigBoundeps (sr, SOME all_eps)
 		     | _ => ())
 		| _ => ()
 
@@ -1830,7 +1834,7 @@ fun getTycPaths{sign as M.SIG sr, rlzn : M.strEntity, entEnv,
 	        compInfo as {error,...}: EU.compInfo} =
       let val { entities, ... } = rlzn
 	  val epslist = 
-           case Param.sigBoundeps sr
+           case SPL.sigBoundeps sr
              of SOME x => x
               | NONE => 
                   let val (_, _, _, all_eps, _) = 

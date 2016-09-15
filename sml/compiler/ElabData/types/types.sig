@@ -51,7 +51,9 @@ and tvKind
       * are turned into LBOUNDs before equality type information is matched. *)
 
 and tycpath
-  = TP_VAR of exn
+  = TP_VAR of
+      { tdepth: DebIndex.depth,
+        num: int, kind: TKind.tkind }
   | TP_TYC of tycon
   | TP_FCT of tycpath list * tycpath list
   | TP_APP of tycpath * tycpath list

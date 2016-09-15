@@ -54,11 +54,13 @@ and tvKind
       * are turned into LBOUNDs before equality type information is matched. *)
 
 and tycpath (* FLINT!!! *)
-  = TP_VAR of exn   (* exn carries some hidden FLINT data *)
-  | TP_TYC of tycon
-  | TP_FCT of tycpath list * tycpath list
-  | TP_APP of tycpath * tycpath list
-  | TP_SEL of tycpath * int
+    = TP_VAR of
+        { tdepth: DebIndex.depth,
+	  num: int, kind: TKind.tkind }
+    | TP_TYC of tycon
+    | TP_FCT of tycpath list * tycpath list
+    | TP_APP of tycpath * tycpath list
+    | TP_SEL of tycpath * int
 
 and tyckind
   = PRIMITIVE of int		(* primitive kinds are abstractly numbered *)

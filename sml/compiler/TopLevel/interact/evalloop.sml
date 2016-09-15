@@ -76,7 +76,7 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 		      val printDepth = Control_Print.printDepth
 
 		      fun debugPrint debugging (msg: string, printfn: PP.stream -> 'a -> unit, arg: 'a) =
-			    if debugging
+			    if !debugging
 			      then PP.with_pp (EM.defaultConsumer())
 				(fn ppstrm =>
 				    (PP.openHVBox ppstrm (PP.Rel 0);
@@ -102,7 +102,7 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 			 if so, what statenv would be used? *)
 		      val _ = let fun ppAstDec ppstrm d =
 				      PPAst.ppDec (statenv,NONE) ppstrm (d,!printDepth)
-			      in debugPrint (!Control.printAst) ("AST::", ppAstDec, ast)
+			      in debugPrint Control.printAst ("AST::", ppAstDec, ast)
 			      end
 
 		      val splitting = Control.LambdaSplitting.get ()
