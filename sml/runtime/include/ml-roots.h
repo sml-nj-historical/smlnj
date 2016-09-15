@@ -202,6 +202,39 @@
 #   define MISC17_INDX	    24		/* 96(esp) */
 #   define MISC18_INDX	    25		/* 100(esp) */
 
+#elif defined (TARGET_AMD64)
+
+#   define NROOTS	    26
+#   define N_ARG_REGS	    23
+#   define N_PSEUDO_REGS    2
+#   define EXN_INDX	    0		/* 8(esp) */
+#   define ARG_INDX	    1		/* ebp	   */
+#   define CONT_INDX	    2		/* esi	   */
+#   define CLOSURE_INDX	    3		/* 16(esp) */
+#   define VAR_INDX	    4		/* 28(esp) */ 
+#   define LINK_INDX	    5		/* 20(esp) */
+#   define PC_INDX	    6		/* eip	   */
+#   define MISC0_INDX	    7		/* ebx	   */
+#   define MISC1_INDX	    8		/* ecx	   */
+#   define MISC2_INDX	    9		/* edx	   */
+    /* MISCn, where n > 2, is a virtual register */
+#   define MISC3_INDX	    10		/* 40(esp) */
+#   define MISC4_INDX	    11		/* 44(esp) */
+#   define MISC5_INDX	    12		/* 48(esp) */
+#   define MISC6_INDX	    13		/* 52(esp) */
+#   define MISC7_INDX	    14		/* 56(esp) */
+#   define MISC8_INDX	    15		/* 60(esp) */
+#   define MISC9_INDX	    16		/* 64(esp) */
+#   define MISC10_INDX	    17		/* 68(esp) */
+#   define MISC11_INDX	    18		/* 72(esp) */
+#   define MISC12_INDX	    19		/* 76(esp) */
+#   define MISC13_INDX	    20		/* 80(esp) */
+#   define MISC14_INDX	    21		/* 84(esp) */
+#   define MISC15_INDX	    22		/* 88(esp) */
+#   define MISC16_INDX	    23		/* 92(esp) */
+#   define MISC17_INDX	    24		/* 96(esp) */
+#   define MISC18_INDX	    25		/* 100(esp) */
+
 #elif defined (TARGET_BYTECODE)
 
 #   define NROOTS	    18		/* GPR[0-14], PC, exnPtr, varPtr */

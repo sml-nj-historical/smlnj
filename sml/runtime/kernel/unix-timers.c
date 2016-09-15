@@ -18,7 +18,7 @@ typedef struct rusage time_struct_t;
 #define GET_TIME(t)		getrusage(RUSAGE_SELF, &(t))
 #define SYS_TIME(t)		((t).ru_stime)
 #define USR_TIME(t)		((t).ru_utime)
-#define SET_TIME(tp, t)		{ *((struct timeval *)(tp)) = (t); }
+#define SET_TIME(tp, t)		do { tp->seconds = t.tv_sec; tp->uSeconds = t.tv_usec; } while(0)
 
 #else /* !HAS_GETRUSAGE */
 
@@ -28,12 +28,12 @@ typedef struct tms time_struct_t;
 #define GET_TIME(t)		times(&(t))
 #define SYS_TIME(t)		((t).tms_stime)
 #define USR_TIME(t)		((t).tms_utime)
-#define SET_TIME(tp, t)		{ 					\
+#define SET_TIME(tp, t)		do { 					\
 	Time_t		*__tp = (tp);					\
 	clock_t		__t = (t);					\
 	__tp->uSeconds = ((__t % ClksPerSec) * 1000000) / ClksPerSec;	\
 	__tp->seconds  = (__t / ClksPerSec);				\
-    }
+    } while(0)
 
 #endif /* HAS_GETRUSAGE */
 

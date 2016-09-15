@@ -86,7 +86,7 @@ ml_val_t BuildLiterals (ml_state_t *msp, Byte_t *lits, int len)
     ml_val_t	res;
     Int32_t	i, j, n;
     double	d;
-    int		availSpace, spaceReq;
+    size_t	availSpace, spaceReq;
 
 /* A check that the available space is sufficient for the literal object that
  * we are about to allocate.  Note that the cons cell has already been accounted
@@ -96,14 +96,14 @@ ml_val_t BuildLiterals (ml_state_t *msp, Byte_t *lits, int len)
     do {										\
 	if ((spaceReq > availSpace) && NeedGC(msp, spaceReq+CONS_SZB)) {		\
 	    InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));	\
-	    availSpace = ((int)msp->ml_limitPtr - (int)msp->ml_allocPtr);               \
+	    availSpace = ((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr);         \
 	}										\
 	else										\
 	    availSpace -= spaceReq;							\
     } while (0)
 
 #ifdef DEBUG_LITERALS
-SayDebug("BuildLiterals: lits = %#x, len = %d\n", lits, len);
+SayDebug("BuildLiterals: lits = %p, len = %d\n", (void *)lits, len);
 #endif
     if (len <= 8) return ML_nil;
 
@@ -115,14 +115,14 @@ SayDebug("BuildLiterals: lits = %#x, len = %d\n", lits, len);
     }
 
     stk = ML_nil;
-    availSpace = ((int)msp->ml_limitPtr - (int)msp->ml_allocPtr);
+    availSpace = ((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr);
     while (TRUE) {
 	ASSERT(pc < len);
-	ASSERT(availSpace <= ((int)msp->ml_limitPtr - (int)msp->ml_allocPtr));
+	ASSERT(availSpace <= ((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr));
 	if (availSpace < ONE_K) {
 	    if (NeedGC(msp, FREE_REQ_SZB))
 		InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));
-	    availSpace = ((int)msp->ml_limitPtr - (int)msp->ml_allocPtr);
+	    availSpace = ((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr);
 	}
 	availSpace -= CONS_SZB;	/* space for stack cons cell */
 	switch (lits[pc++]) {
@@ -215,7 +215,7 @@ SayDebug("\n");
 	    ML_AllocWrite (msp, j, 0);  /* so word-by-word string equality works */
 	    res = ML_Alloc (msp, j);
 #ifdef DEBUG_LITERALS
-SayDebug(" @ %#x (%d words)\n", res, j);
+SayDebug(" @ %p (%d words)\n", (void *)res, j);
 #endif
 	    memcpy (PTR_MLtoC(void, res), &lits[pc], n); pc += n;
 	  /* allocate the header object */
@@ -230,7 +230,7 @@ SayDebug(" @ %#x (%d words)\n", res, j);
 		res = LIST_tl(res);
 	    }
 #ifdef DEBUG_LITERALS
-SayDebug("[%2d]: LIT(%d) = %#x\n", pc-5, n, LIST_hd(res));
+SayDebug("[%2d]: LIT(%d) = %p\n", pc-5, n, (void *)LIST_hd(res));
 #endif
 	    LIST_cons(msp, stk, LIST_hd(res), stk);
 	    break;
@@ -263,7 +263,7 @@ SayDebug("]\n");
 	  /* allocate the header object */
 	    SEQHDR_ALLOC(msp, res, DESC_polyvec, res, n);
 #ifdef DEBUG_LITERALS
-SayDebug("...] @ %#x\n", res);
+SayDebug("...] @ %p\n", (void *)res);
 #endif
 	    LIST_cons(msp, stk, res, stk);
 	    availSpace -= spaceReq;
@@ -292,7 +292,7 @@ SayDebug("]\n");
 	    }
 	    res = ML_Alloc(msp, n);
 #ifdef DEBUG_LITERALS
-SayDebug("...] @ %#x\n", res);
+SayDebug("...] @ %p\n", (void *)res);
 #endif
 	    LIST_cons(msp, stk, res, stk);
 	    availSpace -= spaceReq;
@@ -300,7 +300,7 @@ SayDebug("...] @ %#x\n", res);
 	  case I_RETURN:
 	    ASSERT(pc == len);
 #ifdef DEBUG_LITERALS
-SayDebug("[%2d]: RETURN(%#x)\n", pc-5, LIST_hd(stk));
+SayDebug("[%2d]: RETURN(%p)\n", pc-5, (void *)LIST_hd(stk));
 #endif
 	    return (LIST_hd(stk));
 	    break;

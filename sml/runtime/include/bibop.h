@@ -40,7 +40,8 @@ typedef page_id_t *bibop_t;
 
 extern bibop_t        BIBOP;
 
-#define ADDR_TO_PAGEID(bibop,a)	((bibop)[BIBOP_ADDR_TO_INDEX(a)])
+#define ADDR_TO_PAGEID(bibop,a)		((bibop)[BIBOP_ADDR_TO_INDEX(a)])
+#define INDEX_TO_PAGEID(bibop,a)	((bibop)[a])
 
 #endif /* !TWO_LEVEL_MAP */
 

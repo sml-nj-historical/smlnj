@@ -49,6 +49,8 @@ ml_val_t _ml_RunT_sysinfo (ml_state_t *msp, ml_val_t arg)
     else if (STREQ("HOST_ARCH", name))
 #if   defined(HOST_ALPHA32)
 	res = ML_CString(msp, "ALPHA32");
+#elif defined(HOST_AMD64)
+	res = ML_CString(msp, "AMD64");
 #elif defined(HOST_HPPA)
 	res = ML_CString(msp, "HPPA");
 #elif defined(HOST_MIPS)
@@ -69,6 +71,8 @@ ml_val_t _ml_RunT_sysinfo (ml_state_t *msp, ml_val_t arg)
     else if (STREQ("TARGET_ARCH", name))
 #if   defined(TARGET_ALPHA32)
 	res = ML_CString(msp, "ALPHA32");
+#elif defined(TARGET_AMD64)
+	res = ML_CString(msp, "AMD64");
 #elif defined(TARGET_HPPA)
 	res = ML_CString(msp, "HPPA");
 #elif defined(TARGET_MIPS)

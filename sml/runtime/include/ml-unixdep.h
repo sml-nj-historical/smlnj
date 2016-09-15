@@ -251,6 +251,22 @@ extern char     *sys_errlist[];
 extern int      sys_nerr;
 extern char     *sys_errlist[];
 
+#elif (defined(TARGET_AMD64) && defined(OPSYS_LINUX))
+#  define OS_NAME	"Linux"
+#  define HAS_POSIX_LIBRARIES
+#  define HAS_POSIX_SIGS
+#  define HAS_GETRUSAGE
+#  define HAS_SETITIMER
+#  define HAS_MMAP
+#  define HAS_PARTIAL_MUNMAP
+#  define HAS_SELECT
+#  define HAS_UCONTEXT
+#  define HAS_STRERROR
+#  define HAS_MKSTEMP
+#  define __USE_GNU
+
+#include <features.h>
+
 #elif (defined(TARGET_X86) && defined(OPSYS_LINUX))
 #  define OS_NAME	"Linux"
 #  define HAS_POSIX_LIBRARIES

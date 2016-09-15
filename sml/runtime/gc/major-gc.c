@@ -64,7 +64,6 @@ PVT void ScanMem (Word_t *start, Word_t *stop, int gen, int objKind)
 {
     bibop_t	    bibop = BIBOP;
     Word_t	    w;
-    int		    indx;
     aid_t	    aid;
     bigobj_region_t *region;
     bigobj_desc_t   *dp;
@@ -72,8 +71,8 @@ PVT void ScanMem (Word_t *start, Word_t *stop, int gen, int objKind)
     while (start < stop) {
 	w = *start;
 	if (isBOXED(w)) {
-	    int		indx = BIBOP_ADDR_TO_INDEX(w);
-	    aid_t	id = bibop[indx];
+	    Addr_t	indx = BIBOP_ADDR_TO_INDEX(w);
+	    aid_t	INDEX_TO_PAGEID(BIBOP,indx);
 	    switch (EXTRACT_OBJC(id)) {
 	      case OBJC_bigobj:
 		while (!BO_IS_HDR(id)) {
@@ -619,7 +618,7 @@ PVT bool_t MajorGC_SweepToSpArrays (
     ml_val_t	w, *p, *stop;
     int		thisGen;
     Word_t	cardMask = ~(CARD_SZB - 1);
-    aid_t	*bibop = BIBOP;
+    bibop_t	bibop = BIBOP;
     aid_t	maxAid = MAKE_MAX_AID(maxGen);
 #ifndef BIT_CARDS
     ml_val_t	*cardStart;
@@ -842,13 +841,16 @@ PVT ml_val_t MajorGC_ForwardObj (heap_t *heap, aid_t maxAid, ml_val_t v, aid_t i
 PVT bigobj_desc_t *MajorGC_ForwardBigObj (
 	heap_t *heap, int maxGen, ml_val_t obj, aid_t id)
 {
-    int		    i;
+    Addr_t	    i;
     bigobj_region_t *region;
     bigobj_desc_t   *dp;
 
 BO2_COUNT;
-    for (i = BIBOP_ADDR_TO_INDEX(obj);  !BO_IS_HDR(id);  id = BIBOP[--i])
-	continue;
+    i = BIBOP_ADDR_TO_INDEX(obj);
+    while (!BO_IS_HDR(id)) {
+	--i;
+	id = INDEX_TO_PAGEID(BIBOP,i);
+    }
     region = (bigobj_region_t *)BIBOP_INDEX_TO_ADDR(i);
     dp = ADDR_TO_BODESC(region, obj);
     if ((dp->gen <= maxGen) && BO_IS_FROM_SPACE(dp)) {

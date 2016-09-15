@@ -19,7 +19,7 @@ void PrintRegionMap (bigobj_region_t *r)
     bigobj_desc_t	*dp, *dq;
     int			i;
 
-    SayDebug ("[%d] %d/%d, @%#x: ", r->minGen, r->nFree, r->nPages, r->firstPage);
+    SayDebug ("[%d] %d/%d, @%p: ", r->minGen, r->nFree, r->nPages, (void *)(r->firstPage));
     for (i = 0, dq = NIL(bigobj_desc_t *);  i < r->nPages;  i++) {
 	dp = r->objMap[i];
 	if (dp != dq) {
@@ -93,7 +93,7 @@ bigobj_desc_t *BO_AllocRegion (heap_t *heap, Addr_t szB)
     desc->region	= region;
 
 #ifdef BO_DEBUG
-SayDebug ("BO_AllocRegion: %d pages @ %#x\n", npages, region->firstPage);
+SayDebug ("BO_AllocRegion: %d pages @ %p\n", npages, (void *)(region->firstPage));
 #endif
     return desc;
 
@@ -167,11 +167,11 @@ bigobj_desc_t *BO_Alloc (heap_t *heap, int gen, Addr_t objSzB)
 	region->minGen = gen;
 	MarkRegion (BIBOP, (ml_val_t *)region, MEMOBJ_SZB(region->memObj),
 	    AID_BIGOBJ(gen));
-	BIBOP[BIBOP_ADDR_TO_INDEX(region)] = AID_BIGOBJ_HDR(gen);
+	ADDR_TO_PAGEID(BIBOP, region) = AID_BIGOBJ_HDR(gen);
     }
 
 #ifdef BO_DEBUG
-SayDebug ("BO_Alloc: %d bytes @ %#x\n", objSzB, newObj->obj);
+SayDebug ("BO_Alloc: %d bytes @ %p\n", objSzB, (void *)(newObj->obj));
 PrintRegionMap(region);
 #endif
     return newObj;
@@ -195,7 +195,8 @@ void BO_Free (heap_t *heap, bigobj_desc_t *desc)
 
 #ifdef BO_DEBUG
 SayDebug ("BO_Free: @ %#x, bibop gen = %x, gen = %d, state = %d, pages=[%d..%d)\n",
-desc->obj, (unsigned)EXTRACT_GEN(ADDR_TO_PAGEID(BIBOP, desc->obj)), desc->gen, desc->state, firstPage, lastPage);
+desc->obj, (unsigned)EXTRACT_GEN(ADDR_TO_PAGEID(BIBOP, desc->obj)), desc->gen, desc->state,
+firstPage, lastPage);
 PrintRegionMap(region);
 #endif
     if ((firstPage > 0) && BO_IS_FREE(region->objMap[firstPage-1])) {
@@ -266,8 +267,10 @@ Byte_t *BO_AddrToCodeObjTag (Word_t pc)
 
     if (IS_BIGOBJ_AID(aid)) {
 	int		indx = BIBOP_ADDR_TO_INDEX(pc);
-	while (!BO_IS_HDR(aid))
-	    aid = BIBOP[--indx];
+	while (!BO_IS_HDR(aid)) {
+	    --indx;
+	    aid = INDEX_TO_PAGEID(BIBOP,indx);
+	}
 	region = (bigobj_region_t *)BIBOP_INDEX_TO_ADDR(indx);
 	return BO_GetCodeObjTag (ADDR_TO_BODESC(region, pc));
     }

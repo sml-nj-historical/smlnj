@@ -13,7 +13,7 @@
 #define NIL(ty)	((ty)0)
 
 #if defined(SIZES_C64_ML64)
-#  error "64 bits not supported yet"
+#  define WORD_SZB	8
 #else
 #  define WORD_SZB	4
 #endif

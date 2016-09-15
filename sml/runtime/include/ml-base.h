@@ -87,6 +87,9 @@ extern void AssertFail (const char *a, const char *file, int line);
 #if defined(BYTE_ORDER_BIG)
 #  define BIGENDIAN_TO_HOST(x)	(x)
 #elif defined(BYTE_ORDER_LITTLE)
+#  if defined(SIZES_C64_ML64)
+     extern Unsigned64_t SwapBytes64 (Unsigned64_t x);
+#  endif 
    extern Unsigned32_t SwapBytes (Unsigned32_t x);
 #  define BIGENDIAN_TO_HOST(x)	SwapBytes(x)
 #else

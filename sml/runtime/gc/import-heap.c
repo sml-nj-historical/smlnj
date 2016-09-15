@@ -55,15 +55,15 @@ PVT void PrintRegionMap (bo_region_reloc_t *r)
 PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *externs);
 PVT bigobj_desc_t *AllocBODesc (bigobj_desc_t *, bigobj_hdr_t *, bo_region_reloc_t *);
 PVT void RepairHeap (
-	heap_t *, aid_t *, Addr_t [MAX_NUM_GENS][NUM_ARENAS],
+	heap_t *, bibop_t, Addr_t [MAX_NUM_GENS][NUM_ARENAS],
 	addr_tbl_t *, ml_val_t *);
 PVT ml_val_t RepairWord (
-	ml_val_t w, aid_t *oldBIBOP, Addr_t addrOffset[MAX_NUM_GENS][NUM_ARENAS],
+	ml_val_t w, bibop_t oldBIBOP, Addr_t addrOffset[MAX_NUM_GENS][NUM_ARENAS],
 	addr_tbl_t *boRegionTbl, ml_val_t *externs);
 /*
 PVT int RepairBORef (aid_t *bibop, aid_t id, ml_val_t *ref, ml_val_t oldObj);
 */
-PVT bo_reloc_t *AddrToRelocInfo (aid_t *, addr_tbl_t *, aid_t, Addr_t);
+PVT bo_reloc_t *AddrToRelocInfo (bibop_t, addr_tbl_t *, aid_t, Addr_t);
 
 #define READ(bp,obj)	HeapIO_ReadBlock(bp, &(obj), sizeof(obj))
 
@@ -241,7 +241,7 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
 		(ml_val_t *)(boRgnHdr[i].baseAddr),
 		RND_MEMOBJ_SZB(boRgnHdr[i].sizeB),
 		AID_BIGOBJ(1));
-	    oldBIBOP[BIBOP_ADDR_TO_INDEX(boRgnHdr[i].baseAddr)] = AID_BIGOBJ_HDR(MAX_NUM_GENS);
+	    ADDR_TO_PAGEID(oldBIBOP,boRgnHdr[i].baseAddr) = AID_BIGOBJ_HDR(MAX_NUM_GENS);
 	    boRelocInfo[i].firstPage = boRgnHdr[i].firstPage;
 	    boRelocInfo[i].nPages =
 		(boRgnHdr[i].sizeB - (boRgnHdr[i].firstPage - boRgnHdr[i].baseAddr))
@@ -315,7 +315,8 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
 	    bigobj_desc_t	*freeObj, *bdp;
 	    bigobj_region_t	*freeRegion;
 	    bigobj_hdr_t	*boHdrs;
-	    int			boHdrSizeB, indx;
+	    int			boHdrSizeB;
+	    Addr_t		indx;
 	    bo_region_reloc_t   *region;
 
 	    if (p->info.bo.numBOPages > 0) {
@@ -325,7 +326,7 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
 		freeRegion->minGen = i;
 		MarkRegion (BIBOP, (ml_val_t *)freeRegion,
 		    MEMOBJ_SZB(freeRegion->memObj), AID_BIGOBJ(i));
-		BIBOP[BIBOP_ADDR_TO_INDEX(freeRegion)] = AID_BIGOBJ_HDR(i);
+		ADDR_TO_PAGEID(BIBOP,freeRegion) = AID_BIGOBJ_HDR(i);
 
 	      /* read in the big-object headers */
 		boHdrSizeB = p->info.bo.numBigObjs * sizeof(bigobj_hdr_t);
@@ -344,7 +345,7 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
 		   * the exported heap.
 		   */
 		    for (indx = BIBOP_ADDR_TO_INDEX(boHdrs[k].baseAddr);
-			!BO_IS_HDR(oldBIBOP[indx]);
+			!BO_IS_HDR(INDEX_TO_PAGEID(oldBIBOP,indx));
 			indx--)
 			continue;
 		    region = LookupBORegion (boRegionTbl, indx);
@@ -503,7 +504,7 @@ PVT bigobj_desc_t *AllocBODesc (
  */
 PVT void RepairHeap (
     heap_t *heap,
-    aid_t *oldBIBOP,
+    bibop_t oldBIBOP,
     Addr_t addrOffset[MAX_NUM_GENS][NUM_ARENAS],
     addr_tbl_t *boRegionTbl,
     ml_val_t *externs)
@@ -563,7 +564,7 @@ PVT void RepairHeap (
  */
 PVT ml_val_t RepairWord (
     ml_val_t w,
-    aid_t *oldBIBOP,
+    bibop_t oldBIBOP,
     Addr_t addrOffset[MAX_NUM_GENS][NUM_ARENAS],
     addr_tbl_t *boRegionTbl,
     ml_val_t *externs)
@@ -594,16 +595,19 @@ PVT ml_val_t RepairWord (
 /* AddrToRelocInfo:
  */
 PVT bo_reloc_t *AddrToRelocInfo (
-    aid_t *oldBIBOP, 
+    bibop_t oldBIBOP, 
     addr_tbl_t *boRegionTbl, 
     aid_t id, 
     Addr_t oldObj)
 {
-    int		    indx;
-    bo_region_reloc_t *region;
+    Addr_t		indx;
+    bo_region_reloc_t	*region;
 
-    for (indx = BIBOP_ADDR_TO_INDEX(oldObj);  !BO_IS_HDR(id);  id = oldBIBOP[--indx])
-	continue;
+    indx = BIBOP_ADDR_TO_INDEX(oldObj);
+    while (!BO_IS_HDR(id)) {
+	--indx;
+	id = INDEX_TO_PAGEID(oldBIBOP,indx);
+    }
 
   /* find the old region descriptor */
     region = LookupBORegion (boRegionTbl, indx);

@@ -145,7 +145,7 @@
 #define REAL64_ALLOC(msp, r, d) {				\
 	ml_state_t	*__msp = (msp);				\
 	ml_val_t	*__p = __msp->ml_allocPtr;		\
-	__p = (ml_val_t *)((Addr_t)__p | WORD_SZB);		\
+	*__p++ = DESC_reald;					\
 	(r) = PTR_CtoML(__p);					\
 	*(double *)__p = (d);					\
 	__p += REALD_SZW;					\

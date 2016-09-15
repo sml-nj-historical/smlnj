@@ -543,6 +543,115 @@ extern void SetFSR();
 #    error "unknown OPSYS for x86"
 #  endif
 
+#elif defined(HOST_AMD64)
+
+#  define LIMITPTR_X86OFFSET	3	/* offset (words) of limitptr in ML stack */
+					/* frame (see X86.prim.asm) */
+extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
+#  define SIG_InitFPE()    FPEEnable()
+
+#  if (defined(TARGET_AMD64) && defined(OPSYS_LINUX))
+    /** AMD64, LINUX **/
+#    define INTO_OPCODE		0xce	/* the 'into' instruction is a single */
+					/* instruction that signals Overflow */
+
+#    define SIG_FAULT1		SIGFPE
+#    define SIG_FAULT2		SIGSEGV
+#    define INT_DIVZERO(s, c)	((s) == SIGFPE)
+#    define INT_OVFLW(s, c)	\
+	(((s) == SIGSEGV) && (((Byte_t *)c)[-1] == INTO_OPCODE))
+
+#    define SIG_GetCode(info,scp)	((scp)->uc_mcontext.gregs[REG_RIP])
+/* for linux, SIG_GetCode simply returns the address of the fault */
+#    define SIG_GetPC(scp)		((scp)->uc_mcontext.gregs[REG_RIP])
+#    define SIG_SetPC(scp,addr)		{ (scp)->uc_mcontext.gregs[REG_RIP] = (long)(addr); }
+#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+
+#  elif defined(OPSYS_FREEBSD)
+    /** amd64, FreeBSD **/
+#    define SIG_FAULT1		SIGFPE
+#    define INT_DIVZERO(s, c)	(((s) == SIGFPE) && ((c) == FPE_INTDIV_TRAP))
+#    define INT_OVFLW(s, c)	(((s) == SIGFPE) && ((c) == FPE_INTOVF_TRAP))
+
+#    define SIG_GetCode(info, scp)	(info)
+#    define SIG_GetPC(scp)		((scp)->sc_pc)
+#    define SIG_SetPC(scp, addr)	{ (scp)->sc_pc = (long)(addr); }
+#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+
+     typedef void SigReturn_t;
+
+#  elif defined(OPSYS_NETBSD)
+    /** amd64, NetBSD (version 3.x) **/
+#    define SIG_FAULT1		SIGFPE
+#    define SIG_FAULT2		SIGBUS
+#    define INT_DIVZERO(s, c)	0
+#    define INT_OVFLW(s, c)	(((s) == SIGFPE) || ((s) == SIGBUS))
+
+#    define SIG_GetCode(info, scp)	(info)
+#    define SIG_GetPC(scp)		(_UC_MACHINE_PC(scp))
+#    define SIG_SetPC(scp, addr)	{ _UC_MACHINE_SET_PC(scp, ((long) (addr))); }
+#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+
+#  elif defined(OPSYS_OPENBSD)
+    /** amd64, OpenBSD **/
+#    define SIG_FAULT1		SIGFPE
+#    define SIG_FAULT2		SIGBUS
+#    define INT_DIVZERO(s, c)	0
+#    define INT_OVFLW(s, c)	(((s) == SIGFPE) || ((s) == SIGBUS))
+
+#    define SIG_GetCode(info, scp)	(info)
+#    define SIG_GetPC(scp)		((scp)->sc_rip)
+#    define SIG_SetPC(scp, addr)	{ (scp)->sc_rip = (long)(addr); }
+#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+
+     typedef void SigReturn_t;
+
+#  elif defined(OPSYS_SOLARIS)
+     /** amd64, Solaris */
+
+#    define SIG_GetPC(scp)		((scp)->uc_mcontext.gregs[EIP])
+#    define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext.gregs[EIP] = (int)(addr); }
+#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+
+#  elif defined(OPSYS_WIN32)
+#    define SIG_ZeroLimitPtr()		{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+
+#  elif defined(OPSYS_CYGWIN)
+
+     typedef void SigReturn_t;
+#    define SIG_FAULT1		SIGFPE
+#    define SIG_FAULT2		SIGSEGV
+#    define INT_DIVZERO(s, c)	((s) == SIGFPE)
+#    define SIG_ZeroLimitPtr(scp)  { ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+
+#  elif defined(OPSYS_DARWIN)
+    /** amd64, Darwin **/
+#    define SIG_FAULT1		SIGFPE
+/* NOTE: MacOS X 10.4.7 sets the code to 0, so we need to test the opcode. */
+#    define INTO_OPCODE		0xce	/* the 'into' instruction is a single */
+					/* instruction that signals Overflow */
+/* NOTE: In 10.6, Apple finally got it right, but earlier versions either used the
+ * FPE_FLT* codes are set the code to zero.
+ */
+#    define INT_DIVZERO(s, c)	(((s) == SIGFPE) && (((c) == FPE_INTDIV) || ((c) == FPE_FLTDIV)))
+#    define INT_OVFLW(s, c)	(((s) == SIGFPE) && (((c) == FPE_INTOVF) || ((c) == FPE_FLTOVF)))
+    /* see /usr/include/mach/i386/thread_status.h */
+#    define SIG_GetCode(info,scp)	((info)->si_code)
+#    if ((__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ - 1040) <= 0)
+      /* Tiger */
+#      define SIG_GetPC(scp)		((scp)->uc_mcontext->ss.eip)
+#      define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext->ss.eip = (int) addr; }
+#    else
+     /* Leopard or later */
+#      define SIG_GetPC(scp)		((scp)->uc_mcontext->__ss.__eip)
+#      define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext->__ss.__eip = (int) addr; }
+#    endif
+#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+
+#  else
+#    error "unknown OPSYS for amd64"
+#  endif
+
 #elif defined(HOST_ALPHA32)
 
 #  if (defined(OPSYS_OSF1) || defined(OPSYS_DUNIX))

@@ -17,6 +17,8 @@
 #  else
 #    define MACHINE_ID	"alpha32"
 #  endif
+#elif defined(TARGET_AMD64)
+#  define MACHINE_ID	"amd64"
 #elif defined(TARGET_HPPA)
 #  define MACHINE_ID	"hppa"
 #elif defined(TARGET_M68)

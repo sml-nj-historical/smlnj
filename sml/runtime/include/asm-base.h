@@ -160,6 +160,23 @@
 
 #  endif
 
+#elif defined(HOST_AMD64)
+#  if defined(OPSYS_WIN32)
+#    include "x86-masm.h"
+#    define WORD(W)	  WORD32(W)
+#  else
+#    define CGLOBAL(ID)	  GLOBAL CSYM(ID)
+#    define LABEL(ID)	  CONCAT(ID,:)
+#    define IMMED(ID)	  CONCAT($,ID)
+#    define ALIGN4        .align 2
+#    define WORD(W)       .word W
+#    define TEXT          .text
+#    define DATA          .data
+#    define BEGIN_PROC(P) .ent P
+#    define END_PROC(P)	  .end P
+
+#  endif
+
 #else
 
 #  error missing asm definitions
