@@ -172,7 +172,7 @@ and sigrec =
      closed     : bool,
      fctflag    : bool,
      elements   : elements,
-     properties : PropList.holder, (* boundeps, lambdaty *)
+     properties : PropList.holder, (* FLINT/trans *)
      typsharing : sharespec list,
      strsharing : sharespec list,
      stub       : stubinfo option}
@@ -185,7 +185,7 @@ and envrec =
 and strEntity =
     {stamp    : ST.stamp,
      entities : entityEnv,
-     properties: PropList.holder, (* lambdaty *)
+     properties: PropList.holder, (* FLINT/trans *)
      rpath    : IP.path,
      stub     : stubinfo option}
 
@@ -198,7 +198,7 @@ and strrec =
 and fctEntity =
     {stamp    : ST.stamp,
      closure  : fctClosure,
-     properties: PropList.holder, (* lambdaty *)
+     properties: PropList.holder, (* FLINT/trans *)
      tycpath  : T.tycpath option,
      rpath    : IP.path,
      stub     : stubinfo option}
@@ -212,11 +212,6 @@ and fctrec =
 (* the stamp and arith inside T.tycon are critical *)  
 and tycEntity = T.tycon
 
-(*
-and constraint  
-  = {my_path : SP.path, its_ancestor : instrep, its_path : SP.path}
-*)
-
 val bogusStrStamp = ST.special "bogusStr"
 val bogusFctStamp = ST.special "bogusFct"
 val bogusSigStamp = ST.special "bogusSig"
@@ -225,7 +220,7 @@ val bogusRpath = IP.IPATH[S.strSymbol "Bogus"]
 val bogusStrEntity : strEntity =
     { stamp = bogusStrStamp, 
       entities = ERReenv,
-      properties = PropList.newHolder (), (* lambdaty = ref NONE *)
+      properties = PropList.newHolder (),
       rpath = bogusRpath,
       stub = NONE}
 
@@ -234,7 +229,6 @@ val bogusSig : Signature =
 	 name=NONE, closed=true, fctflag=false,
 	 elements=[],
 	 properties = PropList.newHolder (),
-	 (* boundeps=ref NONE, lambdaty=ref NONE *)
 	 typsharing=[], strsharing=[],
 	 stub = NONE}
 
@@ -244,7 +238,7 @@ val bogusFctEntity : fctEntity =
 		       body= CONSTstr bogusStrEntity,
 		       env=NILeenv},
      tycpath=NONE,
-     properties = PropList.newHolder (), (* lambdaty = ref NONE *)
+     properties = PropList.newHolder (),
      rpath = bogusRpath,
      stub = NONE}
 

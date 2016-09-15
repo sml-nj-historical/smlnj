@@ -1011,14 +1011,14 @@ in
 				   fctflag, elements,
 				   properties,
 				   stub, typsharing, strsharing } = s
-			     val b = ModulePropLists.sigBoundeps s
-			     val b = NONE (* currently turned off *)
+(*			     val b = NONE (* = SigPropList.sigBoundeps s (currently turned off) *) *)
 			 in
 			     "C" $ ([stamp sta,
-				     option symbol name, bool closed,
+				     option symbol name,
+				     bool closed,
 				     bool fctflag,
 				     list (pair (symbol, spec)) elements,
-				     option (list (pair (entPath, tkind))) b,
+(*				     option (list (pair (entPath, tkind))) b, *)
 				     list (list spath) typsharing,
 				     list (list spath) strsharing]
 				    @ libPid (stub, #owner))

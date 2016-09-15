@@ -809,9 +809,13 @@ structure UnpickMod : UNPICKMOD = struct
 			    (map (fn (sy, (sp, tr)) => ((sy, sp), tr))
 			         (list elementsM
 				  (pair symSpecPM (symbol, spec')) ()))
-		    val beps = option bepsOM
-				      (list bepsLM
-					    (pair epTkPM (entPath, tkind))) ()
+(*		    val beps = NONE
+		        (* option bepsOM
+			     (list bepsLM
+			        (pair epTkPM (entPath, tkind))) ()
+                            -- [DBM] This is not the right tkind (should be TKind.tkind)
+                            -- for the new SigPropList. It is the FLINT version. *)
+*)
 		    val ts = spathlistlist ()
 		    val ss = spathlistlist ()
 		    val r = { stamp = s,
@@ -820,8 +824,6 @@ structure UnpickMod : UNPICKMOD = struct
 			      fctflag = ff,
 			      elements = el,
 			      properties = PropList.newHolder (),
-			      (* boundeps = ref beps, *)
-			      (* lambdaty = ref NONE, *)
 			      typsharing = ts,
 			      strsharing = ss,
 			      stub = SOME { owner = if lib then pid ()
@@ -829,7 +831,7 @@ structure UnpickMod : UNPICKMOD = struct
 					    tree = branch eltrl,
 					    lib = lib } }
 		in
-		    ModulePropLists.setSigBoundeps (r, beps);
+(*		    SigPropList.setSigBoundeps (r, beps);  (* not pickled, so beps=NONE *) *)
 		    (M.SIG r, M.SIGNODE r)
 		end
 	      | sg _ = raise Format

@@ -157,10 +157,7 @@ TopLevel/main/pptable.sml
 Semant/elaborate/elabmod.sml
 Semant/elaborate/elabtop.sml
 
-(* Semant/modules/instantiate-param.sml *)
-(* Semant/modules/instantiate.sml *)
 Semant/modules/evalent.sml
-Semant/modules/module-plists.sml
 Semant/modules/sigmatch.sml
 
 Semant/pickle/pickle-sym-pid.sml
@@ -256,6 +253,7 @@ FLINT/reps/reify.sml
 FLINT/reps/rttype.sml
 FLINT/reps/typeoper.sml 
 FLINT/reps/wrapping.sml
+FLINT/trans/module-plists.sml
 FLINT/trans/transtkind.sml
 FLINT/trans/matchcomp.sml
 FLINT/trans/mccommon.sml
