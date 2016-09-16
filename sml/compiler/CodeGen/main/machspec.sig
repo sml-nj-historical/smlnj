@@ -104,4 +104,9 @@ signature MACH_SPEC =
      * we pre-allocate a large chunk of stack space for this purpose.
      * Example: PPC *)
     val ccall_prealloc_argspace : int option
+
+  (* number of bits and bytes per ML word *)
+    val wordBitWidth	: int
+    val wordByteWidth	: int
+
   end (* MACH_SPEC *)

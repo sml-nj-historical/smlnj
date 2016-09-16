@@ -249,6 +249,7 @@ rule	: pat DARROW exp        (Rule{pat=pat, exp=markexp(exp,expleft,expright)})
 		(* 	EXPRESSIONS	*)
 
 elabel	: selector EQUALOP exp	(selector,exp)
+	| id			(labSymbol id, VarExp [varSymbol id])
 
 elabels : elabel COMMA elabels	(elabel :: elabels)
 	| elabel	        ([elabel])
@@ -378,16 +379,16 @@ apat'	: OP ident		(VarPat [varSymbol ident])
                                  end)
 
 plabel	: selector EQUALOP pat	((selector,pat))
-	| ID			(labSymbol ID, VarPat [varSymbol ID])
-	| ID AS pat		(labSymbol ID, 
-				 LayeredPat{varPat=VarPat [varSymbol ID], 
+	| id			(labSymbol id, VarPat [varSymbol id])
+	| id AS pat		(labSymbol id, 
+				 LayeredPat{varPat=VarPat [varSymbol id], 
 					    expPat=pat})
-	| ID COLON ty		(labSymbol ID,
-				 ConstraintPat{pattern=VarPat [varSymbol ID],
+	| id COLON ty		(labSymbol id,
+				 ConstraintPat{pattern=VarPat [varSymbol id],
 					       constraint=ty})
-	| ID COLON ty AS pat	(labSymbol ID,
+	| id COLON ty AS pat	(labSymbol id,
 				 LayeredPat
-				 {varPat=ConstraintPat{pattern=VarPat [varSymbol ID],
+				 {varPat=ConstraintPat{pattern=VarPat [varSymbol id],
 						       constraint=ty},
 				  expPat=pat})
 

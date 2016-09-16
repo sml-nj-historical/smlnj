@@ -150,9 +150,10 @@ struct
   (*
    * These are the type widths of ML.  They are hardwired for now.
    *)
-  val pty = 32 (* size of ML's pointer *)
-  val ity = 32 (* size of ML's integer *)
+  val pty = MS.wordBitWidth (* size of ML's pointer *)
+  val ity = MS.wordBitWidth (* size of ML's integer *)
   val fty = 64 (* size of ML's real number *)
+  val ws = MS.wordByteWidth
 
   val zero = M.LI 0
   val one  = M.LI 1
@@ -611,7 +612,7 @@ struct
                (advancedHP := !advancedHP + hp;
                 emit(M.MV(pty, allocptrR, M.ADD(addrTy, C.allocptr, LI hp))))
           in  if hp = 0 then ()
-              else if Word.andb(Word.fromInt hp, 0w4) <> 0w0 then advBy(hp+4)
+              else if Word.andb(Word.fromInt hp, Word.fromInt ws) <> 0w0 then advBy(hp+ws)
               else advBy(hp)
           end
 
@@ -633,11 +634,11 @@ struct
           fun ea(r, 0) = r
             | ea(r, n) = M.ADD(addrTy, r, LI n)
           fun indexEA(r, 0) = r
-            | indexEA(r, n) = M.ADD(addrTy, r, LI(n*4))
+            | indexEA(r, n) = M.ADD(addrTy, r, LI(n*ws))
 
           fun allocRecord(markComp, mem, desc, fields, hp) =
           let fun getField(v, e, CPS.OFFp 0) = e
-                | getField(v, e, CPS.OFFp n) = M.ADD(addrTy, e, LI(4*n))
+                | getField(v, e, CPS.OFFp n) = M.ADD(addrTy, e, LI(ws*n))
                 | getField(v, e, p) = getPath(getRegion v, e, p)
 
               and getPath(mem, e, CPS.OFFp n) = indexEA(e, n)
@@ -652,12 +653,12 @@ struct
                 | storeFields((v, p)::fields, hp, elem) =
                   (emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI hp),
                            getField(v, regbind' v, p), pi(mem, elem)));
-                   storeFields(fields, hp+4, elem+1)
+                   storeFields(fields, hp+ws, elem+1)
                   )
 
           in  emit(M.STORE(ity, ea(C.allocptr, hp), desc, pi(mem, ~1)));
-              storeFields(fields, hp+4, 0);
-              hp+4
+              storeFields(fields, hp+ws, 0);
+              hp+ws
           end
 
           (*
@@ -686,18 +687,18 @@ struct
                    fstoreFields(fields, hp+8, elem+1)
                   )
           in  emit(M.STORE(ity, ea(C.allocptr, hp), desc, pi(mem, ~1)));
-              fstoreFields(fields, hp+4, 0);
-              hp+4
+              fstoreFields(fields, hp+ws, 0);
+              hp+ws
           end
 
           (* Allocate a header pair for vector or array *)
           fun allocHeaderPair(hdrDesc, mem, dataPtr, len, hp) =
               (emit(M.STORE(ity, ea(C.allocptr, hp), LI hdrDesc,pi(mem,~1)));
-               emit(M.STORE(ity, ea(C.allocptr, hp+4),
+               emit(M.STORE(ity, ea(C.allocptr, hp+ws), 
                             M.REG(ity,dataPtr),pi(mem, 0)));
-               emit(M.STORE(ity, ea(C.allocptr, hp+8), LI(len+len+1),
+               emit(M.STORE(ity, ea(C.allocptr, hp+2*ws), LI(len+len+1),
                             pi(mem, 1)));
-               hp+4
+               hp+ws
              )
 
           (*
@@ -801,7 +802,7 @@ struct
                 orTag(rshiftOp(ity, regbind v, untagUnsigned(w)))
 
           fun getObjDescriptor(v) =
-            M.LOAD(ity, M.SUB(pty, regbind v, LI(4)), getRegionPi(v, ~1))
+            M.LOAD(ity, M.SUB(pty, regbind v, LI ws), getRegionPi(v, ~1))
 
           fun getObjLength(v) =
             M.SRL(ity, getObjDescriptor(v), LI(D.tagWidth -1))
@@ -870,6 +871,12 @@ struct
             | scale8(a, i) = M.ADD(ity, a, M.SLL(ity, stripTag(regbind i),
                                                   LI(2)))
 
+          val scaleWord = (case ws
+		 of 4 => scale4
+		  | 8 => scale8
+		  | _ => error "scaleWord"
+		(* end case *))
+   
  	  (* zero-extend and sign-extend *)
 	  fun ZX32 (sz, e) = M.ZX (32, sz, e)
 	      (* M.SRL (32, M.SLL (32, e, LI (32 - sz)), LI (32 - sz)) *)
@@ -880,7 +887,7 @@ struct
           fun recordStore(tmp, hp) =
             (emit(M.STORE(pty,M.ADD(addrTy,C.allocptr,LI(hp)),
                                     tmp,R.storelist));
-             emit(M.STORE(pty,M.ADD(addrTy,C.allocptr,LI(hp+4)),
+             emit(M.STORE(pty,M.ADD(addrTy,C.allocptr,LI(hp+ws)),
                                     C.storeptr(vfp),R.storelist));
              emit(assign(C.storeptr(vfp), M.ADD(addrTy, C.allocptr, LI(hp)))))
 
@@ -1062,16 +1069,18 @@ struct
 
               (* Align the allocation pointer if necessary *)
               if !hasFloats then
-                 emit(M.MV(pty,allocptrR, M.ORB(pty,C.allocptr, LI 4)))
+                 emit(M.MV(pty,allocptrR, M.ORB(pty,C.allocptr, LI ws)))
               else ();
 
               (* Generate code *)
               advancedHP := 0;
               gen(e, 0)
+(*+DEBUG*)
 handle ex => (
 print "***** exception\n";
 printCPSFun(kind,f,params,tys,e);
 raise ex)
+(*-DEBUG*)
 
           end
 
@@ -1287,7 +1296,7 @@ raise ex)
                   val desc = dtoi(D.makeDesc (len, D.tag_record))
               in  treeifyAlloc(w,
                      allocRecord(markPTR, memDisambig w, LI desc, vl, hp),
-                        e, hp+4+len*4)
+                        e, hp+ws+len*ws)
               end
 
              (* Allocate a record with I32 components *)
@@ -1296,7 +1305,7 @@ raise ex)
                   val desc = dtoi(D.makeDesc (len, D.tag_raw32))
               in  treeifyAlloc(w,
                      allocRecord(markI32, memDisambig w, LI desc, vl, hp),
-                        e, hp+4+len*4)
+                        e, hp+ws+len*ws)
               end
 
               (* Allocate a floating point record *)
@@ -1308,12 +1317,13 @@ raise ex)
                  * odd number of words have been allocated then the heap pointer
                  * is misaligned for this record creation.
                  *)
-                  val hp =
-                    if Word.andb(Word.fromInt hp, 0w4) <> 0w0 then hp+4 else hp
+                  val hp = if ws = 4 andalso Word.andb(Word.fromInt hp, 0w4) <> 0w0
+			then hp+4
+			else hp
               in  (* The components are floating point *)
                   treeifyAlloc(w,
                      allocFrecord(memDisambig w, LI desc, vl, hp),
-                        e, hp+4+len*8)
+                        e, hp+ws+len*8)
               end
 
               (* Allocate a vector *)
@@ -1323,15 +1333,15 @@ raise ex)
                   val dataDesc = dtoi(D.makeDesc(len, D.tag_vec_data))
                   val dataPtr = newReg PTR
                   val mem     = memDisambig w
-                  val hp'     = hp + 4 + len*4
+                  val hp'     = hp + ws + len*ws
               in  (* The components are boxed *)
                   (* Allocate the data *)
                   allocRecord(markPTR, mem, LI dataDesc, vl, hp);
-                  emit(M.MV(pty, dataPtr, ea(C.allocptr, hp+4)));
+                  emit(M.MV(pty, dataPtr, ea(C.allocptr, hp+ws)));
                   (* Now allocate the header pair *)
                   treeifyAlloc(w,
-                     allocHeaderPair(hdrDesc, mem, dataPtr, len, hp+4+len*4),
-                        e, hp'+12)
+                     allocHeaderPair(hdrDesc, mem, dataPtr, len, hp+ws+len*ws), 
+                        e, hp'+3*ws)
               end
 
           (*
@@ -1347,7 +1357,7 @@ raise ex)
            *)
           and select(i, v, x, t, e, hp) =
               treeifyDef(x,
-                  M.LOAD(ity,scale4(regbind v,INT i),getRegionPi(v,i)),
+                  M.LOAD(ity,scaleWord(regbind v,INT i),getRegionPi(v,i)),
                          t, e, hp)
 
           (*
@@ -1429,6 +1439,8 @@ raise ex)
 
 	  and rawload ((P.INT 32 | P.UINT 32), i, x, e, hp) =
 	      defI32 (x, M.LOAD (32, i, R.memory), e, hp)
+	    | rawload ((P.INT 64 | P.UINT 64), i, x, e, hp) =
+	      defI32 (x, M.LOAD (64, i, R.memory), e, hp) (* XXX64 not yet *)
 	    | rawload (P.INT (sz as (8 | 16)), i, x, e, hp) =
 	      defI32 (x, SX32 (sz, M.LOAD (sz, i, R.memory)), e, hp)
 	    | rawload (P.UINT (sz as (8 | 16)), i, x, e, hp) =
@@ -1443,8 +1455,8 @@ raise ex)
 	    | rawload (P.FLOAT sz, _, _, _, _) =
 	      error ("rawload: unsupported float size: " ^ Int.toString sz)
 
-	  and rawstore ((P.UINT (sz as (8 | 16 | 32)) |
-			 P.INT (sz as (8 | 16 | 32))), i, x) =
+	  and rawstore ((P.UINT (sz as (8 | 16 | 32 | 64)) |
+			 P.INT (sz as (8 | 16 | 32 | 64))), i, x) =
 	      (* both address and value are 32-bit values; only sz bits
 	       * of the value are being stored *)
 	      emit (M.STORE (sz, i, regbind x, R.memory))
@@ -1474,7 +1486,7 @@ raise ex)
 
             (*** OFFSET ***)
             | gen(OFFSET(i, v, x, e), hp) =
-                 defBoxed(x, scale4(regbind v, INT i), e, hp)
+                 defBoxed(x, scaleWord(regbind v, INT i), e, hp)
 
             (*** APP ***)
             | gen(APP(INT k, args), hp) = updtHeapPtr(hp)
@@ -1488,7 +1500,7 @@ raise ex)
                   val labs = map (fn _ => newLabel()) l
                   val tmpR = newReg I32 val tmp = M.REG(ity,tmpR)
               in  emit(M.MV(ity, tmpR, laddr(lab, 0)));
-                  emit(M.JMP(M.ADD(addrTy, tmp, M.LOAD(pty, scale4(tmp, v),
+                  emit(M.JMP(M.ADD(addrTy, tmp, M.LOAD(pty, scaleWord(tmp, v), 
                                                        R.readonly)), labs));
 		  pseudoOp(PB.DATA_READ_ONLY);
 		  pseudoOp(PB.EXT(CPs.JUMPTABLE{base=lab, targets=labs}));
@@ -1668,14 +1680,14 @@ raise ex)
                   val mem  = dataptrRegion v
                   val a    = markPTR(M.LOAD(ity, regbind v, mem))
                   val mem' = arrayRegion mem
-              in  defBoxed(x, M.LOAD(ity, scale4(a, INT i), mem'), e, hp)
+              in  defBoxed(x, M.LOAD(ity, scaleWord(a, INT i), mem'), e, hp)
               end
             | gen(PURE(P.subscriptv, [v, w], x, _, e), hp) =
               let (* get data pointer *)
                   val mem  = dataptrRegion v
                   val a    = markPTR(M.LOAD(ity, regbind v, mem))
                   val mem' = arrayRegion mem
-              in  defBoxed(x, M.LOAD(ity, scale4(a, w), mem'), e, hp)
+              in  defBoxed(x, M.LOAD(ity, scaleWord(a, w), mem'), e, hp)
               end
             | gen(PURE(P.pure_numsubscript{kind=P.INT 8}, [v,i], x, _, e), hp) =
               let (* get data pointer *)
@@ -1703,9 +1715,9 @@ raise ex)
               let val tag = LI(dtoi D.desc_ref)
                   val mem = memDisambig x
               in  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,LI hp),tag,mem));
-                  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,LI(hp+4)),
+                  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,LI(hp+ws)), 
                                regbind' v, mem));
-                  treeifyAlloc(x, hp+4, e, hp+8)
+                  treeifyAlloc(x, hp+ws, e, hp+2*ws)
               end
             | gen(PURE(P.fwrap,[u],w,_,e), hp) = mkFblock([(u, offp0)],w,e,hp)
             | gen(PURE(P.funwrap,[u],w,_,e), hp) = fselect(0,u,w,e,hp)
@@ -1730,7 +1742,7 @@ raise ex)
             | gen(PURE(P.recsubscript, [v, w], x, _, e), hp) =
                  (* no indirection! *)
               let val mem = arrayRegion(getRegion v)
-              in  defI31(x, M.LOAD(ity, scale4(regbind v, w), mem), e, hp)
+              in  defI31(x, M.LOAD(ity, scaleWord(regbind v, w), mem), e, hp)
               end
             | gen(PURE(P.raw64subscript, [v, i], x, _, e), hp) =
               let val mem = arrayRegion(getRegion v)
@@ -1746,17 +1758,17 @@ raise ex)
               in  (* gen code to allocate "ref()" for array data *)
                   emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI hp),
                                LI dataDesc, tagM));
-                  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI(hp+4)),
+                  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI(hp+ws)), 
                                mlZero, valM));
-                  emit(M.MV(pty, dataPtr, M.ADD(addrTy,C.allocptr,LI(hp+4))));
+                  emit(M.MV(pty, dataPtr, M.ADD(addrTy,C.allocptr,LI(hp+ws))));
                   (* gen code to allocate array header *)
                   treeifyAlloc(x,
-                     allocHeaderPair(hdrDesc, hdrM, dataPtr, 0, hp+8),
-                        e, hp+20)
+                     allocHeaderPair(hdrDesc, hdrM, dataPtr, 0, hp+2*ws),
+                        e, hp+5*ws)
               end
             | gen(PURE(P.rawrecord NONE, [INT n], x, _, e), hp) =
                 (* allocate space for CPS spilling *)
-                treeifyAlloc(x, hp, e, hp+n*4) (* no tag! *)
+                treeifyAlloc(x, hp, e, hp+n*ws) (* no tag! *)
             | gen(PURE(P.rawrecord (SOME rk), [INT n], x, _, e), hp) =
                 (* allocate an uninitialized record with a tag *)
               let val (tag, fp) = (* tagged version *)
@@ -1767,13 +1779,13 @@ raise ex)
                     | _ => (D.tag_record, false)
 
                   (* len of record in 32-bit words *)
-                  val len  = if fp then n+n else n
+                  val len = if ws = 4 andalso fp then n+n else n
 
                   (* record descriptor *)
                   val desc = dtoi(D.makeDesc(len, tag))
 
                   (* Align floating point *)
-                  val hp = if fp andalso
+                  val hp = if ws = 4 andalso fp andalso 
                     Word.andb(Word.fromInt hp, 0w4) <> 0w0 then hp+4 else hp
 
                   val mem = memDisambig x
@@ -1781,7 +1793,7 @@ raise ex)
                   emit(M.STORE(ity, ea(C.allocptr, hp), LI desc, pi(mem, ~1)));
 
                   (* assign the address to x *)
-                  treeifyAlloc(x, hp+4, e, hp+len*4+4)
+                  treeifyAlloc(x, hp+ws, e, hp+len*ws+ws)
               end
 
             | gen(PURE(P.condmove cmp, vw, x, t, e), hp) =
@@ -1892,7 +1904,7 @@ raise ex)
                   val mem  = dataptrRegion v
                   val a    = markPTR(M.LOAD(ity, regbind v, mem))
                   val mem' = arrayRegion mem
-              in  defBoxed (x, M.LOAD(ity, scale4(a, w), mem'), e, hp)
+              in  defBoxed (x, M.LOAD(ity, scaleWord(a, w), mem'), e, hp)
               end
             | gen(LOOKER(P.numsubscript{kind=P.INT 8},[v,i],x,_,e), hp) =
               let (* get data pointer *)
@@ -1928,7 +1940,7 @@ raise ex)
                  gen(e, hp))
             | gen(SETTER(P.rawupdate _,[v,i,w],e),hp) =
                   (* XXX Assumes 32-bit. Needs 64-bit support later! *)
-                (emit(M.STORE(ity,scale4(regbind' v, i), regbind' w,R.memory));
+                (emit(M.STORE(ity,scaleWord(regbind' v, i), regbind' w,R.memory));
                  gen(e, hp))
 
             | gen(SETTER(P.assign, [a as VAR arr, v], e), hp) =
@@ -1936,7 +1948,7 @@ raise ex)
                   val mem = arrayRegion(getRegion a)
               in  recordStore(ea, hp);
                   emit(M.STORE(ity, ea, regbind v, mem));
-                  gen(e, hp+8)
+                  gen(e, hp+2*ws)
               end
             | gen(SETTER(P.unboxedassign, [a, v], e), hp) =
               let val mem = arrayRegion(getRegion a)
@@ -1949,12 +1961,12 @@ raise ex)
                   val a    = markPTR(M.LOAD(ity, regbind v, mem))
                   val tmpR = Cells.newReg() (* derived pointer! *)
                   val tmp  = M.REG(ity, tmpR)
-                  val ea   = scale4(a, i)  (* address of updated cell *)
+                  val ea   = scaleWord(a, i)  (* address of updated cell *)
                   val mem' = arrayRegion(mem)
               in  emit(M.MV(ity, tmpR, ea));
                   recordStore(tmp, hp);
                   emit(M.STORE(ity, tmp, regbind w, mem'));
-                  gen(e, hp+8)
+                  gen(e, hp+2*ws)
               end
             | gen(SETTER(P.boxedupdate, args, e), hp) =
                 gen(SETTER(P.update, args, e), hp)
@@ -1963,7 +1975,7 @@ raise ex)
                   val mem  = dataptrRegion v
                   val a    = markPTR(M.LOAD(ity, regbind v, mem))
                   val mem' = arrayRegion mem
-              in  emit(M.STORE(ity, scale4(a, i), regbind w, mem'));
+              in  emit(M.STORE(ity, scaleWord(a, i), regbind w, mem'));
                   gen(e, hp)
               end
             | gen(SETTER(P.numupdate{kind=P.INT 8}, [s,i,v], e), hp) =

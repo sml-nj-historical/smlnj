@@ -30,6 +30,10 @@ struct
    structure CFG = CFG
    structure TS = TS
 
+   val ity = C.wordBitWidth
+   val wordSz = C.wordByteWidth
+   val (logWordSz, align) = (case wordSz of 4 => (2, true) | 8 => (3, false))
+
    fun error msg = ErrorMsg.impossible("InvokeGC."^msg)
 
    type t = { maxAlloc : int,
@@ -83,7 +87,7 @@ struct
        * in the allocation space for safety.
        *)
    val skidPad = 4096
-   val pty  = 32
+   val pty = C.wordBitWidth
 
    val vfp = false			(* don't use virtual frame ptr here *)
 
@@ -341,6 +345,7 @@ struct
         * the LOAD(...) form.  So we are safe.
         *)
        fun bind(T.REG(32, r)) = Reg r
+         | bind(T.REG(64, r)) = Reg r
          | bind(T.LOAD(32, ea, mem)) = Mem(ea, mem)  (* XXX *)
          | bind(_) = error "bind"
        fun fbind(T.FREG(64, r)) = Freg r
@@ -377,19 +382,23 @@ struct
        val boxedStuff = 
            case (int32, float) of
              ([], []) => map bind boxed
-           | _ =>
+           | _ => (
              (* align the allocptr if we have floating point roots *)
-             (case float of
-                [] => ()
-              | _  => emit(T.MV(addrTy, allocptrR, 
-                                T.ORB(addrTy, C.allocptr, LI 4)));
+	      case float
+	       of [] => ()
+		| _  => if align
+		  then emit(T.MV(addrTy, allocptrR, T.ORB(addrTy, C.allocptr, LI 4)))
+		  else ();
               (* If we have int32 or floating point stuff, package them
                * up into a raw record.  Floating point stuff have to come first.
                *)
-               let val qwords=length float + (length int32 + 1) div 2
+               let val qwords =
+		  if align
+		    then length float + (length int32 + 1) div 2
+		    else length float + length int32
                in  Record{boxed=false, reg=Cells.newReg(), 
                           regTmp=Cells.newReg(),
-                          words=qwords + qwords,
+                          words=if align then qwords + qwords else qwords,
                           fields=map fbind float @ map bind int32} 
                       ::map bind boxed
                end
@@ -416,7 +425,7 @@ struct
            end
  
        fun copy([], _) = ()
-         | copy(dst, src) = emit(T.COPY(32, dst, src))
+         | copy(dst, src) = emit(T.COPY(ity, dst, src))
 
        (* 
         * The following routine copies the client roots into the real gc roots.
@@ -457,12 +466,12 @@ struct
               *)
              let val (hp, e) = 
                      case b of
-                       Reg r => (hp, T.REG(32, r))
-                     | Mem(ea, mem) => (hp, T.LOAD(32, ea, mem))
+                       Reg r => (hp, T.REG(ity, r))
+                     | Mem(ea, mem) => (hp, T.LOAD(ity, ea, mem))
                      | Record(r as {reg, ...}) => 
-                         (makeRecord(hp, r), T.REG(32,reg))
+                         (makeRecord(hp, r), T.REG(ity,reg))
                      | _ => error "floating point root"
-             in  emit(T.STORE(32, ea, e, mem)); 
+             in  emit(T.STORE(ity, ea, e, mem)); 
                  prolog(hp, roots, bs, rds, rss) 
              end*)
          | prolog _ = error "prolog"
@@ -470,15 +479,15 @@ struct
             (* Make a record and put it in reg *) 
        and makeRecord(hp, {boxed, words, reg, fields, ...}) = 
            let fun disp(n) = T.ADD(addrTy, C.allocptr, LI n)
-               fun alloci(hp, e) = emit(T.STORE(32, disp hp, e, R.memory))
+               fun alloci(hp, e) = emit(T.STORE(ity, disp hp, e, R.memory))
                fun allocf(hp, e) = emit(T.FSTORE(64, disp hp, e, R.memory))
                fun alloc(hp, []) = ()
                  | alloc(hp, b::bs) = 
                    (case b of 
-                     Reg r => (alloci(hp, T.REG(32,r)); alloc(hp+4, bs))
+                     Reg r => (alloci(hp, T.REG(ity,r)); alloc(hp+wordSz, bs))
                    | Record{reg, ...} => 
-                      (alloci(hp, T.REG(32,reg)); alloc(hp+4, bs))
-                   | Mem(ea,m) => (alloci(hp, T.LOAD(32,ea,m)); alloc(hp+4,bs))
+                      (alloci(hp, T.REG(ity,reg)); alloc(hp+wordSz, bs))
+                   | Mem(ea,m) => (alloci(hp, T.LOAD(ity,ea,m)); alloc(hp+wordSz,bs))
                    | Freg r => (allocf(hp, T.FREG(64,r)); alloc(hp+8, bs))
                    )
                fun evalArgs([], hp) = hp
@@ -488,10 +497,10 @@ struct
                (* MUST evaluate nested records first *)
                val hp   = evalArgs(fields, hp)
                val desc = if boxed then boxedDesc words else unboxedDesc words
-           in  emit(T.STORE(32, disp hp, LI desc, R.memory));
-               alloc(hp+4, fields);
-               emit(T.MV(addrTy, reg, disp(hp+4))); 
-               hp + 4 + Word.toIntX(Word.<<(Word.fromInt words,0w2))
+           in  emit(T.STORE(ity, disp hp, LI desc, R.memory));
+               alloc(hp+wordSz, fields);
+               emit(T.MV(addrTy, reg, disp(hp+wordSz))); 
+               hp + wordSz + Word.toIntX(Word.<<(Word.fromInt words,Word.fromInt logWordSz))
            end
 
           (* Copy the gc roots back to client roots. 
@@ -504,7 +513,7 @@ struct
              epilog(bs, roots, rd::rds, rs::rss)
          | epilog(Record{fields,regTmp,...}::bs, T.REG(_,r)::roots, rds, rss) = 
               (* unbundle record *)
-              let val _   = emit(T.COPY(32, [regTmp], [r]))
+              let val _   = emit(T.COPY(ity, [regTmp], [r]))
                   val (rds, rss) = unpack(regTmp, fields, rds, rss)
               in  epilog(bs, roots, rds, rss) end
          | epilog(b::bs, r::roots, rds, rss) = 
@@ -513,15 +522,15 @@ struct
              )
          | epilog _ = error "epilog"
 
-       and assign(Reg r, e)        = emit(T.MV(32, r, e))
-         | assign(Mem(ea, mem), e) = emit(T.STORE(32, ea, e, mem))
+       and assign(Reg r, e)        = emit(T.MV(ity, r, e))
+         | assign(Mem(ea, mem), e) = emit(T.STORE(ity, ea, e, mem))
          | assign _ = error "assign"
 
            (* unpack fields from record *)
        and unpack(recordR, fields, rds, rss) = 
-           let val record = T.REG(32, recordR)
+           let val record = T.REG(ity, recordR)
                fun disp n = T.ADD(addrTy, record, LI n)
-               fun sel n = T.LOAD(32, disp n, R.memory)
+               fun sel n = T.LOAD(ity, disp n, R.memory)
                fun fsel n = T.FLOAD(64, disp n, R.memory)
                val N = Array.length clientRoots
                (* unpack normal fields *)
@@ -530,33 +539,33 @@ struct
                      (emit(T.FMV(64, r, fsel n)); 
                       unpackFields(n+8, bs, rds, rss))
                  | unpackFields(n, Mem(ea, mem)::bs, rds, rss) = 
-                     (emit(T.STORE(32, ea, sel n, mem));  (* XXX *)
-                      unpackFields(n+4, bs, rds, rss))
+                     (emit(T.STORE(ity, ea, sel n, mem));  (* XXX *)
+                      unpackFields(n+wordSz, bs, rds, rss))
                  | unpackFields(n, Record{regTmp, ...}::bs, rds, rss) = 
-                     (emit(T.MV(32, regTmp, sel n));
-                      unpackFields(n+4, bs, rds, rss))
+                     (emit(T.MV(ity, regTmp, sel n));
+                      unpackFields(n+wordSz, bs, rds, rss))
                  | unpackFields(n, Reg rd::bs, rds, rss) = 
                    let val rdx = CB.registerNum rd
                    in  if rdx < N andalso Array.sub(clientRoots, rdx) = cyclic then
                        let val tmpR = Cells.newReg()
                        in  (* print "WARNING: CYCLE\n"; *)
-                           emit(T.MV(32, tmpR, sel n));
-                           unpackFields(n+4, bs, rd::rds, tmpR::rss)
+                           emit(T.MV(ity, tmpR, sel n));
+                           unpackFields(n+wordSz, bs, rd::rds, tmpR::rss)
                        end else
-                           (emit(T.MV(32, rd, sel n));
-                            unpackFields(n+4, bs, rds, rss))
+                           (emit(T.MV(ity, rd, sel n));
+                            unpackFields(n+wordSz, bs, rds, rss))
                    end
 
                (* unpack nested record *)
                fun unpackNested(_, [], rds, rss) = (rds, rss)
                  | unpackNested(n, Record{fields, regTmp, ...}::bs, rds, rss) = 
                    let val (rds, rss) = unpack(regTmp, fields, rds, rss)
-                   in  unpackNested(n+4, bs, rds, rss)
+                   in  unpackNested(n+wordSz, bs, rds, rss)
                    end
                  | unpackNested(n, Freg _::bs, rds, rss) =
                      unpackNested(n+8, bs, rds, rss)
                  | unpackNested(n, _::bs, rds, rss) =
-                     unpackNested(n+4, bs, rds, rss)
+                     unpackNested(n+wordSz, bs, rds, rss)
 
                val (rds, rss)= unpackFields(0, fields, rds, rss)
            in  unpackNested(0, fields, rds, rss)
@@ -576,8 +585,8 @@ struct
    fun emitCallGC{stream=TS.S.STREAM{emit, annotation, defineLabel, ...}, 
                   known, boxed, int32, float, ret } =
    let fun setToMLTree{regs,mem} =
-	   map (fn r => T.REG(32,r)) regs @ 
-	   map (fn i => T.LOAD(32, T.ADD(addrTy, C.frameptr vfp, LI(i)),
+	   map (fn r => T.REG(ity,r)) regs @ 
+	   map (fn i => T.LOAD(ity, T.ADD(addrTy, C.frameptr vfp, LI(i)),
 			       R.memory)) mem
 
        (* IMPORTANT NOTE:  
@@ -642,7 +651,7 @@ struct
     * This is used for debugging only.
     *)
    fun rootSetToString{boxed, int32, float} = 
-   let fun extract(T.REG(32, r)) = r
+   let fun extract(T.REG(ity, r)) = r
          | extract _ = error "extract"
        fun fextract(T.FREG(64, f)) = f
          | fextract _ = error "fextract"

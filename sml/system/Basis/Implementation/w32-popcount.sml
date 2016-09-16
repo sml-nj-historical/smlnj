@@ -4,7 +4,7 @@
  * All rights reserved.
  *
  * This structure implements population count (Basis Proposal 2016-001) for 32-bit
- * words and is used in Word31, Word32, and Word64 implementations.
+ * words and is used in the Word31, Word32, and Word64 implementations.
  *)
 
 structure W32PopCount =

@@ -1,10 +1,12 @@
-(*
+(* current.cm
+ *
  * Library exporting structure CMB, the bootstrap compiler for the
  * current architecture.
  *
- * (C) 2001 Lucent Technologies, Bell Laboratories
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
- * Author: Matthias Blume (blume@research.bell-labs.com)
+ * Author: Matthias Blume
  *)
 Library
 	signature CMB
@@ -17,6 +19,9 @@ is
 # if defined(ARCH_ALPHA)
 	$smlnj/cmb/alpha32-unix.cm
 	select-alpha32-unix.sml
++# elif defined(ARCH_AMD64)
+	$smlnj/cmb/amd64-unix.cm
+	select-amd64-unix.sml
 # elif defined(ARCH_MIPS)
 #   if defined(BIG_ENDIAN)
 	$smlnj/cmb/mipseb-unix.cm
