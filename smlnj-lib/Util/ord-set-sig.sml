@@ -24,7 +24,9 @@ signature ORD_SET =
 	(* create a set from a list of items *)
 
     val toList : set -> item list
-	(* Return an ordered list of the items in the set *)
+	(* Return an ordered list of the items in the set.
+         * Added in SML/NJ 110.80.
+         *)
 
     val add  : set * item -> set
     val add' : (item * set) -> set
@@ -50,10 +52,14 @@ signature ORD_SET =
 	(* Return true if and only if the set is empty *)
 
     val minItem : set -> item
-	(* return the smallest element of the set (raises Empty if the set is empty) *)
+	(* return the smallest element of the set (raises Empty if the set is empty).
+         * Added in SML/NJ 110.80.
+         *)
 
     val maxItem : set -> item
-	(* return the largest element of the set (raises Empty if the set is empty) *)
+	(* return the largest element of the set (raises Empty if the set is empty).
+         * Added in SML/NJ 110.80.
+         *)
 
     val equal : (set * set) -> bool
 	(* Return true if and only if the two sets are equal *)
@@ -69,7 +75,7 @@ signature ORD_SET =
 
     val listItems : set -> item list
 	(* Return an ordered list of the items in the set.
-	 * Deprecated in favor of toList.
+	 * Deprecated in favor of toList in 110.80.
 	 *)
 
     val union : set * set -> set
@@ -85,19 +91,19 @@ signature ORD_SET =
 	(* Create a new set by applying a map function to the elements
 	 * of the set.
          *)
-     
+
     val app : (item -> unit) -> set -> unit
-	(* Apply a function to the entries of the set 
+	(* Apply a function to the entries of the set
          * in increasing order
          *)
 
     val foldl : (item * 'b -> 'b) -> 'b -> set -> 'b
-	(* Apply a folding function to the entries of the set 
+	(* Apply a folding function to the entries of the set
          * in increasing order
          *)
 
     val foldr : (item * 'b -> 'b) -> 'b -> set -> 'b
-	(* Apply a folding function to the entries of the set 
+	(* Apply a folding function to the entries of the set
          * in decreasing order
          *)
 
