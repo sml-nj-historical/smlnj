@@ -15,12 +15,16 @@
 #include "ml-limits.h"
 #include "mlstate-offsets.h"	/** this file is generated **/
 
+#if defined(OPSYS_LINUX) && defined(__ELF__)
+/* needed to disable the execution bit on the stack pages */
+.section .note.GNU-stack,"",%progbits
+#endif
+
 /* factor out variations in assembler synatax */
 #if defined(OPSYS_DARWIN)
    /* use the macOS X names by default */
 #  define HI(name) ha16(name)
 #  define LO(name) lo16(name)
-
 
 #else 
 #  define HI(name) name@ha

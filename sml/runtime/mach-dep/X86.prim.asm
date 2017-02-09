@@ -15,7 +15,7 @@
 #include "ml-request.h"
 #include "ml-limits.h"
 	
-#if defined(OPSYS_LINUX)
+#if defined(OPSYS_LINUX) && defined(__ELF__)
 /* needed to disable the execution bit on the stack pages */
 .section .note.GNU-stack,"",%progbits
 #endif
