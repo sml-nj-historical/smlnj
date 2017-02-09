@@ -280,7 +280,6 @@ extern char     *sys_errlist[];
 #  define HAS_UCONTEXT
 #  define HAS_STRERROR
 #  define HAS_MKSTEMP
-#  define __USE_GNU
 
 #include <features.h>
 

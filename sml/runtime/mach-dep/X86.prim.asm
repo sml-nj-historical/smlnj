@@ -15,6 +15,11 @@
 #include "ml-request.h"
 #include "ml-limits.h"
 	
+#if defined(OPSYS_LINUX)
+/* needed to disable the execution bit on the stack pages */
+.section .note.GNU-stack,"",%progbits
+#endif
+
 #if defined(OPSYS_DARWIN)
 /* Note: although the MacOS assembler claims to be the GNU assembler, it appears to be
  * an old version (1.38), which uses different alignment directives.
