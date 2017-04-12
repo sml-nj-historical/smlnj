@@ -11,7 +11,7 @@ structure JSONUtil : sig
   (* exceptions for conversion functions *)
     exception NotBool of JSON.value
     exception NotInt of JSON.value
-    exception NotReal of JSON.value
+    exception NotNumber of JSON.value
     exception NotString of JSON.value
 
   (* exception that is raised when trying to process a non-object value as an object *)
@@ -30,11 +30,11 @@ structure JSONUtil : sig
 
   (* conversion functions for atomic values.  These raise the corresponding
    * "NotXXX" exceptions when their argument has the wrong shape.  Also note
-   * that asReal will convert integers to real values.
+   * that asNumber will accept both integers and floats.
    *)
     val asBool : JSON.value -> bool
     val asInt : JSON.value -> IntInf.int
-    val asReal : JSON.value -> Real.real
+    val asNumber : JSON.value -> Real.real
     val asString : JSON.value -> string
 
   (* find a field in an object; this function raises the NotObject exception when
@@ -62,7 +62,7 @@ structure JSONUtil : sig
 
     exception NotBool of JSON.value
     exception NotInt of JSON.value
-    exception NotReal of JSON.value
+    exception NotNumber of JSON.value
     exception NotString of JSON.value
 
     exception NotObject of JSON.value
@@ -78,9 +78,9 @@ structure JSONUtil : sig
     fun asInt (J.INT n) = n
       | asInt v = raise NotInt v
 
-    fun asReal (J.INT n) = Real.fromLargeInt n
-      | asReal (J.FLOAT f) = f
-      | asReal v = raise NotReal v
+    fun asNumber (J.INT n) = Real.fromLargeInt n
+      | asNumber (J.FLOAT f) = f
+      | asNumber v = raise NotNumber v
 
     fun asString (J.STRING s) = s
       | asString v = raise NotString v
@@ -132,7 +132,7 @@ structure JSONUtil : sig
 	      | NotInt v => String.concat[
 		    "expected integer, but found ", v2s v
 		  ]
-	      | NotReal v => String.concat[
+	      | NotNumber v => String.concat[
 		    "expected number, but found ", v2s v
 		  ]
 	      | NotString v => String.concat[
