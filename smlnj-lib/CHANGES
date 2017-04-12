@@ -2,6 +2,14 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
+SML/NJ 110.81
+-------------------
+
+[2017-04-12]
+	Added JSONUtil structure to JSON library.  This module supports processing
+	the in-memory representation of JSON values.
+
+--------------------------------------------------------------------------------
 SML/NJ 110.80
 -------------------
 

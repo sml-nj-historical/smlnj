@@ -10,6 +10,7 @@ Library
   structure JSON
   structure JSONParser
   structure JSONPrinter
+  structure JSONUtil
 
 (* SAX-style API (event based) *)
   structure JSONStreamParser
@@ -28,3 +29,5 @@ is
   json-stream-parser.sml
   json-stream-printer.sml
   json-tokens.sml
+  json-util.sml
+

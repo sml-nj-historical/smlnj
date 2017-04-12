@@ -30,6 +30,7 @@ local
     json-parser.sml
     json-stream-printer.sml
     json-printer.sml
+    json-util.sml
 
   end
 
