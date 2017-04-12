@@ -30,10 +30,12 @@ structure JSONUtil : sig
 
   (* conversion functions for atomic values.  These raise the corresponding
    * "NotXXX" exceptions when their argument has the wrong shape.  Also note
-   * that asNumber will accept both integers and floats.
+   * that asNumber will accept both integers and floats and asInt may raise
+   * Overflow if the number is too large.
    *)
     val asBool : JSON.value -> bool
-    val asInt : JSON.value -> IntInf.int
+    val asInt : JSON.value -> Int.int
+    val asIntInf : JSON.value -> IntInf.int
     val asNumber : JSON.value -> Real.real
     val asString : JSON.value -> string
 
@@ -75,8 +77,11 @@ structure JSONUtil : sig
     fun asBool (J.BOOL b) = b
       | asBool v = raise NotBool v
 
-    fun asInt (J.INT n) = n
+    fun asInt (J.INT n) = Int.fromLarge n
       | asInt v = raise NotInt v
+
+    fun asIntInf (J.INT n) = n
+      | asIntInf v = raise NotInt v
 
     fun asNumber (J.INT n) = Real.fromLargeInt n
       | asNumber (J.FLOAT f) = f
