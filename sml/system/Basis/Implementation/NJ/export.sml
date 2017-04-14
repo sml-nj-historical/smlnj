@@ -42,5 +42,3 @@ structure Export : EXPORT =
 	  (* this never returns here *))
 
   end (* Export *)
-
-

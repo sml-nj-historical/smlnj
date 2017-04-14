@@ -1,13 +1,13 @@
 (* Copyright 1996 by AT&T Bell Laboratories *)
 (* prim.sml *)
 
-signature PRIM_ENV = 
-sig 
+signature PRIM_ENV =
+sig
   val primEnv : StaticEnv.staticEnv
 end (* signature PRIM_ENV *)
 
 
-structure PrimEnv : PRIM_ENV = 
+structure PrimEnv : PRIM_ENV =
 struct
 
 local
@@ -31,16 +31,16 @@ local
 
 in
 
-fun mkTycElement (name: string, tyc) = 
+fun mkTycElement (name: string, tyc) =
      (S.tycSymbol name, M.TYCspec{entVar=ST.special name,
                                   info=M.RegTycSpec{spec=tyc, repl=false,
 				                    scope=0}})
 
-(* 
+(*
  * Note: this function only applies to constructors but not exceptions;
- * exceptions will have a non-trivial slot number 
+ * exceptions will have a non-trivial slot number
  *)
-fun mkConElement (name, d) = 
+fun mkConElement (name, d) =
     (S.varSymbol name, M.CONspec{spec=d, slot=NONE})
 
 (* Below there is a bunch of very long list literals which would create
@@ -83,7 +83,7 @@ val primTypes =
              ("frag", BT.fragTycon) :-:
              ("susp", BT.suspTycon)
 
-      val primCons = 
+      val primCons =
           [] :-:
 	     ("true", BT.trueDcon) :-:
              ("false", BT.falseDcon) :-:
@@ -109,7 +109,7 @@ val primTypes =
 
       val entities = EntityEnv.mark(fn _ => ST.special"primEntEnv", entities)
 
-      val sigrec = 
+      val sigrec =
 	  {stamp=ST.special "PrimTypesSig",
 	   name=SOME(S.sigSymbol "PRIMTYPES"), closed=true,
 	   fctflag=false,
@@ -480,7 +480,7 @@ val allPrimops =
 (* uList structure *)
 val uList =
   let val ev = ST.special "uListVar"
-      val allElements = 
+      val allElements =
             [(S.tycSymbol "list",
               M.TYCspec{entVar=ev,
                         info=M.RegTycSpec{spec=BT.ulistTycon,
@@ -488,7 +488,7 @@ val uList =
              mkConElement("nil", BT.unilDcon),
              mkConElement("::", BT.uconsDcon)]
       val sigrec = {stamp=ST.special "uListSig",
-		       name=NONE, closed=true, 
+		       name=NONE, closed=true,
 		       fctflag=false,
 		       elements=allElements,
 		       typsharing=nil, strsharing=nil,
@@ -508,12 +508,12 @@ val uList =
 
 (* inLine structure *)
 val inLine =
-  let val bottom = T.POLYty{sign=[false], 
+  let val bottom = T.POLYty{sign=[false],
                             tyfun=T.TYFUN{arity=1,body=T.IBOUND 0}}
 
       fun mkVarElement(name,(elements,primElems,offset)) =
         let val s = S.varSymbol name
-            val ty = 
+            val ty =
 		(case PrimOpTypeMap.primopTypeMap name (* the intrinsic type *)
 		  of SOME ty => ty
 		   | NONE => ErrorMsg.impossible("PrimEnv: inLine reference to \
@@ -523,15 +523,15 @@ val inLine =
             val p = PrimOpId.PrimE(PrimOpId.Prim name) (* the primop code *)
          in ((s,sp)::elements, p::primElems, offset+1)
         end
-      
-      val (allElements, primList, _) = 
+
+      val (allElements, primList, _) =
             foldl mkVarElement ([],[],0) allPrimops
 
-      val (allElements, primList) = 
+      val (allElements, primList) =
             (rev allElements, rev primList)
 
       val sigrec ={stamp=ST.special "inLineSig",
-		   name=NONE, closed=true, 
+		   name=NONE, closed=true,
 		   fctflag=false,
 		   elements=allElements,
 		   typsharing=nil, strsharing=nil,

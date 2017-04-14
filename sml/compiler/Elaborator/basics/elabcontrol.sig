@@ -31,7 +31,7 @@ sig
   val internals : bool ref
 
   val markabsyn : bool ref
-      (* ElabCore, ElabTop, ElabUtil, Control_MC *)                    
+      (* ElabCore, ElabTop, ElabUtil, Control_MC *)
 
   val boxedconstconreps : bool ref
       (* ConRep *)

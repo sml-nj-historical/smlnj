@@ -694,7 +694,7 @@ struct
           (* Allocate a header pair for vector or array *)
           fun allocHeaderPair(hdrDesc, mem, dataPtr, len, hp) =
               (emit(M.STORE(ity, ea(C.allocptr, hp), LI hdrDesc,pi(mem,~1)));
-               emit(M.STORE(ity, ea(C.allocptr, hp+ws), 
+               emit(M.STORE(ity, ea(C.allocptr, hp+ws),
                             M.REG(ity,dataPtr),pi(mem, 0)));
                emit(M.STORE(ity, ea(C.allocptr, hp+2*ws), LI(len+len+1),
                             pi(mem, 1)));
@@ -876,7 +876,7 @@ struct
 		  | 8 => scale8
 		  | _ => error "scaleWord"
 		(* end case *))
-   
+
  	  (* zero-extend and sign-extend *)
 	  fun ZX32 (sz, e) = M.ZX (32, sz, e)
 	      (* M.SRL (32, M.SLL (32, e, LI (32 - sz)), LI (32 - sz)) *)
@@ -1340,7 +1340,7 @@ raise ex)
                   emit(M.MV(pty, dataPtr, ea(C.allocptr, hp+ws)));
                   (* Now allocate the header pair *)
                   treeifyAlloc(w,
-                     allocHeaderPair(hdrDesc, mem, dataPtr, len, hp+ws+len*ws), 
+                     allocHeaderPair(hdrDesc, mem, dataPtr, len, hp+ws+len*ws),
                         e, hp'+3*ws)
               end
 
@@ -1500,7 +1500,7 @@ raise ex)
                   val labs = map (fn _ => newLabel()) l
                   val tmpR = newReg I32 val tmp = M.REG(ity,tmpR)
               in  emit(M.MV(ity, tmpR, laddr(lab, 0)));
-                  emit(M.JMP(M.ADD(addrTy, tmp, M.LOAD(pty, scaleWord(tmp, v), 
+                  emit(M.JMP(M.ADD(addrTy, tmp, M.LOAD(pty, scaleWord(tmp, v),
                                                        R.readonly)), labs));
 		  pseudoOp(PB.DATA_READ_ONLY);
 		  pseudoOp(PB.EXT(CPs.JUMPTABLE{base=lab, targets=labs}));
@@ -1715,7 +1715,7 @@ raise ex)
               let val tag = LI(dtoi D.desc_ref)
                   val mem = memDisambig x
               in  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,LI hp),tag,mem));
-                  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,LI(hp+ws)), 
+                  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,LI(hp+ws)),
                                regbind' v, mem));
                   treeifyAlloc(x, hp+ws, e, hp+2*ws)
               end
@@ -1758,7 +1758,7 @@ raise ex)
               in  (* gen code to allocate "ref()" for array data *)
                   emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI hp),
                                LI dataDesc, tagM));
-                  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI(hp+ws)), 
+                  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI(hp+ws)),
                                mlZero, valM));
                   emit(M.MV(pty, dataPtr, M.ADD(addrTy,C.allocptr,LI(hp+ws))));
                   (* gen code to allocate array header *)
@@ -1785,7 +1785,7 @@ raise ex)
                   val desc = dtoi(D.makeDesc(len, tag))
 
                   (* Align floating point *)
-                  val hp = if ws = 4 andalso fp andalso 
+                  val hp = if ws = 4 andalso fp andalso
                     Word.andb(Word.fromInt hp, 0w4) <> 0w0 then hp+4 else hp
 
                   val mem = memDisambig x

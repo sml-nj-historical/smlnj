@@ -67,7 +67,7 @@ struct
     val internals = onew ("internals", "show internal reps", false)
 
     val markabsyn = onew ("markabsyn", "mark abstract syntax", true)
-        (* ElabCore, ElabTop, ElabUtil, Control_MC *)                    
+        (* ElabCore, ElabTop, ElabUtil, Control_MC *)
 
     val boxedconstconreps = onew ("boxedconstreps", "boxed const constructors", false)
         (* ConRep *)

@@ -42,7 +42,7 @@ Group
 
 	structure PPUtil
 	structure PPUtilNew
-	structure PPPrim 
+	structure PPPrim
 	structure PPType
 	structure PPAbsyn
 	structure PPModules
@@ -64,7 +64,7 @@ is
 	types/typecheck.sml
 
 	modules/expandtycon.sml
-	modules/sigmatch.sml 
+	modules/sigmatch.sml
 	modules/instantiate.sml
 	modules/evalent.sml
 
@@ -82,7 +82,7 @@ is
 	elaborate/elabmod.sml
 	elaborate/elabtop.sml
 
-	print/ppprim.sml 
+	print/ppprim.sml
 	print/pputil.sig
 	print/pputil.sml
 	print/pputil-new.sig

@@ -45,8 +45,8 @@ and tvKind
      (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
       * associated with polymorphic bindings (including val bindings and
       * functor parameter bindings). The depth is depth of type lambda bindings,
-      * (1-based), and the index is the index within a sequence of 
-      * type variables bound at a given binding site. LBOUNDs must carry 
+      * (1-based), and the index is the index within a sequence of
+      * type variables bound at a given binding site. LBOUNDs must carry
       * equality type information for signature matching because the OPENs
       * are turned into LBOUNDs before equality type information is matched. *)
 
@@ -120,7 +120,7 @@ and dtypeFamily =
   {mkey: Stamps.stamp,
    members: dtmember vector,
    properties: PropList.holder}
-	       
+
 
 and stubinfo =
     {owner : PersStamps.persstamp,

@@ -120,7 +120,6 @@ is
 	statenv/coreacc.sml
 	statenv/browse.sml
 
-
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/parser.cm
 	$smlnj/smlnj-lib/smlnj-lib.cm

@@ -1,7 +1,7 @@
 (* Copyright 1996 by AT&T Bell Laboratories *)
 (* instantiate.sml *)
 
-(* 
+(*
  * This function constructs a dummy structure which satisfies all sharing
  * constraints (explicit or induced) of a given signature.  The resulting
  * structure is used as the dummy parameter of a functor while elaborating
@@ -13,18 +13,18 @@
  * and cleaned up in [2].
  *
  * The basic algorithm makes 2 passes.  The first pass builds a DAG in
- * a quasi-top down fashion which corresponds to the minimal structure 
+ * a quasi-top down fashion which corresponds to the minimal structure
  * needed to match the signature.  The second pass takes the DAG and
  * constructs the actualy dummy structure in a bottom-up fashion.
- * Pass 1 has a fairly complicated control structure.  The major 
- * invariant is that no node in the graph is expanded unless all 
+ * Pass 1 has a fairly complicated control structure.  The major
+ * invariant is that no node in the graph is expanded unless all
  * of its ancestors have been expanded.  This insures that all sharing
  * constraints (explicit or derived) have reached the node at the
  * time of its expansion.  The second major invariant is that no
  * node is finalized until all members in its equivalence class have
  * been found.
  *
- * [1] Paterson, M.S., and Wegman, M.N., "Linear Unification", 
+ * [1] Paterson, M.S., and Wegman, M.N., "Linear Unification",
  *     J. Comp. Sys. Sci. 16,2 (April 1978), pp. 158-167.
  *
  * [2] de Champeaux, D., "About the Paterson-Wegman Linear Unification
@@ -58,7 +58,7 @@ sig
 (*  structure Param : INSTANTIATE_PARAM *)
 
   (*** instantiation of the functor parameter signatures ***)
-  val instParam : 
+  val instParam :
          {sign     : Modules.Signature,
           entEnv   : Modules.entityEnv,
           tdepth   : DebIndex.depth,	(* # of enclosing fct abstractions? *)
@@ -68,7 +68,7 @@ sig
                                             tycpaths: Types.tycpath list}
 
   (*** instantiation of the formal functor body signatures ***)
-  val instFmBody : 
+  val instFmBody :
          {sign     : Modules.Signature,
           entEnv   : Modules.entityEnv,
           tycpath  : Types.tycpath,
@@ -79,10 +79,10 @@ sig
                                             tyceps: EntPath.entPath list}
 
   (*** instantiation of the structure abstractions ***)
-  val instAbstr : 
+  val instAbstr :
          {sign     : Modules.Signature,
           entEnv   : Modules.entityEnv,
-          srcRlzn  : Modules.strEntity, 
+          srcRlzn  : Modules.strEntity,
           rpath    : InvPath.path,
           region   : SourceMap.region,
           compInfo : ElabUtil.compInfo} -> {rlzn: Modules.strEntity,
@@ -104,7 +104,7 @@ end (* signature INSTANTIATE *)
 (* functorized to factor out dependencies on FLINT... *)
 functor InstantiateFn (Param: INSTANTIATE_PARAM) : INSTANTIATE =
 	*)
-structure Instantiate : INSTANTIATE =						       
+structure Instantiate : INSTANTIATE =
 struct
 
 local structure A  = Access
@@ -127,7 +127,7 @@ local structure A  = Access
       structure TU = TypesUtil
       structure SPL = SigPropList
       open Modules Types
-in 
+in
 
 (* structure Param = Param *)
 
@@ -161,7 +161,7 @@ val infinity = 1000000 (* a big integer *)
 
 fun push(r,x) = (r := x::(!r))
 
-fun pathName (path: IP.path) : string = 
+fun pathName (path: IP.path) : string =
     SP.toString(ConvertPaths.invertIPath path)
 
 val eqOrigin = MU.eqOrigin
@@ -179,14 +179,14 @@ fun signName (SIG { name, ... }) = getOpt (Option.map S.name name, "Anonymous")
 (* -------------------- important data structures ------------------------ *)
 
 (*
- * the different kinds of instantiations 
+ * the different kinds of instantiations
  *)
-datatype instKind 
+datatype instKind
   = INST_ABSTR of M.strEntity
   | INST_FMBD of T.tycpath
   | INST_PARAM of DebIndex.depth
 
-(* datatype stampInfo 
+(* datatype stampInfo
  * encodes an instruction about how to get a stamp for a new entity
  *)
 datatype stampInfo
@@ -198,7 +198,7 @@ datatype stampInfo
  * The contents of the finalEnt field of the FinalStr inst variant.
  * Defined in finalize (in buildStrClass), used in instToStr to
  * determine how to find or build the realization entity.
- * 
+ *
  * The bool argument of GENERATE_ENT is normally true when there was
  * a VARstrDef applying to the structure spec with a different signature
  * than the spec. This means that the spec signature should be considered
@@ -214,14 +214,14 @@ datatype tycInst
   = INST of tycon      (* already instantiated *)
   | NOTINST of tycon   (* needing instantiation *)
 
-(* 
- * This datatype represents the continually changing DAG that is being 
- * constructed by instantiate.  We start off with just an Initial node.  
- * It is expanded into a Partial node whose children are 
+(*
+ * This datatype represents the continually changing DAG that is being
+ * constructed by instantiate.  We start off with just an Initial node.
+ * It is expanded into a Partial node whose children are
  * initialized to Initial nodes.  When all of the members of the nodes
- * equivalence class have been found, and converted to Partial nodes, 
+ * equivalence class have been found, and converted to Partial nodes,
  * the node is converted to FinalStr.  Finally, we recurse on the children
- * of the node.  
+ * of the node.
  *
  * Invariants:
  *
@@ -259,14 +259,14 @@ datatype inst
   | ErrorStr
 
     (* tycon instances *)
-  | FinalTyc of tycInst ref 
+  | FinalTyc of tycInst ref
   | PartialTyc of
-     {tycon : tycon, 
-      path : IP.path, 
+     {tycon : tycon,
+      path : IP.path,
       epath: EP.entPath}
   | InitialTyc of
-     {tycon : tycon, 
-      path : IP.path, 
+     {tycon : tycon,
+      path : IP.path,
       epath: EP.entPath,
       inherited : constraint list ref}
   | NullTyc
@@ -280,7 +280,7 @@ datatype inst
       epath: EP.entPath}
   | NullFct
 
-(* 
+(*
  * A constraint is essentially a directed arc indicating that two
  * nodes are to be identified.  The constraint is always interpreted
  * relative to a structure inst node.  The my_path field is a symbolic
@@ -321,7 +321,7 @@ fun instToString inst =
      | FinalTyc(ref(NOTINST tycon)) =>
 	 "FinalTyc.NOTINST(" ^ (S.name(TU.tycName tycon)) ^ ")"
      | PartialTyc{tycon,path,...} => "PartialTyc(" ^ IP.toString path ^ ")"
-     | InitialTyc{tycon,path,...} => 
+     | InitialTyc{tycon,path,...} =>
          "InitialTyc(" ^ IP.toString path ^ ")"
      | FinalFct{path, ...} => "FinalFct(" ^ IP.toString path ^ ")"
      | NullTyc => "NullTyc"
@@ -334,9 +334,9 @@ fun lookSlot((ev,slot)::rest,ev') =
       if EP.eqEntVar(ev,ev') then slot else lookSlot(rest,ev')
   | lookSlot(nil,_) = bug "lookSlot"
 
-(* 
- * Get slot for signature element (tycon or structure) --- 
- * Lookup sym in sign, get entVar, lookup this entVar in slotEnv 
+(*
+ * Get slot for signature element (tycon or structure) ---
+ * Lookup sym in sign, get entVar, lookup this entVar in slotEnv
  *)
 fun getElemSlot(sym, SIG {elements,...}, slotEnv) : slot =
     (case MU.getSpecVar(MU.getSpec(elements,sym))
@@ -345,7 +345,7 @@ fun getElemSlot(sym, SIG {elements,...}, slotEnv) : slot =
   | getElemSlot _ = bug "getElemSlot (2)"
 
 fun getElemSlots(SIG {elements,...}, slotEnv) : (S.symbol * slot) list =
-    let fun f (sym,spec) = 
+    let fun f (sym,spec) =
 	    case MU.getSpecVar spec
 	      of SOME v => SOME(sym,lookSlot(slotEnv,v))
 	       | NONE => NONE
@@ -376,7 +376,7 @@ fun extTycToTycInst tyc =
  *   sorted by the component name in ascending order
  *)
 fun getElemDefs (strDef,mkStamp,depth): (S.symbol * constraint) list =
-    let val comps = 
+    let val comps =
 	     (case strDef
 	       of CONSTstrDef (STR {sign = SIG {elements,...},
 				    rlzn as {entities,...}, ... }) =>
@@ -442,20 +442,20 @@ fun getElemDefs (strDef,mkStamp,depth): (S.symbol * constraint) list =
  *
  *   create slots with initial insts for the components of the signature
  *   for a structure spec.  slots are associated with element names and
- *   sorted in ascending order by element name.  the slots are also 
+ *   sorted in ascending order by element name.  the slots are also
  *   added to the inherited slotEnv, bound the corresponding element's
  *   entityVar, and the augmented slotEnv is returned
  *)
 fun mkElemSlots(SIG {elements,...},slotEnv,rpath,epath,sigDepth) =
     let fun mkSlot((sym,STRspec{sign as SIG {closed,...},
-				entVar,def,...}),slotEnv) = 
+				entVar,def,...}),slotEnv) =
 	     (* a definitional structure spec is translated into a SDEFINE
 	      * constraint *)
 	     let val constraints =
 		     case def
 		       of NONE => []
 			| SOME(strDef,scope) => [SDEFINE(strDef,sigDepth-scope)]
-	      in SOME (entVar, ref(InitialStr{sign=sign, 
+	      in SOME (entVar, ref(InitialStr{sign=sign,
 					      sigDepth=sigDepth,
 					      path=IP.extend(rpath,sym),
 					      slotEnv=(if closed then nil
@@ -463,12 +463,12 @@ fun mkElemSlots(SIG {elements,...},slotEnv,rpath,epath,sigDepth) =
 					      epath=epath@[entVar],
 					      inherited=ref constraints}))
 	     end
-	  | mkSlot((sym,STRspec{sign as ERRORsig,entVar,...}),slotEnv) = 
+	  | mkSlot((sym,STRspec{sign as ERRORsig,entVar,...}),slotEnv) =
 	     SOME (entVar, ref(ErrorStr))
 	  | mkSlot((sym,TYCspec{entVar,info=RegTycSpec{spec=tycon,repl,scope}}),
-                   slotEnv) = 
+                   slotEnv) =
 	     (case tycon
-		of DEFtyc{stamp,path,tyfun=TYFUN{arity,...},...} => 
+		of DEFtyc{stamp,path,tyfun=TYFUN{arity,...},...} =>
 		    (* translate a DEFtyc spec into a TDEFINE constraint *)
 		    let val tycon' = GENtyc{stamp=stamp,arity=arity,path=path,
 					    eq=ref(IND),kind=FORMAL,
@@ -481,14 +481,14 @@ fun mkElemSlots(SIG {elements,...},slotEnv,rpath,epath,sigDepth) =
 				   inherited=ref[TDEFINE(NOTINST tycon,
 							 sigDepth-scope)]}))
 		    end
-		 | _ => 
+		 | _ =>
 		   SOME(entVar,
 			ref(InitialTyc{tycon=tycon,
 				       path=IP.extend(rpath,sym),
 				       epath=epath@[entVar],
 				       inherited=ref []})))
-	  | mkSlot((sym,FCTspec{sign,entVar,...}),slotEnv) = 
-	     SOME (entVar,ref(FinalFct{sign=sign, def=ref NONE, 
+	  | mkSlot((sym,FCTspec{sign,entVar,...}),slotEnv) =
+	     SOME (entVar,ref(FinalFct{sign=sign, def=ref NONE,
 				       epath=epath@[entVar],
 				       path=IP.extend(rpath,sym)}))
 	  | mkSlot _ = NONE  (* value element *)
@@ -521,7 +521,7 @@ fun mkElemSlots(SIG {elements,...},slotEnv,rpath,epath,sigDepth) =
  *
  * NOTE: does not check that each element in the first list has
  * an associated constraint in the second list.
- * 
+ *
  * ASSERT: both arguments of propDefs are sorted in assending order by the
  * symbol component (the arguments are supplied by mkElementSlots and
  * getElemDefs, respectively).
@@ -548,10 +548,10 @@ fun propDefs(nil,_) = ()
  *   Propogates inherited sharing constraints (SHARE) to the matching
  *   elements of two structure nodes.  Called only in addInst in
  *   buildStrClass, i.e. when adding a new instance to an equiv. class.
- * 
+ *
  * ASSERT: both arguments of propSharing are sorted in assending order by the
  * symbol component.
- * 
+ *
  * ASSERT: matching slots are either both InitialStr, both InitialTyc,
  * or one is ErrorStr or ErrorTyc.
  *)
@@ -571,7 +571,7 @@ fun propSharing(nil,_,_) = ()
 		 push(inherited2,
 		  SHARE{my_path=SP.empty,its_ancestor=slot1,
 			its_path=SP.empty,depth=depth}))
-	     | (InitialTyc {inherited=inherited1, ...}, 
+	     | (InitialTyc {inherited=inherited1, ...},
 		InitialTyc {inherited=inherited2, ...}) =>
 		(push(inherited1,
 		  SHARE{my_path=SP.empty,its_ancestor=slot2,
@@ -627,7 +627,7 @@ fun distributeS (sign as SIG {strsharing,...}, slotEnv, entEnv, sigDepth) =
 
       in (app distShare strsharing) handle DistributeS => ()
      end
-  | distributeS _ = () 
+  | distributeS _ = ()
 
 
 (****************************************************************************
@@ -658,7 +658,7 @@ fun distributeT (sign as SIG {typsharing,...},
                end
            | stepPath _ = bug "distributeT:stepPath 3"
 
-         fun distShare (p::rest) = 
+         fun distShare (p::rest) =
               let val (p1,h1,slot1) = stepPath p
 		      (* stepPath might raise MU.Unbound if there were errors
 		         in the signature (testing/modules/tests/101.sml) *)
@@ -673,7 +673,7 @@ fun distributeT (sign as SIG {typsharing,...},
 
       in (app distShare typsharing) handle DistributeT => ()
      end
-  | distributeT _ = () 
+  | distributeT _ = ()
 
 (* debugging wrappers
 val distributeS = wrap "distributeS" distributeS
@@ -686,44 +686,44 @@ exception ExploreInst of IP.path
 (* THIS COMMENT OBSOLETE *)
 (***************************************************************************
  * buildStrClass : slot * int * entityEnv * (unit -> stamp) * EM.complainer
- *                  -> unit                          
+ *                  -> unit
  *
  * The slot argument is assumed to contain an InitialStr.
- * This function computes the equivalence class of the structure 
+ * This function computes the equivalence class of the structure
  * element associated with the slot.  It proceeds as follows:
- * 
+ *
  * 1. New slots are created for the elements of the signature.
- * 
+ *
  * 2. The InitialStr is replaced by a PartialStr.
- * 
+ *
  * 3. The signature's explicit type and structure sharing constraints are
  *    propogated to the member elements using distributeS and distributeT.
- * 
+ *
  * 4. This node's inherited constraints are processed.  If they apply
- *    to this node, the equivalence class is enlarged (using addInst) or 
+ *    to this node, the equivalence class is enlarged (using addInst) or
  *    a definition is set (classDef).  If a constraint applies to children
- *    of this node, they are propogated to the children.  Processing a 
+ *    of this node, they are propogated to the children.  Processing a
  *    sharing constraint may require that an ancestor of the other node
  *    in the constraint first be explored by buildStrClass.
  *    Once constrain is complete, class contains a list of equivalent PartialStr
  *    nodes that constitute the sharing equivalence class of the original
  *    node (thisSlot).
- * 
+ *
  * 5. finalize is applied to the members of the class to turn them
  *    into FinalStrs.  The FinalStrs are memoized in the PartialStr
  *    nodes to insure that equivalent nodes that have the same signature
  *    will contain the same FinalStr value.
- * 
+ *
  * If two slots in the class have nodes that share the same signature,
  * then the slots are made to point to only one of the nodes.  Of course,
- * the sharing constraints for both must be propogated to the descendants.  
- * 
+ * the sharing constraints for both must be propogated to the descendants.
+ *
  * Also, the "entEnv" argument here is strictly used for interpreting the
  * sharing constraints only. (ZHONG)
  ***************************************************************************)
 
 (* ASSERT: this_slot is an InitialStr *)
-fun buildStrClass (this_slot: slot, classDepth: int, 
+fun buildStrClass (this_slot: slot, classDepth: int,
                    entEnv: M.entityEnv, mkStamp, err: EM.complainer) : unit =
 let val class = ref ([this_slot] : slot list) (* the equivalence class *)
     val classDef = ref (NONE : (strDef * int) option)
@@ -732,7 +732,7 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 	 * in the construction of the equivalence class. *)
 
     (* for error messages *)
-    val this_path = 
+    val this_path =
 	case !this_slot
 	  of InitialStr{path,...} => ConvertPaths.invertIPath path
 	   | _ => bug "buildStrClass: this_slot not InitialTyc"
@@ -829,7 +829,7 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 	       | SHARE{my_path=SP.SPATH[],its_ancestor=slot,
 		       its_path=SP.SPATH(sym::rest),depth} =>
 		 (case (!slot)
-		   of InitialStr _ => 
+		   of InitialStr _ =>
 			(debugmsg "<Having to call buildStrClass on an ancestor \
 				   \of a node I'm equivalent to.>";
 			 buildStrClass (slot, (classDepth+1), entEnv,
@@ -865,21 +865,21 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 			 case sign of SIG s => s
 				    | _ => bug "instantiate:constrain:SIG"
 		  in case MU.getSpec(elements,sym)
-		       of TYCspec{entVar,info=RegTycSpec{spec=tycon,repl,scope}} => 
+		       of TYCspec{entVar,info=RegTycSpec{spec=tycon,repl,scope}} =>
 			   (* ASSERT: rest = nil *)
 			   (case !(lookSlot(slotEnv,entVar))
 			     of InitialTyc {inherited, ...} =>
 				  push(inherited,
-				       SHARE{my_path=SP.SPATH[], 
-					     its_ancestor=its_ancestor, 
+				       SHARE{my_path=SP.SPATH[],
+					     its_ancestor=its_ancestor,
 					     its_path=its_path,depth=depth})
 			      | _ => bug "buildStrClass.6")
 			| STRspec{entVar,...} =>
 			   (case !(lookSlot(slotEnv,entVar))
 			     of InitialStr {inherited, ...} =>
 				  push(inherited,
-				       SHARE{my_path=SP.SPATH rest, 
-					     its_ancestor=its_ancestor, 
+				       SHARE{my_path=SP.SPATH rest,
+					     its_ancestor=its_ancestor,
 					     its_path=its_path,depth=depth})
 			      | _ => bug "buildStrClass.7")
 			| _ => bug "buildStrClass.8"
@@ -888,14 +888,14 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 	 in app constrain1 (rev inherited)
 	end
 
-    (* 
+    (*
      * Converts all of the nodes in the class (which should be PartialStr)
      * to Final nodes.  Note that nodes which share the same signature
      * should share the same FinalStr nodes.  So, they are memoized using
      * the final_rep field of the PartialStr node.
      *)
     fun finalize (stampInfoRef: stampInfo ref) slot =
-	case (!slot) 
+	case (!slot)
 	 of ErrorStr => ()
 	  | PartialStr {sign, path, slotEnv, final_rep, ...} =>
 	      (case !final_rep
@@ -915,7 +915,7 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 				   * reverence can be propogated by the structure
 				   * declaration.  See bug1445.1.sml. *)
 				  GENERATE_ENT false
-			       | SOME(CONSTstrDef(ERRORstr),_) => 
+			       | SOME(CONSTstrDef(ERRORstr),_) =>
 				  CONST_ENT bogusStrEntity
 			       | NONE => GENERATE_ENT true
 			       | _ => bug "buildStrClass.finalize 1"
@@ -930,17 +930,17 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 		    end)
 	  | _ => bug "buildStrClass.finalize 2"
 
-    (* Should find everyone in the equiv. class and convert them to 
-     * PartialStr nodes.  
+    (* Should find everyone in the equiv. class and convert them to
+     * PartialStr nodes.
      *)
- in (* explore equivalence class, filling the class ref with a 
+ in (* explore equivalence class, filling the class ref with a
      * list of PartialStr insts *)
     case !this_slot  (* verify that this_slot is InitialStr *)
       of (InitialStr {sign, sigDepth, path, slotEnv, inherited, epath}) =>
 	  (let val sigDepth' = sigDepth + 1
 	       val (slotEnv',newComps) =
 		   mkElemSlots(sign,slotEnv,path,epath,sigDepth')
-	    in this_slot := 
+	    in this_slot :=
 		 PartialStr{sign=sign,path=path,
 			    slotEnv=slotEnv',
 			    comps=newComps,
@@ -974,7 +974,7 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 		   EM.nullErrorBody)
 	  else ();
 
-    let val classStampInfo = 
+    let val classStampInfo =
 	ref(case !classDef
 	      of SOME(CONSTstrDef str,_)  => STAMP(MU.getStrStamp str)
 	       | SOME(VARstrDef(_,entPath),_) => PATH(entPath)
@@ -1003,7 +1003,7 @@ exception INCONSISTENT_EQ
  * types are the same.  Also, if they have constructors, we must check
  * to see that they have the same constructor names.  We don't know how
  * to check that the types of the constructors are satisfiable -- this
- * involves a limited form of second-order unification. 
+ * involves a limited form of second-order unification.
  *
  * But then, probably we should only allow two datatypes to be shared if their
  * types are completely equivalent; otherwise, the behavior of the elaboration
@@ -1023,20 +1023,20 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 	 * in the construction of the equivalence class. *)
 
       (* for error messages *)
-      val this_path = 
+      val this_path =
 	  case !this_slot
 	    of InitialTyc{path,...} => ConvertPaths.invertIPath path
 	     | _ => bug "buildTycClass: this_slot not InitialTyc"
 
-      val newTycKind = 
+      val newTycKind =
         case instKind
          of INST_ABSTR {entities,...} =>
 	    (fn (ep,_) => T.ABSTRACT(EE.lookTycEP (entities, ep)))
-          | INST_PARAM tdepth => 
-              (fn (ep,tk) => 
+          | INST_PARAM tdepth =>
+              (fn (ep,tk) =>
                   T.FLEXTYC(T.TP_VAR ({tdepth=tdepth, num=cnt, kind=tk})))
           | INST_FMBD tp => (fn (ep,_) => T.FLEXTYC(T.TP_SEL(tp,cnt)))
- 
+
       fun addInst (slot,depth)=
 	  (minDepth := Int.min(!minDepth, depth);
 	   case !slot
@@ -1087,7 +1087,7 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 
       fun checkArity (ar1, ar2, path1: IP.path, path2: IP.path) =
            if ar1 = ar2 then true
-           else (err EM.COMPLAIN 
+           else (err EM.COMPLAIN
                    ("inconsistent arities in type sharing "
                     ^(pathName path1)^" = "^(pathName path2)^" : "
                     ^(pathName path1)^" has arity "^(Int.toString ar1)^" and "
@@ -1103,12 +1103,12 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
             S.eq(name1,name2)
 
       fun compareD ([], []) = true
-        | compareD (d1::r1, d2::r2) = 
+        | compareD (d1::r1, d2::r2) =
             eqDataCons(d1,d2) andalso compareD (r1,r2)
         | compareD _ = false
-    
+
       (* Eta-reduce type abbreviation tycons. Makes sure that DEFtyc is not
-       * just an eta-expansion of another tycon. 
+       * just an eta-expansion of another tycon.
        *)
       fun simplify(tyc0 as DEFtyc{tyfun=TYFUN{arity,body},...}) =
             (case body
@@ -1129,7 +1129,7 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
        * Potential BUG on equality properties: when selecting the
        * candidate from a set of FORMAL tycons, the equality property
        * should be merged ... but this is not done right now (ZHONG)
-       *)    
+       *)
 
       fun eqMax((NO, OBJ) |(NO, YES) | (YES, NO) | (OBJ, NO)) =
 	    raise INCONSISTENT_EQ
@@ -1193,7 +1193,7 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 
 	      val (reptyc,epath,eqprop) =
 		  case tyc_eps
-		    of [(tyc,epath)] => 
+		    of [(tyc,epath)] =>
 			let val eqprop =
 			    case tyc
 			      of GENtyc {eq, ...} => !eq
@@ -1237,10 +1237,10 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
              | _ => bug "getSlotEp"
 
       fun finalize(defOp,slots) =
-	  let val (finalInst, tcOp) = 
+	  let val (finalInst, tcOp) =
 		  case defOp
 		    of SOME(tycInst,_) => (FinalTyc(ref(tycInst)), NONE)
-		     | NONE => 
+		     | NONE =>
 			(scanForRep(map getSlotEp slots)
 			 handle INCONSISTENT_EQ =>
 			   (err EM.COMPLAIN
@@ -1278,28 +1278,28 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 val buildTycClass = wrap "buildTycClass" buildTycClass
 *)
 
-fun sigToInst (ERRORsig, entEnv, instKind, rpath, err, compInfo) = 
+fun sigToInst (ERRORsig, entEnv, instKind, rpath, err, compInfo) =
       (ErrorStr,[],[],0)
   | sigToInst (sign, entEnv, instKind, rpath, err,
-	       compInfo as {mkStamp,...}: EU.compInfo) = 
+	       compInfo as {mkStamp,...}: EU.compInfo) =
   let val flextycs : T.tycon list ref = ref []
       val flexeps : (EP.entPath * TKind.tkind) list ref = ref []
       val cnt = ref 0
 
       fun addbt NONE = ()
-        | addbt (SOME (tc,ep)) = 
+        | addbt (SOME (tc,ep)) =
             (flextycs := (tc::(!flextycs));
              flexeps := (ep::(!flexeps));
              cnt := ((!cnt) + 1))
 
       fun expand ErrorStr = ()
         | expand (FinalStr {expanded=ref true,...}) = ()
-        | expand (FinalStr {sign,slotEnv,expanded,...}) = 
-            (* 
-             * We must expand the FinalStr inst in a top-down 
+        | expand (FinalStr {sign,slotEnv,expanded,...}) =
+            (*
+             * We must expand the FinalStr inst in a top-down
              * fashion.  So, we iterate through the bindings.
              * As we encounter structure or type element, we recursively
-             * expand it. 
+             * expand it.
              *)
             let fun expandInst (sym,slot) =
                  (debugmsg("<Expanding element " ^ S.symbolToString sym ^ ">");
@@ -1324,7 +1324,7 @@ fun sigToInst (ERRORsig, entEnv, instKind, rpath, err, compInfo) =
                                    S.name sym);
                           expand inst)
                      | InitialTyc _ =>
-                         addbt(buildTycClass(!cnt, slot, entEnv, instKind, 
+                         addbt(buildTycClass(!cnt, slot, entEnv, instKind,
 					     rpath, mkStamp, err))
                      | _ => ())
 
@@ -1376,10 +1376,10 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 				    EP.entPathToString ep);
 			  raise EE.Unbound))
 	   | GENERATE_ENT closedDef =>
-	     let 
-		 (* Gets the stamp of an instance -- generates one if 
+	     let
+		 (* Gets the stamp of an instance -- generates one if
 		  * one is not already built. *)
-		 fun getStamp instance : Stamps.stamp = 
+		 fun getStamp instance : Stamps.stamp =
 		     let val stamp = get_stamp_info instance
 		     in case (!stamp)
 			 of STAMP s => (debugmsg "getStamp:STAMP"; s)
@@ -1397,14 +1397,14 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			    end
 		  end
 
-		val newFctBody = 
+		val newFctBody =
 		  (case instKind
 		    of INST_ABSTR {entities,...} =>
 		       let fun f (sign as FSIG{paramvar,bodysig,...},ep,_,_) =
 			       let val fctEnt = EE.lookFctEP (entities, ep)
-				   val bodyExp = 
+				   val bodyExp =
 				       M.ABSstr (bodysig,
-						 APPLY(CONSTfct fctEnt, 
+						 APPLY(CONSTfct fctEnt,
 						       VARstr [paramvar]))
 			       in (bodyExp, NONE)
 			       end
@@ -1413,15 +1413,15 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			   f
 		       end
 		     | INST_FMBD tps =>
-		       (fn (sign, _, _, _) => 
+		       (fn (sign, _, _, _) =>
 			 let val i = cnt()
 			     val res = T.TP_SEL(tps,i)
 			     val _ = addRes(NONE, res)
 			  in (M.FORMstr sign, SOME res)
 			 end)
 
-		     | INST_PARAM tdepth => 
-		       (fn (sign, ep, rp, nenv) => 
+		     | INST_PARAM tdepth =>
+		       (fn (sign, ep, rp, nenv) =>
 			 let val tk = getTkFct{sign=sign,entEnv=nenv,
 					       rpath=rp,compInfo=compInfo}
 			     val res = T.TP_VAR ({ tdepth = tdepth,
@@ -1431,7 +1431,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			  in (M.FORMstr sign, SOME res)
 			 end))
 
-		fun instToTyc(ref(INST tycon),_) = tycon 
+		fun instToTyc(ref(INST tycon),_) = tycon
 		      (* already instantiated *)
 		  | instToTyc(r as ref(NOTINST tycon), entEnv) = let
 			fun badtycon () =(* bogus tycon *)
@@ -1445,15 +1445,15 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			   (* DEFtyc body gets instantiated here *)
 			   (* debugging version *)
 			   (let val tc =
-				(* if repl 
+				(* if repl
 				then (* eta reduce wrapped datatype *)
 				     let val T.CONty(tyc,_) = body
 				      in MU.transTycon entEnv tyc
 				     end
-				else *) let val tf = 
-				          T.TYFUN{arity=arity, 
+				else *) let val tf =
+				          T.TYFUN{arity=arity,
 						  body=MU.transType entEnv body}
-			              in T.DEFtyc{tyfun=tf, strict=strict, 
+			              in T.DEFtyc{tyfun=tf, strict=strict,
 						  stamp=mkStamp(),
 						  path=IP.append(rpath,path)}
 				     end
@@ -1472,7 +1472,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			       (let
 			       (* no coordination of stamps between mutually
 				* recursive families of datatypes? *)
-				   val nstamps = 
+				   val nstamps =
 				       (case root
 					 of NONE =>
 					    (* this is the lead dt of family *)
@@ -1487,15 +1487,15 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
                                               of T.GENtyc { kind =
 						      T.DATATYPE{stamps, ...},
 							    ... } => stamps
-                                               | T.ERRORtyc => 
+                                               | T.ERRORtyc =>
 						 Vector.map
 						     (fn _ => mkStamp()) stamps
-                                               | _ => 
+                                               | _ =>
 					(* oops, the root instantiation
 					 * is not a datatype (see bug 1414) *)
 					      bug "unexpected DATATYPE 354"))
 				   val s = Vector.sub(nstamps, index)
-				   val nfreetycs = 
+				   val nfreetycs =
                                        map (MU.transTycon entEnv) freetycs
 
 				   val nkind =
@@ -1533,9 +1533,9 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			| _ => badtycon ()
 		    end
 
-		(* 
-		 * Creates an entity from the instance node found 
-		 * in the given slot. 
+		(*
+		 * Creates an entity from the instance node found
+		 * in the given slot.
 		 *)
 		fun instToEntity (sym,slot,entEnv,failuresSoFar:int)
 		      : M.entity * int =
@@ -1601,11 +1601,11 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 		       TYCent(TU.unWrapDefStar tyc)
 		   | fixUpTycEnt (_,ent) = ent
 
-		 fun mkEntEnv (baseEntC) = 
-		     foldl (fn ((sym,spec),(env,failCount)) => 
+		 fun mkEntEnv (baseEntC) =
+		     foldl (fn ((sym,spec),(env,failCount)) =>
 			      (debugmsg ("mkEntEnv: "^Symbol.name sym);
 			       case MU.getSpecVar spec
-				 of SOME v => 
+				 of SOME v =>
 				     (let val s = lookSlot(slotEnv,v)
 					  val (e,failures) =
 					      instToEntity(sym, s, env, failCount)
@@ -1619,14 +1619,14 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 				  | NONE => (env,failCount)))
 			   baseEntC elements
 
- 	        val (entEnv',failCount) = 
+ 	        val (entEnv',failCount) =
                   if closed andalso closedDef
                   then (let val _ = debugmsg "mkEntEnv: closed"
                             val (ee, fc) = mkEntEnv(EE.empty, 0)
                          in (ee, fc+failuresSoFar)
                         end)
                   else (let val _ = debugmsg "mkEntEnv: not closed";
-                            val baseEntC = 
+                            val baseEntC =
                               (MARKeenv{stamp = mkStamp(),
 					env = entEnv,
 					stub = NONE },
@@ -1645,7 +1645,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 						 Int.toString failuresSoFar,
 						 ", failCount = ",
 						 Int.toString failCount])
-						 
+
 	      in if failCount = 0
 		 then finalEnt := CONST_ENT strEnt
 		 else ();
@@ -1657,7 +1657,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 		     M.STRent strEnt));
 		 (strEnt, failCount)
 	     end)
-      | instToStr'(ErrorStr, _, _, failuresSoFar) = 
+      | instToStr'(ErrorStr, _, _, failuresSoFar) =
            (bogusStrEntity,failuresSoFar)
       | instToStr' _ = bug "instToStr - instance not FinalStr"
 
@@ -1679,41 +1679,41 @@ end (* fun instToStr *)
 
 (*** fetching the TycKind for a particular functor signature ***)
 and getTkFct{sign as M.FSIG{paramvar, paramsig, bodysig, ...}, entEnv,
-             rpath, compInfo as {mkStamp, ...} : EU.compInfo} = 
+             rpath, compInfo as {mkStamp, ...} : EU.compInfo} =
       let val (arg_eps, res_eps) =
-           (case (paramsig, bodysig)  
+           (case (paramsig, bodysig)
              of (SIG psg, SIG bsg) =>
 		(case (SPL.sigBoundeps psg, SPL.sigBoundeps bsg)
 		  of (SOME x, SOME y) => (x, y)
-		   | (_, z) => 
+		   | (_, z) =>
                      let val region=SourceMap.nullRegion
-			 val (rlzn, _, _, args, _) = 
+			 val (rlzn, _, _, args, _) =
                              instGeneric{sign=paramsig, entEnv=entEnv,
-					 rpath=rpath, 
-					 instKind=INST_PARAM DebIndex.top, 
+					 rpath=rpath,
+					 instKind=INST_PARAM DebIndex.top,
 					 region=region, compInfo=compInfo}
                                      (*
                                       * We use DI.top temporarily,
-                                      * the tycpath result is discarded 
+                                      * the tycpath result is discarded
                                       * anyway. (ZHONG)
                                       *)
 
-                     in (case z 
+                     in (case z
                          of SOME u => (args, u)
                           | NONE =>
-                             let val entEnv' = 
-                                   EE.mark(mkStamp, 
+                             let val entEnv' =
+                                   EE.mark(mkStamp,
                                        EE.bind(paramvar, STRent rlzn, entEnv))
- 
-                                 val (_, _, _, res, _) = 
-                                   instGeneric{sign=bodysig, entEnv=entEnv', 
+
+                                 val (_, _, _, res, _) =
+                                   instGeneric{sign=bodysig, entEnv=entEnv',
                                                rpath=rpath, region=region,
                                                instKind=INST_PARAM
-							    DebIndex.top, 
+							    DebIndex.top,
                                                compInfo=compInfo}
                                      (*
                                       * We use DI.top temporarily,
-                                      * the tycpath result is discarded 
+                                      * the tycpath result is discarded
                                       * anyway. (ZHONG)
                                       *)
 
@@ -1731,18 +1731,18 @@ and getTkFct{sign as M.FSIG{paramvar, paramsig, bodysig, ...}, entEnv,
   | getTkFct _ = TKind.TKCfun([], TKind.TKCseq [])
 
 (*** the generic instantiation function ***)
-and instGeneric{sign, entEnv, instKind, rpath, region, 
+and instGeneric{sign, entEnv, instKind, rpath, region,
                 compInfo as {mkStamp,error,...} : EU.compInfo} =
   let val _ = debugmsg (">>instantiate: "^signName sign)
       val _ = error_found := false
       fun err sev msg = (error_found := true; error region sev msg)
       val baseStamp = mkStamp()
- 
-      val (inst, abstycs, tyceps, cnt) = 
+
+      val (inst, abstycs, tyceps, cnt) =
         sigToInst(sign, entEnv, instKind, rpath, err, compInfo)
 
       val counter = ref cnt
-      fun cntf x = 
+      fun cntf x =
         let val k = !counter
             val _ = (counter := k + 1)
          in k
@@ -1751,35 +1751,35 @@ and instGeneric{sign, entEnv, instKind, rpath, region,
       val alleps = ref (tyceps)
       val alltps : T.tycpath list ref = ref []
       fun addRes(NONE, tp) = (alltps := tp::(!alltps))
-        | addRes(SOME z, tp) = 
+        | addRes(SOME z, tp) =
              (alleps := (z::(!alleps)); alltps := tp::(!alltps))
 
-      val strEnt = 
+      val strEnt =
           instToStr(inst,entEnv,instKind,cntf,addRes,rpath,err,compInfo)
 
-      val (abs_tycs, fct_tps, all_eps) = 
+      val (abs_tycs, fct_tps, all_eps) =
         (rev abstycs, rev(!alltps), rev(!alleps))
 
       (* let's memoize the resulting boundeps list *)
-      val _ = case sign 
+      val _ = case sign
                of M.SIG sr =>
 		  (case SPL.sigBoundeps sr of
 		       NONE => SPL.setSigBoundeps (sr, SOME all_eps)
 		     | _ => ())
 		| _ => ()
 
-   (* SML96: eliminate eqAnalyze -- not required 
+   (* SML96: eliminate eqAnalyze -- not required
       (* the eqAnalyze code needs major clean-up ! *)
-      val _ = 
+      val _ =
         let val limitStamp = mkStamp()
             fun isLocalStamp s =
               (case Stamps.cmp(baseStamp,s)
-                of LESS => (case Stamps.cmp(s,limitStamp) 
+                of LESS => (case Stamps.cmp(s,limitStamp)
                              of LESS => true
                               | _ => false)
                  | _ => false)
 
-            val str = M.STR{sign=sign, rlzn=strEnt, 
+            val str = M.STR{sign=sign, rlzn=strEnt,
                             access=A.nullAcc, info=II.nullInfo}
             (*
              * eqAnalyze should not need to know what access is;
@@ -1789,7 +1789,7 @@ and instGeneric{sign, entEnv, instKind, rpath, region,
          in EqTypes.eqAnalyze(str, isLocalStamp, err)
         end
     *)
-           
+
       val _ = debugmsg "<<instantiate"
    in (strEnt, abs_tycs, fct_tps, all_eps, rev tyceps)
   end
@@ -1818,7 +1818,7 @@ fun instAbstr{sign, entEnv, srcRlzn, rpath, region, compInfo} =
 
 (*** instantiation of the functor parameter signatures ***)
 fun instParam{sign, entEnv, tdepth, rpath, region, compInfo} =
-  let val (rlzn, tycs, fcttps, _, _) 
+  let val (rlzn, tycs, fcttps, _, _)
         = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_PARAM tdepth,
                       rpath=rpath, region=region, compInfo=compInfo}
 
@@ -1833,24 +1833,24 @@ fun instParam{sign, entEnv, tdepth, rpath, region, compInfo} =
 fun getTycPaths{sign as M.SIG sr, rlzn : M.strEntity, entEnv,
 	        compInfo as {error,...}: EU.compInfo} =
       let val { entities, ... } = rlzn
-	  val epslist = 
+	  val epslist =
            case SPL.sigBoundeps sr
              of SOME x => x
-              | NONE => 
-                  let val (_, _, _, all_eps, _) = 
-                        instGeneric{sign=sign, entEnv=entEnv, 
+              | NONE =>
+                  let val (_, _, _, all_eps, _) =
+                        instGeneric{sign=sign, entEnv=entEnv,
                                     rpath=IP.IPATH[], compInfo=compInfo,
-                                    instKind=INST_PARAM DebIndex.top, 
+                                    instKind=INST_PARAM DebIndex.top,
                                     region=SourceMap.nullRegion}
                                      (*
                                       * We use DI.top temporarily,
-                                      * the tycpath result is discarded 
+                                      * the tycpath result is discarded
                                       * anyway. (ZHONG)
                                       *)
                    in all_eps
                   end
 
-          fun getTps (ep, _) = 
+          fun getTps (ep, _) =
             let val ent = EE.lookEP(entities, ep)
              in case ent
                  of M.TYCent (T.GENtyc { kind = T.FLEXTYC tp, ... }) => tp
@@ -1860,23 +1860,23 @@ fun getTycPaths{sign as M.SIG sr, rlzn : M.strEntity, entEnv,
                   | _ => bug "unexpected entities in getTps"
             end
 
-       in map getTps epslist 
+       in map getTps epslist
       end
 
   | getTycPaths _ = []
 
 
-val instParam = 
+val instParam =
   Stats.doPhase (Stats.makePhase "Compiler 032 instparam") instParam
 
 (*
-val instFmBody = 
+val instFmBody =
   Stats.doPhase (Stats.makePhase "Compiler 032 2-instFmBody") instFmBody
 
-val instAbstr = 
+val instAbstr =
   Stats.doPhase (Stats.makePhase "Compiler 032 3-instAbstr") instAbstr
 
-val getTycPaths = 
+val getTycPaths =
   Stats.doPhase (Stats.makePhase "Compiler 032 4-getTycPaths") getTycPaths
 *)
 

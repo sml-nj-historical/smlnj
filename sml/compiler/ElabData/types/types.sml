@@ -19,11 +19,11 @@ type polysign = bool list
 
 datatype eqprop = YES | NO | IND | OBJ | DATA | ABS | UNDEF
 
-datatype litKind = INT | WORD | REAL | CHAR | STRING 
+datatype litKind = INT | WORD | REAL | CHAR | STRING
 (* currently only INT and WORD literal overloading are implemented *)
 
-datatype openTvKind 	
-  = META                          (* metavariables: 
+datatype openTvKind
+  = META                          (* metavariables:
                                      depth = infinity for meta-args
                                      depth < infinity for lambda bound *)
   | FLEX of (label * ty) list     (* flex record variables *)
@@ -34,7 +34,7 @@ and ovldSource
      (* overloaded int or word literal *)
   (* in future, may need to add real, char, string literals as sources *)
 
-and tvKind		  
+and tvKind
   = INSTANTIATED of ty (* instantiation of an OPEN *)
   | OPEN of
      {depth: int, eq: bool, kind: openTvKind}
@@ -48,8 +48,8 @@ and tvKind
      (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
       * associated with polymorphic bindings (including val bindings and
       * functor parameter bindings). The depth is depth of type lambda bindings,
-      * (1-based), and the index is the index within a sequence of 
-      * type variables bound at a given binding site. LBOUNDs must carry 
+      * (1-based), and the index is the index within a sequence of
+      * type variables bound at a given binding site. LBOUNDs must carry
       * equality type information for signature matching because the OPENs
       * are turned into LBOUNDs before equality type information is matched. *)
 
@@ -79,9 +79,9 @@ and tyckind
 and tycon
   = GENtyc of gtrec
   | DEFtyc of
-      {stamp : ST.stamp, 
-       tyfun : tyfun, 
-       strict: bool list, 
+      {stamp : ST.stamp,
+       tyfun : tyfun,
+       strict: bool list,
        path  : IP.path}
   | PATHtyc of                    (* used only inside signatures *)
       {arity : int,
@@ -93,7 +93,7 @@ and tycon
   | ERRORtyc                      (* for error recovery, and used as a dummy
                                      tycon in ElabMod.extractSig *)
 
-and ty 
+and ty
   = VARty of tyvar
   | IBOUND of int
   | CONty of tycon * ty list
@@ -102,7 +102,7 @@ and ty
   | UNDEFty
   | MARKty of ty * SourceMap.region
 
-and tyfun 
+and tyfun
   = TYFUN of {arity: int, body: ty}
 
 withtype tyvar = tvKind ref
@@ -122,7 +122,7 @@ and dtmember =
      dcons: dconDesc list,
      sign: A.consig}
 
-and dtypeFamily = 
+and dtypeFamily =
   {mkey: ST.stamp,
    members: dtmember vector,
    properties: PropList.holder}
@@ -132,8 +132,8 @@ and stubinfo =
      lib   : bool}
 
 and gtrec =
-    {stamp : ST.stamp, 
-     arity : int, 
+    {stamp : ST.stamp,
+     arity : int,
      eq    : eqprop ref,
      kind  : tyckind,
      path  : IP.path,

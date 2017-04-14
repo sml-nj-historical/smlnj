@@ -42,7 +42,7 @@ local
   structure TU = TypesUtil
   structure OLL = OverloadLit
   structure ED = ElabDebug
-  open Types 
+  open Types
 
   fun bug msg = ErrorMsg.impossible("Unify: "^msg)
 
@@ -106,9 +106,9 @@ fun eqLitKind (lk : T.litKind) =
  * of an ERRORtyc should never be needed.
  *
  * [GK 5/7/07] The above note is not true. See bug271. Since an error
- * was already flagged, it seems harmless to return YES for the eqprop 
- * to avoid possibly spurious eqprop related warnings.  
- * 
+ * was already flagged, it seems harmless to return YES for the eqprop
+ * to avoid possibly spurious eqprop related warnings.
+ *
  * Calling this function on a DEFtyc also produces an impossible because
  * the current eqprop scheme is insufficiently expressive to describe
  * the possibilities. (Eg: first argument must be an eq type but not
@@ -129,7 +129,7 @@ fun tyconEqprop (GENtyc { eq, ... }) =
  * (sorted by label) into a single sorted list of (label, type) pairs.
  * If (l1,t1) occurs in fields1 but l1 doesn't occur in fields2 then
  * (l1, just1 t1) occurs in the output.  Similarly with just2.
- * If (l, t1) occurs in fields1 and (l,t2) in fields2, then 
+ * If (l, t1) occurs in fields1 and (l,t2) in fields2, then
  * (l, combine t1 t2) occurs in the output.
  *)
 fun fieldwise(_,just2,_,[],fields2) = map (fn (n,t) => (n,just2 t)) fields2
@@ -163,7 +163,7 @@ fun adjustType (var,depth,eq,ty,reg1,reg2) =
 	  | iter eq (MARKty(ty, reg2'), _) = iter eq (ty, reg2')
 	  | iter eq (ty' as VARty(var' as ref(info)), reg2) =
 	      (case info
-		 of INSTANTIATED ty => 
+		 of INSTANTIATED ty =>
 		      (debugMsg "adjustType INSTANTIATED";
 		       iter eq (ty,reg2))
 		  | OPEN{kind=k,depth=d,eq=e} =>
@@ -199,15 +199,15 @@ fun adjustType (var,depth,eq,ty,reg1,reg2) =
 		  | LBOUND _ => bug "unify:adjustType:LBOUND")
 	  | iter eq (ty as CONty(DEFtyc{tyfun=TYFUN{body,...},...}, args), reg2) =
 	      (app (fn t => iter false (t,reg2)) args; iter eq (TU.headReduceType ty, reg2))
-	      (* A headReduceType here may cause instTyvar to 
-	       * infinite loop if this CONty has a nonstrict arg 
+	      (* A headReduceType here may cause instTyvar to
+	       * infinite loop if this CONty has a nonstrict arg
 	       * against which we are unifying/instantiating
-	       * Because we may be instantiating to nonstrict 
-	       * univariables, it is safer to do an occurrence 
+	       * Because we may be instantiating to nonstrict
+	       * univariables, it is safer to do an occurrence
 	       * check on all the arguments. (typing/tests/20.sml)
-	       * [GK 4/28/07] 
-	       * iter should only do the occurrence check and 
-	       * not propagate eq to the args. 
+	       * [GK 4/28/07]
+	       * iter should only do the occurrence check and
+	       * not propagate eq to the args.
 	       * MLRISC/library/dynamic-array.sml's checkArray
 	       * is an example. [GK 2/24/08] *)
               (* Note that is involves redundancey -- iter may be, and in
@@ -248,14 +248,14 @@ fun sortVars(v1 as ref i1, v2 as ref i2) =
        | (_, OPEN{kind=FLEX _,...}) => (v2,v1)
        | _ => (v1,v2) (* both OPEN/META *)
 
-(* unifyTy expects that there are no POLYtys with 0-arity; 
+(* unifyTy expects that there are no POLYtys with 0-arity;
    CONty(DEFtyc, _) are reduced only if absolutely necessary. *)
 fun unifyTy(type1, type2, reg1, reg2) =
     let val type1 = TU.prune type1
 	val type2 = TU.prune type2
 	val _ = debugPPType(">>unifyTy: type1: ",type1)
 	val _ = debugPPType(">>unifyTy: type2: ",type2)
-	fun unifyRaw(type1, type2, reg1, reg2) = 
+	fun unifyRaw(type1, type2, reg1, reg2) =
 	 case (TU.prune type1, TU.prune type2)
 	  of (MARKty (ty1, reg1'), type2) => unifyRaw(TU.prune ty1, type2, reg1', reg2)
 	   | (type1, MARKty (ty2, reg2')) => unifyRaw(type1, TU.prune ty2, reg1, reg2')
@@ -269,19 +269,19 @@ fun unifyTy(type1, type2, reg1, reg2) =
 	       instTyvar(var2, type1, reg2, reg1)
 	   | (CONty(tycon1,args1), CONty(tycon2,args2)) =>
 	       if TU.eqTycon(tycon1,tycon2) then
-		   (* Because tycons are equal, they must have the 
+		   (* Because tycons are equal, they must have the
 		      same arity and strictness signatures. Thus lengths of args1 and
 		      args2 are the same. Type abbrev. strictness
 		      optimization. If tycons equal, then only check
 		      strict arguments. [GK 4/28/07] *)
-		   (case tycon1 
+		   (case tycon1
 		     of DEFtyc{strict, ...} =>
 			let fun unifyArgs([],[],[]) = ()
 			      | unifyArgs(true::ss, ty1::tys1, ty2::tys2) =
 				(unifyTy(ty1,ty2,reg1,reg2); unifyArgs(ss,tys1,tys2))
 			      | unifyArgs(false::ss, _::tys1, _::tys2) =
 				unifyArgs(ss,tys1,tys2)
-			      | unifyArgs _ = 
+			      | unifyArgs _ =
 				  bug "unifyTy: arg ty lists wrong length"
 			in unifyArgs(strict,args1,args2)
 			end
@@ -291,7 +291,7 @@ fun unifyTy(type1, type2, reg1, reg2) =
 	  (* if one of the types is WILDCARDty, propagate it down into the
 	   * other type to eliminate tyvars that might otherwise cause
 	   * generalizeTy to complain. *)
-	   | (WILDCARDty, CONty(_, args2)) => 
+	   | (WILDCARDty, CONty(_, args2)) =>
                 app (fn x => unifyTy(x, WILDCARDty, reg1, reg2)) args2
            | (CONty(_, args1), WILDCARDty) =>
                 app (fn x => unifyTy(x, WILDCARDty, reg1, reg2)) args1
@@ -299,8 +299,8 @@ fun unifyTy(type1, type2, reg1, reg2) =
 	   | (_,WILDCARDty) => ()
 	   | (ty1,ty2) => raise Unify (TYP(ty1,ty2,reg1,reg2))
     in (* first try unifying without reducing CONty(DEFtycs) *)
-       unifyRaw(type1, type2, reg1, reg2) 
-       handle Unify _ => 
+       unifyRaw(type1, type2, reg1, reg2)
+       handle Unify _ =>
          (* try head reducing type1 *)
          let val type1' = TU.headReduceType type1
          in unifyRaw(type1', type2, reg1, reg2)   (* regions? *)
@@ -376,7 +376,7 @@ and unifyTyvars (var1: tyvar, var2: tyvar, reg1, reg2) =
 				    var2 := INSTANTIATED(MARKty(VARty var1, reg1)))
 			 end
 		      | _ => bug "unifyTyvars 2")
-			 
+
 	       | OPEN{kind=META,depth=d1,eq=e1} =>
 		  (case i2
 		     of OPEN{kind=META,depth=d2,eq=e2} =>
@@ -388,7 +388,7 @@ and unifyTyvars (var1: tyvar, var2: tyvar, reg1, reg2) =
 		      | _ => bug "unifyTyvars 3")
 
 	       | _ => bug "unifyTyvars 4"
-        val _ = debugMsg ">>unifyTyvars"			 
+        val _ = debugMsg ">>unifyTyvars"
      in if TU.eqTyvar(var1,var2) then ()
         else unify(sortVars(var1,var2))
     end
@@ -460,7 +460,7 @@ and merge_fields(extra1, extra2, fields1, fields2, reg1, reg2) =
 	if not allowed
 	then raise Unify REC
 	else t
-     in fieldwise(extra extra1, extra extra2, 
+     in fieldwise(extra extra1, extra extra2,
                   (fn (t1,t2) => (unifyTy(t1, t2, reg1, reg2); t1)),
 		  fields1, fields2)
     end

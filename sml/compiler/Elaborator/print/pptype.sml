@@ -4,20 +4,20 @@
 
 (* modified to use SML/NJ Lib PP. [dbm, 7/30/03]) *)
 
-signature PPTYPE = 
+signature PPTYPE =
 sig
   val typeFormals : int -> string list
   val tyvarPrintname : Types.tyvar -> string
-  val ppTycon : StaticEnv.staticEnv -> PrettyPrintNew.stream 
+  val ppTycon : StaticEnv.staticEnv -> PrettyPrintNew.stream
                 -> Types.tycon -> unit
-  val ppTyfun : StaticEnv.staticEnv -> PrettyPrintNew.stream 
-                -> Types.tyfun -> unit 
-  val ppType  : StaticEnv.staticEnv -> PrettyPrintNew.stream 
+  val ppTyfun : StaticEnv.staticEnv -> PrettyPrintNew.stream
+                -> Types.tyfun -> unit
+  val ppType  : StaticEnv.staticEnv -> PrettyPrintNew.stream
                 -> Types.ty -> unit
-  val ppDconDomain : (Types.dtmember vector * Types.tycon list) 
-                     -> StaticEnv.staticEnv 
+  val ppDconDomain : (Types.dtmember vector * Types.tycon list)
+                     -> StaticEnv.staticEnv
                      -> PrettyPrintNew.stream -> Types.ty -> unit
-  val ppDataconTypes : StaticEnv.staticEnv -> PrettyPrintNew.stream 
+  val ppDataconTypes : StaticEnv.staticEnv -> PrettyPrintNew.stream
                 -> Types.tycon -> unit
   val resetPPType : unit -> unit
   val ppFormals : PrettyPrintNew.stream -> int -> unit
@@ -30,7 +30,7 @@ end (* signature PPTYPE *)
 structure PPType : PPTYPE =
 struct
 
-local 
+local
       structure SP = SymPath
       structure IP = InvPath
       structure BT = BasicTypes
@@ -38,7 +38,7 @@ local
       structure TU = TypesUtil
       structure PP = PrettyPrintNew
       structure PU = PPUtilNew
-      open Types PPUtilNew  
+      open Types PPUtilNew
 in
 
 val debugging = ref false
@@ -57,7 +57,7 @@ fun boundTyvarName k =
     let val a = Char.ord #"a"
      in if k < 26
 	then String.str(Char.chr(k+a))
-	else implode[Char.chr(Int.div(k,26) + a), 
+	else implode[Char.chr(Int.div(k,26) + a),
                      Char.chr(Int.mod(k,26) + a)]
     end
 
@@ -65,7 +65,7 @@ fun metaTyvarName' k =
     let val a = Char.ord #"Z" (* use reverse order for meta vars *)
      in if k < 26
 	then String.str(Char.chr(a - k))
-	else implode[Char.chr(a - (Int.div(k,26))), 
+	else implode[Char.chr(a - (Int.div(k,26))),
                      Char.chr(a - (Int.mod(k,26)))]
     end
 
@@ -85,7 +85,7 @@ fun litKindPrintName (lk: T.litKind) =
        | T.STRING => "string" (* or "STRING" *)
 
 local  (* WARNING -- compiler global variables *)
-  val count = ref(~1)  
+  val count = ref(~1)
   val metaTyvars = ref([]:tyvar list)
 in
   fun metaTyvarName(tv: tyvar) =
@@ -135,7 +135,7 @@ let fun prKind info =
 	  | OVLD{sources,options} =>
 	    annotate("["^sourcesToString sources ^ " ty]",
 		     "O:" ^ Int.toString(length options),NONE)
-	  | LBOUND{depth,eq,index} => 
+	  | LBOUND{depth,eq,index} =>
 	      (if eq then "<LBDeq" else "<LBD")^Int.toString depth^"."
 	      ^Int.toString index^">"
 in
@@ -209,7 +209,7 @@ fun ppEqProp ppstrm p =
      in pps ppstrm a
     end
 
-fun ppInvPath ppstream (InvPath.IPATH path: InvPath.path) = 
+fun ppInvPath ppstream (InvPath.IPATH path: InvPath.path) =
     PP.string ppstream (SymPath.toString (SymPath.SPATH(rev path)))
 
 fun ppBool ppstream b =
@@ -222,7 +222,7 @@ fun ppTycon1 env ppstrm membersOp =
 	    then (openHOVBox 1;
 		  ppInvPath ppstrm path;
 		  pps "[";
-		  pps "G"; ppkind ppstrm kind; pps ";"; 
+		  pps "G"; ppkind ppstrm kind; pps ";";
 		  pps (Stamps.toShortString stamp);
 		  pps ";";
 		  ppEqProp ppstrm (!eq);
@@ -233,10 +233,10 @@ fun ppTycon1 env ppstrm membersOp =
 	     if !internals
 	     then (openHOVBox 1;
 		    ppInvPath ppstrm path;
-		    pps "["; pps "D"; 
+		    pps "["; pps "D";
                     ppClosedSequence ppstrm
                       {front=C PP.string "(",
-                       sep=fn ppstrm => (PP.string ppstrm ","; 
+                       sep=fn ppstrm => (PP.string ppstrm ",";
 				   PP.break ppstrm {nsp=0,offset=0}),
 		       back=C PP.string ");",
 		       style=CONSISTENT,
@@ -246,9 +246,9 @@ fun ppTycon1 env ppstrm membersOp =
 		   closeBox())
 	     else pps(effectivePath(path,tyc,env))
 	  | ppTyc(RECORDtyc labels) =
-	      ppClosedSequence ppstrm 
+	      ppClosedSequence ppstrm
 		{front=C PP.string "{",
-		 sep=fn ppstrm => (PP.string ppstrm ","; 
+		 sep=fn ppstrm => (PP.string ppstrm ",";
 				   PP.break ppstrm {nsp=0,offset=0}),
 		 back=C PP.string "}",
 		 style=INCONSISTENT,
@@ -256,7 +256,7 @@ fun ppTycon1 env ppstrm membersOp =
 
           | ppTyc (RECtyc n) =
               (case membersOp
-                of SOME (members,_) => 
+                of SOME (members,_) =>
                     let val {tycname,dcons,...} = Vector.sub(members,n)
                      in ppSym ppstrm tycname
                     end
@@ -264,18 +264,18 @@ fun ppTycon1 env ppstrm membersOp =
 
           | ppTyc (FREEtyc n) =
               (case membersOp
-                of SOME (_, freetycs) => 
+                of SOME (_, freetycs) =>
                     let val tyc = (List.nth(freetycs, n) handle _ =>
                                     bug "unexpected freetycs in ppTyc")
                      in ppTyc tyc
                     end
-                 | NONE => 
+                 | NONE =>
                     pps (String.concat ["<FREEtyc ",Int.toString n,">"]))
 
  	  | ppTyc (tyc as PATHtyc{arity,entPath,path}) =
 	     if !internals
 	     then (openHOVBox 1;
-		    ppInvPath ppstrm path; pps "[P;"; 
+		    ppInvPath ppstrm path; pps "[P;";
 		    pps (EntPath.entPathToString entPath);
 		    pps "]";
 		   closeBox())
@@ -286,7 +286,7 @@ fun ppTycon1 env ppstrm membersOp =
     end
 
 
-and ppType1 env ppstrm (ty: ty, sign: T.polysign, 
+and ppType1 env ppstrm (ty: ty, sign: T.polysign,
                         membersOp: (T.dtmember vector * T.tycon list) option) : unit =
     let val {openHVBox,openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
         fun prty ty =
@@ -294,14 +294,14 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 	      of VARty(ref(INSTANTIATED ty')) => prty(ty')
 	       | VARty(tv) => ppTyvar tv
 	       | IBOUND n =>
-		   let val eq = List.nth(sign,n) 
+		   let val eq = List.nth(sign,n)
 		                handle Subscript => false
 		    in pps (tvHead(eq,(boundTyvarName n)))
 		   end
 	       | CONty(tycon, args) => let
 		     fun otherwise () =
 			 (openHOVBox 2;
-			  ppTypeArgs args; 
+			  ppTypeArgs args;
 			  break{nsp=0,offset=0};
 			  ppTycon1 env ppstrm membersOp tycon;
 			  closeBox())
@@ -338,7 +338,7 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 			 else ppRECORDty(labels, args)
 		       | _ => otherwise ()
 		 end
-	       | POLYty{sign,tyfun=TYFUN{arity,body}} => 
+	       | POLYty{sign,tyfun=TYFUN{arity,body}} =>
                    if !internals
                    then (openHOVBox 1;
                          pps "[POLY("; pps(Int.toString arity); pps ")";
@@ -351,27 +351,27 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 	       | UNDEFty => pps "undef"
 
 	and ppTypeArgs [] = ()
-	  | ppTypeArgs [ty] = 
+	  | ppTypeArgs [ty] =
 	     (if strength ty <= 1
 	      then (openHOVBox 1;
-                    pps "("; 
-                    prty ty; 
+                    pps "(";
+                    prty ty;
                     pps ")";
                     closeBox())
 	      else prty ty;
 	      break{nsp=1,offset=0})
 	  | ppTypeArgs tys =
-              ppClosedSequence ppstrm 
+              ppClosedSequence ppstrm
 	        {front=C PP.string "(",
 		 sep=fn ppstrm => (PP.string ppstrm ",";
                                    PP.break ppstrm {nsp=0,offset=0}),
 		 back=C PP.string ") ",
-		 style=INCONSISTENT, 
+		 style=INCONSISTENT,
                  pr=fn _ => fn ty => prty ty}
 		tys
 
 	and ppTUPLEty [] = pps(effectivePath(unitPath,RECORDtyc [],env))
-	  | ppTUPLEty tys = 
+	  | ppTUPLEty tys =
 	      ppSequence ppstrm
 		 {sep = fn ppstrm => (PP.break ppstrm {nsp=1,offset=0};
 				    PP.string ppstrm "* "),
@@ -379,15 +379,15 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 		  pr = (fn _ => fn ty =>
 			  if strength ty <= 1
 			  then (openHOVBox 1;
-				pps "("; 
-				prty ty; 
+				pps "(";
+				prty ty;
 				pps ")";
 				closeBox())
 			  else prty ty)}
 	        tys
 
 	and ppField(lab,ty) = (openHVBox 0;
-			       ppSym ppstrm lab; 
+			       ppSym ppstrm lab;
 			       pps ":";
 			       prty ty;
 			       closeBox())
@@ -398,7 +398,7 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 	      (openHOVBox 1;
                pps "{";
                ppField(lab,arg);
-	       ListPair.app 
+	       ListPair.app
 		 (fn field => (pps ","; break{nsp=1,offset=0}; ppField field))
 		 (labels,args);
                pps "}";
@@ -432,13 +432,13 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
      in prty ty
     end  (* ppType1 *)
 
-and ppType (env:StaticEnv.staticEnv) ppstrm (ty:ty) : unit = 
+and ppType (env:StaticEnv.staticEnv) ppstrm (ty:ty) : unit =
       (PP.openHOVBox ppstrm (PP.Rel 1);
        ppType1 env ppstrm (ty,[],NONE);
        PP.closeBox ppstrm)
 
 fun ppDconDomain members (env:StaticEnv.staticEnv)
-                 ppstrm (ty:ty) : unit = 
+                 ppstrm (ty:ty) : unit =
       (PP.openHOVBox ppstrm (PP.Rel 1);
        ppType1 env ppstrm (ty,[],SOME members);
        PP.closeBox ppstrm)
@@ -448,11 +448,11 @@ fun ppTycon env ppstrm tyc = ppTycon1 env ppstrm NONE tyc
 fun ppTyfun env ppstrm (TYFUN{arity,body}) =
     let val {openHVBox, openHOVBox, closeBox, pps, break,...} = en_pp ppstrm
      in openHOVBox 2;
-	pps "TYFUN({arity="; 
+	pps "TYFUN({arity=";
 	ppi ppstrm arity; ppcomma ppstrm;
 	break{nsp=0,offset=0};
-	pps "body="; 
-	ppType env ppstrm body; 
+	pps "body=";
+	ppType env ppstrm body;
 	pps "})";
         closeBox()
     end

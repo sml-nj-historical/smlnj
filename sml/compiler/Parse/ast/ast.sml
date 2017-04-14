@@ -209,12 +209,12 @@ and tyvar = Tyv of symbol
 	  | MarkTyv of tyvar * region
 
 (* TYPES *)
-and ty 
+and ty
     = VarTy of tyvar			(* type variable *)
     | ConTy of symbol list * ty list	(* type constructor application *)
     | RecordTy of (symbol * ty) list 	(* record *)
     | TupleTy of ty list		(* tuple *)
     | MarkTy of ty * region	        (* mark type *)
- 
+
 end (* structure Ast *)
 

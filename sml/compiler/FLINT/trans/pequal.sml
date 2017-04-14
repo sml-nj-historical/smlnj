@@ -1,24 +1,24 @@
 (* COPYRIGHT (c) 1996 Bell Laboratories *)
 (* pequal.sml *)
 
-signature PEQUAL = 
+signature PEQUAL =
 sig
   type toTcLt = (Types.ty -> PLambdaType.tyc) * (Types.ty -> PLambdaType.lty)
-  (* 
+  (*
    * Constructing generic equality functions; the current version will
    * use runtime polyequal function to deal with abstract types. (ZHONG)
    *)
-  val equal : {getStrEq : unit -> PLambda.lexp, 
+  val equal : {getStrEq : unit -> PLambda.lexp,
 	       getIntInfEq : unit -> PLambda.lexp,
-               getPolyEq : unit -> PLambda.lexp} * StaticEnv.staticEnv 
+               getPolyEq : unit -> PLambda.lexp} * StaticEnv.staticEnv
                -> (Types.ty * Types.ty * toTcLt) -> PLambda.lexp
 
-  val debugging : bool ref     
+  val debugging : bool ref
 
 end (* signature PEQUAL *)
 
 
-structure PEqual : PEQUAL = 
+structure PEqual : PEQUAL =
 struct
 
 local structure DA = Access
@@ -30,7 +30,7 @@ local structure DA = Access
       structure SE = StaticEnv
       structure PO = PrimOp
       structure PP = PrettyPrintNew
-      open Types PLambda 
+      open Types PLambda
 
 in
 
@@ -44,33 +44,33 @@ val --> = BT.-->
 infix -->
 
 (*
- * MAJOR CLEANUP REQUIRED ! The function mkv is currently directly taken 
- * from the LambdaVar module; I think it should be taken from the 
+ * MAJOR CLEANUP REQUIRED ! The function mkv is currently directly taken
+ * from the LambdaVar module; I think it should be taken from the
  * "compInfo". Similarly, should we replace all mkLvar in the backend
  * with the mkv in "compInfo" ? (ZHONG)
  *)
 val mkv = LambdaVar.mkLvar
 
-(** translating the typ field in DATACON into lty; constant datacons 
+(** translating the typ field in DATACON into lty; constant datacons
     will take ltc_unit as the argument *)
 fun toDconLty (toTyc, toLty) ty =
-  (case ty 
+  (case ty
     of POLYty{sign, tyfun=TYFUN{arity, body}} =>
          if BT.isArrowType body then toLty ty
-         else toLty (POLYty{sign=sign, 
+         else toLty (POLYty{sign=sign,
                             tyfun=TYFUN{arity=arity,
                                         body=BT.-->(BT.unitTy, body)}})
      | _ => if BT.isArrowType ty then toLty ty
             else toLty (BT.-->(BT.unitTy, ty)))
 
-(* 
- * Is TU.dconType necessary, or could a variant of transTyLty that 
- * just takes tyc and domain be used in transDcon??? 
+(*
+ * Is TU.dconType necessary, or could a variant of transTyLty that
+ * just takes tyc and domain be used in transDcon???
  *)
 fun transDcon(tyc, {name,rep,domain}, toTcLt) =
       (name, rep, toDconLty toTcLt (TU.dconType(tyc,domain)))
 
-val (trueDcon', falseDcon') = 
+val (trueDcon', falseDcon') =
   let val lt = LT.ltc_parrow(LT.ltc_unit, LT.ltc_bool)
       fun h (DATACON{name, rep, ...}) = (name, rep, lt)
    in (h BT.trueDcon, h BT.falseDcon)
@@ -96,24 +96,24 @@ fun reduceTy ty =
 
 (* Given a list of data constructors; return its signature and a list
    of value-carrying data constructors *)
-fun getCsig dcons = 
+fun getCsig dcons =
   let fun isConst(DA.CONSTANT _) = true
         | isConst(DA.LISTNIL) = true
         | isConst _ = false
 
       fun h ([], c, v, rds) = (DA.CSIG(v,c), rev rds)
-        | h ((dc as {rep=a,domain,name})::r, c, v, rds) = 
+        | h ((dc as {rep=a,domain,name})::r, c, v, rds) =
                if isConst a then h(r, c+1, v, rds)
   	       else h(r, c, v+1, dc::rds)
    in h(dcons, 0, 0, [])
   end
 
 fun expandREC (family as {members: T.dtmember vector, ...}, stamps, freetycs) =
-  let fun g (RECtyc i) = 
+  let fun g (RECtyc i) =
            let val {tycname,dcons,arity,eq,lazyp,sign} =
 	           Vector.sub(members,i)
                val s = Vector.sub(stamps, i)
-            in GENtyc{stamp=s,arity=arity,eq=ref(YES), 
+            in GENtyc{stamp=s,arity=arity,eq=ref(YES),
 		      kind=DATATYPE{index=i, family=family,root=NONE,
 				    stamps=stamps, freetycs=freetycs, stripped=false},
 		      path=InvPath.IPATH[tycname],
@@ -133,7 +133,7 @@ exception Poly
 fun equivType(ty,ty') =
   let fun eq(ty as CONty(tycon, args), ty' as CONty(tycon', args')) =
               (if TU.eqTycon(tycon, tycon')
-	       then ListPair.all equivType (args,args') 
+	       then ListPair.all equivType (args,args')
 	       else (equivType(TU.reduceType ty, ty')
 		     handle ReduceType =>
 			 (equivType(ty,TU.reduceType ty')
@@ -164,16 +164,16 @@ exception Notfound
 (****************************************************************************
  *              equal --- the equality function generator                   *
  ****************************************************************************)
-fun equal ({getStrEq, getIntInfEq, getPolyEq}, env) 
+fun equal ({getStrEq, getIntInfEq, getPolyEq}, env)
           (polyEqTy : ty, concreteType : ty, toTcLc as (toTyc, toLty)) =
-let 
+let
 
 val cache : (ty * lexp * lexp ref) list ref = ref nil
 
 fun enter ty =
   let val v = VAR(mkv())
       val r = ref v
-   in if !debugging 
+   in if !debugging
       then PP.with_pp (EM.defaultConsumer())
             (fn ppstrm => (PP.string ppstrm "enter: ";
                PPType.resetPPType(); PPType.ppType env ppstrm ty))
@@ -186,7 +186,7 @@ fun find ty =
         | f [] = (if !debugging
                   then say "equal.sml-find-notfound\n" else ();
                   raise Notfound)
-   in if !debugging 
+   in if !debugging
       then PP.with_pp (EM.defaultConsumer())
            (fn ppstrm => (PP.string ppstrm "find: ";
                           PPType.resetPPType();
@@ -206,11 +206,11 @@ fun atomeq (tyc, ty) =
   else if TU.equalTycon(tyc,BT.word8Tycon) then prim(PO.IEQL,inteqty)
   else if TU.equalTycon(tyc,BT.charTycon) then prim(PO.IEQL,inteqty)
   else if TU.equalTycon(tyc,BT.word32Tycon) then prim(PO.IEQL,int32eqty)
-  else if TU.equalTycon(tyc,BT.boolTycon) then prim(PO.IEQL,booleqty) 
+  else if TU.equalTycon(tyc,BT.boolTycon) then prim(PO.IEQL,booleqty)
   else if TU.equalTycon(tyc,BT.realTycon) then prim(PO.FEQLd,realeqty)
   else if TU.equalTycon(tyc,BT.stringTycon) then getStrEq()
   else if TU.equalTycon(tyc,BT.intinfTycon) then getIntInfEq()
-  else if TU.equalTycon(tyc,BT.refTycon) then ptrEq(PO.PTREQL, ty) 
+  else if TU.equalTycon(tyc,BT.refTycon) then ptrEq(PO.PTREQL, ty)
 (**********************
  * For arrays under the new array representation, we need to compare
  * the data pointers for equality.  polyequal does this comparison
@@ -239,17 +239,17 @@ fun test(ty, 0) = raise Poly
             (find ty handle Notfound =>
                let val v = mkv() and x=mkv() and y=mkv()
                    val (eqv, patch) = enter ty
-                   fun loop(n, [ty]) = 
+                   fun loop(n, [ty]) =
                          APP(test(ty,depth), RECORD[SELECT(n, VAR x),
                                                     SELECT(n, VAR y)])
-                     | loop(n, ty::r) = 
+                     | loop(n, ty::r) =
                          COND(loop(n,[ty]), loop(n+1,r), falseLexp)
                      | loop(_,nil) = trueLexp
 
                    val lt = toLty ty
                 in patch := FN(v, LT.ltc_tuple [lt,lt],
                              LET(x, SELECT(0, VAR v),
-                               LET(y, SELECT(1, VAR v), 
+                               LET(y, SELECT(1, VAR v),
                                     loop(0, tyl))));
                    eqv
                end)
@@ -270,7 +270,7 @@ fun test(ty, 0) = raise Poly
              | (_,DATATYPE{index,family as {members,...},
                            freetycs,stamps,...}) =>
                let val {dcons=dcons0,...} = Vector.sub(members,index)
-                   fun expandRECdcon{domain=SOME x, rep, name} = 
+                   fun expandRECdcon{domain=SOME x, rep, name} =
                        {domain=SOME(expandREC (family, stamps, freetycs) x),
 			rep=rep,name=name}
                      | expandRECdcon z = z
@@ -278,17 +278,17 @@ fun test(ty, 0) = raise Poly
                in
 		   case map expandRECdcon dcons0
                     of [{rep=REF,...}] => atomeq(tyc, ty)
-                     | dcons =>                          
+                     | dcons =>
                        (find ty
 			handle Notfound => let
 		          val v = mkv()
 			  val x=mkv()
 			  val y=mkv()
 			  val (eqv, patch) = enter ty
-			  fun inside ({name,rep,domain}, ww, uu) = 
+			  fun inside ({name,rep,domain}, ww, uu) =
 			      case domain of
 				  NONE => trueLexp
-				| SOME dom => 
+				| SOME dom =>
 				  (case reduceTy dom
 				    of (CONty(RECORDtyc [], _)) =>
 				       trueLexp
@@ -301,14 +301,14 @@ fun test(ty, 0) = raise Poly
 			  val lt = toLty ty
 			  val argty = LT.ltc_tuple [lt,lt]
 			  val pty = LT.ltc_parrow(argty, boolty)
- 
-			  val body = 
+
+			  val body =
 			      case dcons
 			       of [] => bug "empty data types"
 (*                              | [dcon] => inside dcon       *)
 				| _ => let
 				      val (sign, ndcons) = getCsig dcons
-				      fun concase dcon = 
+				      fun concase dcon =
 					  let val tcs = map toTyc tyl
 					      val ww = mkv()
 					      val uu = mkv()
@@ -318,25 +318,25 @@ fun test(ty, 0) = raise Poly
 					      val dcony = DATAcon(dc, tcs, uu)
 					  in
 					      (dconx,
-					       SWITCH(VAR y, sign, 
+					       SWITCH(VAR y, sign,
 						      [(dcony,
 							inside(dcon,ww,uu))],
 						      SOME(falseLexp)))
 					  end
 
 				  in
-                                      case sign 
+                                      case sign
                                        of DA.CSIG(0, _) => falseLexp
-                                        | DA.CSIG(_, 0) => 
-                                            SWITCH(VAR x, sign, 
+                                        | DA.CSIG(_, 0) =>
+                                            SWITCH(VAR x, sign,
 					      map concase ndcons, NONE)
-                                        | _ => 
-                                            SWITCH(VAR x, sign, 
-					      map concase ndcons, 
+                                        | _ =>
+                                            SWITCH(VAR x, sign,
+					      map concase ndcons,
                                                        SOME falseLexp)
 				 end
 
-                          val root = APP(PRIM(PO.PTREQL, pty, []), 
+                          val root = APP(PRIM(PO.PTREQL, pty, []),
                                          RECORD[VAR x, VAR y])
                           val nbody = COND(root, trueLexp, body)
                       in
@@ -352,11 +352,11 @@ fun test(ty, 0) = raise Poly
 val body = test(concreteType, 10)
 val fl = !cache
 
-in 
+in
 
-(case fl 
+(case fl
   of [] => body
-   | _ => let fun g ((ty, VAR v, e), (vs, ts, es)) = 
+   | _ => let fun g ((ty, VAR v, e), (vs, ts, es)) =
                         (v::vs, (eqTy ty)::ts, (!e)::es)
                 | g _ = bug "unexpected equality cache value"
 
@@ -364,14 +364,14 @@ in
            in FIX(vs, ts, es, body)
           end)
 
-end handle Poly => 
+end handle Poly =>
   (GENOP({default=getPolyEq(),
 	  (* might want to include intinf into this table (but we
 	   * need a tcc_intinf for that)... *)
-          table=[([LT.tcc_string], getStrEq())]}, 
-         PO.POLYEQL, toLty polyEqTy, 
+          table=[([LT.tcc_string], getStrEq())]},
+         PO.POLYEQL, toLty polyEqTy,
          [toTyc concreteType]))
 
 
-end (* toplevel local *)                       
+end (* toplevel local *)
 end (* structure Equal *)

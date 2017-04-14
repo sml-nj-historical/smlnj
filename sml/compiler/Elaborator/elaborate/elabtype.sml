@@ -47,19 +47,19 @@ fun elabTyvList (tyvars,error,region) =
 fun elabType(ast:Ast.ty,env:SE.staticEnv,error,region:region)
             : (Types.ty * TS.tyvarset) =
      case ast
-      of VarTy vt => 
+      of VarTy vt =>
 	   let val tyv = elabTyv(vt,error,region)
 	    in (VARty tyv, TS.singleton tyv)
 	   end
-       | ConTy (co,ts) => 
-	   let val co1 = 
+       | ConTy (co,ts) =>
+	   let val co1 =
 		   if (S.name (hd co)) = "->"
 		   then BT.arrowTycon
 		   else L.lookArTyc(env,SP.SPATH co,length ts,error region)
 	       val (lts1,lvt1) = elabTypeList(ts,env,error,region)
 	    in (CONty (co1,lts1),lvt1)
 	   end
-       | RecordTy lbs => 
+       | RecordTy lbs =>
 	   let val (lbs1,lvt1) = elabTLabel(lbs,env,error,region)
 	    in (BT.recordTy(EU.sortRecord(lbs1,error region)),lvt1)
 	   end
@@ -74,16 +74,16 @@ fun elabType(ast:Ast.ty,env:SE.staticEnv,error,region:region)
           *)
 
 and elabTLabel(labs,env,error,region:region) =
-    foldr 
-      (fn ((lb2,t2),(lts2,lvt2)) => 
+    foldr
+      (fn ((lb2,t2),(lts2,lvt2)) =>
 	  let val (t3,lvt3) = elabType(t2,env,error,region)
 	   in ((lb2,t3) :: lts2, TS.union(lvt3,lvt2,error region))
 	  end)
       ([],TS.empty) labs
 
 and elabTypeList(ts,env,error,region:region) =
-    foldr 
-      (fn (t2,(lts2,lvt2)) => 
+    foldr
+      (fn (t2,(lts2,lvt2)) =>
 	  let val (t3,lvt3) = elabType(t2,env,error,region)
 	   in (t3 :: lts2, TS.union(lvt3,lvt2,error region))
 	  end)
@@ -97,10 +97,10 @@ fun elabDB((tyc,args,name,def,region,lazyp),env,rpath:IP.path,error) =
    let val rhs = CONty(tyc, map VARty args)
 
        fun checkrec(_,NONE) = ()
-         | checkrec(_,SOME typ) = 
+         | checkrec(_,SOME typ) =
 	     let fun findname(VarTy _) = ()
-		   | findname(ConTy([co],ts)) = 
-                       if Symbol.eq (co,name) then (raise ISREC) 
+		   | findname(ConTy([co],ts)) =
+                       if Symbol.eq (co,name) then (raise ISREC)
 		       else app findname ts
 		   | findname(ConTy(_,ts)) = app findname ts
 		   | findname(RecordTy lbs) = app (fn (_,t) => findname t) lbs
@@ -118,7 +118,7 @@ fun elabDB((tyc,args,name,def,region,lazyp),env,rpath:IP.path,error) =
 
 	val arity = length args
 	val isrec = (app checkrec def; false) handle ISREC => true
-	val (dcl,tvs) = 
+	val (dcl,tvs) =
 	      foldr
 		(fn (d,(dcl1,tvs1)) =>
 		   let val (dc2,tv2) = elabConstr d
@@ -131,7 +131,7 @@ fun elabDB((tyc,args,name,def,region,lazyp),env,rpath:IP.path,error) =
 	val (reps, sign) = ConRep.infer isrec sdcl
 	fun bindDcons ((sym,const,typ),rep) =
 	      let val _ = TU.compressTy typ
-		  val typ = 
+		  val typ =
 		      if arity > 0
 		      then POLYty {sign=mkPolySign arity,
 				   tyfun=TYFUN{arity=arity,body=typ}}
@@ -184,7 +184,7 @@ fun elabTBlist(tbl:Ast.tb list,notwith:bool,env0,rpath,region,
 		       val _ = EU.checkBoundTyvars(tv,tvs,error region)
 		       val _ = TU.bindTyvars tvs
 		       val _ = TU.compressTy ty
-		       val tycon = 
+		       val tycon =
 			   DEFtyc{stamp=mkStamp(),
 				  path=InvPath.extend(rpath,name),
 				  strict=EU.calc_strictness(arity,ty),
@@ -214,12 +214,12 @@ fun elabTYPEdec(tbl: Ast.tb list,env,rpath,region,
         (TYPEdec tycs, env')
     end
 
-fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext, 
-                     sigEntEnv, isFree, rpath, region, 
+fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
+                     sigEntEnv, isFree, rpath, region,
                      compInfo as {mkStamp,error,...}: EU.compInfo) =
     let (* predefine datatypes *)
 	val _ = debugmsg ">>elabDATATYPEdec"
-	fun preprocess region (Db{tyc=name,rhs=def,tyvars,lazyp}) = 
+	fun preprocess region (Db{tyc=name,rhs=def,tyvars,lazyp}) =
 	    let val tvs = elabTyvList(tyvars,error,region)
 		val strictName =
 		    if lazyp
@@ -239,7 +239,7 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 						    [CONty(tyc,map VARty tvs)])},
 			          strict=map (fn _ => true) tyvars,
 				  path=IP.extend(rpath,name)}
-			   
+
 		    else tyc
 	     in SOME{tvs=tvs, name=name,def=def,region=region,
 		     tyc=tyc, binddef=binddef,lazyp=lazyp,
@@ -252,13 +252,13 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 
 
         val envDTycs = (* staticEnv containing preliminary datatycs *)
-	      foldl (fn ({name,binddef,...},env) => 
+	      foldl (fn ({name,binddef,...},env) =>
 			   SE.bind(name, B.TYCbind binddef, env))
 		       SE.empty dbs
         val _ = debugmsg "--elabDATATYPEdec: envDTycs defined"
 
 	(* elaborate associated withtycs *)
-	val (withtycs,withtycNames,envWTycs) = 
+	val (withtycs,withtycNames,envWTycs) =
 	    elabTBlist(withtycs,false,SE.atop(envDTycs,env0),
 		       rpath,region,compInfo)
         val _ = debugmsg "--elabDATATYPEdec: withtycs elaborated"
@@ -282,17 +282,17 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 
         (* the following functions pull out all the flexible components
            inside the domains of the datatypes, and put them into the
-           freetycs field in the DATATYPE kind; this way, future 
+           freetycs field in the DATATYPE kind; this way, future
            re-instantiations of the datatypes only need to modify the
            freetycs list, rather than all the domains (ZHONG)
          *)
         val freeTycsRef = ref ([] : tycon list, 0)
-        fun regFree tyc = 
+        fun regFree tyc =
           let val (ss, n) = !freeTycsRef
-              fun h (x::rest, i) = 
+              fun h (x::rest, i) =
                    if eqTycon(tyc, x) then FREEtyc (i-1)
                    else h(rest, i-1)
-                | h ([], _) = 
+                | h ([], _) =
                    let val _ = (freeTycsRef := (tyc::ss, n+1))
                     in FREEtyc n
                    end
@@ -306,13 +306,13 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 		  | g(tyc,_,nil) = tyc
 	    in g(tyc,0,prelimDtycs)
 	    end
-	  | transTyc (tyc as GENtyc _) = 
+	  | transTyc (tyc as GENtyc _) =
 	    if isFree tyc then regFree tyc else tyc
-	  | transTyc (tyc as (DEFtyc _ | PATHtyc _)) = 
+	  | transTyc (tyc as (DEFtyc _ | PATHtyc _)) =
               if isFree tyc then regFree tyc else tyc
           | transTyc tyc = tyc
 
-	fun transType t = 
+	fun transType t =
 	    case TU.headReduceType t
 	      of CONty(tyc, args) =>
 		   CONty(transTyc tyc,map transType args)
@@ -324,10 +324,10 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 
 	(* elaborate the definition of a datatype *)
 	fun elabRHS ({tvs,name,def,region,tyc,lazyp,binddef,strictName},
-		     (i,done)) = 
-	    let val (datacons,_) = 
+		     (i,done)) =
+	    let val (datacons,_) =
                       elabDB((tyc,tvs,name,def,region,lazyp),fullEnv,rpath,error)
-		fun mkDconDesc (DATACON{name,const,rep,sign,typ,lazyp}) = 
+		fun mkDconDesc (DATACON{name,const,rep,sign,typ,lazyp}) =
 		    {name=name, rep=rep,
 		     domain=
 		       if const then NONE
@@ -347,7 +347,7 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 		  lazyp=lazyp,
 		  strictName=strictName} :: done)
 	    end
- 
+
         val (_,dbs') = foldl elabRHS (0,nil) dbs
 	val dbs' = rev dbs'
         val _ = debugmsg "--elabDATATYPEdec: RHS elaborated"
@@ -362,16 +362,16 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 
         val (mstamps, members) = ListPair.unzip (map mkMember dbs')
 
-        val nstamps = Vector.fromList mstamps 
+        val nstamps = Vector.fromList mstamps
         val nfamily = {members=Vector.fromList members,
 		       properties = PropList.newHolder (),
                        (* lambdatyc=ref NONE, *)
                        mkey=mkStamp()}
-        val nfreetycs = 
-          let val (x, n) = !freeTycsRef  
+        val nfreetycs =
+          let val (x, n) = !freeTycsRef
               val _ = if length x = n then ()  (* sanity check *)
                       else bug "unexpected nfreetycs in elabDATATYPEdec"
-           in rev x 
+           in rev x
           end
         val _ = debugmsg "--elabDATATYPEdec: members defined"
 
@@ -403,11 +403,11 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
             let fun sameTyc(GENtyc g1, GENtyc g2) =
 		    Stamps.eq(#stamp g1, #stamp g2)
                   | sameTyc(tyc1 as DEFtyc _, tyc2 as DEFtyc _) =
-		      equalTycon(tyc1, tyc2)  
+		      equalTycon(tyc1, tyc2)
                   | sameTyc _ = false
 
                 fun f(CONty(tyc, args)) =
-	              let fun look({old,new,name}::rest) = 
+	              let fun look({old,new,name}::rest) =
 			      if sameTyc(old,tyc) then new else look rest
 			    | look nil = tyc
 		       in CONty(look m, map (applyMap m) args)
@@ -438,7 +438,7 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 	val finalWithtycs = map #new (header(alltycmap,length withtycs,[]))
         val _ = debugmsg "--elabDATATYPEdec: finalWithtycs defined"
 
-        fun fixDcon (DATACON{name,const,rep,sign,typ,lazyp}) = 
+        fun fixDcon (DATACON{name,const,rep,sign,typ,lazyp}) =
 	    DATACON{name=name,const=const,rep=rep,sign=sign,lazyp=lazyp,
 		    typ=applyMap alltycmap typ}
 
@@ -447,11 +447,11 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 
         val envDcons = foldl (fn (d as DATACON{name,...},e)=>
 			         SE.bind(name,B.CONbind d, e))
-	                     SE.empty 
+	                     SE.empty
 	                     finalDcons
-        
+
         val finalEnv = foldl (fn ({old,name,new},e) =>
-			         SE.bind(name,B.TYCbind new,e)) 
+			         SE.bind(name,B.TYCbind new,e))
 	                     envDcons alltycmap
         val _ = debugmsg "--elabDATATYPEdec: envDcons, finalEnv defined"
 
