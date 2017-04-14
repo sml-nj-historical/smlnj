@@ -6,6 +6,16 @@
 open ErrorMsg;
 open UserDeclarations;
 
+structure TokTable = TokenTable(Tokens);
+
+type svalue = Tokens.svalue
+
+type lexresult = (svalue, pos) Tokens.token
+
+type ('a,'b) token = ('a, 'b) Tokens.token
+
+fun eof arg = let val pos = UserDeclarations.eof arg in Tokens.EOF(pos,pos) end
+
 local
   fun cvt radix (s, i) =
 	#1(valOf(IntInf.scan radix Substring.getc (Substring.extract(s, i, NONE))))
@@ -18,9 +28,9 @@ fun mysynch (srcmap, initpos, pos, args) =
     let fun cvt digits = getOpt(Int.fromString digits, 0)
 	val resynch = SourceMap.resynch srcmap
      in case args
-          of [col, line] => 
+          of [col, line] =>
 	       resynch (initpos, pos, cvt line, cvt col, NONE)
-           | [file, col, line] => 
+           | [file, col, line] =>
 	       resynch (initpos, pos, cvt line, cvt col, SOME file)
            | _ => impossible "ill-formed args in (*#line...*)"
     end
@@ -29,10 +39,10 @@ fun has_quote s = CharVector.exists (fn #"`" => true | _ => false) s
 
 fun inc (ri as ref i) = (ri := i+1)
 fun dec (ri as ref i) = (ri := i-1)
-%% 
+%%
 %reject
 %s A S F Q AQ L LL LLC LLCQ;
-%structure MLLex
+%header (functor MLLexFun (structure Tokens : ML_TOKENS));
 %arg ({
   comLevel,
   sourceMap,
@@ -113,14 +123,17 @@ hexnum={xdigit}+;
                     stringtype := true; YYBEGIN S; continue());
 <INITIAL>\#\"	=> (charlist := [""]; stringstart := yypos;
                     stringtype := false; YYBEGIN S; continue());
-<INITIAL>"(*#line"{nrws}  => 
+<INITIAL>"(*#line"{nrws}  =>
                    (YYBEGIN L; stringstart := yypos; comLevel := 1; continue());
 <INITIAL>"(*"	=> (YYBEGIN A; stringstart := yypos; comLevel := 1; continue());
 <INITIAL>"*)"	=> (err (yypos,yypos+1) COMPLAIN "unmatched close comment"
 		        nullErrorBody;
 		    continue());
-<INITIAL>\h	=> (err (yypos,yypos) COMPLAIN "non-Ascii character"
-		        nullErrorBody;
+<INITIAL>\h	=> (err (yypos,yypos) COMPLAIN
+		      (concat[
+			  "non-Ascii character (ord ",
+			  Int.toString(Char.ord(String.sub(yytext, 0))), ")"
+			]) nullErrorBody;
 		    continue());
 <INITIAL>.	=> (err (yypos,yypos) COMPLAIN "illegal token" nullErrorBody;
 		    continue());
@@ -129,16 +142,16 @@ hexnum={xdigit}+;
 <LL>[0-9]+                => (YYBEGIN LLC; addString(charlist, yytext); continue());
 <LL>0*               	  => (YYBEGIN LLC; addString(charlist, "1");    continue()
 		(* note hack, since ml-lex chokes on the empty string for 0* *));
-<LLC>"*)"                 => (YYBEGIN INITIAL; mysynch(sourceMap, !stringstart, yypos+2, !charlist); 
+<LLC>"*)"                 => (YYBEGIN INITIAL; mysynch(sourceMap, !stringstart, yypos+2, !charlist);
 		              comLevel := 0; charlist := []; continue());
 <LLC>{ws}\"		  => (YYBEGIN LLCQ; continue());
 <LLCQ>[^\"]*              => (addString(charlist, yytext); continue());
-<LLCQ>\""*)"              => (YYBEGIN INITIAL; mysynch(sourceMap, !stringstart, yypos+3, !charlist); 
+<LLCQ>\""*)"              => (YYBEGIN INITIAL; mysynch(sourceMap, !stringstart, yypos+3, !charlist);
 		              comLevel := 0; charlist := []; continue());
-<L,LLC,LLCQ>"*)" => (err (!stringstart, yypos+1) WARN 
+<L,LLC,LLCQ>"*)" => (err (!stringstart, yypos+1) WARN
                        "ill-formed (*#line...*) taken as comment" nullErrorBody;
                      YYBEGIN INITIAL; comLevel := 0; charlist := []; continue());
-<L,LLC,LLCQ>.    => (err (!stringstart, yypos+1) WARN 
+<L,LLC,LLCQ>.    => (err (!stringstart, yypos+1) WARN
                        "ill-formed (*#line...*) taken as comment" nullErrorBody;
                      YYBEGIN A; continue());
 <A>"(*"		=> (inc comLevel; continue());
@@ -180,19 +193,27 @@ hexnum={xdigit}+;
 	  \@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_" nullErrorBody;
 	 continue());
 <S>\\u{xdigit}{4}
-		=> (addUnicode(charlist, String.substring(yytext, 2, 4)); continue());
-<S>\\[0-9]{3}	=> (let val x = Char.ord(String.sub(yytext,1))*100
-			      + Char.ord(String.sub(yytext,2))*10
-			      + Char.ord(String.sub(yytext,3))
-			      - ((Char.ord #"0")*111)
+		=> (let
+                    val x = Word.toIntX (valOf (Word.fromString (String.substring(yytext, 2, 4))))
+                    in
+		      if x>255
+			then err (yypos,yypos+4) COMPLAIN (concat[
+                            "illegal string escape '", yytext, "' is too large"
+                          ]) nullErrorBody
+			else addChar(charlist, Char.chr x);
+		      continue()
+		    end);
+<S>\\[0-9]{3}	=> (let val SOME x = Int.fromString (String.substring(yytext, 1, 3))
 		    in
 		      if x>255
-			then err (yypos,yypos+4) COMPLAIN "illegal ascii escape" nullErrorBody
+			then err (yypos,yypos+4) COMPLAIN (concat[
+                            "illegal string escape '", yytext, "' is too large"
+                          ]) nullErrorBody
 			else addChar(charlist, Char.chr x);
 		      continue()
 		    end);
 <S>\\		=> (err (yypos,yypos+1) COMPLAIN "illegal string escape"
-		        nullErrorBody; 
+		        nullErrorBody;
 		    continue());
 
 
@@ -203,7 +224,7 @@ hexnum={xdigit}+;
 <F>{ws}		=> (continue());
 <F>\\		=> (YYBEGIN S; stringstart := yypos; continue());
 <F>.		=> (err (!stringstart,yypos) COMPLAIN "unclosed string"
-		        nullErrorBody; 
+		        nullErrorBody;
 		    YYBEGIN INITIAL; Tokens.STRING(makeString charlist,!stringstart,yypos+1));
 <Q>"^`"	=> (addString(charlist, "`"); continue());
 <Q>"^^"	=> (addString(charlist, "^"); continue());
@@ -223,13 +244,13 @@ hexnum={xdigit}+;
 
 <AQ>{eol}       => (SourceMap.newline sourceMap yypos; continue());
 <AQ>{ws}        => (continue());
-<AQ>{id}        => (YYBEGIN Q; 
+<AQ>{id}        => (YYBEGIN Q;
                     let val hash = HashString.hashString yytext
                     in
                     Tokens.AQID(FastSymbol.rawSymbol(hash,yytext),
 				yypos,yypos+(size yytext))
                     end);
-<AQ>{sym}+      => (YYBEGIN Q; 
+<AQ>{sym}+      => (YYBEGIN Q;
                     let val hash = HashString.hashString yytext
                     in
                     Tokens.AQID(FastSymbol.rawSymbol(hash,yytext),

@@ -9,18 +9,10 @@
 structure UserDeclarations =
   struct
 
-    structure MLLrVals = MLLrValsFun(structure Token = LrParser.Token)
-    structure Tokens = MLLrVals.Tokens
-    structure TokTable = TokenTable(Tokens);
-
-    type svalue = Tokens.svalue
-
     type pos = int
 
-    type lexresult = (svalue,pos) Tokens.token
-
     type arg = {
-	    comLevel : int ref, 
+	    comLevel : int ref,
 	    sourceMap : SourceMap.sourcemap,
 	    charlist : string list ref,
 	    stringtype : bool ref,
@@ -29,33 +21,23 @@ structure UserDeclarations =
 	    err : pos*pos -> ErrorMsg.complainer
 	  }
 
-    type ('a,'b) token = ('a,'b) Tokens.token
-
-  (* handle EOF *)
+  (* common code to handle EOF *)
     fun eof ({comLevel,err,charlist,stringstart,sourceMap, ...} : arg) = let
 	  val pos = Int.max(!stringstart+2, SourceMap.lastLinePos sourceMap)
 	  in
-	    if !comLevel>0
-	      then err (!stringstart,pos) ErrorMsg.COMPLAIN "unclosed comment" ErrorMsg.nullErrorBody
-	      else if !charlist <> []
-		then err (!stringstart,pos) ErrorMsg.COMPLAIN
-		      "unclosed string, character, or quotation" ErrorMsg.nullErrorBody
-
-		else ();
-	    Tokens.EOF(pos,pos)
-	  end	
+	    if !comLevel > 0
+	      then err (!stringstart, pos) ErrorMsg.COMPLAIN
+		"unclosed comment" ErrorMsg.nullErrorBody
+	    else if !charlist <> []
+	      then err (!stringstart, pos) ErrorMsg.COMPLAIN
+		"unclosed string, character, or quotation" ErrorMsg.nullErrorBody
+	      else ();
+	    pos
+	  end
 
   (* support for string literals *)
     fun addString (charlist,s:string) = charlist := s :: (!charlist)
     fun addChar (charlist, c:char) = addString(charlist, String.str c)
     fun makeString charlist = (concat(rev(!charlist)) before charlist := nil)
-  (* add a Unicode character to the charlist as a UTF-8 character sequence; the argument
-   * to this function is expected to be a four-digit hex number.
-   *)
-    fun addUnicode (charlist, s) = let
-	  val SOME w = Word.fromString s
-	  in
-	    charlist := UTF8.encode w :: !charlist
-	  end
 
   end

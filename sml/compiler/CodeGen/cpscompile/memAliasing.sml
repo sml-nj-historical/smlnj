@@ -51,16 +51,26 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("MemAliasing",msg)
 
+   val cellSz = Cells.cellSize
+   val cellShift = (case cellSz of 4 => 0w2 | 8 => 0w3)
+
    (* 
     * The following functions advances the heap pointer.
     * These functions are highly dependent on the runtime system and
     * how data structures are represented.
     * IMPORTANT: we are assuming that the new array representation is used.
     *)
-   fun recordSize(n,hp)  =  n * 4 + 4 + hp
-   fun frecordSize(n,hp) = 
-       let val hp = if Word.andb(Word.fromInt hp,0w4) <> 0w0 then hp+8 else hp+4
-       in  8*n + hp end
+   fun recordSize (n,hp) = (n + 1) * cellSz + hp
+ (* a record to hold n 64-bit floats; it needs to be 8-byte aligned on
+  * 32-bit systems.
+  *)
+   fun frecordSize (n,hp) = let
+	  val hp = if (cellSz = 8) orelse Word.andb(Word.fromInt hp,0w4) <> 0w0
+		then hp + 8
+		else hp + 4
+	  in
+	    8*n + hp
+	  end
    fun vectorSize(n,hp) = n * 4 + 16 + hp 
 
    fun allocRecord(C.RK_FBLOCK,vs,hp) = frecordSize(length vs,hp)
@@ -68,8 +78,8 @@ struct
      | allocRecord(C.RK_VECTOR,vs,hp) = vectorSize(length vs,hp)
      | allocRecord(_,vs,hp) = recordSize(length vs,hp)
 
-   val storeListSize = 8
-   val array0Size    = 20
+   val storeListSize = 2 * cellSz	(* store-list elements *)
+   val array0Size    = 5 * cellSz	(* zero-length array *)
 
    exception NotFound
 
@@ -92,9 +102,9 @@ struct
          | sizeOf(C.SETTER(P.boxedupdate,vs,k),hp) = sizeOf(k,hp+storeListSize)
          | sizeOf(C.SETTER(_,vs,k),hp) = sizeOf(k,hp)
          | sizeOf(C.PURE(P.fwrap,vs,x,cty,k),hp) = sizeOf(k,frecordSize(1,hp))
-         | sizeOf(C.PURE(P.mkspecial,vs,x,cty,k),hp) = sizeOf(k,hp+8)
-         | sizeOf(C.PURE(P.makeref,vs,x,cty,k),hp) = sizeOf(k,hp+8)
-         | sizeOf(C.PURE(P.i32wrap,vs,x,cty,k),hp) = sizeOf(k,hp+8)
+         | sizeOf(C.PURE(P.mkspecial,vs,x,cty,k),hp) = sizeOf(k, hp + 2*cellSz)
+         | sizeOf(C.PURE(P.makeref,vs,x,cty,k),hp) = sizeOf(k, hp + 2*cellSz)
+         | sizeOf(C.PURE(P.i32wrap,vs,x,cty,k),hp) = sizeOf(k, hp + 2*cellSz)
          | sizeOf(C.PURE(P.newarray0,vs,x,cty,k),hp) = sizeOf(k,hp+array0Size)
          | sizeOf(C.PURE(p,vs,x,cty,k),hp) = sizeOf(k,hp)
          | sizeOf(C.ARITH(a,vs,x,cty,k),hp) = sizeOf(k,hp)
@@ -166,7 +176,7 @@ struct
 
            (* How to make a record *)
            fun mkRec(f,getPaths,x,vs,hp) = 
-               let val i = Word.toInt(Word.>>(Word.fromInt hp,0w2))
+               let val i = Word.toInt(Word.>>(Word.fromInt hp,cellShift))
                    val r = f(SOME(Array.sub(table,i)),getPaths(vs,i+1))
                in  bind(x,r) end
            fun mkFRecord(x,vs,hp) = mkRec(PT.mkRecord,getF64Paths,x,vs,hp)

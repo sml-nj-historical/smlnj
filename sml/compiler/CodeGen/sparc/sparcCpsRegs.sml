@@ -1,23 +1,25 @@
-(* sparcCpsRegs.sml --- CPS registerS USED ON the Sparc
+(* sparcCpsRegs.sml
  *
- * COPYRIGHT (c) 1998 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
+ * CPS registerS used on the Sparc (32-bit)
  *)
 
 structure SparcCpsRegs : CPSREGS = 
 struct
-  structure T = SparcMLTree
-  structure C = SparcCells
+    structure T = SparcMLTree
+    structure C = SparcCells
 
-  val GP = C.GPReg
-  val FP = C.FPReg
+    val GP = C.GPReg
+    val FP = C.FPReg
 
-  fun REG r = T.REG(32,GP r) 
-  fun FREG f = T.FREG(64,FP f)
+    fun REG r = T.REG(32,GP r) 
+    fun FREG f = T.FREG(64,FP f)
 
-  val returnPtr		= GP 15        
+    val returnPtr	= GP 15        
 
-  local
+    local
       val stdarg0	= REG(24) (* %i0 *)
       val stdcont0	= REG(25) (* %i1 *)
       val stdclos0	= REG(26) (* %i2 *)
@@ -29,10 +31,10 @@ struct
       val exnptr0	= REG(22)  (* %l6 *)
       val gcLink0	= T.REG(32,returnPtr) 
       val frameptr0     = REG(30)
-  in
+    in
       val vfp		= SparcCells.newReg()
       val vfptr		= T.REG(32, vfp)
-  
+
       fun stdarg _	= stdarg0
       fun stdcont _	= stdcont0
       fun stdclos _	= stdclos0
@@ -54,7 +56,7 @@ struct
        *)    
       val miscregs =
 	  map REG
-              [2, 3,				(* %g2-%g3 *)
+	      [2, 3,				(* %g2-%g3 *)
 	       8, 9,				(* %o0-%o1 *)
 	       16, 17, 18, 19, 20,              (* %l0-%l4 *)
 	       28, 31,				(* %i4, %i6, %i7 *)
@@ -73,23 +75,27 @@ struct
 	  val -- = SC.difference
 	  infix --
       in
-          val availR =
-	      map unREG ([stdlink0, stdclos0, stdarg0, stdcont0, gcLink0]
-			 @ miscregs)
+	val availR =
+	    map unREG ([stdlink0, stdclos0, stdarg0, stdcont0, gcLink0]
+		       @ miscregs)
 
-	  val allRegs = map GP (fromto(0, 31, 1))
-	  val dedicatedR = SC.return (SC.uniq allRegs -- SC.uniq availR)
+	val allRegs = map GP (fromto(0, 31, 1))
+	val dedicatedR = SC.return (SC.uniq allRegs -- SC.uniq availR)
 
-	  val availF =  map FP (fromto(0, 30, 2))
-	  val dedicatedF = []
+	val availF =  map FP (fromto(0, 30, 2))
+	val dedicatedF = []
 
-	  val signedGCTest = false
-	  val addressWidth = 32
+	val signedGCTest = false
+	val addressWidth = 32
 
-	  val ccallCallerSaveR =
-	      map unREG [limitptr0, storeptr0, exnptr0, allocptr]
-	  val ccallCallerSaveF = []
+	val ccallCallerSaveR =
+	    map unREG [limitptr0, storeptr0, exnptr0, allocptr]
+	val ccallCallerSaveF = []
       end (*local*)
-  end (* local *)
-end
+    end (* local *)
+
+    val wordByteWidth = 4
+    val wordBitWidth = 8 * wordByteWidth
+
+  end
 

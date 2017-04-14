@@ -1,6 +1,8 @@
-(* unpickmod.sml *)
-
-(*
+(* unpickmod.sml
+ *
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * The new unpickler (based on the new generic unpickling facility).
  *
  * The unpickler embeds a "modtree" into the unpickled environment.
@@ -216,7 +218,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val intoption = option ioM int
 
 	val pid = UnpickleSymPid.r_pid (session, string)
-	    
+
 	fun access () = let
 	    fun a #"A" = lvar (int ())
 	      | a #"B" = A.EXTERN (pid ())
@@ -498,7 +500,7 @@ structure UnpickMod : UNPICKMOD = struct
 	      | st _ = raise Format
 	in
 	    share stampM st
-	end    
+	end
 
 	val tycId = stamp
 	val sigId = stamp
@@ -579,11 +581,12 @@ structure UnpickMod : UNPICKMOD = struct
 	      | tk #"b" = let
 		    val index = int ()
 		    val root = entVarOption ()
+		    val stripped = bool ()
 		    val (stamps, family, freetycs) = dtypeInfo ()
 		in
 		    T.DATATYPE { index = index, root = root,
 				 stamps = stamps, family = family,
-				 freetycs = freetycs }
+				 freetycs = freetycs, stripped = stripped }
 		end
 	      | tk #"c" = T.ABSTRACT (tycon ())
 	      | tk #"d" = T.FORMAL
@@ -714,13 +717,13 @@ structure UnpickMod : UNPICKMOD = struct
 	end
 
         and iilist () = list iiListM inl_info ()
- *)       
-        and primId () = 
+ *)
+        and primId () =
             let
                 fun p #"A" = POI.Prim (string ())
                   | p #"B" = POI.NonPrim
 		  | p _ = raise Format
-            in 
+            in
                 share primIdM p
             end
 
@@ -806,9 +809,13 @@ structure UnpickMod : UNPICKMOD = struct
 			    (map (fn (sy, (sp, tr)) => ((sy, sp), tr))
 			         (list elementsM
 				  (pair symSpecPM (symbol, spec')) ()))
-		    val beps = option bepsOM
-				      (list bepsLM
-					    (pair epTkPM (entPath, tkind))) ()
+(*		    val beps = NONE
+		        (* option bepsOM
+			     (list bepsLM
+			        (pair epTkPM (entPath, tkind))) ()
+                            -- [DBM] This is not the right tkind (should be TKind.tkind)
+                            -- for the new SigPropList. It is the FLINT version. *)
+*)
 		    val ts = spathlistlist ()
 		    val ss = spathlistlist ()
 		    val r = { stamp = s,
@@ -817,8 +824,6 @@ structure UnpickMod : UNPICKMOD = struct
 			      fctflag = ff,
 			      elements = el,
 			      properties = PropList.newHolder (),
-			      (* boundeps = ref beps, *)
-			      (* lambdaty = ref NONE, *)
 			      typsharing = ts,
 			      strsharing = ss,
 			      stub = SOME { owner = if lib then pid ()
@@ -826,7 +831,7 @@ structure UnpickMod : UNPICKMOD = struct
 					    tree = branch eltrl,
 					    lib = lib } }
 		in
-		    ModulePropLists.setSigBoundeps (r, beps);
+(*		    SigPropList.setSigBoundeps (r, beps);  (* not pickled, so beps=NONE *) *)
 		    (M.SIG r, M.SIGNODE r)
 		end
 	      | sg _ = raise Format
@@ -902,7 +907,7 @@ structure UnpickMod : UNPICKMOD = struct
                     (M.InfTycSpec{name = symbol (), arity = int ()},
                      notree)
                   | tsi _ = raise Format
-             in share tsiM tsi 
+             in share tsiM tsi
             end
 
 	and entity' () = let

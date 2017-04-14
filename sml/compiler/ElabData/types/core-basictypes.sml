@@ -135,6 +135,7 @@ end = struct
 			stamps = #[refStamp],
 			freetycs = [],
 			root = NONE,
+			stripped = false,
 			family = { members =
 				   #[{ tycname = refTycSym,
 				       eq = eqRef,
@@ -173,6 +174,7 @@ end = struct
 			   stamps = #[boolStamp],
 			   freetycs = [],
 			   root = NONE,
+			   stripped = false,
 			   family =
 			     { members =
 			         #[{ tycname = boolSym,

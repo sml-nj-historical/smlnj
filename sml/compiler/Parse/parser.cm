@@ -10,13 +10,12 @@ Group
 
 	signature AST
 	signature ASTUTIL
-	signature MLPARSER
 	signature SMLFILE
 
 	structure Ast
 	structure AstUtil
-	structure MLParser
 	structure SmlFile
+
 is
 	ast/ast.sig
 	ast/ast.sml
@@ -31,15 +30,20 @@ is
         lex/sml.lex.sml
 	parse/ml.grm.sig
 	parse/ml.grm.sml
+	parse/sml.grm.sig
+	parse/sml.grm.sml
 #else
 	lex/ml.lex : MLLex
 	lex/sml.lex : MLLex
 	parse/ml.grm : MLYacc
+	parse/sml.grm : MLYacc
 #endif
 
 	main/parsercontrol.sml
+	main/parse-result.sml
 	main/parser.sig
-	main/parser.sml
+	main/ml-parser.sml
+	main/sml-parser.sml
 	main/smlfile.sml
 
 	$smlnj/viscomp/basics.cm

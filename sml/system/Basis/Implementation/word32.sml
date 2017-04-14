@@ -51,7 +51,7 @@ structure Word32Imp : WORD =
 
     val <<   = W32.chkLshift
     val >>   = W32.chkRshiftl
-    val ~>>  = W32.chkRshift 
+    val ~>>  = W32.chkRshift
 
     val ~   : word -> word = ~
     val min : word * word -> word = W32.min
@@ -62,5 +62,9 @@ structure Word32Imp : WORD =
 
     val scan = NumScan.scanWord
     val fromString = PreBasis.scanString (scan StringCvt.HEX)
+
+  (* added for Basis Library proposal 2016-001 *)
+
+    val popCount = W32PopCount.popCount
 
   end  (* structure Word32 *)

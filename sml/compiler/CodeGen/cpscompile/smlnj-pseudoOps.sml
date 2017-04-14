@@ -4,9 +4,7 @@
  *
  *)
 
-functor SMLNJPseudoOps
-  ( structure Asm : PSEUDO_OPS_BASIS
-  ) : SMLNJ_PSEUDO_OPS = 
+functor SMLNJPseudoOps ( structure Asm : PSEUDO_OPS_BASIS ) : SMLNJ_PSEUDO_OPS = 
 struct
   structure AsmPseudoOps = Asm
   structure W = Word
@@ -19,11 +17,14 @@ struct
   
   type pseudo_op = smlnj_pseudo_op
 
+  val wordBitSz = Asm.wordSize
+  val alignSz = (case wordBitSz of 32 => 2 | 64 => 3)
+
   fun toBasis(JUMPTABLE{base, targets}) = let
-        fun targetOffset t = T.SUB(32, T.LABEL t, T.LABEL base)
-        fun pseudoOpOff lab = PB.INT{sz=32, i=[T.LABEXP(targetOffset lab)]}
+        fun targetOffset t = T.SUB(wordBitSz, T.LABEL t, T.LABEL base)
+        fun pseudoOpOff lab = PB.INT{sz=wordBitSz, i=[T.LABEXP(targetOffset lab)]}
       in
-         PB.ALIGN_SZ 2 ::
+         PB.ALIGN_SZ alignSz ::
            PB.DATA_LABEL base ::
              List.foldr (fn (target, acc) => pseudoOpOff target :: acc) [] targets
       end
@@ -60,7 +61,7 @@ struct
 	(toBasis pOp)
 
   fun adjustLabels(JUMPTABLE{base, ...}, loc) = let
-	val baseAddr = loc + AsmPseudoOps.sizeOf(PB.ALIGN_SZ 2, loc)
+	val baseAddr = loc + AsmPseudoOps.sizeOf(PB.ALIGN_SZ alignSz, loc)
       in
 	 if Label.addrOf(base) = baseAddr then false
 	 else (Label.setAddr(base, baseAddr); true)

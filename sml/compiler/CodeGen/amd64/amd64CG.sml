@@ -29,35 +29,12 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
 
     val fast_floating_point = fast_floating_point
 
-    structure CCalls     = UnimplementedCCallsFn
-			       (structure T = AMD64MLTree
-				val impossible = ErrorMsg.impossible)
+    structure CCalls     = AMD64SVID_CCalls (structure T = AMD64MLTree)
 
-(*
-    structure CCalls     = IA32SVID_CCalls (
-        structure T = AMD64MLTree
-        fun ix x = x
-	val fast_floating_point = fast_floating_point
-(* NOTE: the following need to be changed for MacOS X on Intel *)
-	val frameAlign = CCallParams.frameAlign
-	val returnSmallStructsInRegs = CCallParams.returnSmallStructsInRegs)
-*)
-
-    (* for the time being... *)
-    structure OmitFramePtr = struct
-      structure CFG=AMD64CFG
-      structure I=AMD64Instr
-      val vfp = CpsRegs.vfp
-      (* no rewriting necessary, backend uses %fp instead of %sp *)
-      fun omitframeptr _ = ()
-    end
-(*
-    structure OmitFramePtr = 
-      AMD64OmitFramePointer(structure I=AMD64Instr  
-			  structure MemRegs=AMD64MemRegs
-			  structure CFG=AMD64CFG
-			  val memRegBase = SOME(AMD64CpsRegs.vfp))
-*)
+    structure OmitFramePtr =
+      AMD64OmitFramePointer(
+	structure I=AMD64Instr  
+	structure CFG=AMD64CFG)
 
     val spill = CPSRegions.spill 
     val stack = CPSRegions.stack 
@@ -100,8 +77,8 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
                ) 
 	   structure MLTreeStream = AMD64MLTreeStream
 
-           fun signBit ty = raise Fail "todo"
-           fun negateSignBit ty = raise Fail "todo"
+           fun signBit ty = AMD64MLTree.LABEL(Label.label "signBit" ())
+           fun negateSignBit ty = AMD64MLTree.LABEL(Label.label "negateSignBit" ())
 	   val floats16ByteAligned = floats16ByteAligned
           )
 
@@ -168,7 +145,9 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
                      in  find(r-1, free) end
                   else 
                      free
+(* FIXME: this code doesn't seem correct
               val free = find(31 (* AMD64Runtime.numVregs+8-1 *), [])
+*)
           in  (*AMD64StackSpills.setAvailableOffsets free*) ()
           end 
  

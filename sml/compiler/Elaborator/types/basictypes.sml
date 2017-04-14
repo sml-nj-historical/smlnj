@@ -1,10 +1,10 @@
 (* Copyright 1996 by AT&T Bell Laboratories *)
 (* basictypes.sml *)
 
-structure BasicTypes : BASICTYPES = 
+structure BasicTypes : BASICTYPES =
 struct
 
-local open Access Types Symbol 
+local open Access Types Symbol
       structure EM = ErrorMsg
       structure IP = InvPath
       structure CBT = CoreBasicTypes
@@ -133,7 +133,7 @@ val spin_lockTycon = mkpt("spin_lock", 0, NO, PTN.ptn_slock)
 
 val recordTy = CBT.recordTy
 (*
-fun recordTy(fields: (label * ty) list) : ty = 
+fun recordTy(fields: (label * ty) list) : ty =
     CONty(Tuples.mkRECORDtyc(map (fn (a,b) => a) fields),
 	  (map (fn(a,b)=>b) fields))
 *)
@@ -150,11 +150,11 @@ fun getFields (CONty(RECORDtyc _, fl)) = SOME fl
   | getFields _ = NONE
 
 (*
-(* 
+(*
  * I believe that unitTycon only needs to be a DEFtyc because of
  * the "structure PrimTypes = struct open PrimTypes end" declaration
  * in boot/built-in.sml.  This in turn is only necessary because of
- * a problem with the access assigned to PrimTypes. - DBM 
+ * a problem with the access assigned to PrimTypes. - DBM
  *)
 val unitTycon = DEFtyc{stamp=Stamps.special "unit",
                        tyfun=TYFUN{arity=0,body=CONty(Tuples.mkTUPLEtyc 0,[])},
@@ -176,10 +176,10 @@ val boolStamp = (* Stamps.special "bool" *) CBT.boolStamp
 val boolsign = (* CSIG(0,2) *) CBT.boolsign
 (*
 val booleq = ref YES
-val kind = 
+val kind =
   DATATYPE{index=0, stamps= #[boolStamp], freetycs=[], root=NONE,
            family={members= #[{tycname=boolSym, eq=booleq, lazyp=false,
-			       arity=0, sign=boolsign, 
+			       arity=0, sign=boolsign,
 			       dcons=[{name=falseSym,rep=CONSTANT 0,
 				       domain=NONE},
 				      {name=trueSym,rep=CONSTANT 1,
@@ -193,7 +193,7 @@ val boolTycon =
     GENtyc{stamp = boolStamp, path = IP.IPATH[boolSym],
 	   arity = 0, eq = booleq, kind = kind, stub = NONE}
 val boolTy = CONty(boolTycon,nil)
-val falseDcon = 
+val falseDcon =
     DATACON
       {name = falseSym,
        const = true,
@@ -222,10 +222,10 @@ val refDom = alpha
 val refStamp = Stamps.special "ref"
 val refsign = CSIG(1,0)
 val refEq = ref OBJ
-val kind = 
+val kind =
   DATATYPE{index=0, stamps= #[refStamp], freetycs=[], root=NONE,
            family={members= #[{tycname=refTycSym, eq=refEq, lazyp=false,
-                               arity=1, sign=refsign, 
+                               arity=1, sign=refsign,
 			       dcons=[{name=refConSym,rep=REF,
 				       domain=SOME refDom}]}],
 		   properties = PropList.newHolder (),
@@ -236,7 +236,7 @@ val refTycon =
     GENtyc{stamp = refStamp, path = IP.IPATH[refTycSym],
 	   arity = 1, eq = refEq, kind = kind, stub = NONE}
 val refTyfun = TYFUN{arity = 1, body = alpha --> CONty(refTycon, [alpha])}
-val refDcon = 
+val refDcon =
     DATACON
       {name = refConSym,
        const = false,
@@ -255,13 +255,13 @@ val refDcon = CBT.refDcon
 
 val listStamp = Stamps.special "list"
 val consDom = tupleTy[alpha, CONty(RECtyc 0,[alpha])]
-val listsign = CSIG(1,1) (* [UNTAGGED,CONSTANT 0], [LISTCONS,LISTNIL] *) 
+val listsign = CSIG(1,1) (* [UNTAGGED,CONSTANT 0], [LISTCONS,LISTNIL] *)
 val listeq = ref YES
-val kind = 
-  DATATYPE{index=0, stamps= #[listStamp], freetycs=[], root=NONE,
-           family={members= 
+val kind =
+  DATATYPE{index=0, stamps= #[listStamp], freetycs=[], root=NONE, stripped=false,
+           family={members=
                         #[{tycname=listSym, eq=listeq, lazyp=false,
-			   arity=1, sign=listsign, 
+			   arity=1, sign=listsign,
 			   dcons=[{name=consSym,rep=UNTAGGED,
 				   domain=SOME consDom},
 			           {name=nilSym,rep=CONSTANT 0,domain=NONE}]}],
@@ -273,7 +273,7 @@ val listTycon =
     GENtyc{stamp = listStamp, path = IP.IPATH[listSym], arity = 1,
 	   eq = listeq, kind = kind, stub = NONE}
 val consDcon =
-    DATACON 
+    DATACON
       {name = consSym,
        const = false,
        lazyp = false,
@@ -285,7 +285,7 @@ val consDcon =
 				      [tupleTy[alpha, CONty(listTycon,[alpha])],
 				       CONty(listTycon,[alpha])])}},
        sign = listsign}
-val nilDcon = 
+val nilDcon =
     DATACON
       {name = nilSym,
        const = true,
@@ -301,10 +301,10 @@ val nilDcon =
 val ulistStamp = Stamps.special "ulist"
 val ulistsign = CSIG(1,1) (* [LISTCONS,LISTNIL] *)
 val ulistEq = ref YES
-val kind = 
-  DATATYPE{index=0, stamps= #[ulistStamp], freetycs=[], root=NONE,
+val kind =
+  DATATYPE{index=0, stamps= #[ulistStamp], freetycs=[], root=NONE, stripped=false,
 	   family={members= #[{tycname=listSym, eq=ulistEq, lazyp=false,
-			       arity=1, sign=ulistsign, 
+			       arity=1, sign=ulistsign,
 			dcons=[{name=consSym,rep=LISTCONS,
 				domain=SOME consDom},
 			     {name=nilSym,rep=LISTNIL,domain=NONE}]}],
@@ -317,11 +317,11 @@ val ulistTycon =
 	   eq = ulistEq, kind = kind, stub = NONE}
 
 val uconsDcon =
-   DATACON 
+   DATACON
     {name = consSym,
      const = false,
      lazyp = false,
-     rep = LISTCONS, 
+     rep = LISTCONS,
      typ = POLYty
             {sign = [false],
 	     tyfun = TYFUN{arity = 1,
@@ -330,12 +330,12 @@ val uconsDcon =
 					 CONty(ulistTycon,[alpha])])}},
      sign = ulistsign}
 
-val unilDcon = 
+val unilDcon =
    DATACON
     {name = nilSym,
      const = true,
      lazyp = false,
-     rep = LISTNIL, 
+     rep = LISTNIL,
      typ = POLYty {sign = [false],
 		   tyfun = TYFUN{arity=1,body=CONty(ulistTycon,[alpha])}},
      sign = ulistsign}
@@ -348,10 +348,10 @@ val quoteDom = stringTy
 val fragStamp = Stamps.special "frag"
 val fragsign = CSIG(2, 0) (* [TAGGED 0, TAGGED 1] *)
 val frageq = ref YES
-val kind = 
-  DATATYPE{index=0, stamps= #[fragStamp], freetycs=[], root=NONE,
+val kind =
+  DATATYPE{index=0, stamps= #[fragStamp], freetycs=[], root=NONE, stripped=false,
            family={members= #[{tycname=fragSym, eq=frageq, lazyp=false,
-				arity=1, sign=fragsign, 
+				arity=1, sign=fragsign,
 				dcons=[{name=antiquoteSym,rep=TAGGED 0,
 					domain=SOME antiquoteDom},
 				       {name=quoteSym,rep=TAGGED 1,
@@ -377,7 +377,7 @@ val ANTIQUOTEDcon =
 			     body = CONty(arrowTycon,
 				      [alpha, CONty(fragTycon,[alpha])])}},
        sign = fragsign}
-val QUOTEDcon = 
+val QUOTEDcon =
     DATACON
       {name = quoteSym,
        const = false,
@@ -396,9 +396,9 @@ val suspStamp = Stamps.special "susp"
 val suspsign = CSIG(1,0)
 val suspEq = ref NO
 val kind =
-   DATATYPE{index=0, stamps= #[suspStamp], freetycs=[], root=NONE,
+   DATATYPE{index=0, stamps= #[suspStamp], freetycs=[], root=NONE, stripped=false,
             family={members= #[{tycname=dollarSym,eq=suspEq, lazyp=false,
-                                arity=1, sign=suspsign, 
+                                arity=1, sign=suspsign,
                                 dcons=[{name=dollarSym,
                                         rep=SUSP(NONE),
                                         domain=SOME dollarDom}]}],
@@ -409,14 +409,14 @@ val kind =
 val suspTycon =
     GENtyc{stamp = suspStamp, path = IP.IPATH[suspSym],
            arity = 1, eq = suspEq, kind = kind, stub = NONE}
-val suspTyfun = 
+val suspTyfun =
     TYFUN{arity = 1, body = dollarDom --> CONty(suspTycon, [alpha])}
 val dollarDcon =
     DATACON
       {name = dollarSym,
        const = false,
        lazyp = false,
-       rep = SUSP(NONE), 
+       rep = SUSP(NONE),
        typ = POLYty{sign = [false], tyfun = suspTyfun},
        sign = suspsign}
 val suspPatType = POLYty {sign = [false], tyfun = suspTyfun}

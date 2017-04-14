@@ -71,7 +71,7 @@ structure Word8Imp : WORD =
     val min : word * word -> word = W8.min
     val max : word * word -> word = W8.max
 
-    fun fmt radix = (NumFormat.fmtWord radix) o toLargeWord 
+    fun fmt radix = (NumFormat.fmtWord radix) o toLargeWord
     val toString = fmt StringCvt.HEX
 
     fun scan radix = let
@@ -86,5 +86,19 @@ structure Word8Imp : WORD =
 	    scan
 	  end
     val fromString = PreBasis.scanString (scan StringCvt.HEX)
+
+  (* added for Basis Library proposal 2016-001 *)
+
+    fun popCount w = let
+        (* pop count of each 2 bits into those 2 bits *)
+          val w = w - W8.andb(W8.rshiftl(w, 0w1), 0wx55)
+        (* pop count of each 4 bits into those 4 bits *)
+          val w = W8.andb(w, 0wx33) + W8.andb(W8.rshiftl(w, 0w2), 0wx33)
+        (* pop count of each 8 bits into those 8 bits *)
+          val w = w + W8.rshiftl(w, 0w4)
+	  in
+          (* mask out result *)
+	    W8.toIntX (W8.andb(w, 0wx0F))
+	  end
 
   end  (* structure Word8 *)

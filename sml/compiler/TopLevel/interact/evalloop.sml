@@ -1,6 +1,6 @@
 (* Copyright 1996 by Bell Laboratories *)
 (* evalloop.sml *)
- 
+
 functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
   struct
 
@@ -45,19 +45,19 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
   (* to wrap exceptions that are raised during the execution of a top-level trasaction *)
     exception ExnDuringExecution of exn
 
-  (* 
+  (*
    * The baseEnv and localEnv are purposely refs so that a top-level command
    * can re-assign either one of them, and the next iteration of the loop
    * will see the new value. It's also important that the toplevelenv
    * continuation NOT see the "fetched" environment, but only the ref;
    * then, if the user "filters" the environment ref, a smaller image
-   * can be written. 
+   * can be written.
    *)
     fun evalLoop source = let
 	  val parser = SmlFile.parseOne source
 	  val cinfo = C.mkCompInfo { source = source, transform = fn x => x }
 
-	  fun checkErrors (s: string) = 
+	  fun checkErrors (s: string) =
 		if CompInfo.anyErrors cinfo
 		  then (
 		    if !Control.progressMsgs
@@ -74,9 +74,9 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 		  | SOME ast => let
 		    (* diagnostic printing of Ast and Absyn *)
 		      val printDepth = Control_Print.printDepth
-			       
+
 		      fun debugPrint debugging (msg: string, printfn: PP.stream -> 'a -> unit, arg: 'a) =
-			    if debugging
+			    if !debugging
 			      then PP.with_pp (EM.defaultConsumer())
 				(fn ppstrm =>
 				    (PP.openHVBox ppstrm (PP.Rel 0);
@@ -100,31 +100,25 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 
 		      (* conditional diagnostic code to print ast - could it be involked from parser?
 			 if so, what statenv would be used? *)
-		      val _ = let fun ppAstDec ppstrm d = 
+		      val _ = let fun ppAstDec ppstrm d =
 				      PPAst.ppDec (statenv,NONE) ppstrm (d,!printDepth)
-			      in debugPrint (!Control.printAst) ("AST::", ppAstDec, ast)
+			      in debugPrint Control.printAst ("AST::", ppAstDec, ast)
 			      end
 
 		      val splitting = Control.LambdaSplitting.get ()
 		      val {csegments, newstatenv, absyn, exportPid, exportLvars,
-			   imports, inlineExp, ...} = 
+			   imports, inlineExp, ...} =
 			  C.compile {source=source, ast=ast,
 				     statenv=statenv,
 				     symenv=symenv,
-				     compInfo=cinfo, 
+				     compInfo=cinfo,
 				     checkErr=checkErrors,
 				     splitting=splitting,
 				     guid = () }
 		      (** returning absyn and exportLvars here is a bad idea,
-			  they hold on things unnecessarily; this must be 
+			  they hold on things unnecessarily; this must be
 			  fixed in the long run. (ZHONG)
 		       *)
-
-		      (* conditional diagnostic printing of absyn -- should be done in elaborator? *)
-		      val _ = let fun ppAbsynDec ppstrm d = 
-				      PPAbsyn.ppDec (statenv,NONE) ppstrm (d,!printDepth)
-			      in debugPrint (!Control.printAbsyn) ("ABSYN::", ppAbsynDec, absyn)
-			      end
 
 		      val executable = Execute.mkexec
 					   { cs = csegments,
@@ -133,20 +127,18 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 		      val executable = Isolate.isolate (interruptable executable)
 
 		      val _ = (PC.current := Profile.otherIndex)
-		      val newdynenv = 
+		      val newdynenv =
 			  Execute.execute { executable=executable, imports=imports,
 					    exportPid=exportPid, dynenv=dynenv }
 		      val _ = (PC.current := Profile.compileIndex)
 
 		      val newenv =
 			  E.mkenv { static = newstatenv,
-				    dynamic = newdynenv, 
+				    dynamic = newdynenv,
 				    symbolic = SymbolicEnv.mk (exportPid,inlineExp) }
 		      val newLocalEnv = E.concatEnv (newenv, #get loc ())
-			  (* refetch loc because execution may 
+			  (* refetch loc because execution may
 			     have changed its contents *)
-
-
 
 		      (* we install the new local env first before we go about
 		       * printing, otherwise we find ourselves in trouble if
@@ -213,7 +205,7 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 		      then say (concat ["\nuncaught exception ", name, "\n"])
 		      else say (concat ["\nuncaught exception ", name, " [", msg, "]\n"]);
 		    showhist exn;
-		    flush (); 
+		    flush ();
 		    k exn
 		  end
 
@@ -243,7 +235,10 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 		    | (Execute.Link | ExnDuringExecution Execute.Link) =>
 			(flush (); k e)
 		    | ExnDuringExecution EM.Error => (flush(); k e)
+		    | ExnDuringExecution ParserControl.RESET_PARSER => (flush(); k e)
 		    | ExnDuringExecution exn => user_hdl exn
+		  (* the following handle Suspend/Resume on Unix (4 == Posix.Error.intr) *)
+		    | IO.Io{cause=OS.SysErr(_, SOME 4), ...} => (say "\n"; k e)
 		    | exn => if treatasuser then user_hdl exn else bug_hdl exn
 		  (* end case *))
 	    in

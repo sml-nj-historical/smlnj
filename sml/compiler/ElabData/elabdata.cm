@@ -7,6 +7,7 @@
 Group
 	signature ELABDATA_CONTROL
 	signature ACCESS
+	signature DEB_INDEX
 	signature TYPES
 	signature TYPESUTIL
 	signature TUPLES
@@ -29,6 +30,7 @@ Group
 
 	structure ElabDataControl
 	structure Access
+	structure DebIndex
 	structure Types
 	structure TypesUtil
 	structure Tuples
@@ -58,12 +60,15 @@ Group
 	structure CoreAccess
 	structure BrowseStatEnv
 	structure PrimOpId
-
+	structure TKind
+	structure SigPropList
 is
 	main/edcontrol.sig
 	main/edcontrol.sml
 	main/compinfo.sml
 
+	basics/debindex.sig
+	basics/debindex.sml
 	basics/lambdavar.sig
 	basics/lambdavar.sml
 	basics/env.sig
@@ -79,6 +84,8 @@ is
 	basics/sympaths.sig
 	basics/sympaths.sml
 	basics/core-ptnum.sml
+	basics/tkind.sml
+	basics/sig-plist.sml
 
 	syntax/absyn.sig
 	syntax/absyn.sml

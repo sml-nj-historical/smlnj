@@ -45,13 +45,15 @@ and tvKind
      (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
       * associated with polymorphic bindings (including val bindings and
       * functor parameter bindings). The depth is depth of type lambda bindings,
-      * (1-based), and the index is the index within a sequence of 
-      * type variables bound at a given binding site. LBOUNDs must carry 
+      * (1-based), and the index is the index within a sequence of
+      * type variables bound at a given binding site. LBOUNDs must carry
       * equality type information for signature matching because the OPENs
       * are turned into LBOUNDs before equality type information is matched. *)
 
 and tycpath
-  = TP_VAR of exn
+  = TP_VAR of
+      { tdepth: DebIndex.depth,
+        num: int, kind: TKind.tkind }
   | TP_TYC of tycon
   | TP_FCT of tycpath list * tycpath list
   | TP_APP of tycpath * tycpath list
@@ -63,12 +65,13 @@ and tyckind
   | DATATYPE of
      {index: int,
       stamps: Stamps.stamp vector,
-      root : EntPath.entVar option,
-      freetycs: tycon list,
-      family : dtypeFamily}
-  | FLEXTYC of tycpath
-  | FORMAL
-  | TEMP
+      root : EntPath.entVar option,    (* the root field used by type spec only *)
+      freetycs: tycon list,            (* tycs derived from functor params *)
+      family : dtypeFamily,
+      stripped : bool}                 (* true if datatype has matched a simple type spec *)
+  | FLEXTYC of tycpath          (* instantiated formal type constructor *)
+  | FORMAL                      (* used only inside signatures *)
+  | TEMP                        (* used only during datatype elaborations *)
 
 and tycon
   = GENtyc of gtrec
@@ -117,7 +120,7 @@ and dtypeFamily =
   {mkey: Stamps.stamp,
    members: dtmember vector,
    properties: PropList.holder}
-	       
+
 
 and stubinfo =
     {owner : PersStamps.persstamp,

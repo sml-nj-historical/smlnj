@@ -17,15 +17,16 @@ struct
   fun error msg = ErrorMsg.impossible ("MkRecord." ^ msg)
 
   val addrTy = C.addressWidth
-  val pty = 32
-  val ity = 32
+  val pty = C.wordBitWidth
+  val ity = C.wordBitWidth
   val fty = 64
+  val wordSz = C.wordByteWidth
 
   fun ea(r, 0) = r
     | ea(r, n) = T.ADD(addrTy, r, T.LI n)
 
   fun indexEA(r, 0) = r
-    | indexEA(r, n) = T.ADD(addrTy, r, T.LI(n*4))
+    | indexEA(r, n) = T.ADD(addrTy, r, T.LI(n*wordSz))
 
   fun pi(x as ref(R.PT.TOP _),_) = x
     | pi(x,i) = R.PT.pi(x,i)
@@ -35,19 +36,19 @@ struct
         let val mem = pi(mem,n)
         in  getfield(markPTR(T.LOAD(ity, indexEA(r, n), mem)), p, mem) end
       | getfield(r, CPS.OFFp 0, _) = r
-      | getfield(r, CPS.OFFp n, _) = T.ADD(addrTy, r, T.LI(n*4))
+      | getfield(r, CPS.OFFp n, _) = T.ADD(addrTy, r, T.LI(n*wordSz))
 
     fun storeFields ([], _, _, _) = ()
       | storeFields ((v, p)::rest, n, mem, i) = 
         let val elem = pi(mem, i)
         in  emit(T.STORE(ity, T.ADD(addrTy, C.allocptr, T.LI n), 
                  getfield(v, p, elem), elem));
-	    storeFields(rest, n + 4, mem, i+1)
+	    storeFields(rest, n + wordSz, mem, i+1)
         end
   in
     emit(T.STORE(ity, ea(C.allocptr, hp), desc, pi(mem,~1)));
-    storeFields(fields, hp+4, mem, 0);
-    hp + 4
+    storeFields(fields, hp+wordSz, mem, 0);
+    hp + wordSz
   end
 
   fun frecord {desc, fields, mem, hp, emit, markPTR, markComp} = let
@@ -70,12 +71,12 @@ struct
         let val elem = pi(mem, i)
         in  emit(T.FSTORE(fty, T.ADD(addrTy, C.allocptr, T.LI n),
                           fgetfield(v, p, elem), elem));
-	    fstoreFields(rest, n + 8, mem, i+2)
+	    fstoreFields(rest, n + 8, mem, i + 8 div wordSz)
         end
   in
     emit(T.STORE(ity, ea(C.allocptr, hp), desc, pi(mem,~1)));
-    fstoreFields(fields, hp+4, mem, 0);
-    hp + 4
+    fstoreFields(fields, hp+wordSz, mem, 0);
+    hp + wordSz
   end	
 end
 

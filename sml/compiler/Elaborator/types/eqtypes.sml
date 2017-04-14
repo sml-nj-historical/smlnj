@@ -3,20 +3,20 @@
 
 (*
  * This file probably should not belong here ! It relies on the module
- * semantics; and probably it should be moved to modules/ directory. (ZHONG)  
+ * semantics; and probably it should be moved to modules/ directory. (ZHONG)
  *)
 
 signature EQTYPES =
 sig
 
-  val eqAnalyze : Modules.Structure * (Stamps.stamp -> bool) 
+  val eqAnalyze : Modules.Structure * (Stamps.stamp -> bool)
                                     * ErrorMsg.complainer -> unit
 
   val defineEqProps : Types.tycon list * ExpandTycon.sigContext
                       * EntityEnv.entityEnv -> unit
   val checkEqTySig : Types.ty * Types.polysign -> bool
       (* check whether type ty is an equality type, given a polysign
-       * indicating which IBOUND elements are equality types.  
+       * indicating which IBOUND elements are equality types.
        * This isn't accurate on (relatized) types containing PATHtycs,
        * which are effectively treated as OBJ *)
   val isEqTycon : Types.tycon -> bool
@@ -37,7 +37,7 @@ local structure EM = ErrorMsg
       structure MU = ModuleUtil
       open Types Stamps TypesUtil
 
-in 
+in
 
 (* debugging *)
 fun bug msg = EM.impossible("EqTypes: "^msg)
@@ -78,7 +78,7 @@ fun join(UNDEF,YES) = YES
   | join(OBJ,OBJ) = OBJ
   | join(ABS,e) = join(NO,e)
   | join(e,ABS) = join(e,NO)
-  | join(e1,e2) = 
+  | join(e1,e2) =
      (say(String.concat[TU.eqpropToString e1,",",TU.eqpropToString e2,"\n"]);
       raise INCONSISTENT)
 
@@ -90,11 +90,11 @@ fun objectTyc (GENtyc { eq = ref OBJ, ... }) = true
 exception NOT_EQ
 exception UnboundStamp
 
-(* 
- * eqAnalyze is called in just one place, in Instantiate, to compute the 
- * actual eqprops of types in an instantiated signature.  It has to propagate 
- * equality properties to respect type equivalences induced by sharing 
- * constraints. 
+(*
+ * eqAnalyze is called in just one place, in Instantiate, to compute the
+ * actual eqprops of types in an instantiated signature.  It has to propagate
+ * equality properties to respect type equivalences induced by sharing
+ * constraints.
  *)
 
 fun eqAnalyze(str,localStamp : Stamps.stamp -> bool,err : EM.complainer) =
@@ -132,15 +132,15 @@ let val tycons = ref StampMap.empty
 		   | (NO | ABS) => raise NOT_EQ
 		   | IND => dependsInd := true
 		   | (DATA | UNDEF) =>
-		     if member(stamp,!depend) 
+		     if member(stamp,!depend)
 			orelse Stamps.eq(stamp,datatycStamp) then ()
 		     else depend := stamp :: !depend)
 	      | eqtyc(RECORDtyc _) = ()
 	      | eqtyc _ = bug "eqAnalyze.eqtyc"
-	    and eqty(VARty(ref(INSTANTIATED ty))) 
+	    and eqty(VARty(ref(INSTANTIATED ty)))
                   = eqty ty  (* shouldn't happen *)
 	      | eqty(ty as CONty(tyc,args)) =
-                  let val ntyc = 
+                  let val ntyc =
                         (case tyc
                           of FREEtyc i =>
                              (List.nth(freetycs, i) handle _ =>
@@ -153,9 +153,9 @@ let val tycons = ref StampMap.empty
 		         | DEFtyc{tyfun,...} => eqty(headReduceType ty)
 		         | RECtyc i =>
 		            let val stamp = Vector.sub(stamps,i)
-                                val {tycname,dcons,...}: dtmember =  
+                                val {tycname,dcons,...}: dtmember =
                                       Vector.sub(members,i)
-		             in if member(stamp,!depend) 
+		             in if member(stamp,!depend)
 			        orelse Stamps.eq(stamp,datatycStamp)
 			        then ()
 			        else depend := stamp :: !depend
@@ -179,15 +179,15 @@ let val tycons = ref StampMap.empty
 		if localStamp stamp  (* local spec *)
 		then ((updateMap tycons
 				 (stamp,tyc::applyMap'(tycons,stamp));
-				 tycStampsRef := stamp :: !tycStampsRef;
+		       tycStampsRef := stamp :: !tycStampsRef;
 		       case kind
                         of DATATYPE{index,stamps,family={members,...},
-                                       root,freetycs} =>
+                                    root,freetycs,stripped} =>
                               let val dcons = #dcons(Vector.sub(members,index))
 				  val eqOrig = !eq
 				  val (eqpCalc,deps) =
                                       case eqOrig
-                                       of DATA => 
+                                       of DATA =>
 					  checkdcons(stamp,
 						     MU.transType entities,
                                                      dcons,stamps,members,
@@ -213,7 +213,7 @@ let val tycons = ref StampMap.empty
                                   updateMap eqprop (stamp,eq')
                               end
                             | _ => bug "eqAnalyze.scan.tscan")
-			  handle INCONSISTENT => 
+			  handle INCONSISTENT =>
                                  err "inconsistent equality properties")
                 else () (* external -- assume eqprop already defined *)
               | addtyc _ = ()
@@ -237,7 +237,7 @@ let val tycons = ref StampMap.empty
 			   else ()
 		       end handle INCONSISTENT =>
 	                     err "inconsistent equality properties B")
-                  (depset(stamp')) 
+                  (depset(stamp'))
 	 in prop
 	end
 
@@ -245,7 +245,7 @@ let val tycons = ref StampMap.empty
     fun propagate_YES_NO(stamp) =
       let fun earlier s = Stamps.compare(s,stamp) = LESS
        in case applyMap''(eqprop,stamp)
-	   of YES => 
+	   of YES =>
                propagate (YES,(fn s => applyMap'(depend,s)),earlier) stamp
 	    | NO => propagate (NO,(fn s => applyMap'(dependr,s)),earlier) stamp
             | _ => ()
@@ -264,9 +264,9 @@ let val tycons = ref StampMap.empty
 
     (* phase 0: scan signature strenv, joining eqprops of shared tycons *)
     val _ = addstr str
-    val tycStamps = 
+    val tycStamps =
       ListMergeSort.sort (fn xy => Stamps.compare xy = GREATER) (!tycStampsRef)
- in 
+ in
     (* phase 1: propagate YES backwards and NO forward *)
     app propagate_YES_NO tycStamps;
 
@@ -280,7 +280,7 @@ let val tycons = ref StampMap.empty
 			   | e => e
 	      fun set (GENtyc { eq, ... }) = eq := eqp
 		| set _ = ()
-           in app set (applyMap'(tycons,s)) 
+           in app set (applyMap'(tycons,s))
           end)
     tycStamps
 end
@@ -288,7 +288,7 @@ end
 exception CHECKEQ
 
 
-(* WARNING - defineEqTycon uses eq field ref as a tycon identifier.  
+(* WARNING - defineEqTycon uses eq field ref as a tycon identifier.
    Since defineEqTycon is called only within elabDATATYPEdec, this
    should be ok.*)
 
@@ -302,7 +302,7 @@ fun namesToString ([]: Symbol.symbol list) = "[]"
     String.concat("[" :: (Symbol.name x) ::
 		  foldl (fn (y,l) => ","::(Symbol.name y)::l) ["]"] xs)
 
-fun defineEqProps (datatycs,sigContext,sigEntEnv) = 
+fun defineEqProps (datatycs,sigContext,sigEntEnv) =
 let val names = map TU.tycName datatycs
     val _ = debugmsg (">>defineEqProps: "^ namesToString names)
     val n = List.length datatycs
@@ -315,9 +315,9 @@ let val names = map TU.tycName datatycs
 	      | get _ = bug "eqs:get"
 	in map get datatycs
 	end
-    fun getEq i = 
+    fun getEq i =
            !(List.nth(eqs,i))
-            handle Subscript => 
+            handle Subscript =>
                     (say "$getEq "; say(Int.toString i); say " from ";
 		     say(Int.toString(length eqs)); say "\n";
 		     raise Subscript)
@@ -354,7 +354,7 @@ let val names = map TU.tycName datatycs
 				      Symbol.name(IP.last path) ^
 				      " " ^ TU.eqpropToString eqp);
 			    eqp))
-		    | eqtyc(RECtyc i) = 
+		    | eqtyc(RECtyc i) =
 		      (debugmsg ("eqtyc[RECtyc]: " ^ Int.toString i);
 		       checkDomains i)
 		    | eqtyc(RECORDtyc _) = YES
@@ -369,7 +369,7 @@ let val names = map TU.tycName datatycs
 			  val _ = visited := i :: !visited
 			  val {tycname,dcons,...} : dtmember
 			    = Vector.sub(members,i)
-			      handle Subscript => 
+			      handle Subscript =>
 				     (say (String.concat
 					       ["$getting member ",
 						Int.toString i,
@@ -379,7 +379,7 @@ let val names = map TU.tycName datatycs
 			  val _ = debugmsg("checkDomains: visiting "
 					   ^ Symbol.name tycname ^ " "
 					   ^ Int.toString i)
-			  val domains = 
+			  val domains =
 			      map (fn {domain=SOME ty,name,rep} => ty
 				    | {domain=NONE,name,rep} => unitTy)
 				  dcons
@@ -398,7 +398,7 @@ let val names = map TU.tycName datatycs
 		    | eqty(CONty(tyc,args)) =
 		      (case ExpandTycon.expandTycon(tyc,sigContext,sigEntEnv)
 			of FREEtyc i =>
-			   let val _ = 
+			   let val _ =
 				debugmsg ("eqtyc[FREEtyc]: " ^ Int.toString i)
                                val tc = (List.nth(freetycs,i)
 					 handle _ =>
@@ -410,7 +410,7 @@ let val names = map TU.tycName datatycs
 			   (* shouldn't happen - type abbrevs in domains
 			    * should have been expanded *)
 			   eqty(applyTyfun(tyfun,args))
-			 | tyc => 
+			 | tyc =>
 			   (case eqtyc tyc
 			     of (NO | ABS) => NO
 			      | OBJ => YES
@@ -418,7 +418,7 @@ let val names = map TU.tycName datatycs
 			      | DATA =>
 				(case eqtylist(args) of YES => DATA | e => e)
 			      | IND => IND
-			      | UNDEF => 
+			      | UNDEF =>
 				bug ("defineEqTycon.eqty: UNDEF - " ^
 				     Symbol.name(TU.tycName tyc))))
 		    | eqty (MARKty (tyc, region)) = eqty tyc
@@ -432,7 +432,7 @@ let val names = map TU.tycName datatycs
 			      no further checking *)
 				| YES => loop(rest,eqp)
 				| IND => loop(rest,IND)
-				| DATA => 
+				| DATA =>
 				  (case eqp
 				    of IND => loop(rest,IND)
 				     | _ => loop(rest,DATA))
@@ -502,7 +502,7 @@ fun checkEqTySig(ty, sign: polysign) =
 		  | YES => app eqty args
 		  | (NO | ABS | IND) => raise CHECKEQ
 		  | _ => bug "checkEqTySig")
-	  | eqty(IBOUND n) = 
+	  | eqty(IBOUND n) =
 	      let val eq = List.nth(sign,n)
 	       in if eq then () else raise CHECKEQ
 	      end

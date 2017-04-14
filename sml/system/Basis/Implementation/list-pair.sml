@@ -14,7 +14,7 @@ structure ListPair : LIST_PAIR =
     exception UnequalLengths
 
   (* for inlining *)
-    fun rev l = let 
+    fun rev l = let
           fun loop ([], acc) = acc
             | loop (a::r, acc) = loop(r, a::acc)
           in
@@ -126,109 +126,6 @@ structure ListPair : LIST_PAIR =
 	  end
 
   (* added for Basis Library proposal 2015-003 *)
-    fun appi f (l1, l2) = let
-	  fun appf (i, x::xs, y::ys) = (f(i, x, y); appf(i+1, xs, ys))
-	    | appf _ = ()
-	  in
-	    appf (0, l1, l2)
-	  end
-
-    fun appiEq f (l1, l2) = let
-	  fun appf (i, x::xs, y::ys) = (f(i, x, y); appf(i+1, xs, ys))
-	    | appf (_, [], []) = ()
-	    | appf _ = raise UnequalLengths
-	  in
-	    appf (0, l1, l2)
-	  end
-
-    fun mapi f (l1, l2) = let
-	  fun mapf (i, x::xs, y::ys, zs) = (mapf(i+1, xs, ys, f(i, x, y) :: zs))
-	    | mapf (_, _, _, zs) = rev zs
-	  in
-	    mapf (0, l1, l2, [])
-	  end
-
-    fun mapiEq f (l1, l2) = let
-	  fun mapf (i, x::xs, y::ys, zs) = (mapf(i+1, xs, ys, f(i, x, y) :: zs))
-	    | mapf (_, [], [], zs) = rev zs
-	    | mapf _ = raise UnequalLengths
-	  in
-	    mapf (0, l1, l2, [])
-	  end
-
-    fun mapPartial f (l1, l2) = let
-	  fun mapf (x::xs, y::ys, acc) = (case f(x, y)
-		 of SOME z => mapf(xs, ys, z::acc)
-		  | NONE => mapf(xs, ys, acc)
-		(* end case *))
-	    | mapf (_, _, acc) = rev acc
-	  in
-	    mapf (l1, l2, [])
-	  end
- 
-    fun mapPartialEq f (l1, l2) = let
-	  fun mapf (x::xs, y::ys, acc) = (case f(x, y)
-		 of SOME z => mapf(xs, ys, z::acc)
-		  | NONE => mapf(xs, ys, acc)
-		(* end case *))
-	    | mapf ([], [], acc) = rev acc
-	    | mapf _ = raise UnequalLengths
-	  in
-	    mapf (l1, l2, [])
-	  end
-
-    fun mapPartiali f (l1, l2) = let
-	  fun mapf (i, x::xs, y::ys, acc) = (case f(i, x, y)
-		 of SOME z => mapf(i+1, xs, ys, z::acc)
-		  | NONE => mapf(i+1, xs, ys, acc)
-		(* end case *))
-	    | mapf (_, _, _, acc) = rev acc
-	  in
-	    mapf (0, l1, l2, [])
-	  end
- 
-    fun mapPartialiEq f (l1, l2) = let
-	  fun mapf (i, x::xs, y::ys, acc) = (case f(i, x, y)
-		 of SOME z => mapf(i+1, xs, ys, z::acc)
-		  | NONE => mapf(i+1, xs, ys, acc)
-		(* end case *))
-	    | mapf (_, [], [], acc) = rev acc
-	    | mapf _ = raise UnequalLengths
-	  in
-	    mapf (0, l1, l2, [])
-	  end
-
-    fun foldli f init (l1, l2) = let
-	  fun foldf (i, x::xs, y::ys, acc) = foldf (i+1, xs, ys, f(i, x, y, acc))
-	    | foldf (_, _, _, acc) = acc
-	  in
-	    foldf (0, l1, l2, init)
-	  end
-
-    fun foldliEq f init (l1, l2) = let
-	  fun foldf (i, x::xs, y::ys, acc) = foldf (i+1, xs, ys, f(i, x, y, acc))
-	    | foldf (_, [], [], acc) = acc
-	    | foldf _ = raise UnequalLengths
-	  in
-	    foldf (0, l1, l2, init)
-	  end
-
-    fun foldri f init (l1, l2) = let
-          fun lp (i, x::xs, y::ys) = f (i, x, y, lp (i+1, xs, ys))
-	    | lp (_, _, _) = init
-	  in
-	    lp (0, l1, l2)
-	  end
-
-    fun foldriEq f init (l1, l2) = let
-          fun lp (i, x::xs, y::ys) = f (i, x, y, lp (i+1, xs, ys))
-	    | lp (_, [], []) = init
-	    | lp _ = raise UnequalLengths
-	  in
-	    lp (0, l1, l2)
-	  end
-
-  (* added for Basis Library proposal 2015-003 *)
 
     fun appi f (l1, l2) = let
 	  fun appf (i, x::xs, y::ys) = (f(i, x, y); appf(i+1, xs, ys))
@@ -269,7 +166,7 @@ structure ListPair : LIST_PAIR =
 	  in
 	    mapf (l1, l2, [])
 	  end
- 
+
     fun mapPartialEq f (l1, l2) = let
 	  fun mapf (x::xs, y::ys, acc) = (case f(x, y)
 		 of SOME z => mapf(xs, ys, z::acc)
@@ -290,7 +187,7 @@ structure ListPair : LIST_PAIR =
 	  in
 	    mapf (0, l1, l2, [])
 	  end
- 
+
     fun mapPartialiEq f (l1, l2) = let
 	  fun mapf (i, x::xs, y::ys, acc) = (case f(i, x, y)
 		 of SOME z => mapf(i+1, xs, ys, z::acc)
@@ -330,6 +227,46 @@ structure ListPair : LIST_PAIR =
 	    | lp _ = raise UnequalLengths
 	  in
 	    lp (0, l1, l2)
+	  end
+
+    fun unzipMap f l = let
+	  fun mapf ([], l1, l2) = (List.rev l1, List.rev l2)
+	    | mapf (x::xs, l1, l2) = let
+		val (y1, y2) = f x
+		in
+		  mapf (xs, y1::l1, y2::l2)
+		end
+	  in
+	    mapf (l, [], [])
+	  end
+
+    fun unzipMapi f l = let
+	  fun mapf ([], _, l1, l2) = (List.rev l1, List.rev l2)
+	    | mapf (x::xs, i, l1, l2) = let
+		val (y1, y2) = f (i, x)
+		in
+		  mapf (xs, i+1, y1::l1, y2::l2)
+		end
+	  in
+	    mapf (l, 0, [], [])
+	  end
+
+    fun find pred = let
+	  fun findp ([], _) = NONE
+	    | findp (_, []) = NONE
+	    | findp (x::xs, y::ys) = if pred(x, y) then SOME(x, y) else findp(xs, ys)
+	  in
+	    findp
+	  end
+
+    fun findi pred (l1, l2) = let
+	  fun findp (_, [], _) = NONE
+	    | findp (_, _, []) = NONE
+	    | findp (i, x::xs, y::ys) = if pred(i, x, y)
+		then SOME(i, x, y)
+		else findp(i+1, xs, ys)
+	  in
+	    findp (0, l1, l2)
 	  end
 
   end (* structure ListPair *)

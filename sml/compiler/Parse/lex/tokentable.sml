@@ -1,7 +1,7 @@
 (* tokentable.sml
  *
- * COPYRIGHT (c) 1996 Bell Laboratories.
- *
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 (***************************************************************************
@@ -10,7 +10,67 @@
 
  ***************************************************************************)
 
-functor TokenTable (Tokens:ML_TOKENS) : sig
+signature SMLNJ_TOKENS =
+  sig
+    type ('a,'b) token
+    type svalue
+    val FUNSIG : 'a * 'a -> (svalue,'a) token
+    val ANDALSO : 'a * 'a -> (svalue,'a) token
+    val ORELSE : 'a * 'a -> (svalue,'a) token
+    val COLONGT : 'a * 'a -> (svalue,'a) token
+    val COLON : 'a * 'a -> (svalue,'a) token
+    val ASTERISK : 'a * 'a -> (svalue,'a) token
+    val WITHTYPE : 'a * 'a -> (svalue,'a) token
+    val WITH : 'a * 'a -> (svalue,'a) token
+    val WHILE : 'a * 'a -> (svalue,'a) token
+    val WHERE : 'a * 'a -> (svalue,'a) token
+    val VAL : 'a * 'a -> (svalue,'a) token
+    val TYPE : 'a * 'a -> (svalue,'a) token
+    val THEN : 'a * 'a -> (svalue,'a) token
+    val STRUCTURE : 'a * 'a -> (svalue,'a) token
+    val STRUCT : 'a * 'a -> (svalue,'a) token
+    val SIGNATURE : 'a * 'a -> (svalue,'a) token
+    val SIG : 'a * 'a -> (svalue,'a) token
+    val SHARING : 'a * 'a -> (svalue,'a) token
+    val REC : 'a * 'a -> (svalue,'a) token
+    val RAISE : 'a * 'a -> (svalue,'a) token
+    val OVERLOAD : 'a * 'a -> (svalue,'a) token
+    val OPEN : 'a * 'a -> (svalue,'a) token
+    val OP : 'a * 'a -> (svalue,'a) token
+    val OF : 'a * 'a -> (svalue,'a) token
+    val NONFIX : 'a * 'a -> (svalue,'a) token
+    val LOCAL : 'a * 'a -> (svalue,'a) token
+    val LET : 'a * 'a -> (svalue,'a) token
+    val LAZY : 'a * 'a -> (svalue,'a) token
+    val INFIXR : 'a * 'a -> (svalue,'a) token
+    val INFIX : 'a * 'a -> (svalue,'a) token
+    val INCLUDE : 'a * 'a -> (svalue,'a) token
+    val IN : 'a * 'a -> (svalue,'a) token
+    val IF : 'a * 'a -> (svalue,'a) token
+    val HASH : 'a * 'a -> (svalue,'a) token
+    val HANDLE : 'a * 'a -> (svalue,'a) token
+    val FUNCTOR : 'a * 'a -> (svalue,'a) token
+    val FUN : 'a * 'a -> (svalue,'a) token
+    val FN : 'a * 'a -> (svalue,'a) token
+    val DARROW : 'a * 'a -> (svalue,'a) token
+    val DO : 'a * 'a -> (svalue,'a) token
+    val EXCEPTION : 'a * 'a -> (svalue,'a) token
+    val EQTYPE : 'a * 'a -> (svalue,'a) token
+    val EQUALOP : 'a * 'a -> (svalue,'a) token
+    val END : 'a * 'a -> (svalue,'a) token
+    val ELSE : 'a * 'a -> (svalue,'a) token
+    val DATATYPE : 'a * 'a -> (svalue,'a) token
+    val CASE : 'a * 'a -> (svalue,'a) token
+    val BAR : 'a * 'a -> (svalue,'a) token
+    val AS : 'a * 'a -> (svalue,'a) token
+    val ARROW : 'a * 'a -> (svalue,'a) token
+    val AND : 'a * 'a -> (svalue,'a) token
+    val ABSTYPE : 'a * 'a -> (svalue,'a) token
+    val TYVAR : FastSymbol.raw_symbol *  'a * 'a -> (svalue, 'a) token
+    val ID : FastSymbol.raw_symbol *  'a * 'a -> (svalue, 'a) token
+  end
+
+functor TokenTable (Tokens : SMLNJ_TOKENS) : sig
 
     val checkId : (string * int) -> (Tokens.svalue,int) Tokens.token
     val checkSymId : (string * int) -> (Tokens.svalue,int) Tokens.token
@@ -107,23 +167,23 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 	  val hash = hashStr str
 	  fun mkId () =
 	      Tokens.ID(FastSymbol.rawSymbol(hash,str), yypos, yypos+size(str))
-    in
-	Tbl.lookup idTbl (hash, str) yypos
-	handle NotToken => mkId ()
-    end
+	  in
+	    Tbl.lookup idTbl (hash, str) yypos
+	      handle NotToken => mkId ()
+	  end
 
     fun checkSymId (str, yypos) = let
-	val hash = hashStr str
-    in
-	Tbl.lookup symIdTbl (hash, str) yypos
-	handle NotToken =>
-	       Tokens.ID(FastSymbol.rawSymbol(hash,str), yypos, yypos+size(str))
-    end
+	  val hash = hashStr str
+	  in
+	    Tbl.lookup symIdTbl (hash, str) yypos
+	      handle NotToken =>
+		     Tokens.ID(FastSymbol.rawSymbol(hash,str), yypos, yypos+size(str))
+	  end
 
     fun checkTyvar (str, yypos) = let
-	val hash = hashStr str
-    in
-	Tokens.TYVAR (FastSymbol.rawSymbol(hash,str),yypos,yypos+size (str))
-    end
+	  val hash = hashStr str
+	  in
+	    Tokens.TYVAR (FastSymbol.rawSymbol(hash,str),yypos,yypos+size (str))
+	  end
 
-end
+  end

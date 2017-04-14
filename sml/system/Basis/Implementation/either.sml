@@ -26,9 +26,29 @@ structure Either : EITHER =
 	    | INR x => INR(fr x)
 	  (* end case *))
 
+    fun mapLeft f sum = (case sum
+	   of INL x => INL(f x)
+	    | INR x => INR x
+	  (* end case *))
+
+    fun mapRight f sum = (case sum
+	   of INL x => INL x
+	    | INR x => INR(f x)
+	  (* end case *))
+
     fun app (fl, fr) sum = (case sum
 	   of INL x => fl x
 	    | INR x => fr x
+	  (* end case *))
+
+    fun appLeft f sum = (case sum
+	   of INL x => f x
+	    | INR x => ()
+	  (* end case *))
+
+    fun appRight f sum = (case sum
+	   of INL x => ()
+	    | INR x => f x
 	  (* end case *))
 
     fun fold (fl, fr) init sum = (case sum

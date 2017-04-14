@@ -1,3 +1,9 @@
+(* amd64StackSpills.sml
+ *
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
+
 signature AMD64STACKSPILLS = sig
   structure I : AMD64INSTR
   val init : unit -> unit
@@ -52,7 +58,7 @@ struct
              case !availableOffsets of
                [] => let val offset = !spillOffset
                          val i32 = toInt32 offset
-                     in  newOffset(offset+4); I.Immed i32 end
+                     in  newOffset(offset+AMD64Spec.wordByteWidth); I.Immed i32 end
              | off::offs => (availableOffsets := offs; off) 
         in addTbl (reg,operand);
            operand

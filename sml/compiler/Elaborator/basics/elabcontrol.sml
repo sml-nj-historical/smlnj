@@ -67,7 +67,7 @@ struct
     val internals = onew ("internals", "show internal reps", false)
 
     val markabsyn = onew ("markabsyn", "mark abstract syntax", true)
-        (* ElabCore, ElabTop, ElabUtil, Control_MC *)                    
+        (* ElabCore, ElabTop, ElabUtil, Control_MC *)
 
     val boxedconstconreps = onew ("boxedconstreps", "boxed const constructors", false)
         (* ConRep *)
@@ -86,6 +86,8 @@ struct
 
     val showTypeErrorCulprits =
 	cnew ("show-type-error-culprits", "show culprits in type error messages", false)
+
+    val printAbsyn = ref false
 
   end (* local *)
 end (* structure ElabControl *)

@@ -137,8 +137,9 @@ and spec = StrSpec of (symbol * sigexp * path option) list    (* structure *)
 	 | MarkSpec of spec * region		              (* mark a spec *)
 
 (* DECLARATIONS (let and structure) *)
-and dec	= ValDec of (vb list * tyvar list)		(* values *)
+and dec = ValDec of (vb list * tyvar list)		(* values *)
 	| ValrecDec of (rvb list * tyvar list)		(* recursive values *)
+	| DoDec of exp					(* 'do' exp *)
 	| FunDec of (fb list * tyvar list)		(* recurs functions *)
 	| TypeDec of tb list				(* type dec *)
 	| DatatypeDec of {datatycs: db list, withtycs: tb list} (* datatype dec *)
@@ -208,12 +209,12 @@ and tyvar = Tyv of symbol
 	  | MarkTyv of tyvar * region
 
 (* TYPES *)
-and ty 
+and ty
     = VarTy of tyvar			(* type variable *)
     | ConTy of symbol list * ty list	(* type constructor application *)
     | RecordTy of (symbol * ty) list 	(* record *)
     | TupleTy of ty list		(* tuple *)
     | MarkTy of ty * region	        (* mark type *)
- 
+
 end (* structure Ast *)
 

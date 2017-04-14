@@ -14,7 +14,7 @@ structure Word31Imp : WORD =
     val wordSize = 31
 
     val toLarge   : word -> LargeWord.word = W31.toLargeWord
-    val toLargeX : word -> LargeWord.word = W31.toLargeWordX
+    val toLargeX  : word -> LargeWord.word = W31.toLargeWordX
     val fromLarge : LargeWord.word -> word = W31.fromLargeWord
 
   (* same as above, but deprecated *)
@@ -73,6 +73,11 @@ structure Word31Imp : WORD =
 	    scan
 	  end
     val fromString = PreBasis.scanString (scan StringCvt.HEX)
+
+  (* added for Basis Library proposal 2016-001 *)
+
+  (* NOTE: LargeWord is Word32 even though we also have a Word64 implementation! *)
+    fun popCount w = W32PopCount.popCount (W31.toLargeWord w)
 
   end  (* structure Word31 *)
 

@@ -1,6 +1,8 @@
-(* pickmod.sml *)
-
-(*
+(* pickmod.sml
+ *
+ * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * The revised pickler using the new "generic" pickling facility.
  *
  * March 2000, Matthias Blume
@@ -51,7 +53,7 @@ signature PICKMOD = sig
     val pickleEnv : context ->
 		    StaticEnv.staticEnv ->
 		    { hash: PersStamps.persstamp,
-		      pickle: Word8Vector.vector, 
+		      pickle: Word8Vector.vector,
 		      exportLvars: Access.lvar list,
 		      hasExports: bool }
 
@@ -61,8 +63,8 @@ signature PICKMOD = sig
     val symenvPickler : (map, SymbolicEnv.env) PickleUtil.pickler
 
     val pickle2hash: Word8Vector.vector -> PersStamps.persstamp
-	
-    val dontPickle : 
+
+    val dontPickle :
 	{ env: StaticEnv.staticEnv, count: int } ->
         { newenv: StaticEnv.staticEnv, hash: PersStamps.persstamp,
 	  exportLvars: Access.lvar list, hasExports: bool }
@@ -349,7 +351,7 @@ in
     fun ccall_type t =
     let val op $ = PU.$ CCALL_TYPE
     in  case t of
-          P.CCI32 => "\000" $ [] 
+          P.CCI32 => "\000" $ []
         | P.CCI64 => "\001" $ []
         | P.CCR64 => "\002" $ []
         | P.CCML  => "\003" $ []
@@ -357,14 +359,14 @@ in
 
     fun ccall_info { c_proto = { conv, retTy, paramTys },
 		     ml_args, ml_res_opt, reentrant } = let
-	val op $ = PU.$ CCI 
+	val op $ = PU.$ CCI
     in
 	"C" $ [string conv, ctype retTy, list ctype paramTys,
 	       list ccall_type ml_args, option ccall_type ml_res_opt,
                bool reentrant
               ]
     end
-	    
+
     fun primop p = let
 	val op $ = PU.$ PO
 	fun ?n = String.str (Char.chr n)
@@ -401,7 +403,7 @@ in
 	      | P.INLMIN kind => ?120 $ [numkind kind]
 	      | P.INLMAX kind => ?121 $ [numkind kind]
 	      | P.INLABS kind => ?122 $ [numkind kind]
-		    
+
 	      | P.TEST_INF i => ?123 $ [int i]
 	      | P.TRUNC_INF i => ?124 $ [int i]
 	      | P.EXTEND_INF i => ?125 $ [int i]
@@ -415,7 +417,7 @@ in
 	      | P.INLSUBSCRIPT => %?5
 	      | P.INLSUBSCRIPTV => %?6
 	      | P.INLMKARRAY => %?7
-		    
+
 	      | P.PTREQL => %?8
 	      | P.PTRNEQ => %?9
 	      | P.POLYEQL => %?10
@@ -855,17 +857,17 @@ in
 	and tyckind arg = let
 	    val op $ = PU.$ TYCKIND
 	    fun tk (T.PRIMITIVE pt) = "a" $ [int pt]
-	      | tk (T.DATATYPE { index, family, stamps, root,freetycs }) =
-		"b" $ [int index, option entVar root,
+	      | tk (T.DATATYPE { index, family, stamps, root, freetycs, stripped }) =
+		"b" $ [int index, option entVar root, bool stripped,
 		       dtypeInfo (stamps, family, freetycs)]
 	      | tk (T.ABSTRACT tyc) = "c" $ [tycon tyc]
 	      | tk (T.FLEXTYC tps) = "d" $ [] (* "f" $ tycpath tps *)
 	      (*** I (Matthias) carried through this message from Zhong:
 	       tycpath should never be pickled; the only way it can be
-	       pickled is when pickling the domains of a mutually 
+	       pickled is when pickling the domains of a mutually
 	       recursive datatypes; right now the mutually recursive
 	       datatypes are not assigned accurate domains ... (ZHONG)
-	       the preceding code is just a temporary gross hack. 
+	       the preceding code is just a temporary gross hack.
 	       ***)
 	      | tk T.FORMAL = "d" $ []
 	      | tk T.TEMP = "e" $ []
@@ -993,7 +995,7 @@ in
 	    sd arg
 	end
 
-	(* 
+	(*
 	 * boundeps is not pickled right now, but it really should
 	 * be pickled in the future.
 	 *)
@@ -1009,14 +1011,14 @@ in
 				   fctflag, elements,
 				   properties,
 				   stub, typsharing, strsharing } = s
-			     val b = ModulePropLists.sigBoundeps s
-			     val b = NONE (* currently turned off *)
+(*			     val b = NONE (* = SigPropList.sigBoundeps s (currently turned off) *) *)
 			 in
 			     "C" $ ([stamp sta,
-				     option symbol name, bool closed,
+				     option symbol name,
+				     bool closed,
 				     bool fctflag,
 				     list (pair (symbol, spec)) elements,
-				     option (list (pair (entPath, tkind))) b,
+(*				     option (list (pair (entPath, tkind))) b, *)
 				     list (list spath) typsharing,
 				     list (list spath) strsharing]
 				    @ libPid (stub, #owner))
@@ -1288,7 +1290,7 @@ in
 		   | _ => bug ("dontPickle 1: " ^ A.prAcc a))
 	      | B.STRbind (M.STR { sign = s, rlzn = r, access = a, prim =z }) =>
 		(case a of
-		     A.LVAR k => 
+		     A.LVAR k =>
 		     (i+1,
 		      StaticEnv.bind (sym,
 				      B.STRbind (M.STR
@@ -1300,7 +1302,7 @@ in
 		   | _ => bug ("dontPickle 2" ^ A.prAcc a))
 	      | B.FCTbind (M.FCT { sign = s, rlzn = r, access = a, prim = z }) =>
 		(case a of
-		     A.LVAR k => 
+		     A.LVAR k =>
 		     (i+1,
 		      StaticEnv.bind (sym,
 				      B.FCTbind (M.FCT

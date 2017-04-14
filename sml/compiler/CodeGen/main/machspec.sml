@@ -73,4 +73,9 @@ structure DefaultMachSpec : MACH_SPEC =
 
     (* x86 and sparc don't use pre-allocated arg space for c-calls *)
     val ccall_prealloc_argspace = NONE
+
+  (* number of bits and bytes per ML word (default is 32-bit architecture) *)
+    val wordByteWidth = 4
+    val wordBitWidth = 8*wordByteWidth
+
   end (* DefaultMachSpec *)

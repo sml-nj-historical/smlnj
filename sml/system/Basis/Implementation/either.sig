@@ -20,9 +20,17 @@ signature EITHER =
     val map : ('ldom -> 'lrng) * ('rdom -> 'rrng)
 	      -> ('ldom, 'rdom) either
 		-> ('lrng, 'rrng) either
+
+    val mapLeft  : ('ldom -> 'lrng) -> ('ldom, 'rdom) either -> ('lrng, 'rdom) either
+    val mapRight : ('rdom -> 'rrng) -> ('ldom, 'rdom) either -> ('ldom, 'rrng) either
+
     val app : ('left -> unit) * ('right -> unit)
 	      -> ('left, 'right) either
 		-> unit
+
+    val appLeft  : ('left -> unit) -> ('left, 'right) either -> unit
+    val appRight : ('right -> unit) -> ('left, 'right) either -> unit
+
     val fold : ('left * 'b -> 'b) * ('right * 'b -> 'b)
                -> 'b -> ('left, 'right) either -> 'b
 

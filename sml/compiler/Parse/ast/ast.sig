@@ -1,4 +1,4 @@
-(* Copyright 1992 by AT&T Bell Laboratories 
+(* Copyright 1992 by AT&T Bell Laboratories
  *
  *)
 
@@ -82,7 +82,7 @@ sig
 	  | MarkPat of pat * region	(* mark a pattern *)
 	  | OrPat of pat list			(* or-pattern *)
 
-  (* STRUCTURE EXPRESSION *) 
+  (* STRUCTURE EXPRESSION *)
   and strexp = VarStr of path			(* variable structure *)
 	     | BaseStr of dec			(* defined structure *)
              | ConstrainedStr of strexp * sigexp sigConst (* signature constrained *)
@@ -134,6 +134,7 @@ sig
   (* DECLARATIONS (let and structure) *)
   and dec = ValDec of (vb list * tyvar list)		  (* values *)
 	  | ValrecDec of (rvb list * tyvar list)	  (* recursive values *)
+	  | DoDec of exp				  (* 'do' exp *)
 	  | FunDec of (fb list * tyvar list)		  (* recurs functions *)
 	  | TypeDec of tb list				  (* type dec *)
 	  | DatatypeDec of {datatycs: db list, withtycs: tb list} (* datatype dec *)
@@ -203,7 +204,7 @@ sig
 	    | MarkTyv of tyvar * region
 
   (* TYPES *)
-  and ty 
+  and ty
       = VarTy of tyvar			(* type variable *)
       | ConTy of symbol list * ty list	(* type constructor *)
       | RecordTy of (symbol * ty) list 	(* record *)
