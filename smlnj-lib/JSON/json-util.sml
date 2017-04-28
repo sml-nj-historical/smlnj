@@ -23,6 +23,9 @@ structure JSONUtil : sig
   (* exception that is raised when trying to process a non-array value as an array *)
     exception NotArray of JSON.value
 
+  (* exception that is raise when access to an array value is out of bounds *)
+    exception ArrayBounds of JSON.value * int
+
   (* map the above exceptions to a message string; we use General.exnMessage for other
    * exceptions.
    *)
@@ -58,20 +61,49 @@ structure JSONUtil : sig
    *)
     val arrayMap : (JSON.value -> 'a) -> JSON.value -> 'a list
 
+  (* path specification for indexing into JSON values *)
+    datatype edge
+      = SUB of int      (* index into array component *)
+      | SEL of string   (* select field of object *)
+
+    type path = edge list
+
+  (* `get (jv, path)` returns the component of `jv` named by `path`.  It raises
+   * the NotObject, NotArray, and FieldNotFound exceptions if there is an inconsistency
+   * between the path and the structure of `jv`.
+   *)
+    val get : JSON.value * path -> JSON.value
+
+  (* `replace (jv, path, v)` replaces the component of `jv` named by `path`
+   * with the value `v`.
+   *)
+    val replace : JSON.value * path * JSON.value -> JSON.value
+
+  (* `insert (jv, path, lab, v)` inserts `lab : v` into the object named by `path`
+   * in `jv`
+   *)
+    val insert : JSON.value * path * string * JSON.value -> JSON.value
+
+
+  (* `append (jv, path, vs)` appends the list of values `vs` onto the array named by `path`
+   * in `jv`
+   *)
+    val append : JSON.value * path * JSON.value list -> JSON.value
+
   end = struct
 
     structure J = JSON
 
-    exception NotBool of JSON.value
-    exception NotInt of JSON.value
-    exception NotNumber of JSON.value
-    exception NotString of JSON.value
+    exception NotBool of J.value
+    exception NotInt of J.value
+    exception NotNumber of J.value
+    exception NotString of J.value
 
-    exception NotObject of JSON.value
+    exception NotObject of J.value
+    exception FieldNotFound of J.value * string
 
-    exception FieldNotFound of JSON.value * string
-
-    exception NotArray of JSON.value
+    exception NotArray of J.value
+    exception ArrayBounds of J.value * int
 
   (* conversion functions for atomic values *)
     fun asBool (J.BOOL b) = b
@@ -155,5 +187,88 @@ structure JSONUtil : sig
 	      | _ => General.exnMessage exn
 	    (* end case *)
 	  end
+
+  (* path specification for indexing into JSON values *)
+    datatype edge
+      = SEL of string   (* select field of object *)
+      | SUB of int      (* index into array component *)
+
+    type path = edge list
+
+    fun get (v, []) = v
+      | get (v as J.OBJECT fields, SEL lab :: rest) =
+	  (case List.find (fn (l, v) => (l = lab)) fields
+	   of NONE => raise raise FieldNotFound(v, concat["no definition for field \"", lab, "\""])
+	    | SOME(_, v) => get (v, rest)
+	  (* end case *))
+      | get (v, SEL _ :: _) = raise NotObject v
+      | get (J.ARRAY vs, SUB i :: rest) = get (List.nth(vs, i), rest)
+      | get (v, SUB _ :: _) = raise (NotArray v)
+
+  (* top-down zipper to support functional editing *)
+    datatype zipper
+      = ZNIL
+      | ZOBJ of {
+            prefix : (string * J.value) list,
+            label : string,
+            child : zipper,
+            suffix : (string * J.value) list
+          }
+      | ZARR of {
+            prefix : J.value list,
+            child : zipper,
+            suffix : J.value list
+          }
+
+  (* follow a path into a JSON value while constructing a zipper *)
+    fun unzip (v, []) = (ZNIL, v)
+      | unzip (v as J.OBJECT fields, SEL lab :: rest) = let
+          fun find (_, []) = raise FieldNotFound(v, concat["no definition for field \"", lab, "\""])
+            | find (pre, (l, v)::flds) = if (l = lab)
+                then let
+		  val (zipper, v) = unzip (v, rest)
+		  in
+		    (ZOBJ{prefix=pre, label=lab, suffix=flds, child=zipper}, v)
+                  end
+                else find ((l, v)::pre, flds)
+          in
+            find ([], fields)
+          end
+      | unzip (v, SEL _ :: _) = raise NotObject v
+      | unzip (v as J.ARRAY vs, SUB i :: rest) = let
+          fun sub (_, [], _) = raise ArrayBounds(v, i)
+            | sub (prefix, v::vs, 0) = let
+		val (zipper, v) = unzip (v, rest)
+		in
+		  (ZARR{prefix = prefix, child = zipper, suffix = vs}, v)
+		end
+            | sub (prefix, v::vs, i) = sub(v::prefix, vs, i-1)
+	  in
+	    sub ([], vs, i)
+	  end
+      | unzip (v, SUB _ :: _) = raise NotArray v
+
+  (* zip up a zipper *)
+    fun zip (zipper, v) = let
+	  fun zip' ZNIL = v
+            | zip' (ZOBJ{prefix, label, suffix, child}) =
+                J.OBJECT(List.revAppend(prefix, (label, zip' child)::suffix))
+            | zip' (ZARR{prefix, child, suffix}) =
+                J.ARRAY(List.revAppend(prefix, zip' child :: suffix))
+          in
+	    zip' zipper
+	  end
+
+    fun replace (jv, path, v) = zip (#1 (unzip (jv, path)), v)
+
+    fun insert (jv, path, label, v) = (case unzip (jv, path)
+	   of (zipper, J.OBJECT fields) => zip (zipper, J.OBJECT((label, v)::fields))
+	    | (_, v) => raise NotObject v
+	  (* end case *))
+
+    fun append (jv, path, vs) = (case unzip (jv, path)
+	   of (zipper, J.ARRAY jvs) => zip (zipper, J.ARRAY(jvs @ vs))
+	    | (_, v) => raise NotArray v
+	  (* end case *))
 
   end

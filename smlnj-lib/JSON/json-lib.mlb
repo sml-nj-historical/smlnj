@@ -13,9 +13,7 @@ local
 
   $(SML_LIB)/basis/basis.mlb
   $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
-(* I don't know what the path to this library will be
-  ??/ml-lpt-lib/ml-lpt-lib.mlb
-*)
+  $(SML_LIB)/mllpt-lib/ml-lpt-lib.mlb
 
   ann
     "nonexhaustiveMatch warn" "redundantMatch warn"
@@ -40,6 +38,7 @@ in
   structure JSON
   structure JSONParser
   structure JSONPrinter
+  structure JSONUtil
 
 (* SAX-style API (event based) *)
   structure JSONStreamParser
