@@ -25,10 +25,13 @@ val quotedBogusString = "'BOGUS"
 val quotedBogusHash = HashString.hashString "'BOGUS"
 val quotedBogusString = "'BOGUS"
 
+(* ID (identifiers) is split into IDA (alphanumeric) and IDS (symbolic) *)
   %%
   %term
       EOF | SEMICOLON
-    | ID of FastSymbol.raw_symbol | TYVAR of FastSymbol.raw_symbol
+    | IDA of FastSymbol.raw_symbol
+    | IDS of FastSymbol.raw_symbol
+    | TYVAR of FastSymbol.raw_symbol
     | INT of IntInf.int | INT0 of IntInf.int
     | WORD of IntInf.int
     | REAL of string
@@ -46,9 +49,10 @@ val quotedBogusString = "'BOGUS"
 
 %nonterm ident of FastSymbol.raw_symbol
        | id of FastSymbol.raw_symbol
+       | idtyc of FastSymbol.raw_symbol
        | int of IntInf.int
        | op_op of unit
-       | qid of (FastSymbol.raw_symbol ->symbol) -> symbol list
+       | qid of (FastSymbol.raw_symbol -> symbol) -> symbol list 
        | selector of symbol
        | tycon of symbol list
        | tlabel of (symbol * ty)
@@ -164,9 +168,10 @@ val quotedBogusString = "'BOGUS"
 %change -> VAL | -> THEN | -> ELSE | -> LPAREN | -> SEMICOLON |
         DARROW -> EQUALOP | EQUALOP -> DARROW | AND -> ANDALSO | COLON -> OF |
         SEMICOLON -> COMMA | COMMA -> SEMICOLON |
-        -> IN ID END | -> ELSE ID
+        -> IN IDA END | -> ELSE IDA
 
-%value ID (rawSymbol(bogusHash,bogusString))
+%value IDA (rawSymbol(bogusHash,bogusString))
+%value IDS (rawSymbol(bogusHash,bogusString))
 %value TYVAR (rawSymbol(quotedBogusHash,quotedBogusString))
 %value INT (IntInf.fromInt 1)
 %value INT0 (IntInf.fromInt 0)
@@ -180,10 +185,15 @@ val quotedBogusString = "'BOGUS"
 int	: INT		(INT)
 	| INT0		(INT0)
 
-id	: ID		(ID)
+id	: IDA		(IDA)
+        | IDS           (IDS)
 	| ASTERISK	(rawSymbol (asteriskHash,asteriskString))
 
-ident	: ID 		(ID)
+idtyc   : IDA           (IDA)
+        | IDS           (IDS)
+			
+ident	: IDA 		(IDA)
+        | IDS           (IDS)
 	| ASTERISK	(rawSymbol (asteriskHash,asteriskString))
 	| EQUALOP	(rawSymbol (equalHash,equalString))
 
@@ -191,14 +201,14 @@ op_op	: OP		(error (OPleft,OPright) WARN "unnecessary `op'"
 			       nullErrorBody)
 	| 		()
 
-qid	: ID DOT qid	(fn kind => strSymbol ID :: qid kind)
+qid	: IDA DOT qid	(fn kind => strSymbol IDA :: qid kind)
 	| ident		(fn kind => [kind ident])
 
 selector: id		(labSymbol id)
 	| INT		(Symbol.labSymbol(IntInf.toString INT))
 
-tycon   : ID DOT tycon		(strSymbol ID :: tycon)
-	| ID			([tycSymbol ID])
+tycon   : IDA DOT tycon		(strSymbol IDA :: tycon)
+	| idtyc			([tycSymbol idtyc])
 
 tlabel	: selector COLON ty	(selector, ty )
 
@@ -280,7 +290,7 @@ app_exp	: aexp	        ([{item=markexp(aexp,aexpleft,aexpright),
 			 end)
 
  aexp	: OP ident		(VarExp [varSymbol ident])
-	| ID DOT qid		(VarExp (strSymbol ID :: qid varSymbol))
+	| IDA DOT qid		(VarExp (strSymbol IDA :: qid varSymbol))
 	| int			(IntExp int)
 	| WORD			(WordExp WORD)
 	| REAL			(RealExp REAL)
@@ -347,7 +357,7 @@ apat	: apat'		        ({item=markpat(apat',apat'left,apat'right),
 				  fixity=NONE})
 
 apat'	: OP ident		(VarPat [varSymbol ident])
-	| ID DOT qid		(VarPat (strSymbol ID :: qid varSymbol))
+	| IDA DOT qid		(VarPat (strSymbol IDA :: qid varSymbol))
 	| int			(IntPat int)
 	| WORD			(WordPat WORD)
 	| STRING		(StringPat STRING)
@@ -442,8 +452,8 @@ clause	: apats constraint EQUALOP exp
 			exp=markexp(exp,expleft,expright)})
 
 
-tb	: tyvars ID EQUALOP ty	([MarkTb(
-				   Tb{tyvars=tyvars,tyc=tycSymbol ID,def=ty},
+tb	: tyvars idtyc EQUALOP ty ([MarkTb(
+				   Tb{tyvars=tyvars,tyc=tycSymbol idtyc,def=ty},
 				   (tyvarsleft,tyright))])
 	| tb AND tb		(tb1 @ tb2)
 
@@ -460,18 +470,18 @@ tyvar_pc: TYVAR                 ([MarkTyv(Tyv(tyvSymbol TYVAR), (TYVARleft,TYVAR
 	| TYVAR COMMA tyvar_pc  (MarkTyv(Tyv(tyvSymbol TYVAR),(TYVARleft,TYVARright))
 				 :: tyvar_pc)
 
-dtrepl  : ID EQUALOP DATATYPE tycon      ((tycSymbol ID, tycon))
+dtrepl  : idtyc EQUALOP DATATYPE tycon      ((tycSymbol idtyc, tycon))
 
 dbs     : db                             ([db])
         | db AND dbs                     (db :: dbs)
 
-db	: ID EQUALOP constrs	         (Db{tyc=tycSymbol ID,
+db	: idtyc EQUALOP constrs	         (Db{tyc=tycSymbol idtyc,
 					     tyvars=nil,
 					     rhs=constrs,lazyp=false})
-	| tyvarseq ID EQUALOP constrs	 (Db{tyc=tycSymbol ID,
+	| tyvarseq idtyc EQUALOP constrs (Db{tyc=tycSymbol idtyc,
 					     tyvars=tyvarseq,
 					     rhs=constrs,lazyp=false})
-        | LAZY tyvars ID EQUALOP constrs (Db{tyc=tycSymbol ID,
+        | LAZY tyvars idtyc EQUALOP constrs (Db{tyc=tycSymbol idtyc,
                                             tyvars=tyvars,
                                             rhs=constrs,lazyp=true})
 
@@ -565,8 +575,8 @@ fctspec	: fctspec AND fctspec	(fctspec1 @ fctspec2)
 	| ident fsig		([(fctSymbol ident, fsig)])
 
 tyspec	: tyspec AND tyspec	(tyspec1 @ tyspec2)
-	| tyvars ID		([(tycSymbol ID,tyvars,NONE)])
-        | tyvars ID EQUALOP ty  ([(tycSymbol ID,tyvars,SOME ty)])
+	| tyvars idtyc		([(tycSymbol idtyc,tyvars,NONE)])
+        | tyvars idtyc EQUALOP ty  ([(tycSymbol idtyc,tyvars,SOME ty)])
 
 valspec	: valspec AND valspec	(valspec1 @ valspec2)
 	| op_op ident COLON ty  ([(varSymbol ident,ty)])
@@ -590,8 +600,8 @@ whspec  : whspec AND whspec     (whspec1 @ whspec2)
 				([WhType(qid tycSymbol,tyvars,ty)])
         | qid EQUALOP qid	([WhStruct(qid1 strSymbol,qid2 strSymbol)])
 
-sign	: ident			(MarkSig(VarSig (sigSymbol ident),
-				         (identleft,identright)))
+sign	: IDA			(MarkSig(VarSig (sigSymbol IDA),
+				         (IDAleft,IDAright)))
 	| SIG spec_s END	(MarkSig(BaseSig(spec_s),(spec_sleft,spec_sright)))
         | sign WHERE whspec     (MarkSig(AugSig(sign,whspec),(signleft,whspecright)))
 
@@ -604,14 +614,14 @@ fsigconstraint_op :		(NoSig)
  	| COLONGT ident		(Opaque(VarFsig (fsigSymbol ident)))
 
 sigb	: sigb AND sigb		(sigb1 @ sigb2)
-	| ident EQUALOP sign	([Sigb{name=sigSymbol ident,def=sign}])
+	| IDA EQUALOP sign	([Sigb{name=sigSymbol IDA, def=sign}])
 
 fsigb	: fsigb AND fsigb	(fsigb1 @ fsigb2)
-	| ident fparamList EQUALOP sign
-		([Fsigb{name=fsigSymbol ident,
+	| IDA fparamList EQUALOP sign
+		([Fsigb{name=fsigSymbol IDA,
 			def=BaseFsig{param=fparamList,result=sign}}])
 
-fsig	: COLON ident	(VarFsig (fsigSymbol ident))
+fsig	: COLON IDA	        (VarFsig (fsigSymbol IDA))
 	| fparamList COLON sign
 			(BaseFsig{param=fparamList,result=sign})
 
@@ -669,13 +679,13 @@ sdec	: STRUCTURE strb	(StrDec strb)
 				    markdec(sdecs2,sdecs2left,sdecs2right)))
 	| ldec			(markdec(ldec,ldecleft,ldecright))
 
-strb	: ident sigconstraint_op EQUALOP str
-	   		([MarkStrb(Strb{name = strSymbol ident,def = str,
+strb	: IDA sigconstraint_op EQUALOP str
+	   		([MarkStrb(Strb{name = strSymbol IDA, def = str, 
 					constraint=sigconstraint_op},
-				   (identleft,strright))])
+				   (IDAleft,strright))])
 	| strb AND strb		(strb1 @ strb2)
 
-fparam	: ID COLON sign		((SOME(strSymbol ID),sign))
+fparam	: IDA COLON sign	((SOME(strSymbol IDA),sign))
 	| spec_s		((NONE,MarkSig(BaseSig(spec_s),
 					       (spec_sleft,spec_sright))))
 
@@ -683,15 +693,15 @@ fparamList
 	: LPAREN fparam	RPAREN			([fparam])
 	| LPAREN fparam RPAREN fparamList	(fparam :: fparamList)
 
-fctb	: ident fparamList sigconstraint_op EQUALOP str
-		([MarkFctb(Fctb {name = fctSymbol ident,
+fctb	: IDA fparamList sigconstraint_op EQUALOP str
+		([MarkFctb(Fctb {name = fctSymbol IDA,
                                  def = BaseFct{params=fparamList, body=str,
 				              constraint=sigconstraint_op}},
-			   (identleft,strright))])
-	| ident fsigconstraint_op EQUALOP fct_exp
-		([MarkFctb(Fctb {name=fctSymbol ident,
+			   (IDAleft,strright))])
+	| IDA fsigconstraint_op EQUALOP fct_exp
+		([MarkFctb(Fctb {name=fctSymbol IDA,
 				 def=fct_exp (fsigconstraint_op)},
-			   (identleft,fct_expright))])
+			   (IDAleft,fct_expright))])
 	| fctb AND fctb	   (fctb1 @ fctb2)
 
 fct_exp: qid	(fn constraint => VarFct(qid fctSymbol,constraint))

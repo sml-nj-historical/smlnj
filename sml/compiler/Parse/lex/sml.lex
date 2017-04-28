@@ -143,7 +143,7 @@ real=(~?)(({num}{frac}?{exp})|({num}{frac}{exp}?));
 <INITIAL>"."		=> (Tokens.DOT(yypos,yypos+1));
 <INITIAL>"..."		=> (Tokens.DOTDOTDOT(yypos,yypos+3));
 <INITIAL>"'"("'"?)("_"|{num})?{id}
-			=> (TokTable.checkTyvar(yytext,yypos));
+			=> (TokTable.makeTyvar(yytext,yypos));
 <INITIAL>{id}	        => (TokTable.checkId(yytext, yypos));
 <INITIAL>{full_sym}+    => (if !ParserControl.quotation
                             then if (has_quote yytext)
