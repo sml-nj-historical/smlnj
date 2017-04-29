@@ -16,7 +16,7 @@ if test $# -eq 1 ; then
   SML=$1
 fi
 
-exec $SML '$smlnj/cmb.cm' <<XXXX
+exec $SML -DNO_PLUGINS '$smlnj/cmb.cm' <<XXXX
 CMB.make();
 XXXX
 
