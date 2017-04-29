@@ -84,7 +84,6 @@ structure JSONUtil : sig
    *)
     val insert : JSON.value * path * string * JSON.value -> JSON.value
 
-
   (* `append (jv, path, vs)` appends the list of values `vs` onto the array named by `path`
    * in `jv`
    *)
