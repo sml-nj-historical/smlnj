@@ -1,4 +1,24 @@
 #!/bin/sh
+#
+# usage: makeml [options]
+#
+# where options are
+#
+#	-run <path>		- use the specified runtime system
+#	-bare			-
+#	-quiet			- suppress printing of most status messages
+#	-verbose		- print status messages (default)
+#	-rebuild <prefix>	- rebuilds the boot/bin files without generating an executable.
+#				  The specified <prefix> is added to the name of the new bin
+#				  and boot directories.  Rerun makeml with the -boot directory
+#				  to build the heap image using the new bin and boot files.
+#	-rebuildlight ??	-
+#	-lightrebuild ??	-
+#	-light ??		-
+#	-o <file>		- specify the name of the generated heap image and lib dir
+#	-alloc <size>		- specify the size of the allocation arena
+#	-boot <dir>		- specify the name of the boot-file directory
+#
 
 this=$0
 here=`pwd`
