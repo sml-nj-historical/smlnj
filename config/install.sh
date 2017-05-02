@@ -329,7 +329,9 @@ if [ x"$ARCH" = "xx86" -a x"$OPSYS" = "xlinux" ] ; then
       gcc -m32 -o /tmp/$tmpFile /tmp/$tmpFile.c 2> /dev/null 1>> /dev/null
       if [ "$?" != "0" ] ; then
 	rm -f /tmp/$tmpFile /tmp/$tmpFile.c
-	complain "$this: !!! SML/NJ requires support for 32-bit executables. Please see INSTALL file for more details."
+        echo "$this: !!! SML/NJ requires support for 32-bit executables."
+        echo "  Please see http://www.smlnj.org/dist/working/$VERSION/INSTALL for more details."
+	exit 1
       else
 	rm -f /tmp/$tmpFile /tmp/$tmpFile.c
       fi
