@@ -21,7 +21,7 @@ If you are running Win32, see WININSTALL.
 
    - Download config.tgz, e.g.
 
-      $ v=110.38               # or whatever is the version you desire
+      $ v=110.81               # or whatever is the version you desire
       $ wget http://smlnj.cs.uchicago.edu/dist/working/$v/config.tgz
 
    - Gunzip and untar, e.g.
@@ -76,6 +76,8 @@ If you are running Win32, see WININSTALL.
                                    | smlnj-lib.tgz
                                    | ml-yacc.tgz
                                    | system.tgz
+                                   |
+          old-basis                | old-basis.tgz
                                    |
           ml-yacc                  | ml-yacc.tgz
                                    |
@@ -258,7 +260,7 @@ If you are running Win32, see WININSTALL.
    not configured with 32-bit support.  In such a case, you will get
    the message
 
-	!!! SML/NJ requires support for 32-bit executables
+        !!! SML/NJ requires support for 32-bit executables
 
    during the install process.  To fix this problem, you will need
    to acquire the 32-bit emulation libraries for your particular Linux
@@ -269,34 +271,35 @@ If you are running Win32, see WININSTALL.
    https://wiki.ubuntu.com/MultiarchSpec for details, or try the following
    commands:
 
-	dpkg --add-architecture i386
-	apt-get update
-	apt-get install libc6:i386
+        dpkg --add-architecture i386
+        apt-get update
+        apt-get install libc6:i386
 
    For older versions of Debian and Ubuntu, you will need to install three
-   using apt-get:
+   packages using apt-get:
 
-	apt-get install gcc-multilib g++-multilib ia32-libs
+        apt-get install gcc-multilib g++-multilib ia32-libs
 
    For Red Hat Fedora (at least Fedora 16), you will need to install
    glibc-devel(i686):
 
-	yum install glibc-devel.i686
+        yum install glibc-devel.i686
 
    For Red Hat Enterprise Linux (or CentOS), you may also have to
    install the rpm package libgcc-multilib, e.g.:
 
-	yum groupinstall "Development tools"
-	yum install libgcc.i686
-	yum install glibc-devel.i686
+        yum groupinstall "Development tools"
+        yum install libgcc.i686
+        yum install glibc-devel.i686
 
    Older instructions for RHEL and CentOS: download the libgcc-multilib package
    from rpmseek.com and then run
 
-	rpm -ivh libgcc-multilib-xxx.x86_64.rpm
+        rpm -ivh libgcc-multilib-xxx.x86_64.rpm
 
    where the libgcc-multilib package is the one you downloaded.
 
-   For openSUSE use the YaST administration tool to install package gcc-32bit.
+   For openSUSE use the YaST administration tool to install the gcc-32bit
+   package.
 
 ----------------------------------------------------------------------------
