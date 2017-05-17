@@ -2,6 +2,21 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
+SML/NJ 110.82
+-------------------
+
+[2017-05-17]
+	Fixed a bug in the way that JSON string values were being printed.
+	The code previously assumed that C-style esaping will work, but
+	that is not true for "\'" (as well as for control and non-ASCII
+	characters).  The new implementation assumes that the string value
+	is UTF-8 and uses the "\\u" escape sequences for characters outside
+	the JSON escapes and printable ASCII characters.
+
+	NOTE: we should make sure that the input side of the JSON library
+	has the same semantics.
+
+--------------------------------------------------------------------------------
 SML/NJ 110.81
 -------------------
 

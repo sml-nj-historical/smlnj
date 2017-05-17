@@ -97,8 +97,30 @@ structure JSONStreamPrinter : sig
       | boolean (p, true) = prVal (p, "true")
     fun integer (p, n) = prVal (p, F.format "%d" [F.LINT n])
     fun float (p, f) = prVal (p, F.format "%g" [F.REAL f])
-(* FIXME: need to deal with UTF-* escapes *)
-    fun string (p, s) = prVal (p, F.format "\"%s\"" [F.STR(String.toCString s)])
+    fun string (p, s) = let
+	  fun getChar i = if (i < size s) then SOME(String.sub(s, i), i+1) else NONE
+	  val getWChar = UTF8.getu getChar
+	  fun tr (i, chrs) = (case getWChar i
+		 of SOME(wchr, i) => if (wchr <= 0w126)
+		      then (case UTF8.toAscii wchr
+			 of #"\"" => "\\\""
+			  | #"\\" => "\\\\"
+			  | #"/" => "\\/"
+			  | #"\b" => "\\b"
+			  | #"\f" => "\\f"
+			  | #"\n" => "\\n"
+			  | #"\r" => "\\r"
+			  | #"\t" => "\\t"
+			  | c => if (wchr < 0w32)
+			      then tr(i, F.format "\\u%04x" [F.WORD wchr] :: chrs)
+			      else tr(i, str c :: chrs)
+			(* end case *))
+		      else tr(i, F.format "\\u%04x" [F.WORD wchr] :: chrs)
+		  | NONE => String.concat(List.rev chrs)
+		(* end case *))
+	  in
+	    prVal (p, F.format "\"%s\"" [F.STR(tr (0, []))])
+	  end
 
     fun beginObject (p as P{ctx, ...}) = (
 	  optComma p;

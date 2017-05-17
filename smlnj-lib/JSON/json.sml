@@ -17,6 +17,6 @@ structure JSON =
       | BOOL of bool
       | INT of IntInf.int
       | FLOAT of real
-      | STRING of string
+      | STRING of string	(* note that string is assumed to be UTF-8 *)
 
   end
