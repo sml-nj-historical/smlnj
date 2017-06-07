@@ -294,7 +294,7 @@ case $OPSYS in
     darwin)
 	if [ "$ARCH" = "x86" ] ; then
             # the /usr/bin/as command does _not_ accept the -mmacosx-version-min
-	    # command-line option prior to MacOS X 10.10 (Yosimite)
+	    # command-line option prior to MacOS X 10.10 (Yosemite)
 	    case `sw_vers -productVersion` in
 	      10.6*) AS_ACCEPTS_SDK=no ;;
 	      10.7*) AS_ACCEPTS_SDK=no ;;
