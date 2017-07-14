@@ -153,10 +153,10 @@ structure JSONStreamPrinter : sig
     fun endArray (p as P{ctx, ...}) = let
 	  fun prEnd ctx' = (
 		ctx := ctx';
-		nl p; indent(p, ~1); pr(p, "]"); decIndent (p, 2))
+		indent(p, ~1); pr(p, "]"); decIndent (p, 2))
 	  in
 	    case !ctx
-	     of ARRAY ctx' => prEnd ctx'
+	     of ARRAY ctx' => (nl p; prEnd ctx')
 	      | FIRST(ARRAY ctx') => prEnd ctx'
 	      | _ => raise Fail "endArray not in array context"
 	    (* end case *)
