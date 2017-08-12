@@ -42,19 +42,19 @@ extern char	*ArenaName[];
 
 /* Check a word for a allocation space reference */
 #ifndef NO_GC_INLINE
-#define MinorGC_CheckWord(bibop, g1, p)	{					\
+#define MinorGC_CheckWord(allocBase, allocSz, g1, p)	{			\
 	ml_val_t	__w = *(p);						\
-	if (isBOXED(__w) && (ADDR_TO_PAGEID(bibop, __w) == AID_NEW))		\
+	if (isBOXED(__w) && (((Addr_t)__w - (allocBase)) < (allocSz))) {	\
 	    *(p) = MinorGC_ForwardObj(g1, __w);					\
+	}									\
     }
 #else
-PVT void MinorGC_CheckWord (bibop_t bibop, gen_t *g1, ml_val_t *p)
+PVT void MinorGC_CheckWord (Addr_t allocBase, Addr_t allocSz, gen_t *g1, ml_val_t *p)
 {
     ml_val_t	w = *(p);
-    if (isBOXED(w)) {
-	aid_t	aid = ADDR_TO_PAGEID(bibop, w);
-	if (aid == AID_NEW)
-	    *(p) = MinorGC_ForwardObj(g1, w);
+    if (isBOXED(w) && (((Addr_t)w - allocBase) < allocSz)) {
+	ASSERT(ADDR_TO_PAGEID(BIBOP, w) == AID_NEW);
+	*(p) = MinorGC_ForwardObj(g1, w);
     }
 }
 #endif
@@ -101,10 +101,11 @@ void MinorGC (ml_state_t *msp, ml_val_t **roots)
   /* scan the standard roots */
     {
 	ml_val_t	*rp;
-	bibop_t		bibop = BIBOP;
+	Addr_t		allocBase = (Addr_t)heap->allocBase;
+	Addr_t		allocSz = heap->allocSzB;
 
 	while ((rp = *roots++) != NIL(ml_val_t *)) {
-	    MinorGC_CheckWord(bibop, gen1, rp);
+	    MinorGC_CheckWord(allocBase, allocSz, gen1, rp);
 	}
     }
 
@@ -166,15 +167,6 @@ void MinorGC (ml_state_t *msp, ml_val_t **roots)
 	    nbytesCopied += nbytes;
 	    CNTR_INCR(&(heap->numCopied[0][i]), nbytes);
 	}
-
-numBytesAlloc += nbytesAlloc;
-numBytesCopied += nbytesCopied;
-#ifdef XXX
-SayDebug ("Minor GC: %d/%d (%5.2f%%) bytes copied; %d updates\n",
-nbytesCopied, nbytesAlloc,
-(nbytesAlloc ? (double)(100*nbytesCopied)/(double)nbytesAlloc : 0.0),
-numUpdates-nUpdates);
-#endif
     }
 #endif
 
@@ -268,7 +260,8 @@ PVT void MinorGC_ScanStoreList (heap_t *heap, ml_val_t stl)
  */
 PVT void MinorGC_SweepToSpace (gen_t *gen1)
 {
-    bibop_t	bibop = BIBOP;
+    Addr_t	allocBase = (Addr_t)gen1->heap->allocBase;
+    Addr_t	allocSz = gen1->heap->allocSzB;
     bool_t	swept;
 
 #define MinorGC_SweepToSpArena(indx)	{				\
@@ -278,8 +271,9 @@ PVT void MinorGC_SweepToSpace (gen_t *gen1)
 	if (__p < __ap->nextw) {					\
 	    swept = TRUE;						\
 	    do {							\
-		for (__q = __ap->nextw;  __p < __q;  __p++)		\
-		    MinorGC_CheckWord(bibop, gen1, __p);		\
+		for (__q = __ap->nextw;  __p < __q;  __p++) {		\
+		    MinorGC_CheckWord(allocBase, allocSz, gen1, __p);	\
+		}							\
 	    } while (__q != __ap->nextw);				\
 	    __ap->sweep_nextw = __q;					\
 	}								\
