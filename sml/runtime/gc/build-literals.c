@@ -86,7 +86,7 @@ ml_val_t BuildLiterals (ml_state_t *msp, Byte_t *lits, int len)
     ml_val_t	res;
     Int32_t	i, j, n;
     double	d;
-    size_t	availSpace, spaceReq;
+    Int32_t	availSpace, spaceReq;
 
 /* A check that the available space is sufficient for the literal object that
  * we are about to allocate.  Note that the cons cell has already been accounted
@@ -94,9 +94,9 @@ ml_val_t BuildLiterals (ml_state_t *msp, Byte_t *lits, int len)
  */
 #define GC_CHECK									\
     do {										\
-	if ((spaceReq > availSpace) && NeedGC(msp, spaceReq+CONS_SZB)) {		\
+	if (spaceReq > availSpace) {							\
 	    InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));	\
-	    availSpace = ((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr);         \
+	    availSpace = ((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr) - CONS_SZB; \
 	}										\
 	else										\
 	    availSpace -= spaceReq;							\
@@ -118,7 +118,7 @@ SayDebug("BuildLiterals: lits = %p, len = %d\n", (void *)lits, len);
     availSpace = ((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr);
     while (TRUE) {
 	ASSERT(pc < len);
-	ASSERT(availSpace <= ((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr));
+	ASSERT(availSpace <= (Int32_t)((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr));
 	if (availSpace < ONE_K) {
 	    if (NeedGC(msp, FREE_REQ_SZB))
 		InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));
