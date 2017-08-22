@@ -75,8 +75,8 @@
 
 /* Build a descriptor from a descriptor tag and a length */
 #ifndef _ASM_
-#define MAKE_TAG(t)	(((t) << DTAG_SHIFTW) OROP TAG_desc)
-#define MAKE_DESC(l,t)	((ml_val_t)(((l) << TAG_SHIFTW) OROP MAKE_TAG(t)))
+#define MAKE_TAG(t)	((Word_t)(((t) << DTAG_SHIFTW) | TAG_desc))
+#define MAKE_DESC(l,t)	((ml_val_t)(Word_t)(((l) << TAG_SHIFTW) | MAKE_TAG(t)))
 #else
 #define MAKE_TAG(t)	(((t)*4) + TAG_desc)
 #define MAKE_DESC(l,t)	(((l)*128) + MAKE_TAG(t))

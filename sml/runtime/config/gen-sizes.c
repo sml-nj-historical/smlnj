@@ -1,9 +1,14 @@
-/* gen-sizes.c
+/*! \file gen-sizes.c
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.
+ * \author John Reppy
  *
  * This program generates the "ml-sizes.h" header file; this file is
  * usable in both C and assembly files.
+ */
+
+/*
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  */
 
 #include <stdlib.h>

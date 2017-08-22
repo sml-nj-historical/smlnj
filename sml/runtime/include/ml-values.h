@@ -46,7 +46,7 @@
 #endif
 
 #define INT_MLtoC(n)		(((Int_t)(n)) >> 1)
-#define INT_CtoML(n)		((ml_val_t)(((n) << 1) + 1))
+#define INT_CtoML(n)		((ml_val_t)(Int_t)(((n) << 1) + 1))
 #define PTR_MLtoC(ty,p)		PTR_CAST(ty *, p)
 #define PTR_CtoML(p)		PTR_CAST(ml_val_t, p)
 #else

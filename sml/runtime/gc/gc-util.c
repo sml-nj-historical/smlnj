@@ -82,7 +82,7 @@ SayDebug ("  %#x:  [%#x, %#x)\n", ap->id, ap->nextw, p);
 	ap->tospBase = ap->nextw;
 	ap->tospSizeB -= (2*WORD_SZB);
 	ap->sweep_nextw = ap->nextw;
-    }   
+    }
 
     return SUCCESS;
 

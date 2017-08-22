@@ -284,7 +284,7 @@ extern void SetFSR();
 #  elif defined(OPSYS_DARWIN)
     /* PPC, Darwin */
 #    define SIG_InitFPE()        set_fsr()
-#    define SIG_ResetFPE(scp)    
+#    define SIG_ResetFPE(scp)
 #    define SIG_FAULT1           SIGTRAP
 #    define INT_DIVZERO(s, c)	 ((s) == SIGTRAP)	/* This needs to be refined */
 #    define INT_OVFLW(s, c)	 ((s) == SIGTRAP)	/* This needs to be refined */
@@ -318,7 +318,7 @@ extern void SetFSR();
     /* PPC, Linux */
 
 #    include <signal.h>
-     typedef struct sigcontext_struct SigContext_t; 
+     typedef struct sigcontext_struct SigContext_t;
 
 #    define SIG_FAULT1          	SIGTRAP
 
@@ -368,8 +368,8 @@ extern void SetFSR();
 #    define SIG_ZeroLimitPtr(scp)	{ (scp)->sc_gr4 = 0; }
 
 #    define SIG_GetCode(info, scp)	info
-	 
-#    define INT_DIVZERO(s, c)  (((s) == SIGFPE) && ((c) == 13)) 
+
+#    define INT_DIVZERO(s, c)  (((s) == SIGFPE) && ((c) == 13))
 #    define INT_OVFLW(s, c)    (((s) == SIGFPE) && ((c) == 12 || (c) == 14))
 #    define SIG_InitFPE()      set_fsr()
 
@@ -381,7 +381,7 @@ extern void SetFSR();
 #    define SIG_FAULT1 SIGFPE
 
     /* There are bugs in the HPUX *.10.* machine/save_state.h
-     * header file macros!! 
+     * header file macros!!
      */
 #    define sc_pcoq_head sc_sl.sl_ss.ss_narrow.ss_pcoq_head
 #    define sc_pcoq_tail sc_sl.sl_ss.ss_narrow.ss_pcoq_tail
@@ -410,7 +410,7 @@ extern void SetFSR();
     /* The SVR4 API for SIGFPE isn't implemented correctly */
 #    undef INT_DIVZERO
 #    undef INT_OVFLW
-#    define INT_DIVZERO(s, c)  (((s) == SIGFPE) && ((c) == 0xd)) 
+#    define INT_DIVZERO(s, c)  (((s) == SIGFPE) && ((c) == 0xd))
 #    define INT_OVFLW(s, c)    (((s) == SIGFPE) && ((c) == 0xc || (c) == 0xe))
 
 #    define SIG_InitFPE()      set_fsr()
@@ -546,8 +546,9 @@ extern void SetFSR();
 #elif defined(HOST_AMD64)
 
 #  define LIMITPTR_X86OFFSET	3	/* offset (words) of limitptr in ML stack */
-					/* frame (see X86.prim.asm) */
+					/* frame (see AMD64.prim.asm) */
 extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
+   extern void FPEEnable ();		/* defined in AMD64.prim.asm */
 #  define SIG_InitFPE()    FPEEnable()
 
 #  if (defined(TARGET_AMD64) && defined(OPSYS_LINUX))
@@ -627,25 +628,12 @@ extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
 #  elif defined(OPSYS_DARWIN)
     /** amd64, Darwin **/
 #    define SIG_FAULT1		SIGFPE
-/* NOTE: MacOS X 10.4.7 sets the code to 0, so we need to test the opcode. */
-#    define INTO_OPCODE		0xce	/* the 'into' instruction is a single */
-					/* instruction that signals Overflow */
-/* NOTE: In 10.6, Apple finally got it right, but earlier versions either used the
- * FPE_FLT* codes are set the code to zero.
- */
 #    define INT_DIVZERO(s, c)	(((s) == SIGFPE) && (((c) == FPE_INTDIV) || ((c) == FPE_FLTDIV)))
 #    define INT_OVFLW(s, c)	(((s) == SIGFPE) && (((c) == FPE_INTOVF) || ((c) == FPE_FLTOVF)))
     /* see /usr/include/mach/i386/thread_status.h */
 #    define SIG_GetCode(info,scp)	((info)->si_code)
-#    if ((__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ - 1040) <= 0)
-      /* Tiger */
-#      define SIG_GetPC(scp)		((scp)->uc_mcontext->ss.eip)
-#      define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext->ss.eip = (int) addr; }
-#    else
-     /* Leopard or later */
-#      define SIG_GetPC(scp)		((scp)->uc_mcontext->__ss.__eip)
-#      define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext->__ss.__eip = (int) addr; }
-#    endif
+#    define SIG_GetPC(scp)		((scp)->uc_mcontext->__ss.__rip)
+#    define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext->__ss.__rip = (int) addr; }
 #    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
 
 #  else

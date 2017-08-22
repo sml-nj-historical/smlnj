@@ -421,15 +421,15 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
     ReadBinFile (file, &hdr, sizeof(binfile_hdr_t), fname);
 
   /* get header byte order right */
-    hdr.importCnt	= BIGENDIAN_TO_HOST(hdr.importCnt);
-    hdr.exportCnt	= BIGENDIAN_TO_HOST(hdr.exportCnt);
-    hdr.importSzB	= BIGENDIAN_TO_HOST(hdr.importSzB);
-    hdr.cmInfoSzB	= BIGENDIAN_TO_HOST(hdr.cmInfoSzB);
-    hdr.lambdaSzB	= BIGENDIAN_TO_HOST(hdr.lambdaSzB);
-    hdr.reserved	= BIGENDIAN_TO_HOST(hdr.reserved);
-    hdr.pad             = BIGENDIAN_TO_HOST(hdr.pad);
-    hdr.codeSzB		= BIGENDIAN_TO_HOST(hdr.codeSzB);
-    hdr.envSzB		= BIGENDIAN_TO_HOST(hdr.envSzB);
+    hdr.importCnt	= BIGENDIAN_TO_HOST32(hdr.importCnt);
+    hdr.exportCnt	= BIGENDIAN_TO_HOST32(hdr.exportCnt);
+    hdr.importSzB	= BIGENDIAN_TO_HOST32(hdr.importSzB);
+    hdr.cmInfoSzB	= BIGENDIAN_TO_HOST32(hdr.cmInfoSzB);
+    hdr.lambdaSzB	= BIGENDIAN_TO_HOST32(hdr.lambdaSzB);
+    hdr.reserved	= BIGENDIAN_TO_HOST32(hdr.reserved);
+    hdr.pad             = BIGENDIAN_TO_HOST32(hdr.pad);
+    hdr.codeSzB		= BIGENDIAN_TO_HOST32(hdr.codeSzB);
+    hdr.envSzB		= BIGENDIAN_TO_HOST32(hdr.envSzB);
 
   /* read the import PerIDs, and create the import vector */
     {
@@ -481,9 +481,9 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
 
   /* read the size and the dummy entry point for the data object */
     ReadBinFile (file, &thisSzB, sizeof(Int32_t), fname);
-    thisSzB = BIGENDIAN_TO_HOST(thisSzB);
+    thisSzB = BIGENDIAN_TO_HOST32(thisSzB);
     ReadBinFile (file, &thisEntryPoint, sizeof(Int32_t), fname);
-    /* thisEntryPoint = BIGENDIAN_TO_HOST(thisEntryPoint); */
+    /* thisEntryPoint = BIGENDIAN_TO_HOST32(thisEntryPoint); */
 
     remainingCode -= thisSzB + 2 * sizeof(Int32_t);
     if (remainingCode < 0)
@@ -514,9 +514,9 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
 
       /* read the size and entry point for this code object */
 	ReadBinFile (file, &thisSzB, sizeof(Int32_t), fname);
-	thisSzB = BIGENDIAN_TO_HOST(thisSzB);
+	thisSzB = BIGENDIAN_TO_HOST32(thisSzB);
 	ReadBinFile (file, &thisEntryPoint, sizeof(Int32_t), fname);
-	thisEntryPoint = BIGENDIAN_TO_HOST(thisEntryPoint);
+	thisEntryPoint = BIGENDIAN_TO_HOST32(thisEntryPoint);
 
       /* how much more? */
 	remainingCode -= thisSzB + 2 * sizeof(Int32_t);

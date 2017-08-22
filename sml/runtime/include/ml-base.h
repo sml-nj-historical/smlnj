@@ -49,7 +49,7 @@
 /* convert a number of doubles to an even number of words */
 #define DOUBLES_TO_WORDS(N)	((N) * REALD_SZW)
 
-/* on 32-bit machines it is useful to align doubles on 8-byte boundries */
+/* when ML values are 32-bits, it is useful to align doubles on 8-byte boundries */
 #ifndef SIZES_C64_ML64
 #  define ALIGN_REALDS
 #endif
@@ -78,27 +78,23 @@ typedef Int32_t status_t;
 #ifdef ASSERT_ON
 extern void AssertFail (const char *a, const char *file, int line);
 /* #define ASSERT(A)	((A) ? ((void)0) : AssertFail(#A, __FILE__, __LINE__)) */
-#define ASSERT(A)	{ if (!(A)) AssertFail(#A, __FILE__, __LINE__); }
+#define ASSERT(A)	do { if (!(A)) AssertFail(#A, __FILE__, __LINE__); } while(0)
 #else
-#define ASSERT(A)	{ }
+#define ASSERT(A)	do { } while(0)
 #endif
 
 /* Convert a bigendian 32-bit quantity into the host machine's representation. */
 #if defined(BYTE_ORDER_BIG)
-#  define BIGENDIAN_TO_HOST(x)	(x)
+#  define BIGENDIAN_TO_HOST32(x)	(x)
 #elif defined(BYTE_ORDER_LITTLE)
-#  if defined(SIZES_C64_ML64)
-     extern Unsigned64_t SwapBytes64 (Unsigned64_t x);
-#  endif 
-   extern Unsigned32_t SwapBytes (Unsigned32_t x);
-#  define BIGENDIAN_TO_HOST(x)	SwapBytes(x)
+   extern Unsigned32_t SwapBytes32 (Unsigned32_t x);
+#  define BIGENDIAN_TO_HOST32(x)	SwapBytes32(x)
 #else
 #  error must define endianess
 #endif
 
 /* round i up to the nearest multiple of n, where n is a power of 2 */
 #define ROUNDUP(i, n)		(((i)+((n)-1)) & ~((n)-1))
-
 
 /* extract the bitfield of width WID starting at position POS from I */
 #define XBITFIELD(I,POS,WID)		(((I) >> (POS)) & ((1<<(WID))-1))
@@ -123,7 +119,7 @@ extern void AssertFail (const char *a, const char *file, int line);
 /** C types used in the run-time system **/
 #ifdef SIZES_C64_ML32
 typedef Unsigned32_t ml_val_t;
-#else
+#else // ML values and pointers have the same size
 typedef struct { Word_t v[1]; } ml_object_t; /* something for an ml_val_t to point to */
 typedef ml_object_t *ml_val_t;
 #endif
