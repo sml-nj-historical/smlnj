@@ -219,7 +219,7 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
     addr_tbl_t		*boRegionTbl;
 
   /* Allocate a BIBOP for the imported heap image's address space. */
-#ifdef TWO_LEVEL_MAP
+#ifdef SIZES_C64_ML64
 #  error two level map not supported
 #else
     oldBIBOP = NEW_VEC (aid_t, BIBOP_SZ);
@@ -595,9 +595,9 @@ PVT ml_val_t RepairWord (
 /* AddrToRelocInfo:
  */
 PVT bo_reloc_t *AddrToRelocInfo (
-    bibop_t oldBIBOP, 
-    addr_tbl_t *boRegionTbl, 
-    aid_t id, 
+    bibop_t oldBIBOP,
+    addr_tbl_t *boRegionTbl,
+    aid_t id,
     Addr_t oldObj)
 {
     Addr_t		indx;

@@ -174,9 +174,49 @@ void NewDirtyVector (gen_t *gen)
  */
 void MarkRegion (bibop_t bibop, ml_val_t *baseAddr, Word_t szB, aid_t aid)
 {
-#ifdef TWO_LEVEL_MAP
-#  error two level map not supported
-#else
+#ifdef SIZES_C64_ML64
+    Unsigned32_t start = BIBOP_ADDR_TO_INDEX(baseAddr);
+    Unsigned32_t np = BIBOP_ADDR_TO_INDEX(szB);
+    Unsigned32_t last = start + np
+  /* index range in top-level table */
+    Unsigned32_t topStart = start >> BIBOP_L1_SHIFT;
+    Unsigned32_t topLast = last >> BIBOP_L1_SHIFT;
+
+    if (id == AID_UNMAPPED) {
+	Unsigned32_t ix, jx, l2Start, l2End;
+	for (ix = topStart;  ix <= topLast;  ix++) {
+	    l2_bibop_t *l2Tbl = BIBOP[ix];
+	    assert (l2Tbl != 0);
+	    l2Start = (ix == topStart) ? base & BIBOP_L2_MASK : 0;
+	    l2End = (ix < topLast) ? BIBOP_L2_SZ : (last & BIBOP_L2_MASK)+1;
+	    for (jx = l2Start;  jx < l2End;  jx++) {
+		l2Tbl->tbl[jx] = id;
+	    }
+	}
+    }
+    else {
+	Unsigned32_t ix, jx, l2Start, l2End;
+	for (ix = topStart;  ix <= topLast;  ix++) {
+	    l2_bibop_t *l2Tbl = BIBOP[ix];
+	    l2Start = (ix == topStart) ? base & BIBOP_L2_MASK : 0;
+	    l2End = (ix < topLast) ? BIBOP_L2_SZ : (last & BIBOP_L2_MASK)+1;
+	    if (l2Tbl == UNMAPPED_L2_TBL) {
+		BIBOP[ix] =
+		l2Tbl = (l2_bibop_t *) malloc (sizeof(l2_bibop_t));
+	      // initialize the part of the new block that is not being assigned
+		for (jx = 0;  jx < l2Start;  jx++) {
+		    l2Tbl->tbl[jx] = AID_UNMAPPED;
+		}
+		for (jx = l2End;  jx < BIBOP_L2_SZ;  jx++) {
+		    l2Tbl->tbl[jx] = AID_UNMAPPED;
+		}
+	    }
+	    for (jx = l2Start;  jx < l2End;  jx++) {
+		l2Tbl->tbl[jx] = id;
+	    }
+	}
+    }
+#else /* 32-bit ML values */
     int		start = BIBOP_ADDR_TO_INDEX(baseAddr);
     int		end = BIBOP_ADDR_TO_INDEX(((Addr_t)baseAddr)+szB);
 #ifdef VERBOSE

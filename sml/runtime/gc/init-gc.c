@@ -32,10 +32,11 @@ PVT int		DfltRatios[MAX_NUM_GENS] = {
 	DFLT_RATIO,	DFLT_RATIO,	DFLT_RATIO
     };
 
-#ifdef TWO_LEVEL_MAP
-#  error two level map not supported
+#ifdef SIZES_C64_ML64
+bibop_t		BIBOP;
+l2_bibop_t	UnmappedL2;
 #else
-aid_t		*BIBOP;
+bibop_t		BIBOP;
 #endif
 
 #ifdef COLLECT_STATS /** should this go into gc-stats.c ??? **/
@@ -110,7 +111,7 @@ heap_params_t *ParseHeapParams (char **argv)
 		    params->cacheGen = MAX_NGENS;
 	    }
 	    else if (MATCH("unlimited-heap"))
-		UnlimitedHeap = TRUE;	
+		UnlimitedHeap = TRUE;
 	}
 	if (errFlg)
 	    return NIL(heap_params_t *);
@@ -141,10 +142,10 @@ void InitHeap (ml_state_t *msp, bool_t isBoot, heap_params_t *params)
 
   /* allocate the base memory object (holds the BIBOP and allocation space) */
     {
-	long	bibopSz;
+	size_t	bibopSz;
 
-#ifdef TWO_LEVEL_MAP
-#  error two level map not supported
+#ifdef SIZES_C64_ML64
+	bibopSz = BIBOP_L1_SZ * sizeof(l2_bibop_t *);
 #else
 	bibopSz = BIBOP_SZ * sizeof(aid_t);
 #endif
@@ -156,11 +157,18 @@ void InitHeap (ml_state_t *msp, bool_t isBoot, heap_params_t *params)
     }
 
   /* initialize the BIBOP */
-#ifdef TWO_LEVEL_MAP
-#  error two level map not supported
+#ifdef SIZES_C64_ML64
+    for (i = 0;  i < BIBOP_L1_SZ;  i++) {
+	BIBOP[i] = &UnmappedL2;
+    }
+    for (i = 0;  i < BIBOP_L2_SZ;  i++) {
+	UnmappedL2.tbl[i] = AID_UNMAPPED;
+    }
+    UnmapedL2.numMapped = 0;
 #else
-    for (i = 0;  i < BIBOP_SZ;  i++)
+    for (i = 0;  i < BIBOP_SZ;  i++) {
 	BIBOP[i] = AID_UNMAPPED;
+    }
 #endif
 
   /* initialize heap descriptor */
