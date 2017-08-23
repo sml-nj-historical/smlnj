@@ -1,13 +1,18 @@
-(* machspec.sml
+(* hppaspec.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 structure HppaSpec : MACH_SPEC = 
-struct
+  struct
 
-    open DefaultMachSpec
+    structure DMS = DefaultMachSpecFn (
+      struct
+	val wordByteWidth = 4
+	val addressByteWidth = 4
+      end)
+    open DMS
 
     val architecture	= "hppa"
     val spillAreaSz	= 4000
@@ -23,4 +28,4 @@ struct
     val VProcOffMSP = 4
     val InMLOffVSP = 8
     val LimitPtrMaskOffVSP = 200
-end
+  end

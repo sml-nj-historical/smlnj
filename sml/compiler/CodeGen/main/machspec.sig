@@ -109,4 +109,8 @@ signature MACH_SPEC =
     val wordBitWidth	: int
     val wordByteWidth	: int
 
+  (* number of bits and bytes per C pointer *)
+    val addressByteWidth : int
+    val addressBitWidth  : int
+
   end (* MACH_SPEC *)

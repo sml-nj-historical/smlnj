@@ -33,10 +33,10 @@ structure X86CpsRegs : CPSREGS =
     in T.LOAD(32, T.ADD(32, fp, T.LI(T.I.fromInt(32, i))), CPSRegions.memory) 
     end
 
-    val allocptr 	    = edi
-    val stackptr      = esp
-    fun stdarg _      = ebp
-    fun stdcont _     = esi
+    val allocptr	= edi
+    val stackptr	= esp
+    fun stdarg _	= ebp
+    fun stdcont _	= esi
 
 
     fun limitptr vfp 	= regInMem(vfp, 12)

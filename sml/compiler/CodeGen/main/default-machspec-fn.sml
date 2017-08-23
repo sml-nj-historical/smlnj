@@ -1,15 +1,19 @@
-(* machspec.sml
+(* default-machspec-fn.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
-structure DefaultMachSpec : MACH_SPEC = 
- struct
+functor DefaultMachSpecFn (Sizes : sig
+
+    val wordByteWidth : int		(* size of ML value (aka word) in bytes *)
+    val addressByteWidth : int		(* native size of an address/pointer *)
+
+  end) : MACH_SPEC = struct
 
     val architecture = ""
 
-    val framesize = 4096
+    val framesize = 1024 * Sizes.wordByteWidth
 
     val numRegs = 0
     val numFloatRegs = 0
@@ -36,14 +40,14 @@ structure DefaultMachSpec : MACH_SPEC =
 	tagval : int	
       }
 
-    val intTag = {tagbits=1,tagval=1}
-    val ptrTag = {tagbits=2,tagval=0}
-    val descTag= {tagbits=2,tagval=2}
+    val intTag = {tagbits=1, tagval=1}
+    val ptrTag = {tagbits=2, tagval=0}
+    val descTag= {tagbits=2, tagval=2}
 
   (* representations of object descriptors *)
     structure ObjDesc = ObjectDesc
 
-    val valueSize = 4
+    val valueSize = Sizes.wordByteWidth
     val charSize  = 1
     val realSize  = 8
     val realAlign = true
@@ -74,8 +78,12 @@ structure DefaultMachSpec : MACH_SPEC =
     (* x86 and sparc don't use pre-allocated arg space for c-calls *)
     val ccall_prealloc_argspace = NONE
 
-  (* number of bits and bytes per ML word (default is 32-bit architecture) *)
-    val wordByteWidth = 4
+  (* number of bits and bytes per ML word *)
+    val wordByteWidth = Sizes.wordByteWidth
     val wordBitWidth = 8*wordByteWidth
 
-  end (* DefaultMachSpec *)
+  (* number of bits and bytes per C pointer *)
+    val addressByteWidth = Sizes.addressByteWidth
+    val addressBitWidth = 8 * addressByteWidth
+
+  end (* DefaultMachSpecFn *)

@@ -1,3 +1,9 @@
+(* amd64MLTreeExtComp.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
+
 functor AMD64MLTreeExtComp
    ( structure T : MLTREE where Extension = AMD64_SMLNJMLTreeExt
      structure I : AMD64INSTR where T = T

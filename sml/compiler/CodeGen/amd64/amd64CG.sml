@@ -1,6 +1,11 @@
-(*
+(* amd64CG.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * AMD64 specific backend.  This one uses the new RA8 scheme.
  *)
+
 local
     val fast_floating_point =
 	MLRiscControl.mkFlag ("amd64-fast-fp",

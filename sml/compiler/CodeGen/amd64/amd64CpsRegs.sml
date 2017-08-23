@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
- * CPS registers used on the Intel AMD64
+ * CPS registers used on the AMD64
  *)
 
 signature AMD64CPSREGS = sig
@@ -25,6 +25,10 @@ structure AMD64CpsRegs : CPSREGS =
     val rcx = T.REG(64, C.rcx)	val rbp = T.REG(64, C.rbp)
     val rdx = T.REG(64, C.rdx)	val rsi = T.REG(64, C.rsi)
     val rbx = T.REG(64, C.rbx)	val rdi = T.REG(64, C.rdi)
+    val r08 = T.REG(64, C.r8)   val r09 = T.REG(64, C.r9)
+    val r10 = T.REG(64, C.r10)  val r11 = T.REG(64, C.r11)
+    val r12 = T.REG(64, C.r12)  val r13 = T.REG(64, C.r13)
+    val r14 = T.REG(64, C.r14)  val r15 = T.REG(64, C.r15)
 
     val vfp = C.newDedicatedCell CellsBasis.GP ()
     val vfptr = T.REG(64, vfp)
@@ -41,16 +45,15 @@ structure AMD64CpsRegs : CPSREGS =
     val stackptr	= rsp
     fun stdarg _	= rbp
     fun stdcont _	= rsi
-
-    fun limitptr vfp 	= regInMem(vfp, 24)
+    fun stdlink  _	= r08
+    fun stdclos  _	= r09
+    fun limitptr _ 	= r10
+    fun storeptr vfp 	= r11
     fun baseptr  vfp	= regInMem(vfp, 8)
     fun exnptr   vfp	= regInMem(vfp, 16)
     fun gcLink   vfp	= regInMem(vfp, 32)
-    fun storeptr vfp 	= regInMem(vfp, 48)
     fun varptr   vfp 	= regInMem(vfp, 56)
 
-    fun stdlink  _	= T.REG(64, GP 8) 	
-    fun stdclos  _	= T.REG(64, GP 9) 	
 
     fun mkRegList(n, 0) = []
       | mkRegList(n, cnt) = T.REG(64, GP n)::mkRegList(n+1, cnt-1)
@@ -77,7 +80,7 @@ structure AMD64CpsRegs : CPSREGS =
 
     val addressWidth = 64
 
-    val ccallCallerSaveR = [unREG rdi]
+    val ccallCallerSaveR = [C.rax, C.rdi]
     val ccallCallerSaveF = []
     end (*local*)
 

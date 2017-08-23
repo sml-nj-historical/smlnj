@@ -26,20 +26,20 @@ structure PPCCpsRegs : CPSREGS =
     val vfp		= PPCCells.newReg()
     val vfptr		= T.REG(32, vfp)
 
-    val stackptr		= REG(1)
-    val allocptr		= REG(14) 
+    val stackptr	= REG(1)
+    val allocptr	= REG(14) 
     fun limitptr _ 	= REG(15)
     fun storeptr _	= REG(16)
-    fun stdlink _		= REG(17)
-    fun stdclos _		= REG(18)
-    fun stdarg _		= REG(19)
+    fun stdlink _	= REG(17)
+    fun stdclos _	= REG(18)
+    fun stdarg _	= REG(19)
     fun stdcont _  	= REG(20)
-    fun exnptr _		= REG(21)
-    fun varptr _		= REG(22)
-    fun baseptr _		= REG(23)
-    fun gcLink _		= T.REG(32,PPCCells.lr) 
+    fun exnptr _	= REG(21)
+    fun varptr _	= REG(22)
+    fun baseptr _	= REG(23)
+    fun gcLink _	= T.REG(32,PPCCells.lr) 
 
-    fun frameptr _        = stackptr
+    fun frameptr _      = stackptr
 
     val miscregs =  map REG ([24,25,26,27,29,30,31] @ (3 upto 13)) 
     val calleesave = Array.fromList(miscregs)

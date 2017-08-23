@@ -1,12 +1,18 @@
 (* sparcspec.sml
  *
- * COPYRIGHT (c) 1998 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
-structure SparcSpec : MACH_SPEC = struct
+structure SparcSpec : MACH_SPEC =
+  struct
 
-    open DefaultMachSpec
+    structure DMS = DefaultMachSpecFn (
+      struct
+	val wordByteWidth = 4
+	val addressByteWidth = 4
+      end)
+    open DMS
 
     val architecture	= "sparc"
     val numRegs		= 18 
@@ -25,4 +31,5 @@ structure SparcSpec : MACH_SPEC = struct
     val LimitPtrMaskOffVSP = 200
 
     val framePtrNeverVirtual = true	(* we have a real frame ptr! *)
-end
+
+  end

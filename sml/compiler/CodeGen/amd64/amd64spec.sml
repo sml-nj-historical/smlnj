@@ -7,7 +7,12 @@
 structure AMD64Spec : MACH_SPEC = 
   struct
  
-    open DefaultMachSpec
+    structure DMS = DefaultMachSpecFn (
+      struct
+	val wordByteWidth = 8
+	val addressByteWidth = 8
+      end)
+    open DMS
 
     val architecture = "amd64"
     val bigEndian = false
@@ -26,9 +31,5 @@ structure AMD64Spec : MACH_SPEC =
     val VProcOffMSP = 8
     val InMLOffVSP = 8
     val LimitPtrMaskOffVSP = 200
-
-  (* number of bits and bytes per ML word (default is 32-bit architecture) *)
-    val wordByteWidth = 8
-    val wordBitWidth = 8*wordByteWidth
 
   end

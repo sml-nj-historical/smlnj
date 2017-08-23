@@ -1,9 +1,9 @@
 (* cpsRegs.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * The registers used for CPS compilation.
- *
  *)
 
 signature CPSREGS =
@@ -23,17 +23,17 @@ signature CPSREGS =
    * however, the x86 is the only one that implements registers in memory,
    * so we will limit this to the set that it needs. 
    *)
-    val frameptr	: bool -> T.rexp
+    val frameptr	: bool -> T.rexp	(* frame pointer *)
     val limitptr	: bool -> T.rexp
     val stdlink		: bool -> T.rexp
     val stdclos		: bool -> T.rexp
-    val stdarg 		: bool -> T.rexp 
-    val stdcont 	: bool -> T.rexp 
-    val exnptr 		: bool -> T.rexp 
-    val varptr  	: bool -> T.rexp 
+    val stdarg 		: bool -> T.rexp
+    val stdcont 	: bool -> T.rexp	(* holds return continuation *)
+    val exnptr 		: bool -> T.rexp	(* holds exception-handler continuation *)
+    val varptr  	: bool -> T.rexp
     val baseptr		: bool -> T.rexp
-    val storeptr 	: bool -> T.rexp 
-    val gcLink		: bool -> T.rexp 
+    val storeptr 	: bool -> T.rexp
+    val gcLink		: bool -> T.rexp
   
     val calleesave	: T.rexp Array.array
     val exhausted 	: T.ccexp option

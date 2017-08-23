@@ -1,4 +1,8 @@
-(*
+(* cps-c-calls.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * This module now contains all the code which handles C-Calls.
  * I've moved Matthias' c-call code from MLRiscGen into here and added
  * my own hacks for handling reeentrant C calls.
@@ -71,31 +75,31 @@
  *
  * --- Allen
  *)
-functor CPSCCalls
-   (
+functor CPSCCalls (
     structure MS         : MACH_SPEC
     structure C          : CPSREGS where T.Region=CPSRegions
     structure Cells      : CELLS
     structure MLTreeComp : MLTREECOMP where TS.T = C.T
     structure CCalls     : C_CALLS where T = C.T
-   ) : sig 
-         val c_call : 
-              {stream   : MLTreeComp.mltreeStream, (* mltree stream *)
-               regbind  : CPS.value -> C.T.rexp,   (* lookup integer lvar *)
-               fregbind : CPS.value -> C.T.fexp,   (* lookup fp lvar *)
-               typmap   : CPS.lvar -> CPS.cty,     (* lvar -> cty *)
-               vfp      : bool,                    (* virtual frame pointer *)
-               hp       : int                      (* heap pointer *)
-              } -> 
-                (* arguments to RCC *)
-              CPS.rcc_kind * string * CTypes.c_proto * CPS.value list * 
-              (CPS.lvar * CPS.cty) list * CPS.cexp ->
-                (* return *)
-              { result : C.T.mlrisc list,  (* result(s) *)
-                hp     : int                 (* heap pointer *)
-              }
-       end =
-struct
+   ) : sig
+
+    val c_call : {
+	  stream   : MLTreeComp.mltreeStream, (* mltree stream *)
+	  regbind  : CPS.value -> C.T.rexp,   (* lookup integer lvar *)
+	  fregbind : CPS.value -> C.T.fexp,   (* lookup fp lvar *)
+	  typmap   : CPS.lvar -> CPS.cty,     (* lvar -> cty *)
+	  vfp      : bool,                    (* virtual frame pointer *)
+	  hp       : int                      (* heap pointer *)
+	} -> 
+	   (* arguments to RCC *)
+	 CPS.rcc_kind * string * CTypes.c_proto * CPS.value list * 
+	 (CPS.lvar * CPS.cty) list * CPS.cexp ->
+	   (* return *)
+	 { result : C.T.mlrisc list,  (* result(s) *)
+	   hp     : int                 (* heap pointer *)
+	 }
+
+  end = struct
 
    structure TS  = MLTreeComp.TS  (* Streams *)
    structure M   = TS.T           (* MLRISC trees *)
@@ -105,15 +109,11 @@ struct
    structure D   = MS.ObjDesc     (* ML Object Descriptors *)
    structure CB  = CellsBasis 
 
-
    fun error msg = MLRiscErrorMsg.error("CPSCalls", msg)
 
-   (*
-    * Needs to change these when we put in 64-bit support
-    *) 
-   val ity = 32  (* size of ml integer width *)
-   val pty = 32  (* size of ml pointer *)
-   val addrTy = C.addressWidth
+   val ity = MS.wordBitWidth		(* size of ml integer width *)
+   val pty = MS.wordBitWidth		(* size of ml pointer *)
+   val addrTy = MS.addressBitWidth	(* size of C pointer *)
 
    (*
     * Utilities

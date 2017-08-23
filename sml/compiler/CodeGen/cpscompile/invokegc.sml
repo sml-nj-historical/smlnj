@@ -1,4 +1,8 @@
-(*
+(* invokegc.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * This module is responsible for generating code to invoke the 
  * garbage collector.  This new version is derived from the functor CallGC.
  * It can handle derived pointers as roots and it can also be used as 
@@ -8,8 +12,7 @@
  * -- Allen
  *)
 
-functor InvokeGC
-   (
+functor InvokeGC (
     structure MS    : MACH_SPEC
     structure C     : CPSREGS 
 		        where T.Region=CPSRegions
@@ -30,8 +33,8 @@ struct
    structure CFG = CFG
    structure TS = TS
 
-   val ity = C.wordBitWidth
-   val wordSz = C.wordByteWidth
+   val ity = MS.wordBitWidth
+   val wordSz = MS.wordByteWidth
    val (logWordSz, align) = (case wordSz of 4 => (2, true) | 8 => (3, false))
 
    fun error msg = ErrorMsg.impossible("InvokeGC."^msg)
@@ -46,7 +49,7 @@ struct
 
    val debug = Control.MLRISC.mkFlag ("debug-gc", "GC invocation debug mode")
 
-   val addrTy = C.addressWidth
+   val addrTy = MS.addressBitWidth
 
    val ZERO_FREQ       = #create MLRiscAnnotations.EXECUTION_FREQ 0
    val CALLGC          = #create MLRiscAnnotations.CALLGC ()
@@ -82,12 +85,12 @@ struct
     * Implementation/architecture specific stuff starts here.
     *====================================================================*)
 
-      (* Extra space in allocation space 
-       * The SML/NJ runtime system leaves around 4K of extra space
-       * in the allocation space for safety.
-       *)
+   (* Extra space in allocation space 
+    * The SML/NJ runtime system leaves around 4K of extra space
+    * in the allocation space for safety.
+    *)
    val skidPad = 4096
-   val pty = C.wordBitWidth
+   val pty = MS.wordBitWidth
 
    val vfp = false			(* don't use virtual frame ptr here *)
 
@@ -104,9 +107,8 @@ struct
        (* 
         * registers that are the roots of gc.
         *)
-   val gcParamRegs = 
-     (C.stdlink(vfp)::C.stdclos(vfp)::C.stdcont(vfp)::C.stdarg(vfp)
-      ::calleesaves)
+   val gcParamRegs = C.stdlink(vfp)::C.stdclos(vfp)::C.stdcont(vfp)::C.stdarg(vfp)
+	::calleesaves
 
        (*
         * How to call the call the GC 

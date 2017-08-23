@@ -1,7 +1,9 @@
 (* amd64gen.sml
  *
- * Copyright (c) 2006 by The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
+
 functor AMD64MC (structure CCallParams : sig val frameAlign : int
 					     val returnSmallStructsInRegs : bool
 					 end

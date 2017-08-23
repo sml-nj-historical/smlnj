@@ -1,8 +1,7 @@
 (* core.cm
  *
- * Copyright YALE FLINT PROJECT 1997
- * and
- * (C) 2001 Lucent Technologies, Bell labs
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * This is the machine-independent "core" part of the compiler
  * (but without the parser and elaborator data structures).
@@ -15,6 +14,7 @@
  * The present file is a group which gets referred to by the actual library
  * file in system/smlnj/viscomp/core.cm.
  *)
+
 Group
 	signature BACKEND
 
@@ -35,8 +35,8 @@ Group
 	 * the following things.... *)
 
 	signature MACH_SPEC
+	functor DefaultMachSpecFn
 
-	structure DefaultMachSpec
 	structure SMLNJConstant
 	signature SMLNJ_MLTREE_EXT
 	structure SMLNJMLTreeExt
@@ -297,7 +297,7 @@ CodeGen/main/machine.sig
 CodeGen/main/machine-gen.sig
 CodeGen/main/machine-gen.sml
 CodeGen/main/machspec.sig
-CodeGen/main/machspec.sml
+CodeGen/main/default-machspec-fn.sml
 CodeGen/main/mlriscGen.sml
 CodeGen/main/object-desc.sig
 CodeGen/main/object-desc.sml
