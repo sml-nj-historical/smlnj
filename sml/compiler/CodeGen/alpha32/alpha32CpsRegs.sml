@@ -72,9 +72,4 @@ structure Alpha32CpsRegs : CPSREGS =
     val ccallCallerSaveR = []		(* no c-calls implemented yet *)
     val ccallCallerSaveF = []		(* ... *)
 
-(* FIXME: this information should be part of the MACH_SPEC, so it does not need to be included here! *)
-    val wordByteWidth = 4
-    val wordBitWidth = 8 * wordByteWidth
-    val addressWidth = 64
-
   end

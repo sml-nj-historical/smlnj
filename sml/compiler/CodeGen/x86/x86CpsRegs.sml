@@ -72,13 +72,9 @@ structure X86CpsRegs : CPSREGS =
     val availF = map FP (8 upto 31)
     val dedicatedF = [] (* map FP [0,1,2,3,4,5,6,7] *)
     val signedGCTest = false
-    val addressWidth = 32
 
     val ccallCallerSaveR = [unREG edi]
     val ccallCallerSaveF = []
     end (*local*)
-
-    val wordByteWidth = 4
-    val wordBitWidth = 8 * wordByteWidth
 
   end

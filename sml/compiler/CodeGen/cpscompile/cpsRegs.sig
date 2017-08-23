@@ -38,7 +38,6 @@ signature CPSREGS =
     val calleesave	: T.rexp Array.array
     val exhausted 	: T.ccexp option
     val signedGCTest 	: bool
-    val addressWidth 	: T.ty
 
     val miscregs  	: T.rexp list
     val floatregs 	: T.fexp list
@@ -51,9 +50,5 @@ signature CPSREGS =
 
     val ccallCallerSaveR : T.reg list
     val ccallCallerSaveF : T.reg list
-
-  (* number of bits and bytes per ML word *)
-    val wordBitWidth	: T.ty
-    val wordByteWidth	: int
 
   end

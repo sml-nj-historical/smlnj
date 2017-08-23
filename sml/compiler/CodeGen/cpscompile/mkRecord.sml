@@ -1,26 +1,33 @@
-(* mk-record.sml --- translate a CPS.RECORD to MLRISC
+(* mkRecord.sml
  *
- * COPYRIGHT (c) 1996 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
- *)
-
-(* TODO:
+ * TODO:
  *   Some CPS.RECORDs can be created using a tight loop implementing
  *   a block copy.
+ *
+ * NOTE: this file does not appear to be used anywhere, so it should
+ * probably go away!
  *)
 
-functor MkRecord(C: CPSREGS where T.Region = CPSRegions) : MK_RECORD =
-struct
+functor MkRecord (
+
+    structure MS: MACH_SPEC
+    structure C: CPSREGS where T.Region = CPSRegions
+
+) : MK_RECORD = struct
+
   structure T = C.T
   structure R = CPSRegions
 
   fun error msg = ErrorMsg.impossible ("MkRecord." ^ msg)
 
-  val addrTy = C.addressWidth
-  val pty = C.wordBitWidth
-  val ity = C.wordBitWidth
+  val addrTy = MS.addressBitWidth
+  val pty = MS.wordBitWidth
+  val ity = MS.wordBitWidth
   val fty = 64
-  val wordSz = C.wordByteWidth
+  val wordSz = MS.wordByteWidth
 
   fun ea(r, 0) = r
     | ea(r, n) = T.ADD(addrTy, r, T.LI n)

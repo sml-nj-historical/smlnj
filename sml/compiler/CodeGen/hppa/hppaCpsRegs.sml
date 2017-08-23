@@ -88,13 +88,9 @@ structure HppaCpsRegs : CPSREGS =
     end
 
     val signedGCTest = false
-    val addressWidth = 32
 
   (* FIXME *)
     val ccallCallerSaveR = []		(* no c-calls implemented yet *)
     val ccallCallerSaveF = []		(* ... *)
-
-    val wordByteWidth = 4
-    val wordBitWidth = 8 * wordByteWidth
 
   end

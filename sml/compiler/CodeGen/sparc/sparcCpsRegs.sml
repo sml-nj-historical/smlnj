@@ -86,16 +86,11 @@ struct
 	val dedicatedF = []
 
 	val signedGCTest = false
-	val addressWidth = 32
 
-	val ccallCallerSaveR =
-	    map unREG [limitptr0, storeptr0, exnptr0, allocptr]
+	val ccallCallerSaveR = map unREG [limitptr0, storeptr0, exnptr0, allocptr]
 	val ccallCallerSaveF = []
       end (*local*)
     end (* local *)
-
-    val wordByteWidth = 4
-    val wordBitWidth = 8 * wordByteWidth
 
   end
 

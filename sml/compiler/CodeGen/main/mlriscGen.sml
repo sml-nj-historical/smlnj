@@ -235,11 +235,8 @@ struct
 
       (*
        * The natural address arithmetic width of the architecture.
-       * For most architecture this is 32 but for the Alpha this is 64,
-       * since 64-bit address arithmetic is more efficiently implemented
-       * on the Alpha.
        *)
-      val addrTy = C.addressWidth
+      val addrTy = MachineSpec.addressBitWidth
 
       (*
        * These functions generate new virtual register names and

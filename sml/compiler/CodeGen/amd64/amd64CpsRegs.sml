@@ -78,13 +78,8 @@ structure AMD64CpsRegs : CPSREGS =
     val dedicatedF = []
     val signedGCTest = false
 
-    val addressWidth = 64
-
     val ccallCallerSaveR = [C.rax, C.rdi]
     val ccallCallerSaveF = []
     end (*local*)
-
-    val wordByteWidth = 8
-    val wordBitWidth = 8 * wordByteWidth
 
   end
