@@ -119,15 +119,6 @@
 #define ES		es
 #define FS		fs
 #define GS		gs
-/* 64-bit registers */
-#define RDI		%rdi
-#define RSI		%rsi
-#define RSP		%rsp
-#define RAX		%rax
-#define RBX		%rbx
-#define RCX		%rcx
-#define RDX		%rdx
-#define RBP		%rbp
 /* Control Registers */
 #define CR0		cr0
 #define CR1		cr1
