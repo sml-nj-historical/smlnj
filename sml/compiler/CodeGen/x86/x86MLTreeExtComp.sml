@@ -1,3 +1,9 @@
+(* x86MLTreeExtComp.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
+
 functor X86MLTreeExtComp
    ( structure T : MLTREE where Extension = X86_SMLNJMLTreeExt
      structure I : X86INSTR where T = T
