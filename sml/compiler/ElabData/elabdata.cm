@@ -1,0 +1,127 @@
+(* elabdata.cm
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *
+ * A library defining data structures used by the SML/NJ elaborator.
+ *)
+Group
+	signature ELABDATA_CONTROL
+	signature ACCESS
+	signature DEB_INDEX
+	signature TYPES
+	signature TYPESUTIL
+	signature TUPLES
+	signature ABSYN
+	signature SYMPATH
+	signature INVPATH
+	signature CONVERTPATHS
+	signature LAMBDA_VAR
+	signature STAMPS
+	signature ENT_PATH
+	signature VARCON
+	signature MODULES
+	signature MODULEUTIL
+	signature MODULE_ID
+	signature BINDINGS
+	signature STATICENV
+	signature CORE_PRIM_TYC_NUM
+	signature ENTITY_ENV
+	signature PRIMOPID
+
+	structure ElabDataControl
+	structure Access
+	structure DebIndex
+	structure Types
+	structure TypesUtil
+	structure Tuples
+	structure Absyn
+	structure AbsynUtil
+	structure SymPath
+	structure InvPath
+	structure ConvertPaths
+	structure LambdaVar
+	structure Stamps
+	structure StampMap
+	structure EntPath
+	structure VarCon
+	structure Modules
+	structure ModuleUtil
+	structure ModuleId
+	structure EntityEnv
+	structure EntPathContext
+	structure Bindings
+	structure StaticEnv
+	structure Lookup
+	structure CompInfo
+	structure CoreSym
+	structure CorePrimTycNum
+	structure CoreBasicTypes
+	structure GenModIdMap
+	structure CoreAccess
+	structure BrowseStatEnv
+	structure PrimOpId
+	structure TKind
+	structure SigPropList
+is
+	main/edcontrol.sig
+	main/edcontrol.sml
+	main/compinfo.sml
+
+	basics/debindex.sig
+	basics/debindex.sml
+	basics/lambdavar.sig
+	basics/lambdavar.sml
+	basics/env.sig
+	basics/env.sml
+	basics/stamps.sig
+	basics/stamps.sml
+	basics/stampmap.sml
+	basics/primopid.sig
+	basics/primopid.sml
+	basics/coresym.sml
+	basics/access.sig
+	basics/access.sml
+	basics/sympaths.sig
+	basics/sympaths.sml
+	basics/core-ptnum.sml
+	basics/tkind.sml
+	basics/sig-plist.sml
+
+	syntax/absyn.sig
+	syntax/absyn.sml
+	syntax/varcon.sig
+	syntax/varcon.sml
+	syntax/absynutil.sml
+
+	types/types.sig
+	types/types.sml
+	types/tuples.sml
+	types/core-basictypes.sml
+	types/typesutil.sig
+	types/typesutil.sml
+
+	modules/modules.sig
+	modules/modules.sml
+	modules/entpath.sml
+	modules/epcontext.sml
+	modules/moduleutil.sig
+	modules/moduleutil.sml
+	modules/moduleid.sml
+	modules/entityenv.sig
+	modules/entityenv.sml
+
+	statenv/bindings.sig
+	statenv/bindings.sml
+	statenv/statenv.sig
+	statenv/statenv.sml
+	statenv/lookup.sig
+	statenv/lookup.sml
+	statenv/genmap.sml
+	statenv/coreacc.sml
+	statenv/browse.sml
+
+	$smlnj/viscomp/basics.cm
+	$smlnj/viscomp/parser.cm
+	$smlnj/smlnj-lib/smlnj-lib.cm
+	$smlnj/smlnj-lib/controls-lib.cm
+	$smlnj/basis/basis.cm
