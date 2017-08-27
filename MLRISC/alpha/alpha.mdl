@@ -1,4 +1,8 @@
-(* 
+(* alpha.mdl
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ * 
  * This machine description now includes 64-bit and single precision 
  * floating point support.  The description
  * is copied from the book ``Alpha Architecture Reference Manual'' edited
@@ -6,6 +10,7 @@
  *
  * -- Allen Leung
  *)
+
 architecture Alpha =
 struct
 

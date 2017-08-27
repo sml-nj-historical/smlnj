@@ -1,5 +1,9 @@
-(*
- * This has been upgraded to V9.
+(* sparc.mdl
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * SPARC V9 machine description.
  *)
 
 architecture Sparc =
