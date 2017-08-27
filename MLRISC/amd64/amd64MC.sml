@@ -1,3 +1,9 @@
+(* amd64MC.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
+
 functor AMD64MCEmitter
   (structure Instr : AMD64INSTR
    structure Shuffle : AMD64SHUFFLE where I = Instr

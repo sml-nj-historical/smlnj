@@ -7,7 +7,7 @@
 $SPECIAL_CM{"smlnj-lib.cm"} = 1;
 $SPECIAL_CM{"ml-yacc-lib.cm"} = 1;
 
-makeallcm("ALL.cm");
+makeallcm("ALL_CM_FILES");
 
 sub makeallcm
 {  my($cmfile) = @_;
@@ -52,18 +52,15 @@ sub finish
 }
 
 sub dumpCMfiles()
-{  print OUT <<"END";
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-	\$/basis.cm
-END
-   foreach $f (@CMFILES) {  print OUT "\t\$/$f\n"; }
-   print OUT "#else\n";
-   print OUT "\tbasis.cm\n";
-   foreach $f (@CMFILES) {  print OUT "\t$f\n"; }
-   print OUT "#endif\n#else\n";
-   foreach $f (@CMFILES) {  print OUT "\t$f\n"; }
-   print OUT "#endif\n";
+{
+   print OUT "\t\$/basis.cm\n";
+   foreach $f (@CMFILES) {
+      if ($f eq "smlnj-lib.cm") {
+        print OUT "\t\$/$f\n";
+      } else {
+        print OUT "\t\$smlnj/MLRISC/$f\n";
+      }
+   }
    @CMFILES=();
    $new = 0;
 }
