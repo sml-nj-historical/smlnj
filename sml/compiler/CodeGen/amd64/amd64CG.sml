@@ -6,193 +6,140 @@
  * AMD64 specific backend.  This one uses the new RA8 scheme.
  *)
 
-local
-    val fast_floating_point =
-	MLRiscControl.mkFlag ("amd64-fast-fp",
-			      "whether to use the fast-fp backend (amd64)")
-in
-functor AMD64CG (structure CCallParams: sig val frameAlign : int
-					    val returnSmallStructsInRegs : bool
-					end
-               val abi_variant: string option) =
-  MachineGen
-  ( structure I          = AMD64Instr
-    structure C          = I.C
-    structure F          = AMD64CFG
-    structure R          = AMD64CpsRegs
-    structure CG         = Control.CG
-
-    structure MachSpec   = AMD64Spec
-    val abi_variant      = abi_variant
+functor AMD64CG (
+    structure CCallParams: sig
+	val frameAlign : int
+	val returnSmallStructsInRegs : bool
+      end
+    val abi_variant: string option
+  ) = MachineGen(
+    structure MachSpec = AMD64Spec
+    val abi_variant = abi_variant
+    structure T = AMD64Tree
+    structure CB = CellsBasis
     structure ClientPseudoOps = AMD64ClientPseudoOps
-    structure PseudoOps  = AMD64PseudoOps
-    structure Ext        = AMD64_SMLNJMLTreeExt(* amd64-specific *)
-    structure CpsRegs    = AMD64CpsRegs
-    structure InsnProps  = AMD64Props
-    structure Asm        = AMD64AsmEmitter
-    structure Shuffle    = AMD64Shuffle
+    structure PseudoOps = AMD64PseudoOps
+    structure Ext = AMD64InstrExt (* amd64-specific *)
+    structure CpsRegs = AMD64CpsRegs
+    structure InsnProps = AMD64Props
+    structure Asm = AMD64AsmEmitter
+    structure Shuffle = AMD64Shuffle
 
-    val fast_floating_point = fast_floating_point
+    structure CCalls = AMD64SVID_CCalls (structure T = AMD64MLTree)
 
-    structure CCalls     = AMD64SVID_CCalls (structure T = AMD64MLTree)
-
-    structure OmitFramePtr =
-      AMD64OmitFramePointer(
+    structure OmitFramePtr = AMD64OmitFramePointer(
 	structure I=AMD64Instr  
 	structure CFG=AMD64CFG)
 
     val spill = CPSRegions.spill 
     val stack = CPSRegions.stack 
 
-    fun error msg = MLRiscErrorMsg.error("AMD64CG",msg)
+    fun error msg = MLRiscErrorMsg.error("AMD64CG", msg)
 
-    fun base() = (* XXXX *)
-      if !ClusterAnnotation.useVfp then AMD64CpsRegs.vfp else I.C.rsp 
+    fun base () = (* XXXX *)
+          if !ClusterAnnotation.useVfp then AMD64CpsRegs.vfp else I.C.rsp 
 
     val floats16ByteAligned = false
 
-    structure MLTreeComp=
-       AMD64Gen(
-           structure I=AMD64Instr
-	   structure MLTreeUtils = MLTreeUtils
-               (structure T = AMD64MLTree
-                fun hashSext  _ _ = 0w0 
-                fun hashRext  _ _ = 0w0
-                fun hashFext  _ _ = 0w0 
-                fun hashCCext _ _ = 0w0
-             
-                (* Equality extensions *)
-                fun eqSext  _ _ = false
-                fun eqRext  _ _ = false
-                fun eqFext  _ _ = false
-                fun eqCCext _ _ = false
-             
-                (* Pretty printing extensions *)
-                fun showSext  _ _ = ""
-                fun showRext  _ _ = ""
-                fun showFext  _ _ = ""
-                fun showCCext _ _ = ""
-               )
-           structure ExtensionComp = AMD64MLTreeExtComp
-               (structure I = AMD64Instr
-                structure T = AMD64MLTree
-		structure CFG = AMD64CFG
-		structure TS = AMD64MLTreeStream
-		val fast_fp = fast_floating_point
-               ) 
-	   structure MLTreeStream = AMD64MLTreeStream
+    structure MLTreeComp = AMD64Gen(
+	structure I = AMD64Instr
+	structure MLTreeUtils = MLTreeUtils(
+	    structure T = AMD64MLTree
+	    fun hashSext  _ _ = 0w0 
+	    fun hashRext  _ _ = 0w0
+	    fun hashFext  _ _ = 0w0 
+	    fun hashCCext _ _ = 0w0
+	  (* Equality extensions *)
+	    fun eqSext  _ _ = false
+	    fun eqRext  _ _ = false
+	    fun eqFext  _ _ = false
+	    fun eqCCext _ _ = false
+	  (* Pretty printing extensions *)
+	    fun showSext  _ _ = ""
+	    fun showRext  _ _ = ""
+	    fun showFext  _ _ = ""
+	    fun showCCext _ _ = "")
+	structure ExtensionComp = AMD64CompInstrExt(
+	    structure I = AMD64Instr
+	    structure T = AMD64MLTree
+	    structure CFG = AMD64CFG
+	    structure TS = AMD64MLTreeStream) 
+	structure MLTreeStream = AMD64MLTreeStream
+	fun signBit ty = AMD64MLTree.LABEL(Label.label "signBit" ())
+	fun negateSignBit ty = AMD64MLTree.LABEL(Label.label "negateSignBit" ())
+	val floats16ByteAligned = floats16ByteAligned)
 
-           fun signBit ty = AMD64MLTree.LABEL(Label.label "signBit" ())
-           fun negateSignBit ty = AMD64MLTree.LABEL(Label.label "negateSignBit" ())
-	   val floats16ByteAligned = floats16ByteAligned
-          )
-
-    structure Jumps = 
-       AMD64Jumps(structure Instr=AMD64Instr
-                  structure AsmEmitter=AMD64AsmEmitter
-		  structure Eval=AMD64MLTreeEval 
-                  structure Shuffle=AMD64Shuffle
-                  structure MCEmitter=AMD64MCEmitter)
+    structure Jumps = AMD64Jumps(
+	structure Instr=AMD64Instr
+	structure AsmEmitter=AMD64AsmEmitter
+	structure Eval=AMD64MLTreeEval 
+	structure Shuffle=AMD64Shuffle
+	structure MCEmitter=AMD64MCEmitter)
    
-    structure BackPatch = 
-       BackPatch(structure Jumps=Jumps
-                 structure Emitter=AMD64MCEmitter
-                 structure Props=InsnProps
-		 structure CFG = AMD64CFG
-                 structure Asm=AMD64AsmEmitter
-                 structure CodeString=CodeString)
+    structure BackPatch = BackPatch(
+	structure Jumps=Jumps
+	structure Emitter=AMD64MCEmitter
+	structure Props=InsnProps
+	structure CFG = AMD64CFG
+	structure Asm=AMD64AsmEmitter
+	structure CodeString=CodeString)
 
-    structure RA = 
-      AMD64RegAlloc
-      (structure I         = AMD64Instr
-       structure CB	   = CellsBasis
-       structure Props = InsnProps
-       structure Asm       = AMD64AsmEmitter
-       structure CFG       = AMD64CFG
-       structure SpillHeur = ChowHennessySpillHeur
-       structure Spill     = RASpill
-                             (structure Asm = AMD64AsmEmitter
-                              structure InsnProps = InsnProps
-                             )
+    structure RA = RISC_RA(
+	structure I = AMD64Instr
+	structure CFG = AMD64CFG
+	structure CpsRegs = AMD64CpsRegs
+	structure InsnProps = InsnProps
+	structure Rewrite = AMD64Rewrite(AMD64Instr) 
+	structure SpillInstr = AMD64SpillInstr(AMD64Instr)
+	structure Asm = AMD64AsmEmitter
+	structure SpillHeur = ChaitinSpillHeur
+	structure Spill = RASpill(
+	    structure InsnProps = InsnProps
+	    structure Asm = AMD64AsmEmitter)
 
-       type spill_info = unit
+	structure SpillTable = SpillTable(AMD64Spec)
 
-       fun beforeRA _ = AMD64StackSpills.init()
+	val architecture = AMD64Spec.architecture
 
-       val toInt32 = Int32.fromInt
-       fun cacheOffset r = I.Immed(toInt32(AMD64Runtime.vregStart + 
-                                Word.toIntX(Word.<<(Word.fromInt(r-8),0w2))))
-       fun cacheFPOffset f = I.Immed(toInt32(AMD64Runtime.vFpStart + 
-                                Word.toIntX(Word.<<(Word.fromInt(f-40),0w3))))
+	datatype spillOperandKind = SPILL_LOC | CONST_VAL
+	type spill_info = unit
 
-       datatype ra_phase = SPILL_PROPAGATION | SPILL_COLORING
-       datatype spill_operand_kind = SPILL_LOC | CONST_VAL
+	fun beforeRA _ = SpillTable.spillInit()
 
-       structure Int =  
-       struct
-          val avail     = R.availR
-          val dedicated = R.dedicatedR
-          val phases    = [SPILL_PROPAGATION,SPILL_COLORING]
+	val sp = I.C.stackptrR
+	val spill = CPSRegions.spill
 
-          (* We try to make unused memregs available for spilling 
-           * This is necessary because of the stupid SML code generator
-           * doesn't keep track of which are being used.
-           *)
-          fun spillInit(RAGraph.GRAPH{nodes, ...}) = 
-          let val lookup = IntHashTable.lookup nodes
-              fun find(r, free) =
-                  if r >= 10 then (* note, %8 and %9 are reserved! *)
-                     let val free = 
-                             case lookup r of
-                               RAGraph.NODE{uses=ref [], defs=ref [], ...} => 
-                                  cacheOffset r::free
-                             | _ => free
-                     in  find(r-1, free) end
-                  else 
-                     free
-(* FIXME: this code doesn't seem correct
-              val free = find(31 (* AMD64Runtime.numVregs+8-1 *), [])
-*)
-          in  (*AMD64StackSpills.setAvailableOffsets free*) ()
-          end 
- 
-          val getRegLoc' = AMD64StackSpills.getRegLoc
- 
-          fun spillLoc{info, an, cell, id} = 
-              {opnd=I.Displace{base=base(), disp=getRegLoc' id, mem=spill},
-               kind=SPILL_LOC
-              }
- 
-       end
+	fun pure _ = false
 
-       structure Float =
-       struct
-          val avail     = R.availF
-          val dedicated = R.dedicatedF
-          val phases    = [SPILL_PROPAGATION]
+	structure Int =  
+          struct
+	    val avail     = AMD64CpsRegs.availR
+	    val dedicated = AMD64CpsRegs.dedicatedR
 
-          fun spillInit(RAGraph.GRAPH{nodes, ...}) = 
-              let val lookup = IntHashTable.lookup nodes
-                 fun find(r, free) =
-                     if r >= 32+8 then 
-                        let val free = 
-                                case lookup r of
-                                  RAGraph.NODE{uses=ref [], defs=ref [],...} =>
-                                     cacheFPOffset r::free
-                                | _ => free
-                        in  find(r-1, free) end
-                     else 
-                        free
-                 val free = find(63, [])
-              in AMD64StackSpills.setAvailableFPOffsets free
-              end 
+	    fun mkDisp loc = T.LI(T.I.fromInt(32, SpillTable.getRegLoc loc))
 
-          fun spillLoc(S, an, loc) =
-            I.Displace{base=base(), disp=AMD64StackSpills.getFregLoc loc, mem=spill}
+	    fun spillLoc {info, an, cell, id} = {
+		    opnd=I.Displace{base=sp, disp=mkDisp(RAGraph.FRAME id), mem=spill},
+		    kind=SPILL_LOC
+		  }
 
-      end
+	    val mode = RACore.NO_OPTIMIZATION
+          end
 
-      val floats16ByteAligned = floats16ByteAligned
-    ) (* AMD64RA *)
-  ) (* AMD64CG *)
-end
+	structure Float =
+          struct
+	    val avail     = PPCCpsRegs.availF
+	    val dedicated = PPCCpsRegs.dedicatedF
+
+	    fun mkDisp loc = T.LI(T.I.fromInt(32, SpillTable.getFregLoc loc))
+
+	    fun spillLoc(S, an, loc) = 
+		  I.Displace{base=sp, disp=mkDisp(RAGraph.FRAME loc), mem=spill}
+
+	    val mode = RACore.NO_OPTIMIZATION
+          end
+
+        val floats16ByteAligned = floats16ByteAligned
+      ) (* RISC_RA *)
+    )
+

@@ -29,8 +29,8 @@ CodeGen/amd64/amd64CG.sml
 CodeGen/amd64/amd64CpsRegs.sml
 CodeGen/amd64/amd64MLTree.sml
 CodeGen/amd64/amd64MLTreeExtComp.sml
-CodeGen/amd64/amd64Runtime.sml
-CodeGen/amd64/amd64StackSpills.sml
+(*CodeGen/amd64/amd64Runtime.sml*)
+(*CodeGen/amd64/amd64StackSpills.sml*)
 CodeGen/amd64/amd64gen.sml
 CodeGen/amd64/amd64spec.sml
 

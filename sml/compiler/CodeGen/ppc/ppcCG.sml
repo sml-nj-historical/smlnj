@@ -1,6 +1,11 @@
-(*
+(* ppcCG.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * PPC specific backend
  *)
+
 structure PPCCG = 
   MachineGen
   ( structure MachSpec   = PPCSpec

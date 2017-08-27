@@ -41,30 +41,33 @@ structure AMD64CpsRegs : CPSREGS =
 	    T.LOAD(64, T.ADD(64, fp, T.LI(T.I.fromInt(32, i))), CPSRegions.memory) 
           end
 
-    val allocptr	= rdi
     val stackptr	= rsp
+
+    val allocptr	= rdi
+    fun limitptr _ 	= r14
+    fun storeptr _ 	= r15
     fun stdarg _	= rbp
     fun stdcont _	= rsi
-    fun stdlink  _	= r08
-    fun stdclos  _	= r09
-    fun limitptr _ 	= r10
-    fun storeptr vfp 	= r11
-    fun baseptr  vfp	= regInMem(vfp, 8)
-    fun exnptr   vfp	= regInMem(vfp, 16)
-    fun gcLink   vfp	= regInMem(vfp, 32)
+    fun stdlink _	= r08
+    fun stdclos _	= r09
+
+  (* offsets are w.r.t. the stack pointer.  See
+   *
+   *	https://smlnj-gforge.cs.uchicago.edu/svn/smlnj/dev-notes/amd64-stack-frame.numbers
+   *
+   * for details.
+   *)
+    fun baseptr  vfp	= regInMem(vfp, 32)
+    fun exnptr   vfp	= regInMem(vfp, 40)
+    fun gcLink   vfp	= regInMem(vfp, 48)
     fun varptr   vfp 	= regInMem(vfp, 56)
 
-
-    fun mkRegList(n, 0) = []
-      | mkRegList(n, cnt) = T.REG(64, GP n)::mkRegList(n+1, cnt-1)
-
-    (* miscregs = {rbx,rcx,rdx,r10,r11,...r15} *)
-    val miscregs = rbx::rcx::rdx::mkRegList(10, 6)
+    val miscregs = [rbx, rcx, rdx, r10, r11, r12, r13]
 
     val calleesave  = Array.fromList miscregs
     val exhausted   = NONE
 
-    val floatregs   = map (fn f => T.FREG(64,FP f)) (8 upto 31)
+    val floatregs   = map (fn f => T.FREG(64, FP f)) (0 upto 15)
     val savedfpregs = []
 
     local
@@ -72,14 +75,20 @@ structure AMD64CpsRegs : CPSREGS =
 	| unREG _ = raise Fail "amd64CpsRegs:unREG"
     in
 
-    val availR = map GP (10 upto 15) @ (map unREG [rbp, rsi, rbx, rcx, rdx, rax])
-    val dedicatedR = GP 8 :: GP 9 :: (map unREG [rdi, rsp, vfptr])
+    val availR = List.map unREG (rax :: stdlink false :: stdclos false
+	  :: stdarg false :: stdcont false :: miscregs)
+    val dedicatedR = List.map unREG [
+	    stackptr, allocptr, limitptr false, storeptr false
+	  ]
     val availF = map FP (0 upto 15)
     val dedicatedF = []
     val signedGCTest = false
 
-    val ccallCallerSaveR = [C.rax, C.rdi]
-    val ccallCallerSaveF = []
+  (* NOTE: these lists reflect the System V ABI, but Windows has a different convention! *)
+    val ccallCallerSaveR = [
+	    C.rax, C.rcx, C.rdx, C.rsi, C.rdi, C.r8, C.r9, C.r10, C.r11
+	  ]
+    val ccallCallerSaveF = List.tabulate(16, FP)
     end (*local*)
 
   end

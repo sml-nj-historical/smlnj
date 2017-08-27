@@ -45,7 +45,7 @@
  * EIP - program counter (ml_pc)
  */   
 
-/* Registers (see x86/x86.sml): */
+/* Registers (see x86/x86CpsRegs.sml): */
 #define temp		EAX
 #define misc0		EBX
 #define misc1		ECX
