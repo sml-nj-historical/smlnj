@@ -116,7 +116,9 @@ GC.cm:
 	../gc-safety/gc-typemap.sml
 	../gc-safety/gc-type-system.sig
 	../gc-safety/gc-type-system.sml
+(*
 	../gc-safety/gc-invariants.sml
+*)
 
 Graphs.cm:
 (*
@@ -226,45 +228,6 @@ HPPA-GC.cm:
 	GC.cm
 	HPPA.cm
 	
-	(* Hppa specific backend *)
-HPPA-RTL.cm:
-
-	smlnj-lib.cm
-	Control.cm
-	MLRISC.cm
-	RTL.cm
-	Region.cm
-	HPPA.cm
-	
-	(* Hppa specific backend *)
-	../hppa/mltree/hppaRTL.sml 
-	../hppa/mltree/hppaRTLProps.sml 
-
-HPPA-Sched.cm:
-
-        smlnj-lib.cm
-	Control.cm
-	Lib.cm
-	MLRISC.cm
-	HPPA.cm
-	Sched.cm
-	Region.cm
-	
-	(* Hppa scheduler *) 
-	../hppa/scheduling/hppaSchedProps.sml
-HPPA-SSA.cm:
-
-	smlnj-lib.cm
-	Control.cm
-	MLRISC.cm
-	RTL.cm
-	SSA.cm
-	Region.cm
-	HPPA.cm
-	HPPA-RTL.cm
-	
-	(* Hppa specific backend *)
-	../hppa/SSA/hppaSSAProps.sml
 IA32.cm:
 
         smlnj-lib.cm
@@ -298,7 +261,7 @@ IA32.cm:
 	../x86/ra/x86Rewrite.sig
 	../x86/ra/x86Rewrite.sml
 	(* ../x86/ra/x86RegAlloc.sml *)
-	../x86/ra/x86Spill.sml
+	../x86/ra/x86SpillInstr.sml
 	(* This is no long needed *)
 	(* ../x86/ra/x86PseudoR.sml *)
 	../x86/backpatch/x86Jumps.sml 
@@ -335,53 +298,6 @@ IA32-Peephole.cm:
 	../x86/instructions/x86Peephole.sml
 	(* ../x86/instructions/x86-leaf-opt.sml *)
 
-IA32-RTL.cm:
-
-        smlnj-lib.cm
-	Control.cm
-	MLRISC.cm
-	RTL.cm
-	Region.cm
-	IA32.cm
-	
-	(* x86 specific backend *)
-	../x86/mltree/x86RTL.sml 
-	../x86/mltree/x86RTLProps.sml 
-
-IA32-Sched.cm:
-
-        smlnj-lib.cm
-	Control.cm
-	Lib.cm
-	MLRISC.cm
-	IA32.cm
-	Sched.cm
-	Region.cm
-	
-	(* X86 scheduler *) 
-	../x86/scheduling/x86Arch.sig
-	../x86/scheduling/x86ReservationTable.sig
-	../x86/scheduling/x86PairingRT.sml
-	../x86/scheduling/x86PipelineRT.sml
-	../x86/scheduling/x86PentiumII.sml
-	../x86/scheduling/x86PentiumPro.sml
-	(* ../x86/scheduling/x86SchedulingProps.sml *)
-
-	../x86/scheduling/x86SchedProps.sml
-
-IA32-SSA.cm:
-
-	smlnj-lib.cm
-	Control.cm
-	MLRISC.cm
-	RTL.cm
-	SSA.cm
-	Region.cm
-	IA32.cm
-	IA32-RTL.cm
-	
-	(* X86 specific backend *)
-	../x86/SSA/x86SSAProps.sml
 IR.cm:
 
         smlnj-lib.cm
@@ -410,10 +326,14 @@ IR.cm:
 	../IR/mlrisc-branch-chaining.sml
 	../IR/mlrisc-cfg-util.sig
 	../IR/mlrisc-cfg-util.sml
+(*
 	../IR/mlrisc-cpr.sml
+*)
 	../IR/mlrisc-format-insn.sml
+(*
 	../IR/idefs2.sig
 	../IR/idefs2.sml
+*)
 	../IR/mlrisc-idefs.sig
 	../IR/mlrisc-idefs.sml
 	../IR/mlrisc-ir.sig
@@ -435,15 +355,19 @@ ir-archive.cm:
 	Lib.cm
 	Graphs.cm
 
+(*
 	../ir-archive/apt.sig
 	../ir-archive/apt.sml
+*)
 	../ir-archive/cdg.sig
 	../ir-archive/cdg.sml
 	../ir-archive/compute-freq.sig
 	../ir-archive/compute-freq.sml
 	../ir-archive/compute-freq2.sig
 	../ir-archive/compute-freq2.sml
+(*
 	../ir-archive/comp-djgraph.sml
+*)
 	../ir-archive/derived-graph.sig
 	../ir-archive/derived-graph.sml
 	../ir-archive/dj-dataflow.sig
@@ -556,6 +480,7 @@ MIPS.cm:
 	../mips/mltree/mipsPseudoInstr.sig
 	../mips/mltree/mips.sml
 	../mips/ra/mipsRewrite.sml
+
 MLRISC.cm:
 (* MLRISC.cm
  *
@@ -747,7 +672,7 @@ Opt.cm:
 	Sched.cm
 	GC.cm
 	
-	../Glue/mlrisc-optimizer.sml
+	../Glue/mlrisc-ssa-optimizer.sml
 
 Peephole.cm:
 (* 
@@ -800,21 +725,6 @@ PPC-GC.cm:
 	
 	(* PowerPC specific backend *)
 
-PPC-Sched.cm:
-(*
- * This library contains the superscalar scheduling stuff.
- *)
-        smlnj-lib.cm
-	Control.cm
-	Lib.cm
-	MLRISC.cm
-	PPC.cm
-	Sched.cm
-	Region.cm
-	
-	(* PowerPC scheduler *) 
-	../ppc/scheduling/ppcSchedProps.sml
-
 RA.cm:
 
         smlnj-lib.cm
@@ -848,8 +758,9 @@ Region.cm:
 	../instructions/regionInfo.sml
 	../instructions/regionProps.sig
 
-	../aliasing/pointsToInfo.sig
-	../aliasing/pointsToInfo.sml
+	../aliasing/pointsTo.sig
+	../aliasing/pointsTo.sml
+
 RTL.cm:
 (*
  *  This library contains modules that implements the RTL and related stuff
@@ -960,7 +871,6 @@ SPARC.cm:
 	../sparc/backpatch/sparcDelaySlotProps.sml
 	../sparc/c-calls/sparc-c-calls.sml
 
-
 SPARC-GC.cm:
 
         smlnj-lib.cm
@@ -977,100 +887,6 @@ SPARC-Peephole.cm:
 
 	(* sparc *)
 	../sparc/instructions/sparcPeephole.sml
-
-SPARC-RTL.cm:
-
-	smlnj-lib.cm
-	Control.cm
-	MLRISC.cm
-	RTL.cm
-	Region.cm
-	SPARC.cm
-	
-	(* sparc specific backend *)
-	../sparc/mltree/sparcRTL.sml 
-	../sparc/mltree/sparcRTLProps.sml 
-
-SPARC-Sched.cm:
-(*
- * This library contains the superscalar scheduling stuff.
- *)
-
-        smlnj-lib.cm
-	Control.cm
-	Lib.cm
-	MLRISC.cm
-	SPARC.cm
-	Sched.cm
-	Region.cm
-	
-	(* Sparc scheduler *) 
-	../sparc/scheduling/sparcSchedProps.sml
-SPARC-SSA.cm:
-
-	smlnj-lib.cm
-	Control.cm
-	MLRISC.cm
-	RTL.cm
-	SSA.cm
-	Region.cm
-	SPARC.cm
-	SPARC-RTL.cm
-	
-	(* sparc specific backend *)
-	../sparc/SSA/sparcSSAProps.sml
-
-SSA.cm:
-(*
- *  This library implements the SSA optimizations.
- *)
-        smlnj-lib.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	Visual.cm
-	ir-archive.cm
-	MLRISC.cm
-	IR.cm
-	GC.cm
-	MLTREE.cm
-	RTL.cm
-	Region.cm
-	
-	(* The SSA representation *)
-	../SSA/SSA-flowgraph.sig
-	../SSA/mlrisc-ssa.sig
-	../SSA/mlrisc-ssa.sml
-	../SSA/SSA-optimization.sig
-
-	(* Machine specific properties *)
-	../SSA/SSA-props.sig
-
-        (* CFG <-> SSA *)
-	../SSA/mlrisc-ssa-construction.sig
-	../SSA/mlrisc-ssa-construction.sml
-	../SSA/mlrisc-ssa-deconstruction.sig
-	../SSA/mlrisc-ssa-deconstruction.sml
-
-	../SSA/SSA-const-folding.sig
-	../SSA/SSA-const-folding.sml
-
-	../SSA/SSA-gvn-basis.sig
-	../SSA/SSA-gvn-basis.sml
-
-        (* Instruction selection *)
-	../SSA/SSA-instrgen.sig
-	../SSA/SSA-instrgen.sml
-
-	(* Optimization phases *)
-	../SSA/SSA-dead-code-elim.sml
-	../SSA/SSA-cond-const-folding.sml
-	../SSA/SSA-global-code-motion.sml
-	../SSA/SSA-global-value-numbering.sml
-	../SSA/SSA-operator-strength-reduction.sml
-
-	../SSA/SSA-gc-invariants.sml
-
 
 StagedAlloc.cm:
 	smlnj-lib.cm
@@ -1100,95 +916,3 @@ Visual.cm:
 	../visualization/graphViewer.sig
 	../visualization/graphViewer.sml
 	../visualization/vcg.sml
-
-VLIW.cm:
-(*
- * This library contains the VLIW based optimizations.
- *)
-
-        smlnj-lib.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	Visual.cm
-	ir-archive.cm
-	MLRISC.cm
-	IR.cm
-	
-	../emit/emitterNEW.sig (* dummy *)
-	
-	(* ../VLIW/EPIC foundational stuff.
-	 *)
-	../instructions/funits.sig
-	../instructions/datapaths.sig
-	../instructions/pred-instructions.sig
-	../instructions/vliw-instructions.sig
-	../instructions/pred-vliw-instructions.sig
-	../instructions/predicationProps.sig
-	../instructions/vliwProps.sig
-	
-	(* Hyperblock and predicate analysis. 
-	 * These are necessary if you want to play with optimizations
-	 * for predicated for VLIW architectures.
-	 *)
-	../hyperblock/decision-trees.sig
-	../hyperblock/decision-trees.sml
-	../hyperblock/hyperblock.sig
-	../hyperblock/hyperblock.sml
-	../hyperblock/hyperblock-ddg.sig
-	../hyperblock/hyperblock-ddg.sml
-	../hyperblock/if-conversion.sig
-	../hyperblock/if-conversion.sml
-	../hyperblock/predicated-ddg.sig
-	../hyperblock/predicated-ddg.sml
-	
-	(* Hyperblock Scheduling for VLIW 
-	 * It requires the hyperblock, MLRISC IR and VLIW modules. !!!
-	 *)
-	../hyperblock-scheduling/critical-path.sml
-	../hyperblock-scheduling/hyperblock-scheduling.sig
-	../hyperblock-scheduling/hyperblock-scheduling.sml
-	../hyperblock-scheduling/rank-algorithm.sig
-	../hyperblock-scheduling/vliwSchedulingProps.sig
-	../hyperblock-scheduling/vliwSchedulingAutomaton.sig
-	
-	(* Modulo Scheduling for VLIW
-	 * It requires the hyperblock, MLRISC IR and VLIW modules. !!!
-	 *)
-	../modulo-scheduling/iterated-modulo-scheduling.sml
-	../modulo-scheduling/modulo-scheduling-algo.sig
-	../modulo-scheduling/modulo-scheduling.sig
-	../modulo-scheduling/modulo-scheduling.sml
-	../modulo-scheduling/mrt.sig
-	../modulo-scheduling/mrt.sml
-	../modulo-scheduling/pre-modulo-scheduling.sig
-	../modulo-scheduling/pre-modulo-scheduling.sml
-	
-	(* C6 specific backend !!! *)
-	../C6/instructions/C6Cells.sig
-	../C6/instructions/C6Cells.sml
-	../C6/instructions/C6Datapaths.sig
-	../C6/instructions/C6Datapaths.sml
-	(*C6/instructions/C6DatapathsProps.sml*)
-	../C6/instructions/C6Funits.sig
-	../C6/instructions/C6Funits.sml
-	../C6/instructions/C6Instr.sig
-	../C6/instructions/C6Instr.sml
-	../C6/instructions/C6InstrClass.sig
-	../C6/instructions/C6InstrClass.sml
-	../C6/instructions/C6Intrinsics.sig
-	../C6/instructions/C6Intrinsics.sml
-	../C6/instructions/C6PredicationProps.sml
-	../C6/instructions/C6Props.sml
-	../C6/instructions/C6PseudoOps.sig
-	../C6/instructions/C6PseudoOps.sml
-	../C6/instructions/C6Shuffle.sig
-	../C6/instructions/C6Shuffle.sml
-	../C6/instructions/C6VLIWProps.sml
-	../C6/emit/C6Asm.sml
-	(*C6/scheduling/C6RTDEFS.sml
-	C6/scheduling/C6RTDEFS2.sml
-	C6/scheduling/C6RTTables.sml
-	C6/scheduling/C6RTTables2.sml*)
-	../C6/scheduling/C6SchedulingProps.sml
-	(* ../C6/SSA/C6SSAProps.sml *)

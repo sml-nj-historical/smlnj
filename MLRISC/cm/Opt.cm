@@ -1,45 +1,17 @@
 (* This file is created by makeallcm *)
 Library
+	functor SSAOptimizer
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
-	$/MLRISC.cm
-	$/Control.cm
-	$/Lib.cm
-	$/Graphs.cm
-	$/Visual.cm
-	$/ir-archive.cm
-	$/IR.cm
-	$/RTL.cm
-	$/SSA.cm
-	$/Sched.cm
-	$/GC.cm
-#else
-	basis.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	Visual.cm
-	ir-archive.cm
-	IR.cm
-	RTL.cm
-	SSA.cm
-	Sched.cm
-	GC.cm
-#endif
-#else
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	Visual.cm
-	ir-archive.cm
-	IR.cm
-	RTL.cm
-	SSA.cm
-	Sched.cm
-	GC.cm
-#endif
-	../Glue/mlrisc-optimizer.sml
+	$smlnj/MLRISC/MLRISC.cm
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Lib.cm
+	$smlnj/MLRISC/Graphs.cm
+	$smlnj/MLRISC/Visual.cm
+	$smlnj/MLRISC/ir-archive.cm
+	$smlnj/MLRISC/IR.cm
+	$smlnj/MLRISC/RTL.cm
+	$smlnj/MLRISC/SSA.cm
+	$smlnj/MLRISC/Sched.cm
+	$smlnj/MLRISC/GC.cm
+	../Glue/mlrisc-ssa-optimizer.sml

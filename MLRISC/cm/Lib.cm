@@ -7,36 +7,25 @@ Library
 	signature FREQ
 	signature LINE_BREAK
 	signature PRIORITY_QUEUE
-	signature PROBABILITY
 	signature STRING_OUTSTREAM
 	structure Annotations
 	structure BitSet
 	structure CacheRef
 	structure CatnetableList
 	structure DynArray
+	structure DynArray
 	structure Freq
+	structure HashArray
 	structure HashArray
 	structure LineBreak
 	structure PriorityHeap
 	structure PriorityQueue
-	structure Probability
 	structure SortedList
 	structure StringOutStream
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/Control.cm
-#else
-	basis.cm
-	smlnj-lib.cm
-	Control.cm
-#endif
-#else
-	smlnj-lib.cm
-	Control.cm
-#endif
+	$smlnj/MLRISC/Control.cm
 	../library/annotations.sig
 	../library/annotations.sml
 	../library/bitset.sig
@@ -56,7 +45,6 @@ is
 	../library/line-break.sml
 	../library/priQueue.sig
 	../library/priQueue.sml
-	../library/probability.sml
 	../library/sortedlist.sml
 	../library/stringOutStream.sig
 	../library/stringOutStream.sml

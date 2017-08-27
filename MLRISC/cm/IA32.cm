@@ -8,12 +8,12 @@ Library
 	signature X86SHUFFLE
 	structure X86Cells
 	structure X86InstrExt
-
 	functor IA32SVID_CCalls
 	functor X86
 	functor X86AsmEmitter
 	functor X86CompInstrExt
 	functor X86DarwinPseudoOps
+	functor X86FP
 	functor X86FP
 	functor X86FreqProps
 	functor X86GasPseudoOps
@@ -25,35 +25,15 @@ Library
 	functor X86RA
 	functor X86Rewrite
 	functor X86Shuffle
-        functor X86SpillInstr
-
+	functor X86SpillInstr
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/MLRISC.cm
-	$/Control.cm
-	$/Lib.cm
-	$/Graphs.cm
-	$/MLTREE.cm
-#else
-	basis.cm
-	smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	MLTREE.cm
-#endif
-#else
-	smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	MLTREE.cm
-#endif
+	$smlnj/MLRISC/MLRISC.cm
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Lib.cm
+	$smlnj/MLRISC/Graphs.cm
+	$smlnj/MLRISC/MLTREE.cm
         ../x86/c-calls/ia32-svid.sml
         ../x86/flowgraph/x86-darwin-pseudo-ops.sml
         ../x86/flowgraph/x86GasPseudoOps.sml
@@ -74,7 +54,6 @@ is
 	../x86/ra/x86SpillInstr.sml
 	../x86/backpatch/x86Jumps.sml 
 	../x86/mltree/x86.sml
-
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION < 11042
 	../x86/mltree/orig-x86-fp.sml
 #else

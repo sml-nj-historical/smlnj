@@ -1,26 +1,26 @@
 (* This file is created by makeallcm *)
 Library
+	signature MIPSCELLS
+	signature MIPSINSTR
+	signature MIPSSHUFFLE
+	signature MIPS_PSEUDO_INSTR
+	structure MIPSCells
+	functor MIPS
+	functor MIPSAsmEmitter
+	functor MIPSDelaySlots
+	functor MIPSFreqProps
+	functor MIPSInstr
+	functor MIPSJumps
+	functor MIPSMCEmitter
+	functor MIPSProps
+	functor MIPSRewrite
+	functor MIPSShuffle
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/MLRISC.cm
-	$/Control.cm
-	$/Lib.cm
-#else
-	basis.cm
-	smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-#endif
-#else
-	smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-#endif
+	$smlnj/MLRISC/MLRISC.cm
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Lib.cm
 	../mips/instructions/mipsCells.sml
 	../mips/instructions/mipsInstr.sml
 	../mips/instructions/mipsShuffle.sig

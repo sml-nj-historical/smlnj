@@ -17,28 +17,12 @@ Library
 	functor HppaProps
 	functor HppaRewrite
 	functor HppaShuffle
-	functor HppaSpillInstr
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/MLRISC.cm
-	$/Control.cm
-	$/Lib.cm
-#else
-	basis.cm
-	smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-#endif
-#else
-	smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-#endif
+	$smlnj/MLRISC/MLRISC.cm
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Lib.cm
 	../hppa/instructions/hppaCells.sml
 	../hppa/instructions/hppaInstr.sml
 	../hppa/instructions/hppaShuffle.sig
@@ -54,5 +38,3 @@ is
 	../hppa/mltree/hppaLabelComp.sig
 	../hppa/mltree/hppa.sml
 	../hppa/ra/hppaRewrite.sml
-	../hppa/ra/hppaSpillInstr.sml
-

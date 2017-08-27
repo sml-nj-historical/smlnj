@@ -46,6 +46,7 @@ Library
 	structure AcyclicSubgraphView
 	structure BipartiteMatching
 	structure DirectedGraph
+	structure DirectedGraph
 	structure Graph
 	structure GraphBCC
 	structure GraphBFS
@@ -79,31 +80,21 @@ Library
 	functor BellmanFord
 	functor Dijkstra
 	functor DirectedGraph
+	functor DirectedGraph
 	functor FloydWarshall
 	functor GraphSnapShot
 	functor Johnson
 	functor MaxFlow
 	functor MinCut
 	functor NodePriorityQueue
+	functor NodePriorityQueue
+	functor UndirectedGraph
 	functor UndirectedGraph
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/Control.cm
-	$/Lib.cm
-#else
-	basis.cm
-	smlnj-lib.cm
-	Control.cm
-	Lib.cm
-#endif
-#else
-	smlnj-lib.cm
-	Control.cm
-	Lib.cm
-#endif
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Lib.cm
 	../graphs/acyclic-graph.sml
 	../graphs/bellman-ford.sml
 	../graphs/bigraph.sig

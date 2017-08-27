@@ -8,29 +8,12 @@ Library
 	functor OperandTable
 	functor RTLBuild
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/Control.cm
-	$/Lib.cm
-	$/MLRISC.cm
-	$/MLTREE.cm
-#else
-	basis.cm
-	smlnj-lib.cm
-	Control.cm
-	Lib.cm
-	MLRISC.cm
-	MLTREE.cm
-#endif
-#else
-	smlnj-lib.cm
-	Control.cm
-	Lib.cm
-	MLRISC.cm
-	MLTREE.cm
-#endif
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Lib.cm
+	$smlnj/MLRISC/MLRISC.cm
+	$smlnj/MLRISC/MLTREE.cm
 	../mltree/mltree-rtl.sig
 	../mltree/mltree-rtl.sml
 	../mltree/rtl-props.sig

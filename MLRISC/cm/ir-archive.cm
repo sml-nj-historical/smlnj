@@ -1,35 +1,39 @@
 (* This file is created by makeallcm *)
 Library
+	signature COMPUTE_FREQUENCIES
+	signature COMPUTE_FREQUENCIES2
+	signature CONTROL_DEPENDENCE_GRAPH
+	signature DERIVED_GRAPH
+	signature DJ_DATAFLOW
+	signature DJ_GRAPH
+	signature DOMINANCE_FRONTIERS
+	signature DOMINATOR_TREE
+	signature LOOP_STRUCTURE
+	signature REDUCIBILITY
+	signature STATIC_SINGLE_ASSIGNMENT_FORM
+	functor ComputeFrequencies
+	functor ComputeFrequencies2
+	functor ControlDependenceGraph
+	functor DJDataflow
+	functor DJGraph
+	functor DerivedGraph
+	functor DominanceFrontiers
+	functor DominatorTree
+	functor LoopStructure
+	functor Reducibility
+	functor StaticSingleAssignmentForm
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/Control.cm
-	$/Lib.cm
-	$/Graphs.cm
-#else
-	basis.cm
-	smlnj-lib.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-#endif
-#else
-	smlnj-lib.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-#endif
-	../ir-archive/apt.sig
-	../ir-archive/apt.sml
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Lib.cm
+	$smlnj/MLRISC/Graphs.cm
 	../ir-archive/cdg.sig
 	../ir-archive/cdg.sml
 	../ir-archive/compute-freq.sig
 	../ir-archive/compute-freq.sml
 	../ir-archive/compute-freq2.sig
 	../ir-archive/compute-freq2.sml
-	../ir-archive/comp-djgraph.sml
 	../ir-archive/derived-graph.sig
 	../ir-archive/derived-graph.sml
 	../ir-archive/dj-dataflow.sig

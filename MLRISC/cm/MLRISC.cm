@@ -1,26 +1,22 @@
 (* This file is created by makeallcm *)
 Library
-(*	signature CFG_VIEW *)
-(*	functor CFGView *)
-	signature ARCH_SPILL_INSTR
-	signature AS_PSEUDO_OPS
 	signature ASM_FORMAT_UTIL
 	signature ASM_STREAM
 	signature ASSEMBLY_EMITTER
+	signature AS_PSEUDO_OPS
 	signature BBSCHED
 	signature BLOCK_PLACEMENT
 	signature CELLS
 	signature CELLS_BASIS
 	signature CFG_OPTIMIZATION
+	signature CFG_VIEW
 	signature CLIENT_PSEUDO_OPS
 	signature CODE_STRING
-	signature COMPUTE_EXECUTION_FREQUENCIES
 	signature CONSTANT
 	signature CONTROL_FLOWGRAPH_GEN
 	signature CONTROL_FLOW_GRAPH
 	signature C_CALLS
 	signature DELAY_SLOT_PROPERTIES
-	signature DOMINATOR_TREE
 	signature FREQUENCY_PROPERTIES
 	signature GC_CELLS
 	signature GC_TYPE
@@ -31,7 +27,6 @@ Library
 	signature INSTRUCTION_STREAM
 	signature LABEL
 	signature LIVENESS
-	signature LOOP_STRUCTURE
 	signature MACHINE_INT
 	signature MC_EMIT
 	signature MLRISC_ANNOTATIONS
@@ -55,7 +50,6 @@ Library
 	signature PSEUDO_OPS_BASIS
 	signature PSEUDO_OPS_ENDIAN
 	signature RA
-	signature RA_BITMATRIX
 	signature RA_CORE
 	signature RA_FLOWGRAPH
 	signature RA_FLOWGRAPH_PARTITIONER
@@ -67,7 +61,6 @@ Library
 	signature REWRITE_INSTRUCTIONS
 	signature SDI_JUMPS
 	signature SHUFFLE
-	structure AsmFlags
 	structure AsmFormatUtil
 	structure AsmStream
 	structure CTypes
@@ -83,40 +76,31 @@ Library
 	structure PseudoOpsBasisTyp
 	structure RACore
 	structure RAGraph
-	structure RaBitmatrix
 	functor BBSched2
 	functor BackPatch
-	functor BlockPlacement
 	functor BuildFlowgraph
 	functor CFGCountCopies
 	functor CFGEmit
 	functor CFGExpandCopies
+	functor CFGView
 	functor Cells
-	functor CheckPlacementFn
 	functor ClusterRA
-	functor CompleteProbsFn
-	functor ComputeFreqsFn
 	functor ControlFlowGraph
 	functor DarwinPseudoOps
 	functor DefaultBlockPlacement
-	functor DominatorTree
-	functor EstimateLoopProbsFn
 	functor FreqProps
 	functor GCCells
 	functor GasPseudoOps
 	functor GetReg
 	functor GetReg2
 	functor InstructionStream
-	functor JumpChainElimFn
 	functor Liveness
-	functor LoopStructure
 	functor MLTreeEval
 	functor MLTreeF
 	functor MLTreeGen
 	functor MLTreeHash
 	functor MLTreeMult
 	functor MLTreeSize
-	functor MLTreeCheckTy
 	functor MLTreeStream
 	functor MemoryRA
 	functor NoDelaySlots
@@ -128,34 +112,17 @@ Library
 	functor RASpill
 	functor RASpillTypes
 	functor RISC_RA
-	functor RaPriQueue
 	functor RegionBasedRA
 	functor RegisterAllocator
 	functor Shuffle
 	functor SpanDependencyResolution
-	functor WeightedBlockPlacementFn
-	functor UnimplementedCCallsFn
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/Control.cm
-	$/Graphs.cm
-	$/Lib.cm
-#else
-	basis.cm
-	smlnj-lib.cm
-	Control.cm
-	Graphs.cm
-	Lib.cm
-#endif
-#else
-	smlnj-lib.cm
-	Control.cm
-	Graphs.cm
-	Lib.cm
-#endif
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Graphs.cm
+	$smlnj/MLRISC/Visual.cm
+	$smlnj/MLRISC/Lib.cm
 	../instructions/cells.sig
 	../instructions/cells.sml
 	../instructions/cells-basis.sig
@@ -194,7 +161,6 @@ is
 	../mltree/mltree-hash.sml
 	../mltree/mltree-size.sig
 	../mltree/mltree-size.sml
-	../mltree/mltree-check-ty.sml
 	../mltree/mltree-stream.sig
 	../mltree/mltree-stream.sml
 	../mltree/mltree-mult.sig
@@ -207,9 +173,8 @@ is
 	../flowgraph/client-pseudo-ops.sig
 	../flowgraph/cfg.sig
 	../flowgraph/cfg.sml
-(*	../flowgraph/cfgView.sig
+	../flowgraph/cfgView.sig
 	../flowgraph/cfgView.sml
-*)
 	../flowgraph/cfgCountCopies.sml
 	../flowgraph/cfgExpandCopies.sml
 	../flowgraph/darwin-pseudo-ops.sml
@@ -222,25 +187,12 @@ is
 	../flowgraph/pseudo-ops-big.sml
 	../flowgraph/pseudo-ops-endian.sig
 	../flowgraph/pseudo-ops-little.sml
-	../frequencies/complete-probs-fn.sml
-	../frequencies/compute-execution-freqs.sig
-	../frequencies/compute-freqs-fn.sml
-	../frequencies/estimate-loop-probs-fn.sml
-	../ir-archive/dominator.sig
-	../ir-archive/dominator.sml
-	../ir-archive/loop-structure.sig
-	../ir-archive/loop-structure.sml
-	../ra/arch-spill-instr.sig
 	../ra/getreg.sig
 	../ra/getreg.sml
 	../ra/getreg2.sml
 	../ra/liveness.sml
         ../ra/chaitin-spillheur.sml
         ../ra/chow-hennessy-spillheur.sml
- 	../ra/raBitmatrix.sml
-	../ra/ra-bitmatrix.sig
-	../ra/ra-priqueue.sig
-	../ra/raPriQueue.sml
         ../ra/ra-graph.sig
         ../ra/ra-graph.sml
         ../ra/ra-core.sig
@@ -254,11 +206,11 @@ is
         ../ra/ra.sig
         ../ra/ra.sml
 	../ra/ra-deadCodeE.sml
+	../ra/ra-priqueue.sig
 	../ra/mem-ra.sml
 	../ra/region-based-ra.sml
 	../ra/risc-ra.sml
         ../ra/cluster-ra.sml
-	../emit/asm-flags.sml
 	../emit/instruction-emitter.sig
 	../emit/asmEmit.sig 
 	../emit/asmStream.sml
@@ -277,12 +229,7 @@ is
 	../backpatch/sdi-jumps.sig
 	../backpatch/vlBackPatch.sml
 	../block-placement/block-placement.sig
-	../block-placement/block-placement.sml
-	../block-placement/check-placement-fn.sml
 	../block-placement/default-block-placement.sml
-	../block-placement/weighted-block-placement-fn.sml
-	../block-placement/jump-chain-elim-fn.sml
         ../c-calls/c-types.sml
         ../c-calls/c-calls.sig
-	../c-calls/unimplemented-c-calls.sml
  	../omit-frameptr/omit-frame-pointer.sig

@@ -30,41 +30,16 @@ Library
 	functor SchedulerDDG
 	functor SchedulerDDGBuilder
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/Control.cm
-	$/Lib.cm
-	$/Graphs.cm
-	$/Visual.cm
-	$/ir-archive.cm
-	$/MLRISC.cm
-	$/RTL.cm
-	$/IR.cm
-#else
-	basis.cm
-	smlnj-lib.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	Visual.cm
-	ir-archive.cm
-	MLRISC.cm
-	RTL.cm
-	IR.cm
-#endif
-#else
-	smlnj-lib.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	Visual.cm
-	ir-archive.cm
-	MLRISC.cm
-	RTL.cm
-	IR.cm
-#endif
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Lib.cm
+	$smlnj/MLRISC/Graphs.cm
+	$smlnj/MLRISC/Visual.cm
+	$smlnj/MLRISC/ir-archive.cm
+	$smlnj/MLRISC/MLRISC.cm
+	$smlnj/MLRISC/RTL.cm
+	$smlnj/MLRISC/IR.cm
 	../scheduling/PalemSimons.sig
 	../scheduling/PalemSimons.sml
 	../scheduling/LeungPalemPnueli.sig

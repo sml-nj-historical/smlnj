@@ -15,28 +15,12 @@ Library
 	functor AlphaProps
 	functor AlphaRewrite
 	functor AlphaShuffle
-	functor	AlphaSpillInstr
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/MLRISC.cm
-	$/Control.cm
-	$/Lib.cm
-#else
-	basis.cm
-	smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-#endif
-#else
-	smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-#endif
+	$smlnj/MLRISC/MLRISC.cm
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Lib.cm
 	../alpha/instructions/alphaCells.sml
 	../alpha/instructions/alphaInstr.sml
 	../alpha/instructions/alphaShuffle.sig
@@ -50,5 +34,3 @@ is
 	../alpha/mltree/alphaPseudoInstr.sig
 	../alpha/mltree/alpha.sml
 	../alpha/ra/alphaRewrite.sml
-	../alpha/ra/alphaSpillInstr.sml
-

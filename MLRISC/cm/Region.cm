@@ -1,27 +1,17 @@
 (* This file is created by makeallcm *)
 Library
+	signature POINTS_TO
+	signature REGION_INFO
+	signature REGION_PROPERTIES
+	structure PointsTo
+	structure RegionInfo
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/MLRISC.cm
-	$/Control.cm
-	$/Lib.cm
-#else
-	basis.cm
-	smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-#endif
-#else
-	smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-#endif
+	$smlnj/MLRISC/MLRISC.cm
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Lib.cm
 	../instructions/regionInfo.sml
 	../instructions/regionProps.sig
-	../aliasing/pointsToInfo.sig
-	../aliasing/pointsToInfo.sml
+	../aliasing/pointsTo.sig
+	../aliasing/pointsTo.sml

@@ -1,38 +1,39 @@
 (* This file is created by makeallcm *)
 Library
+	signature CFG_UTIL
+	signature CLUSTER_GRAPH
+	signature CLUSTER_VIEWER
+	signature DATAFLOW_ANALYZER
+	signature DATAFLOW_PROBLEM
+	signature FORMAT_INSTRUCTION
+	signature LIVENESS_ANALYSIS
+	signature MLRISC_GLUE
+	signature MLRISC_IDEFS
+	signature MLRISC_IR
+	signature MLRISC_IR_OPTIMIZATION
+	functor BranchChaining
+	functor CFGUtil
+	functor ClusterGraph
+	functor ClusterViewer
+	functor Dataflow
+	functor FormatInstruction
+	functor IDefs
+	functor InsertPreheaders
+	functor LivenessAnalysis
+	functor MLRISCGlue
+	functor MLRISC_IR
+	functor ReshapeBranches
+	functor StaticBranchPrediction
 is
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	$/MLRISC.cm
-	$/Control.cm
-	$/Lib.cm
-	$/Graphs.cm
-	$/Visual.cm
-	$/ir-archive.cm
-	$/MLTREE.cm
-#else
-	basis.cm
-	smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	Visual.cm
-	ir-archive.cm
-	MLTREE.cm
-#endif
-#else
-	smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	Visual.cm
-	ir-archive.cm
-	MLTREE.cm
-#endif
+	$smlnj/MLRISC/MLRISC.cm
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Lib.cm
+	$smlnj/MLRISC/Graphs.cm
+	$smlnj/MLRISC/Visual.cm
+	$smlnj/MLRISC/ir-archive.cm
+	$smlnj/MLRISC/MLTREE.cm
 	../cluster/clusterGraph.sig
 	../cluster/clusterGraph.sml
 	../cluster/clusterViewer.sig
@@ -42,9 +43,7 @@ is
 	../IR/mlrisc-branch-chaining.sml
 	../IR/mlrisc-cfg-util.sig
 	../IR/mlrisc-cfg-util.sml
-	../IR/mlrisc-cpr.sml
-	../IR/idefs2.sig
-	../IR/idefs2.sml
+	../IR/mlrisc-format-insn.sml
 	../IR/mlrisc-idefs.sig
 	../IR/mlrisc-idefs.sml
 	../IR/mlrisc-ir.sig
