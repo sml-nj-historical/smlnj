@@ -543,15 +543,12 @@ extern void SetFSR();
 #    error "unknown OPSYS for x86"
 #  endif
 
-#elif defined(HOST_AMD64)
+#elif defined(TARGET_AMD64)
 
-#  define LIMITPTR_X86OFFSET	3	/* offset (words) of limitptr in ML stack */
-					/* frame (see AMD64.prim.asm) */
-extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
    extern void FPEEnable ();		/* defined in AMD64.prim.asm */
 #  define SIG_InitFPE()    FPEEnable()
 
-#  if (defined(TARGET_AMD64) && defined(OPSYS_LINUX))
+#  if defined(OPSYS_LINUX)
     /** AMD64, LINUX **/
 #    define INTO_OPCODE		0xce	/* the 'into' instruction is a single */
 					/* instruction that signals Overflow */
@@ -566,7 +563,7 @@ extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
 /* for linux, SIG_GetCode simply returns the address of the fault */
 #    define SIG_GetPC(scp)		((scp)->uc_mcontext.gregs[REG_RIP])
 #    define SIG_SetPC(scp,addr)		{ (scp)->uc_mcontext.gregs[REG_RIP] = (long)(addr); }
-#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+#    define SIG_ZeroLimitPtr(scp)	{ (scp)->uc_mcontext.gregs[REG_R14] = 0; }
 
 #  elif defined(OPSYS_FREEBSD)
     /** amd64, FreeBSD **/
@@ -577,7 +574,7 @@ extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
 #    define SIG_GetCode(info, scp)	(info)
 #    define SIG_GetPC(scp)		((scp)->sc_pc)
 #    define SIG_SetPC(scp, addr)	{ (scp)->sc_pc = (long)(addr); }
-#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+#    define SIG_SIG_ZeroLimitPtr(scp)	{ (scp)->sc_r14 = 0; }
 
      typedef void SigReturn_t;
 
@@ -589,9 +586,9 @@ extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
 #    define INT_OVFLW(s, c)	(((s) == SIGFPE) || ((s) == SIGBUS))
 
 #    define SIG_GetCode(info, scp)	(info)
-#    define SIG_GetPC(scp)		(_UC_MACHINE_PC(scp))
-#    define SIG_SetPC(scp, addr)	{ _UC_MACHINE_SET_PC(scp, ((long) (addr))); }
-#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+#    define SIG_GetPC(scp)		((uc)->uc_mcontext.__gregs[_REG_RIP])
+#    define SIG_SetPC(scp, addr)	{ (uc)->uc_mcontext.__gregs[_REG_RIP] = (long)(addr); }
+#    define SIG_ZeroLimitPtr(scp)	{ (scp)->uc_mcontext.__gregs[_REG_R14] = 0; }
 
 #  elif defined(OPSYS_OPENBSD)
     /** amd64, OpenBSD **/
@@ -603,7 +600,7 @@ extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
 #    define SIG_GetCode(info, scp)	(info)
 #    define SIG_GetPC(scp)		((scp)->sc_rip)
 #    define SIG_SetPC(scp, addr)	{ (scp)->sc_rip = (long)(addr); }
-#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+#    define SIG_SIG_ZeroLimitPtr(scp)	{ (scp)->sc_r14 = 0; }
 
      typedef void SigReturn_t;
 
@@ -612,10 +609,9 @@ extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
 
 #    define SIG_GetPC(scp)		((scp)->uc_mcontext.gregs[EIP])
 #    define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext.gregs[EIP] = (int)(addr); }
-#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+/*#    define SIG_ZeroLimitPtr(scp)  { ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }*/
 
-#  elif defined(OPSYS_WIN32)
-#    define SIG_ZeroLimitPtr()		{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+#    error Solaris/AMD64 not supported yet
 
 #  elif defined(OPSYS_CYGWIN)
 
@@ -623,7 +619,9 @@ extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
 #    define SIG_FAULT1		SIGFPE
 #    define SIG_FAULT2		SIGSEGV
 #    define INT_DIVZERO(s, c)	((s) == SIGFPE)
-#    define SIG_ZeroLimitPtr(scp)  { ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+/*#    define SIG_ZeroLimitPtr(scp)  { ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }*/
+
+#    error Cygwin/AMD64 not supported yet
 
 #  elif defined(OPSYS_DARWIN)
     /** amd64, Darwin **/
@@ -634,7 +632,7 @@ extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
 #    define SIG_GetCode(info,scp)	((info)->si_code)
 #    define SIG_GetPC(scp)		((scp)->uc_mcontext->__ss.__rip)
 #    define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext->__ss.__rip = (int) addr; }
-#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+#    define SIG_ZeroLimitPtr(scp)	{ (scp)->uc_mcontext->__ss.__r14 = 0; }
 
 #  else
 #    error "unknown OPSYS for amd64"
