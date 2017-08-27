@@ -3,9 +3,16 @@ Library
 	signature PEEPHOLE
 	functor CFGPeephole
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
 	$/smlnj-lib.cm
+	MLRISC.cm
+	Graphs.cm
+#else
+	$smlnj/basis.cm
+	$smlnj/smlnj-lib.cm
 	$smlnj/MLRISC/MLRISC.cm
 	$smlnj/MLRISC/Graphs.cm
+#endif
 	../instructions/peephole.sig
 	../flowgraph/cfgPeephole.sml

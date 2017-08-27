@@ -9,10 +9,17 @@ Library
 	structure daVinci
 	functor GraphViewer
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+#else
+	$smlnj/basis.cm
 	$smlnj/MLRISC/Control.cm
 	$smlnj/MLRISC/Lib.cm
 	$smlnj/MLRISC/Graphs.cm
+#endif
 	../visualization/allDisplays.sml
 	../visualization/daVinci.sml
 	../visualization/dot.sml

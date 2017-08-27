@@ -2,7 +2,21 @@
 Library
 	functor SSAOptimizer
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir-archive.cm
+	IR.cm
+	RTL.cm
+	SSA.cm
+	Sched.cm
+	GC.cm
+#else
+	$smlnj/basis.cm
 	$smlnj/MLRISC/MLRISC.cm
 	$smlnj/MLRISC/Control.cm
 	$smlnj/MLRISC/Lib.cm
@@ -14,4 +28,5 @@ is
 	$smlnj/MLRISC/SSA.cm
 	$smlnj/MLRISC/Sched.cm
 	$smlnj/MLRISC/GC.cm
+#endif
 	../Glue/mlrisc-ssa-optimizer.sml

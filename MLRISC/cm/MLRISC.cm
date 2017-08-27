@@ -117,12 +117,21 @@ Library
 	functor Shuffle
 	functor SpanDependencyResolution
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
 	$/smlnj-lib.cm
+	Control.cm
+	Graphs.cm
+	Visual.cm
+	Lib.cm
+#else
+	$smlnj/basis.cm
+	$smlnj/smlnj-lib.cm
 	$smlnj/MLRISC/Control.cm
 	$smlnj/MLRISC/Graphs.cm
 	$smlnj/MLRISC/Visual.cm
 	$smlnj/MLRISC/Lib.cm
+#endif
 	../instructions/cells.sig
 	../instructions/cells.sml
 	../instructions/cells-basis.sig

@@ -3,8 +3,20 @@ Library
 	structure SparcCSizes
 	functor SparcCCallFn
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
 	$/smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	MLRISC.cm
+	Graphs.cm
+	MLTREE.cm
+	StagedAlloc.cm
+	CCall.cm
+	SPARC.cm
+#else
+	$smlnj/basis.cm
+	$smlnj/smlnj-lib.cm
 	$smlnj/MLRISC/Control.cm
 	$smlnj/MLRISC/Lib.cm
 	$smlnj/MLRISC/MLRISC.cm
@@ -13,5 +25,6 @@ is
 	$smlnj/MLRISC/StagedAlloc.cm
 	$smlnj/MLRISC/CCall.cm
 	$smlnj/MLRISC/SPARC.cm
+#endif
 	../c-call/archs/sparc-c-sizes.sml
 	../c-call/archs/sparc-c-call-fn.sml

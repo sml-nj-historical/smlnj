@@ -27,13 +27,23 @@ Library
 	functor X86Shuffle
 	functor X86SpillInstr
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
 	$/smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	MLTREE.cm
+#else
+	$smlnj/basis.cm
+	$smlnj/smlnj-lib.cm
 	$smlnj/MLRISC/MLRISC.cm
 	$smlnj/MLRISC/Control.cm
 	$smlnj/MLRISC/Lib.cm
 	$smlnj/MLRISC/Graphs.cm
 	$smlnj/MLRISC/MLTREE.cm
+#endif
         ../x86/c-calls/ia32-svid.sml
         ../x86/flowgraph/x86-darwin-pseudo-ops.sml
         ../x86/flowgraph/x86GasPseudoOps.sml

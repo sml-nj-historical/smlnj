@@ -16,11 +16,19 @@ Library
 	functor MIPSRewrite
 	functor MIPSShuffle
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
 	$/smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+#else
+	$smlnj/basis.cm
+	$smlnj/smlnj-lib.cm
 	$smlnj/MLRISC/MLRISC.cm
 	$smlnj/MLRISC/Control.cm
 	$smlnj/MLRISC/Lib.cm
+#endif
 	../mips/instructions/mipsCells.sml
 	../mips/instructions/mipsInstr.sml
 	../mips/instructions/mipsShuffle.sig

@@ -7,8 +7,13 @@ Library
 	functor X86CConventionFn
 	functor X86_64CConventionFn
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
 	$/smlnj-lib.cm
+#else
+	$smlnj/basis.cm
+	$smlnj/smlnj-lib.cm
+#endif
 	../staged-alloc/allocator/staged-allocation-sig.sml
 	../staged-alloc/allocator/staged-allocation-fn.sml
 	../staged-alloc/conventions/c-loc-kind.sml

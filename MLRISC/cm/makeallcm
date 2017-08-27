@@ -53,14 +53,25 @@ sub finish
 
 sub dumpCMfiles()
 {
+   print OUT "#if defined(UNSHARED_MLRISC)\n";
    print OUT "\t\$/basis.cm\n";
    foreach $f (@CMFILES) {
       if ($f eq "smlnj-lib.cm") {
         print OUT "\t\$/$f\n";
       } else {
+        print OUT "\t$f\n";
+      }
+   }
+   print OUT "#else\n";
+   print OUT "\t\$smlnj/basis.cm\n";
+   foreach $f (@CMFILES) {
+      if ($f eq "smlnj-lib.cm") {
+        print OUT "\t\$smlnj/$f\n";
+      } else {
         print OUT "\t\$smlnj/MLRISC/$f\n";
       }
    }
+   print OUT "#endif\n";
    @CMFILES=();
    $new = 0;
 }

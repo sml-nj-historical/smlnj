@@ -2,8 +2,15 @@
 Library
 	functor SparcPeephole
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
+	MLRISC.cm
+	Peephole.cm
+	SPARC.cm
+#else
+	$smlnj/basis.cm
 	$smlnj/MLRISC/MLRISC.cm
 	$smlnj/MLRISC/Peephole.cm
 	$smlnj/MLRISC/SPARC.cm
+#endif
 	../sparc/instructions/sparcPeephole.sml

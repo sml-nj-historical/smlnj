@@ -3,8 +3,20 @@ Library
 	structure CSizes
 	functor X86_64SVIDFn
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
 	$/smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	MLRISC.cm
+	Graphs.cm
+	MLTREE.cm
+	StagedAlloc.cm
+	CCall.cm
+	AMD64.cm
+#else
+	$smlnj/basis.cm
+	$smlnj/smlnj-lib.cm
 	$smlnj/MLRISC/Control.cm
 	$smlnj/MLRISC/Lib.cm
 	$smlnj/MLRISC/MLRISC.cm
@@ -13,5 +25,6 @@ is
 	$smlnj/MLRISC/StagedAlloc.cm
 	$smlnj/MLRISC/CCall.cm
 	$smlnj/MLRISC/AMD64.cm
+#endif
 	../c-call/archs/x86-64-svid-fn.sml
 	../c-call/archs/x86-64-c-sizes.sml

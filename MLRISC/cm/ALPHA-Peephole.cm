@@ -2,8 +2,15 @@
 Library
 	functor AlphaPeephole
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
+	MLRISC.cm
+	Peephole.cm
+	ALPHA.cm
+#else
+	$smlnj/basis.cm
 	$smlnj/MLRISC/MLRISC.cm
 	$smlnj/MLRISC/Peephole.cm
 	$smlnj/MLRISC/ALPHA.cm
+#endif
 	../alpha/instructions/alphaPeephole.sml

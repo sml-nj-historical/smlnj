@@ -23,9 +23,15 @@ Library
 	structure SortedList
 	structure StringOutStream
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
 	$/smlnj-lib.cm
+	Control.cm
+#else
+	$smlnj/basis.cm
+	$smlnj/smlnj-lib.cm
 	$smlnj/MLRISC/Control.cm
+#endif
 	../library/annotations.sig
 	../library/annotations.sml
 	../library/bitset.sig

@@ -5,10 +5,17 @@ Library
 	structure CType
 	functor CCallGenFn
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
+	MLRISC.cm
+	MLTREE.cm
+	StagedAlloc.cm
+#else
+	$smlnj/basis.cm
 	$smlnj/MLRISC/MLRISC.cm
 	$smlnj/MLRISC/MLTREE.cm
 	$smlnj/MLRISC/StagedAlloc.cm
+#endif
 	../c-call/gen/c-call-gen-sig.sml
 	../c-call/gen/c-call-gen-fn.sml
 	../c-call/gen/c-call-sig.sml

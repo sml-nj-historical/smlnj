@@ -25,8 +25,19 @@ Library
 	functor ReshapeBranches
 	functor StaticBranchPrediction
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
 	$/smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir-archive.cm
+	MLTREE.cm
+#else
+	$smlnj/basis.cm
+	$smlnj/smlnj-lib.cm
 	$smlnj/MLRISC/MLRISC.cm
 	$smlnj/MLRISC/Control.cm
 	$smlnj/MLRISC/Lib.cm
@@ -34,6 +45,7 @@ is
 	$smlnj/MLRISC/Visual.cm
 	$smlnj/MLRISC/ir-archive.cm
 	$smlnj/MLRISC/MLTREE.cm
+#endif
 	../cluster/clusterGraph.sig
 	../cluster/clusterGraph.sml
 	../cluster/clusterViewer.sig

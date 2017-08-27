@@ -2,10 +2,19 @@
 Library
 	functor X86Peephole
 is
+#if defined(UNSHARED_MLRISC)
 	$/basis.cm
 	$/smlnj-lib.cm
+	Control.cm
+	MLRISC.cm
+	Peephole.cm
+	IA32.cm
+#else
+	$smlnj/basis.cm
+	$smlnj/smlnj-lib.cm
 	$smlnj/MLRISC/Control.cm
 	$smlnj/MLRISC/MLRISC.cm
 	$smlnj/MLRISC/Peephole.cm
 	$smlnj/MLRISC/IA32.cm
+#endif
 	../x86/instructions/x86Peephole.sml
