@@ -1,7 +1,7 @@
 (* mltree.sig
  *
- * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 signature MLTREE = sig

@@ -1,34 +1,34 @@
-(* mltreeComp.sig --- translate mltrees to a flowgraph of target machine code.
+(* mltreecomp.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * translate mltrees to a flowgraph of target machine code.
  *)
 
 (*
  * This signature describes how MLTree extensions are compiled.
  *)
 signature MLTREE_EXTENSION_COMP =
-sig
-   structure T : MLTREE
-   structure TS : MLTREE_STREAM where T = T
-   structure I : INSTRUCTIONS
-   structure CFG : CONTROL_FLOW_GRAPH
-		where I = I
-	          and P = TS.S.P
-   (* 
-    * The reducer is given to the client during the compilation of
-    * the user extensions.
-    *)
-   type reducer = 
-     (I.instruction,I.C.cellset,I.operand,I.addressing_mode,CFG.cfg) TS.reducer
+   sig
+     structure T : MLTREE
+     structure TS : MLTREE_STREAM where T = T
+     structure I : INSTRUCTIONS
+     structure CFG : CONTROL_FLOW_GRAPH
+		  where I = I
+		    and P = TS.S.P
+     (* 
+      * The reducer is given to the client during the compilation of
+      * the user extensions.
+      *)
+     type reducer = 
+       (I.instruction,I.C.cellset,I.operand,I.addressing_mode,CFG.cfg) TS.reducer
 
-   val compileSext : reducer -> {stm:T.sext, an:T.an list} -> unit
-   val compileRext : reducer -> {e:T.ty * T.rext, rd:CellsBasis.cell, an:T.an list} -> unit
-   val compileFext : reducer -> {e:T.ty * T.fext, fd:CellsBasis.cell, an:T.an list} -> unit
-   val compileCCext : reducer -> {e:T.ty * T.ccext, ccd:CellsBasis.cell, an:T.an list} -> unit
-end
-
-
-
+     val compileSext : reducer -> {stm:T.sext, an:T.an list} -> unit
+     val compileRext : reducer -> {e:T.ty * T.rext, rd:CellsBasis.cell, an:T.an list} -> unit
+     val compileFext : reducer -> {e:T.ty * T.fext, fd:CellsBasis.cell, an:T.an list} -> unit
+     val compileCCext : reducer -> {e:T.ty * T.ccext, ccd:CellsBasis.cell, an:T.an list} -> unit
+   end
 
 signature MLTREECOMP = 
 sig
@@ -49,7 +49,7 @@ sig
      * for description of the stream interface.
      *
      * Note: the mltree stream does NOT support direct instruction emission.
-     * Fo equivalent functionality, you can use the emit method 
+     * For equivalent functionality, you can use the emit method 
      * of the instruction stream instead.
      *)
    val selectInstructions : instrStream -> mltreeStream
