@@ -3,18 +3,18 @@
  * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
- * AMD64 specific backend.  This one uses the new RA8 scheme.
+ * AMD64 specific backend.
  *)
 
 functor AMD64CG (
-    structure CCallParams: sig
+    structure CCallParams : sig
 	val frameAlign : int
 	val returnSmallStructsInRegs : bool
       end
-    val abi_variant: string option
+    val abi_variant : string option
   ) = MachineGen(
+
     structure MachSpec = AMD64Spec
-    val abi_variant = abi_variant
     structure T = AMD64Tree
     structure CB = CellsBasis
     structure ClientPseudoOps = AMD64ClientPseudoOps
@@ -25,6 +25,7 @@ functor AMD64CG (
     structure Asm = AMD64AsmEmitter
     structure Shuffle = AMD64Shuffle
 
+(* FIXME: assuming SVID ABI here! *)
     structure CCalls = AMD64SVID_CCalls (structure T = AMD64MLTree)
 
     structure OmitFramePtr = AMD64OmitFramePointer(
@@ -142,4 +143,3 @@ functor AMD64CG (
         val floats16ByteAligned = floats16ByteAligned
       ) (* RISC_RA *)
     )
-

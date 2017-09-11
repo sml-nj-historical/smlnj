@@ -5,12 +5,15 @@
  *)
 
 functor AMD64MC (
+
     structure CCallParams : sig
 	val frameAlign : int
 	val returnSmallStructsInRegs : bool
       end
-    val abi_variant: string option) =
-  FLINTComp(
+
+    val abi_variant: string option
+
+  ) = FLINTComp(
     structure Gen = AMD64CG (
 	structure CCallParams = CCallParams
 	val abi_variant = abi_variant)
