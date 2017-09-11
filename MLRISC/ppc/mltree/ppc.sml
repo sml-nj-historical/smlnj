@@ -1,6 +1,7 @@
 (* ppc.sml
  *
- * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * I've substantially modified this code generator to support the new MLTREE.
  * Please see the file README.hppa for the ugly details.
@@ -41,16 +42,15 @@ struct
   type instrStream = (I.instruction, CB.CellSet.cellset, CFG.cfg) TS.stream
   type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
-
   val (intTy,naturalWidths) = if bit64mode then (64,[32,64]) else (32,[32])
-  structure Gen = MLTreeGen
-    (structure T = T
+
+  structure Gen = MLTreeGen(
+     structure T = T
      structure Cells = C
      val intTy = intTy
      val naturalWidths = naturalWidths
      datatype rep = SE | ZE | NEITHER
-     val rep = NEITHER
-    )
+     val rep = NEITHER)
 
   (* 
    * Special instructions

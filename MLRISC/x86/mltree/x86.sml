@@ -1,6 +1,7 @@
 (* x86.sml
  *
- * COPYRIGHT (c) 1998 Bell Laboratories.
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * This is a revised version that takes into account of
  * the extended x86 instruction set, and has better handling of

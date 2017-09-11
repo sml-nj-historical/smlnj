@@ -1,10 +1,15 @@
-(*
+(* mltree-gen.sig
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * This module provides various generic MLTREE transformations.
  * Basically, we want to support various non built-in datatype widths.
  * This module handles the translation. 
  *
  * -- Allen
  *)
+
 signature MLTREEGEN =
 sig
 
@@ -36,6 +41,5 @@ sig
         an  : Annotations.annotations,
         fd  : CellsBasis.cell
        } -> T.stm list
-
 
 end

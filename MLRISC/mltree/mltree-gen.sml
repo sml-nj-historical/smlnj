@@ -1,6 +1,7 @@
 (* mltree-gen.sml
  *
- * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * This is a generic module for transforming MLTREE expressions:
  *   (1) expressions involving non-standard type widths are promoted when
@@ -68,7 +69,7 @@ functor MLTreeGen (
        in  rightShift(W,f(W,T.SLL(W,a,shift),T.SLL(W,b,shift)),shift)
        end
 
-   fun promoteTy(ty) =
+   fun promoteTy ty =
    let fun loop([]) = 
            unsupported("can't promote integer width "^Int.toString ty)
          | loop(t::ts) = if t > ty then t else loop ts

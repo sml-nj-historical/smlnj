@@ -1,4 +1,8 @@
-(*
+(* x86RA.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * X86 specific register allocator.
  * This module abstracts out all the nasty RA business on the x86.  
  * So you should only have to write the callbacks.

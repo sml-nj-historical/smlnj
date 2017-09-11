@@ -1,6 +1,7 @@
 (* x86-fp.sml
  *
- * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * This phase takes a cluster with pseudo x86 fp instructions, performs
  * liveness analysis to determine their live ranges, and rewrite the
