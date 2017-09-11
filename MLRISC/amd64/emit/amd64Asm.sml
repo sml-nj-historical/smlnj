@@ -89,86 +89,92 @@ struct
      | asm_cond (I.O) = "o"
      | asm_cond (I.NO) = "no"
    and emit_cond x = emit (asm_cond x)
-   and asm_binaryOp (I.ADDQ) = "addq"
-     | asm_binaryOp (I.SUBQ) = "subq"
-     | asm_binaryOp (I.ANDQ) = "andq"
-     | asm_binaryOp (I.ORQ) = "orq"
-     | asm_binaryOp (I.XORQ) = "xorq"
-     | asm_binaryOp (I.SHLQ) = "shlq"
-     | asm_binaryOp (I.SARQ) = "sarq"
-     | asm_binaryOp (I.SHRQ) = "shrq"
-     | asm_binaryOp (I.MULQ) = "mulq"
-     | asm_binaryOp (I.IMULQ) = "imulq"
-     | asm_binaryOp (I.ADCQ) = "adcq"
-     | asm_binaryOp (I.SBBQ) = "sbbq"
-     | asm_binaryOp (I.ADDL) = "addl"
-     | asm_binaryOp (I.SUBL) = "subl"
-     | asm_binaryOp (I.ANDL) = "andl"
-     | asm_binaryOp (I.ORL) = "orl"
-     | asm_binaryOp (I.XORL) = "xorl"
-     | asm_binaryOp (I.SHLL) = "shll"
-     | asm_binaryOp (I.SARL) = "sarl"
-     | asm_binaryOp (I.SHRL) = "shrl"
-     | asm_binaryOp (I.MULL) = "mull"
-     | asm_binaryOp (I.IMULL) = "imull"
-     | asm_binaryOp (I.ADCL) = "adcl"
-     | asm_binaryOp (I.SBBL) = "sbbl"
-     | asm_binaryOp (I.ADDW) = "addw"
-     | asm_binaryOp (I.SUBW) = "subw"
-     | asm_binaryOp (I.ANDW) = "andw"
-     | asm_binaryOp (I.ORW) = "orw"
-     | asm_binaryOp (I.XORW) = "xorw"
-     | asm_binaryOp (I.SHLW) = "shlw"
-     | asm_binaryOp (I.SARW) = "sarw"
-     | asm_binaryOp (I.SHRW) = "shrw"
-     | asm_binaryOp (I.MULW) = "mulw"
-     | asm_binaryOp (I.IMULW) = "imulw"
-     | asm_binaryOp (I.ADDB) = "addb"
-     | asm_binaryOp (I.SUBB) = "subb"
-     | asm_binaryOp (I.ANDB) = "andb"
-     | asm_binaryOp (I.ORB) = "orb"
-     | asm_binaryOp (I.XORB) = "xorb"
-     | asm_binaryOp (I.SHLB) = "shlb"
-     | asm_binaryOp (I.SARB) = "sarb"
-     | asm_binaryOp (I.SHRB) = "shrb"
-     | asm_binaryOp (I.MULB) = "mulb"
-     | asm_binaryOp (I.IMULB) = "imulb"
-     | asm_binaryOp (I.BTSW) = "btsw"
-     | asm_binaryOp (I.BTCW) = "btcw"
-     | asm_binaryOp (I.BTRW) = "btrw"
-     | asm_binaryOp (I.BTSL) = "btsl"
-     | asm_binaryOp (I.BTCL) = "btcl"
-     | asm_binaryOp (I.BTRL) = "btrl"
-     | asm_binaryOp (I.ROLW) = "rolw"
-     | asm_binaryOp (I.RORW) = "rorw"
-     | asm_binaryOp (I.ROLL) = "roll"
-     | asm_binaryOp (I.RORL) = "rorl"
-     | asm_binaryOp (I.XCHGB) = "xchgb"
-     | asm_binaryOp (I.XCHGW) = "xchgw"
-     | asm_binaryOp (I.XCHGL) = "xchgl"
-     | asm_binaryOp (I.LOCK_ADCW) = "lock\n\tadcw"
-     | asm_binaryOp (I.LOCK_ADCL) = "lock\n\tadcl"
-     | asm_binaryOp (I.LOCK_ADDW) = "lock\n\taddw"
-     | asm_binaryOp (I.LOCK_ADDL) = "lock\n\taddl"
-     | asm_binaryOp (I.LOCK_ANDW) = "lock\n\tandw"
-     | asm_binaryOp (I.LOCK_ANDL) = "lock\n\tandl"
-     | asm_binaryOp (I.LOCK_BTSW) = "lock\n\tbtsw"
-     | asm_binaryOp (I.LOCK_BTSL) = "lock\n\tbtsl"
-     | asm_binaryOp (I.LOCK_BTRW) = "lock\n\tbtrw"
-     | asm_binaryOp (I.LOCK_BTRL) = "lock\n\tbtrl"
-     | asm_binaryOp (I.LOCK_BTCW) = "lock\n\tbtcw"
-     | asm_binaryOp (I.LOCK_BTCL) = "lock\n\tbtcl"
-     | asm_binaryOp (I.LOCK_ORW) = "lock\n\torw"
-     | asm_binaryOp (I.LOCK_ORL) = "lock\n\torl"
-     | asm_binaryOp (I.LOCK_SBBW) = "lock\n\tsbbw"
-     | asm_binaryOp (I.LOCK_SBBL) = "lock\n\tsbbl"
-     | asm_binaryOp (I.LOCK_SUBW) = "lock\n\tsubw"
-     | asm_binaryOp (I.LOCK_SUBL) = "lock\n\tsubl"
-     | asm_binaryOp (I.LOCK_XORW) = "lock\n\txorw"
-     | asm_binaryOp (I.LOCK_XORL) = "lock\n\txorl"
-     | asm_binaryOp (I.LOCK_XADDB) = "lock\n\txaddb"
-     | asm_binaryOp (I.LOCK_XADDW) = "lock\n\txaddw"
-     | asm_binaryOp (I.LOCK_XADDL) = "lock\n\txaddl"
+   and asm_binaryOp (I.ADD_Q) = "add_q"
+     | asm_binaryOp (I.SUB_Q) = "sub_q"
+     | asm_binaryOp (I.AND_Q) = "and_q"
+     | asm_binaryOp (I.OR_Q) = "or_q"
+     | asm_binaryOp (I.XOR_Q) = "xor_q"
+     | asm_binaryOp (I.SHL_Q) = "shl_q"
+     | asm_binaryOp (I.SAR_Q) = "sar_q"
+     | asm_binaryOp (I.SHR_Q) = "shr_q"
+     | asm_binaryOp (I.MUL_Q) = "mul_q"
+     | asm_binaryOp (I.IMUL_Q) = "imul_q"
+     | asm_binaryOp (I.ADC_Q) = "adc_q"
+     | asm_binaryOp (I.SBB_Q) = "sbb_q"
+     | asm_binaryOp (I.ADD_L) = "add_l"
+     | asm_binaryOp (I.SUB_L) = "sub_l"
+     | asm_binaryOp (I.AND_L) = "and_l"
+     | asm_binaryOp (I.OR_L) = "or_l"
+     | asm_binaryOp (I.XOR_L) = "xor_l"
+     | asm_binaryOp (I.SHL_L) = "shl_l"
+     | asm_binaryOp (I.SAR_L) = "sar_l"
+     | asm_binaryOp (I.SHR_L) = "shr_l"
+     | asm_binaryOp (I.MUL_L) = "mul_l"
+     | asm_binaryOp (I.IMUL_L) = "imul_l"
+     | asm_binaryOp (I.ADC_L) = "adc_l"
+     | asm_binaryOp (I.SBB_L) = "sbb_l"
+     | asm_binaryOp (I.ADD_W) = "add_w"
+     | asm_binaryOp (I.SUB_W) = "sub_w"
+     | asm_binaryOp (I.AND_W) = "and_w"
+     | asm_binaryOp (I.OR_W) = "or_w"
+     | asm_binaryOp (I.XOR_W) = "xor_w"
+     | asm_binaryOp (I.SHL_W) = "shl_w"
+     | asm_binaryOp (I.SAR_W) = "sar_w"
+     | asm_binaryOp (I.SHR_W) = "shr_w"
+     | asm_binaryOp (I.MUL_W) = "mul_w"
+     | asm_binaryOp (I.IMUL_W) = "imul_w"
+     | asm_binaryOp (I.ADD_B) = "add_b"
+     | asm_binaryOp (I.SUB_B) = "sub_b"
+     | asm_binaryOp (I.AND_B) = "and_b"
+     | asm_binaryOp (I.OR_B) = "or_b"
+     | asm_binaryOp (I.XOR_B) = "xor_b"
+     | asm_binaryOp (I.SHL_B) = "shl_b"
+     | asm_binaryOp (I.SAR_B) = "sar_b"
+     | asm_binaryOp (I.SHR_B) = "shr_b"
+     | asm_binaryOp (I.MUL_B) = "mul_b"
+     | asm_binaryOp (I.IMUL_B) = "imul_b"
+     | asm_binaryOp (I.BT_Q) = "bt_q"
+     | asm_binaryOp (I.BT_L) = "bt_l"
+     | asm_binaryOp (I.BT_W) = "bt_w"
+     | asm_binaryOp (I.BTC_Q) = "btc_q"
+     | asm_binaryOp (I.BTC_L) = "btc_l"
+     | asm_binaryOp (I.BTC_W) = "btc_w"
+     | asm_binaryOp (I.BTR_Q) = "btr_q"
+     | asm_binaryOp (I.BTR_L) = "btr_l"
+     | asm_binaryOp (I.BTR_W) = "btr_w"
+     | asm_binaryOp (I.BTS_Q) = "bts_q"
+     | asm_binaryOp (I.BTS_L) = "bts_l"
+     | asm_binaryOp (I.BTS_W) = "bts_w"
+     | asm_binaryOp (I.ROL_W) = "rol_w"
+     | asm_binaryOp (I.ROR_W) = "ror_w"
+     | asm_binaryOp (I.ROL_L) = "rol_l"
+     | asm_binaryOp (I.ROR_L) = "ror_l"
+     | asm_binaryOp (I.XCHG_B) = "xchg_b"
+     | asm_binaryOp (I.XCHG_W) = "xchg_w"
+     | asm_binaryOp (I.XCHG_L) = "xchg_l"
+     | asm_binaryOp (I.LOCK_ADC_W) = "lock\n\tadcw"
+     | asm_binaryOp (I.LOCK_ADC_L) = "lock\n\tadcl"
+     | asm_binaryOp (I.LOCK_ADD_W) = "lock\n\taddw"
+     | asm_binaryOp (I.LOCK_ADD_L) = "lock\n\taddl"
+     | asm_binaryOp (I.LOCK_AND_W) = "lock\n\tandw"
+     | asm_binaryOp (I.LOCK_AND_L) = "lock\n\tandl"
+     | asm_binaryOp (I.LOCK_BTS_W) = "lock\n\tbtsw"
+     | asm_binaryOp (I.LOCK_BTS_L) = "lock\n\tbtsl"
+     | asm_binaryOp (I.LOCK_BTR_W) = "lock\n\tbtrw"
+     | asm_binaryOp (I.LOCK_BTR_L) = "lock\n\tbtrl"
+     | asm_binaryOp (I.LOCK_BTC_W) = "lock\n\tbtcw"
+     | asm_binaryOp (I.LOCK_BTC_L) = "lock\n\tbtcl"
+     | asm_binaryOp (I.LOCK_OR_W) = "lock\n\torw"
+     | asm_binaryOp (I.LOCK_OR_L) = "lock\n\torl"
+     | asm_binaryOp (I.LOCK_SBB_W) = "lock\n\tsbbw"
+     | asm_binaryOp (I.LOCK_SBB_L) = "lock\n\tsbbl"
+     | asm_binaryOp (I.LOCK_SUB_W) = "lock\n\tsubw"
+     | asm_binaryOp (I.LOCK_SUB_L) = "lock\n\tsubl"
+     | asm_binaryOp (I.LOCK_XOR_W) = "lock\n\txorw"
+     | asm_binaryOp (I.LOCK_XOR_L) = "lock\n\txorl"
+     | asm_binaryOp (I.LOCK_XADD_B) = "lock\n\txaddb"
+     | asm_binaryOp (I.LOCK_XADD_W) = "lock\n\txaddw"
+     | asm_binaryOp (I.LOCK_XADD_L) = "lock\n\txaddl"
    and emit_binaryOp x = emit (asm_binaryOp x)
    and asm_multDivOp (I.IMULL1) = "imull"
      | asm_multDivOp (I.MULL1) = "mull"
@@ -179,77 +185,77 @@ struct
      | asm_multDivOp (I.IDIVQ1) = "idivq"
      | asm_multDivOp (I.DIVQ1) = "divq"
    and emit_multDivOp x = emit (asm_multDivOp x)
-   and asm_unaryOp (I.DECQ) = "decq"
-     | asm_unaryOp (I.INCQ) = "incq"
-     | asm_unaryOp (I.NEGQ) = "negq"
-     | asm_unaryOp (I.NOTQ) = "notq"
-     | asm_unaryOp (I.DECL) = "decl"
-     | asm_unaryOp (I.INCL) = "incl"
-     | asm_unaryOp (I.NEGL) = "negl"
-     | asm_unaryOp (I.NOTL) = "notl"
-     | asm_unaryOp (I.DECW) = "decw"
-     | asm_unaryOp (I.INCW) = "incw"
-     | asm_unaryOp (I.NEGW) = "negw"
-     | asm_unaryOp (I.NOTW) = "notw"
-     | asm_unaryOp (I.DECB) = "decb"
-     | asm_unaryOp (I.INCB) = "incb"
-     | asm_unaryOp (I.NEGB) = "negb"
-     | asm_unaryOp (I.NOTB) = "notb"
-     | asm_unaryOp (I.LOCK_DECQ) = "lock\n\tdecq"
-     | asm_unaryOp (I.LOCK_INCQ) = "lock\n\tincq"
-     | asm_unaryOp (I.LOCK_NEGQ) = "lock\n\tnegq"
-     | asm_unaryOp (I.LOCK_NOTQ) = "lock\n\tnotq"
+   and asm_unaryOp (I.DEC_Q) = "dec_q"
+     | asm_unaryOp (I.INC_Q) = "inc_q"
+     | asm_unaryOp (I.NEG_Q) = "neg_q"
+     | asm_unaryOp (I.NOT_Q) = "not_q"
+     | asm_unaryOp (I.DEC_L) = "dec_l"
+     | asm_unaryOp (I.INC_L) = "inc_l"
+     | asm_unaryOp (I.NEG_L) = "neg_l"
+     | asm_unaryOp (I.NOT_L) = "not_l"
+     | asm_unaryOp (I.DEC_W) = "dec_w"
+     | asm_unaryOp (I.INC_W) = "inc_w"
+     | asm_unaryOp (I.NEG_W) = "neg_w"
+     | asm_unaryOp (I.NOT_W) = "not_w"
+     | asm_unaryOp (I.DEC_B) = "dec_b"
+     | asm_unaryOp (I.INC_B) = "inc_b"
+     | asm_unaryOp (I.NEG_B) = "neg_b"
+     | asm_unaryOp (I.NOT_B) = "not_b"
+     | asm_unaryOp (I.LOCK_DEC_Q) = "lock\n\tdecq"
+     | asm_unaryOp (I.LOCK_INC_Q) = "lock\n\tincq"
+     | asm_unaryOp (I.LOCK_NEG_Q) = "lock\n\tnegq"
+     | asm_unaryOp (I.LOCK_NOT_Q) = "lock\n\tnotq"
    and emit_unaryOp x = emit (asm_unaryOp x)
-   and asm_shiftOp (I.SHLDL) = "shldl"
-     | asm_shiftOp (I.SHRDL) = "shrdl"
+   and asm_shiftOp (I.SHLD_L) = "shld_l"
+     | asm_shiftOp (I.SHRD_L) = "shrd_l"
    and emit_shiftOp x = emit (asm_shiftOp x)
-   and asm_bitOp (I.BTW) = "btw"
-     | asm_bitOp (I.BTL) = "btl"
-     | asm_bitOp (I.BTQ) = "btq"
-     | asm_bitOp (I.LOCK_BTW) = "lock\n\tbtw"
-     | asm_bitOp (I.LOCK_BTL) = "lock\n\tbtl"
+   and asm_bitOp (I.BT_Q) = "bt_q"
+     | asm_bitOp (I.BT_L) = "bt_l"
+     | asm_bitOp (I.BT_W) = "bt_w"
+     | asm_bitOp (I.LOCK_BT_L) = "lock\n\tbtl"
+     | asm_bitOp (I.LOCK_BT_W) = "lock\n\tbtw"
    and emit_bitOp x = emit (asm_bitOp x)
-   and asm_move (I.MOVQ) = "movq"
-     | asm_move (I.MOVL) = "movl"
-     | asm_move (I.MOVB) = "movb"
-     | asm_move (I.MOVW) = "movw"
-     | asm_move (I.MOVABSQ) = "movabsq"
-     | asm_move (I.MOVSWQ) = "movswq"
-     | asm_move (I.MOVZWQ) = "movzwq"
-     | asm_move (I.MOVSWL) = "movswl"
-     | asm_move (I.MOVZWL) = "movzwl"
-     | asm_move (I.MOVSBQ) = "movsbq"
-     | asm_move (I.MOVZBQ) = "movzbq"
-     | asm_move (I.MOVSBL) = "movsbl"
-     | asm_move (I.MOVZBL) = "movzbl"
-     | asm_move (I.MOVSLQ) = "movslq"
+   and asm_move (I.MOV_Q) = "mov_q"
+     | asm_move (I.MOV_L) = "mov_l"
+     | asm_move (I.MOV_B) = "mov_b"
+     | asm_move (I.MOV_W) = "mov_w"
+     | asm_move (I.MOVABS_Q) = "movabs_q"
+     | asm_move (I.MOVSW_Q) = "movsw_q"
+     | asm_move (I.MOVZW_Q) = "movzw_q"
+     | asm_move (I.MOVSW_L) = "movsw_l"
+     | asm_move (I.MOVZW_L) = "movzw_l"
+     | asm_move (I.MOVSB_Q) = "movsb_q"
+     | asm_move (I.MOVZB_Q) = "movzb_q"
+     | asm_move (I.MOVSB_L) = "movsb_l"
+     | asm_move (I.MOVZB_L) = "movzb_l"
+     | asm_move (I.MOVSL_Q) = "movsl_q"
      | asm_move (I.CVTSD2SI) = "cvtsd2si"
      | asm_move (I.CVTSS2SI) = "cvtss2si"
      | asm_move (I.CVTSD2SIQ) = "cvtsd2siq"
      | asm_move (I.CVTSS2SIQ) = "cvtss2siq"
    and emit_move x = emit (asm_move x)
-   and asm_fbin_op (I.ADDSS) = "addss"
-     | asm_fbin_op (I.ADDSD) = "addsd"
-     | asm_fbin_op (I.SUBSS) = "subss"
-     | asm_fbin_op (I.SUBSD) = "subsd"
-     | asm_fbin_op (I.MULSS) = "mulss"
-     | asm_fbin_op (I.MULSD) = "mulsd"
-     | asm_fbin_op (I.DIVSS) = "divss"
-     | asm_fbin_op (I.DIVSD) = "divsd"
-     | asm_fbin_op (I.XORPS) = "xorps"
-     | asm_fbin_op (I.XORPD) = "xorpd"
-     | asm_fbin_op (I.ANDPS) = "andps"
-     | asm_fbin_op (I.ANDPD) = "andpd"
-     | asm_fbin_op (I.ORPS) = "orps"
-     | asm_fbin_op (I.ORPD) = "orpd"
+   and asm_fbin_op (I.ADDS_S) = "adds_s"
+     | asm_fbin_op (I.ADDS_D) = "adds_d"
+     | asm_fbin_op (I.SUBS_S) = "subs_s"
+     | asm_fbin_op (I.SUBS_D) = "subs_d"
+     | asm_fbin_op (I.MULS_S) = "muls_s"
+     | asm_fbin_op (I.MULS_D) = "muls_d"
+     | asm_fbin_op (I.DIVS_S) = "divs_s"
+     | asm_fbin_op (I.DIVS_D) = "divs_d"
+     | asm_fbin_op (I.XORP_S) = "xorp_s"
+     | asm_fbin_op (I.XORP_D) = "xorp_d"
+     | asm_fbin_op (I.ANDP_S) = "andp_s"
+     | asm_fbin_op (I.ANDP_D) = "andp_d"
+     | asm_fbin_op (I.ORP_S) = "orp_s"
+     | asm_fbin_op (I.ORP_D) = "orp_d"
    and emit_fbin_op x = emit (asm_fbin_op x)
-   and asm_fcom_op (I.COMISS) = "comiss"
-     | asm_fcom_op (I.COMISD) = "comisd"
-     | asm_fcom_op (I.UCOMISS) = "ucomiss"
-     | asm_fcom_op (I.UCOMISD) = "ucomisd"
+   and asm_fcom_op (I.COMIS_S) = "comis_s"
+     | asm_fcom_op (I.COMIS_D) = "comis_d"
+     | asm_fcom_op (I.UCOMIS_S) = "ucomis_s"
+     | asm_fcom_op (I.UCOMIS_D) = "ucomis_d"
    and emit_fcom_op x = emit (asm_fcom_op x)
-   and asm_fmove_op (I.MOVSS) = "movss"
-     | asm_fmove_op (I.MOVSD) = "movsd"
+   and asm_fmove_op (I.MOVS_S) = "movs_s"
+     | asm_fmove_op (I.MOVS_D) = "movs_d"
      | asm_fmove_op (I.CVTSS2SD) = "cvtss2sd"
      | asm_fmove_op (I.CVTSD2SS) = "cvtsd2ss"
      | asm_fmove_op (I.CVTSI2SS) = "cvtsi2ss"
@@ -266,36 +272,36 @@ struct
      | asm_isize (I.I64) = "64"
    and emit_isize x = emit (asm_isize x)
 
-(*#line 505.7 "amd64/amd64.mdl"*)
+(*#line 534.7 "amd64/amd64.mdl"*)
    fun emitInt32 i = 
        let 
-(*#line 506.11 "amd64/amd64.mdl"*)
+(*#line 535.11 "amd64/amd64.mdl"*)
            val s = Int32.toString i
 
-(*#line 507.11 "amd64/amd64.mdl"*)
+(*#line 536.11 "amd64/amd64.mdl"*)
            val s = (if (i >= 0)
                   then s
                   else ("-" ^ (String.substring (s, 1, (size s) - 1))))
        in emit s
        end
 
-(*#line 511.7 "amd64/amd64.mdl"*)
+(*#line 540.7 "amd64/amd64.mdl"*)
    fun emitInt64 i = 
        let 
-(*#line 512.11 "amd64/amd64.mdl"*)
+(*#line 541.11 "amd64/amd64.mdl"*)
            val s = Int64.toString i
 
-(*#line 513.11 "amd64/amd64.mdl"*)
+(*#line 542.11 "amd64/amd64.mdl"*)
            val s = (if (i >= 0)
                   then s
                   else ("-" ^ (String.substring (s, 1, (size s) - 1))))
        in emit s
        end
 
-(*#line 518.7 "amd64/amd64.mdl"*)
+(*#line 547.7 "amd64/amd64.mdl"*)
    val {low=SToffset, ...} = C.cellRange CellsBasis.FP
 
-(*#line 520.7 "amd64/amd64.mdl"*)
+(*#line 549.7 "amd64/amd64.mdl"*)
    fun emitScale 0 = emit "1"
      | emitScale 1 = emit "2"
      | emitScale 2 = emit "4"
@@ -352,23 +358,23 @@ struct
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 568.7 "amd64/amd64.mdl"*)
+(*#line 597.7 "amd64/amd64.mdl"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas opnd = 
        ( emit "*"; 
          emit_operand opnd )
 
-(*#line 572.7 "amd64/amd64.mdl"*)
+(*#line 601.7 "amd64/amd64.mdl"*)
    fun isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
      | isMemOpnd (I.Displace _) = true
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 577.7 "amd64/amd64.mdl"*)
+(*#line 606.7 "amd64/amd64.mdl"*)
    fun chop fbinOp = 
        let 
-(*#line 578.15 "amd64/amd64.mdl"*)
+(*#line 607.15 "amd64/amd64.mdl"*)
            val n = size fbinOp
        in 
           (case Char.toLower (String.sub (fbinOp, n - 1)) of
@@ -377,34 +383,34 @@ struct
           )
        end
 
-(*#line 584.7 "amd64/amd64.mdl"*)
+(*#line 613.7 "amd64/amd64.mdl"*)
    val emit_dst = emit_operand
 
-(*#line 585.7 "amd64/amd64.mdl"*)
+(*#line 614.7 "amd64/amd64.mdl"*)
    val emit_src = emit_operand
 
-(*#line 586.7 "amd64/amd64.mdl"*)
+(*#line 615.7 "amd64/amd64.mdl"*)
    val emit_opnd = emit_operand
 
-(*#line 587.7 "amd64/amd64.mdl"*)
+(*#line 616.7 "amd64/amd64.mdl"*)
    val emit_opnd8 = emit_operand8
 
-(*#line 588.7 "amd64/amd64.mdl"*)
+(*#line 617.7 "amd64/amd64.mdl"*)
    val emit_rsrc = emit_operand
 
-(*#line 589.7 "amd64/amd64.mdl"*)
+(*#line 618.7 "amd64/amd64.mdl"*)
    val emit_lsrc = emit_operand
 
-(*#line 590.7 "amd64/amd64.mdl"*)
+(*#line 619.7 "amd64/amd64.mdl"*)
    val emit_addr = emit_operand
 
-(*#line 591.7 "amd64/amd64.mdl"*)
+(*#line 620.7 "amd64/amd64.mdl"*)
    val emit_src1 = emit_operand
 
-(*#line 592.7 "amd64/amd64.mdl"*)
+(*#line 621.7 "amd64/amd64.mdl"*)
    val emit_ea = emit_operand
 
-(*#line 593.7 "amd64/amd64.mdl"*)
+(*#line 622.7 "amd64/amd64.mdl"*)
    val emit_count = emit_operand
    fun emitInstr' instr = 
        (case instr of
@@ -417,7 +423,7 @@ struct
            emit_cond cond; 
            emit "\t"; 
            stupidGas opnd )
-       | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => 
+       | I.CAL_L{opnd, defs, uses, return, cutsTo, mem, pops} => 
          ( emit "call\t"; 
            stupidGas opnd; 
            emit_region mem; 
@@ -425,7 +431,7 @@ struct
            emit_uses uses; 
            emit_cellset ("return", return); 
            emit_cutsTo cutsTo )
-       | I.CALLQ{opnd, defs, uses, return, cutsTo, mem, pops} => 
+       | I.CALL_Q{opnd, defs, uses, return, cutsTo, mem, pops} => 
          ( emit "call\t"; 
            stupidGas opnd; 
            emit_region mem; 
@@ -454,52 +460,52 @@ struct
            emit_src src; 
            emit ", "; 
            emit_dst dst )
-       | I.LEAL{r32, addr} => 
+       | I.LEA_L{r32, addr} => 
          ( emit "leal\t"; 
            emit_addr addr; 
            emit ", "; 
            emit_cell (r32, 32))
-       | I.LEAQ{r64, addr} => 
+       | I.LEA_Q{r64, addr} => 
          ( emit "leaq\t"; 
            emit_addr addr; 
            emit ", "; 
            emit_cell (r64, 64))
-       | I.CMPQ{lsrc, rsrc} => 
+       | I.CMP_Q{lsrc, rsrc} => 
          ( emit "cmpq\t"; 
            emit_rsrc rsrc; 
            emit ", "; 
            emit_lsrc lsrc )
-       | I.CMPL{lsrc, rsrc} => 
+       | I.CMP_L{lsrc, rsrc} => 
          ( emit "cmpl\t"; 
            emit_rsrc rsrc; 
            emit ", "; 
            emit_lsrc lsrc )
-       | I.CMPW{lsrc, rsrc} => 
+       | I.CMP_W{lsrc, rsrc} => 
          ( emit "cmpb\t"; 
            emit_rsrc rsrc; 
            emit ", "; 
            emit_lsrc lsrc )
-       | I.CMPB{lsrc, rsrc} => 
+       | I.CMP_B{lsrc, rsrc} => 
          ( emit "cmpb\t"; 
            emit_rsrc rsrc; 
            emit ", "; 
            emit_lsrc lsrc )
-       | I.TESTQ{lsrc, rsrc} => 
+       | I.TEST_Q{lsrc, rsrc} => 
          ( emit "testq\t"; 
            emit_rsrc rsrc; 
            emit ", "; 
            emit_lsrc lsrc )
-       | I.TESTL{lsrc, rsrc} => 
+       | I.TEST_L{lsrc, rsrc} => 
          ( emit "testl\t"; 
            emit_rsrc rsrc; 
            emit ", "; 
            emit_lsrc lsrc )
-       | I.TESTW{lsrc, rsrc} => 
+       | I.TEST_W{lsrc, rsrc} => 
          ( emit "testw\t"; 
            emit_rsrc rsrc; 
            emit ", "; 
            emit_lsrc lsrc )
-       | I.TESTB{lsrc, rsrc} => 
+       | I.TEST_B{lsrc, rsrc} => 
          ( emit "testb\t"; 
            emit_rsrc rsrc; 
            emit ", "; 
@@ -513,18 +519,18 @@ struct
        | I.BINARY{binOp, src, dst} => 
          (case (src, binOp) of
            (I.Direct _, 
-           ( I.SARQ |
-           I.SHRQ |
-           I.SHLQ |
-           I.SARL |
-           I.SHRL |
-           I.SHLL |
-           I.SARW |
-           I.SHRW |
-           I.SHLW |
-           I.SARB |
-           I.SHRB |
-           I.SHLB )) => 
+           ( I.SAR_Q |
+           I.SHR_Q |
+           I.SHL_Q |
+           I.SAR_L |
+           I.SHR_L |
+           I.SHL_L |
+           I.SAR_W |
+           I.SHR_W |
+           I.SHL_W |
+           I.SAR_B |
+           I.SHR_B |
+           I.SHL_B )) => 
            ( emit_binaryOp binOp; 
              emit "\t%cl, "; 
              emit_dst dst )
@@ -586,16 +592,16 @@ struct
            emit_src src; 
            emit ", "; 
            emitCell dst )
-       | I.PUSHQ operand => 
+       | I.PUSH_Q operand => 
          ( emit "pushq\t"; 
            emit_operand operand )
-       | I.PUSHL operand => 
+       | I.PUSH_L operand => 
          ( emit "pushl\t"; 
            emit_operand operand )
-       | I.PUSHW operand => 
+       | I.PUSH_W operand => 
          ( emit "pushw\t"; 
            emit_operand operand )
-       | I.PUSHB operand => 
+       | I.PUSH_B operand => 
          ( emit "pushb\t"; 
            emit_operand operand )
        | I.PUSHFD => emit "pushfd"
@@ -603,7 +609,7 @@ struct
        | I.POP operand => 
          ( emit "popq\t"; 
            emit_operand operand )
-       | I.CDQ => emit "cdq"
+       | I.CD_Q => emit "cdq"
        | I.CLTD => emit "cltd"
        | I.CQTO => emit "cqto"
        | I.INTO => emit "int $4"

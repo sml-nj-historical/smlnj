@@ -10,6 +10,7 @@ sig
    include CELLS
    val EFLAGS : CellsBasis.cellkind
    val FFLAGS : CellsBasis.cellkind
+   val CTR_L : CellsBasis.cellkind
    val CELLSET : CellsBasis.cellkind
    val showGP : CellsBasis.register_id -> string
    val showFP : CellsBasis.register_id -> string
@@ -17,7 +18,7 @@ sig
    val showEFLAGS : CellsBasis.register_id -> string
    val showFFLAGS : CellsBasis.register_id -> string
    val showMEM : CellsBasis.register_id -> string
-   val showCTRL : CellsBasis.register_id -> string
+   val showCTR_L : CellsBasis.register_id -> string
    val showCELLSET : CellsBasis.register_id -> string
    val showGPWithSize : CellsBasis.register_id * CellsBasis.sz -> string
    val showFPWithSize : CellsBasis.register_id * CellsBasis.sz -> string
@@ -25,7 +26,7 @@ sig
    val showEFLAGSWithSize : CellsBasis.register_id * CellsBasis.sz -> string
    val showFFLAGSWithSize : CellsBasis.register_id * CellsBasis.sz -> string
    val showMEMWithSize : CellsBasis.register_id * CellsBasis.sz -> string
-   val showCTRLWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCTR_LWithSize : CellsBasis.register_id * CellsBasis.sz -> string
    val showCELLSETWithSize : CellsBasis.register_id * CellsBasis.sz -> string
    val rax : CellsBasis.cell
    val rcx : CellsBasis.cell
@@ -66,7 +67,7 @@ sig
    val addEFLAGS : CellsBasis.cell * cellset -> cellset
    val addFFLAGS : CellsBasis.cell * cellset -> cellset
    val addMEM : CellsBasis.cell * cellset -> cellset
-   val addCTRL : CellsBasis.cell * cellset -> cellset
+   val addCTR_L : CellsBasis.cell * cellset -> cellset
    val addCELLSET : CellsBasis.cell * cellset -> cellset
 end
 
@@ -125,8 +126,8 @@ struct
                                     ) (r, ty)
    and showMEMWithSize (r, ty) = (fn _ => "mem"
                                  ) (r, ty)
-   and showCTRLWithSize (r, ty) = (fn _ => "ctrl"
-                                  ) (r, ty)
+   and showCTR_LWithSize (r, ty) = (fn _ => "ctrl"
+                                   ) (r, ty)
    and showCELLSETWithSize (r, ty) = (fn _ => "CELLSET"
                                      ) (r, ty)
    fun showGP r = showGPWithSize (r, 64)
@@ -135,10 +136,11 @@ struct
    fun showEFLAGS r = showEFLAGSWithSize (r, 32)
    fun showFFLAGS r = showFFLAGSWithSize (r, 32)
    fun showMEM r = showMEMWithSize (r, 8)
-   fun showCTRL r = showCTRLWithSize (r, 0)
+   fun showCTR_L r = showCTR_LWithSize (r, 0)
    fun showCELLSET r = showCELLSETWithSize (r, 0)
    val EFLAGS = CellsBasis.newCellKind {name="EFLAGS", nickname="eflags"}
    and FFLAGS = CellsBasis.newCellKind {name="FFLAGS", nickname="fflags"}
+   and CTR_L = CellsBasis.newCellKind {name="CTR_L", nickname="ctrl"}
    and CELLSET = CellsBasis.newCellKind {name="CELLSET", nickname="cellset"}
    structure MyCells = Cells
       (exception Cells = AMD64Cells
@@ -158,16 +160,15 @@ struct
        and desc_MEM = CellsBasis.DESC {low=34, high=33, kind=CellsBasis.MEM, 
               defaultValues=[], zeroReg=NONE, toString=showMEM, toStringWithSize=showMEMWithSize, 
               counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsBasis.array0}
-       and desc_CTRL = CellsBasis.DESC {low=34, high=33, kind=CellsBasis.CTRL, 
-              defaultValues=[], zeroReg=NONE, toString=showCTRL, toStringWithSize=showCTRLWithSize, 
+       and desc_CTR_L = CellsBasis.DESC {low=34, high=33, kind=CTR_L, defaultValues=[], 
+              zeroReg=NONE, toString=showCTR_L, toStringWithSize=showCTR_LWithSize, 
               counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsBasis.array0}
        and desc_CELLSET = CellsBasis.DESC {low=34, high=33, kind=CELLSET, defaultValues=[], 
               zeroReg=NONE, toString=showCELLSET, toStringWithSize=showCELLSETWithSize, 
               counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsBasis.array0}
        val cellKindDescs = [(CellsBasis.GP, desc_GP), (CellsBasis.FP, desc_FP), 
               (CellsBasis.CC, desc_GP), (EFLAGS, desc_EFLAGS), (FFLAGS, desc_FFLAGS), 
-              (CellsBasis.MEM, desc_MEM), (CellsBasis.CTRL, desc_CTRL), (CELLSET, 
-              desc_CELLSET)]
+              (CellsBasis.MEM, desc_MEM), (CTR_L, desc_CTR_L), (CELLSET, desc_CELLSET)]
        val cellSize = 8
       )
 
@@ -178,7 +179,7 @@ struct
    and addEFLAGS = CellSet.add
    and addFFLAGS = CellSet.add
    and addMEM = CellSet.add
-   and addCTRL = CellSet.add
+   and addCTR_L = CellSet.add
    and addCELLSET = CellSet.add
    val RegGP = Reg GP
    and RegFP = Reg FP
@@ -186,7 +187,7 @@ struct
    and RegEFLAGS = Reg EFLAGS
    and RegFFLAGS = Reg FFLAGS
    and RegMEM = Reg MEM
-   and RegCTRL = Reg CTRL
+   and RegCTR_L = Reg CTR_L
    and RegCELLSET = Reg CELLSET
    val rax = RegGP 0
    val rcx = RegGP 1

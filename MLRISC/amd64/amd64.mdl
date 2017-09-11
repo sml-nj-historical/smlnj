@@ -1,9 +1,11 @@
 (* amd64.mdl
  *
- * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2017 The Fellowship of SM_L/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * The AMD64 (aka x86-64) machine description.
+ *
+ * See http://wiki.osdev.org/X86-64_Instruction_Encoding for details.
  *)
 
 architecture AMD64 = 
@@ -21,7 +23,7 @@ architecture AMD64 =
                        | (1,8)  => "%cl" | (5, 8) => "%ch"
                        | (2,8)  => "%dl" | (6, 8) => "%dh"
                        | (3,8)  => "%bl" | (7, 8) => "%bh"
-		       | (r,8) => "%r"^Int.toString r^"b"
+		       | (r,8)  => "%r"^Int.toString r^"b"
 
 		       | (0,16) => "%ax"  | (4,16) => "%sp" 
 		       | (1,16) => "%cx"  | (5,16) => "%bp" 
@@ -52,7 +54,7 @@ architecture AMD64 =
    |  EFLAGS = $eflags[1] of 32 bits asm: "$eflags"
    |  FFLAGS = $fflags[1] of 32 bits asm: "$fflags"
    |  MEM    = $m[]    of 8 aggregable bits asm: "mem" 
-   |  CTRL   = $ctrl[] asm: "ctrl"
+   |  CTR_L   = $ctrl[] asm: "ctrl"
 
    locations
        rax       = $r[0]
@@ -120,18 +122,18 @@ architecture AMD64 =
 
       (* Note: Relative is only generated after sdi resolution *)
       datatype operand =
-         Immed      of Int32.int   	   rtl: int
-       | Immed64    of Int64.int           rtl: int
-       | ImmedLabel of T.labexp            rtl: labexp
-       | Relative   of int		   (* no semantics given *)
-       | LabelEA    of T.labexp            rtl: labexp (* XXX *)
-       | Direct     of (int * $GP)   rtl: $r[GP]
-       | FDirect    of $FP                 rtl: $f[FP]
+         Immed      of Int32.int   	rtl: int
+       | Immed64    of Int64.int        rtl: int
+       | ImmedLabel of T.labexp         rtl: labexp
+       | Relative   of int		(* no semantics given *)
+       | LabelEA    of T.labexp         rtl: labexp (* XXX *)
+       | Direct     of (int * $GP)	rtl: $r[GP]
+       | FDirect    of $FP              rtl: $f[FP]
        | Displace   of {base: $GP, disp:operand, mem:Region.region}
-              rtl: $m[$r[base] + disp : mem]
+        				rtl: $m[$r[base] + disp : mem]
        | Indexed    of {base: $GP option, index: $GP, scale:int, 
                         disp:operand, mem:Region.region}
-              rtl: $m[$r[base] + $r[index] << scale + disp : mem]
+					rtl: $m[$r[base] + $r[index] << scale + disp : mem]
 
       type addressing_mode = operand
       
@@ -147,102 +149,114 @@ architecture AMD64 =
            *                      (Intel ordering, not gasm ordering)
            * ADC, ADD, AND, BT   mem, reg/imm
            * BTS, BTR, BTC, OR   mem, reg/imm
-           * SBB, SUB, XOR       mem, reg/imm
+           * SB_B, SU_B, XOR       mem, reg/imm
            * XCHG                reg, mem
            * XCHG                mem, reg
            * DEC, INC, NEG, NOT  mem
            *)
     
-      datatype binaryOp! = 
-         ADDQ | SUBQ | ANDQ | ORQ | XORQ | SHLQ | SARQ | SHRQ | MULQ | IMULQ
-       | ADCQ | SBBQ 
-       | ADDL | SUBL | ANDL | ORL | XORL | SHLL | SARL | SHRL | MULL | IMULL
-       | ADCL | SBBL 
-       | ADDW | SUBW | ANDW | ORW | XORW | SHLW | SARW | SHRW | MULW | IMULW
-       | ADDB | SUBB | ANDB | ORB | XORB | SHLB | SARB | SHRB | MULB | IMULB
-       | BTSW | BTCW | BTRW | BTSL | BTCL | BTRL 
-       | ROLW | RORW | ROLL | RORL
-       | XCHGB | XCHGW | XCHGL 
-       | LOCK_ADCW "lock\n\tadcw"
-       | LOCK_ADCL "lock\n\tadcl"
-       | LOCK_ADDW "lock\n\taddw"
-       | LOCK_ADDL "lock\n\taddl"
-       | LOCK_ANDW "lock\n\tandw"
-       | LOCK_ANDL "lock\n\tandl"
-       | LOCK_BTSW "lock\n\tbtsw"
-       | LOCK_BTSL "lock\n\tbtsl"
-       | LOCK_BTRW "lock\n\tbtrw"
-       | LOCK_BTRL "lock\n\tbtrl"
-       | LOCK_BTCW "lock\n\tbtcw"
-       | LOCK_BTCL "lock\n\tbtcl"
-       | LOCK_ORW  "lock\n\torw"
-       | LOCK_ORL  "lock\n\torl"
-       | LOCK_SBBW "lock\n\tsbbw"
-       | LOCK_SBBL "lock\n\tsbbl"
-       | LOCK_SUBW "lock\n\tsubw"
-       | LOCK_SUBL "lock\n\tsubl"
-       | LOCK_XORW "lock\n\txorw"
-       | LOCK_XORL "lock\n\txorl"
-       | LOCK_XADDB "lock\n\txaddb"
-       | LOCK_XADDW "lock\n\txaddw"
-       | LOCK_XADDL "lock\n\txaddl"
+      datatype binaryOp!
+      (* 64-bit arithmetic operations *)
+       = ADD_Q | SUB_Q | AND_Q | OR_Q | XOR_Q | SHL_Q | SAR_Q | SHR_Q | MUL_Q | IMUL_Q
+       | ADC_Q | SBB_Q 
+      (* 32-bit arithmetic operations *)
+       | ADD_L | SUB_L | AND_L | OR_L | XOR_L | SHL_L | SAR_L | SHR_L | MUL_L | IMUL_L
+       | ADC_L | SBB_L 
+      (* 16-bit arithmetic operations *)
+       | ADD_W | SUB_W | AND_W | OR_W | XOR_W | SHL_W | SAR_W | SHR_W | MUL_W | IMUL_W
+      (* 8-bit arithmetic operations *)
+       | ADD_B | SUB_B | AND_B | OR_B | XOR_B | SHL_B | SAR_B | SHR_B | MUL_B | IMUL_B
+      (* bit-test operations *)
+       | BT_Q | BT_L | BT_W
+      (* bit test-and-complement operations *)
+       | BTC_Q | BTC_L | BTC_W
+      (* bit test-and-reset operations *)
+       | BTR_Q | BTR_L | BTR_W
+      (* bit test-and-set operations *)
+       | BTS_Q | BTS_L | BTS_W
+       | ROL_W | ROR_W | ROL_L | ROR_L
+       | XCHG_B | XCHG_W | XCHG_L
+      (* atomic operations *)
+       | LOCK_ADC_W "lock\n\tadcw"
+       | LOCK_ADC_L "lock\n\tadcl"
+       | LOCK_ADD_W "lock\n\taddw"
+       | LOCK_ADD_L "lock\n\taddl"
+       | LOCK_AND_W "lock\n\tandw"
+       | LOCK_AND_L "lock\n\tandl"
+       | LOCK_BTS_W "lock\n\tbtsw"
+       | LOCK_BTS_L "lock\n\tbtsl"
+       | LOCK_BTR_W "lock\n\tbtrw"
+       | LOCK_BTR_L "lock\n\tbtrl"
+       | LOCK_BTC_W "lock\n\tbtcw"
+       | LOCK_BTC_L "lock\n\tbtcl"
+       | LOCK_OR_W  "lock\n\torw"
+       | LOCK_OR_L  "lock\n\torl"
+       | LOCK_SBB_W "lock\n\tsbbw"
+       | LOCK_SBB_L "lock\n\tsbbl"
+       | LOCK_SUB_W "lock\n\tsubw"
+       | LOCK_SUB_L "lock\n\tsubl"
+       | LOCK_XOR_W "lock\n\txorw"
+       | LOCK_XOR_L "lock\n\txorl"
+       | LOCK_XADD_B "lock\n\txaddb"
+       | LOCK_XADD_W "lock\n\txaddw"
+       | LOCK_XADD_L "lock\n\txaddl"
    
       (* One operand opcodes *)  
-      datatype multDivOp! = 
-               IMULL1 "imull" | MULL1 "mull" | IDIVL1 "idivl" | DIVL1 "divl"
-	     | IMULQ1 "imulq" | MULQ1 "mulq" | IDIVQ1 "idivq" | DIVQ1 "divq" 
+      datatype multDivOp!
+        = IMULL1 "imull" | MULL1 "mull" | IDIVL1 "idivl" | DIVL1 "divl"
+	| IMULQ1 "imulq" | MULQ1 "mulq" | IDIVQ1 "idivq" | DIVQ1 "divq" 
     
-      datatype unaryOp! = DECQ | INCQ | NEGQ | NOTQ
-                        | DECL | INCL | NEGL | NOTL 
-                        | DECW | INCW | NEGW | NOTW
-                        | DECB | INCB | NEGB | NOTB 
-                        | LOCK_DECQ "lock\n\tdecq"
-                        | LOCK_INCQ "lock\n\tincq"
-                        | LOCK_NEGQ "lock\n\tnegq"
-                        | LOCK_NOTQ "lock\n\tnotq"
+      datatype unaryOp! = DEC_Q | INC_Q | NEG_Q | NOT_Q
+                        | DEC_L | INC_L | NEG_L | NOT_L 
+                        | DEC_W | INC_W | NEG_W | NOT_W
+                        | DEC_B | INC_B | NEG_B | NOT_B 
+                        | LOCK_DEC_Q "lock\n\tdecq"
+                        | LOCK_INC_Q "lock\n\tincq"
+                        | LOCK_NEG_Q "lock\n\tnegq"
+                        | LOCK_NOT_Q "lock\n\tnotq"
 
-      datatype shiftOp! = SHLDL | SHRDL 
+      datatype shiftOp! = SHLD_L | SHRD_L 
     
-      datatype bitOp! = BTW       
-                      | BTL 
-                      | BTQ
-                      | LOCK_BTW "lock\n\tbtw"
-                      | LOCK_BTL "lock\n\tbtl"
+      datatype bitOp! = BT_Q
+                      | BT_L
+                      | BT_W
+                      | LOCK_BT_L "lock\n\tbtl"
+                      | LOCK_BT_W "lock\n\tbtw"
     
-      datatype move! = MOVQ
-	             | MOVL    (* zx(long) -> qword *)
-                     | MOVB             
-                     | MOVW             
-		     | MOVABSQ
-		     | MOVSWQ  (* sx(word) -> qword *)
-                     | MOVZWQ  (* zx(word) -> qword *) 
-                     | MOVSWL  (* sx(word) -> long *)
-                     | MOVZWL  (* zx(word) -> long *) 
-                     | MOVSBQ  (* sx(byte) -> qword *) 
-                     | MOVZBQ  (* zx(byte) -> qword *)
-                     | MOVSBL  (* sx(byte) -> long *)
-                     | MOVZBL  (* zx(byte) -> long *)
-		     | MOVSLQ  (* sx(long) -> qword *)
+      datatype move! = MOV_Q
+	             | MOV_L    (* zx(long) -> qword *)
+                     | MOV_B             
+                     | MOV_W             
+		     | MOVABS_Q
+		     | MOVSW_Q  (* sx(word) -> qword *)
+                     | MOVZW_Q  (* zx(word) -> qword *) 
+                     | MOVSW_L  (* sx(word) -> long *)
+                     | MOVZW_L  (* zx(word) -> long *) 
+                     | MOVSB_Q  (* sx(byte) -> qword *) 
+                     | MOVZB_Q  (* zx(byte) -> qword *)
+                     | MOVSB_L  (* sx(byte) -> long *)
+                     | MOVZB_L  (* zx(byte) -> long *)
+		     | MOVSL_Q  (* sx(long) -> qword *)
 		     | CVTSD2SI  (* double -> long *)
 		     | CVTSS2SI  (* float -> long *)
 		     | CVTSD2SIQ  (* double -> qword *)
 		     | CVTSS2SIQ  (* float -> qword *)
     
-       datatype fbin_op! = 
-           ADDSS | ADDSD
-         | SUBSS | SUBSD
-         | MULSS | MULSD
-         | DIVSS | DIVSD
-	 | XORPS | XORPD
-	 | ANDPS | ANDPD
-	 | ORPS  | ORPD
+       datatype fbin_op!
+         = ADDS_S | ADDS_D
+         | SUBS_S | SUBS_D
+         | MULS_S | MULS_D
+         | DIVS_S | DIVS_D
+	 | XORP_S | XORP_D
+	 | ANDP_S | ANDP_D
+	 | ORP_S  | ORP_D
 
-       datatype fcom_op! =
-           COMISS | COMISD               (* ordered *)
-         | UCOMISS | UCOMISD             (* unordered *)
+       datatype fcom_op!
+         = COMIS_S | COMIS_D               (* ordered *)
+         | UCOMIS_S | UCOMIS_D             (* unordered *)
 
-       datatype fmove_op! =
-	   MOVSS | MOVSD
+       datatype fmove_op!
+	 = MOVS_S | MOVS_D
 	   (* conversion *)
 	 | CVTSS2SD | CVTSD2SS
 	 | CVTSI2SS | CVTSI2SSQ | CVTSI2SD | CVTSI2SDQ
@@ -260,7 +274,7 @@ architecture AMD64 =
    * Here, I'm going to define the semantics of the instructions
    *
    *------------------------------------------------------------------------*)
-  structure RTL =
+  structure RT_L =
   struct
 
      (* Get the basis *)
@@ -297,10 +311,10 @@ architecture AMD64 =
      val E   = ZF == 1                  val Z = E
      val L   = SF <> OF                 val NGE = L
      val LE  = SF <> OF orelse ZF == 1  val NG = LE
-     val NB  = CF == 0                  val AE = NB and NC = NB
+     val N_B  = CF == 0                  val AE = N_B and NC = N_B
      val NBE = CF == 0 andalso ZF == 0  val A  = NBE
      val NE  = ZF == 0                  val NZ = NE
-     val NL  = SF == OF                 val GE = NL
+     val N_L  = SF == OF                 val GE = N_L
      val NLE = ZF == 0 andalso SF == OF val G = NLE
      val NO  = OF == 0 
      val NP  = PF == 0                  val PO = NP
@@ -310,23 +324,23 @@ architecture AMD64 =
      val S   = SF == 1
 
      rtl NOP{} = () (* duh! *)
-     rtl LEAL{addr, r32} = $r[r32] := addr (* this is completely wrong! XXX *)
-     rtl LEAQ{addr, r64} = $r[r32] := addr (* this is completely wrong! XXX *)
+     rtl LEA_L{addr, r32} = $r[r32] := addr (* this is completely wrong! XXX *)
+     rtl LEA_Q{addr, r64} = $r[r32] := addr (* this is completely wrong! XXX *)
 
          (* moves with type conversion *)
-     rtl MOVQ{src,dst} = dst := qword src
-     rtl MOVL{src,dst} = dst := long src
-     rtl MOVW{src,dst} = dst := word src
-     rtl MOVB{src,dst} = dst := byte src
-     rtl MOVSWL{src,dst} = dst := long(sx(word src))
-     rtl MOVZWL{src,dst} = dst := long(zx(word src))
-     rtl MOVSBL{src,dst} = dst := long(sx(byte src))
-     rtl MOVZBL{src,dst} = dst := long(zx(byte src))
-     rtl MOVSWQ{src,dst} = dst := qword(sx(word src))
-     rtl MOVZWQ{src,dst} = dst := qword(zx(word src))
-     rtl MOVSBQ{src,dst} = dst := qword(sx(byte src))
-     rtl MOVZBQ{src,dst} = dst := qword(zx(byte src))
-     rtl MOVZLQ{src,dst} = dst := qword(zx(long src))
+     rtl MOV_Q{src,dst} = dst := qword src
+     rtl MOV_L{src,dst} = dst := long src
+     rtl MOV_W{src,dst} = dst := word src
+     rtl MOV_B{src,dst} = dst := byte src
+     rtl MOVSW_L{src,dst} = dst := long(sx(word src))
+     rtl MOVZW_L{src,dst} = dst := long(zx(word src))
+     rtl MOVSB_L{src,dst} = dst := long(sx(byte src))
+     rtl MOVZB_L{src,dst} = dst := long(zx(byte src))
+     rtl MOVSW_Q{src,dst} = dst := qword(sx(word src))
+     rtl MOVZW_Q{src,dst} = dst := qword(zx(word src))
+     rtl MOVSB_Q{src,dst} = dst := qword(sx(byte src))
+     rtl MOVZB_Q{src,dst} = dst := qword(zx(byte src))
+     rtl MOVZL_Q{src,dst} = dst := qword(zx(long src))
  
      (* semantics of integer arithmetic;
       * all instructions sets the condition code 
@@ -343,27 +357,27 @@ architecture AMD64 =
      rtl adc sbb bts btc btr rol ror xchg xadd cmpxchg rdtsc rdtscp
           : #n bits * #n bits -> #n bits
 
-     rtl [ADD,SUB,AND,OR,XOR]^^B = map (arith byte) [(+),(-),andb,orb,xorb]
-     rtl [ADD,SUB,AND,OR,XOR]^^W = map (arith word) [(+),(-),andb,orb,xorb]
-     rtl [ADD,SUB,AND,OR,XOR]^^L = map (arith long) [(+),(-),andb,orb,xorb]
-     rtl [ADD,SUB,AND,OR,XOR]^^Q = map (arith qword) [(+),(-),andb,orb,xorb]
-     rtl [SHR,SHL,SAR]^^B = map (binop byte) [(>>),(<<),(~>>)]
-     rtl [SHR,SHL,SAR]^^W = map (binop word) [(>>),(<<),(~>>)]
-     rtl [SHR,SHL,SAR]^^L = map (binop long) [(>>),(<<),(~>>)]
-     rtl [SHR,SHL,SAR]^^Q = map (binop qword) [(>>),(<<),(~>>)]
+     rtl [ADD,SU_B,AND,OR,XOR]^^B = map (arith byte) [(+),(-),andb,orb,xorb]
+     rtl [ADD,SU_B,AND,OR,XOR]^^W = map (arith word) [(+),(-),andb,orb,xorb]
+     rtl [ADD,SU_B,AND,OR,XOR]^^L = map (arith long) [(+),(-),andb,orb,xorb]
+     rtl [ADD,SU_B,AND,OR,XOR]^^Q = map (arith qword) [(+),(-),andb,orb,xorb]
+     rtl [SHR,SH_L,SAR]^^B = map (binop byte) [(>>),(<<),(~>>)]
+     rtl [SHR,SH_L,SAR]^^W = map (binop word) [(>>),(<<),(~>>)]
+     rtl [SHR,SH_L,SAR]^^L = map (binop long) [(>>),(<<),(~>>)]
+     rtl [SHR,SH_L,SAR]^^Q = map (binop qword) [(>>),(<<),(~>>)]
      rtl [NEG,NOT,INC,DEC]^^B = map (unary byte) [(~),notb,inc,dec]
      rtl [NEG,NOT,INC,DEC]^^W = map (unary word) [(~),notb,inc,dec]
      rtl [NEG,NOT,INC,DEC]^^L = map (unary long) [(~),notb,inc,dec]
      rtl [NEG,NOT,INC,DEC]^^Q = map (unary qword) [(~),notb,inc,dec]
 
      
-     rtl [ADC,SBB,BTS,BTC,BTR,ROL,ROR,XCHG]^^B = 
+     rtl [ADC,SB_B,BTS,BTC,BTR,RO_L,ROR,XCHG]^^B = 
           map (arith byte) [adc,sbb,bts,btc,btr,rol,ror,xchg]
-     rtl [ADC,SBB,BTS,BTC,BTR,ROL,ROR,XCHG]^^W = 
+     rtl [ADC,SB_B,BTS,BTC,BTR,RO_L,ROR,XCHG]^^W = 
           map (arith word) [adc,sbb,bts,btc,btr,rol,ror,xchg]
-     rtl [ADC,SBB,BTS,BTC,BTR,ROL,ROR,XCHG]^^L = 
+     rtl [ADC,SB_B,BTS,BTC,BTR,RO_L,ROR,XCHG]^^L = 
           map (arith long) [adc,sbb,bts,btc,btr,rol,ror,xchg]
-     rtl [ADC,SBB,BTS,BTC,BTR,ROL,ROR,XCHG]^^Q = 
+     rtl [ADC,SB_B,BTS,BTC,BTR,RO_L,ROR,XCHG]^^Q = 
           map (arith qword) [adc,sbb,bts,btc,btr,rol,ror,xchg]
 
      fun lockarith typ oper {src,dst}= 
@@ -373,21 +387,21 @@ architecture AMD64 =
              opnd := typ(oper(opnd)) 
           || Kill $eflags[0] (* XXX *)
 
-     rtl LOCK_^^[ADD,SUB,AND,OR,XOR,XADD]^^B = 
+     rtl LOCK_^^[ADD,SU_B,AND,OR,XOR,XADD]^^B = 
           map (lockarith byte) [(+),(-),andb,orb,xorb,xadd]
-     rtl LOCK_^^[ADD,SUB,AND,OR,XOR,XADD]^^W = 
+     rtl LOCK_^^[ADD,SU_B,AND,OR,XOR,XADD]^^W = 
           map (lockarith word) [(+),(-),andb,orb,xorb,xadd]
-     rtl LOCK_^^[ADD,SUB,AND,OR,XOR,XADD]^^L = 
+     rtl LOCK_^^[ADD,SU_B,AND,OR,XOR,XADD]^^L = 
           map (lockarith long) [(+),(-),andb,orb,xorb,xadd]
-     rtl LOCK_^^[ADD,SUB,AND,OR,XOR,XADD]^^Q = 
+     rtl LOCK_^^[ADD,SU_B,AND,OR,XOR,XADD]^^Q = 
           map (lockarith qword) [(+),(-),andb,orb,xorb,xadd]
-     rtl LOCK_^^[ADC,SBB,BTS,BTC,BTR,ROL,ROR,XCHG]^^B = 
+     rtl LOCK_^^[ADC,SB_B,BTS,BTC,BTR,RO_L,ROR,XCHG]^^B = 
           map (lockarith byte) [adc,sbb,bts,btc,btr,rol,ror,xchg]
-     rtl LOCK_^^[ADC,SBB,BTS,BTC,BTR,ROL,ROR,XCHG]^^W = 
+     rtl LOCK_^^[ADC,SB_B,BTS,BTC,BTR,RO_L,ROR,XCHG]^^W = 
           map (lockarith word) [adc,sbb,bts,btc,btr,rol,ror,xchg]
-     rtl LOCK_^^[ADC,SBB,BTS,BTC,BTR,ROL,ROR,XCHG]^^L = 
+     rtl LOCK_^^[ADC,SB_B,BTS,BTC,BTR,RO_L,ROR,XCHG]^^L = 
           map (lockarith long) [adc,sbb,bts,btc,btr,rol,ror,xchg]
-     rtl LOCK_^^[ADC,SBB,BTS,BTC,BTR,ROL,ROR,XCHG]^^Q = 
+     rtl LOCK_^^[ADC,SB_B,BTS,BTC,BTR,RO_L,ROR,XCHG]^^Q = 
           map (lockarith qword) [adc,sbb,bts,btc,btr,rol,ror,xchg]
      rtl LOCK_^^[DEC,INC,NEG,NOT]^^L = 
           map (lockunary long) [dec,inc,(~),notb]
@@ -411,10 +425,10 @@ architecture AMD64 =
                        $eflags[0] := ???
 
      (* test[b,w,l] *)
-     rtl TESTB {lsrc,rsrc} = $eflags[0] := setFlag(andb(byte lsrc, rsrc))
-     rtl TESTW {lsrc,rsrc} = $eflags[0] := setFlag(andb(word lsrc, rsrc))
-     rtl TESTL {lsrc,rsrc} = $eflags[0] := setFlag(andb(long lsrc, rsrc))
-     rtl TESTQ {lsrc,rsrc} = $eflags[0] := setFlag(andb(qword lsrc, rsrc))
+     rtl TEST_B {lsrc,rsrc} = $eflags[0] := setFlag(andb(byte lsrc, rsrc))
+     rtl TEST_W {lsrc,rsrc} = $eflags[0] := setFlag(andb(word lsrc, rsrc))
+     rtl TEST_L {lsrc,rsrc} = $eflags[0] := setFlag(andb(long lsrc, rsrc))
+     rtl TEST_Q {lsrc,rsrc} = $eflags[0] := setFlag(andb(qword lsrc, rsrc))
 
      (* setcc *)
      fun set cc {opnd} = opnd := byte(cond(cc, 0xff, 0x0))
@@ -427,10 +441,10 @@ architecture AMD64 =
          map cmov [E ,NE,L, LE,G ,GE,B,BE,A,AE,C,NC,P,NP,O,NO] 
 
      (* push and pops *)
-     rtl PUSHQ {operand} = $m[rsp - 8] := qword(operand) || rsp := rsp - 8
-     rtl PUSHL {operand} = $m[esp - 4] := long(operand) || esp := esp - 4
-     rtl PUSHW {operand} = $m[esp - 2] := word(operand) || esp := esp - 2
-     rtl PUSHB {operand} = $m[esp - 1] := byte(operand) || esp := esp - 1
+     rtl PUSH_Q {operand} = $m[rsp - 8] := qword(operand) || rsp := rsp - 8
+     rtl PUSH_L {operand} = $m[esp - 4] := long(operand) || esp := esp - 4
+     rtl PUSH_W {operand} = $m[esp - 2] := word(operand) || esp := esp - 2
+     rtl PUSH_B {operand} = $m[esp - 1] := byte(operand) || esp := esp - 1
      rtl POP  {operand} = operand := long($m[esp]) || esp := esp + 4
     
      (* semantics of branches and jumps *)
@@ -438,17 +452,16 @@ architecture AMD64 =
      fun jcc cc {opnd} = if cc then Jmp(long opnd) else ()
      rtl J^^     [EQ,NE,LT,LE,GT,GE,B,BE,A,AE,C,NC,P,NP,O,NO] = 
          map jcc [E ,NE,L, LE,G ,GE,B,BE,A,AE,C,NC,P,NP,O,NO] 
-     rtl CALL{opnd,defs,uses} =
+     rtl CAL_L{opnd,defs,uses} =
          Call(long opnd) ||
          Kill $cellset[defs] || 
          Use $cellset[uses] 
-     rtl CALLQ{opnd,defs,uses} =
+     rtl CALL_Q{opnd,defs,uses} =
          Call(qword opnd) ||
          Kill $cellset[defs] || 
          Use $cellset[uses] 
 
-
-  end (* RTL *)
+  end (* RT_L *)
 
   (*------------------------------------------------------------------------
    * Machine Instruction encoding on the x86
@@ -456,8 +469,9 @@ architecture AMD64 =
    * We decompose each byte field into a seperate format first, then combine
    * then to form the real instructions
    *------------------------------------------------------------------------*)
-  instruction formats 8 bits 
-    modrm{mod:2, reg:3, rm:3} 
+  instruction formats 8 bits
+    rex{_:4 = 0b0100, w:1, r:1, x:1, b:1}
+  | modrm{mod:2, reg:3, rm:3} 
   | reg{opc:5, reg:3}
   | sib{ss:2, index:3, base:3}  
   | immed8{imm:8}
@@ -465,24 +479,33 @@ architecture AMD64 =
   instruction formats 32 bits
     immed32{imm:32}
 
+(* 64-bit instructions are not supported, so we have to build 64-bit
+ * immediates from pieces.
+ *)
+  instruction formats
+    immed64{imm:64} = let
+      val hi = Word32.fromLarge(Word64.toLarge(Word64.>>(imm, 0w32)))
+      val lo = Word32.fromLarge(Word64.toLarge imm)
+      in
+	immed32{imm=lo}; immed32{imm=hi}
+      end
+
   (*
    * Variable format instructions
    *)
   instruction formats 
-    immedOpnd{opnd} =
-      (case opnd of
-         I.Immed i32 => i32
+    immedOpnd{opnd} = (case opnd
+      of I.Immed i32 => i32
        | I.Immed i64 => i64
        | I.ImmedLabel le => lexp le
        | I.LabelEA le => lexp le
        | _ => error "immedOpnd"
       )
-  | extension{opc, opnd} = (* generate an extension *)
-      (case opnd of 
-        I.Direct (_, r) => modrm{mod=3, reg=opc, rm=r}
+  | extension{opc, opnd} = (case opnd   (* generate an extension *)
+     of I.Direct (_, r) => modrm{mod=3, reg=opc, rm=r}
       | I.FDirect _ => raise Fail "todo"
-      | I.Displace{base, disp, ...} =>
-        let val immed = immedOpnd{opnd=disp}
+      | I.Displace{base, disp, ...} => let
+        val immed = immedOpnd{opnd=disp}
         in  () (* XXX *)
         end
       | I.Indexed{base=NONE, index, scale, disp, ...} => ()
@@ -496,9 +519,8 @@ architecture AMD64 =
    instruction formats 
      encodeReg{prefix:8, reg: $GP 3, opnd} =
       (emit prefix; immedExt{opc=reg, opnd=opnd})
-   | arith{opc1,opc2,src,dst} =
-      (case (src, dst) of
-        (I.ImmedLabel le, dst) => arith{opc1,opc2,src=I.Immed(lexp le),dst} 
+   | arith{opc1,opc2,src,dst} = (case (src, dst)
+     of (I.ImmedLabel le, dst) => arith{opc1,opc2,src=I.Immed(lexp le),dst} 
       | (I.LabelEA le, dst) => arith{opc1,opc2,src=I.Immed(lexp le),dst}
       | (I.Immed i,dst) => ()
       | (I.Immed64 i,dst) => ()
@@ -640,7 +662,7 @@ architecture AMD64 =
 	asm: ``j<cond>\t<stupidGas opnd>''
 	rtl: ``J<cond>''
 
-    | CALL of {opnd: operand, defs: $cellset, uses: $cellset,
+    | CAL_L of {opnd: operand, defs: $cellset, uses: $cellset,
                return: $cellset, cutsTo: Label.label list, mem: Region.region,
  	       pops:Int32.int}
 	asm: ``call\t<stupidGas opnd><mem><
@@ -648,9 +670,9 @@ architecture AMD64 =
           	emit_uses(uses)><
           	emit_cellset("return",return)><
                 emit_cutsTo cutsTo>''
-	rtl: ``CALL''
+	rtl: ``CAL_L''
 
-    | CALLQ of {opnd: operand, defs: $cellset, uses: $cellset,
+    | CALL_Q of {opnd: operand, defs: $cellset, uses: $cellset,
                 return: $cellset, cutsTo: Label.label list, mem: Region.region,
  	        pops:Int32.int}
 	asm: ``call\t<stupidGas opnd><mem><
@@ -658,7 +680,7 @@ architecture AMD64 =
           	emit_uses(uses)><
           	emit_cellset("return",return)><
                 emit_cutsTo cutsTo>''
-	rtl: ``CALLQ''
+	rtl: ``CALL_Q''
 
     | ENTER of {src1:operand, src2:operand} 
 	asm: ``enter\t<emit_operand src1>, <emit_operand src2>''
@@ -674,41 +696,41 @@ architecture AMD64 =
 	asm: ``<mvOp>\t<src>, <dst>''
 	rtl: ``<mvOp>'' 
 
-    | LEAL of {r32: $GP, addr: operand}
+    | LEA_L of {r32: $GP, addr: operand}
 	asm: ``leal\t<addr>, <emit_cell (r32, 32)>''
-	rtl: ``LEAL'' 
+	rtl: ``LEA_L'' 
 
-    | LEAQ of {r64: $GP, addr: operand}
+    | LEA_Q of {r64: $GP, addr: operand}
 	asm: ``leaq\t<addr>, <emit_cell (r64, 64)>''
-	rtl: ``LEAQ'' 
+	rtl: ``LEA_Q'' 
 
-    | CMPQ of {lsrc: operand, rsrc: operand}
+    | CMP_Q of {lsrc: operand, rsrc: operand}
 	asm: ``cmpq\t<rsrc>, <lsrc>''
 
-    | CMPL of {lsrc: operand, rsrc: operand}
+    | CMP_L of {lsrc: operand, rsrc: operand}
 	asm: ``cmpl\t<rsrc>, <lsrc>''
 
-    | CMPW of {lsrc: operand, rsrc: operand}
+    | CMP_W of {lsrc: operand, rsrc: operand}
 	``cmpb\t<rsrc>, <lsrc>''
 
-    | CMPB of {lsrc: operand, rsrc: operand}
+    | CMP_B of {lsrc: operand, rsrc: operand}
 	``cmpb\t<rsrc>, <lsrc>''
 
-    | TESTQ of {lsrc: operand, rsrc: operand}
+    | TEST_Q of {lsrc: operand, rsrc: operand}
 	asm: ``testq\t<rsrc>, <lsrc>''
-	rtl: ``TESTQ''
+	rtl: ``TEST_Q''
 
-    | TESTL of {lsrc: operand, rsrc: operand}
+    | TEST_L of {lsrc: operand, rsrc: operand}
 	asm: ``testl\t<rsrc>, <lsrc>''
-	rtl: ``TESTL''
+	rtl: ``TEST_L''
 
-    | TESTW of {lsrc: operand, rsrc: operand}
+    | TEST_W of {lsrc: operand, rsrc: operand}
 	asm: ``testw\t<rsrc>, <lsrc>''
-	rtl: ``TESTW''
+	rtl: ``TEST_W''
 
-    | TESTB of {lsrc: operand, rsrc: operand}
+    | TEST_B of {lsrc: operand, rsrc: operand}
 	asm: ``testb\t<rsrc>, <lsrc>''
-	rtl: ``TESTB''
+	rtl: ``TEST_B''
 
     | BITOP of {bitOp:bitOp, lsrc: operand, rsrc: operand}
 	``<bitOp>\t<rsrc>, <lsrc>''
@@ -716,10 +738,10 @@ architecture AMD64 =
     | BINARY of {binOp:binaryOp, src:operand, dst:operand}
 	asm: (case (src,binOp) of
                (I.Direct _,  (* tricky business here for shifts *)
-               (I.SARQ | I.SHRQ | I.SHLQ |
-		I.SARL | I.SHRL | I.SHLL |
-                I.SARW | I.SHRW | I.SHLW |
-                I.SARB | I.SHRB | I.SHLB)) => ``<binOp>\t%cl, <dst>''
+               (I.SAR_Q | I.SHR_Q | I.SHL_Q |
+		I.SAR_L | I.SHR_L | I.SHL_L |
+                I.SAR_W | I.SHR_W | I.SHL_W |
+                I.SAR_B | I.SHR_B | I.SHL_B)) => ``<binOp>\t%cl, <dst>''
              | _ => ``<binOp>\t<src>, <dst>''
              )
 	(*rtl: ``<binOp>''*)
@@ -756,21 +778,21 @@ architecture AMD64 =
 	asm: ``cmov<cond>\t<src>, <dst>''
 	rtl: ``CMOV<cond>''
 
-    | PUSHQ of operand
+    | PUSH_Q of operand
 	asm: ``pushq\t<operand>''
-	rtl: ``PUSHQ''
+	rtl: ``PUSH_Q''
 
-    | PUSHL of operand
+    | PUSH_L of operand
 	asm: ``pushl\t<operand>''
-	rtl: ``PUSHL''
+	rtl: ``PUSH_L''
 
-    | PUSHW of operand
+    | PUSH_W of operand
 	asm: ``pushw\t<operand>''
-	rtl: ``PUSHW''
+	rtl: ``PUSH_W''
 
-    | PUSHB of operand
+    | PUSH_B of operand
 	asm: ``pushb\t<operand>''
-	rtl: ``PUSHB''
+	rtl: ``PUSH_B''
 
     | PUSHFD     (* push $eflags onto stack *)
 	``pushfd''
@@ -782,7 +804,7 @@ architecture AMD64 =
 	asm: ``popq\t<operand>''
 	rtl: ``POP''
 
-    | CDQ
+    | CD_Q
 	``cdq''
 
     | CLTD

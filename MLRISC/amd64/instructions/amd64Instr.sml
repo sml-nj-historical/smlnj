@@ -45,86 +45,92 @@ sig
    | O
    | NO
    datatype binaryOp =
-     ADDQ
-   | SUBQ
-   | ANDQ
-   | ORQ
-   | XORQ
-   | SHLQ
-   | SARQ
-   | SHRQ
-   | MULQ
-   | IMULQ
-   | ADCQ
-   | SBBQ
-   | ADDL
-   | SUBL
-   | ANDL
-   | ORL
-   | XORL
-   | SHLL
-   | SARL
-   | SHRL
-   | MULL
-   | IMULL
-   | ADCL
-   | SBBL
-   | ADDW
-   | SUBW
-   | ANDW
-   | ORW
-   | XORW
-   | SHLW
-   | SARW
-   | SHRW
-   | MULW
-   | IMULW
-   | ADDB
-   | SUBB
-   | ANDB
-   | ORB
-   | XORB
-   | SHLB
-   | SARB
-   | SHRB
-   | MULB
-   | IMULB
-   | BTSW
-   | BTCW
-   | BTRW
-   | BTSL
-   | BTCL
-   | BTRL
-   | ROLW
-   | RORW
-   | ROLL
-   | RORL
-   | XCHGB
-   | XCHGW
-   | XCHGL
-   | LOCK_ADCW
-   | LOCK_ADCL
-   | LOCK_ADDW
-   | LOCK_ADDL
-   | LOCK_ANDW
-   | LOCK_ANDL
-   | LOCK_BTSW
-   | LOCK_BTSL
-   | LOCK_BTRW
-   | LOCK_BTRL
-   | LOCK_BTCW
-   | LOCK_BTCL
-   | LOCK_ORW
-   | LOCK_ORL
-   | LOCK_SBBW
-   | LOCK_SBBL
-   | LOCK_SUBW
-   | LOCK_SUBL
-   | LOCK_XORW
-   | LOCK_XORL
-   | LOCK_XADDB
-   | LOCK_XADDW
-   | LOCK_XADDL
+     ADD_Q
+   | SUB_Q
+   | AND_Q
+   | OR_Q
+   | XOR_Q
+   | SHL_Q
+   | SAR_Q
+   | SHR_Q
+   | MUL_Q
+   | IMUL_Q
+   | ADC_Q
+   | SBB_Q
+   | ADD_L
+   | SUB_L
+   | AND_L
+   | OR_L
+   | XOR_L
+   | SHL_L
+   | SAR_L
+   | SHR_L
+   | MUL_L
+   | IMUL_L
+   | ADC_L
+   | SBB_L
+   | ADD_W
+   | SUB_W
+   | AND_W
+   | OR_W
+   | XOR_W
+   | SHL_W
+   | SAR_W
+   | SHR_W
+   | MUL_W
+   | IMUL_W
+   | ADD_B
+   | SUB_B
+   | AND_B
+   | OR_B
+   | XOR_B
+   | SHL_B
+   | SAR_B
+   | SHR_B
+   | MUL_B
+   | IMUL_B
+   | BT_Q
+   | BT_L
+   | BT_W
+   | BTC_Q
+   | BTC_L
+   | BTC_W
+   | BTR_Q
+   | BTR_L
+   | BTR_W
+   | BTS_Q
+   | BTS_L
+   | BTS_W
+   | ROL_W
+   | ROR_W
+   | ROL_L
+   | ROR_L
+   | XCHG_B
+   | XCHG_W
+   | XCHG_L
+   | LOCK_ADC_W
+   | LOCK_ADC_L
+   | LOCK_ADD_W
+   | LOCK_ADD_L
+   | LOCK_AND_W
+   | LOCK_AND_L
+   | LOCK_BTS_W
+   | LOCK_BTS_L
+   | LOCK_BTR_W
+   | LOCK_BTR_L
+   | LOCK_BTC_W
+   | LOCK_BTC_L
+   | LOCK_OR_W
+   | LOCK_OR_L
+   | LOCK_SBB_W
+   | LOCK_SBB_L
+   | LOCK_SUB_W
+   | LOCK_SUB_L
+   | LOCK_XOR_W
+   | LOCK_XOR_L
+   | LOCK_XADD_B
+   | LOCK_XADD_W
+   | LOCK_XADD_L
    datatype multDivOp =
      IMULL1
    | MULL1
@@ -135,77 +141,77 @@ sig
    | IDIVQ1
    | DIVQ1
    datatype unaryOp =
-     DECQ
-   | INCQ
-   | NEGQ
-   | NOTQ
-   | DECL
-   | INCL
-   | NEGL
-   | NOTL
-   | DECW
-   | INCW
-   | NEGW
-   | NOTW
-   | DECB
-   | INCB
-   | NEGB
-   | NOTB
-   | LOCK_DECQ
-   | LOCK_INCQ
-   | LOCK_NEGQ
-   | LOCK_NOTQ
+     DEC_Q
+   | INC_Q
+   | NEG_Q
+   | NOT_Q
+   | DEC_L
+   | INC_L
+   | NEG_L
+   | NOT_L
+   | DEC_W
+   | INC_W
+   | NEG_W
+   | NOT_W
+   | DEC_B
+   | INC_B
+   | NEG_B
+   | NOT_B
+   | LOCK_DEC_Q
+   | LOCK_INC_Q
+   | LOCK_NEG_Q
+   | LOCK_NOT_Q
    datatype shiftOp =
-     SHLDL
-   | SHRDL
+     SHLD_L
+   | SHRD_L
    datatype bitOp =
-     BTW
-   | BTL
-   | BTQ
-   | LOCK_BTW
-   | LOCK_BTL
+     BT_Q
+   | BT_L
+   | BT_W
+   | LOCK_BT_L
+   | LOCK_BT_W
    datatype move =
-     MOVQ
-   | MOVL
-   | MOVB
-   | MOVW
-   | MOVABSQ
-   | MOVSWQ
-   | MOVZWQ
-   | MOVSWL
-   | MOVZWL
-   | MOVSBQ
-   | MOVZBQ
-   | MOVSBL
-   | MOVZBL
-   | MOVSLQ
+     MOV_Q
+   | MOV_L
+   | MOV_B
+   | MOV_W
+   | MOVABS_Q
+   | MOVSW_Q
+   | MOVZW_Q
+   | MOVSW_L
+   | MOVZW_L
+   | MOVSB_Q
+   | MOVZB_Q
+   | MOVSB_L
+   | MOVZB_L
+   | MOVSL_Q
    | CVTSD2SI
    | CVTSS2SI
    | CVTSD2SIQ
    | CVTSS2SIQ
    datatype fbin_op =
-     ADDSS
-   | ADDSD
-   | SUBSS
-   | SUBSD
-   | MULSS
-   | MULSD
-   | DIVSS
-   | DIVSD
-   | XORPS
-   | XORPD
-   | ANDPS
-   | ANDPD
-   | ORPS
-   | ORPD
+     ADDS_S
+   | ADDS_D
+   | SUBS_S
+   | SUBS_D
+   | MULS_S
+   | MULS_D
+   | DIVS_S
+   | DIVS_D
+   | XORP_S
+   | XORP_D
+   | ANDP_S
+   | ANDP_D
+   | ORP_S
+   | ORP_D
    datatype fcom_op =
-     COMISS
-   | COMISD
-   | UCOMISS
-   | UCOMISD
+     COMIS_S
+   | COMIS_D
+   | UCOMIS_S
+   | UCOMIS_D
    datatype fmove_op =
-     MOVSS
-   | MOVSD
+     MOVS_S
+   | MOVS_D
    | CVTSS2SD
    | CVTSD2SS
    | CVTSI2SS
@@ -224,24 +230,24 @@ sig
      NOP
    | JMP of operand * Label.label list
    | JCC of {cond:cond, opnd:operand}
-   | CALL of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
+   | CAL_L of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
         cutsTo:Label.label list, mem:Region.region, pops:Int32.int}
-   | CALLQ of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
+   | CALL_Q of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
         cutsTo:Label.label list, mem:Region.region, pops:Int32.int}
    | ENTER of {src1:operand, src2:operand}
    | LEAVE
    | RET of operand option
    | MOVE of {mvOp:move, src:operand, dst:operand}
-   | LEAL of {r32:CellsBasis.cell, addr:operand}
-   | LEAQ of {r64:CellsBasis.cell, addr:operand}
-   | CMPQ of {lsrc:operand, rsrc:operand}
-   | CMPL of {lsrc:operand, rsrc:operand}
-   | CMPW of {lsrc:operand, rsrc:operand}
-   | CMPB of {lsrc:operand, rsrc:operand}
-   | TESTQ of {lsrc:operand, rsrc:operand}
-   | TESTL of {lsrc:operand, rsrc:operand}
-   | TESTW of {lsrc:operand, rsrc:operand}
-   | TESTB of {lsrc:operand, rsrc:operand}
+   | LEA_L of {r32:CellsBasis.cell, addr:operand}
+   | LEA_Q of {r64:CellsBasis.cell, addr:operand}
+   | CMP_Q of {lsrc:operand, rsrc:operand}
+   | CMP_L of {lsrc:operand, rsrc:operand}
+   | CMP_W of {lsrc:operand, rsrc:operand}
+   | CMP_B of {lsrc:operand, rsrc:operand}
+   | TEST_Q of {lsrc:operand, rsrc:operand}
+   | TEST_L of {lsrc:operand, rsrc:operand}
+   | TEST_W of {lsrc:operand, rsrc:operand}
+   | TEST_B of {lsrc:operand, rsrc:operand}
    | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
    | SHIFT of {shiftOp:shiftOp, src:operand, dst:operand, count:operand}
@@ -251,14 +257,14 @@ sig
    | UNARY of {unOp:unaryOp, opnd:operand}
    | SET of {cond:cond, opnd:operand}
    | CMOV of {cond:cond, src:operand, dst:CellsBasis.cell}
-   | PUSHQ of operand
-   | PUSHL of operand
-   | PUSHW of operand
-   | PUSHB of operand
+   | PUSH_Q of operand
+   | PUSH_L of operand
+   | PUSH_W of operand
+   | PUSH_B of operand
    | PUSHFD
    | POPFD
    | POP of operand
-   | CDQ
+   | CD_Q
    | CLTD
    | CQTO
    | INTO
@@ -294,24 +300,24 @@ sig
    val nop : instruction
    val jmp : operand * Label.label list -> instruction
    val jcc : {cond:cond, opnd:operand} -> instruction
-   val call : {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
+   val cal_l : {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
       cutsTo:Label.label list, mem:Region.region, pops:Int32.int} -> instruction
-   val callq : {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
+   val call_q : {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
       cutsTo:Label.label list, mem:Region.region, pops:Int32.int} -> instruction
    val enter : {src1:operand, src2:operand} -> instruction
    val leave : instruction
    val ret : operand option -> instruction
    val move : {mvOp:move, src:operand, dst:operand} -> instruction
-   val leal : {r32:CellsBasis.cell, addr:operand} -> instruction
-   val leaq : {r64:CellsBasis.cell, addr:operand} -> instruction
-   val cmpq : {lsrc:operand, rsrc:operand} -> instruction
-   val cmpl : {lsrc:operand, rsrc:operand} -> instruction
-   val cmpw : {lsrc:operand, rsrc:operand} -> instruction
-   val cmpb : {lsrc:operand, rsrc:operand} -> instruction
-   val testq : {lsrc:operand, rsrc:operand} -> instruction
-   val testl : {lsrc:operand, rsrc:operand} -> instruction
-   val testw : {lsrc:operand, rsrc:operand} -> instruction
-   val testb : {lsrc:operand, rsrc:operand} -> instruction
+   val lea_l : {r32:CellsBasis.cell, addr:operand} -> instruction
+   val lea_q : {r64:CellsBasis.cell, addr:operand} -> instruction
+   val cmp_q : {lsrc:operand, rsrc:operand} -> instruction
+   val cmp_l : {lsrc:operand, rsrc:operand} -> instruction
+   val cmp_w : {lsrc:operand, rsrc:operand} -> instruction
+   val cmp_b : {lsrc:operand, rsrc:operand} -> instruction
+   val test_q : {lsrc:operand, rsrc:operand} -> instruction
+   val test_l : {lsrc:operand, rsrc:operand} -> instruction
+   val test_w : {lsrc:operand, rsrc:operand} -> instruction
+   val test_b : {lsrc:operand, rsrc:operand} -> instruction
    val bitop : {bitOp:bitOp, lsrc:operand, rsrc:operand} -> instruction
    val binary : {binOp:binaryOp, src:operand, dst:operand} -> instruction
    val shift : {shiftOp:shiftOp, src:operand, dst:operand, count:operand} -> instruction
@@ -321,14 +327,14 @@ sig
    val unary : {unOp:unaryOp, opnd:operand} -> instruction
    val set : {cond:cond, opnd:operand} -> instruction
    val cmov : {cond:cond, src:operand, dst:CellsBasis.cell} -> instruction
-   val pushq : operand -> instruction
-   val pushl : operand -> instruction
-   val pushw : operand -> instruction
-   val pushb : operand -> instruction
+   val push_q : operand -> instruction
+   val push_l : operand -> instruction
+   val push_w : operand -> instruction
+   val push_b : operand -> instruction
    val pushfd : instruction
    val popfd : instruction
    val pop : operand -> instruction
-   val cdq : instruction
+   val cd_q : instruction
    val cltd : instruction
    val cqto : instruction
    val into : instruction
@@ -392,86 +398,92 @@ struct
    | O
    | NO
    datatype binaryOp =
-     ADDQ
-   | SUBQ
-   | ANDQ
-   | ORQ
-   | XORQ
-   | SHLQ
-   | SARQ
-   | SHRQ
-   | MULQ
-   | IMULQ
-   | ADCQ
-   | SBBQ
-   | ADDL
-   | SUBL
-   | ANDL
-   | ORL
-   | XORL
-   | SHLL
-   | SARL
-   | SHRL
-   | MULL
-   | IMULL
-   | ADCL
-   | SBBL
-   | ADDW
-   | SUBW
-   | ANDW
-   | ORW
-   | XORW
-   | SHLW
-   | SARW
-   | SHRW
-   | MULW
-   | IMULW
-   | ADDB
-   | SUBB
-   | ANDB
-   | ORB
-   | XORB
-   | SHLB
-   | SARB
-   | SHRB
-   | MULB
-   | IMULB
-   | BTSW
-   | BTCW
-   | BTRW
-   | BTSL
-   | BTCL
-   | BTRL
-   | ROLW
-   | RORW
-   | ROLL
-   | RORL
-   | XCHGB
-   | XCHGW
-   | XCHGL
-   | LOCK_ADCW
-   | LOCK_ADCL
-   | LOCK_ADDW
-   | LOCK_ADDL
-   | LOCK_ANDW
-   | LOCK_ANDL
-   | LOCK_BTSW
-   | LOCK_BTSL
-   | LOCK_BTRW
-   | LOCK_BTRL
-   | LOCK_BTCW
-   | LOCK_BTCL
-   | LOCK_ORW
-   | LOCK_ORL
-   | LOCK_SBBW
-   | LOCK_SBBL
-   | LOCK_SUBW
-   | LOCK_SUBL
-   | LOCK_XORW
-   | LOCK_XORL
-   | LOCK_XADDB
-   | LOCK_XADDW
-   | LOCK_XADDL
+     ADD_Q
+   | SUB_Q
+   | AND_Q
+   | OR_Q
+   | XOR_Q
+   | SHL_Q
+   | SAR_Q
+   | SHR_Q
+   | MUL_Q
+   | IMUL_Q
+   | ADC_Q
+   | SBB_Q
+   | ADD_L
+   | SUB_L
+   | AND_L
+   | OR_L
+   | XOR_L
+   | SHL_L
+   | SAR_L
+   | SHR_L
+   | MUL_L
+   | IMUL_L
+   | ADC_L
+   | SBB_L
+   | ADD_W
+   | SUB_W
+   | AND_W
+   | OR_W
+   | XOR_W
+   | SHL_W
+   | SAR_W
+   | SHR_W
+   | MUL_W
+   | IMUL_W
+   | ADD_B
+   | SUB_B
+   | AND_B
+   | OR_B
+   | XOR_B
+   | SHL_B
+   | SAR_B
+   | SHR_B
+   | MUL_B
+   | IMUL_B
+   | BT_Q
+   | BT_L
+   | BT_W
+   | BTC_Q
+   | BTC_L
+   | BTC_W
+   | BTR_Q
+   | BTR_L
+   | BTR_W
+   | BTS_Q
+   | BTS_L
+   | BTS_W
+   | ROL_W
+   | ROR_W
+   | ROL_L
+   | ROR_L
+   | XCHG_B
+   | XCHG_W
+   | XCHG_L
+   | LOCK_ADC_W
+   | LOCK_ADC_L
+   | LOCK_ADD_W
+   | LOCK_ADD_L
+   | LOCK_AND_W
+   | LOCK_AND_L
+   | LOCK_BTS_W
+   | LOCK_BTS_L
+   | LOCK_BTR_W
+   | LOCK_BTR_L
+   | LOCK_BTC_W
+   | LOCK_BTC_L
+   | LOCK_OR_W
+   | LOCK_OR_L
+   | LOCK_SBB_W
+   | LOCK_SBB_L
+   | LOCK_SUB_W
+   | LOCK_SUB_L
+   | LOCK_XOR_W
+   | LOCK_XOR_L
+   | LOCK_XADD_B
+   | LOCK_XADD_W
+   | LOCK_XADD_L
    datatype multDivOp =
      IMULL1
    | MULL1
@@ -482,77 +494,77 @@ struct
    | IDIVQ1
    | DIVQ1
    datatype unaryOp =
-     DECQ
-   | INCQ
-   | NEGQ
-   | NOTQ
-   | DECL
-   | INCL
-   | NEGL
-   | NOTL
-   | DECW
-   | INCW
-   | NEGW
-   | NOTW
-   | DECB
-   | INCB
-   | NEGB
-   | NOTB
-   | LOCK_DECQ
-   | LOCK_INCQ
-   | LOCK_NEGQ
-   | LOCK_NOTQ
+     DEC_Q
+   | INC_Q
+   | NEG_Q
+   | NOT_Q
+   | DEC_L
+   | INC_L
+   | NEG_L
+   | NOT_L
+   | DEC_W
+   | INC_W
+   | NEG_W
+   | NOT_W
+   | DEC_B
+   | INC_B
+   | NEG_B
+   | NOT_B
+   | LOCK_DEC_Q
+   | LOCK_INC_Q
+   | LOCK_NEG_Q
+   | LOCK_NOT_Q
    datatype shiftOp =
-     SHLDL
-   | SHRDL
+     SHLD_L
+   | SHRD_L
    datatype bitOp =
-     BTW
-   | BTL
-   | BTQ
-   | LOCK_BTW
-   | LOCK_BTL
+     BT_Q
+   | BT_L
+   | BT_W
+   | LOCK_BT_L
+   | LOCK_BT_W
    datatype move =
-     MOVQ
-   | MOVL
-   | MOVB
-   | MOVW
-   | MOVABSQ
-   | MOVSWQ
-   | MOVZWQ
-   | MOVSWL
-   | MOVZWL
-   | MOVSBQ
-   | MOVZBQ
-   | MOVSBL
-   | MOVZBL
-   | MOVSLQ
+     MOV_Q
+   | MOV_L
+   | MOV_B
+   | MOV_W
+   | MOVABS_Q
+   | MOVSW_Q
+   | MOVZW_Q
+   | MOVSW_L
+   | MOVZW_L
+   | MOVSB_Q
+   | MOVZB_Q
+   | MOVSB_L
+   | MOVZB_L
+   | MOVSL_Q
    | CVTSD2SI
    | CVTSS2SI
    | CVTSD2SIQ
    | CVTSS2SIQ
    datatype fbin_op =
-     ADDSS
-   | ADDSD
-   | SUBSS
-   | SUBSD
-   | MULSS
-   | MULSD
-   | DIVSS
-   | DIVSD
-   | XORPS
-   | XORPD
-   | ANDPS
-   | ANDPD
-   | ORPS
-   | ORPD
+     ADDS_S
+   | ADDS_D
+   | SUBS_S
+   | SUBS_D
+   | MULS_S
+   | MULS_D
+   | DIVS_S
+   | DIVS_D
+   | XORP_S
+   | XORP_D
+   | ANDP_S
+   | ANDP_D
+   | ORP_S
+   | ORP_D
    datatype fcom_op =
-     COMISS
-   | COMISD
-   | UCOMISS
-   | UCOMISD
+     COMIS_S
+   | COMIS_D
+   | UCOMIS_S
+   | UCOMIS_D
    datatype fmove_op =
-     MOVSS
-   | MOVSD
+     MOVS_S
+   | MOVS_D
    | CVTSS2SD
    | CVTSD2SS
    | CVTSI2SS
@@ -571,24 +583,24 @@ struct
      NOP
    | JMP of operand * Label.label list
    | JCC of {cond:cond, opnd:operand}
-   | CALL of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
+   | CAL_L of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
         cutsTo:Label.label list, mem:Region.region, pops:Int32.int}
-   | CALLQ of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
+   | CALL_Q of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
         cutsTo:Label.label list, mem:Region.region, pops:Int32.int}
    | ENTER of {src1:operand, src2:operand}
    | LEAVE
    | RET of operand option
    | MOVE of {mvOp:move, src:operand, dst:operand}
-   | LEAL of {r32:CellsBasis.cell, addr:operand}
-   | LEAQ of {r64:CellsBasis.cell, addr:operand}
-   | CMPQ of {lsrc:operand, rsrc:operand}
-   | CMPL of {lsrc:operand, rsrc:operand}
-   | CMPW of {lsrc:operand, rsrc:operand}
-   | CMPB of {lsrc:operand, rsrc:operand}
-   | TESTQ of {lsrc:operand, rsrc:operand}
-   | TESTL of {lsrc:operand, rsrc:operand}
-   | TESTW of {lsrc:operand, rsrc:operand}
-   | TESTB of {lsrc:operand, rsrc:operand}
+   | LEA_L of {r32:CellsBasis.cell, addr:operand}
+   | LEA_Q of {r64:CellsBasis.cell, addr:operand}
+   | CMP_Q of {lsrc:operand, rsrc:operand}
+   | CMP_L of {lsrc:operand, rsrc:operand}
+   | CMP_W of {lsrc:operand, rsrc:operand}
+   | CMP_B of {lsrc:operand, rsrc:operand}
+   | TEST_Q of {lsrc:operand, rsrc:operand}
+   | TEST_L of {lsrc:operand, rsrc:operand}
+   | TEST_W of {lsrc:operand, rsrc:operand}
+   | TEST_B of {lsrc:operand, rsrc:operand}
    | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
    | SHIFT of {shiftOp:shiftOp, src:operand, dst:operand, count:operand}
@@ -598,14 +610,14 @@ struct
    | UNARY of {unOp:unaryOp, opnd:operand}
    | SET of {cond:cond, opnd:operand}
    | CMOV of {cond:cond, src:operand, dst:CellsBasis.cell}
-   | PUSHQ of operand
-   | PUSHL of operand
-   | PUSHW of operand
-   | PUSHB of operand
+   | PUSH_Q of operand
+   | PUSH_L of operand
+   | PUSH_W of operand
+   | PUSH_B of operand
    | PUSHFD
    | POPFD
    | POP of operand
-   | CDQ
+   | CD_Q
    | CLTD
    | CQTO
    | INTO
@@ -641,22 +653,22 @@ struct
    val nop = INSTR NOP
    and jmp = INSTR o JMP
    and jcc = INSTR o JCC
-   and call = INSTR o CALL
-   and callq = INSTR o CALLQ
+   and cal_l = INSTR o CAL_L
+   and call_q = INSTR o CALL_Q
    and enter = INSTR o ENTER
    and leave = INSTR LEAVE
    and ret = INSTR o RET
    and move = INSTR o MOVE
-   and leal = INSTR o LEAL
-   and leaq = INSTR o LEAQ
-   and cmpq = INSTR o CMPQ
-   and cmpl = INSTR o CMPL
-   and cmpw = INSTR o CMPW
-   and cmpb = INSTR o CMPB
-   and testq = INSTR o TESTQ
-   and testl = INSTR o TESTL
-   and testw = INSTR o TESTW
-   and testb = INSTR o TESTB
+   and lea_l = INSTR o LEA_L
+   and lea_q = INSTR o LEA_Q
+   and cmp_q = INSTR o CMP_Q
+   and cmp_l = INSTR o CMP_L
+   and cmp_w = INSTR o CMP_W
+   and cmp_b = INSTR o CMP_B
+   and test_q = INSTR o TEST_Q
+   and test_l = INSTR o TEST_L
+   and test_w = INSTR o TEST_W
+   and test_b = INSTR o TEST_B
    and bitop = INSTR o BITOP
    and binary = INSTR o BINARY
    and shift = INSTR o SHIFT
@@ -666,14 +678,14 @@ struct
    and unary = INSTR o UNARY
    and set = INSTR o SET
    and cmov = INSTR o CMOV
-   and pushq = INSTR o PUSHQ
-   and pushl = INSTR o PUSHL
-   and pushw = INSTR o PUSHW
-   and pushb = INSTR o PUSHB
+   and push_q = INSTR o PUSH_Q
+   and push_l = INSTR o PUSH_L
+   and push_w = INSTR o PUSH_W
+   and push_b = INSTR o PUSH_B
    and pushfd = INSTR PUSHFD
    and popfd = INSTR POPFD
    and pop = INSTR o POP
-   and cdq = INSTR CDQ
+   and cd_q = INSTR CD_Q
    and cltd = INSTR CLTD
    and cqto = INSTR CQTO
    and into = INSTR INTO

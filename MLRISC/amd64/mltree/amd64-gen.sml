@@ -14,15 +14,16 @@ functor AMD64Gen (
     structure ExtensionComp : MLTREE_EXTENSION_COMP
         where I = I and T = I.T
 
-    (* Take a number of bits and returns an rexp that points to a literal with the high bit set.
-     * We need this literal value for floating-point negation and absolute value (at least
-     * until SSE4).
-     *)
+  (* Take a number of bits and returns an rexp that points to a literal with the high bit set.
+   * We need this literal value for floating-point negation and absolute value (at least
+   * until SSE4).
+   *)
     val signBit : int -> MLTreeUtils.T.rexp
-    (* Same as signBit, except the high bit is zero and the low bits are 1s. *)
+
+  (* Same as signBit, except the high bit is zero and the low bits are 1s. *)
     val negateSignBit : int -> MLTreeUtils.T.rexp
 
-   (* guaranteeing that floats are stored at 16-byte aligned addresses reduces the number of instructions *)
+ (* guaranteeing that floats are stored at 16-byte aligned addresses reduces the number of instructions *)
     val floats16ByteAligned : bool
 
    ) : MLTREECOMP = struct
@@ -34,17 +35,18 @@ functor AMD64Gen (
     structure C = I.C
     structure CB = CellsBasis
     structure A = MLRiscAnnotations
-    structure TRS = MLTreeSize (structure T = T
-                                val intTy = 64)
+    structure TRS = MLTreeSize (
+	structure T = T
+	val intTy = 64)
     structure Shuffle = Shuffle (I)
     structure O = AMD64Opcodes (structure I = I)
     structure Gen = MLTreeGen (
-            structure T = T
-            structure Cells = C
-            val intTy = 64
-            val naturalWidths = [32, 64]
-            datatype rep = SE | ZE | NEITHER
-            val rep = NEITHER)
+	structure T = T
+	structure Cells = C
+	val intTy = 64
+	val naturalWidths = [32, 64]
+	datatype rep = SE | ZE | NEITHER
+	val rep = NEITHER)
     structure W32 = Word32
 
     fun error msg = MLRiscErrorMsg.error ("AMD64Gen", msg)
@@ -58,9 +60,9 @@ functor AMD64Gen (
     fun gpr (ty, r) = I.Direct (ty, r)
     val fpr = I.FDirect
 
-    fun rax ty = I.Direct(ty,C.rax)
-    fun rcx ty = I.Direct(ty,C.rcx)
-    fun rdx ty = I.Direct(ty,C.rdx)
+    fun rax ty = I.Direct(ty, C.rax)
+    fun rcx ty = I.Direct(ty, C.rcx)
+    fun rdx ty = I.Direct(ty, C.rdx)
 
     fun signExtend ty = if ty = 64 then I.CQTO else I.CLTD
 
@@ -76,7 +78,7 @@ functor AMD64Gen (
           | g(T.GPR(T.REG(_,r))::regs,acc)  = g(regs,C.addReg(r,acc))
           | g(T.FPR(T.FREG(_,f))::regs,acc) = g(regs,C.addFreg(f,acc))
           | g(T.CCR(T.CC(_,cc))::regs,acc)  = g(regs,addCCReg(cc,acc))
-          | g(T.CCR(T.FCC(_,cc))::regs,acc)  = g(regs,addCCReg(cc,acc))
+          | g(T.CCR(T.FCC(_,cc))::regs,acc) = g(regs,addCCReg(cc,acc))
           | g(_::regs, acc) = g(regs, acc)
       in
 	g(mlrisc, C.empty)
@@ -96,24 +98,24 @@ functor AMD64Gen (
 
     fun move64 (src, dst) = I.move {mvOp=I.MOVABSQ, src=src, dst=dst}
 
-    (* analyze for power-of-two-ness *)
-   fun analyze i' = let
-       val i = toInt32 i'
-       in
-	  let val (isneg, a, w) =
-		  if i >= 0 then (false, i, T.I.toWord32 (32, i'))
-		  else (true, ~i, T.I.toWord32 (32, T.I.NEG (32,  i')))
-	      fun log2 (0w1, p) = p
-		| log2 (w, p) = log2 (W32.>> (w, 0w1), p + 1)
+  (* analyze for power-of-two-ness *)
+    fun analyze i' = let
+	  val i = toInt32 i'
 	  in
-	      if w > 0w1 andalso W32.andb (w - 0w1, w) = 0w0 then
-		  (i, SOME (isneg, a,
-			    T.LI (T.I.fromInt32 (32, log2 (w, 0)))))
-	      else (i, NONE)
-	  end handle _ => (i, NONE)
-      end
+	    let
+	    val (isneg, a, w) = if i >= 0
+		then (false, i, T.I.toWord32 (32, i'))
+		else (true, ~i, T.I.toWord32 (32, T.I.NEG (32,  i')))
+	    fun log2 (0w1, p) = p
+	      | log2 (w, p) = log2 (W32.>> (w, 0w1), p + 1)
+	    in
+	      if w > 0w1 andalso W32.andb (w - 0w1, w) = 0w0
+		then (i, SOME (isneg, a, T.LI (T.I.fromInt32 (32, log2 (w, 0)))))
+	        else (i, NONE)
+	    end handle _ => (i, NONE)
+	  end
 
-    (* translate MLTREE condition codes to amd64 condition codes *)
+  (* translate MLTREE condition codes to amd64 condition codes *)
     fun cond T.LT = I.LT | cond T.LTU = I.B
       | cond T.LE = I.LE | cond T.LEU = I.BE
       | cond T.EQ = I.EQ | cond T.NE  = I.NE
@@ -121,7 +123,7 @@ functor AMD64Gen (
       | cond T.GT = I.GT | cond T.GTU = I.A
       | cond cc = error(concat["cond(", T.Basis.condToString cc, ")"])
 
-      (* Is the expression zero? *)
+  (* Is the expression zero? *)
     fun isZero(T.LI z) = z = 0
       | isZero(T.MARK(e,a)) = isZero e
       | isZero _ = false
@@ -151,12 +153,12 @@ functor AMD64Gen (
       | setZeroBit2 _             = false
 
     and isMemOpnd opnd = (case opnd
-        of  I.Displace _ => true
+         of I.Displace _ => true
           | I.Indexed _  => true
           | I.LabelEA _  => true
           | I.FDirect f  => true
           | _            => false
-          (* end case *))
+	(* end case *))
 
     fun selectInstructions (instrStream as TS.S.STREAM{
           emit=emitInstr, defineLabel, entryLabel, pseudoOp, annotation,
@@ -286,7 +288,7 @@ functor AMD64Gen (
                 val _ = expr (le, r, [])
                 val _ = mark (I.BINARY{binOp=(O.addOp ty), src=operand ty (T.REG(ty,base)), dst=operand ty (T.REG(ty,r))}, [])
                 in
-                doEA(trees, SOME r, i, s, I.Immed 0)
+                  doEA(trees, SOME r, i, s, I.Immed 0)
                 end
 	      | doEALabel (trees, le, b, i, s, d) = let
 		val le = (case b
@@ -366,12 +368,12 @@ functor AMD64Gen (
       (* load the label into a temp register. this operation is necessary, since most instructions
        * can only handle 32-bit immediates *)
 	and loadLabel src = let
-            val tmp = newReg ()
-	    val tmpR = I.Direct (64, tmp)
-	    in
+	      val tmp = newReg ()
+	      val tmpR = I.Direct (64, tmp)
+	      in
 		emitInstr (move64 (src, tmpR));
 		tmpR
-	    end
+	      end
 
         (* reduce an expression into an operand *)
         and operand ty (T.LI i) = if (fitsIn32Bits i)
@@ -394,12 +396,13 @@ functor AMD64Gen (
 	and immedLabel lab = I.ImmedLabel(T.LABEL lab)
 
 	(* ensure that the operand is either an immed or register *)
-	and immedOrReg(ty, opnd as I.Displace _) = moveToReg (ty, opnd)
-	  | immedOrReg(ty, opnd as I.Indexed _)  = moveToReg (ty, opnd)
-	  | immedOrReg(ty, opnd as I.LabelEA _)  = moveToReg (ty, opnd)
-	  | immedOrReg (ty, opnd)  = opnd
+	and immedOrReg (ty, opnd as I.Displace _) = moveToReg (ty, opnd)
+	  | immedOrReg (ty, opnd as I.Indexed _)  = moveToReg (ty, opnd)
+	  | immedOrReg (ty, opnd as I.LabelEA _)  = moveToReg (ty, opnd)
+	  | immedOrReg (ty, opnd) = opnd
 
-	and regOrMem (ty, opnd as (I.Immed _ | I.ImmedLabel _)) = moveToReg (ty, opnd)
+	and regOrMem (ty, opnd as I.Immed _) = moveToReg (ty, opnd)
+          | regOrMem (ty, opnd as I.ImmedLabel _) = moveToReg (ty, opnd)
 	  | regOrMem (ty, opnd) = opnd
 
 	and getExpr (exp as T.REG(_, rd)) = rd
@@ -613,7 +616,7 @@ functor AMD64Gen (
 		| reminf (ty, e1, e2) = reminf0 (ty, e1, e2)
 
               (* Division or remainder: divisor must be in %rdx:%rax pair *)
-              fun divrem(ty, signed, overflow, e1, e2, resultReg) =
+              fun divrem (ty, signed, overflow, e1, e2, resultReg) =
 		  let val (opnd1, opnd2) = (operand ty e1, operand ty e2)
                       val _ = move(ty, opnd1, rax ty)
                       val oper = if signed then (emit(signExtend ty); O.idiv1Op ty)
@@ -808,7 +811,7 @@ functor AMD64Gen (
 		  end)
 
 	    in
-	      (case e
+	      case e
 		of T.REG (ty, r) => move' (ty, gpr (ty, r), dstOpnd, an)
 		 | T.LI z => if (fitsIn32Bits z)
                    then move' (ty, I.Immed (toInt32 z), dstOpnd, an)
@@ -908,7 +911,7 @@ functor AMD64Gen (
 		 | T.MARK (e, a) => expr' (ty, e, dst, a :: an)
 		 | T.PRED (e, c) => expr' (ty, e, dst, A.CTRLUSE c :: an)
 		 | _ => raise Fail("Unsupported rexp: " ^ MLTreeUtils.rexpToString e)
-	      (* end case *))
+	      (* end case *)
 	    end (* expr' *)
 
 	and expr (e, dst, an) = expr' (TRS.size e, e, dst, an)
@@ -1198,8 +1201,7 @@ functor AMD64Gen (
                  | T.?>   => (j I.P; j I.A)
                  | T.<>   => j I.NE
                  | T.?=   => j I.EQ
-                 | _      => error(concat[
-				"fbranch(", T.Basis.fcondToString fcc, ")"])
+                 | _      => error(concat["fbranch(", T.Basis.fcondToString fcc, ")"])
                (* end case *))
 	    (* compare for condition  (x op y)
 	     *
@@ -1266,20 +1268,20 @@ functor AMD64Gen (
             end
 
         (* generate a real comparison; return the real cc used *)
-        and genCmp(ty, swapable, cc, a, b, an) =
-            let val (cc, opnd1, opnd2) = commuteComparison(ty, cc, swapable, a, b)
-            in
-	        (case ty
-		  of 8 => mark(I.CMPB{lsrc=opnd1, rsrc=opnd2}, an)
-		   | 16 => mark(I.CMPW{lsrc=opnd1, rsrc=opnd2}, an)
-		   | 32 => mark(I.CMPL{lsrc=opnd1, rsrc=opnd2}, an)
-		   | 64 => mark(I.CMPQ{lsrc=opnd1, rsrc=opnd2}, an)
-	        (* esac *));
+        and genCmp(ty, swapable, cc, a, b, an) = let
+	      val (cc, opnd1, opnd2) = commuteComparison(ty, cc, swapable, a, b)
+	      in
+	        case ty
+		  of 8 => mark(I.CMP_B{lsrc=opnd1, rsrc=opnd2}, an)
+		   | 16 => mark(I.CMP_W{lsrc=opnd1, rsrc=opnd2}, an)
+		   | 32 => mark(I.CMP_L{lsrc=opnd1, rsrc=opnd2}, an)
+		   | 64 => mark(I.CMP_Q{lsrc=opnd1, rsrc=opnd2}, an)
+	        (* esac *);
 	        cc
-            end
+	      end
 
-	(* Give a and b which are the operands to a comparison (or test)
-		* Return the appropriate condition code and operands.
+       (* Give a and b which are the operands to a comparison (or test)
+	* Return the appropriate condition code and operands.
 	*   The available modes are:
 	*        r/m, imm
 	*        r/m, r
@@ -1288,7 +1290,7 @@ functor AMD64Gen (
 	and commuteComparison(ty, cc, swapable, a, b) = let
 	    val (opnd1, opnd2) = (operand ty a, operand ty b)
 	    in  (* Try to fold in the operands whenever possible *)
-	      (case (isImmediate opnd1, isImmediate opnd2)
+	      case (isImmediate opnd1, isImmediate opnd2)
 	        of (true, true) => (cc, moveToReg (ty, opnd1), opnd2)
 	         | (true, false) =>
 		   if swapable then (T.Basis.swapCond cc, opnd2, opnd1)
@@ -1299,7 +1301,7 @@ functor AMD64Gen (
 		    | (I.Direct _, _) => (cc, opnd1, opnd2)
 		    | (_, _)          => (cc, moveToReg (ty, opnd1), opnd2)
 		   (* end case *))
-	      (* end case *))
+	      (* end case *)
 	    end  (* commuteComparison *)
 
 	(* generate a condition code expression
@@ -1333,13 +1335,13 @@ functor AMD64Gen (
 		cc)
 	 | cmpWithZero(cc, e, an) = (expr (e, newReg(), an); cc)
 
-        (* generate a comparison and sets the condition code;
+        (* generate a comparison that sets the condition code;
          * return the actual cc used.  If the flag swapable is true,
          * we can also reorder the operands.
          *)
-        and cmp (swapable, ty, cc, t1, t2, an) =
+        and cmp (swapable, ty, cc, t1, t2, an) = let
             (* == and <> can be always be reordered *)
-            let val swapable = swapable orelse cc = T.EQ orelse cc = T.NE
+            val swapable = swapable orelse cc = T.EQ orelse cc = T.NE
             in (* Sometimes the comparison is not necessary because
                 * the bits are already set!
                 *)
@@ -1348,62 +1350,60 @@ functor AMD64Gen (
                     cmpWithZero(T.Basis.swapCond cc, t2, an)
                  else (* can't reorder the comparison! *)
                     genCmp(ty, false, cc, t1, t2, an)
-             else if isZero t2 andalso setZeroBit2 t1 then
+              else if isZero t2 andalso setZeroBit2 t1 then
                 cmpWithZero(cc, t1, an)
-             else genCmp(ty, swapable, cc, t1, t2, an)
+              else genCmp(ty, swapable, cc, t1, t2, an)
             end
 
 	and branch (T.CMP(ty, cc, t1, t2), lab, an) = let
-            val cc = cmp (true, ty, cc, t1, t2, [])
-            in
-              mark (I.JCC{cond=cond cc, opnd=immedLabel lab}, an)
-            end
+	      val cc = cmp (true, ty, cc, t1, t2, [])
+	      in
+		mark (I.JCC{cond=cond cc, opnd=immedLabel lab}, an)
+	      end
           | branch (T.FCMP(fty, fcc, t1, t2), lab, an) =
-            fbranch (fty, fcc, t1, t2, lab, an)
+	      fbranch (fty, fcc, t1, t2, lab, an)
           | branch (ccexp, lab, an) = (
-            doCCexpr(ccexp, C.eflags, []);
-            mark(I.JCC{cond=cond(Gen.condOf ccexp), opnd=immedLabel lab}, an))
+	      doCCexpr(ccexp, C.eflags, []);
+	      mark(I.JCC{cond=cond(Gen.condOf ccexp), opnd=immedLabel lab}, an))
 
 	and stmt' (s, an) = (case s
-	    of T.MV (ty, d, e) => expr' (ty, e, d, an)
-	     | T.FMV (fty, d, e) => fexpr (fty, d, e, an)
-	     | T.CCMV (ccd, e) => doCCexpr (e, ccd, an)
-	     | T.COPY (ty, dst, src) => copy (ty, dst, src, an)
-	     | T.FCOPY (fty, dst, src) => fcopy (fty, dst, src, an)
-	     | T.JMP (e, labs) => jmp (e, labs, an)
-	     | T.CALL {funct, targets, defs, uses, region, pops, ...} =>
-	       call (funct, targets, defs, uses, region, [], an, pops)
-	     | T.FLOW_TO(T.CALL{funct, targets, defs, uses, region, pops, ...},
-                         cutTo) =>
-               call (funct, targets, defs, uses, region, cutTo, an, pops)
-             | T.RET _ => mark (I.RET NONE, an)
-             | T.STORE (ty, ea, d, mem) =>
-               store (ty, ea, d, mem, O.opcodes ty, doStore ty, an)
-             | T.FSTORE (fty, ea, e, mem) => fstore (fty, ea, mem, e, an)
-             | T.BCC(cc, lab) => branch (cc, lab, an)
-             | T.DEFINE l => defineLabel l
-             | T.LIVE s => mark' (I.LIVE{regs=cellset s,spilled=C.empty},an)
-             | T.KILL s => mark' (I.KILL{regs=cellset s,spilled=C.empty},an)
-             | T.ANNOTATION(s, a) => stmt' (s, a::an)
-             | T.EXT s =>
-               ExtensionComp.compileSext (reducer ()) {stm=s, an=an}
-             | s => app stmt (Gen.compileStm s)
-	    (* end case *))
+	       of T.MV (ty, d, e) => expr' (ty, e, d, an)
+		| T.FMV (fty, d, e) => fexpr (fty, d, e, an)
+		| T.CCMV (ccd, e) => doCCexpr (e, ccd, an)
+		| T.COPY (ty, dst, src) => copy (ty, dst, src, an)
+		| T.FCOPY (fty, dst, src) => fcopy (fty, dst, src, an)
+		| T.JMP (e, labs) => jmp (e, labs, an)
+		| T.CALL {funct, targets, defs, uses, region, pops, ...} =>
+		    call (funct, targets, defs, uses, region, [], an, pops)
+		| T.FLOW_TO(T.CALL{funct, targets, defs, uses, region, pops, ...}, cutTo) =>
+		    call (funct, targets, defs, uses, region, cutTo, an, pops)
+		| T.RET _ => mark (I.RET NONE, an)
+		| T.STORE (ty, ea, d, mem) => store (ty, ea, d, mem, O.opcodes ty, doStore ty, an)
+		| T.FSTORE (fty, ea, e, mem) => fstore (fty, ea, mem, e, an)
+		| T.BCC(cc, lab) => branch (cc, lab, an)
+		| T.DEFINE l => defineLabel l
+		| T.LIVE s => mark' (I.LIVE{regs=cellset s,spilled=C.empty},an)
+		| T.KILL s => mark' (I.KILL{regs=cellset s,spilled=C.empty},an)
+		| T.ANNOTATION(s, a) => stmt' (s, a::an)
+		| T.EXT s => ExtensionComp.compileSext (reducer ()) {stm=s, an=an}
+		| s => app stmt (Gen.compileStm s)
+	      (* end case *))
+
 	and stmt s = stmt' (s, [])
 
 	and beginCluster' _ = (
-	    trapLabel := NONE;
-	    beginCluster 0)
+	      trapLabel := NONE;
+	      beginCluster 0)
 
 	and endCluster' a = (
-	    (case !trapLabel
-              of NONE => ()
-               | SOME(_, lab) => (defineLabel lab; emit I.INTO)
-            (* end case *));
+	      case !trapLabel
+               of NONE => ()
+                | SOME(_, lab) => (defineLabel lab; emit I.INTO)
+              (* end case *);
             (* If floating point has been used allocate an extra
              * register just in case we didn't use any explicit register *)
-            ignore (newFreg ());
-            endCluster a)
+              ignore (newFreg ());
+              endCluster a)
 
 	and ccExpr e = error "ccExpr"
 
@@ -1427,17 +1427,18 @@ functor AMD64Gen (
 		mltreeStream  = self()
 	      }
 
-	and self () = TS.S.STREAM {
-	    beginCluster=beginCluster',
-	    endCluster=endCluster',
-	    emit=stmt,
-	    pseudoOp=pseudoOp,
-	    defineLabel=defineLabel,
-	    entryLabel=entryLabel,
-   	    comment=comment,
-            annotation=annotation,
-	    getAnnotations=getAnnotations,
-            exitBlock=exitBlock o cellset}
+	and self () = TS.S.STREAM{
+		beginCluster=beginCluster',
+		endCluster=endCluster',
+		emit=stmt,
+		pseudoOp=pseudoOp,
+		defineLabel=defineLabel,
+		entryLabel=entryLabel,
+		comment=comment,
+		annotation=annotation,
+		getAnnotations=getAnnotations,
+		exitBlock=exitBlock o cellset
+	      }
 	in
 	  self ()
 	end (* selectInstructions *)
