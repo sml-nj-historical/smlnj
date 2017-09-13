@@ -54,6 +54,7 @@ case "$VERSION" in
 	14.*) SDK=MacOSX10.10.sdk ;;
 	15.*) SDK=MacOSX10.11.sdk ;;
 	16.*) SDK=MacOSX10.12.sdk ;;
+	17.*) SDK=MacOSX10.13.sdk ;;
 	*) SDK=none ;;
       esac
       if test x$SDK != xnone ; then
@@ -63,7 +64,7 @@ case "$VERSION" in
 	INCLFILE=$XCODE_DEV_PATH/Platforms/MacOSX.platform/Developer/SDKs/$SDK/usr/include/unistd.h
         # verify that unistd.h exists at the expected place
         #
-        if test ! -r /usr/include/unistd.h ; then
+        if test ! -r $INCLFILE ; then
 	  echo "gen-posix-names.sh: unable to find <unistd.h>"
 	  exit 1
 	fi

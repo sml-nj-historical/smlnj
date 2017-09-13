@@ -441,6 +441,7 @@ is
 	ref.sig
 	ref.sml
 
+#if defined(SIZE_32)
 	bind-int-32.sml
 	bind-word-32.sml
 	bind-largeint-32.sml
@@ -450,6 +451,17 @@ is
 	bind-real-32.sml
 	bind-math-32.sml
 	bind-largereal-32.sml
+#else (* 64-bits *)
+	bind-int-64.sml
+	bind-word-64.sml
+	bind-largeint-64.sml
+	bind-fixedint-64.sml
+	bind-largeword-64.sml
+	bind-sysword-64.sml
+	bind-real-64.sml
+	bind-math-64.sml
+	bind-largereal-64.sml
+#endif
 
 #if defined(USE_64_BIT_POSITIONS)
 	bind-position-64.sml
