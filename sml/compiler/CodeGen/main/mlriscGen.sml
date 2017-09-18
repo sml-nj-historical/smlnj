@@ -1964,8 +1964,6 @@ raise ex)
                   emit(M.STORE(ity, tmp, regbind w, mem'));
                   gen(e, hp+2*ws)
               end
-            | gen(SETTER(P.boxedupdate, args, e), hp) =
-                gen(SETTER(P.update, args, e), hp)
             | gen(SETTER(P.unboxedupdate, [v, i, w], e), hp) =
               let (* get data pointer *)
                   val mem  = dataptrRegion v

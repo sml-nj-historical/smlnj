@@ -111,10 +111,6 @@ datatype primop
 
   | UNBOXEDASSIGN              (* assignment to integer reference *)
 
-  (* see Zhong and Matthias's comments in FLINT/trans/primopmap.sml regarding removal
-   * of these primops from InLine structure *)
-  | BOXEDUPDATE                (* boxed array update *)
-
   | WCAST                      (* ? *)
   | MARKEXN                    (* mark an exception value with a string *)
 
@@ -257,7 +253,6 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop THROW = "throw"
   | prPrimop SUBSCRIPT = "subscript"
   | prPrimop UNBOXEDUPDATE = "unboxedupdate"
-  | prPrimop BOXEDUPDATE = "boxedupdate"
   | prPrimop UPDATE = "update"
   | prPrimop INLSUBSCRIPT = "inlsubscript"
   | prPrimop INLSUBSCRIPTV = "inlsubscriptv"

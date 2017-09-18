@@ -448,7 +448,9 @@ in
 	      (* NOTE: P.UNBOXEDASSIGN is defined below *)
 	      | P.UPDATE => %?33
 	      | P.INLUPDATE => %?34
+(* BOXEDUPDATE is no longer a primop
 	      | P.BOXEDUPDATE => %?35
+*)
 	      | P.UNBOXEDUPDATE => %?36
 
 	      | P.GETTAG => %?37

@@ -276,11 +276,8 @@ fun ltd_rkind (lt, i) = lt_select (lt, i)
  ****************************************************************************)
 (** find out what is the appropriate primop given a tyc *)
 fun tc_upd_prim tc = 
-  let fun h(LT.TC_PRIM pt) = 
-            if PT.ubxupd pt then PO.UNBOXEDUPDATE
-            else if PT.bxupd pt then PO.BOXEDUPDATE 
-                 else PO.UPDATE
-        | h(LT.TC_TUPLE _ | LT.TC_ARROW _) = PO.BOXEDUPDATE
+  let fun h(LT.TC_PRIM pt) = if PT.ubxupd pt then PO.UNBOXEDUPDATE else PO.UPDATE
+        | h(LT.TC_TUPLE _ | LT.TC_ARROW _) = PO.UPDATE
         | h(LT.TC_FIX{family={size=1,gen=tc,params=ts,...},index=0}) =
             let val ntc = case ts of [] => tc
                                    | _ => tcc_app(tc, ts)

@@ -99,7 +99,6 @@ struct
              Int.max(sizeOf(k1,hp),sizeOf(k2,hp))
          | sizeOf(C.SETTER(P.assign,vs,k),hp) = sizeOf(k,hp+storeListSize)
          | sizeOf(C.SETTER(P.update,vs,k),hp) = sizeOf(k,hp+storeListSize)
-         | sizeOf(C.SETTER(P.boxedupdate,vs,k),hp) = sizeOf(k,hp+storeListSize)
          | sizeOf(C.SETTER(_,vs,k),hp) = sizeOf(k,hp)
          | sizeOf(C.PURE(P.fwrap,vs,x,cty,k),hp) = sizeOf(k,frecordSize(1,hp))
          | sizeOf(C.PURE(P.mkspecial,vs,x,cty,k),hp) = sizeOf(k, hp + 2*cellSz)
@@ -228,7 +227,6 @@ struct
            fun assign(a,x) = supdate(a,x) 
            fun unboxedassign(a,x) = supdate(a,x) 
            fun update(a,i,x) = arrayupdate(a,i,x) 
-           fun boxedupdate(a,i,x) = arrayupdate(a,i,x) 
            fun unboxedupdate(a,i,x) = arrayupdate(a,i,x) 
            fun numupdate(a,i,x) = arrayupdate(a,i,x) 
            fun numupdateF64(a,i,x) = arrayupdate(a,i,x) 
@@ -309,8 +307,6 @@ struct
                  (unboxedassign(a,v); infer(k,hp))
              | infer(C.SETTER(P.update, [a,i,v], k),hp) = 
                  (update(a,i,v); infer(k,hp+storeListSize))
-             | infer(C.SETTER(P.boxedupdate, [a,i,v], k), hp) = 
-                 (boxedupdate(a,i,v); infer(k,hp+storeListSize))
              | infer(C.SETTER(P.unboxedupdate, [a,i,v], k), hp) =
                  (unboxedupdate(a,i,v); infer(k,hp))
              | infer(C.SETTER(P.numupdate{kind=P.INT _}, [a,i,v], k),hp) =

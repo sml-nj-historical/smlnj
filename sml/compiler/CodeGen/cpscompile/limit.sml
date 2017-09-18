@@ -50,7 +50,6 @@ fun path escapes fl =
         | g(d, SWITCH(_,_,el)) = foldr Int.max 0 (map (fn e => g(d,e)) el)
 	| g(d, SETTER(P.assign, _, e)) = g(d+storeListSz, e)
         | g(d, SETTER(P.update,_,e)) = g(d+storeListSz, e)
-        | g(d, SETTER(P.boxedupdate,_,e)) = g(d+storeListSz, e)
             (*** should be +0 when unboxedfloat is turned on ***)   
         | g(d, ARITH(P.arith{kind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)   
         | g(d, ARITH(P.arith{kind=P.INT _,...},_,_,_,e)) = g(d+1, e)   

@@ -70,7 +70,6 @@ fun branchName P.boxed = "boxed"
   | branchName P.strneq = "strneq"
 
 fun setterName P.unboxedupdate = "unboxedupdate"
-  | setterName P.boxedupdate = "boxedupdate"
   | setterName P.update = "update"
   | setterName (P.numupdate{kind}) = ("numupdate" ^ numkindName kind)
   | setterName P.unboxedassign = "unboxedassign"

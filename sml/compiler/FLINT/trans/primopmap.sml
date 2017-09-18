@@ -131,15 +131,6 @@ val primops =
        ("length",	 (P.LENGTH)) :-:
        ("objlength",	 (P.OBJLENGTH)) :-:
 
-       (*  
-        * I believe the following primop should not be exported into
-        * the InLine structure. (ZHONG)
-        *
-       ("boxedupdate",   P.BOXEDUPDATE,   ?) :-:
-       *)
-
-       (* I put this one back in so tprof can find it in _Core
-	* instead of having to construct it ... (Matthias) *)
        ("unboxedupdate", (P.UNBOXEDUPDATE)) :-:
        			 
        ("inlnot",	 (P.INLNOT)) :-:

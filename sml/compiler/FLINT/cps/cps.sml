@@ -54,7 +54,7 @@ structure P = struct
   (* These all update the store *)
     datatype setter
       = numupdate of {kind: numkind}
-      | unboxedupdate | boxedupdate | update
+      | unboxedupdate | update
       | unboxedassign | assign
       | sethdlr | setvar | setspecial
       | free | acclink | setpseudo | setmark

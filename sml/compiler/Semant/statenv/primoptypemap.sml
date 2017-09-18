@@ -283,15 +283,6 @@ val primopTypes =
        ("length",	 (p1(ar(v1,i)))) :-:
        ("objlength",	 (p1(ar(v1,i)))) :-:
 
-       (*  
-        * I believe the following primop should not be exported into
-        * the InLine structure. (ZHONG) 
-        *
-       ("boxedupdate",   P.BOXEDUPDATE,   ?) :-:
-       *)
-
-       (* I put this one back in so tprof can find it in _Core
-	* instead of having to construct it ... (Matthias) *)
        ("unboxedupdate", (p1(ar(tu[ay(v1),i,v1],u)))) :-:
        			 
        ("inlnot",	 (b_b)) :-:

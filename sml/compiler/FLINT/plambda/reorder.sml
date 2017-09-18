@@ -109,7 +109,6 @@ fun fetchprim P.BOXED = true
 			         is the OLD contents of the array slot stored
 				 into *)
   | fetchprim P.INLUPDATE = true
-  | fetchprim P.BOXEDUPDATE = true
   | fetchprim P.UNBOXEDUPDATE = true
   | fetchprim P.SUBSCRIPT = true
   | fetchprim P.INLSUBSCRIPT = true

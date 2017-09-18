@@ -223,7 +223,6 @@ fun map_primop p =
      | AP.NUMUPDATE{kind,checked=false} =>
            PKS(P.numupdate{kind=numkind kind})
      | AP.UNBOXEDUPDATE => PKS(P.unboxedupdate)
-     | AP.BOXEDUPDATE => PKS(P.boxedupdate)
      | AP.UPDATE => PKS(P.update)
      | AP.ASSIGN => PKS(P.assign)
      | AP.UNBOXEDASSIGN => PKS(P.unboxedassign)

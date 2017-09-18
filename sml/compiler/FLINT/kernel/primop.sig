@@ -192,9 +192,8 @@ datatype primop
   | DEREF                      (* dereferencing *)
   | ASSIGN                     (* assignment *)
   | UNBOXEDASSIGN              (* assignment to integer reference *)
-  | UPDATE                     (* array update (maybe boxed) *)
+  | UPDATE                     (* array update (maybe boxed, so will allocate store-list item) *)
   | INLUPDATE                  (* inline array update (maybe boxed) *)
-  | BOXEDUPDATE                (* boxed array update *)
   | UNBOXEDUPDATE              (* update array of integers WITH tags *)
 
   | GETTAG                     (* extract the tag portion of an *)
