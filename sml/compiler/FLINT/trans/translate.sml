@@ -1291,10 +1291,10 @@ and mkVBs (vbs, d) =
 		       * new versions with fresh lvar access values *)
 		    val newVarExps = map (fn v => VARexp(ref v,[])) newvars
 		    val rhsTy = CoreBasicTypes.tupleTy(map (fn (VC.VALvar{typ,...}) => !typ) newvars)
-		    val rule1 = RULE(newpat, EU.TUPLEexp(newVarExps))
-		    val rule2 = RULE(WILDpat,
-				     RAISEexp(CONexp(CoreAccess.getExn env ["Bind"],[]),rhsTy))
-		    val newexp = CASEexp(exp, EU.completeMatch(env,"Bind")[rule1,rule2], false)
+		    val bindRule = RULE(newpat, EU.TUPLEexp(newVarExps))
+		    val defaultRule = RULE(WILDpat, 
+					   RAISEexp(CONexp(CoreAccess.getExn env ["Bind"],[]),rhsTy))
+		    val newexp = CASEexp(exp, [bindRule, defaultRule], false)
 
 		 in case oldvars
 		     of [] => (* variable-free pattern, implies boundtvs = [], hence no type abs *)

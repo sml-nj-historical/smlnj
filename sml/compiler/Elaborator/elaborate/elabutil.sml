@@ -164,7 +164,7 @@ fun makeRECORDexp(fields,err) =
     end
 
 val TUPLEexp = AbsynUtil.TUPLEexp
-(*
+
 fun TUPLEexp l = 
     let fun addlabels(i,e::r) = 
 	      (LABEL{number=i-1,name=(Tuples.numlabel i)},e) 
@@ -172,7 +172,6 @@ fun TUPLEexp l =
 	  | addlabels(_, nil) = nil
      in RECORDexp (addlabels(1,l))
     end
-*)
 
 fun TPSELexp(e, i) = 
     let val lab = LABEL{number=i-1, name=(Tuples.numlabel i)}
@@ -185,7 +184,8 @@ fun TPSELexp(e, i) =
      as location.
    KLUDGE! The debugger distinguishes marks in the default case by
      the fact that start and end locations for these marks 
-     are the same! *)
+     are the same! DBM: Is that you, Andrew Tolmach?  Is this
+     kludge still relevant?  Probably not! *)
 fun completeMatch'' rule [r as RULE(pat,MARKexp(_,(_,right)))] =
       [r, rule (fn exp => MARKexp(exp,(right,right)))]
   | completeMatch'' rule 
@@ -210,13 +210,6 @@ fun completeMatch(env,exnName: string) =
 val trivialCompleteMatch = completeMatch(SE.empty,"Match")
 
 val TUPLEpat = AbsynUtil.TUPLEpat
-(*
-fun TUPLEpat l =
-    let fun addlabels(i,e::r) = (Tuples.numlabel i, e) :: addlabels(i+1, r)
-	  | addlabels(_, nil) = nil
-     in RECORDpat{fields=addlabels(1,l), flex=false, typ=ref UNDEFty}
-    end
-*)
 
 fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) = 
   let fun g (RVB{var=v as VALvar{path=SP.SPATH [sym], ...}, ...}, nvars) = 

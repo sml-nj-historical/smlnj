@@ -684,7 +684,7 @@ fun genDecisionTree((decisions, delayed), active as active1::_) =
 	         else ABSTEST0(path, con, yesTree, defTree)
              end)
        handle PickBest => (RHS active1))
-  | genDecisionTree (_,active) = bug "nothing active"
+  | genDecisionTree (_,nil) = bug "nothing active"
 
 and gencases (nil, decs, delayed, defaults, active) = nil
   | gencases ((pcon,rules,guarded)::rest,decs,delayed,defaults,active)= 
@@ -1198,13 +1198,19 @@ local open Control.MC (* make various control flags visible *)
 in      
 
 (* 
- * Entry point for compiling matches induced by val declarations
- * (e.g., val listHead::listTail = list).  match is a two 
- * element list.  If the control flag Control.MC.bindNonExhaustiveWarn
- * is set, and match is nonexhaustive a warning is printed.  If the control
+ * bindCompile: Entry point for compiling matches induced by val declarations
+ * (e.g., val listHead::listTail = list).
+ * The match (rules) is a two  element list. The first rule corresponds
+ * to the let binding itself, while the second is a default rule
+ * (usually "_ => raise Bind") added, e.g. in the function mkVBs in
+ * translate.sml, or by applying ElabUtil.completeMatch.
+ * Thus the itself match will always be exhaustive, but the case where the
+ * let binding per se is nonexhaustive will still be detected by doMatchCompile
+ * (see the comment above), and if the control flag Control.MC.bindNonExhaustiveWarn
+ * is set then a nonexhaustive binding warning is printed. If the control
  * flag Control.MC.bindNoVariableWarn is set, and the first pattern
  * (i.e., the only non-dummy pattern) of match contains no variables or 
- * wildcards, a warning is printed.    Arguably, a pattern containing no 
+ * wildcards, a warning is printed. Arguably, a pattern containing no 
  * variables, but one or more wildcards, should also trigger a warning, 
  * but this would cause warnings on constructions like
  * val _ = <exp>  and  val _:<ty> = <exp>.

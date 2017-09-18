@@ -1,8 +1,14 @@
-Catalog of Primops
+Catalog of "Environmental" Primops
 (from Semant/statenv/prim.sml)
 
-This table is derived primarily from the definition of the InLine
-structure that contains the "environmental" primops.  This is defined
+This table lists the primops that are named in the pervasive environment
+(or at least in the Inline structure, from which bindings in Basis structures
+are derived). Hence they are called "environmental" primops. Additional primops
+that are not found in the environment are defined in the PrimOp structure in
+FLINT (base/compiler/FLINT/kernel/primop.sml).
+
+The table is derived primarily from the definition of the InLine
+structure that contains the "environmental" primops. This is defined
 in PrimEnv (Semant/statenv/prim.sml). The secondary bindings are 
 found in the following modules:
 
@@ -25,11 +31,12 @@ InlineT.IntInf, with their types, which may be specializations of the
 intrinsic type if the intrinsic type is polymorphic.
 
 Ternary bindings are found in the Basis modules (system/Basis), and
-are not yet included here.
+are not (yet) included here.
 
 Hypothesis: all primops that are contained in the environment are
 listed here.
 
+structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 
 0    callcc,	 P.CALLCC,     	('a cont -> 'a) -> 'a
 	 InlineT.callcc :	('a cont -> 'a) -> 'a
@@ -675,342 +682,342 @@ listed here.
 190  f64ne,	 float64cmp P.NEQ,       real * real -> bool
 	InlineT.Real64.!= :		 real * real -> bool
 
-	f64sgn,		 purefloat64 P.FSGN,	 real -> bool
+191  f64sgn,	 purefloat64 P.FSGN,	 real -> bool
 	InlineT.Real64.sgn :	 real -> bool
 
-191  f64abs,	 purefloat64 P.ABS,      real -> real
+192  f64abs,	 purefloat64 P.ABS,      real -> real
 	InlineT.Real64.abs :		 real -> real
 	
-192  f64sin,	 purefloat64 P.FSIN,	 real -> real
+193  f64sin,	 purefloat64 P.FSIN,	 real -> real
 	MathInlineT.sine :		 real -> real  [x86 only]
 
-193  f64cos,	 purefloat64 P.FCOS,	 real -> real
+194  f64cos,	 purefloat64 P.FCOS,	 real -> real
 	MathInlineT.cosine :		 real -> real  [x86 only]
 
-194  f64tan,	 purefloat64 P.FTAN,	 real -> real
+195  f64tan,	 purefloat64 P.FTAN,	 real -> real
 	MathInlineT.tangent :		 real -> real  [x86 only]
 
-195  f64sqrt,	 purefloat64 P.FSQRT,    real -> real
+196  f64sqrt,	 purefloat64 P.FSQRT,    real -> real
 	MathInlineT.sqrt :    		 real -> real  [generic,x86]
 
-196  f64min,	 P.INLMIN (P.FLOAT 64),  real * real -> real
+197  f64min,	 P.INLMIN (P.FLOAT 64),  real * real -> real
 	InlineT.Real64.min :		 real * real -> real
 
-197  f64max,	 P.INLMAX (P.FLOAT 64),  real * real -> real
+198  f64max,	 P.INLMAX (P.FLOAT 64),  real * real -> real
 	InlineT.Real64.max :		 real * real -> real
 
 (*** float64 array ***)	
 
-198  f64Sub,	   sub (P.FLOAT 64),	'a * int -> 'b
+199  f64Sub,	   sub (P.FLOAT 64),	'a * int -> 'b
 	InlineT.Real64Array.sub :	Assembly.A.real64array * int -> real
 
-199  f64chkSub,	   chkSub (P.FLOAT 64),	'a * int -> 'b
+200  f64chkSub,	   chkSub (P.FLOAT 64),	'a * int -> 'b
 	InlineT.Real64Array.chkSub :	Assembly.A.real64array * int -> real
 
-200  f64Update,	   update (P.FLOAT 64),	'a * int * 'b -> unit
+201  f64Update,	   update (P.FLOAT 64),	'a * int * 'b -> unit
 	InlineT.Real64Array.update :	Assembly.A.real64array * int * real -> unit
 
-201  f64chkUpdate, chkUpdate (P.FLOAT 64), 'a * int * 'b -> unit
+202  f64chkUpdate, chkUpdate (P.FLOAT 64), 'a * int * 'b -> unit
 	InlineT.Real64Array.chkUpdate :	   Assembly.A.real64array * int * real -> unit
 
 (*** word8 primops ***)
 (** InlineT.Word8 uses InLine.w31???_8 primops instead of these variants *) 
 
-202  w8orb,	 word31 P.ORB,      	 word8 * word8 -> word8
-203  w8xorb,	 word31 P.XORB,      	 word8 * word8 -> word8
-204  w8andb,	 word31 P.ANDB,      	 word8 * word8 -> word8
+203  w8orb,	 word31 P.ORB,      	 word8 * word8 -> word8
+204  w8xorb,	 word31 P.XORB,      	 word8 * word8 -> word8
+205  w8andb,	 word31 P.ANDB,      	 word8 * word8 -> word8
 
-205  w8gt,	 word8cmp P.>,           word8 * word8 -> bool
-206  w8ge,	 word8cmp P.>=,          word8 * word8 -> bool
-207  w8lt,	 word8cmp P.<,           word8 * word8 -> bool
-208  w8le,	 word8cmp P.<=,          word8 * word8 -> bool
-209  w8eq,	 word8cmp P.EQL,      	 word8 * word8 -> bool
-210  w8ne,	 word8cmp P.NEQ,      	 word8 * word8 -> bool
+206  w8gt,	 word8cmp P.>,           word8 * word8 -> bool
+207  w8ge,	 word8cmp P.>=,          word8 * word8 -> bool
+208  w8lt,	 word8cmp P.<,           word8 * word8 -> bool
+209  w8le,	 word8cmp P.<=,          word8 * word8 -> bool
+210  w8eq,	 word8cmp P.EQL,      	 word8 * word8 -> bool
+211  w8ne,	 word8cmp P.NEQ,      	 word8 * word8 -> bool
 
 (*** word8 array and vector ***)
 (** InlineT.Word8Array and Word8Vector use InLine.ordof, InLine.inlbyteof, ...
     instead of these primops **)
 
-211  w8Sub,	   sub (P.UINT 8),  	 'a * int -> 'b
-212  w8chkSub,	   chkSub (P.UINT 8),    'a * int -> 'b
-213  w8subv,	   subv (P.UINT 8),      'a * int -> 'b
-214  w8chkSubv,	   chkSubv (P.UINT 8),   'a * int -> 'b
-215  w8update,	   update (P.UINT 8),    'a * int * 'b -> unit
-216  w8chkUpdate,  chkUpdate (P.UINT 8), 'a * int * 'b -> unit
+212  w8Sub,	   sub (P.UINT 8),  	 'a * int -> 'b
+213  w8chkSub,	   chkSub (P.UINT 8),    'a * int -> 'b
+214  w8subv,	   subv (P.UINT 8),      'a * int -> 'b
+215  w8chkSubv,	   chkSubv (P.UINT 8),   'a * int -> 'b
+216  w8update,	   update (P.UINT 8),    'a * int * 'b -> unit
+217  w8chkUpdate,  chkUpdate (P.UINT 8), 'a * int * 'b -> unit
 
 (*** word31 primops ***)
 
-217  w31mul,	   word31 (P.* ),	word * word -> word
+218  w31mul,	   word31 (P.* ),	word * word -> word
 	InlineT.Word31.* :		word * word -> word
 
-218  w31div,	   word31 (P./),	word * word -> word
+219  w31div,	   word31 (P./),	word * word -> word
 	InlineT.Word31.div :		word * word -> word
 
-219  w31mod,	   word31 (P.REM),	word * word -> word
+220  w31mod,	   word31 (P.REM),	word * word -> word
 	InlineT.Word31.mod :		word * word -> word
 
-220  w31add,	   word31 (P.+),	word * word -> word
+221  w31add,	   word31 (P.+),	word * word -> word
 	InlineT.Word31.+ :		word * word -> word
 
-221  w31sub,	   word31 (P.-),	word * word -> word
+222  w31sub,	   word31 (P.-),	word * word -> word
 	InlineT.Word31.- :		word * word -> word
 
-222  w31orb,	   word31 P.ORB,	word * word -> word
+223  w31orb,	   word31 P.ORB,	word * word -> word
 	InlineT.Word31.orb :		word * word -> word
 
-223  w31xorb,	   word31 P.XORB,	word * word -> word
+224  w31xorb,	   word31 P.XORB,	word * word -> word
 	InlineT.Word31.xorb :		word * word -> word
 
-224  w31andb,	   word31 P.ANDB,	word * word -> word
+225  w31andb,	   word31 P.ANDB,	word * word -> word
 	InlineT.Word31.andb :		word * word -> word
 
-225  w31notb,	   word31 P.NOTB,	word -> word
+226  w31notb,	   word31 P.NOTB,	word -> word
 	InlineT.Word31.notb :		word -> word
 
-226  w31neg,       word31 P.~,		word -> word
+227  w31neg,       word31 P.~,		word -> word
 	InlineT.Word31.~ :		word -> word
 
-227  w31rshift,	   word31 P.RSHIFT,	word * word -> word
+228  w31rshift,	   word31 P.RSHIFT,	word * word -> word
 	InlineT.Word31.rshift :		word * word -> word
 
-228  w31rshiftl,   word31 P.RSHIFTL,	word * word -> word
+229  w31rshiftl,   word31 P.RSHIFTL,	word * word -> word
 	InlineT.Word31.rshiftl :	word * word -> word
 
-229  w31lshift,	   word31 P.LSHIFT,	word * word -> word
+230  w31lshift,	   word31 P.LSHIFT,	word * word -> word
 	InlineT.Word31.lshift :		word * word -> word
 
-230  w31gt,	   word31cmp (P.>),	word * word -> bool
+231  w31gt,	   word31cmp (P.>),	word * word -> bool
 	InlineT.Word31.> :		word * word -> bool
 
-231  w31ge,	   word31cmp (P.>=),	word * word -> bool
+232  w31ge,	   word31cmp (P.>=),	word * word -> bool
 	InlineT.Word31.>= :		word * word -> bool
 
-232  w31lt,	   word31cmp (P.<),	word * word -> bool
+233  w31lt,	   word31cmp (P.<),	word * word -> bool
 	InlineT.Word31.< :		word * word -> bool
 
-233  w31le,	   word31cmp (P.<=),	word * word -> bool
+234  w31le,	   word31cmp (P.<=),	word * word -> bool
 	InlineT.Word31.<= :		word * word -> bool
 
-234  w31eq,	   word31cmp P.EQL,        word * word -> bool
+235  w31eq,	   word31cmp P.EQL,        word * word -> bool
 
-235  w31ne,	   word31cmp P.NEQ,        word * word -> bool
+236  w31ne,	   word31cmp P.NEQ,        word * word -> bool
 
-236  w31ChkRshift, P.INLRSHIFT(P.UINT 31),	word * word -> word
+237  w31ChkRshift, P.INLRSHIFT(P.UINT 31),	word * word -> word
 	InlineT.Word31.chkRshift :		word * word -> word
 
-237  w31ChkRshiftl,P.INLRSHIFTL(P.UINT 31),	word * word -> word
+238  w31ChkRshiftl,P.INLRSHIFTL(P.UINT 31),	word * word -> word
 	InlineT.Word31.chkRshiftl :		word * word -> word
 
-238  w31ChkLshift, P.INLLSHIFT(P.UINT 31),	word * word -> word
+239  w31ChkLshift, P.INLLSHIFT(P.UINT 31),	word * word -> word
 	InlineT.Word31.chkLshift :		word * word -> word
 
-239  w31min,	   P.INLMIN (P.UINT 31),	word * word -> word
+240  w31min,	   P.INLMIN (P.UINT 31),	word * word -> word
 	InlineT.Word31.min :			word * word -> word
 
-240  w31max,	   P.INLMAX (P.UINT 31),	word * word -> word
+241  w31max,	   P.INLMAX (P.UINT 31),	word * word -> word
 	InlineT.Word31.max :			word * word -> word
 
      (* (pseudo-)word8 primops *)
-241  w31mul_8,	   word31 (P.* ),		word8 * word8 -> word8
+242  w31mul_8,	   word31 (P.* ),		word8 * word8 -> word8
 	InlineT.Word8.* :			word8 * word8 -> word8
 
-242  w31div_8,	   word31 (P./),		word8 * word8 -> word8
+243  w31div_8,	   word31 (P./),		word8 * word8 -> word8
 	InlineT.Word8.div :			word8 * word8 -> word8
 
-243  w31mod_8,	   word31 (P.REM),		word8 * word8 -> word8
+244  w31mod_8,	   word31 (P.REM),		word8 * word8 -> word8
 	InlineT.Word8.mod :			word8 * word8 -> word8
 
-244  w31add_8,	   word31 (P.+),		word8 * word8 -> word8
+245  w31add_8,	   word31 (P.+),		word8 * word8 -> word8
 	InlineT.Word8.+ :			word8 * word8 -> word8
 
-245  w31sub_8,	   word31 (P.-),		word8 * word8 -> word8
+246  w31sub_8,	   word31 (P.-),		word8 * word8 -> word8
 	InlineT.Word8.- :			word8 * word8 -> word8
 
-246  w31orb_8,	   word31 P.ORB,		word8 * word8 -> word8
+247  w31orb_8,	   word31 P.ORB,		word8 * word8 -> word8
 	InlineT.Word8.orb :			word8 * word8 -> word8
 
-247  w31xorb_8,	   word31 P.XORB,		word8 * word8 -> word8
+248  w31xorb_8,	   word31 P.XORB,		word8 * word8 -> word8
 	InlineT.Word8.xorb :			word8 * word8 -> word8
 
-248  w31andb_8,	   word31 P.ANDB,		word8 * word8 -> word8
+249  w31andb_8,	   word31 P.ANDB,		word8 * word8 -> word8
 	InlineT.Word8.andb :			word8 * word8 -> word8
 
-249  w31notb_8,	   word31 P.NOTB,		word8 -> word8
+250  w31notb_8,	   word31 P.NOTB,		word8 -> word8
 	InlineT.Word8.notb :			word8 -> word8
 
-250  w31neg_8,     word31 P.~,			word8 -> word8
+251  w31neg_8,     word31 P.~,			word8 -> word8
 	InlineT.Word8.~ :			word8 -> word8
 
-251  w31rshift_8,  word31 P.RSHIFT,		word8 * word -> word8
+252  w31rshift_8,  word31 P.RSHIFT,		word8 * word -> word8
 	InlineT.Word8.rshift :			word8 * word -> word8
 	InlineT.Word8.rshiftl :			word8 * word -> word8  (* Error?! *)
 
-252  w31rshiftl_8, word31 P.RSHIFTL,		word8 * word -> word8
+253  w31rshiftl_8, word31 P.RSHIFTL,		word8 * word -> word8
      (** This may be a bug... InlineT.Word8.rshiftl is (incorrectly?)
       ** aliased to InLine.w31rshift_8 **)
 
-253  w31lshift_8,  word31 P.LSHIFT,		word8 * word -> word8
+254  w31lshift_8,  word31 P.LSHIFT,		word8 * word -> word8
 	InlineT.Word8.lshift :			word8 * word -> word8
 
-254  w31gt_8,	   word31cmp (P.>),		word8 * word8 -> bool
+255  w31gt_8,	   word31cmp (P.>),		word8 * word8 -> bool
 	InlineT.Word8.> :			word8 * word8 -> bool
 
-255  w31ge_8,	   word31cmp (P.>=),		word8 * word8 -> bool
+256  w31ge_8,	   word31cmp (P.>=),		word8 * word8 -> bool
 	InlineT.Word8.>= :			word8 * word8 -> bool
 
-256  w31lt_8,	   word31cmp (P.<),		word8 * word8 -> bool
+257  w31lt_8,	   word31cmp (P.<),		word8 * word8 -> bool
 	InlineT.Word8.< :			word8 * word8 -> bool
 
-257  w31le_8,	   word31cmp (P.<=),		word8 * word8 -> bool
+258  w31le_8,	   word31cmp (P.<=),		word8 * word8 -> bool
 	InlineT.Word8.<= :			word8 * word8 -> bool
 
-258  w31eq_8,	   word31cmp P.EQL,             word8 * word8 -> bool
+259  w31eq_8,	   word31cmp P.EQL,             word8 * word8 -> bool
 
-259  w31ne_8,	   word31cmp P.NEQ,             word8 * word8 -> bool
+260  w31ne_8,	   word31cmp P.NEQ,             word8 * word8 -> bool
 
-260  w31ChkRshift_8, P.INLRSHIFT(P.UINT 31),	word8 * word -> word8
+261  w31ChkRshift_8, P.INLRSHIFT(P.UINT 31),	word8 * word -> word8
 	InlineT.Word8.chkRshift :		word8 * word -> word8
 
-261  w31ChkRshiftl_8,P.INLRSHIFTL(P.UINT 31),	word8 * word -> word8
+262  w31ChkRshiftl_8,P.INLRSHIFTL(P.UINT 31),	word8 * word -> word8
 	InlineT.Word8.chkRshiftl :		word8 * word -> word8
 
-262  w31ChkLshift_8, P.INLLSHIFT(P.UINT 31),	word8 * word -> word8
+263  w31ChkLshift_8, P.INLLSHIFT(P.UINT 31),	word8 * word -> word8
 	InlineT.Word8.chkLshift :		word8 * word -> word8
 
-263  w31min_8,	   P.INLMIN (P.UINT 31),	word8 * word8 -> word8
+264  w31min_8,	   P.INLMIN (P.UINT 31),	word8 * word8 -> word8
 	InlineT.Word8.min :			word8 * word8 -> word8
 
-264  w31max_8,	   P.INLMAX (P.UINT 31),	word8 * word8 -> word8
+265  w31max_8,	   P.INLMAX (P.UINT 31),	word8 * word8 -> word8
 	InlineT.Word8.max :			word8 * word8 -> word8
 
 (*** word32 primops ***)
 
-265  w32mul,	   word32 (P.* ),		word32 * word32 -> word32
+266  w32mul,	   word32 (P.* ),		word32 * word32 -> word32
 	InlineT.Word32.* :			word32 * word32 -> word32
 
-266  w32div,	   word32 (P./),		word32 * word32 -> word32
+267  w32div,	   word32 (P./),		word32 * word32 -> word32
 	InlineT.Word32.div :			word32 * word32 -> word32
 
-267  w32mod,	   word32 (P.REM),		word32 * word32 -> word32
+268  w32mod,	   word32 (P.REM),		word32 * word32 -> word32
 	InlineT.Word32.mod :			word32 * word32 -> word32
 
-268  w32add,	   word32 (P.+),		word32 * word32 -> word32
+269  w32add,	   word32 (P.+),		word32 * word32 -> word32
 	InlineT.Word32.+ :			word32 * word32 -> word32
 
-269  w32sub,	   word32 (P.-),		word32 * word32 -> word32
+270  w32sub,	   word32 (P.-),		word32 * word32 -> word32
 	InlineT.Word32.- :			word32 * word32 -> word32
 
-270  w32orb,	   word32 P.ORB,		word32 * word32 -> word32
+271  w32orb,	   word32 P.ORB,		word32 * word32 -> word32
 	InlineT.Word32.orb :			word32 * word32 -> word32
 	CoreIntInf.|| : 			word32 * word32 -> word32
 
-271  w32xorb,	   word32 P.XORB,		word32 * word32 -> word32
+272  w32xorb,	   word32 P.XORB,		word32 * word32 -> word32
 	InlineT.Word32.xorb :			word32 * word32 -> word32
 	CoreIntInf.^ : 				word32 * word32 -> word32
 
-272  w32andb,	   word32 P.ANDB,		word32 * word32 -> word32
+273  w32andb,	   word32 P.ANDB,		word32 * word32 -> word32
 	InlineT.Word32.andb :			word32 * word32 -> word32
 	CoreIntInf.&& : 			word32 * word32 -> word32
 
-273  w32notb,	   word32 P.NOTB,		word32 -> word32
+274  w32notb,	   word32 P.NOTB,		word32 -> word32
 	InlineT.Word32.notb :			word32 -> word32
 
-274  w32neg,	   word32 P.~,			word32 -> word32
+275  w32neg,	   word32 P.~,			word32 -> word32
 	InlineT.Word32.~ :			word32 -> word32
 
-275  w32rshift,	   word32 P.RSHIFT,		word32 * word -> word32
+276  w32rshift,	   word32 P.RSHIFT,		word32 * word -> word32
 	InlineT.Word32.rshift :			word32 * word -> word32
 
-276  w32rshiftl,   word32 P.RSHIFTL,		word32 * word -> word32
+277  w32rshiftl,   word32 P.RSHIFTL,		word32 * word -> word32
 	InlineT.Word32.rshiftl :		word32 * word -> word32
 	CoreIntInf.>> : 			word32 * word -> word32
 
-277  w32lshift,	   word32 P.LSHIFT,		word32 * word -> word32
+278  w32lshift,	   word32 P.LSHIFT,		word32 * word -> word32
 	InlineT.Word32.lshift :			word32 * word -> word32
 	CoreIntInf.<< : 			word32 * word -> word32
 
-278  w32gt,	   word32cmp (P.>),		word32 * word32 -> bool
+279  w32gt,	   word32cmp (P.>),		word32 * word32 -> bool
 	InlineT.Word32.> :			word32 * word32 -> bool
 
-279  w32ge,	   word32cmp (P.>=),		word32 * word32 -> bool
+280  w32ge,	   word32cmp (P.>=),		word32 * word32 -> bool
 	InlineT.Word32.< :			word32 * word32 -> bool
 
-280  w32lt,	   word32cmp (P.<),		word32 * word32 -> bool
+281  w32lt,	   word32cmp (P.<),		word32 * word32 -> bool
 	InlineT.Word32.< :			word32 * word32 -> bool
 
-281  w32le,	   word32cmp (P.<=),		word32 * word32 -> bool
+282  w32le,	   word32cmp (P.<=),		word32 * word32 -> bool
 	InlineT.Word32.<= :			word32 * word32 -> bool
 
-282  w32eq,	   word32cmp P.EQL,             word32 * word32 -> bool
+283  w32eq,	   word32cmp P.EQL,             word32 * word32 -> bool
 
-283  w32ne,	   word32cmp P.NEQ,             word32 * word32 -> bool
+284  w32ne,	   word32cmp P.NEQ,             word32 * word32 -> bool
 
-284  w32ChkRshift, P.INLRSHIFT(P.UINT 32),	word32 * word -> word32
+285  w32ChkRshift, P.INLRSHIFT(P.UINT 32),	word32 * word -> word32
 	InlineT.Word32.chkRshift :		word32 * word -> word32
 
-285  w32ChkRshiftl,P.INLRSHIFTL(P.UINT 32),	word32 * word -> word32
+286  w32ChkRshiftl,P.INLRSHIFTL(P.UINT 32),	word32 * word -> word32
 	InlineT.Word32.chkRshiftl :		word32 * word -> word32
 
-286  w32ChkLshift, P.INLLSHIFT(P.UINT 32),	word32 * word -> word32
+287  w32ChkLshift, P.INLLSHIFT(P.UINT 32),	word32 * word -> word32
 	InlineT.Word32.chkLshift :		word32 * word -> word32
 
-287  w32min,	   P.INLMIN (P.UINT 32),	word32 * word32 -> word32
+288  w32min,	   P.INLMIN (P.UINT 32),	word32 * word32 -> word32
 	InlineT.Word32.min :			word32 * word32 -> word32
 
-288  w32max,	   P.INLMAX (P.UINT 32),	word32 * word32 -> word32
+289  w32max,	   P.INLMAX (P.UINT 32),	word32 * word32 -> word32
 	InlineT.Word32.max :			word32 * word32 -> word32
 
 (*** experimental C FFI primops ***)
 
-289  raww8l,       P.RAW_LOAD (P.UINT 8),    word32 -> word32
+290  raww8l,       P.RAW_LOAD (P.UINT 8),    word32 -> word32
 	RawMemInlineT.w8l : 		     word32 -> word32
 
-290  rawi8l,       P.RAW_LOAD (P.INT 8),     word32 -> int32
+291  rawi8l,       P.RAW_LOAD (P.INT 8),     word32 -> int32
 	RawMemInlineT.i8l : 		     word32 -> int32
 
-291  raww16l,      P.RAW_LOAD (P.UINT 16),   word32 -> word32
+292  raww16l,      P.RAW_LOAD (P.UINT 16),   word32 -> word32
 	RawMemInlineT.w16l : 		     word32 -> word32
 
-292  rawi16l,      P.RAW_LOAD (P.INT 16),    word32 -> int32
+293  rawi16l,      P.RAW_LOAD (P.INT 16),    word32 -> int32
 	RawMemInlineT.i16l : 		     word32 -> int32
 
-293  raww32l,      P.RAW_LOAD (P.UINT 32),   word32 -> word32
+294  raww32l,      P.RAW_LOAD (P.UINT 32),   word32 -> word32
 	RawMemInlineT.w32l : 		     word32 -> word32
 
-294  rawi32l,      P.RAW_LOAD (P.INT 32),    word32 -> int32
+295  rawi32l,      P.RAW_LOAD (P.INT 32),    word32 -> int32
 	RawMemInlineT.i32l : 		     word32 -> int32
 
-295  rawf32l,      P.RAW_LOAD (P.FLOAT 32),  word32 -> real
+296  rawf32l,      P.RAW_LOAD (P.FLOAT 32),  word32 -> real
 	RawMemInlineT.f32l : 		     word32 -> real
 
-296  rawf64l,      P.RAW_LOAD (P.FLOAT 64),  word32 -> real
+297  rawf64l,      P.RAW_LOAD (P.FLOAT 64),  word32 -> real
 	RawMemInlineT.w64l : 		     word32 -> real
 
-297  raww8s,       P.RAW_STORE (P.UINT 8),   word32 * word32 -> unit
+298  raww8s,       P.RAW_STORE (P.UINT 8),   word32 * word32 -> unit
 	RawMemInlineT.w8s : 		     word32 * word32 -> unit
 
-298  rawi8s,       P.RAW_STORE (P.INT 8),    word32 * int32 -> unit
+299  rawi8s,       P.RAW_STORE (P.INT 8),    word32 * int32 -> unit
 	RawMemInlineT.i8s : 		     word32 * int32 -> unit
 
-299  raww16s,      P.RAW_STORE (P.UINT 16),  word32 * word32 -> unit
+300  raww16s,      P.RAW_STORE (P.UINT 16),  word32 * word32 -> unit
 	RawMemInlineT.w16s : 		     word32 * word32 -> unit
 
-300  rawi16s,      P.RAW_STORE (P.INT 16),   word32 * int32 -> unit
+301  rawi16s,      P.RAW_STORE (P.INT 16),   word32 * int32 -> unit
 	RawMemInlineT.i16s : 		     word32 * int32 -> unit
 
-301  raww32s,      P.RAW_STORE (P.UINT 32),  word32 * word32 -> unit
+302  raww32s,      P.RAW_STORE (P.UINT 32),  word32 * word32 -> unit
 	RawMemInlineT.w32s : 		     word32 * word32 -> unit
 
-302  rawi32s,      P.RAW_STORE (P.INT 32),   word32 * int32 -> unit
+303  rawi32s,      P.RAW_STORE (P.INT 32),   word32 * int32 -> unit
 	RawMemInlineT.i32s : 		     word32 * int32 -> unit
 
-303  rawf32s,      P.RAW_STORE (P.FLOAT 32), word32 * real -> unit
+304  rawf32s,      P.RAW_STORE (P.FLOAT 32), word32 * real -> unit
 	RawMemInlineT.f32s : 		     word32 * real -> unit
 
-304  rawf64s,      P.RAW_STORE (P.FLOAT 64), word32 * real -> unit
+305  rawf64s,      P.RAW_STORE (P.FLOAT 64), word32 * real -> unit
 	RawMemInlineT.f64s : 		     word32 * real -> unit
 
-305  rawccall,     P.RAW_CCALL NONE,         word32 * 'a * 'b -> 'c
+306  rawccall,     P.RAW_CCALL NONE,         word32 * 'a * 'b -> 'c
 	RawMemInlineT.rawccall :	     word32 * 'a * 'b -> 'c
 
 (* Support for direct construction of C objects on ML heap.
@@ -1022,58 +1029,58 @@ listed here.
  * rawupdatexxx writes to the record.
  *) 
 
-306  rawrecord,    P.RAW_RECORD{fblock = false},  int -> 'a
+307  rawrecord,    P.RAW_RECORD{fblock = false},  int -> 'a
 	RawMemInlineT.rawrecord :	     	  int -> 'a
 	
-307  rawrecord64,  P.RAW_RECORD{fblock = true},	  int -> 'a
+308  rawrecord64,  P.RAW_RECORD{fblock = true},	  int -> 'a
 	RawMemInlineT.rawrecord64 :	     	  int -> 'a
 
-308  rawselectw8,  P.RAW_LOAD (P.UINT 8),    'a * word32 -> word32
+309  rawselectw8,  P.RAW_LOAD (P.UINT 8),    'a * word32 -> word32
 	RawMemInlineT.subw8 :	     	     'a * word32 -> word32
 
-309  rawselecti8,  P.RAW_LOAD (P.INT 8),     'a * word32 -> int32
+310  rawselecti8,  P.RAW_LOAD (P.INT 8),     'a * word32 -> int32
 	RawMemInlineT.subi8 :	     	     'a * word32 -> int32
 
-310  rawselectw16, P.RAW_LOAD (P.UINT 16),   'a * word32 -> word32
+311  rawselectw16, P.RAW_LOAD (P.UINT 16),   'a * word32 -> word32
 	RawMemInlineT.subw16 :	     	     'a * word32 -> word32
 
-311  rawselecti16, P.RAW_LOAD (P.INT 16),    'a * word32 -> int32
+312  rawselecti16, P.RAW_LOAD (P.INT 16),    'a * word32 -> int32
 	RawMemInlineT.subi16 :	     	     'a * word32 -> int32
 
-312  rawselectw32, P.RAW_LOAD (P.UINT 32),   'a * word32 -> word32
+313  rawselectw32, P.RAW_LOAD (P.UINT 32),   'a * word32 -> word32
 	RawMemInlineT.subw32 :	     	     'a * word32 -> word32
 
-313  rawselecti32, P.RAW_LOAD (P.INT 32),    'a * word32 -> int32
+314  rawselecti32, P.RAW_LOAD (P.INT 32),    'a * word32 -> int32
 	RawMemInlineT.subi32 :	     	     'a * word32 -> int32
 
-314  rawselectf32, P.RAW_LOAD (P.FLOAT 32),  'a * word32 -> real
+315  rawselectf32, P.RAW_LOAD (P.FLOAT 32),  'a * word32 -> real
 	RawMemInlineT.subf32 :	     	     'a * word32 -> real
 
-315  rawselectf64, P.RAW_LOAD (P.FLOAT 64),  'a * word32 -> real
+316  rawselectf64, P.RAW_LOAD (P.FLOAT 64),  'a * word32 -> real
 	RawMemInlineT.subf64 :	     	     'a * word32 -> real
 
-316  rawupdatew8,  P.RAW_STORE (P.UINT 8),   'a * word32 * word32 -> unit
+317  rawupdatew8,  P.RAW_STORE (P.UINT 8),   'a * word32 * word32 -> unit
 	RawMemInlineT.updw8 :	     	     'a * word32 * word32 -> unit
 
-317  rawupdatei8,  P.RAW_STORE (P.INT 8),    'a * word32 * int32 -> unit
+318  rawupdatei8,  P.RAW_STORE (P.INT 8),    'a * word32 * int32 -> unit
 	RawMemInlineT.updi8 :	     	     'a * word32 * int32 -> unit
 
-318  rawupdatew16, P.RAW_STORE (P.UINT 16),  'a * word32 * word32 -> unit
+319  rawupdatew16, P.RAW_STORE (P.UINT 16),  'a * word32 * word32 -> unit
 	RawMemInlineT.updw16 :	     	     'a * word32 * word32 -> unit
 
-319  rawupdatei16, P.RAW_STORE (P.INT 16),   'a * word32 * int32 -> unit
+320  rawupdatei16, P.RAW_STORE (P.INT 16),   'a * word32 * int32 -> unit
 	RawMemInlineT.updi16 :	     	     'a * word32 * int32 -> unit
 
-320  rawupdatew32, P.RAW_STORE (P.UINT 32),  'a * word32 * word32 -> unit
+321  rawupdatew32, P.RAW_STORE (P.UINT 32),  'a * word32 * word32 -> unit
 	RawMemInlineT.updw32 :	     	     'a * word32 * word32 -> unit
 
-321  rawupdatei32, P.RAW_STORE (P.INT 32),   'a * word32 * int32 -> unit
+322  rawupdatei32, P.RAW_STORE (P.INT 32),   'a * word32 * int32 -> unit
 	RawMemInlineT.updi32 :	     	     'a * word32 * int32 -> unit
 
-322  rawupdatef32, P.RAW_STORE (P.FLOAT 32), 'a * word32 * real -> unit
+323  rawupdatef32, P.RAW_STORE (P.FLOAT 32), 'a * word32 * real -> unit
 	RawMemInlineT.updf32 :	     	     'a * word32 * real -> unit
 
-323  rawupdatef64, P.RAW_STORE (P.FLOAT 64), 'a * word32 * real -> unit
+324  rawupdatef64, P.RAW_STORE (P.FLOAT 64), 'a * word32 * real -> unit
 	RawMemInlineT.updf64 :	     	     'a * word32 * real -> unit
 
 (* InlineT also defines some primops using Assembly such as
