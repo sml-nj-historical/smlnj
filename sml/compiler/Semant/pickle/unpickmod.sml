@@ -96,7 +96,10 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.LENGTH,
 	  P.OBJLENGTH,
 	  P.CAST,
+(* GETRUNVEC is no longer a primop
 	  P.GETRUNVEC,
+*)
+          P.CAST, (* placeholder!!! *)
 	  P.MARKEXN,
 	  P.GETHDLR,
 	  P.SETHDLR,
@@ -121,8 +124,12 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.MKSPECIAL,
 	  P.SETSPECIAL,
 	  P.GETSPECIAL,
+(* no longer primops
 	  P.USELVAR,
 	  P.DEFLVAR,
+*)
+          P.CAST, (* placeholder for USELVAR!!! *)
+          P.CAST, (* placeholder for DEFLVAR!!! *)
 	  P.INLNOT,
 	  P.INLCOMPOSE,
 	  P.INLBEFORE,

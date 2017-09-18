@@ -284,14 +284,10 @@ val primopTypes =
        ("objlength",	 (p1(ar(v1,i)))) :-:
 
        (*  
-        * I believe the following five primops should not be exported into
+        * I believe the following primop should not be exported into
         * the InLine structure. (ZHONG) 
-        *)
-       (* So we take them out... (Matthias)
+        *
        ("boxedupdate",   P.BOXEDUPDATE,   ?) :-:
-       ("getrunvec",	 P.GETRUNVEC,     ?) :-:
-       ("uselvar",	 P.USELVAR,       ?) :-:
-       ("deflvar",	 P.DEFLVAR,       ?) :-:
        *)
 
        (* I put this one back in so tprof can find it in _Core

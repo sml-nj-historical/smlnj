@@ -181,7 +181,6 @@ datatype primop
   | OBJLENGTH                  (* length of arbitrary heap object *)
   | CAST
   | WCAST
-  | GETRUNVEC                  (* get the pointer to the run-vector *)
   | MARKEXN                    (* mark an exception value with a string *)
   | GETHDLR | SETHDLR          (* get/set exn handler pointer *)
   | GETVAR | SETVAR            (* get/set var register *)
@@ -203,7 +202,6 @@ datatype primop
   | MKSPECIAL                  (* make a special object *)
   | SETSPECIAL                 (* set the state of a special object *)
   | GETSPECIAL                 (* get the state of a special object *)
-  | USELVAR | DEFLVAR
   | INLMIN of numkind          (* inline min *)
   | INLMAX of numkind          (* inline max *)
   | INLABS of numkind          (* inline abs *)

@@ -1918,8 +1918,7 @@ raise ex)
               in  treeifyDefF64(x, M.FLOAD(fty,scale8(a, i), mem'), e, hp)
               end
             | gen(LOOKER(P.gethdlr,[],x,_,e), hp) = defBoxed(x, C.exnptr(vfp), e, hp)
-            | gen(LOOKER(P.getvar, [], x, _, e), hp)= defBoxed(x, C.varptr(vfp), e, hp)
-            | gen(LOOKER(P.deflvar, [], x, _, e), hp)= defBoxed(x, zero, e, hp)
+            | gen(LOOKER(P.getvar, [], x, _, e), hp) = defBoxed(x, C.varptr(vfp), e, hp)
             | gen(LOOKER(P.getspecial, [v], x, _, e), hp) =
                 defBoxed(x, orTag(M.SRA(ity, getObjDescriptor(v),
                                              LI (D.tagWidth-1))),
@@ -2008,7 +2007,6 @@ raise ex)
                 (emit(assign(C.exnptr(vfp), regbind x)); gen(e, hp))
             | gen(SETTER(P.setvar,[x],e), hp) =
                 (emit(assign(C.varptr(vfp), regbind x)); gen(e, hp))
-            | gen(SETTER(P.uselvar,[x],e), hp) = gen(e, hp)
             | gen(SETTER(P.acclink,_,e), hp) = gen(e, hp)
             | gen(SETTER(P.setmark,_,e), hp) = gen(e, hp)
             | gen(SETTER(P.free,[x],e), hp) = gen(e, hp)

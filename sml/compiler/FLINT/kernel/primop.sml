@@ -114,8 +114,6 @@ datatype primop
   (* see Zhong and Matthias's comments in FLINT/trans/primopmap.sml regarding removal
    * of these primops from InLine structure *)
   | BOXEDUPDATE                (* boxed array update *)
-  | GETRUNVEC                  (* get the pointer to the run-vector *)
-  | USELVAR | DEFLVAR
 
   | WCAST                      (* ? *)
   | MARKEXN                    (* mark an exception value with a string *)
@@ -266,7 +264,6 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop INLUPDATE = "inlupdate"
   | prPrimop INLMKARRAY = "inlmkarray"
   | prPrimop SUBSCRIPTV = "subscriptv"
-  | prPrimop GETRUNVEC = "getrunvec"
   | prPrimop GETVAR = "getvar"
   | prPrimop SETVAR = "setvar"
   | prPrimop GETPSEUDO = "getpseudo"
@@ -277,8 +274,6 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop MKSPECIAL = "mkspecial"
   | prPrimop SETSPECIAL = "setspecial"
   | prPrimop GETSPECIAL = "getspecial"
-  | prPrimop USELVAR = "uselvar"
-  | prPrimop DEFLVAR = "deflvar"
   | prPrimop (INLMIN nk) = concat ["inlmin(", prNumkind nk, ")"]
   | prPrimop (INLMAX nk) = concat ["inlmax(", prNumkind nk, ")"]
   | prPrimop (INLABS nk) = concat ["inlabs(", prNumkind nk, ")"]

@@ -299,7 +299,6 @@ struct
 
              | infer(C.LOOKER(P.getvar,[],x,_,k),hp) = (getvar x; infer(k,hp))
 
-             | infer(C.LOOKER(P.deflvar,[],x,cty,k),hp) = infer(k,hp) (* nop! *)
 	     | infer (C.LOOKER (P.rawload _, [a], x, _, k), hp) =
 	         (rawload (x, a); infer(k,hp))
 
@@ -325,7 +324,6 @@ struct
 	         (rawstore (a, x); infer (k, hp))
 
                 (* Apparently these are nops (see MLRiscGen.sml) *)
-             | infer(C.SETTER(P.uselvar, [x], k), hp) = infer(k, hp)
              | infer(C.SETTER(P.acclink, _, k), hp) = infer(k, hp)
              | infer(C.SETTER(P.setmark, _, k), hp) = infer(k, hp)
              | infer(C.SETTER(P.free, [x], k), hp) = infer(k, hp)

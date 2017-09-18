@@ -118,7 +118,6 @@ fun fetchprim P.BOXED = true
   | fetchprim (P.NUMUPDATE _) = true
   | fetchprim P.GETTAG = true
   | fetchprim P.GETSPECIAL = true
-  | fetchprim P.USELVAR = true
   | fetchprim _ = false
 			    
 

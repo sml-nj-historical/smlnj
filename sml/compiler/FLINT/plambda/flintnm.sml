@@ -83,7 +83,7 @@ fun flint_prim (po as (d, p, lt, ts), vs, v, e) =
         PO.PTRNEQ | PO.POLYEQL | PO.POLYNEQ) =>
           (*** branch primops get translated into F.BRANCH ***)
           F.LET([v], F.BRANCH(po, vs, boolLexp true, boolLexp false), e)
-     | (PO.GETRUNVEC | PO.GETHDLR | PO.GETVAR | PO.DEFLVAR) =>
+     | (PO.GETHDLR | PO.GETVAR) =>
           (*** primops that take zero arguments; argument types
                must be unit ***)
           let fun fix t = 
