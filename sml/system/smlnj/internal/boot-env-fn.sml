@@ -60,14 +60,20 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 		  { thunk = fn () => f x,
 		    flush = fn () => (),
 		    cont = fn e => raise e }
-	in
-	    U.pStruct := U.NILrde;
-	    cminit (bootdir, de, er,
-		    Backend.Interact.useStream,
-		    errorwrap false Backend.Interact.useFile,
-		    errorwrap true,
-		    Backend.Interact.installCompManagers)
-	end
+	  (* a version of useFile that exits when there is an error, which is what we want
+	   * to do when processing files that are specified as command-line args.
+	   *)
+	    fun useFile f = if Backend.Interact.useFile f
+		  then ()
+		  else OS.Process.exit OS.Process.failure
+	    in
+	      U.pStruct := U.NILrde;
+	      cminit (bootdir, de, er,
+		      Backend.Interact.useStream,
+		      errorwrap false useFile,
+		      errorwrap true,
+		      Backend.Interact.installCompManagers)
+	    end
     end
 
     fun init bootdir = let

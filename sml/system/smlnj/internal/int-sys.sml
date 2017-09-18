@@ -55,7 +55,7 @@ structure InteractiveSystem : sig end = struct
 	 ifSignal ("QUIT", handleTERM))
 
     (* install "use" functionality *)
-    val _ = UseHook.useHook := Backend.Interact.useFile
+    val _ = UseHook.useHook := (fn f => ignore(Backend.Interact.useFile f))
 
     (* put MLRISC controls into the main hierarchy of controls *)
     val _ = BasicControl.nest (Control.MLRISC.prefix,

@@ -189,9 +189,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 
 	  fun initPaths () = let
 	      val lpcth = #get StdConfig.local_pathconfig ()
-	      val p = case lpcth () of
-		  NONE => []
-		| SOME f => [f]
+	      val p = (case lpcth () of NONE => [] | SOME f => [f])
 	      val p = #get StdConfig.pathcfgspec () () :: p
 	      fun processOne f = let
 		  val work =  SrcPath.processSpecFile
@@ -682,12 +680,14 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	fun procCmdLine () = let
 	    val autoload = errorwrap (ignore o autoload)
 	    val make = errorwrap (ignore o make)
-	    fun p (f, mk, ("sml" | "sig" | "fun")) = useFile f
-	      | p (f, mk, "cm") = mk f
-	      | p (f, mk, e) = Say.say ["!* unable to process `", f,
-					"' (unknown extension `", e, "')\n"]
+            fun processFile (file, mk, ext) = (case ext
+		  of ("sml" | "sig" | "fun") => useFile file
+		   | "cm" => mk file
+		   | _ => Say.say [
+			"!* unable to process '", file, "' (unknown extension '", ext, "')\n"
+		      ]
+		  (* end case *))
 	    fun inc n = n + 1
-
 	    fun show_controls (getarg, getval, padval) level = let
 		fun walk indent (ControlRegistry.RTree rt) = let
 		    open FormatComb
@@ -851,7 +851,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		     | level => show_envvars (Int.fromString level);
 		   quit_if last)
 	      | carg (_, f, mk, _) =
-		  p (f, mk, String.map Char.toLower
+		  processFile (f, mk, String.map Char.toLower
 				       (getOpt (OS.Path.ext f, "<none>")))
 
 	    fun args ([], _) = ()
