@@ -80,12 +80,7 @@ structure CProto : sig
                    ml_res_opt : Primop.ccall_type option,
 		   reentrant  : bool }
 
-    (* formatting of C type info (for debugging purposes) *)
-(*
-    val tshow : PrimCTypes.c_type -> string
-    val pshow : PrimCTypes.c_proto -> string
-*)
-end = struct
+  end = struct
 
     exception BadEncoding
 
