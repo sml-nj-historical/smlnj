@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
-(* recover.sml *)
+(* recover.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 (* recover the type information of a closed FLINT program *)
 signature RECOVER = 
@@ -110,7 +113,7 @@ fun recover (fdec, postRep) =
                   let val _ = lpe e1
                    in lpe e2
                   end
-              | lpe (PRIMOP((_,PrimOp.WCAST, lt, []), _, v, e)) = 
+              | lpe (PRIMOP((_,Primop.WCAST, lt, []), _, v, e)) = 
                   if postRep then 
                      (case LT.ltd_fct lt
                        of ([_],[r]) => (addv(v, r); lpe e)

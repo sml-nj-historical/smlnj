@@ -11,7 +11,7 @@
 signature PRIMOP_ID =
 sig
 
-  datatype prim_id = Prim of PrimopBindings.primop_bind | NonPrim
+  datatype prim_id = Prim of PrimopBind.primop_bind | NonPrim
 
   datatype str_prim_elem
     = PrimE of prim_id

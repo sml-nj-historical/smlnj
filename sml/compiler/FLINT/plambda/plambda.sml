@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
-(* plambda.sml *)
+(* plambda.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure PLambda : PLAMBDA =
 struct
@@ -7,7 +10,7 @@ struct
 local structure A  = Access
       structure LK = PLambdaType
       structure LV = LambdaVar
-      structure PO = PrimOp
+      structure PO = Primop
       structure S  = Symbol
 in 
 

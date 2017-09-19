@@ -355,7 +355,7 @@ functor CPSCCalls (
                  saveRestoreDedicated = srd,
                  paramAlloc = paramAlloc,
                  callComment =
-                 SOME ("C prototype is: " ^ CProto.pshow p),
+                 SOME ("C prototype is: " ^ CTypes.protoToString p),
                  args = a }
 
        fun withVSP f = let

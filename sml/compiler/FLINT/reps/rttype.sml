@@ -1,5 +1,8 @@
-(* Copyright 1998 YALE FLINT PROJECT *)
-(* rttype.sml *)
+(* rttype.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature RTTYPE = 
 sig
@@ -24,7 +27,7 @@ struct
 
 local structure DI = DebIndex
       structure LT = LtyExtern
-      structure PO = PrimOp
+      structure PO = Primop
       structure PT = PrimTyc
       structure LV = LambdaVar
       open Lty LtyKernel FLINT 

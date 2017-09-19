@@ -277,7 +277,7 @@ val primops =
        ("i31mod",        (int31 P.MOD)) :-:
        ("i31mod_8",      (int31 P.MOD)) :-:
 
-       ("i31quot",	 (int31 P./)) :-:
+       ("i31quot",	 (int31 P.QUOT)) :-:
 
        ("i31rem",	 (int31 P.REM)) :-:
 

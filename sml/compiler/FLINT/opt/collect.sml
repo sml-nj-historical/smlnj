@@ -1,4 +1,9 @@
-(* copyright 1998 YALE FLINT PROJECT *)
+(* collect.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
+
 (* monnier@cs.yale.edu *)
 
 signature COLLECT =
@@ -88,7 +93,7 @@ local
     structure FU = FlintUtil
     structure LV = LambdaVar
     structure PP = PPFlint
-    structure PO = PrimOp
+    structure PO = Primop
 in
 
 val say = Control_Print.say

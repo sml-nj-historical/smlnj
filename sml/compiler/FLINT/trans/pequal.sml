@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1996 Bell Laboratories *)
-(* pequal.sml *)
+(* pequal.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature PEQUAL =
 sig
@@ -28,7 +31,7 @@ local structure DA = Access
       structure LT = PLambdaType
       structure TU = TypesUtil
       structure SE = StaticEnv
-      structure PO = PrimOp
+      structure PO = Primop
       structure PP = PrettyPrintNew
       open Types PLambda
 

@@ -1,4 +1,9 @@
-(* copyright 1999 YALE FLINT project *)
+(* split.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
+
 (* monnier@cs.yale.edu *)
 
 signature FSPLIT =
@@ -18,7 +23,7 @@ local
     structure OU = OptUtils
     structure FU = FlintUtil
     structure LT = LtyExtern
-    structure PO = PrimOp
+    structure PO = Primop
     structure PP = PPFlint
     structure CTRL = FLINT_Control
 in

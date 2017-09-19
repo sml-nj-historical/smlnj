@@ -1,11 +1,12 @@
 (* tdp-instrument.sml
  *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Perform Absyn annotations for tracing- debugging- and profiling support.
  *   This adds a tdp_enter at the entry point of each FNexp,
  *   a push-restore sequence (tdp_push) at each non-tail call site of
  *   a non-primitive function, and a save-restore sequence to each HANDLEexp.
- *
- * Copyright (c) 2004 by The Fellowship of SML/NJ
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
@@ -15,7 +16,7 @@ local
     structure SP = SymPath
     structure EM = ErrorMsg
     structure VC = VarCon
-    structure BT = CoreBasicTypes
+    structure BT = BasicTypes
     structure AU = AbsynUtil
 in
 
@@ -75,7 +76,7 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	    val sy = Symbol.varSymbol n
 	in
 	    VC.VALvar { access = Access.namedAcc (sy, mkv),
-	    		prim = PrimOpId.NonPrim,
+	    		prim = PrimopId.NonPrim,
 			path = SP.SPATH [sy], typ = ref t, btvs = ref []}
 	end
 
@@ -164,8 +165,8 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 
 	fun is_prim_exp (A.VARexp (ref (VC.VALvar v), _)) =
               (case #prim v
-                 of PrimOpId.Prim _ => true
-                  | PrimOpId.NonPrim => false)
+                 of PrimopId.Prim _ => true
+                  | PrimopId.NonPrim => false)
 	  | is_prim_exp (A.CONexp _) = true
 	  | is_prim_exp (A.CONSTRAINTexp (e, _)) = is_prim_exp e
 	  | is_prim_exp (A.MARKexp (e, _)) = is_prim_exp e
@@ -312,12 +313,12 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 		case gv pat of
 		    SOME (VC.VALvar { path = SP.SPATH [x], prim, ... }) =>
                       (case prim
-                        of PrimOpId.Prim _ => vb
-                         | PrimOpId.NonPrim => recur (cons (x, n)))
+                        of PrimopId.Prim _ => vb
+                         | PrimopId.NonPrim => recur (cons (x, n)))
 		  | SOME (VC.VALvar { prim, ... }) =>
                       (case prim
-                        of PrimOpId.Prim _ => vb
-                         | PrimOpId.NonPrim => recur n)
+                        of PrimopId.Prim _ => vb
+                         | PrimopId.NonPrim => recur n)
 		  | _ => recur n
 	    end
 

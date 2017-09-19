@@ -132,11 +132,11 @@ signature PRIMOP =
 (* QUESTION: what about IntInf.int? *)
  
     datatype arithop
-      = ADD | SUB | MUL | DIV | NEG		(* int or float *)
-      | ABS | FSQRT | FSIN | FCOS | FTAN	(* floating point only *)
+      = ADD | SUB | MUL | NEG			(* int or float *)
+      | FDIV | ABS | FSQRT | FSIN | FCOS | FTAN	(* floating point only *)
       | LSHIFT | RSHIFT | RSHIFTL		(* int only *)
       | ANDB | ORB | XORB | NOTB		(* int only *)
-      | REM | QUOT | MOD			(* int only *)
+      | DIV | MOD | QUOT | REM			(* int only *)
 
     datatype cmpop
       = GT | GTE | LT | LTE			(* signed comparisons *)
@@ -235,7 +235,7 @@ signature PRIMOP =
      * information is for use by the backend, ML information is for
      * use by the CPS converter. *)
       | RAW_CCALL of {
-	    c_proto: CTypes.c_proto,
+	    c_proto: PrimCTypes.c_proto,
 	    ml_args: ccall_type list,
 	    ml_res_opt: ccall_type option,
 	    reentrant: bool

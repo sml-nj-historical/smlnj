@@ -1,5 +1,8 @@
-(* Copyright 1997 by Bell Laboratories *)
-(* pplexp.sml *)
+(* rpplexp.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 (* _Real_ pretty printing for plambda lexp *)
 
@@ -143,7 +146,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
               (openHOVBox 4;
                 pps "PRM(";
                 openHOVBox 0;
-                 pps(PrimOp.prPrimop p); pps ","; br1 0;
+                 pps(Primop.prPrimop p); pps ","; br1 0;
                  prLty' t; br1 0;
                  ppClosedSeq ("[",",","]") (ppTyc (pd-1)) ts
                 closeBox ()
@@ -238,7 +241,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
               (openHOVBox 4;
                 pps "GEN(";
                 openHOVBox 0;
-                 pps(PrimOp.prPrimop p); pps ","; br1 0;
+                 pps(Primop.prPrimop p); pps ","; br1 0;
                  prLty' t; br1 0;
                  ppClosedSeq ("[",",","]") (ppTyc (pd-1)) ts
                 closeBox ()

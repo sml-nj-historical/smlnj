@@ -1,5 +1,8 @@
-(* Copyright (c) 1997 YALE FLINT PROJECT *)
-(* ltyextern.sml *)
+(* ltyextern.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure LtyExtern : LTYEXTERN = 
 struct
@@ -9,7 +12,7 @@ local structure PT = PrimTyc
       structure LT = Lty
       structure LKC = LtyKindChk
       structure LK = LtyKernel
-      structure PO = PrimOp     (* really should not refer to this *)
+      structure PO = Primop     (* really should not refer to this *)
       structure FL = FLINT
 
       fun bug msg = ErrorMsg.impossible("LtyExtern: "^msg)

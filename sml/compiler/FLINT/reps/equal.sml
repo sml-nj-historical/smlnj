@@ -21,7 +21,7 @@ struct
 local structure BT = BasicTypes
       structure LT = LtyExtern
       structure PT = PrimTyc
-      structure PO = PrimOp
+      structure PO = Primop
       structure PP = PrettyPrint
       structure FU = FlintUtil
       open FLINT

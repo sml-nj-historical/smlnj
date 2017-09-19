@@ -1,5 +1,8 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* lcontract.sml *)
+(* lcontract.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature LCONTRACT =
 sig
@@ -13,7 +16,7 @@ local structure DI = DebIndex
       structure DA = Access
       structure LT = LtyExtern
       structure FU = FlintUtil
-      structure PO = PrimOp
+      structure PO = Primop
       structure M  = IntHashTable
       open FLINT
 in

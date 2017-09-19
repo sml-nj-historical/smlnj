@@ -1,6 +1,10 @@
-(* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
-(* ppflint.sml -- Pretty printer for Flint IL. *)
-
+(* ppflint.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Pretty printer for Flint IL.
+ *)
 
 structure PPFlint :> PPFLINT =
 struct
@@ -10,7 +14,7 @@ struct
     structure S = Symbol
     structure LV = LambdaVar
     structure LT = LtyExtern
-    structure PO = PrimOp
+    structure PO = Primop
     structure PU = PrintUtil
     structure CTRL = Control.FLINT
 

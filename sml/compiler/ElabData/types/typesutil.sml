@@ -10,7 +10,7 @@ local
   structure EM = ErrorMsg
   structure SS = Substring
   structure EP = EntPath
-  structure BT = CoreBasicTypes
+  structure BT = BasicTypes
   structure SP = SymPath
   structure IP = InvPath
   structure S = Symbol
@@ -24,7 +24,7 @@ val sub = Array.sub
 val update = Array.update
 infix 9 sub
 
-val --> = CoreBasicTypes.-->
+val --> = BT.-->
 infix -->
 
 val say = Control_Print.say

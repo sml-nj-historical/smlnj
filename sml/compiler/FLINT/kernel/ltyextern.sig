@@ -1,7 +1,8 @@
-(* Copyright (c) 1998 YALE FLINT PROJECT *)
-(* ltyextern.sig *)
-
-(*
+(* ltyextern.sig
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * This interface hides the implementation details of FLINT tkind, tyc, and 
  * lty defined inside Lty. For each entity, we provide a series of 
  * constructor funtions, deconstructor functions, predicate functions,
@@ -125,7 +126,7 @@ val ltc_rkind   : FLINT.rkind * lty list -> lty
 val ltd_rkind   : lty * int -> lty
 
 (** given a tyc, select the appropriate update primop *)
-val tc_upd_prim : tyc -> PrimOp.primop
+val tc_upd_prim : tyc -> Primop.primop
 
 (** translating the tkind into the corresponding type *)
 val tk_lty      : tkind -> lty

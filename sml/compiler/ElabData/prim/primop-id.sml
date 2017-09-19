@@ -16,7 +16,7 @@ struct
      represented as a string. See the file DEVNOTES/Flint/primop-list
      for the catalog of primop names with their types and primop specs *)
 
-  datatype prim_id = Prim of PrimopBindings.primop_bind | NonPrim
+  datatype prim_id = Prim of PrimopBind.primop_bind | NonPrim
 
   datatype str_prim_elem
     = PrimE of prim_id
@@ -31,14 +31,14 @@ struct
     | isPrimop NonPrim  = false
 
   (* Used in TopLevel/main/compile.sml to identify callcc/capture primops *)
-  fun isPrimCallcc (Prim p) = (case PrimopBindings.defnOf p
+  fun isPrimCallcc (Prim p) = (case PrimopBind.defnOf p
 	 of (Primop.CALLCC | Primop.CAPTURE) => true
 	  |  _ => false
 	(* end case *))
     | isPrimCallcc _ = false
 
   (* Used in ElabData/modules/moduleutil.sml to identify cast primop *)
-  fun isPrimCast (Prim p) = (case PrimopBindings.defnOf p
+  fun isPrimCast (Prim p) = (case PrimopBind.defnOf p
 	 of Primop.CAST => true
 	  | _ => false
 	(* end case *))
@@ -69,7 +69,7 @@ struct
            prim_id *)
 
   fun ppPrim NonPrim = "<NonPrim>"
-    | ppPrim (Prim p) = ("<PrimE " ^ PrimopBindings.nameOf p ^">")
+    | ppPrim (Prim p) = ("<PrimE " ^ PrimopBind.nameOf p ^">")
 
   fun ppStrInfo strelems = 
       let fun ppElem [] = ()

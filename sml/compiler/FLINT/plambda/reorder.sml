@@ -39,7 +39,7 @@ structure Reorder : REORDER =
 struct
 
 local open Access PLambda
-      structure P = PrimOp 
+      structure P = Primop 
 
 in 
 
@@ -176,7 +176,7 @@ and loop : lexp -> lexp info =
           end
    | APP(p as PRIM(i,t,_), b) => 
           let val I{regs,side,fetch,alloc,exp=e1} = lpsv b
-	   in I{regs=Int.max(1,regs),side=not(PrimOp.purePrimop i), 
+	   in I{regs=Int.max(1,regs),side=not(P.purePrimop i), 
 	        alloc=false, fetch=fetchprim i, exp=APP(p, e1)}
 	  end
    | LET(v, b, a) =>

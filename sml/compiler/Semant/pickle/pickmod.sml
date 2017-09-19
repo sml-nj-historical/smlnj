@@ -96,11 +96,11 @@ in
     structure SP = SymPath
     structure IP = InvPath
     structure MI = ModuleId
-    structure POI = PrimOpId
+    structure POI = PrimopId
     structure V = VarCon
     structure ED = EntPath.EvDict
     structure PS = PersStamps
-    structure P = PrimOp
+    structure P = Primop
     structure M = Modules
     structure B = Bindings
 
@@ -281,11 +281,12 @@ in
 
     fun arithop oper = let
 	val op $ = PU.$ AO
-	fun arithopc P.+ = "\000"
-	  | arithopc P.- = "\001"
-	  | arithopc P.* = "\002"
-	  | arithopc P./ = "\003"
-	  | arithopc P.~ = "\004"
+	fun arithopc P.ADD = "\000"
+	  | arithopc P.SUB = "\001"
+	  | arithopc P.MUL = "\002"
+	  | arithopc P.QUOT = "\003"
+(* FIXME: also need FDIV *)
+	  | arithopc P.NEG = "\004"
 	  | arithopc P.ABS = "\005"
 	  | arithopc P.LSHIFT = "\006"
 	  | arithopc P.RSHIFT = "\007"
@@ -307,10 +308,10 @@ in
 
     fun cmpop oper = let
 	val op $ = PU.$ CO
-	fun cmpopc P.> = "\000"
-	  | cmpopc P.>= = "\001"
-	  | cmpopc P.< = "\002"
-	  | cmpopc P.<= = "\003"
+	fun cmpopc P.LT = "\000"
+	  | cmpopc P.LTE = "\001"
+	  | cmpopc P.GT = "\002"
+	  | cmpopc P.GTE = "\003"
 	  | cmpopc P.LEU = "\004"
 	  | cmpopc P.LTU = "\005"
 	  | cmpopc P.GEU = "\006"
@@ -328,24 +329,24 @@ in
 	fun %?n = ?n $ []
     in
 	case t of
-	    CTypes.C_void => %?0
-	  | CTypes.C_float => %?1
-	  | CTypes.C_double => %?2
-	  | CTypes.C_long_double => %?3
-	  | CTypes.C_unsigned CTypes.I_char => %?4
-	  | CTypes.C_unsigned CTypes.I_short => %?5
-	  | CTypes.C_unsigned CTypes.I_int => %?6
-	  | CTypes.C_unsigned CTypes.I_long => %?7
-	  | CTypes.C_unsigned CTypes.I_long_long => %?8
-	  | CTypes.C_signed CTypes.I_char => %?9
-	  | CTypes.C_signed CTypes.I_short => %?10
-	  | CTypes.C_signed CTypes.I_int => %?11
-	  | CTypes.C_signed CTypes.I_long => %?12
-	  | CTypes.C_signed CTypes.I_long_long => %?13
-	  | CTypes.C_PTR => %?14
-	  | CTypes.C_ARRAY (t, i) => ?20 $ [ctype t, int i]
-	  | CTypes.C_STRUCT l => ?21 $ [list ctype l]
-	  | CTypes.C_UNION l => ?22 $ [list ctype l]
+	    PrimCTypes.C_void => %?0
+	  | PrimCTypes.C_float => %?1
+	  | PrimCTypes.C_double => %?2
+	  | PrimCTypes.C_long_double => %?3
+	  | PrimCTypes.C_unsigned PrimCTypes.I_char => %?4
+	  | PrimCTypes.C_unsigned PrimCTypes.I_short => %?5
+	  | PrimCTypes.C_unsigned PrimCTypes.I_int => %?6
+	  | PrimCTypes.C_unsigned PrimCTypes.I_long => %?7
+	  | PrimCTypes.C_unsigned PrimCTypes.I_long_long => %?8
+	  | PrimCTypes.C_signed PrimCTypes.I_char => %?9
+	  | PrimCTypes.C_signed PrimCTypes.I_short => %?10
+	  | PrimCTypes.C_signed PrimCTypes.I_int => %?11
+	  | PrimCTypes.C_signed PrimCTypes.I_long => %?12
+	  | PrimCTypes.C_signed PrimCTypes.I_long_long => %?13
+	  | PrimCTypes.C_PTR => %?14
+	  | PrimCTypes.C_ARRAY (t, i) => ?20 $ [ctype t, int i]
+	  | PrimCTypes.C_STRUCT l => ?21 $ [list ctype l]
+	  | PrimCTypes.C_UNION l => ?22 $ [list ctype l]
     end
 
     fun ccall_type t =
@@ -972,7 +973,8 @@ in
 *)
 
         val op $ = PU.$ PI
-        fun primId (POI.Prim s) = "A" $ [string s]
+(* FIXME: need to pickle triple *)
+        fun primId (POI.Prim s) = "A" $ [string (PrimopBind.nameOf s)]
           | primId (POI.NonPrim) = "B" $ []
 
         val op $ = PU.$ SPE

@@ -1,4 +1,9 @@
-(* Copyright (c) Yale FLINT Project 2000 *)
+(* abcopt.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
+
 (* yichen.xie@yale.edu *)
 
 signature ABCOPT =
@@ -13,7 +18,7 @@ local
     structure M = IntRedBlackMap
     structure S = IntRedBlackSet
     structure F = FLINT
-    structure PO = PrimOp
+    structure PO = Primop
     structure PP = PPFlint
     structure LT = LtyExtern
     structure CTRL = FLINT_Control

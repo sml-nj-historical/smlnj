@@ -29,7 +29,6 @@ Group
 	signature ENTITY_ENV
 	signature PRIMOP_ID
 	signature PRIMOP
-	signature PRIM_ENV
 
 	structure ElabDataControl
 	structure Access
@@ -64,10 +63,9 @@ Group
 	structure BrowseStatEnv
 	structure PrimopId
 	structure Primop
-	structure PrimEnv
-	structure PrimopBindings
+	structure PrimopBind
 	structure CProto
-	structure CTypes
+	structure PrimCTypes
 	structure TKind
 	structure SigPropList
 is
@@ -131,12 +129,11 @@ is
 
 	prim/primop.sig
 	prim/primop.sml
-	prim/primop-bindings.sml
+	prim/primop-bind.sml
 	prim/primop-id.sig
 	prim/primop-id.sml
-        prim/prim-env.sml
 	prim/cproto.sml
-	prim/c-types.sml
+	prim/prim-c-types.sml
 
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/parser.cm

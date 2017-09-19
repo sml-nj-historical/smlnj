@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1997, 1998 YALE FLINT PROJECT *)
-(* chkflint.sml *)
+(* chkflint.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 (* FLINT Type Checker *)
 
@@ -24,7 +27,7 @@ local structure LT = LtyExtern
       structure DA = Access 
       structure DI = DebIndex
       structure PP = PPFlint
-      structure PO = PrimOp
+      structure PO = Primop
       structure S  = IntRedBlackSet
       open FLINT
 

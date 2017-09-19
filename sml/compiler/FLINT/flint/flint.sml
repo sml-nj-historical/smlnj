@@ -8,7 +8,7 @@ local structure A  = Access   (* should go away soon *)
       structure LD = LtyDef
       structure LB = LtyBasic
       structure LV = LambdaVar
-      structure PO = PrimOp
+      structure PO = Primop
       structure S  = Symbol
 in 
 

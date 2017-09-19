@@ -95,7 +95,9 @@ is
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/parser.cm
 
+(*
 	$smlnj/MLRISC/MLRISC.cm
+*)
 
 	$smlnj/smlnj-lib/smlnj-lib.cm
 	$smlnj/smlnj-lib/controls-lib.cm

@@ -67,10 +67,10 @@ structure UnpickMod : UNPICKMOD = struct
     structure V = VarCon
     structure ED = EntPath.EvDict
     structure PS = PersStamps
-    structure P = PrimOp
+    structure P = Primop
     structure M = Modules
     structure B = Bindings
-    structure POI = PrimOpId
+    structure POI = PrimopId
 
     structure UU = UnpickleUtil
     exception Format = UU.Format
@@ -152,32 +152,33 @@ structure UnpickMod : UNPICKMOD = struct
         ]
 
     val cmpop_table =
-	#[P.>, P.>=, P.<, P.<=, P.LEU, P.LTU, P.GEU, P.GTU, P.EQL, P.NEQ, P.FSGN]
+	#[P.GT, P.GTE, P.LT, P.LTE, P.LEU, P.LTU, P.GEU, P.GTU, P.EQL, P.NEQ, P.FSGN]
 
     val arithop_table =
-	#[P.+, P.-, P.*, P./, P.~, P.ABS, P.LSHIFT, P.RSHIFT, P.RSHIFTL,
+	#[P.ADD, P.SUB, P.MUL, P.DIV, P.NEG, P.ABS, P.LSHIFT, P.RSHIFT, P.RSHIFTL,
 	  P.ANDB, P.ORB, P.XORB, P.NOTB, P.FSQRT, P.FSIN, P.FCOS, P.FTAN,
 	  P.REM, P.DIV, P.MOD]
+(* FIXME: need FDIV and QUOT *)
 
     val eqprop_table =
 	#[T.YES, T.NO, T.IND, T.OBJ, T.DATA, T.ABS, T.UNDEF]
 
     val ctype_table =
-	#[CTypes.C_void,
-	  CTypes.C_float,
-	  CTypes.C_double,
-	  CTypes.C_long_double,
-	  CTypes.C_unsigned CTypes.I_char,
-	  CTypes.C_unsigned CTypes.I_short,
-	  CTypes.C_unsigned CTypes.I_int,
-	  CTypes.C_unsigned CTypes.I_long,
-	  CTypes.C_unsigned CTypes.I_long_long,
-	  CTypes.C_signed CTypes.I_char,
-	  CTypes.C_signed CTypes.I_short,
-	  CTypes.C_signed CTypes.I_int,
-	  CTypes.C_signed CTypes.I_long,
-	  CTypes.C_signed CTypes.I_long_long,
-	  CTypes.C_PTR]
+	#[PrimCTypes.C_void,
+	  PrimCTypes.C_float,
+	  PrimCTypes.C_double,
+	  PrimCTypes.C_long_double,
+	  PrimCTypes.C_unsigned PrimCTypes.I_char,
+	  PrimCTypes.C_unsigned PrimCTypes.I_short,
+	  PrimCTypes.C_unsigned PrimCTypes.I_int,
+	  PrimCTypes.C_unsigned PrimCTypes.I_long,
+	  PrimCTypes.C_unsigned PrimCTypes.I_long_long,
+	  PrimCTypes.C_signed PrimCTypes.I_char,
+	  PrimCTypes.C_signed PrimCTypes.I_short,
+	  PrimCTypes.C_signed PrimCTypes.I_int,
+	  PrimCTypes.C_signed PrimCTypes.I_long,
+	  PrimCTypes.C_signed PrimCTypes.I_long_long,
+	  PrimCTypes.C_PTR]
 
     fun & c (x, t) = (c x, t)
 
@@ -301,9 +302,9 @@ structure UnpickMod : UNPICKMOD = struct
 	end
 
 	fun ctype () = let
-	    fun ct #"\020" = CTypes.C_ARRAY (ctype (), int ())
-	      | ct #"\021" = CTypes.C_STRUCT (ctypelist ())
-	      | ct #"\022" = CTypes.C_UNION (ctypelist ())
+	    fun ct #"\020" = PrimCTypes.C_ARRAY (ctype (), int ())
+	      | ct #"\021" = PrimCTypes.C_STRUCT (ctypelist ())
+	      | ct #"\022" = PrimCTypes.C_UNION (ctypelist ())
 	      | ct c =
 		Vector.sub (ctype_table, Char.ord c)
 		handle General.Subscript => raise Format
@@ -730,7 +731,7 @@ structure UnpickMod : UNPICKMOD = struct
  *)
         and primId () =
             let
-                fun p #"A" = POI.Prim (string ())
+                fun p #"A" = (* POI.Prim (string ()) *) raise Fail "unpickle prim_id"
                   | p #"B" = POI.NonPrim
 		  | p _ = raise Format
             in

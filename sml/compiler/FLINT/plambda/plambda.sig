@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
-(* plambda.sig *)
+(* plambda.sig
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature PLAMBDA = sig
 
@@ -29,8 +32,8 @@ datatype lexp
   | WORD32 of Word32.word
   | REAL of string
   | STRING of string
-  | PRIM of PrimOp.primop * lty * tyc list
-  | GENOP of dict * PrimOp.primop * lty * tyc list
+  | PRIM of Primop.primop * lty * tyc list
+  | GENOP of dict * Primop.primop * lty * tyc list
  
   | FN of lvar * lty * lexp
   | FIX of lvar list * lty list * lexp list * lexp

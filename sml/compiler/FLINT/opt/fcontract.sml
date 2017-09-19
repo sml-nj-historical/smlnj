@@ -1,8 +1,6 @@
 (* fcontract.sml
  *
- * copyright 1998 YALE FLINT PROJECT
- *
- * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * Author: monnier@cs.yale.edu
@@ -196,7 +194,7 @@ structure FContract :> FCONTRACT =
     structure LT = LtyExtern
     structure LK = LtyKernel
     structure OU = OptUtils
-    structure PO = PrimOp
+    structure PO = Primop
     structure CTRL = FLINT_Control
 
     fun say s = (Control_Print.say s; Control_Print.flush())

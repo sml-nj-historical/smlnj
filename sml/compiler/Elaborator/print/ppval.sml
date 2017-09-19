@@ -1,6 +1,8 @@
-(* Copyright 1996 by AT&T Bell Laboratories *)
-(* Copyright 2003 by The SML/NJ Fellowship *)
-(* ppval.sml *)
+(* ppval.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 (* modified to use SML/NJ Lib PP. [dbm, 7/30/03]) *)
 
@@ -12,7 +14,7 @@ sig
   val ppVar: PrettyPrintNew.stream -> VarCon.var -> unit
   val ppDebugDcon : PrettyPrintNew.stream
 		    -> StaticEnv.staticEnv -> VarCon.datacon -> unit
-  val ppDebugVar: (PrimOpId.primId -> string) ->
+  val ppDebugVar: (PrimopId.prim_id -> string) ->
 		  PrettyPrintNew.stream 
 		  -> StaticEnv.staticEnv -> VarCon.var -> unit
 end (* signature PPVAL *)

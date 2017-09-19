@@ -1,6 +1,8 @@
-(* Copyright 1996 by AT&T Bell Laboratories *)
-(* Copyright 2003 by The SML/NJ Fellowship *)
-(* ppmod.sml *)
+(* ppmod.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 (* modified to use SML/NJ Lib PP. [dbm, 7/30/03]) *)
 
@@ -249,7 +251,7 @@ fun ppStructure ppstrm (str,env,depth) =
 			(* GK: This should be cleaned up soon so as to use a
 			   ppStrInfo that is an actual pretty printer conforming
 			   to the pattern of the other pretty printers.
-			PrimOpId.ppStrInfo prim; *)
+			PrimopId.ppStrInfo prim; *)
 			PPPrim.ppStrPrimInfo ppstrm prim;
 		       closeBox();
 		      closeBox())

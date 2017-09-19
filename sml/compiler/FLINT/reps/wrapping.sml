@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
-(* wrapping.sml *)
+(* wrapping.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature WRAPPING = 
 sig
@@ -13,7 +16,7 @@ struct
 local structure CO = Coerce
       structure LT = LtyExtern
       structure DI = DebIndex
-      structure PO = PrimOp
+      structure PO = Primop
       structure DA = Access
       open FLINT
 in

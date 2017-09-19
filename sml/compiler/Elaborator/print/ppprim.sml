@@ -1,3 +1,9 @@
+(* ppprim.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
+
 structure PPPrim =
 struct
 
@@ -10,15 +16,14 @@ in
 fun ppPrim ppstrm prim =
     let val pps = PU.pps ppstrm
     in (case prim
-	  of PrimOpId.NonPrim => pps "<NonPrim>"
-	   | PrimOpId.Prim(name) =>
-             (pps "<PrimE "; pps name; pps ">"))
+	  of PrimopId.NonPrim => pps "<NonPrim>"
+	   | PrimopId.Prim prim => (pps "<PrimE "; pps(PrimopBind.nameOf prim); pps ">"))
     end (* function ppPrim *)
 
 fun ppStrPrimInfo ppstrm strPrimInfo =
     let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
-	fun ppStrPrimElem ppstrm (PrimOpId.PrimE p) = ppPrim ppstrm p
-	  | ppStrPrimElem ppstrm (PrimOpId.StrE ps) = ppStrPrimInfo ppstrm ps
+	fun ppStrPrimElem ppstrm (PrimopId.PrimE p) = ppPrim ppstrm p
+	  | ppStrPrimElem ppstrm (PrimopId.StrE ps) = ppStrPrimInfo ppstrm ps
     in
 	ppSequence ppstrm 
          {sep = fn ppstrm => (PP.string ppstrm ", ";

@@ -1,5 +1,8 @@
-(* Copyright 1996 by AT&T Bell Laboratories *)
-(* sigmatch.sml *)
+(* sigmatch.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature SIGMATCH =
 sig
@@ -905,7 +908,7 @@ let
                          val spectyp = typeInMatched("$specty(val/val)", spectyp)
                          val acttyp = typeInOriginal("$actty(val/val)", acttyp)
                          val dacc = DA.selAcc(rootAcc, actslot)
-                         val prim = PrimOpId.selValPrimFromStrPrim(rootPrim, actslot)
+                         val prim = PrimopId.selValPrimFromStrPrim(rootPrim, actslot)
 
                          val _ =
                              (debugPrint debugging
@@ -996,7 +999,7 @@ let
                                           val acc = DA.namedAcc(name, mkv)
                                           val specvar =
                                               VALvar{path=SP.SPATH[name], access=acc,
-                                                     prim=PrimOpId.NonPrim,
+                                                     prim=PrimopId.NonPrim,
 						     btvs = ref [],
                                                      typ=ref spectyp}
                                           val vb =
@@ -1334,7 +1337,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 		     let val srcStr =
 			     M.STR{sign=thisSpecsig, rlzn=srcStrRlzn,
 				   access=DA.selAcc(rootAcc,s),
-				    prim=PrimOpId.selStrPrimId(rootPrim,s)}
+				    prim=PrimopId.selStrPrimId(rootPrim,s)}
 			 val rpath' = IP.extend(rpath, sym)
 			 val (thinDec, thinStr) =
 			   packStr1(thisSpecsig, resStrRlzn, srcStr, abstycs,
@@ -1362,7 +1365,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 		     let val srcFct =
 			     M.FCT {sign=thisSpecsig, rlzn=srcFctRlzn,
 				    access=DA.selAcc(rootAcc,s),
-				    prim=PrimOpId.selStrPrimId(rootPrim,s)}
+				    prim=PrimopId.selStrPrimId(rootPrim,s)}
 
 			 val rpath' = IP.extend(rpath, sym)
 
@@ -1389,7 +1392,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
               (let val restyp = typeInRes("$spec-resty(packStr-val)", spectyp)
                    val srctyp = typeInSrc("$spec-srcty(packStr-val)", spectyp)
                    val dacc = DA.selAcc(rootAcc, s)
-                   val prim = PrimOpId.selValPrimFromStrPrim(rootPrim, s)
+                   val prim = PrimopId.selValPrimFromStrPrim(rootPrim, s)
 (* dbm: assume that eqflag will always be true because of prior successful
  * sigmatch, therefore this does nothing ---
                    val (instys, btvs, resinst, eqflag) =
@@ -1408,7 +1411,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
                      else (let val acc = DA.namedAcc(sym, mkv)
                                val resvar =
                                  VALvar{path=spath, typ=ref restyp,
-                                        access=acc, prim=PrimOpId.NonPrim}
+                                        access=acc, prim=PrimopId.NonPrim}
 
                                val ntycs = TU.filterSet(resinst, abstycs)
                                val exp =

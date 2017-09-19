@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1996 Bell Laboratories *)
-(* compile.sml *)
+(* compile.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 functor CompileF(structure M  : CODEGENERATOR
 		 structure CC : CCONFIG
@@ -74,7 +77,7 @@ struct
     (** instrumenting the abstract syntax to do time- and space-profiling *)
     fun instrument {source, senv, compInfo} =
 	SProf.instrumDec (senv, compInfo) source 
-	o TProf.instrumDec PrimOpId.isPrimCallcc (senv, compInfo)
+	o TProf.instrumDec PrimopId.isPrimCallcc (senv, compInfo)
 	o TDPInstrument.instrument isSpecial (senv, compInfo)
     end
 

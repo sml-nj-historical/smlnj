@@ -9,29 +9,13 @@
 
 structure PrimopBindings : sig
 
-    type primop_bind
-
-    val mk : string * Types.ty * Primop.primop -> primop_bind
-
-    val nameOf : primop_bind -> string
-    val typeOf : primop_bind -> Types.ty
-    val defnOf : primop_bind -> Primop.primop
-
-    val prims : primop_bind list
+    val prims : PrimopBind.primop_bind list
 
   end = struct
 
     structure T = Types
     structure BT = BasicTypes
     structure P = Primop
-
-    type primop_bind = string * Types.ty * Primop.primop
-
-    fun mk arg = arg
-
-    fun nameOf (n, _, _) = n
-    fun typeOf (_, ty, _) = ty
-    fun defnOf (_, _, p) = p
 
     local
       val v1 = T.IBOUND 0
@@ -222,7 +206,7 @@ structure PrimopBindings : sig
       fun chkUpdate kind = P.NUMUPDATE {kind=kind, checked=true}
 
     in
-    val prims = [
+    val prims = List.map PrimopBind.mk [
 	  (* continuation operators *)
 	    ("callcc", p1(ar(ar(cnt(v1),v1),v1)), P.CALLCC),
 	    ("throw", p2(ar(cnt(v1),ar(v1,v2))), P.THROW),
@@ -366,13 +350,13 @@ structure PrimopBindings : sig
 	    ("i31add_8", w8w8_w8, int31 P.ADD),
 	    ("i31sub", ii_i, int31 P.SUB),
 	    ("i31sub_8", w8w8_w8, int31 P.SUB),
-	    ("i31mul", ii_i, int31 P.MUL ),
-	    ("i31mul_8", w8w8_w8, int31 P.MUL ),
+	    ("i31mul", ii_i, int31 P.MUL),
+	    ("i31mul_8", w8w8_w8, int31 P.MUL),
 	    ("i31div", ii_i, int31 P.DIV),
 	    ("i31div_8", w8w8_w8, int31 P.DIV),
 	    ("i31mod", ii_i, int31 P.MOD),
 	    ("i31mod_8", w8w8_w8, int31 P.MOD),
-	    ("i31quot", ii_i, int31 P.DIV),
+	    ("i31quot", ii_i, int31 P.QUOT),
 	    ("i31rem", ii_i, int31 P.REM),
 	    ("i31orb", ii_i, bits31 P.ORB),
 	    ("i31orb_8", w8w8_w8, bits31 P.ORB),
@@ -410,10 +394,10 @@ structure PrimopBindings : sig
 	    ("i31max_8", w8w8_w8, P.INLMAX (P.INT 31)),
 	    ("i31abs", i_i, P.INLABS (P.INT 31)),
 	  (* integer 32 primops *)
-	    ("i32mul", i32i32_i32, int32 P.MUL ),
+	    ("i32mul", i32i32_i32, int32 P.MUL),
 	    ("i32div", i32i32_i32, int32 P.DIV),
 	    ("i32mod", i32i32_i32, int32 P.MOD),
-	    ("i32quot", i32i32_i32, int32 P.DIV),
+	    ("i32quot", i32i32_i32, int32 P.QUOT),
 	    ("i32rem", i32i32_i32, int32 P.REM),
 	    ("i32add", i32i32_i32, int32 P.ADD),
 	    ("i32sub", i32i32_i32, int32 P.SUB),
@@ -435,8 +419,8 @@ structure PrimopBindings : sig
 	  (* float 64 primops *)
 	    ("f64add", f64f64_f64, purefloat64 (P.ADD)),
 	    ("f64sub", f64f64_f64, purefloat64 (P.SUB)),
-	    ("f64div", f64f64_f64, purefloat64 (P.DIV)),
-	    ("f64mul", f64f64_f64, purefloat64 (P.MUL )),
+	    ("f64div", f64f64_f64, purefloat64 (P.FDIV)),
+	    ("f64mul", f64f64_f64, purefloat64 (P.MUL)),
 	    ("f64neg", f64_f64, purefloat64 P.NEG),
 	    ("f64ge", f64f64_b, float64cmp (P.GTE)),
 	    ("f64gt", f64f64_b, float64cmp (P.GT)),
@@ -475,8 +459,8 @@ structure PrimopBindings : sig
 	    ("w8update", numUpdTy, update (P.UINT 8)),
 	    ("w8chkUpdate", numUpdTy, chkUpdate (P.UINT 8)),
 	  (* word31 primops *)
-	    ("w31mul", ww_w, word31 (P.MUL )),
-	    ("w31div", ww_w, word31 (P.DIV)),
+	    ("w31mul", ww_w, word31 (P.MUL)),
+	    ("w31div", ww_w, word31 (P.QUOT)),
 	    ("w31mod", ww_w, word31 (P.REM)),
 	    ("w31add", ww_w, word31 (P.ADD)),
 	    ("w31sub", ww_w, word31 (P.SUB)),
@@ -500,8 +484,8 @@ structure PrimopBindings : sig
 	    ("w31min", ww_w, P.INLMIN (P.UINT 31)),
 	    ("w31max", ww_w, P.INLMAX (P.UINT 31)),
 	  (* (pseudo-)word8 primops *)
-	    ("w31mul_8", w8w8_w8, word31 (P.MUL )),
-	    ("w31div_8", w8w8_w8, word31 (P.DIV)),
+	    ("w31mul_8", w8w8_w8, word31 (P.MUL)),
+	    ("w31div_8", w8w8_w8, word31 (P.QUOT)),
 	    ("w31mod_8", w8w8_w8, word31 (P.REM)),
 	    ("w31add_8", w8w8_w8, word31 (P.ADD)),
 	    ("w31sub_8", w8w8_w8, word31 (P.SUB)),
@@ -525,8 +509,8 @@ structure PrimopBindings : sig
 	    ("w31min_8", w8w8_w8, P.INLMIN (P.UINT 31)),
 	    ("w31max_8", w8w8_w8, P.INLMAX (P.UINT 31)),
 	  (* word32 primops *)
-	    ("w32mul", w32w32_w32, word32 (P.MUL )),
-	    ("w32div", w32w32_w32, word32 (P.DIV)),
+	    ("w32mul", w32w32_w32, word32 (P.MUL)),
+	    ("w32div", w32w32_w32, word32 (P.QUOT)),
 	    ("w32mod", w32w32_w32, word32 (P.REM)),
 	    ("w32add", w32w32_w32, word32 (P.ADD)),
 	    ("w32sub", w32w32_w32, word32 (P.SUB)),

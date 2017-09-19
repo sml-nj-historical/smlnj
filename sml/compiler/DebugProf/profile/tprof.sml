@@ -1,5 +1,8 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* tprof.sml *)
+(* tprof.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature TPROF =
 sig
@@ -7,7 +10,7 @@ sig
      * if the operator (specified via inlining info) can return multiple
      * times.  In practical terms, this means call/cc. *)
   val instrumDec :
-      (PrimOpId.primId -> bool) ->
+      (PrimopId.prim_id -> bool) ->
       (StaticEnv.staticEnv * Absyn.dec CompInfo.compInfo)
       -> Absyn.dec -> Absyn.dec
 
@@ -29,7 +32,7 @@ local structure SP = SymPath
       val TUPLEexp = AbsynUtil.TUPLEexp
       val TUPLEpat = AbsynUtil.TUPLEpat
 
-      structure BT = CoreBasicTypes
+      structure BT = BasicTypes
       val intTy = BT.intTy
       val unitTy = BT.unitTy
       val tupleTy = BT.tupleTy
@@ -90,7 +93,7 @@ val addop =
 
 fun tmpvar(str,ty,mkv) = 
     let val sym = S.varSymbol str
-     in VALvar{access=A.namedAcc(sym, mkv), prim=PrimOpId.NonPrim,
+     in VALvar{access=A.namedAcc(sym, mkv), prim=PrimopId.NonPrim,
                path=SP.SPATH[sym], btvs = ref [], typ=ref ty}
     end
 
@@ -182,14 +185,14 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 	            (case getvar pat
 		      of SOME(VALvar{prim, path=SP.SPATH[n],...}) =>
                           (case prim
-                             of PrimOpId.NonPrim => vb
+                             of PrimopId.NonPrim => vb
                               | _ => VB{pat=pat, tyvars=tyvars,
 			                exp=instrexp (n::clean names, 
                                                       ccvara) false exp,
   			                boundtvs=boundtvs})
                        | SOME(VALvar{prim, ...}) =>
                           (case prim
-                             of PrimOpId.NonPrim => vb
+                             of PrimopId.NonPrim => vb
                               | _ =>  VB{pat=pat, exp=instrexp sp false exp, 
                                          tyvars=tyvars, boundtvs=boundtvs})
 		       | _ => VB{pat=pat, exp=instrexp sp false exp, 
@@ -292,7 +295,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                    | exp as APPexp (f,a) =>
                        let fun safe(VARexp(ref(VALvar{prim, ...}), _)) =
                                (case prim
-                                 of PrimOpId.NonPrim => false
+                                 of PrimopId.NonPrim => false
                                   | _ => 
                                      if mayReturnMoreThanOnce prim then false
 				     else true)

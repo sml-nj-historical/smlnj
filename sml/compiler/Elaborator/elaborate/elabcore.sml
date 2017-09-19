@@ -1,5 +1,8 @@
-(* Copyright 1996 by AT&T Bell Laboratories *)
-(* elabcore.sml *)
+(* elabcore.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature ELABCORE =
 sig
@@ -804,7 +807,7 @@ let
 		case stripExpAbs exp
 		 of VARexp(ref(VALvar{prim,...}),_) =>
                       (case prim
-                         of PrimOpId.Prim _ =>
+                         of PrimopId.Prim _ =>
 		            (case stripMarksVar pat
 			      of CONSTRAINTpat(VARpat(VALvar{path,typ,btvs,
                                                              access,...}), ty) =>
@@ -818,7 +821,7 @@ let
 				 	       btvs = btvs, access=access,
                                                prim=prim})
 			       | _ => pat)
-                          | PrimOpId.NonPrim => pat)
+                          | PrimopId.NonPrim => pat)
 		  | _ => pat
 
 	   in (VALdec([VB{exp=exp, tyvars=tvref, pat=pat, boundtvs=[]}]), [pat], updt)

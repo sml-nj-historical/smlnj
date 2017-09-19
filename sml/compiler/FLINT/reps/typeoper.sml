@@ -1,5 +1,8 @@
-(* Copyright 1998 YALE FLINT PROJECT *)
-(* typeoper.sml *)
+(* typeoper.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature TYPEOPER = 
 sig
@@ -28,7 +31,7 @@ sig
   val mkuwp  : tyc * kenv * bool * tyc -> lexp -> lexp 
 
   val arrSub : tyc * kenv * lty * lty -> value list -> lexp
-  val arrUpd : tyc * kenv * PrimOp.primop * lty * lty -> value list -> lexp
+  val arrUpd : tyc * kenv * Primop.primop * lty * lty -> value list -> lexp
   val arrNew : tyc * lvar * lvar * kenv -> value list -> lexp
 
 end (* signature TYPEOPER *)
@@ -48,7 +51,7 @@ struct
 local structure DI = DebIndex
       structure LT = LtyExtern
       structure LV = LambdaVar
-      structure PO = PrimOp
+      structure PO = Primop
       structure PT = PrimTyc
       structure BT = BasicTypes 
       structure TP = Types

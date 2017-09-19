@@ -31,7 +31,7 @@ local structure B  = Bindings
       structure LT = PLambdaType   (* = LtyExtern *)
       structure M  = Modules
       structure MC = MatchComp
-      structure PO = PrimOp
+      structure PO = Primop
       structure PP = PrettyPrintNew
       structure PU = PPUtilNew
       structure S  = Symbol
@@ -646,11 +646,11 @@ fun inlops nk = let
     val lt_argpair = lt_tup [lt_arg, lt_arg]
     val lt_cmp = lt_arw (lt_argpair, lt_bool)
     val lt_neg = lt_arw (lt_arg, lt_arg)
-    val less = PRIM (PO.CMP { oper = PO.<, kind = nk }, lt_cmp, [])
-    val greater = PRIM (PO.CMP { oper = PO.>, kind = nk }, lt_cmp, [])
+    val less = PRIM (PO.CMP { oper = PO.LT, kind = nk }, lt_cmp, [])
+    val greater = PRIM (PO.CMP { oper = PO.GT, kind = nk }, lt_cmp, [])
     val equal = PRIM (PO.CMP { oper = PO.EQL, kind = nk }, lt_cmp, [])
     val negate =
-	PRIM (PO.ARITH { oper = PO.~, overflow = overflow, kind = nk },
+	PRIM (PO.ARITH { oper = PO.NEG, overflow = overflow, kind = nk },
 	      lt_neg, [])
 in
     { lt_arg = lt_arg, lt_argpair = lt_argpair, lt_cmp = lt_cmp,
@@ -704,7 +704,7 @@ in
 	      VAR x, APP (negate, VAR x)))
 end
 
-(** inl_infPrec : string * string * PrimOp.primop * Lty.lty * bool -> PLambda.lexp
+(** inl_infPrec : string * string * Primop.primop * Lty.lty * bool -> PLambda.lexp
 
     Precision converting translation using a conversion
     primitive named in the second argument.
@@ -787,7 +787,7 @@ fun inl_infPrec (opname, coerceFnName, primop, primoplt, is_from_inf) = let
     e
 end
 
-(** transPrim : PrimOp.primop * Lty.lty * Lty.tyc list
+(** transPrim : Primop.primop * Lty.lty * Lty.tyc list
 
    Translate Absyn primop to PLambda form using given
    intrinsic PLambda type and type parameters
@@ -805,7 +805,7 @@ fun transPrim (prim, lt, ts) =
 	| g (PO.INLMAX nk) = inlminmax (nk, true)
 	| g (PO.INLABS nk) = inlabs nk
 
-	| g (po as PO.ARITH { oper = (PO./ | PO.DIV | PO.MOD | PO.REM),
+	| g (po as PO.ARITH { oper = (PO.DIV | PO.QUOT | PO.MOD | PO.REM),
 			      kind = nk as (PO.INT _ | PO.UINT _),
 			      overflow }) =
 	    inldiv (nk, po, lt, ts)
@@ -1083,17 +1083,11 @@ fun mkVar (v as V.VALvar{access, prim, btvs, typ, path}, d) =
  * In the case of a primop variable, this function reconstructs the
  * type parameters of instantiation of the intrinsic primop type relative
  * to the variable occurrence type *)
-fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
+fun mkVE (e as V.VALvar { typ, prim = PrimopId.Prim p, ... }, ts, d) =
       let val occurenceTy = instPoly(!typ, ts)
               (* compute the occurrence type of the variable *)
-          val primop = PrimopBindings.defnOf p
-          val intrinsicType = PrimopBindings.typeOf p
-(*
-	  val (primop,intrinsicType) =
-              case (PrimOpMap.primopMap p, PrimOpTypeMap.primopTypeMap p)
-               of (SOME p, SOME t) => (p,t)
-                | _ => bug "mkVE: unrecognized primop name"
-*)
+          val primop = PrimopBind.defnOf p
+          val intrinsicType = PrimopBind.typeOf p
 	  val _ = debugmsg ">>mkVE: before matchInstTypes"
 	  val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
@@ -1159,7 +1153,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
 		    transPrim(primop, (toLty d intrinsicType),
                               map (toTyc d) intrinsicParams)
       end
-  | mkVE (v as V.VALvar{typ, prim = PrimOpId.NonPrim, path, ...}, ts, d) =
+  | mkVE (v as V.VALvar{typ, prim = PrimopId.NonPrim, path, ...}, ts, d) =
     (* non primop variable *)
       (if !debugging
        then (print "### mkVE nonprimop\n";
@@ -1297,7 +1291,7 @@ and mkVBs (vbs, d) =
 		      (* this is the only call of aconvertPat; it replaces pattern variables with
 		       * new versions with fresh lvar access values *)
 		    val newVarExps = map (fn v => VARexp(ref v,[])) newvars
-		    val rhsTy = CoreBasicTypes.tupleTy(map (fn (VC.VALvar{typ,...}) => !typ) newvars)
+		    val rhsTy = BasicTypes.tupleTy(map (fn (VC.VALvar{typ,...}) => !typ) newvars)
 		    val bindRule = RULE(newpat, EU.TUPLEexp(newVarExps))
 		    val defaultRule = RULE(WILDpat, 
 					   RAISEexp(CONexp(CoreAccess.getExn env ["Bind"],[]),rhsTy))

@@ -15,11 +15,11 @@ struct
 (* QUESTION: what about IntInf.int? *)
  
     datatype arithop
-      = ADD | SUB | MUL | DIV | NEG		(* int or float *)
-      | ABS | FSQRT | FSIN | FCOS | FTAN	(* floating point only *)
+      = ADD | SUB | MUL | NEG			(* int or float *)
+      | FDIV | ABS | FSQRT | FSIN | FCOS | FTAN	(* floating point only *)
       | LSHIFT | RSHIFT | RSHIFTL		(* int only *)
       | ANDB | ORB | XORB | NOTB		(* int only *)
-      | REM | QUOT | MOD		        (* int only *)
+      | DIV | MOD | QUOT | REM			(* int only *)
 
     datatype cmpop
       = GT | GTE | LT | LTE			(* signed comparisons *)
@@ -118,7 +118,7 @@ struct
      * information is for use by the backend, ML information is for
      * use by the CPS converter. *)
       | RAW_CCALL of {
-	    c_proto: CTypes.c_proto,
+	    c_proto: PrimCTypes.c_proto,
 	    ml_args: ccall_type list,
 	    ml_res_opt: ccall_type option,
 	    reentrant: bool
@@ -181,12 +181,12 @@ struct
 
     fun prPrimop (ARITH{oper, overflow, kind}) = let
 	  val rator = (case oper
-		 of ADD => "add" | SUB => "sub" | MUL => "mul" | DIV => "div" | NEG => "neg"
-		  | FSQRT => "fsqrt"
+		 of ADD => "add" | SUB => "sub" | MUL => "mul" | NEG => "neg"
+		  | FDIV => "fdiv" | ABS => "abs"  | FSQRT => "fsqrt"
 		  | FSIN => "fsin" | FCOS => "fcos" | FTAN => "ftan"
 		  | LSHIFT => "lshift" | RSHIFT => "rshift" | RSHIFTL => "rshift_l"
 		  | ANDB => "andb" | ORB => "orb" | XORB => "xorb" | NOTB => "notb"
-		  | ABS => "abs" | REM => "rem" | QUOT => "quot" | MOD => "mod"
+		  | DIV => "div" | MOD => "mod" | QUOT => "quot" | REM => "rem"
 		(* end case *))
 	  in
 	    concat [ rator, if overflow then "_" else "n_", prNumkind kind]

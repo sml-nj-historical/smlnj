@@ -43,7 +43,7 @@ local structure DA = Access
       structure BT = BasicTypes
       structure LT = PLambdaType
       structure TU = TypesUtil
-      structure PO = PrimOp
+      structure PO = Primop
       structure MP = PPLexp
       structure EM = ErrorMsg
       structure TP = Types
@@ -1032,7 +1032,7 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
         | genpath (ROOTPATH, env) = VAR(lookupPath(ROOTPATH, env))
 
       fun genswitch(sv, sign, [(DATAcon((_, DA.REF, lt), ts, x), e)], NONE) = 
-            LET(x, APP (PRIM (PrimOp.DEREF, LT.lt_swap lt, ts), sv), e)
+            LET(x, APP (PRIM (Primop.DEREF, LT.lt_swap lt, ts), sv), e)
         | genswitch(sv, sign, [(DATAcon((_, DA.SUSP(SOME(_, DA.LVAR f)), lt),
                                         ts, x), e)], NONE) = 
             let val v = mkv()

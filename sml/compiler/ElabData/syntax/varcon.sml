@@ -47,7 +47,7 @@ val bogusCON = T.DATACON{name=S.varSymbol "bogus",
                          sign=A.CSIG(0,1)}
 
 val bogusEXN = T.DATACON{name=S.varSymbol "bogus",
-			 typ=CoreBasicTypes.exnTy,
+			 typ=BasicTypes.exnTy,
 			 rep=A.CONSTANT 0,
 			 const=true,
 			 lazyp=false,

@@ -1,5 +1,8 @@
-(* Copyright 1997 (c) by YALE FLINT PROJECT *)
-(* flintutil.sml *)
+(* flintutil.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure FLINTIntMap = IntRedBlackMap (* IntBinaryMap *)
 
@@ -40,7 +43,7 @@ struct
 
 local structure EM = ErrorMsg
       structure LT = LtyExtern
-      structure PO = PrimOp
+      structure PO = Primop
       structure DA = Access
       structure M  = FLINTIntMap
       structure A  = Access

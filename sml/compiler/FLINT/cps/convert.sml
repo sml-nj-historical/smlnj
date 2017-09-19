@@ -1,5 +1,8 @@
-(* COPYRIGHT 1998 BY YALE FLINT PROJECT *)
-(* convert.sml *)
+(* convert.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 (***************************************************************************
  *                         IMPORTANT NOTES                                 *
@@ -17,7 +20,7 @@ functor Convert(MachSpec : MACH_SPEC) : CONVERT = struct
 local structure DA = Access
       structure LT = LtyExtern
       structure LV = LambdaVar
-      structure AP = PrimOp
+      structure AP = Primop
       structure DI = DebIndex
       structure F  = FLINT
       structure FU = FlintUtil
@@ -37,6 +40,32 @@ val OFFp0 = OFFp 0
 (* testing if two values are equivalent lvar values *)
 fun veq (VAR x, VAR y) = (x = y)
   | veq _ = false
+
+local
+  structure PCT = PrimCTypes
+  structure CT = CTypes
+in
+(* convert PrimCTypes.c_proto to MLRISC's CTypes.c_proto *)
+fun cvtCProto {conv, retTy, paramTys} : CTypes.c_proto = let
+      fun cvtIntTy PCT.I_char = CT.I_char
+	| cvtIntTy PCT.I_short = CT.I_short
+	| cvtIntTy PCT.I_int = CT.I_int
+	| cvtIntTy PCT.I_long = CT.I_long
+	| cvtIntTy PCT.I_long_long = CT.I_long_long
+      fun cvtTy PCT.C_void = CT.C_void
+	| cvtTy PCT.C_float = CT.C_float
+	| cvtTy PCT.C_double = CT.C_double
+	| cvtTy PCT.C_long_double = CT.C_long_double
+	| cvtTy (PCT.C_unsigned ity) = CT.C_unsigned(cvtIntTy ity)
+	| cvtTy (PCT.C_signed ity) = CT.C_signed(cvtIntTy ity)
+	| cvtTy PCT.C_PTR = CT.C_PTR
+	| cvtTy (PCT.C_ARRAY(ty, n)) = CT.C_ARRAY(cvtTy ty, n)
+	| cvtTy (PCT.C_STRUCT tys) = CT.C_STRUCT(List.map cvtTy tys)
+	| cvtTy (PCT.C_UNION tys) = CT.C_UNION(List.map cvtTy tys)
+      in
+        {conv = conv, retTy = cvtTy retTy, paramTys = List.map cvtTy paramTys}
+      end
+end (* local *)
 
 (***************************************************************************
  *              CONSTANTS AND UTILITY FUNCTIONS                            *
@@ -92,30 +121,30 @@ fun cmpop stuff =
     of {oper=AP.EQL,kind=AP.INT 31} => P.ieql
      | {oper=AP.NEQ,kind=AP.INT 31} => P.ineq
      | {oper,kind=AP.FLOAT size} => 
-         let fun c AP.>    = P.fGT
-	       | c AP.>=   = P.fGE
-	       | c AP.<    = P.fLT
-	       | c AP.<=   = P.fLE
+         let fun c AP.GT   = P.fGT
+	       | c AP.GTE  = P.fGE
+	       | c AP.LT   = P.fLT
+	       | c AP.LTE  = P.fLE
  	       | c AP.EQL  = P.fEQ
  	       | c AP.NEQ  = P.fULG
-		   | c AP.FSGN = P.fsgn
+	       | c AP.FSGN = P.fsgn
  	       | c _ = bug "cmpop:kind=AP.FLOAT"
           in P.fcmp{oper= c oper, size=size}
          end
      | {oper, kind} => 
          let fun check (_, AP.UINT _) = ()
  	       | check (oper, _) = bug ("check" ^ oper)
- 	     fun c AP.>   = P.>  
- 	       | c AP.>=  = P.>= 
- 	       | c AP.<   = P.< 
- 	       | c AP.<=  = P.<=
+ 	     fun c AP.GT  = P.>  
+ 	       | c AP.GTE = P.>= 
+ 	       | c AP.LT  = P.< 
+ 	       | c AP.LTE = P.<=
  	       | c AP.LEU = (check ("leu", kind); P.<= )
  	       | c AP.LTU = (check ("ltu", kind); P.< )
  	       | c AP.GEU = (check ("geu", kind); P.>= )
  	       | c AP.GTU = (check ("gtu", kind); P.> )
  	       | c AP.EQL = P.eql
  	       | c AP.NEQ = P.neq
-		   | c AP.FSGN = bug "cmpop:kind=AP.UINT"
+	       | c AP.FSGN = bug "cmpop:kind=AP.UINT"
   	  in P.cmp{oper=c oper, kind=numkind kind} 
          end)
 
@@ -142,7 +171,7 @@ fun primunwrap(INTt) = P.iunwrap
   | primunwrap _ = P.unwrap
 
 (* arithop: AP.arithop -> P.arithop *)
-fun arithop AP.~ = P.~
+fun arithop AP.NEG = P.~
   | arithop AP.ABS = P.abs
   | arithop AP.FSQRT = P.fsqrt
   | arithop AP.FSIN = P.fsin
@@ -152,10 +181,11 @@ fun arithop AP.~ = P.~
   | arithop AP.REM = P.rem
   | arithop AP.DIV = P.div
   | arithop AP.MOD = P.mod
-  | arithop AP.+ = P.+
-  | arithop AP.- = P.-
-  | arithop AP.* = P.*
-  | arithop AP./ = P./
+  | arithop AP.ADD = P.+
+  | arithop AP.SUB = P.-
+  | arithop AP.MUL = P.*
+  | arithop AP.QUOT = P./
+  | arithop AP.FDIV = P./
   | arithop AP.LSHIFT = P.lshift
   | arithop AP.RSHIFT = P.rshift
   | arithop AP.RSHIFTL = P.rshiftl
@@ -614,7 +644,8 @@ fun convert fdec =
 	     newname (v, lpvar a); loop(e,c))
 
 	  | F.PRIMOP ((_,AP.RAW_CCALL (SOME i),lt,ts),f::a::_::_,v,e) => let
-		val { c_proto = p, ml_args, ml_res_opt, reentrant } = i
+		val { c_proto, ml_args, ml_res_opt, reentrant } = i
+		val c_proto = cvtCProto c_proto
 		fun cty AP.CCR64 = FLTt
 		  | cty AP.CCI32 = INT32t
 		  | cty AP.CCML = BOGt
@@ -628,12 +659,11 @@ fun convert fdec =
                           F.STRING linkage => (al, linkage)
                         | _  => (lpvar f :: al, "")
 		in  case ml_res_opt of
-			NONE => RCC (rcckind, linkage, 
-                                     p, al, [(v, INTt)], loop (e, c))
+			NONE => RCC (rcckind, linkage, c_proto, al, [(v, INTt)], loop (e, c))
 		      | SOME AP.CCI64 =>
 			let val (v1, v2) = (mkv (), mkv ())
 			in
-			    RCC (rcckind, linkage, p, al,
+			    RCC (rcckind, linkage, c_proto, al,
 				 [(v1, INT32t), (v2, INT32t)],
 				 recordNM([VAR v1, VAR v2],[INT32t,INT32t],
 					  v, loop (e, c)))
@@ -642,7 +672,7 @@ fun convert fdec =
 			    val v' = mkv ()
 			    val res_cty = cty rt
 			in
-			    RCC (rcckind, linkage, p, al, [(v', res_cty)],
+			    RCC (rcckind, linkage, c_proto, al, [(v', res_cty)],
 				 PURE(primwrap res_cty, [VAR v'], v, BOGt,
 				      loop (e, c)))
 			end

@@ -17,7 +17,7 @@ local structure LP = TypeOper
       structure LV = LambdaVar
       structure DA = Access
       structure DI = DebIndex
-      structure PO = PrimOp
+      structure PO = Primop
       structure FU = FlintUtil
 
       open FLINT
@@ -275,7 +275,7 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
                    in LET([v], hdr(u), loop e)
                   end
               | PRIMOP((_,po,_,_), vs, v, e) => 
-                  (say ("\n####" ^ (PrimOp.prPrimop po) ^ "####\n");
+                  (say ("\n####" ^ (PO.prPrimop po) ^ "####\n");
                    bug "unexpected PRIMOP in loop"))
       in loop 
      end (* function transform *)
