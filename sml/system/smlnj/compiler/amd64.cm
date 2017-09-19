@@ -1,9 +1,13 @@
-(*
- * Library exporting "visible" compiler for AMD64.
+(* amd64.cm
  *
- * (C) 2006 The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
+ * Library exporting "visible" compilers for Alpha32.
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com)
  *)
+
 Library
 	(* signatures *)
 	signature STATS
@@ -84,7 +88,7 @@ Library
         structure TypesUtil
         structure VarCon
         structure ModuleUtil
-        structure PrimOpId
+        structure PrimopId
         structure BasicTypes
         structure PPType
         structure Access

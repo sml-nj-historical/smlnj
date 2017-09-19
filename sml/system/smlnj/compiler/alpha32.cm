@@ -1,7 +1,9 @@
-(*
- * Library exporting "visible" compilers for Alpha32.
+(* alpha32.cm
  *
- *  (C) 2001, Lucent Technologies, Bell Labs
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Library exporting "visible" compilers for Alpha32.
  *
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)
@@ -85,7 +87,7 @@ Library
         structure TypesUtil
         structure VarCon
         structure ModuleUtil
-        structure PrimOpId
+        structure PrimopId
         structure BasicTypes
         structure PPType
         structure Access
