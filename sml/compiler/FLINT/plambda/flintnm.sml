@@ -1,7 +1,11 @@
-(* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
-(* monnier@cs.yale.edu *)
+(* flintnm.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Converting the Standard PLambda.lexp into the FLINT IL
+ *)
 
-(* Converting the Standard PLambda.lexp into the FLINT IL *)
 signature FLINTNM =
 sig 
   val norm : PLambda.lexp -> FLINT.fundec

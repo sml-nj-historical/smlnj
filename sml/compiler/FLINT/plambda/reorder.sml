@@ -1,7 +1,8 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* reorder.sml *)
-
-(*
+(* reorder.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Sethi-Ullman reordering of expression trees to minimize register usage
  *
  * See: Andrew W. Appel and  Kenneth J. Supowit,

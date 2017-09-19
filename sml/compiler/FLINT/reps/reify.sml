@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
-(* reify.sml *)
+(* reify.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature REIFY = 
 sig

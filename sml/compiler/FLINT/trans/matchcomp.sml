@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1996 Bell Laboratories *)
-(* matchcomp.sml *)
+(* matchcomp.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature MATCH_COMP =
 sig

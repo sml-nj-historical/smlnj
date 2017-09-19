@@ -165,14 +165,6 @@ fun makeRECORDexp(fields,err) =
 
 val TUPLEexp = AbsynUtil.TUPLEexp
 
-fun TUPLEexp l = 
-    let fun addlabels(i,e::r) = 
-	      (LABEL{number=i-1,name=(Tuples.numlabel i)},e) 
-               :: addlabels(i+1,r)
-	  | addlabels(_, nil) = nil
-     in RECORDexp (addlabels(1,l))
-    end
-
 fun TPSELexp(e, i) = 
     let val lab = LABEL{number=i-1, name=(Tuples.numlabel i)}
      in SELECTexp(lab, e)

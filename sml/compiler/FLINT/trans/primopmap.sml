@@ -1,7 +1,9 @@
-(* Copyright 2006 by the Standard ML Fellowship *)
-(* primopmap.sml *)
-
-(* The module PrimOpMap provides a table of all the primops formerly defined in
+(* primopmap.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * The module PrimOpMap provides a table of all the primops formerly defined in
  * the InLine structure, indexed by the primop names defined used in InLine.
  * The table is given in the form of the primopMap function, which maps a primop
  * name to the primop value and its "intrinsic" type (the type formerly used for
