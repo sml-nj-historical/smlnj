@@ -104,7 +104,7 @@ datatype primop
   | INLIDENTITY		       (* E: polymorphic identity *)
 
   | CVT64		       (* E: convert between external and
-				* internal representation of compi
+				* internal representation of compiler
                                 * simulated 64-bit scalars, e.g. w64p *)
 
 (* non-environmental primops (not found in InLine) *)
@@ -124,8 +124,8 @@ datatype primop
   | UNWRAP                     (* unbox a value by unwrapping it *)
 	
 (* Primops to support new experimental C FFI. *)
-  | RAW_LOAD of numkind		(* load from arbitrary memory location *)
-  | RAW_STORE of numkind	(* store to arbitrary memory location *)
+  | RAW_LOAD of numkind		(* E: load from arbitrary memory location *)
+  | RAW_STORE of numkind	(* E: store to arbitrary memory location *)
     (* make a call to a C-function;
      * The primop carries C function prototype information and specifies
      * which of its (ML-) arguments are floating point. C prototype
@@ -135,13 +135,13 @@ datatype primop
 		   ml_args: ccall_type list,
 		   ml_res_opt: ccall_type option,
                    reentrant: bool
-                 } option
+                 } option  (* E: *)
    (* Allocate uninitialized storage on the heap.
     * The record is meant to hold short-lived C objects, i.e., they
     * are not ML pointers.  The representation is 
     * the same as RECORD with tag tag_raw32 or tag_fblock.
     *)
-  | RAW_RECORD of { fblock: bool }
+  | RAW_RECORD of { fblock: bool }  (* E: *)
 
 
 and ccall_type = CCI32 | CCI64 | CCR64 | CCML
