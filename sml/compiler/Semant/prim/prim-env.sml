@@ -187,10 +187,10 @@ structure PrimEnv : PRIM_ENV =
   (* inLine structure *)
     val inLine = let
           val bottom = T.POLYty{sign=[false], tyfun=T.TYFUN{arity=1, body=T.IBOUND 0}}
-	  fun mkVarElement (offset, prim, (elems, primElems)) = let
-		val s = S.varSymbol (PrimopList.nameOf prim)
-		val sp = M.VALspec{spec=PrimopList.typeOf prim, slot=offset}
-		val p = PrimOpId.PrimE(PrimOpId.Prim ??)
+	  fun mkVarElement (offset, primBnd, (elems, primElems)) = let
+		val s = S.varSymbol (PrimopBindings.nameOf primBnd)
+		val sp = M.VALspec{spec=PrimopBindings.typeOf primBnd, slot=offset}
+		val p = PrimOpId.PrimE(PrimOpId.Prim primBnd)
 		in
 		  ((s, sp)::elems, p::primElems)
 		end

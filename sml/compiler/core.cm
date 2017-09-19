@@ -169,7 +169,7 @@ Semant/prim/cproto.sml
 Semant/prim/primop.sig
 Semant/prim/primop.sml
 Semant/prim/primop-env.sml
-Semant/prim/primops-list.sml
+Semant/prim/primop-bindings.sml
 
 (* The FLINT optimizer ("middle-end"). *)
 FLINT/clos/allocprof.sml
