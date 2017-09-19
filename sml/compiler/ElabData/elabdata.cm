@@ -101,7 +101,6 @@ is
 	types/types.sig
 	types/types.sml
 	types/tuples.sml
-	types/core-basictypes.sml (* to remove *)
 	types/basictypes.sig
 	types/basictypes.sml
 	types/typesutil.sig
