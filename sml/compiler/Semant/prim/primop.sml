@@ -107,22 +107,6 @@ datatype primop
 				* internal representation of compiler
                                 * simulated 64-bit scalars, e.g. w64p *)
 
-(* non-environmental primops (not found in InLine) *)
-
-  | UNBOXEDASSIGN              (* assignment to integer reference *)
-
-  | WCAST                      (* ? *)
-  | MARKEXN                    (* mark an exception value with a string *)
-
-  | INL_ARRAY                  (* L: polymorphic array allocation *)
-  | INL_VECTOR                 (* L: polymorphic vector allocation *)
-  | INL_MONOARRAY of numkind   (* L: monomorphic array allocation *)
-  | INL_MONOVECTOR of numkind  (* L: monomorphic vector allocation *)
-
-  | MKETAG                     (* make a new exception tag *)
-  | WRAP                       (* box a value by wrapping it *)
-  | UNWRAP                     (* unbox a value by unwrapping it *)
-	
 (* Primops to support new experimental C FFI. *)
   | RAW_LOAD of numkind		(* E: load from arbitrary memory location *)
   | RAW_STORE of numkind	(* E: store to arbitrary memory location *)
@@ -143,6 +127,21 @@ datatype primop
     *)
   | RAW_RECORD of { fblock: bool }  (* E: *)
 
+(* non-environmental primops (not found in InLine) *)
+
+  | UNBOXEDASSIGN              (* assignment to integer reference *)
+
+  | WCAST                      (* ? *)
+  | MARKEXN                    (* mark an exception value with a string *)
+
+  | INL_ARRAY                  (* L: polymorphic array allocation *)
+  | INL_VECTOR                 (* L: polymorphic vector allocation *)
+  | INL_MONOARRAY of numkind   (* L: monomorphic array allocation *)
+  | INL_MONOVECTOR of numkind  (* L: monomorphic vector allocation *)
+
+  | MKETAG                     (* make a new exception tag *)
+  | WRAP                       (* box a value by wrapping it *)
+  | UNWRAP                     (* unbox a value by unwrapping it *)
 
 and ccall_type = CCI32 | CCI64 | CCR64 | CCML
 
