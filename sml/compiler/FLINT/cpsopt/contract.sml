@@ -467,15 +467,7 @@ end (* local *)
 
 
 fun setter (P.update, [_, _, INT _]) = P.unboxedupdate
-  | setter (P.update, [_, _, REAL _]) = P.boxedupdate
-  | setter (P.update, [_, _, STRING _]) = P.boxedupdate
-  | setter (P.update, [_, _, VAR v]) = 
-     (case #info(get v)
-       of (FNinfo _) => P.boxedupdate
-	| (RECinfo _) => P.boxedupdate
-	| (OFFinfo _) => P.boxedupdate
-	| _ => P.update
-	(* end case *))
+  | setter (P.update, _) = P.update
   | setter (P.assign, [_, INT _]) = P.unboxedassign
   | setter (i, _) = i
 

@@ -488,20 +488,17 @@ val uList =
              mkConElement("nil", BT.unilDcon),
              mkConElement("::", BT.uconsDcon)]
       val sigrec = {stamp=ST.special "uListSig",
-		       name=NONE, closed=true,
-		       fctflag=false,
-		       elements=allElements,
-		       typsharing=nil, strsharing=nil,
-		       properties = PropList.newHolder (),
-		       (* boundeps=ref (SOME []), *)
-		       (* lambdaty=ref NONE, *)
-		       stub = NONE}
+		    name=NONE, closed=true,
+		    fctflag=false,
+		    elements=allElements,
+		    typsharing=nil, strsharing=nil,
+		    properties = PropList.newHolder (),
+		    stub = NONE}
    in M.STR{sign=M.SIG sigrec,
             rlzn={stamp=ST.special "uListStr",
 		  stub=NONE,
 		  entities=EE.bind(ev,M.TYCent BT.ulistTycon,EE.empty),
 		  properties = PropList.newHolder (),
-		  (* lambdaty=ref(NONE), *)
 		  rpath=IP.IPATH[S.strSymbol "uList"]},
             access=A.nullAcc, prim= []}
   end

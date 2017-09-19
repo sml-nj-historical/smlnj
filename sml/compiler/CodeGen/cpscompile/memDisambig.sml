@@ -46,7 +46,6 @@ functor MemDisambiguate(structure Cells: CELLS) : MEM_DISAMBIGUATION = struct
        | C.SWITCH(_,_,el) => 
 	  List.foldl Int.max 0 (map (fn e => sizeOf(e, hp)) el)
        | C.SETTER(P.update,_,e) => sizeOf(e, hp+storeListSz)
-       | C.SETTER(P.boxedupdate,_,e) => sizeOf(e, hp+storeListSz)
        | C.SETTER(_, _, e) => sizeOf(e, hp)
        | C.PURE(P.fwrap, _, _, _, e) => sizeOf(e, hp+frecord(1))
        | C.PURE(P.mkspecial, _, _, _, e) => sizeOf(e, hp+8)
@@ -161,9 +160,7 @@ functor MemDisambiguate(structure Cells: CELLS) : MEM_DISAMBIGUATION = struct
 	 | C.SWITCH(_, _, el) => List.app (fn e => iter(e, hp)) el
 	 | C.BRANCH(_, _, _, e1, e2) => (iter(e1, hp); iter(e2, hp))
 	 | C.SETTER(P.update, [a,_,v], e) => update(a, v, e)
-	 | C.SETTER(P.boxedupdate, [a,_,v], e) => update(a, v, e)
-	 | C.SETTER(P.numupdate{kind=P.FLOAT 64}, [a,i,v], e) => 
-	     update(a, v, e)
+	 | C.SETTER(P.numupdate{kind=P.FLOAT 64}, [a,i,v], e) => update(a, v, e)
 	 | C.SETTER(_, _, e) => iter(e, hp)
 	 | C.LOOKER(_, _, _, _, e) => iter(e, hp)
 	 | C.ARITH(_, _, _, _, e) => iter(e, hp)

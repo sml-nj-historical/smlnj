@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
-(* reify.sml *)
+(* reify.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature REIFY = 
 sig
@@ -260,8 +263,7 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
                       val hdr = LP.arrSub(tc, kenv, blt, rlt) 
                    in LET([v], hdr(u), loop e)
                   end
-              | PRIMOP((d, po as (PO.UPDATE | PO.UNBOXEDUPDATE 
-                                  | PO.BOXEDUPDATE), lt, [tc]), u, v, e) =>
+              | PRIMOP((d, po as (PO.UPDATE | PO.UNBOXEDUPDATE), lt, [tc]), u, v, e) =>
                   let val blt = ltf(LT.lt_pinst(lt, [tc]))
                       val rlt = ltf(LT.lt_pinst(lt, [LT.tcc_real]))
                       val hdr = LP.arrUpd(tc, kenv, po, blt, rlt)

@@ -181,7 +181,6 @@ datatype primop
   | OBJLENGTH                  (* length of arbitrary heap object *)
   | CAST
   | WCAST
-  | GETRUNVEC                  (* get the pointer to the run-vector *)
   | MARKEXN                    (* mark an exception value with a string *)
   | GETHDLR | SETHDLR          (* get/set exn handler pointer *)
   | GETVAR | SETVAR            (* get/set var register *)
@@ -193,9 +192,8 @@ datatype primop
   | DEREF                      (* dereferencing *)
   | ASSIGN                     (* assignment *)
   | UNBOXEDASSIGN              (* assignment to integer reference *)
-  | UPDATE                     (* array update (maybe boxed) *)
+  | UPDATE                     (* array update (maybe boxed, so will allocate store-list item) *)
   | INLUPDATE                  (* inline array update (maybe boxed) *)
-  | BOXEDUPDATE                (* boxed array update *)
   | UNBOXEDUPDATE              (* update array of integers WITH tags *)
 
   | GETTAG                     (* extract the tag portion of an *)
@@ -203,7 +201,6 @@ datatype primop
   | MKSPECIAL                  (* make a special object *)
   | SETSPECIAL                 (* set the state of a special object *)
   | GETSPECIAL                 (* get the state of a special object *)
-  | USELVAR | DEFLVAR
   | INLMIN of numkind          (* inline min *)
   | INLMAX of numkind          (* inline max *)
   | INLABS of numkind          (* inline abs *)

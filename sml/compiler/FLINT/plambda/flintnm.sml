@@ -1,7 +1,11 @@
-(* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
-(* monnier@cs.yale.edu *)
+(* flintnm.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Converting the Standard PLambda.lexp into the FLINT IL
+ *)
 
-(* Converting the Standard PLambda.lexp into the FLINT IL *)
 signature FLINTNM =
 sig 
   val norm : PLambda.lexp -> FLINT.fundec
@@ -83,7 +87,7 @@ fun flint_prim (po as (d, p, lt, ts), vs, v, e) =
         PO.PTRNEQ | PO.POLYEQL | PO.POLYNEQ) =>
           (*** branch primops get translated into F.BRANCH ***)
           F.LET([v], F.BRANCH(po, vs, boolLexp true, boolLexp false), e)
-     | (PO.GETRUNVEC | PO.GETHDLR | PO.GETVAR | PO.DEFLVAR) =>
+     | (PO.GETHDLR | PO.GETVAR) =>
           (*** primops that take zero arguments; argument types
                must be unit ***)
           let fun fix t = 

@@ -214,18 +214,15 @@ fun map_primop p =
      | AP.NUMSUBSCRIPT{kind,immutable=true,checked=false} => 
            PKP(P.pure_numsubscript{kind=numkind kind})
      | AP.DEREF =>     PKL(P.!)
-     | AP.GETRUNVEC => PKL(P.getrunvec)
      | AP.GETHDLR =>   PKL(P.gethdlr)
      | AP.GETVAR  =>   PKL(P.getvar)
      | AP.GETPSEUDO => PKL(P.getpseudo)
      | AP.GETSPECIAL =>PKL(P.getspecial)
-     | AP.DEFLVAR  =>  PKL(P.deflvar)
         
      | AP.SETHDLR => PKS(P.sethdlr)
      | AP.NUMUPDATE{kind,checked=false} =>
            PKS(P.numupdate{kind=numkind kind})
      | AP.UNBOXEDUPDATE => PKS(P.unboxedupdate)
-     | AP.BOXEDUPDATE => PKS(P.boxedupdate)
      | AP.UPDATE => PKS(P.update)
      | AP.ASSIGN => PKS(P.assign)
      | AP.UNBOXEDASSIGN => PKS(P.unboxedassign)
@@ -234,7 +231,6 @@ fun map_primop p =
      | AP.SETMARK => PKS(P.setmark)
      | AP.DISPOSE => PKS(P.free)
      | AP.SETSPECIAL => PKS(P.setspecial)
-     | AP.USELVAR => PKS(P.uselvar)
 
      | AP.RAW_LOAD nk => PKL (P.rawload { kind = numkind nk })
      | AP.RAW_STORE nk => PKS (P.rawstore { kind = numkind nk })

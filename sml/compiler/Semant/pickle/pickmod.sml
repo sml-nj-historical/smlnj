@@ -427,7 +427,9 @@ in
 	      | P.LENGTH => %?14
 	      | P.OBJLENGTH => %?15
 	      | P.CAST => %?16
+(* GETRUNVEC is no longer a primop
 	      | P.GETRUNVEC => %?17
+*)
 	      | P.MARKEXN => %?18
 	      | P.GETHDLR => %?19
 	      | P.SETHDLR => %?20
@@ -446,15 +448,19 @@ in
 	      (* NOTE: P.UNBOXEDASSIGN is defined below *)
 	      | P.UPDATE => %?33
 	      | P.INLUPDATE => %?34
+(* BOXEDUPDATE is no longer a primop
 	      | P.BOXEDUPDATE => %?35
+*)
 	      | P.UNBOXEDUPDATE => %?36
 
 	      | P.GETTAG => %?37
 	      | P.MKSPECIAL => %?38
 	      | P.SETSPECIAL => %?39
 	      | P.GETSPECIAL => %?40
+(* no longer primops
 	      | P.USELVAR => %?41
 	      | P.DEFLVAR => %?42
+*)
 	      | P.INLNOT => %?43
 	      | P.INLCOMPOSE => %?44
 	      | P.INLBEFORE => %?45

@@ -52,17 +52,17 @@ structure P : sig
     (* These all update the store *)
     datatype setter
       = numupdate of {kind: numkind}
-      | unboxedupdate | boxedupdate | update
+      | unboxedupdate | update
       | unboxedassign | assign
-      | sethdlr | setvar | uselvar | setspecial
+      | sethdlr | setvar | setspecial
       | free | acclink | setpseudo | setmark
       | rawstore of {kind: numkind}
       | rawupdate of cty
 
     (* These fetch from the store, never have functions as arguments. *)
     datatype looker
-      = ! | subscript | numsubscript of {kind: numkind} | getspecial | deflvar
-      | getrunvec | gethdlr | getvar | getpseudo
+      = ! | subscript | numsubscript of {kind: numkind} | getspecial
+      | gethdlr | getvar | getpseudo
       | rawload of {kind: numkind}
 
   (* These might raise exceptions, never have functions as arguments.*)

@@ -6,10 +6,9 @@ sig
   exception Interrupt
 
   val interact : unit -> unit
-  val useFile  : string -> unit
+  val useFile  : string -> bool (* returns true if okay and false on error *)
   val useStream : TextIO.instream -> unit
-  val evalStream : TextIO.instream * Environment.environment -> 
-                   Environment.environment
+  val evalStream : TextIO.instream * Environment.environment -> Environment.environment
 
   val withErrorHandling : bool -> (* true: treat all exns like usercode exns *)
       { thunk: unit -> unit, flush: unit -> unit, cont: exn -> unit } -> unit

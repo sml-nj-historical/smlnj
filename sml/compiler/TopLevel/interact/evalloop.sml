@@ -1,7 +1,10 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* evalloop.sml *)
+(* evalloop.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
-functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
+functor EvalLoopF (Compile: TOP_COMPILE) : EVALLOOP =
   struct
 
     structure C  = Compile
@@ -42,7 +45,7 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 	      handle e => (U.topLevelCont := oldcont; raise e)
 	  end
 
-  (* to wrap exceptions that are raised during the execution of a top-level trasaction *)
+  (* to wrap exceptions that are raised during the execution of a top-level transaction *)
     exception ExnDuringExecution of exn
 
   (*
@@ -186,7 +189,7 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 	    end (* function evalLoop *)
 
       fun withErrorHandling treatasuser { thunk, flush, cont = k } = let
-	    fun showhist' [s] = say (concat["  raised at: ", s, "\n"])
+	    fun showhist' [s] = say (concat ["  raised at: ", s, "\n"])
 	      | showhist' (s::r) =
 		  (showhist' r; say (concat ["             ", s, "\n"]))
 	      | showhist' [] = ()
@@ -288,7 +291,6 @@ functor EvalLoopF(Compile: TOP_COMPILE) : EVALLOOP =
 		  Source.closeSource source;
 		  case exn
 		   of EndOfFile => ()
-		    | EM.Error => ()
 		    | _ => raise exn
 		  (* end case *))
 	  end

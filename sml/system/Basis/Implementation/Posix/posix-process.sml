@@ -1,9 +1,9 @@
 (* posix-process.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Structure for POSIX 1003.1 process submodule
- *
  *)
 
 local
@@ -33,10 +33,10 @@ structure POSIX_Process =
           CInterface.c_function "POSIX-ProcEnv" "sysconf"
 
     val fork' : unit -> s_int = cfun "fork"
-    fun fork () =
-          case fork' () of
-            0 => NONE
-          | child_pid => SOME(PID child_pid)
+    fun fork () = (case fork' ()
+	   of 0 => NONE
+	    | child_pid => SOME(PID child_pid)
+	  (* end case *))
     
     fun exec (x: string * string list) : 'a = cfun "exec" x
     fun exece (x: string * string list * string list) : 'a = cfun "exece" x
@@ -116,6 +116,7 @@ structure POSIX_Process =
       | kill (K_SAME_GROUP,Sig.SIG s) = kill'(~1, s)
       | kill (K_GROUP (PID pid),Sig.SIG s) = kill'(~pid, s)
     
+(* TODO: generalize to finer-grain sleeping (bug #173); also alarm *)
     local
       fun wrap f t =
 	    Time.fromSeconds(Int.toLarge(f(Int.fromLarge(Time.toSeconds t))))
@@ -124,11 +125,9 @@ structure POSIX_Process =
     in
     val alarm = wrap alarm'
     val sleep = wrap sleep'
-    end
+    end (* local *)
 
     val pause : unit -> unit = cfun "pause"
 
-
   end (* structure POSIX_Process *)
-end
-
+end (* local *)
