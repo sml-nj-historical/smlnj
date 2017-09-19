@@ -15,7 +15,7 @@ struct
      represented as a string. See the file DEVNOTES/Flint/primop-list
      for the catalog of primop names with their types and primop specs *)
 
-  datatype primId = Prim of string | NonPrim
+  datatype primId = Prim of PrimopBinding.primop_bind | NonPrim
 
   datatype strPrimElem = PrimE of primId
                        | StrE of strPrimInfo
@@ -29,16 +29,22 @@ struct
     | isPrimop NonPrim  = false
 
   (* Used in TopLevel/main/compile.sml to identify callcc/capture primops *)
-  fun isPrimCallcc (Prim("callcc" | "capture")) = true
+  fun isPrimCallcc (Prim p) =
+      (case PrimopBinding.defnOf p
+	 of (PrimOp.CALLCC | PrimOp.CAPTURE) => true
+	  |  _ => false)
     | isPrimCallcc _ = false
 
   (* Used in ElabData/modules/moduleutil.sml to identify cast primop *)
-  fun isPrimCast (Prim "cast") = true
+  fun isPrimCast (Prim p) =
+      (case PrimOp.defnOf p
+	of PrimOp.CAST => true
+	|  _ => false)
     | isPrimCast _ = false
 
   (* selStrPrimId : strPrimInfo * int -> strPrimInfo *)
   (* Select the prim ids for a substructure *)
-  fun selStrPrimId([], slot) = []  
+  fun selStrPrimId([], slot) = []  (* not a bug? DBM *)
     | selStrPrimId(elems, slot) = 
       (case List.nth(elems, slot) 
 	of StrE elems' => elems'
@@ -49,7 +55,7 @@ struct
 	   structure *)
 
   (* Select the prim id for a value component *)
-  fun selValPrimFromStrPrim([], slot) = NonPrim 
+  fun selValPrimFromStrPrim([], slot) = NonPrim (* not a bug? DBM *)
     | selValPrimFromStrPrim(elems, slot) =
       (case List.nth(elems, slot)
 	of PrimE(id) => id
@@ -61,7 +67,7 @@ struct
            primId *)
 
   fun ppPrim NonPrim = "<NonPrim>"
-    | ppPrim (Prim p) = ("<PrimE "^p^">")
+    | ppPrim (Prim p) = ("<PrimE " ^ PrimOp.nameOf p ^">")
 
   fun ppStrInfo strelems = 
       let fun ppElem [] = ()

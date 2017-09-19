@@ -10,7 +10,7 @@
 signature PRIMOPID =
 sig
 
-  datatype primId = Prim of string | NonPrim
+  datatype primId = Prim of PrimopBindings.primop_bind | NonPrim
 
   datatype strPrimElem
     = PrimE of primId
