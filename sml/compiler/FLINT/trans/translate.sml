@@ -1086,10 +1086,14 @@ fun mkVar (v as V.VALvar{access, prim, btvs, typ, path}, d) =
 fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
       let val occurenceTy = instPoly(!typ, ts)
               (* compute the occurrence type of the variable *)
+          val primop = PrimopBindings.defnOf p
+          val intrinsicType = PrimopBindings.typeOf p
+(*
 	  val (primop,intrinsicType) =
               case (PrimOpMap.primopMap p, PrimOpTypeMap.primopTypeMap p)
                of (SOME p, SOME t) => (p,t)
                 | _ => bug "mkVE: unrecognized primop name"
+*)
 	  val _ = debugmsg ">>mkVE: before matchInstTypes"
 	  val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
