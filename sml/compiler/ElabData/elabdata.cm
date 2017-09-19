@@ -24,9 +24,12 @@ Group
 	signature MODULE_ID
 	signature BINDINGS
 	signature STATICENV
-	signature CORE_PRIM_TYC_NUM
+	signature PRIM_TYC_NUM
+	signature BASICTYPES
 	signature ENTITY_ENV
-	signature PRIMOPID
+	signature PRIMOP_ID
+	signature PRIMOP
+	signature PRIM_ENV
 
 	structure ElabDataControl
 	structure Access
@@ -54,12 +57,17 @@ Group
 	structure Lookup
 	structure CompInfo
 	structure CoreSym
-	structure CorePrimTycNum
-	structure CoreBasicTypes
+	structure PrimTycNum
+	structure BasicTypes
 	structure GenModIdMap
 	structure CoreAccess
 	structure BrowseStatEnv
-	structure PrimOpId
+	structure PrimopId
+	structure Primop
+	structure PrimEnv
+	structure PrimopBindings
+	structure CProto
+	structure CTypes
 	structure TKind
 	structure SigPropList
 is
@@ -76,14 +84,13 @@ is
 	basics/stamps.sig
 	basics/stamps.sml
 	basics/stampmap.sml
-	basics/primopid.sig
-	basics/primopid.sml
 	basics/coresym.sml
 	basics/access.sig
 	basics/access.sml
 	basics/sympaths.sig
 	basics/sympaths.sml
-	basics/core-ptnum.sml
+	basics/core-ptnum.sml (* to remove *)
+	basics/ptnum.sml
 	basics/tkind.sml
 	basics/sig-plist.sml
 
@@ -96,7 +103,9 @@ is
 	types/types.sig
 	types/types.sml
 	types/tuples.sml
-	types/core-basictypes.sml
+	types/core-basictypes.sml (* to remove *)
+	types/basictypes.sig
+	types/basictypes.sml
 	types/typesutil.sig
 	types/typesutil.sml
 
@@ -119,6 +128,15 @@ is
 	statenv/genmap.sml
 	statenv/coreacc.sml
 	statenv/browse.sml
+
+	prim/primop.sig
+	prim/primop.sml
+	prim/primop-bindings.sml
+	prim/primop-id.sig
+	prim/primop-id.sml
+        prim/prim-env.sml
+	prim/cproto.sml
+	prim/c-types.sml
 
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/parser.cm

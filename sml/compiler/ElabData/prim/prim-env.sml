@@ -34,8 +34,7 @@ structure PrimEnv : PRIM_ENV =
 	  val sym = S.tycSymbol name
 	  val tyc = M.TYCspec{
 		  entVar=ST.special name,
-		  info=M.RegTycSpec{spec=tyc, repl=false,
-		  scope=0
+		  info=M.RegTycSpec{spec=tyc, repl=false, scope=0}
 		}
 	  in
 	    (sym, tyc)
@@ -190,11 +189,11 @@ structure PrimEnv : PRIM_ENV =
 	  fun mkVarElement (offset, primBnd, (elems, primElems)) = let
 		val s = S.varSymbol (PrimopBindings.nameOf primBnd)
 		val sp = M.VALspec{spec=PrimopBindings.typeOf primBnd, slot=offset}
-		val p = PrimOpId.PrimE(PrimOpId.Prim primBnd)
+		val p = PrimopId.PrimE(PrimopId.Prim primBnd)
 		in
 		  ((s, sp)::elems, p::primElems)
 		end
-	  val (allElements, primList) = List.foldri mkVarElement ([], []) PrimOpList.prims
+	  val (allElements, primList) = List.foldri mkVarElement ([], []) PrimopBindings.prims
 	  val sigrec = {
 		  stamp=ST.special "inLineSig",
 		  name=NONE, closed=true,

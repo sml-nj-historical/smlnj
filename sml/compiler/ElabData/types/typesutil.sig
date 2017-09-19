@@ -1,5 +1,8 @@
-(* Copyright 1996 by AT&T Bell Laboratories *)
-(* typesutil.sig *)
+(* typesutil.sig
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature TYPESUTIL = 
 sig
@@ -87,7 +90,7 @@ sig
    * when type generalization is permitted under the value rule *)
   (*
   dbm: where has this moved to? typecheck.sml? 
-  gk: restoring this function because PrimOpId is now self-contained.
+  gk: restoring this function because PrimopId is now self-contained.
   *)
   val isVarTy : Types.ty -> bool
  

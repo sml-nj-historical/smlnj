@@ -20,7 +20,7 @@ local structure S   = Symbol
       structure M   = Modules
       structure MI  = ModuleId
       structure SE  = StaticEnv
-      structure POI = PrimOpId
+      structure POI = PrimopId
       open Modules
 in
 
@@ -182,7 +182,7 @@ fun strDefToStr(CONSTstrDef str, _) = str
  * being searched is a STRSIG; otherwise it return STRINFO.
  *)
 datatype strInfo = SIGINFO of EP.entPath  (* reverse order! *)
-                 | STRINFO of strEntity * A.access * POI.strPrimInfo
+                 | STRINFO of strEntity * A.access * POI.str_prim_info
 
 val bogusInfo = STRINFO (bogusStrEntity, A.nullAcc, [])
 

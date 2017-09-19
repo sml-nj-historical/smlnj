@@ -1,5 +1,7 @@
-(*
- * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies
+(* cproto.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * An ad-hoc encoding of CTypes.c_proto (from MLRISC) in ML types.
  * (This encoding has _nothing_ to do with actual representation types,

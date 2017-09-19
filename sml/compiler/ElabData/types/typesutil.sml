@@ -1,5 +1,8 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* typesutil.sml *)
+(* typesutil.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure TypesUtil : TYPESUTIL = struct
 
@@ -712,7 +715,7 @@ fun isValue (VARexp _) = true
   | isValue (APPexp(rator, rand)) =
     let fun isrefdcon(DATACON{rep=A.REF,...}) = true
           | isrefdcon _ = false
-        fun iscast (VALvar {prim, ...}) = PrimOpId.isPrimCast prim
+        fun iscast (VALvar {prim, ...}) = PrimopId.isPrimCast prim
           | iscast _ = false
 
         (* LAZY: The following function allows applications of the

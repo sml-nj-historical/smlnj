@@ -1,7 +1,9 @@
 (* varcon.sml
  *
- * (C) 2001 Lucent Technologies, Bell Labs
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
+
 structure VarCon : VARCON =
 struct
 
@@ -17,7 +19,7 @@ datatype var
        typ : T.ty ref,
        btvs : T.tyvar list ref,
        access : A.access,
-       prim : PrimOpId.primId}
+       prim : PrimopId.prim_id}
   | OVLDvar of       	      	      (* overloaded identifier *)
       {name : S.symbol,
        options: {indicator: T.ty, variant: var} list,
@@ -35,7 +37,7 @@ fun mkVALvar (id, acc) =
              typ = ref T.UNDEFty,
              access = acc,
 	     btvs = ref [],
-             prim = PrimOpId.NonPrim}
+             prim = PrimopId.NonPrim}
 
 val bogusCON = T.DATACON{name=S.varSymbol "bogus",
                          typ=T.WILDCARDty,

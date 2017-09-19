@@ -1,7 +1,9 @@
 (* varcon.sig
  *
- * (C) 2001 Lucent Technologies, Bell Labs
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
+
 signature VARCON = 
 sig
 
@@ -11,7 +13,7 @@ sig
 	 typ : Types.ty ref,
 	 btvs : Types.tyvar list ref,
          access : Access.access,
-         prim   : PrimOpId.primId}
+         prim   : PrimopId.prim_id}
     | OVLDvar of			(* overloaded identifier *)
         {name : Symbol.symbol,
 	 options: {indicator: Types.ty, variant: var} list,

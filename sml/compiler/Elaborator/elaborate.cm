@@ -53,10 +53,7 @@ is
 	basics/elabcontrol.sig
 	basics/elabcontrol.sml
 	basics/conrep.sml
-	basics/ptnum.sml
 
-	types/basictypes.sig
-	types/basictypes.sml
 	types/eqtypes.sml
 	types/unify.sml
 	types/overload.sml

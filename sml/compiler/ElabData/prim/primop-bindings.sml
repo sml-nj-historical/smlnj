@@ -11,9 +11,11 @@ structure PrimopBindings : sig
 
     type primop_bind
 
+    val mk : string * Types.ty * Primop.primop -> primop_bind
+
     val nameOf : primop_bind -> string
     val typeOf : primop_bind -> Types.ty
-    val defnOf : primop_bind -> PrimOp.primop
+    val defnOf : primop_bind -> Primop.primop
 
     val prims : primop_bind list
 
@@ -23,7 +25,9 @@ structure PrimopBindings : sig
     structure BT = BasicTypes
     structure P = Primop
 
-    type primop_bind = string * Types.ty * PrimOp.primop
+    type primop_bind = string * Types.ty * Primop.primop
+
+    fun mk arg = arg
 
     fun nameOf (n, _, _) = n
     fun typeOf (_, ty, _) = ty
@@ -180,6 +184,43 @@ structure PrimopBindings : sig
      * calling conventions and reentrancy.)
      *)
       val rccType = p3(ar(tu[w32,v1,v2],v3))
+
+    (* helper functions for primop definitions *)
+      fun bits size oper = P.ARITH{oper=oper, overflow=false, kind=P.INT size}
+      val bits31 = bits 31		
+      val bits32 = bits 32		
+
+      fun int size oper = P.ARITH{oper=oper, overflow=true, kind=P.INT size}
+      val int31 = int 31
+      val int32 = int 32
+
+      fun word size oper = P.ARITH{oper=oper, overflow=false, kind=P.UINT size}
+      val word32 = word 32
+      val word31 = word 31
+      val word8  = word 8
+
+      fun purefloat size oper = P.ARITH{oper=oper,overflow=false,kind=P.FLOAT size}
+      val purefloat64 = purefloat 64	
+
+      fun cmp kind oper = P.CMP{oper=oper, kind=kind}
+      val int31cmp = cmp (P.INT 31)
+      val int32cmp = cmp (P.INT 32)
+
+      val word32cmp = cmp (P.UINT 32)
+      val word31cmp = cmp (P.UINT 31)
+      val word8cmp  = cmp (P.UINT 8)
+
+      val float64cmp = cmp (P.FLOAT 64)
+
+      fun sub kind = P.NUMSUBSCRIPT{kind=kind, checked=false, immutable=false}
+      fun chkSub kind = P.NUMSUBSCRIPT{kind=kind, checked=true, immutable=false}
+
+      fun subv kind = P.NUMSUBSCRIPT{kind=kind, checked=false, immutable=true}
+      fun chkSubv kind = P.NUMSUBSCRIPT{kind=kind, checked=true, immutable=true}
+
+      fun update kind = P.NUMUPDATE {kind=kind, checked=false}
+      fun chkUpdate kind = P.NUMUPDATE {kind=kind, checked=true}
+
     in
     val prims = [
 	  (* continuation operators *)
@@ -321,17 +362,17 @@ structure PrimopBindings : sig
 	   *   there are suffixed alternative versions of the primop
 	   *   (i.e., same primop, different type).
 	   *)
-	    ("i31add", ii_i, int31 P.+),
-	    ("i31add_8", w8w8_w8, int31 P.+),
-	    ("i31sub", ii_i, int31 P.-),
-	    ("i31sub_8", w8w8_w8, int31 P.-),
-	    ("i31mul", ii_i, int31 P.* ),
-	    ("i31mul_8", w8w8_w8, int31 P.* ),
+	    ("i31add", ii_i, int31 P.ADD),
+	    ("i31add_8", w8w8_w8, int31 P.ADD),
+	    ("i31sub", ii_i, int31 P.SUB),
+	    ("i31sub_8", w8w8_w8, int31 P.SUB),
+	    ("i31mul", ii_i, int31 P.MUL ),
+	    ("i31mul_8", w8w8_w8, int31 P.MUL ),
 	    ("i31div", ii_i, int31 P.DIV),
 	    ("i31div_8", w8w8_w8, int31 P.DIV),
 	    ("i31mod", ii_i, int31 P.MOD),
 	    ("i31mod_8", w8w8_w8, int31 P.MOD),
-	    ("i31quot", ii_i, int31 P./),
+	    ("i31quot", ii_i, int31 P.DIV),
 	    ("i31rem", ii_i, int31 P.REM),
 	    ("i31orb", ii_i, bits31 P.ORB),
 	    ("i31orb_8", w8w8_w8, bits31 P.ORB),
@@ -341,24 +382,24 @@ structure PrimopBindings : sig
 	    ("i31xorb_8", w8w8_w8, bits31 P.XORB),
 	    ("i31notb", i_i, bits31 P.NOTB),
 	    ("i31notb_8", w8_w8, bits31 P.NOTB),
-	    ("i31neg", i_i, int31 P.~),
-	    ("i31neg_8", w8_w8, int31 P.~),
+	    ("i31neg", i_i, int31 P.NEG),
+	    ("i31neg_8", w8_w8, int31 P.NEG),
 	    ("i31lshift", ii_i, bits31 P.LSHIFT),
 	    ("i31lshift_8", w8w_w8, bits31 P.LSHIFT),
 	    ("i31rshift", ii_i, bits31 P.RSHIFT),
 	    ("i31rshift_8", w8w_w8, bits31 P.RSHIFT),
-	    ("i31lt", ii_b, int31cmp P.<),
-	    ("i31lt_8", w8w8_b, int31cmp P.<),
-	    ("i31lt_c", cc_b, int31cmp P.<),
-	    ("i31le", ii_b, int31cmp P.<=),
-	    ("i31le_8", w8w8_b, int31cmp P.<=),
-	    ("i31le_c", cc_b, int31cmp P.<=),
-	    ("i31gt", ii_b, int31cmp P.>),
-	    ("i31gt_8", w8w8_b, int31cmp P.>),
-	    ("i31gt_c", cc_b, int31cmp P.>),
-	    ("i31ge", ii_b, int31cmp P.>=),
-	    ("i31ge_8", w8w8_b, int31cmp P.>=),
-	    ("i31ge_c", cc_b, int31cmp P.>=),
+	    ("i31lt", ii_b, int31cmp P.LT),
+	    ("i31lt_8", w8w8_b, int31cmp P.LT),
+	    ("i31lt_c", cc_b, int31cmp P.LT),
+	    ("i31le", ii_b, int31cmp P.LTE),
+	    ("i31le_8", w8w8_b, int31cmp P.LTE),
+	    ("i31le_c", cc_b, int31cmp P.LTE),
+	    ("i31gt", ii_b, int31cmp P.GT),
+	    ("i31gt_8", w8w8_b, int31cmp P.GT),
+	    ("i31gt_c", cc_b, int31cmp P.GT),
+	    ("i31ge", ii_b, int31cmp P.GTE),
+	    ("i31ge_8", w8w8_b, int31cmp P.GTE),
+	    ("i31ge_c", cc_b, int31cmp P.GTE),
 	    ("i31ltu", ii_b, word31cmp P.LTU),
 	    ("i31geu", ii_b, word31cmp P.GEU),
 	    ("i31eq", ii_b, int31cmp P.EQL),
@@ -369,38 +410,38 @@ structure PrimopBindings : sig
 	    ("i31max_8", w8w8_w8, P.INLMAX (P.INT 31)),
 	    ("i31abs", i_i, P.INLABS (P.INT 31)),
 	  (* integer 32 primops *)
-	    ("i32mul", i32i32_i32, int32 P.* ),
+	    ("i32mul", i32i32_i32, int32 P.MUL ),
 	    ("i32div", i32i32_i32, int32 P.DIV),
 	    ("i32mod", i32i32_i32, int32 P.MOD),
-	    ("i32quot", i32i32_i32, int32 P./),
+	    ("i32quot", i32i32_i32, int32 P.DIV),
 	    ("i32rem", i32i32_i32, int32 P.REM),
-	    ("i32add", i32i32_i32, int32 P.+),
-	    ("i32sub", i32i32_i32, int32 P.-),
+	    ("i32add", i32i32_i32, int32 P.ADD),
+	    ("i32sub", i32i32_i32, int32 P.SUB),
 	    ("i32orb", i32i32_i32, bits32 P.ORB),
 	    ("i32andb", i32i32_i32, bits32 P.ANDB),
 	    ("i32xorb", i32i32_i32, bits32 P.XORB),
 	    ("i32lshift", i32i32_i32, bits32 P.LSHIFT),
 	    ("i32rshift", i32i32_i32, bits32 P.RSHIFT),
-	    ("i32neg", i32_i32, int32 P.~),
-	    ("i32lt", i32i32_b, int32cmp P.<),
-	    ("i32le", i32i32_b, int32cmp P.<=),
-	    ("i32gt", i32i32_b, int32cmp P.>),
-	    ("i32ge", i32i32_b, int32cmp P.>=),
+	    ("i32neg", i32_i32, int32 P.NEG),
+	    ("i32lt", i32i32_b, int32cmp P.LT),
+	    ("i32le", i32i32_b, int32cmp P.LTE),
+	    ("i32gt", i32i32_b, int32cmp P.GT),
+	    ("i32ge", i32i32_b, int32cmp P.GTE),
 	    ("i32eq", i32i32_b, int32cmp P.EQL),
 	    ("i32ne", i32i32_b, int32cmp P.NEQ),
 	    ("i32min", i32i32_i32, P.INLMIN (P.INT 32)),
 	    ("i32max", i32i32_i32, P.INLMAX (P.INT 32)),
 	    ("i32abs", i32_i32, P.INLABS (P.INT 32)),
 	  (* float 64 primops *)
-	    ("f64add", f64f64_f64, purefloat64 (P.+)),
-	    ("f64sub", f64f64_f64, purefloat64 (P.-)),
-	    ("f64div", f64f64_f64, purefloat64 (P./)),
-	    ("f64mul", f64f64_f64, purefloat64 (P.* )),
-	    ("f64neg", f64_f64, purefloat64 P.~),
-	    ("f64ge", f64f64_b, float64cmp (P.>=)),
-	    ("f64gt", f64f64_b, float64cmp (P.>)),
-	    ("f64le", f64f64_b, float64cmp (P.<=)),
-	    ("f64lt", f64f64_b, float64cmp (P.<)),
+	    ("f64add", f64f64_f64, purefloat64 (P.ADD)),
+	    ("f64sub", f64f64_f64, purefloat64 (P.SUB)),
+	    ("f64div", f64f64_f64, purefloat64 (P.DIV)),
+	    ("f64mul", f64f64_f64, purefloat64 (P.MUL )),
+	    ("f64neg", f64_f64, purefloat64 P.NEG),
+	    ("f64ge", f64f64_b, float64cmp (P.GTE)),
+	    ("f64gt", f64f64_b, float64cmp (P.GT)),
+	    ("f64le", f64f64_b, float64cmp (P.LTE)),
+	    ("f64lt", f64f64_b, float64cmp (P.LT)),
 	    ("f64eq", f64f64_b, float64cmp P.EQL),
 	    ("f64ne", f64f64_b, float64cmp P.NEQ),
 	    ("f64sgn", f64_b, float64cmp P.FSGN),
@@ -420,10 +461,10 @@ structure PrimopBindings : sig
 	    ("w8orb", w8w8_w8, word31 P.ORB),
 	    ("w8xorb", w8w8_w8, word31 P.XORB),
 	    ("w8andb", w8w8_w8, word31 P.ANDB),
-	    ("w8gt", w8w8_b, word8cmp P.>),
-	    ("w8ge", w8w8_b, word8cmp P.>=),
-	    ("w8lt", w8w8_b, word8cmp P.<),
-	    ("w8le", w8w8_b, word8cmp P.<=),
+	    ("w8gt", w8w8_b, word8cmp P.GT),
+	    ("w8ge", w8w8_b, word8cmp P.GTE),
+	    ("w8lt", w8w8_b, word8cmp P.LT),
+	    ("w8le", w8w8_b, word8cmp P.LTE),
 	    ("w8eq", w8w8_b, word8cmp P.EQL),
 	    ("w8ne", w8w8_b, word8cmp P.NEQ),
 	  (* word8 array and vector *)
@@ -434,23 +475,23 @@ structure PrimopBindings : sig
 	    ("w8update", numUpdTy, update (P.UINT 8)),
 	    ("w8chkUpdate", numUpdTy, chkUpdate (P.UINT 8)),
 	  (* word31 primops *)
-	    ("w31mul", ww_w, word31 (P.* )),
-	    ("w31div", ww_w, word31 (P./)),
+	    ("w31mul", ww_w, word31 (P.MUL )),
+	    ("w31div", ww_w, word31 (P.DIV)),
 	    ("w31mod", ww_w, word31 (P.REM)),
-	    ("w31add", ww_w, word31 (P.+)),
-	    ("w31sub", ww_w, word31 (P.-)),
+	    ("w31add", ww_w, word31 (P.ADD)),
+	    ("w31sub", ww_w, word31 (P.SUB)),
 	    ("w31orb", ww_w, word31 P.ORB),
 	    ("w31xorb", ww_w, word31 P.XORB),
 	    ("w31andb", ww_w, word31 P.ANDB),
 	    ("w31notb", w_w, word31 P.NOTB),
-	    ("w31neg", w_w, word31 P.~),
+	    ("w31neg", w_w, word31 P.NEG),
 	    ("w31rshift", ww_w, word31 P.RSHIFT),
 	    ("w31rshiftl", ww_w, word31 P.RSHIFTL),
 	    ("w31lshift", ww_w, word31 P.LSHIFT),
-	    ("w31gt", ww_b, word31cmp (P.>)),
-	    ("w31ge", ww_b, word31cmp (P.>=)),
-	    ("w31lt", ww_b, word31cmp (P.<)),
-	    ("w31le", ww_b, word31cmp (P.<=)),
+	    ("w31gt", ww_b, word31cmp (P.GT)),
+	    ("w31ge", ww_b, word31cmp (P.GTE)),
+	    ("w31lt", ww_b, word31cmp (P.LT)),
+	    ("w31le", ww_b, word31cmp (P.LTE)),
 	    ("w31eq", ww_b, word31cmp P.EQL),
 	    ("w31ne", ww_b, word31cmp P.NEQ),
 	    ("w31ChkRshift", ww_w, P.INLRSHIFT(P.UINT 31)),
@@ -459,23 +500,23 @@ structure PrimopBindings : sig
 	    ("w31min", ww_w, P.INLMIN (P.UINT 31)),
 	    ("w31max", ww_w, P.INLMAX (P.UINT 31)),
 	  (* (pseudo-)word8 primops *)
-	    ("w31mul_8", w8w8_w8, word31 (P.* )),
-	    ("w31div_8", w8w8_w8, word31 (P./)),
+	    ("w31mul_8", w8w8_w8, word31 (P.MUL )),
+	    ("w31div_8", w8w8_w8, word31 (P.DIV)),
 	    ("w31mod_8", w8w8_w8, word31 (P.REM)),
-	    ("w31add_8", w8w8_w8, word31 (P.+)),
-	    ("w31sub_8", w8w8_w8, word31 (P.-)),
+	    ("w31add_8", w8w8_w8, word31 (P.ADD)),
+	    ("w31sub_8", w8w8_w8, word31 (P.SUB)),
 	    ("w31orb_8", w8w8_w8, word31 P.ORB),
 	    ("w31xorb_8", w8w8_w8, word31 P.XORB),
 	    ("w31andb_8", w8w8_w8, word31 P.ANDB),
 	    ("w31notb_8", w8_w8, word31 P.NOTB),
-	    ("w31neg_8", w8_w8, word31 P.~),
+	    ("w31neg_8", w8_w8, word31 P.NEG),
 	    ("w31rshift_8", w8w_w8, word31 P.RSHIFT),
 	    ("w31rshiftl_8", w8w_w8, word31 P.RSHIFTL),
 	    ("w31lshift_8", w8w_w8, word31 P.LSHIFT),
-	    ("w31gt_8", w8w8_b, word31cmp (P.>)),
-	    ("w31ge_8", w8w8_b, word31cmp (P.>=)),
-	    ("w31lt_8", w8w8_b, word31cmp (P.<)),
-	    ("w31le_8", w8w8_b, word31cmp (P.<=)),
+	    ("w31gt_8", w8w8_b, word31cmp (P.GT)),
+	    ("w31ge_8", w8w8_b, word31cmp (P.GTE)),
+	    ("w31lt_8", w8w8_b, word31cmp (P.LT)),
+	    ("w31le_8", w8w8_b, word31cmp (P.LTE)),
 	    ("w31eq_8", w8w8_b, word31cmp P.EQL),
 	    ("w31ne_8", w8w8_b, word31cmp P.NEQ),
 	    ("w31ChkRshift_8", w8w_w8, P.INLRSHIFT(P.UINT 31)),
@@ -484,23 +525,23 @@ structure PrimopBindings : sig
 	    ("w31min_8", w8w8_w8, P.INLMIN (P.UINT 31)),
 	    ("w31max_8", w8w8_w8, P.INLMAX (P.UINT 31)),
 	  (* word32 primops *)
-	    ("w32mul", w32w32_w32, word32 (P.* )),
-	    ("w32div", w32w32_w32, word32 (P./)),
+	    ("w32mul", w32w32_w32, word32 (P.MUL )),
+	    ("w32div", w32w32_w32, word32 (P.DIV)),
 	    ("w32mod", w32w32_w32, word32 (P.REM)),
-	    ("w32add", w32w32_w32, word32 (P.+)),
-	    ("w32sub", w32w32_w32, word32 (P.-)),
+	    ("w32add", w32w32_w32, word32 (P.ADD)),
+	    ("w32sub", w32w32_w32, word32 (P.SUB)),
 	    ("w32orb", w32w32_w32, word32 P.ORB),
 	    ("w32xorb", w32w32_w32, word32 P.XORB),
 	    ("w32andb", w32w32_w32, word32 P.ANDB),
 	    ("w32notb", w32_w32, word32 P.NOTB),
-	    ("w32neg", w32_w32, word32 P.~),
+	    ("w32neg", w32_w32, word32 P.NEG),
 	    ("w32rshift", w32w_w32, word32 P.RSHIFT),
 	    ("w32rshiftl", w32w_w32, word32 P.RSHIFTL),
 	    ("w32lshift", w32w_w32, word32 P.LSHIFT),
-	    ("w32gt", w32w32_b, word32cmp (P.>)),
-	    ("w32ge", w32w32_b, word32cmp (P.>=)),
-	    ("w32lt", w32w32_b, word32cmp (P.<)),
-	    ("w32le", w32w32_b, word32cmp (P.<=)),
+	    ("w32gt", w32w32_b, word32cmp (P.GT)),
+	    ("w32ge", w32w32_b, word32cmp (P.GTE)),
+	    ("w32lt", w32w32_b, word32cmp (P.LT)),
+	    ("w32le", w32w32_b, word32cmp (P.LTE)),
 	    ("w32eq", w32w32_b, word32cmp P.EQL),
 	    ("w32ne", w32w32_b, word32cmp P.NEQ),
 	    ("w32ChkRshift", w32w_w32, P.INLRSHIFT(P.UINT 32)),
