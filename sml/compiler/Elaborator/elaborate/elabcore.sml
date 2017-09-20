@@ -718,9 +718,7 @@ let
 	(* exps are simple variables or paths, with monomorphic types;
 	 * typescheme is a type scheme with a single type variable parameter,
 	 * which matches the type of each exp *)
-	let val _ = Control_Print.say (">>elabOVERLOADdec "^Symbol.name id^" "
-		    ^Int.toString(length exps)^"\n")
-	    val (body,tyvars) = ET.elabType(typeScheme,env,error,region)
+	let val (body,tyvars) = ET.elabType(typeScheme,env,error,region)
 	    val tvs = TS.elements tyvars (* ASSERT: length tyvars = 1 *)
 	    val scheme = (TU.bindTyvars tvs; TU.compressTy body;
 			  TYFUN{arity=length tvs, body=body})
@@ -732,8 +730,7 @@ let
 		map (fn exp => option(#1(elabExp(exp,env,region)))) exps
 	    val ovldvar = OVLDvar{name=id,scheme=scheme,
 				  options=options}
-	in Control_Print.say
-	      ("<<elabOVERLOADdec #options = "^Int.toString(length options)^"\n");
+	in 
 	    (OVLDdec ovldvar, SE.bind(id,B.VALbind ovldvar,SE.empty),
              TS.empty, no_updt)
 	end
