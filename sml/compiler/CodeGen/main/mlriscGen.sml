@@ -1812,7 +1812,22 @@ raise ex)
 		     | P.div => int31div(true, M.DIV_TO_NEGINF, v, w)
 		     | P.rem => int31rem(true, M.DIV_TO_ZERO, v, w)
 		     | P.mod => int31rem(true, M.DIV_TO_NEGINF, v, w)
-                     | _   => error "gen:ARITH INT 31"
+		     | P.~ => error "gen: ~ INT 31"
+		     | P.abs => error "gen: abs INT 31"
+		     | P.fsqrt => error "gen: fsqrt INT 31"
+		     | P.fsin => error "gen: fsin INT 31"
+		     | P.fcos => error "gen: fcos INT 31"
+		     | P.ftan => error "gen: ftan INT 31"
+		     | P.lshift => error "gen: lshift INT 31"
+		     | P.rshift => error "gen: rshift INT 31"
+		     | P.rshiftl => error "gen: rshiftl INT 31"
+		     | P.andb => error "gen: andb INT 31"
+		     | P.orb => error "gen: orb INT 31"
+		     | P.xorb => error "gen: xorb INT 31"
+		     | P.notb => error "gen: notb INT 31"
+(*
+                     | _ => error "gen:ARITH INT 31"
+*)
                in  defI31(x, t, e, 0) end
               (*esac*))
             | gen(ARITH(P.arith{kind=P.INT 32, oper}, [v,w], x, _, e), hp) =

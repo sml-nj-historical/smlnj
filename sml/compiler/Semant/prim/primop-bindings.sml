@@ -347,15 +347,15 @@ structure PrimopBindings : sig
 	  ("i32max", i32i32_i32, P.INLMAX (P.INT 32)) :-:
 	  ("i32abs", i32_i32, P.INLABS (P.INT 32)) :-:
 	(* float 64 primops *)
-	  ("f64add", f64f64_f64, purefloat64 (P.ADD)) :-:
-	  ("f64sub", f64f64_f64, purefloat64 (P.SUB)) :-:
-	  ("f64div", f64f64_f64, purefloat64 (P.FDIV)) :-:
-	  ("f64mul", f64f64_f64, purefloat64 (P.MUL)) :-:
+	  ("f64add", f64f64_f64, purefloat64 P.ADD) :-:
+	  ("f64sub", f64f64_f64, purefloat64 P.SUB) :-:
+	  ("f64div", f64f64_f64, purefloat64 P.FDIV) :-:
+	  ("f64mul", f64f64_f64, purefloat64 P.MUL) :-:
 	  ("f64neg", f64_f64, purefloat64 P.NEG) :-:
-	  ("f64ge", f64f64_b, float64cmp (P.GTE)) :-:
-	  ("f64gt", f64f64_b, float64cmp (P.GT)) :-:
-	  ("f64le", f64f64_b, float64cmp (P.LTE)) :-:
-	  ("f64lt", f64f64_b, float64cmp (P.LT)) :-:
+	  ("f64ge", f64f64_b, float64cmp P.GTE) :-:
+	  ("f64gt", f64f64_b, float64cmp P.GT) :-:
+	  ("f64le", f64f64_b, float64cmp P.LTE) :-:
+	  ("f64lt", f64f64_b, float64cmp P.LT) :-:
 	  ("f64eq", f64f64_b, float64cmp P.EQL) :-:
 	  ("f64ne", f64f64_b, float64cmp P.NEQ) :-:
 	  ("f64sgn", f64_b, float64cmp P.FSGN) :-:
@@ -389,11 +389,11 @@ structure PrimopBindings : sig
 	  ("w8update", numUpdTy, update (P.UINT 8)) :-:
 	  ("w8chkUpdate", numUpdTy, chkUpdate (P.UINT 8)) :-:
 	(* word32 primops *)
-	  ("w32mul", w32w32_w32, word32 (P.MUL)) :-:
-	  ("w32div", w32w32_w32, word32 (P.QUOT)) :-:
-	  ("w32mod", w32w32_w32, word32 (P.REM)) :-:
-	  ("w32add", w32w32_w32, word32 (P.ADD)) :-:
-	  ("w32sub", w32w32_w32, word32 (P.SUB)) :-:
+	  ("w32mul", w32w32_w32, word32 P.MUL) :-:
+	  ("w32div", w32w32_w32, word32 P.QUOT) :-:
+	  ("w32mod", w32w32_w32, word32 P.REM) :-:
+	  ("w32add", w32w32_w32, word32 P.ADD) :-:
+	  ("w32sub", w32w32_w32, word32 P.SUB) :-:
 	  ("w32orb", w32w32_w32, word32 P.ORB) :-:
 	  ("w32xorb", w32w32_w32, word32 P.XORB) :-:
 	  ("w32andb", w32w32_w32, word32 P.ANDB) :-:
@@ -402,10 +402,10 @@ structure PrimopBindings : sig
 	  ("w32rshift", w32w_w32, word32 P.RSHIFT) :-:
 	  ("w32rshiftl", w32w_w32, word32 P.RSHIFTL) :-:
 	  ("w32lshift", w32w_w32, word32 P.LSHIFT) :-:
-	  ("w32gt", w32w32_b, word32cmp (P.GT)) :-:
-	  ("w32ge", w32w32_b, word32cmp (P.GTE)) :-:
-	  ("w32lt", w32w32_b, word32cmp (P.LT)) :-:
-	  ("w32le", w32w32_b, word32cmp (P.LTE)) :-:
+	  ("w32gt", w32w32_b, word32cmp P.GT) :-:
+	  ("w32ge", w32w32_b, word32cmp P.GTE) :-:
+	  ("w32lt", w32w32_b, word32cmp P.LT) :-:
+	  ("w32le", w32w32_b, word32cmp P.LTE) :-:
 	  ("w32eq", w32w32_b, word32cmp P.EQL) :-:
 	  ("w32ne", w32w32_b, word32cmp P.NEQ) :-:
 	  ("w32ChkRshift", w32w_w32, P.INLRSHIFT(P.UINT 32)) :-:
@@ -633,19 +633,19 @@ structure PrimopBindings : sig
 	      mk2_8("mod", P.MOD) :-:
 	      mk2("quot", P.QUOT) :-:
 	      mk2("rem", P.REM) :-:
-	      mk2("orb", P.ORB) :-:
-	      mk2_8("orb", P.ORB) :-:
-	      mk2("andb", P.ANDB) :-:
-	      mk2_8("andb", P.ANDB) :-:
-	      mk2("xorb", P.XORB) :-:
-	      mk2_8("xorb", P.XORB) :-:
+	      mk2_b("orb", P.ORB) :-:
+	      mk("orb_8", w8w8_w8, bits P.ORB) :-:
+	      mk2_b("andb", P.ANDB) :-:
+	      mk("andb_8", w8w8_w8, bits P.ANDB) :-:
+	      mk2_b("xorb", P.XORB) :-:
+	      mk("xorb_8", w8w8_w8, bits P.XORB) :-:
 	      mk1_b("notb", P.NOTB) :-:
-	      mk1_8("notb", P.NOTB) :-:
+	      mk("notb_8", w8_w8, bits P.NOTB) :-:
 	      mk1("neg", P.NEG) :-:
 	      mk1_8("neg", P.NEG) :-:
-	      mk2("lshift", P.LSHIFT) :-:
+	      mk2_b("lshift", P.LSHIFT) :-:
 	      mk("lshift_8", w8w_w8, bits P.LSHIFT) :-:
-	      mk2("rshift", P.RSHIFT) :-:
+	      mk2_b("rshift", P.RSHIFT) :-:
 	      mk("rshift_8", w8w_w8, bits P.RSHIFT) :-:
 	      mkcmp("lt", P.LT) :-:
 	      mkcmp_8("lt", P.LT) :-:
@@ -682,8 +682,8 @@ structure PrimopBindings : sig
 	  fun mk2 (name, rator) = mk(name, ww_w, word rator)
 	  fun mk1 (name, rator) = mk(name, w_w, word rator)
 	  fun mkcmp (name, rator) = mk(name, ww_b, wordcmp rator)
-	  fun mk2_8 (name, rator) = mk(concat[w, name, "_8"], w8w8_w8, word rator)
-	  fun mk1_8 (name, rator) = mk(concat[w, name, "_8"], w8_w8, word rator)
+	  fun mk2_8 (name, rator) = (concat[w, name, "_8"], w8w8_w8, word rator)
+	  fun mk1_8 (name, rator) = (concat[w, name, "_8"], w8_w8, word rator)
 	  fun mkcmp_8 (name, rator) = (concat[w, name, "_8"], w8w8_b, wordcmp rator)
 	  in
 	    prims :-:
@@ -694,7 +694,7 @@ structure PrimopBindings : sig
 	      mk2("sub", P.SUB) :-:
 	      mk2("orb", P.ORB) :-:
 	      mk2("xorb", P.XORB) :-:
-	      mk2("andb", P.ANDB) :-:
+	      mk2("andb",  P.ANDB) :-:
 	      mk1("notb", P.NOTB) :-:
 	      mk1("neg", P.NEG) :-:
 	      mk2("rshift", P.RSHIFT) :-:
