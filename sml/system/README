@@ -8,10 +8,10 @@ Last change: 12/5/2000
 
 The new way of building the compiler is heavily library-oriented.
 Aside from a tiny portion of code that is responsible for defining the
-pervasive environment, _everything_ lives in libraries.  Building the
-compiler means compiling and stabilizing these libraries first.  Some
+pervasive environment, _everything_ lives in libraries. Building the
+compiler means compiling and stabilizing these libraries first. Some
 of the libraries exist just for reasons of organizing the code, the
-other ones are potentially useful in their own right.  Therefore, as a
+other ones are potentially useful in their own right. Therefore, as a
 beneficial side-effect of compiling the compiler, you will end up with
 stable versions of these libraries.
 
@@ -130,7 +130,7 @@ here in this directory.  By default it will try to refer to the
 sml.boot.<arch>-<os> directory.  You can change this using the -boot
 argument (which takes the full name of the boot directory to be used).
 
-The "feel" of using makeml should be mostly as it used to.  However,
+The "feel" of using makeml should be mostly as it used to be. However,
 internally, there are some changes that you should be aware of:
 
 1. The script will make a heap image and build a separate library directory

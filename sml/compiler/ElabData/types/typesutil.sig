@@ -120,4 +120,6 @@ sig
       (* create dummy type generators used to instantiate ungeneralizable
        * free type variables in Typechecking.generalizeTy *)
 
+  val tyToString : Types.ty -> string
+
 end  (* signature TYPESUTIL *)

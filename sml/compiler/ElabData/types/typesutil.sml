@@ -1054,5 +1054,25 @@ fun dummyTyGen () : unit -> Types.ty =
      in nextTy
     end
 
+(* a crude translation of types to strings *)
+fun tyToString ty =
+    let fun showargs tys =
+	    case tys
+	     of nil => ""
+	      | [ty] => tyToString ty
+	      | ty::tys => toToString ty ^ "," ^ showargs tys
+    in case ty
+	of VARty _ => "<tv>"
+	 | IBOUND n => "<"^Int.toString n^">"
+	 | CONty(tyc,args) =>
+	   if BT.isArrow ty
+	   then "(" ^ tyToString BT.domain ty ^ " -> " ^ tyToString BT.range ty ^ ")"
+	   else (if null args then "" else "("^showArgs args^")) ^ Symbol.name(tycName tyc)
+	 | POLYty{tyfun=TYFUN{body,arity},...} =>
+	   "<P" ^ Int.toString arity ^ ">[" ^ tyToString body ^ "]"
+	 | WILDCARDty => "<wc>"
+	 | UNDEFty => "<ud>"
+	 | MARKty (ty,_) => tyToString ty
+    end
 end (* local *)
 end (* structure TypesUtil *)
