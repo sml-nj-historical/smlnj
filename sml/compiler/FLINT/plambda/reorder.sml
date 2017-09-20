@@ -30,18 +30,18 @@
  * The property of "possible unbounded allocation" is called "alloc."
  *)
 
-signature REORDER = 
+signature REORDER =
 sig
-  val reorder : PLambda.lexp -> PLambda.lexp 
-end 
+  val reorder : PLambda.lexp -> PLambda.lexp
+end
 
-structure Reorder : REORDER = 
+structure Reorder : REORDER =
 struct
 
 local open Access PLambda
-      structure P = Primop 
+      structure P = Primop
 
-in 
+in
 
 fun bug s = ErrorMsg.impossible ("Reorder: "^s)
 
@@ -65,13 +65,13 @@ fun swap(I{side=true,...},I{side=true,...}) = false
   | swap(I{regs=ra,...},I{regs=rb,...}) = ra < rb
       (* Evaluate the expression requiring more registers first,
          then hold its value in one register while evaluating the
-	 other expression.  Minimizes max register usage. 
+	 other expression.  Minimizes max register usage.
       *)
 
 fun inorder(a::(rest as b::_)) = if swap(a,b) then false else inorder rest
   | inorder _ = true
 
-fun insert(a as (_,_), b::c) = if swap(#1 a, #1 b) then b::insert(a,c) 
+fun insert(a as (_,_), b::c) = if swap(#1 a, #1 b) then b::insert(a,c)
 			                           else a::insert(b,c)
   | insert(a,nil) = a::nil
 
@@ -119,16 +119,16 @@ fun fetchprim P.BOXED = true
   | fetchprim P.GETTAG = true
   | fetchprim P.GETSPECIAL = true
   | fetchprim _ = false
-			    
 
-fun sort(do_it, l) = if inorder l 
+
+fun sort(do_it, l) = if inorder l
      then combine(l, do_it)
      else let fun somevar (I{exp=VAR _,...}) = NONE
 	        | somevar (I{exp=INT _,...}) = NONE
 	        | somevar (I{exp=REAL _,...}) = NONE
 	        | somevar (I{exp=STRING _,...}) = NONE
 	        | somevar _ = SOME(LambdaVar.mkLvar())
-	    
+
 	      val l' = map (fn x => (x, somevar x)) l
 
               val l'' = foldr insert [] l'
@@ -161,7 +161,7 @@ val rec lpsv : value -> value info =
    | _ => bug "unexpected case in lpsv"
 
 and loop : lexp -> lexp info =
-  fn e as SVAL sv => 
+  fn e as SVAL sv =>
         let val I{regs, side, exp, fetch, alloc} = lpsv sv
          in I{regs=regs, side=side, exp=SVAL exp, fetch=fetch, alloc=alloc}
         end
@@ -169,14 +169,14 @@ and loop : lexp -> lexp info =
 
    | FN(v,t,e) => I{regs=1, side=false, fetch=false, alloc=false,
 		    exp= FN(v,t,getexp(loop e))}
-   | FIX(vl,t,el,e) => 
-          let val I{regs,side,exp,fetch,alloc} = loop e 
+   | FIX(vl,t,el,e) =>
+          let val I{regs,side,exp,fetch,alloc} = loop e
            in I{regs=regs+1,side=side,fetch=fetch,alloc=alloc,
 		exp=FIX(vl,t,el,exp)}
           end
-   | APP(p as PRIM(i,t,_), b) => 
+   | APP(p as PRIM(i,t,_), b) =>
           let val I{regs,side,fetch,alloc,exp=e1} = lpsv b
-	   in I{regs=Int.max(1,regs),side=not(P.purePrimop i), 
+	   in I{regs=Int.max(1,regs),side=not(P.purePrimop i),
 	        alloc=false, fetch=fetchprim i, exp=APP(p, e1)}
 	  end
    | LET(v, b, a) =>
@@ -186,12 +186,12 @@ and loop : lexp -> lexp info =
 	        fetch= fa orelse fb, alloc=aa orelse ab,
 	        exp=LET(v,eb,ea)}
 	  end
-   | APP(a,b) => 
-          let val I{exp=e1,...} = 
+   | APP(a,b) =>
+          let val I{exp=e1,...} =
 		  sort(fn [x,y]=>APP(x,y), map lpsv [a,b])
 	   in I{regs=many,side=true,exp=e1,fetch=true,alloc=true}
           end
-   | SWITCH(v0,sign,l,d) => 
+   | SWITCH(v0,sign,l,d) =>
           let val I{regs,side,exp,fetch,alloc}= lpsv v0
 	      fun combine((c,e),(r,s,f,a,el)) =
 		    let val I{regs,side,exp,fetch,alloc}=loop e
@@ -200,9 +200,9 @@ and loop : lexp -> lexp info =
 		    end
               val (lr,ls,lf,la,l') = foldr combine (regs,side,fetch,alloc,[]) l
 
-           in case d 
-               of SOME d' => 
-		   let val (lr,ls,lf,la,[((),de)]) = 
+           in case d
+               of SOME d' =>
+		   let val (lr,ls,lf,la,[((),de)]) =
 		                     combine(((),d'),(lr,ls,lf,la,nil))
 		    in I{regs=lr,side=ls,fetch=lf,alloc=la,
 			 exp=SWITCH(exp,sign,l',SOME de)}
@@ -230,9 +230,9 @@ and loop : lexp -> lexp info =
                      in I{regs=Int.max(1,regs),side=true,fetch=fetch,alloc=alloc,
 			  exp=RAISE(exp,t)}
                     end
-   | HANDLE(a,b) => let val I{regs=ra,side=sa,exp=ea,fetch=fa,alloc=aa} = 
+   | HANDLE(a,b) => let val I{regs=ra,side=sa,exp=ea,fetch=fa,alloc=aa} =
 	                                                          loop a
-                        val I{regs=rb,side=sb,exp=eb,fetch=fb,alloc=ab} = 
+                        val I{regs=rb,side=sb,exp=eb,fetch=fb,alloc=ab} =
 			                                          lpsv b
                      in I{regs=ra,side=sa orelse sb,
 			  fetch=fa orelse fb, alloc = aa orelse ab,
@@ -241,12 +241,12 @@ and loop : lexp -> lexp info =
    | WRAP(t,c,e) => let val I{regs,side,exp,fetch,alloc} = lpsv e
                    in I{regs=regs, side=side, fetch=true, alloc=alloc,
                         exp=WRAP(t,c,exp)}
-                  end 
+                  end
    | UNWRAP(t,c,e) => let val I{regs,side,exp,fetch,alloc} = lpsv e
                      in I{regs=regs, side=side, fetch=true, alloc=alloc,
                           exp=UNWRAP(t,c,exp)}
-                    end 
-   | _ => bug "unsupported lambda expression in loop" 
+                    end
+   | _ => bug "unsupported lambda expression in loop"
 
 *)
 val reorder = fn x => bug "reorder not implemented" (* getexp (loop x) *)

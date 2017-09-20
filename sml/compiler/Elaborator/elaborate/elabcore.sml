@@ -730,7 +730,7 @@ let
 		map (fn exp => option(#1(elabExp(exp,env,region)))) exps
 	    val ovldvar = OVLDvar{name=id,scheme=scheme,
 				  options=options}
-	in 
+	in
 	    (OVLDdec ovldvar, SE.bind(id,B.VALbind ovldvar,SE.empty),
              TS.empty, no_updt)
 	end

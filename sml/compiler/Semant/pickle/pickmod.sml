@@ -284,8 +284,8 @@ in
 	fun arithopc P.ADD = "\000"
 	  | arithopc P.SUB = "\001"
 	  | arithopc P.MUL = "\002"
-	  | arithopc P.QUOT = "\003"
-	  | arithopc P.NEG = "\004"
+	  | arithopc P.NEG = "\003"
+	  | arithopc P.FDIV = "\004"
 	  | arithopc P.ABS = "\005"
 	  | arithopc P.LSHIFT = "\006"
 	  | arithopc P.RSHIFT = "\007"
@@ -298,20 +298,20 @@ in
 	  | arithopc P.FSIN = "\014"
 	  | arithopc P.FCOS = "\015"
 	  | arithopc P.FTAN = "\016"
-	  | arithopc P.REM = "\017"
-	  | arithopc P.DIV = "\018"
-	  | arithopc P.MOD = "\019"
-	  | arithopc P.FDIV = "\020"
+          | arithopc P.QUOT = "\017"
+	  | arithopc P.REM = "\018"
+	  | arithopc P.DIV = "\019"
+	  | arithopc P.MOD = "\020"
     in
 	arithopc oper $ []
     end
 
     fun cmpop oper = let
 	val op $ = PU.$ CO
-	fun cmpopc P.LT = "\000"
-	  | cmpopc P.LTE = "\001"
-	  | cmpopc P.GT = "\002"
-	  | cmpopc P.GTE = "\003"
+	fun cmpopc P.GT = "\000"
+	  | cmpopc P.GTE = "\001"
+	  | cmpopc P.LT = "\002"
+	  | cmpopc P.LTE = "\003"
 	  | cmpopc P.LEU = "\004"
 	  | cmpopc P.LTU = "\005"
 	  | cmpopc P.GEU = "\006"

@@ -1293,7 +1293,7 @@ and mkVBs (vbs, d) =
 		    val newVarExps = map (fn v => VARexp(ref v,[])) newvars
 		    val rhsTy = BasicTypes.tupleTy(map (fn (VC.VALvar{typ,...}) => !typ) newvars)
 		    val bindRule = RULE(newpat, EU.TUPLEexp(newVarExps))
-		    val defaultRule = RULE(WILDpat, 
+		    val defaultRule = RULE(WILDpat,
 					   RAISEexp(CONexp(CoreAccess.getExn env ["Bind"],[]),rhsTy))
 		    val newexp = CASEexp(exp, [bindRule, defaultRule], false)
 

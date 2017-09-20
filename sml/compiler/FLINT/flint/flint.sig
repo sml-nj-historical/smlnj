@@ -1,14 +1,17 @@
-(* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
-(* flint.sig *)
+(* flint.sig
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
-signature FLINT = 
+signature FLINT =
 sig
 
 type tkind = LtyDef.tkind
 type tyc = LtyDef.tyc
 type lty = LtyDef.lty
 
-type tvar = LtyDef.tvar 
+type tvar = LtyDef.tvar
 type lvar = LambdaVar.lvar
 
 type fflag = LtyDef.fflag
@@ -55,7 +58,7 @@ datatype rkind
   | RK_TUPLE of rflag          (* tuple: all fields are monomorphic *)
 
 (*
- * dcon records the name of the constructor (for debugging), the 
+ * dcon records the name of the constructor (for debugging), the
  * corresponding conrep, and the flint type lty (which must be an
  * arrow type). The use of conrep will go away soon.
  *)
@@ -63,19 +66,19 @@ type dcon = Symbol.symbol * Access.conrep * lty
 
 (*
  * con: used to specify all possible switching statements. Efficient switch
- * generation can be applied to DATAcon and INTcon. Otherwise, the switch is 
- * just a short-hand of the binary branch trees. Some of these instances 
+ * generation can be applied to DATAcon and INTcon. Otherwise, the switch is
+ * just a short-hand of the binary branch trees. Some of these instances
  * such as REALcon and VLENcon will go away soon.
  *)
-datatype con 
-  = DATAcon of dcon * tyc list * lvar 
+datatype con
+  = DATAcon of dcon * tyc list * lvar
   | INTcon of int                          (* should use InfInf.int *)
-  | INT32con of Int32.int 
-  | WORDcon of word 
-  | WORD32con of Word32.word 
-  | REALcon of string 
-  | STRINGcon of string 
-  | VLENcon of int 
+  | INT32con of Int32.int
+  | WORDcon of word
+  | WORD32con of Word32.word
+  | REALcon of string
+  | STRINGcon of string
+  | VLENcon of int
 
 (** simple values, including variables and static constants. *)
 datatype value
@@ -89,22 +92,22 @@ datatype value
 
 (** the definitions of the lambda expressions *)
 datatype lexp
-  = RET of value list         
+  = RET of value list
   | LET of lvar list * lexp * lexp
 
-  | FIX of fundec list * lexp 
-  | APP of value * value list  
+  | FIX of fundec list * lexp
+  | APP of value * value list
 
   | TFN of tfundec * lexp
-  | TAPP of value * tyc list 
+  | TAPP of value * tyc list
 
   | SWITCH of value * Access.consig * (con * lexp) list * lexp option
-  | CON of dcon * tyc list * value * lvar * lexp  
+  | CON of dcon * tyc list * value * lvar * lexp
 
   | RECORD of rkind * value list * lvar * lexp
   | SELECT of value * int * lvar * lexp          (* add rkind ? *)
 
-  | RAISE of value * lty list                    
+  | RAISE of value * lty list
   | HANDLE of lexp * value
 
   | BRANCH of primop * value list * lexp * lexp

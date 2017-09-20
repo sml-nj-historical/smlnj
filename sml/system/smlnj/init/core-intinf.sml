@@ -69,7 +69,7 @@ structure CoreIntInf :> sig
     (* In the common case where only one big digit is involved, use
      * a shortcut without list allocation: *)
     val makeSmallNegInf : word -> intinf
-    val makeSmallPosInf : word -> intinf 
+    val makeSmallPosInf : word -> intinf
 
     (* For ~base < i < base we have lowValue i = i.
      * For other i we have lowValue i = ~base (= neg_base_as_int).
@@ -153,7 +153,7 @@ end = struct
 
     fun neg64 (hi, 0w0) : word32 * word32 = (InLine.w32neg hi, 0w0)
       | neg64 (hi, lo) = (InLine.w32notb hi, InLine.w32neg lo)
-	      
+
     fun testInf i =
 	let val BI { negative, digits } = concrete i
 	    fun negif i32 = if negative then ~i32 else i32
@@ -233,8 +233,8 @@ end = struct
 
     fun copyInf64' (_, (0w0, 0w0)) = abstract (BI { negative = false,
 						 digits = [] })
-      | copyInf64' (negative, (hi, lo)) = 
-	let infix <> 
+      | copyInf64' (negative, (hi, lo)) =
+	let infix <>
             val op <> : word * word -> bool = InLine.w31ne
 	    val d0 = w32ToW31 (lo && 0wx3fffffff)
 	    val d1 = w32ToW31 (((hi && 0wxfffffff) << 0w2) || (lo >> 0w30))
@@ -311,7 +311,7 @@ end = struct
 	bi { digits = digits, negative = not negative }
 
     open Order
-	     
+
     fun dcmp (x, y) =
 	if InLine.w31lt (x, y) then LESS else
 	if InLine.w31gt (x, y) then GREATER else
@@ -524,7 +524,7 @@ end = struct
             val i' = InLine.w31mul (i, scale)
             val m' = natmadd (scale, m, 0w0)
             fun dmi [] = ([], 0w0)
-              | dmi (d::r) = let 
+              | dmi (d::r) = let
                     val (qt,rm) = dmi r
                     val (q1,r1) = natdivmod2 ((rm,d), i')
                 in
@@ -538,10 +538,10 @@ end = struct
     (* From Knuth Vol II, 4.3.1, but without opt. in step D3 *)
     fun natdivmod (m, []) = raise Assembly.Div
       | natdivmod ([], n) = ([], []) (* speedup *)
-      | natdivmod (d::r, 0w0::s) = let 
+      | natdivmod (d::r, 0w0::s) = let
             val (qt,rm) = natdivmod (r,s)
         in (qt, consd (d, rm)) end (* speedup *)
-      | natdivmod (m, [d]) = let 
+      | natdivmod (m, [d]) = let
             val (qt, rm) = natdivmodd (m, d)
         in (qt, if InLine.w31eq (rm, 0w0) then [] else [rm]) end
       | natdivmod (m, n) = let

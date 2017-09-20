@@ -1,8 +1,11 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* ppcps.sml *)
+(* ppcps.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature PPCPS =
-sig 
+sig
   val printcps : (CPS.function * LtyDef.lty IntHashTable.hash_table) -> unit
   val printcps0: CPS.function -> unit
   val prcps : CPS.cexp -> unit
@@ -37,17 +40,17 @@ fun branchName P.boxed = "boxed"
   | branchName P.unboxed = "unboxed"
   | branchName (P.cmp{oper, kind}) =
     (numkindName kind ^
-     (case oper 
-      of P.>   => ">"  
+     (case oper
+      of P.>   => ">"
        | P.<   => "<"
-       | P.>=  => ">=" 
+       | P.>=  => ">="
        | P.<=  => "<="
        | P.eql => "="
-       | P.neq => "<>" 
+       | P.neq => "<>"
       (*esac*)))
-  | branchName(P.fcmp{oper, size}) = 
+  | branchName(P.fcmp{oper, size}) =
     (numkindName (P.FLOAT size) ^
-     (case oper 
+     (case oper
       of P.fEQ   => "="
        | P.fULG  => "?<>"
        | P.fGT   => ">"
@@ -63,7 +66,7 @@ fun branchName P.boxed = "boxed"
        | P.fUE   => "?="
        | P.fUN   => "?"
 	   | P.fsgn  => "sgn"
-     (*esac*)))  
+     (*esac*)))
   | branchName P.pneq = "pneq"
   | branchName P.peql = "peql"
   | branchName P.streq = "streq"
@@ -89,7 +92,7 @@ fun cvtParams(from, to) = concat [cvtParam from, "_", cvtParam to]
 
 fun arithName (P.arith{oper,kind}) =
     ((case oper of  P.+ => "+" |  P.- => "-" |  P.* => "*"
-	          | P./ => "/" |  P.~ => "~" | P.abs => "abs" 
+	          | P./ => "/" |  P.~ => "~" | P.abs => "abs"
 	          | P.fsqrt => "fsqrt"
 		  | P.fsin => "sin" | P.fcos => "cos" | P.ftan => "tan"
 		  | P.rshift => "rshift" | P.rshiftl => "rshiftl"
@@ -144,7 +147,7 @@ fun pureName P.length = "length"
     "rawrecord_"^getOpt(Option.map rkstring rk, "notag")
   | pureName (P.condmove b) = "condmove "^branchName b
 
-and rkstring rk = (case rk 
+and rkstring rk = (case rk
         of RK_VECTOR => "RK_VECTOR"
          | RK_RECORD => "RK_RECORD"
          | RK_SPILL => "RK_SPILL"
@@ -161,7 +164,7 @@ and rkstring rk = (case rk
 fun show0 say =
   let fun sayc (#"\n") = say "\\n"
         | sayc c = say(String.str c)
-      
+
       fun sayv(VAR v) = say(LV.lvarName v)
         | sayv(LABEL v) = say("(L)" ^ LV.lvarName v)
 	| sayv(INT i) = say("(I)" ^ Int.toString i)
@@ -190,7 +193,7 @@ fun show0 say =
 	| saypath(OFFp i) = (say "+"; say(Int.toString i))
 	| saypath(SELp(j,p)) = (say "."; say(Int.toString j); saypath p)
       fun sayvp (v,path) = (sayv v; saypath path)
-      fun saylist f [x] = f x | saylist f nil = () 
+      fun saylist f [x] = f x | saylist f nil = ()
 	| saylist f (x::r) = (f x; say ","; saylist f r)
       fun indent n =
 	let fun space 0 = () | space k = (say " "; space(k-1))
@@ -209,13 +212,13 @@ fun show0 say =
 	      | OFFSET(i,v,w,c) =>
 		    (space n; sayv v; say "+"; say(Int.toString i); say " -> ";
 		    sayv(VAR w); nl(); f c)
-	      | APP(w,vl) => 
+	      | APP(w,vl) =>
 		    (space n; sayv w; say "("; sayvlist vl; say ")\n")
 	      | FIX(bl,c) =>
-		    let fun g(_,v,wl,cl,d) = 
-			    (space n; sayv(VAR v); say "("; 
+		    let fun g(_,v,wl,cl,d) =
+			    (space n; sayv(VAR v); say "(";
 			     sayparam (map VAR wl,cl);
-			     say ") =\n"; 
+			     say ") =\n";
                              indent (n+3) d)
 		     in app g bl; f c
 		    end
@@ -224,9 +227,9 @@ fun show0 say =
 			(space(n+1); say(Int.toString(i:int));
 			 say " =>\n"; indent (n+3) c; g(i+1,cl))
 			 | g(_,nil) = ()
-		    in space n; say "case "; sayv v; say "  ["; 
+		    in space n; say "case "; sayv v; say "  [";
 		       say(Int.toString(c));
-		       say "] of\n"; 
+		       say "] of\n";
 		       g(0,cl)
 		   end
 	      | LOOKER(i,vl,w,t,e) =>
@@ -243,13 +246,13 @@ fun show0 say =
 		    say ")"; nl(); f e)
 	      | BRANCH(i,vl,c,e1,e2) =>
 	           (space n; say "if "; say(branchName i);
-			 say "("; sayvlist vl; say ") ["; 
+			 say "("; sayvlist vl; say ") [";
                          sayv(VAR c); say "] then\n";
 		    indent (n+3) e1;
 		    space n; say "else\n";
 		    indent (n+3) e2)
 	      | RCC(k,l,p,vl,wtl,e) =>
-		   (space n; 
+		   (space n;
                     if k = REENTRANT_RCC then say "reentrant " else ();
                     if l = "" then () else (say l; say " ");
                     say "rcc("; sayvlist vl; say ") -> ";
@@ -263,7 +266,7 @@ fun show0 say =
 fun printcps((_,f,vl,cl,e),m)=
 let fun ptv(v,t) = (say(LV.lvarName v); say " type ===>>>";
                     say(LtyExtern.lt_print t); say "\n")
-   
+
     val _ = if (!Control.CG.debugRep)
             then (say "************************************************\n";
                   IntHashTable.appi ptv m;
@@ -276,8 +279,8 @@ let fun ptv(v,t) = (say(LV.lvarName v); say " type ===>>>";
       | sayparam (v::vl,ct::cl) = (sayv v; sayt ct; say ","; sayparam(vl,cl))
       | sayparam _ = ErrorMsg.impossible "sayparam in ppcps.sml 3435"
 
- in 
-    (say(LV.lvarName f); say "("; sayparam(vl,cl); say ") =\n";  
+ in
+    (say(LV.lvarName f); say "("; sayparam(vl,cl); say ") =\n";
      show0 say 3 e)
 end
 

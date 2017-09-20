@@ -1,7 +1,9 @@
 (* modules.sig
  *
- * (C) 2001 Lucent Technologies, Bell Labs
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
+
 signature MODULES =
 sig
 
@@ -25,12 +27,12 @@ and tycSpecInfo
 
 (*
  * and specEnv
- *  = NILsenv 
+ *  = NILsenv
  *  | BINDsenv of spec Env.env * specEnv
  *  | INCLsenv of int * spec Env.env * specEnv
  *)
 
-and fctSig 
+and fctSig
   = FSIG of {kind     : Symbol.symbol option,
 	     paramsig : Signature,
 	     paramvar : EntPath.entVar,
@@ -83,11 +85,11 @@ and tycExp (* expression evaluating to a TYCentity *)
   | CONSTtyc of Types.tycon    (* actual tycon *)
   | FORMtyc of Types.tycon                        (* formal tycon *)
 
-and strExp 
-  = VARstr of EntPath.entPath 
+and strExp
+  = VARstr of EntPath.entPath
   | CONSTstr of strEntity
   | STRUCTURE of {stamp : stampExp, entDec : entityDec}
-  | APPLY of fctExp * strExp  
+  | APPLY of fctExp * strExp
   | LETstr of entityDec * strExp
   | ABSstr of Signature * strExp
   | FORMstr of fctSig
@@ -98,20 +100,20 @@ and strExp
        * a result signature constraint. *)
 
 and fctExp
-  = VARfct of EntPath.entPath 
+  = VARfct of EntPath.entPath
   | CONSTfct of fctEntity
   | LAMBDA of {param : EntPath.entVar, body : strExp}
   | LAMBDA_TP of {param : EntPath.entVar, body : strExp, sign : fctSig}
   | LETfct of entityDec * fctExp
 
-and entityExp 
+and entityExp
   = TYCexp of tycExp
   | STRexp of strExp
   | FCTexp of fctExp
   | DUMMYexp
   | ERRORexp
 
-and entityDec 
+and entityDec
   = TYCdec of EntPath.entVar * tycExp
   | STRdec of EntPath.entVar * strExp * Symbol.symbol
   | FCTdec of EntPath.entVar * fctExp
@@ -120,7 +122,7 @@ and entityDec
   | ERRORdec
   | EMPTYdec
 
-and entityEnv 
+and entityEnv
   = MARKeenv of envrec
   | BINDeenv of entity EntPath.EvDict.map * entityEnv
   | NILeenv
@@ -181,14 +183,14 @@ and fctEntity =
 and fctrec =
     {sign   : fctSig,
      rlzn   : fctEntity,
-     access : Access.access, 
+     access : Access.access,
      prim   : PrimopId.str_prim_info}
 
-(* the stamp and arith inside Types.tycon are critical *)  
+(* the stamp and arith inside Types.tycon are critical *)
 and tycEntity = Types.tycon
 
 (*
-and constraint  
+and constraint
   = {my_path : SymPath.path, its_ancestor : instrep, its_path : SymPath.path}
 *)
 

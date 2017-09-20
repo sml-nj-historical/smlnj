@@ -7,9 +7,9 @@
 structure PPPrim =
 struct
 
-local 
+local
   structure PP = PrettyPrintNew
-  structure PU = PPUtilNew   
+  structure PU = PPUtilNew
   open PPUtilNew
 in
 
@@ -25,11 +25,11 @@ fun ppStrPrimInfo ppstrm strPrimInfo =
 	fun ppStrPrimElem ppstrm (PrimopId.PrimE p) = ppPrim ppstrm p
 	  | ppStrPrimElem ppstrm (PrimopId.StrE ps) = ppStrPrimInfo ppstrm ps
     in
-	ppSequence ppstrm 
+	ppSequence ppstrm
          {sep = fn ppstrm => (PP.string ppstrm ", ";
                               PP.break ppstrm {nsp=1, offset=0}),
-          pr = (fn _ => fn elem => 
-                           (openHOVBox 1; 
+          pr = (fn _ => fn elem =>
+                           (openHOVBox 1;
                             pps "(";
                             ppStrPrimElem ppstrm;
                             pps ")";

@@ -155,7 +155,7 @@ struct
     val IADD = ARITH{oper=ADD, overflow=true, kind=INT 31}
     val ISUB = ARITH{oper=SUB, overflow=true, kind=INT 31}
     val IMUL = ARITH{oper=MUL, overflow=true, kind=INT 31}
-    val IDIV = ARITH{oper=DIV, overflow=true, kind=INT 31}
+    val IDIV = ARITH{oper=QUOT, overflow=true, kind=INT 31}
     val INEG = ARITH{oper=NEG, overflow=true, kind=INT 31}
 
     val IEQL = CMP{oper=EQL, kind=INT 31}
@@ -204,10 +204,10 @@ struct
 	    rator ^ prNumkind kind
 	  end
       | prPrimop (TEST arg) = "test_" ^ cvtParams arg
-      | prPrimop (TESTU arg) = "test_" ^ cvtParams arg
-      | prPrimop (EXTEND arg) = "extend" ^ cvtParams arg
-      | prPrimop (TRUNC arg) = "trunc" ^ cvtParams arg
-      | prPrimop (COPY arg) = "copy" ^ cvtParams arg
+      | prPrimop (TESTU arg) = "testu_" ^ cvtParams arg
+      | prPrimop (EXTEND arg) = "extend_" ^ cvtParams arg
+      | prPrimop (TRUNC arg) = "trunc_" ^ cvtParams arg
+      | prPrimop (COPY arg) = "copy_" ^ cvtParams arg
       | prPrimop (TEST_INF i) = "test_inf_" ^ cvtParam i
       | prPrimop (TRUNC_INF i) = "trunc_inf_" ^ cvtParam i
       | prPrimop (EXTEND_INF i) = concat ["extend_", cvtParam i, "_inf"]
@@ -226,7 +226,7 @@ struct
 	    if immutable then "v" else ""
 	  ]
       | prPrimop (NUMUPDATE{kind,checked}) = concat [
-	    "numupdate", prNumkind kind, if checked then  "c" else ""
+	    "numupdate_", prNumkind kind, if checked then  "c" else ""
 	  ]
       | prPrimop DEREF = "!"
       | prPrimop ASSIGN = ":="
@@ -266,17 +266,17 @@ struct
       | prPrimop MKSPECIAL = "mkspecial"
       | prPrimop SETSPECIAL = "setspecial"
       | prPrimop GETSPECIAL = "getspecial"
-      | prPrimop (INLMIN nk) = concat ["inlmin_", prNumkind nk]
-      | prPrimop (INLMAX nk) = concat ["inlmax_", prNumkind nk]
-      | prPrimop (INLABS nk) = concat ["inlabs_", prNumkind nk]
+      | prPrimop (INLMIN nk) = "inlmin_" ^ prNumkind nk
+      | prPrimop (INLMAX nk) = "inlmax_" ^ prNumkind nk
+      | prPrimop (INLABS nk) = "inlabs_" ^ prNumkind nk
       | prPrimop INLNOT = "inlnot"
       | prPrimop INLCOMPOSE = "inlcompose"
       | prPrimop INLBEFORE = "inlbefore"
       | prPrimop INLIGNORE = "inlignore"
       | prPrimop (INL_ARRAY) = "inl_array"
       | prPrimop (INL_VECTOR) = "inl_vector"
-      | prPrimop (INL_MONOARRAY kind) = concat ["inl_monoarray_", prNumkind kind]
-      | prPrimop (INL_MONOVECTOR kind) = concat ["inl_monovector_", prNumkind kind]
+      | prPrimop (INL_MONOARRAY kind) = "inl_monoarray_" ^ prNumkind kind
+      | prPrimop (INL_MONOVECTOR kind) = "inl_monovector_" ^ prNumkind kind
       | prPrimop (MARKEXN) = "markexn"
       | prPrimop (MKETAG) = "mketag"
       | prPrimop (WRAP) = "wrap"

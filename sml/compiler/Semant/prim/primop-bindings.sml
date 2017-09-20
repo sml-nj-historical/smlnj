@@ -467,8 +467,11 @@ structure PrimopBindings : sig
 	  ("floor", f64_i, P.ROUND{floor=true, fromkind=P.FLOAT 64, tokind=P.INT intSz}) :-:
 	  ("round", f64_i, P.ROUND{floor=false, fromkind=P.FLOAT 64, tokind=P.INT intSz}) :-:
 	  ("real", i_f64, P.REAL{fromkind=P.INT intSz, tokind=P.FLOAT 64}) :-:
-	  ("real32", i32_f64, P.REAL{fromkind=P.INT 32, tokind=P.FLOAT 64}) :-:
-	  ("real64", i32_f64, P.REAL{fromkind=P.INT 64, tokind=P.FLOAT 64})
+	  ("real32", i32_f64, P.REAL{fromkind=P.INT 32, tokind=P.FLOAT 64})
+(*
+ :-:
+	  ("real64", i64_f64, P.REAL{fromkind=P.INT 64, tokind=P.FLOAT 64})
+*)
 
   (*** integer/word conversion primops ***
    *   There are certain duplicates for the same primop (but with
@@ -739,5 +742,21 @@ structure PrimopBindings : sig
 	  end
 
     end (* local *)
+
+(* Debugging *)
+fun prBind bind = let
+      val n = PrimopBind.nameOf bind
+      val ty = PrimopBind.typeOf bind
+      val p = PrimopBind.defnOf bind
+      in
+	Control_Print.say(concat[
+	    StringCvt.padLeft #" " 20 n, " = ",
+	    Primop.prPrimop p, "\n"
+	  ])
+      end
+val _ = (
+	Control_Print.say "********************* Primop Bindings ********************\n";
+	List.app prBind prims;
+	Control_Print.say "********************\n")
 
   end

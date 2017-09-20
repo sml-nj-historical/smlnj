@@ -14,12 +14,12 @@
  *)
 
 signature PRIMOP_MAP =
-sig 
+sig
   val primopMap : string -> PrimOp.primop option
 end (* signature PRIMOP_MAP *)
 
 
-structure PrimOpMap : PRIMOP_MAP = 
+structure PrimOpMap : PRIMOP_MAP =
 struct
 
   structure T = Types
@@ -42,8 +42,8 @@ fun bug msg = ErrorMsg.impossible("PrimOpMap: " ^ msg)
 
 
 fun bits size oper = P.ARITH{oper=oper, overflow=false, kind=P.INT size}
-val bits31 = bits 31		
-val bits32 = bits 32		
+val bits31 = bits 31
+val bits32 = bits 32
 
 fun int size oper = P.ARITH{oper=oper, overflow=true, kind=P.INT size}
 val int31 = int 31
@@ -55,7 +55,7 @@ val word31 = word 31
 val word8  = word 8
 
 fun purefloat size oper = P.ARITH{oper=oper,overflow=false,kind=P.FLOAT size}
-val purefloat64 = purefloat 64	
+val purefloat64 = purefloat 64
 
 fun cmp kind oper = P.CMP{oper=oper, kind=kind}
 val int31cmp = cmp (P.INT 31)
@@ -128,25 +128,25 @@ val primops =
        ("before",	 (P.INLBEFORE)) :-:
        ("ignore",        (P.INLIGNORE)) :-:
        ("identity",      (P.INLIDENTITY)) :-:
-			 
-       			 
+
+
        ("length",	 (P.LENGTH)) :-:
        ("objlength",	 (P.OBJLENGTH)) :-:
 
        ("unboxedupdate", (P.UNBOXEDUPDATE)) :-:
-       			 
+
        ("inlnot",	 (P.INLNOT)) :-:
        ("floor",         (P.ROUND{floor=true,
                                fromkind=P.FLOAT 64,
                                tokind=P.INT 31})) :-:
-       ("round",         (P.ROUND{floor=false, 
+       ("round",         (P.ROUND{floor=false,
                                fromkind=P.FLOAT 64,
                                tokind=P.INT 31})) :-:
        ("real",          (P.REAL{fromkind=P.INT 31,
                                tokind=P.FLOAT 64})) :-:
        ("real32",        (P.REAL{fromkind=P.INT 32,
 			         tokind=P.FLOAT 64})) :-:
-       			 
+
        ("ordof",         (P.NUMSUBSCRIPT{kind=P.INT 8,
                                       checked=false,
                                       immutable=true})) :-:
@@ -249,7 +249,7 @@ val primops =
        ("trunc_inf_31",  (P.TRUNC_INF 31)) :-:
        ("trunc_inf_32",  (P.TRUNC_INF 32)) :-:
        ("trunc_inf_64",  (P.TRUNC_INF 64)) :-:
-       
+
        (* primops to go between abstract and concrete representation of
 	* 64-bit ints and words *)
        ("w64p",          (P.CVT64)) :-:
@@ -378,45 +378,45 @@ val primops =
        ("f64min",	 (P.INLMIN (P.FLOAT 64))) :-:
        ("f64max",	 (P.INLMAX (P.FLOAT 64))) :-:
 
-       (*** float64 array ***)	
+       (*** float64 array ***)
        ("f64Sub",	 (sub (P.FLOAT 64))) :-:
        ("f64chkSub",	 (chkSub (P.FLOAT 64))) :-:
        ("f64Update",	 (update (P.FLOAT 64))) :-:
        ("f64chkUpdate",  (chkUpdate (P.FLOAT 64))) :-:
 
        (*** word8 primops ***)
-       (* 
-        * In the long run, we plan to represent WRAPPED word8 tagged, and 
-        * UNWRAPPED untagged. But right now, we represent both of them 
+       (*
+        * In the long run, we plan to represent WRAPPED word8 tagged, and
+        * UNWRAPPED untagged. But right now, we represent both of them
         * tagged, with 23 high-order zero bits and 1 low-order 1 bit.
-        * In this representation, we can use the comparison and (some of 
-        * the) bitwise operators of word31; but we cannot use the shift 
+        * In this representation, we can use the comparison and (some of
+        * the) bitwise operators of word31; but we cannot use the shift
         * and arithmetic operators.
         *
-        * WARNING: THIS IS A TEMPORARY HACKJOB until all the word8 primops 
+        * WARNING: THIS IS A TEMPORARY HACKJOB until all the word8 primops
         * are correctly implemented.
         *
         * ("w8mul",	word8 (P.* ))) :-:
 	* ("w8div",	word8 (P./))) :-:
 	* ("w8add",	word8 (P.+))) :-:
 	* ("w8sub",	word8 (P.-))) :-:
-        *		
+        *
         * ("w8notb",	word31 P.NOTB)) :-:
 	* ("w8rshift",	word8 P.RSHIFT)) :-:
 	* ("w8rshiftl",	word8 P.RSHIFTL)) :-:
 	* ("w8lshift",	word8 P.LSHIFT)) :-:
         *
-	* ("w8toint",   P.ROUND{floor=true, 
-        *                     fromkind=P.UINT 8, 
+	* ("w8toint",   P.ROUND{floor=true,
+        *                     fromkind=P.UINT 8,
         *                     tokind=P.INT 31})) :-:
 	* ("w8fromint", P.REAL{fromkind=P.INT 31,
         *                    tokind=P.UINT 8})) :-:
         *)
-  
+
        ("w8orb",	(word31 P.ORB)) :-:
        ("w8xorb",	(word31 P.XORB)) :-:
        ("w8andb",	(word31 P.ANDB)) :-:
-       	 		
+
        ("w8gt",	        (word8cmp P.>)) :-:
        ("w8ge",	        (word8cmp P.>=)) :-:
        ("w8lt",	        (word8cmp P.<)) :-:
@@ -458,7 +458,7 @@ val primops =
 
        ("w31min",	(P.INLMIN (P.UINT 31))) :-:
        ("w31max",	(P.INLMAX (P.UINT 31))) :-:
-       
+
        (* (pseudo-)word8 primops *)
        ("w31mul_8",	(word31 (P.* ))) :-:
        ("w31div_8",	(word31 (P./))) :-:
@@ -539,7 +539,7 @@ val primops =
            * The 'a is to guarantee that the compiler will treat
            * the record as a ML object, in case it passes thru a gc boundary.
            * rawupdatexxx writes to the record.
-           *) 
+           *)
 
        ("rawrecord",    (P.RAW_RECORD { fblock = false })) :-:
        ("rawrecord64",  (P.RAW_RECORD { fblock = true })) :-:

@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
-(* transtypes.sml *)
+(* transtypes.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature TRANSTYPES =
 sig
@@ -179,7 +182,6 @@ and tycTyc(tc, d) =
              in tc
             end
 *)
-
 
       and g (tycon as GENtyc { arity, kind, ... }) =
 	  (case kind

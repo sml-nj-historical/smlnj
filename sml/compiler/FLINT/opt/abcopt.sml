@@ -22,7 +22,7 @@ local
     structure PP = PPFlint
     structure LT = LtyExtern
     structure CTRL = FLINT_Control
-		     
+
 in
 fun bug msg = ErrorMsg.impossible ("ABCOpt: "^msg)
 
@@ -33,7 +33,7 @@ val pDebug = ref false
 
 val say = Control_Print.say
 
-fun sayABC s = 
+fun sayABC s =
     (* (if !CTRL.printABC then say s
      *  else ()) *) ()
 
@@ -41,16 +41,16 @@ fun debug s =
     (* (if !CTRL.printABC andalso !pDebug then
      * 	 say s
      *  else ()) *) ()
-    
+
 fun printVals nil = say "\n"
   | printVals (x::xs) = (PP.printSval x; say ", "; printVals xs)
 
 fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 
     val lt_len = LT.ltc_tyc (LT.tcc_arrow (LT.ffc_fixed,
-					   [LT.tcc_void], 
+					   [LT.tcc_void],
 					   [LT.tcc_int]))
-		 
+
     fun cse lmap rmap lexp = let
 
 	fun substVar x =
@@ -59,56 +59,56 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 				    (lvname x)^
 				    " with "^
 				    (lvname y)^
-				    "\n"); 
+				    "\n");
 			    y)
 	       | NONE => x)
-	    
+
 	fun substVal (F.VAR x) = (F.VAR (substVar x))
 	  | substVal x = x
-			 
+
 	fun substVals vals = map substVal vals
-			     
-	fun g (F.PRIMOP (p as (d, PO.LENGTH, lty, tycs), 
+
+	fun g (F.PRIMOP (p as (d, PO.LENGTH, lty, tycs),
 			 [F.VAR arrayVar], dest, body)) =
 	    (case (M.find (lmap, arrayVar))
 	      of SOME x =>
-		 cse lmap (M.insert (rmap, dest, x)) body 
-	       | NONE => 
-		 (F.PRIMOP 
+		 cse lmap (M.insert (rmap, dest, x)) body
+	       | NONE =>
+		 (F.PRIMOP
 		      (p, [F.VAR arrayVar], dest,
 		       cse (M.insert (lmap, arrayVar, dest))
 			   rmap body)))
-	    
+
 	  | g (F.RET x) = F.RET (substVals x)
-			  
-	  | g (F.LET (vars, lexp, body)) = 
+
+	  | g (F.LET (vars, lexp, body)) =
 	    F.LET (vars, g lexp, g body)
-	    
+
 	  | g (F.FIX (fundecs, body)) =
 	    F.FIX (map h fundecs, g body)
-	    
+
 	  | g (F.APP (v, vs)) = F.APP (substVal v, substVals vs)
-				
-	  | g (F.TFN (tfundec as (tfkind, lv, tvtks, tfnbody), body)) = 
+
+	  | g (F.TFN (tfundec as (tfkind, lv, tvtks, tfnbody), body)) =
 	    F.TFN ((tfkind, lv, tvtks, g tfnbody), g body)
-	    
+
 	  | g (F.TAPP (v, tycs)) = F.TAPP (substVal v, tycs)
-				   
+
 	  | g (F.SWITCH (v, consig, cel, lexpOpt)) =
 	    let
 		fun hh (c, e) = (c, g e)
-				
+
 		val cel' = map hh cel
-			   
+
 		fun gg (SOME x) = SOME (g x)
 		  | gg NONE = NONE
 	    in
 		F.SWITCH (substVal v, consig, cel', gg lexpOpt)
 	    end
-		
+
 	  | g (F.CON (dcon, tycs, v, lv, body)) =
 	    F.CON (dcon, tycs, substVal v, lv, g body)
-	    
+
 	  | g (F.RECORD (rk, vals, lv, body)) =
 	    F.RECORD (rk, substVals vals, lv, g body)
 
@@ -119,7 +119,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 
 	  | g (F.HANDLE (body, v)) = F.HANDLE (g body, substVal v)
 
-	  | g (F.BRANCH (p, vals, body1, body2)) = 
+	  | g (F.BRANCH (p, vals, body1, body2)) =
 	    F.BRANCH (p, substVals vals, g body1, g body2)
 
 	  | g (F.PRIMOP (p, vals, lv, body)) =
@@ -127,7 +127,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 
 	and h (fk, lvar, lvty, body) = (fk, lvar, lvty, g body)
 
-    in 
+    in
 	g lexp
     end
 
@@ -140,7 +140,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 		      [F.VAR src],
 		      mklv(),
 		      body))
-	
+
     val agressiveHoist = ref true
     val mapUnion = M.unionWith (fn (a, b) => a)
     val mapIntersect = M.intersectWith (fn (a, b) => a)
@@ -154,7 +154,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	 sayVars xs)
 
     fun hoist (F.RET x)= (M.empty, (F.RET x))
-			 
+
       | hoist (F.LET (vars, lexp, body)) =
 	let
 	    val (m1, lexp') = hoist lexp
@@ -163,9 +163,9 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	    val hlist = List.filter ft vars
 
 	    fun h nil mm b = (mm, b)
-	      | h (x::xs) mm b = 
+	      | h (x::xs) mm b =
 		h xs (remove' (mm, x)) (lenOp(x, mm, b))
-		
+
 	    val (m2', body'') = h hlist m2 body'
 	in
 	    (mapUnion (m1, m2'), F.LET (vars, lexp', body''))
@@ -174,7 +174,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
       | hoist (F.FIX (fundecs, body)) =
 	let
 	    fun hoistFundec (fk, lv,
-			     lvtys : (F.lvar*F.lty) list, 
+			     lvtys : (F.lvar*F.lty) list,
 			     body) =
 		let
 		    val varList = map #1 lvtys
@@ -186,7 +186,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 		    val toHoist = List.filter ft varList
 
 		    fun h mm nil b = (mm, b)
-		      | h mm (v::vs) b = 
+		      | h mm (v::vs) b =
 			h (remove' (mm, v)) vs (lenOp(v, mm, b))
 
 		    val (m', body') = h m toHoist b
@@ -204,7 +204,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 		    (m', (fk, lv, lvtys, body'))
 		end
 
-		    
+
 	    (* fundec sets and bodys *)
 	    val fsbody = map hoistFundec fundecs
 	    val fsets = map #1 fsbody
@@ -229,7 +229,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	end
 
       | hoist (F.TAPP (v, tl)) = (M.empty, F.TAPP (v, tl))
-				 
+
       (* if agressive, use union; otherwise use intersect *)
       (* no var defined, so no hoisting *)
       | hoist (F.SWITCH (v, consig, clexps, lexp)) =
@@ -301,12 +301,12 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	    val (m, b) = hoist le
 	in
 	    if (M.inDomain (m, lv)) then
-		(remove' (m, lv), 
+		(remove' (m, lv),
 		 F.SELECT (v, f, lv, lenOp(lv, m, b)))
 	    else (m, F.SELECT (v, f, lv, b))
 	end
 
-      | hoist (F.RAISE (v, ltys)) = 
+      | hoist (F.RAISE (v, ltys)) =
 	(M.empty, F.RAISE (v, ltys))
 
       | hoist (F.HANDLE (le, v)) =
@@ -343,7 +343,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	in
 	    sayABC "got one!\n";
 	    (case vals
-	      of [F.VAR x] => (M.insert(m, x, lty), 
+	      of [F.VAR x] => (M.insert(m, x, lty),
 			       F.PRIMOP(p, vals, dest, b))
 	       | _ => (m, F.PRIMOP(p, vals, dest, b)))
 	end
@@ -364,16 +364,16 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 
     fun elimSwitches cmpsVV cmpsIV lexp = let
 
-	val lt_cmp = 
-	    LT.ltc_tyc 
+	val lt_cmp =
+	    LT.ltc_tyc
 		(LT.tcc_arrow (LT.ffc_fixed,
 			       [LT.tcc_int, LT.tcc_int],
 			       [LT.tcc_void]))
-		
-	fun g (F.LET ([lv], 
-		      br as 
-			 (F.BRANCH (p as (NONE, 
-					  PO.CMP {oper=PO.LTU, 
+
+	fun g (F.LET ([lv],
+		      br as
+			 (F.BRANCH (p as (NONE,
+					  PO.CMP {oper=PO.LTU,
 						  kind=PO.UINT 31},
 					  lt_cmp,
 					  nil),
@@ -390,22 +390,22 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 							F.PRIMOP
 							    ((_,PO.MARKEXN,_,_), _, _,
 							     F.RAISE _))))))),
-			 body)) = 
+			 body)) =
 	    let
 		fun decide (F.VAR v1, F.VAR v2) =
 		    let
 			fun lookup (v1, v2) =
 			    (sayABC ("cmp: looking for "^(lvname v1)^
 				     " and "^(lvname v2)^"\n");
-			     
+
 			     case (M.find (cmpsVV, v2))
 			      of SOME set => S.member(set, v1)
 			       | NONE => false)
-			    
+
 			fun add (v1, v2) =
 			    (sayABC ("cmp: entering "^(lvname v1)^
 				     " and "^(lvname v2)^"\n");
-			     
+
 			     case (M.find (cmpsVV, v2))
 			      of SOME set =>
 				 M.insert (cmpsVV, v2, S.add(set, v1))
@@ -427,7 +427,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 				 (case M.find (cmpsIV, v)
 				   of SOME x => (n <= x)
 				    | NONE => false))
-			    
+
 			fun add (n, v) =
 			    M.insert(cmpsIV, v, n)
 
@@ -437,7 +437,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 		    end
 
 		  | decide _ = (false, cmpsVV, cmpsIV)
-			       
+
 		val (toElim, newVV, newIV) = decide (val1, val2)
 
 	    in
@@ -450,7 +450,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 		else
 		    (F.LET ([lv],
 			    F.BRANCH
-				(p, 
+				(p,
 				 [val1, val2],
 				 elimSwitches newVV newIV tbr,
 				 g fbr),
@@ -469,7 +469,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 
 	  | g (F.TFN (tfundec, body)) =
 	    F.TFN (tfundec, g body)
-	    
+
 	  | g (F.TAPP (v, tycs)) = F.TAPP(v, tycs)
 
 	  | g (F.SWITCH (v, consig, cel, lexpopt)) =
@@ -490,7 +490,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 
 	  | g (F.RECORD (rk, vals, lv, body)) =
 	    F.RECORD (rk, vals, lv, g body)
-	    
+
 	  | g (F.SELECT (v, field, lv, body)) =
 	    F.SELECT (v, field, lv, g body)
 
@@ -505,13 +505,13 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	    F.PRIMOP (p, vals, lv, g body)
 
 	and h (fk, lvar, lvty, body) = (fk, lvar, lvty, g body)
-				       
+
     in
 	g lexp
     end
 
     val (s, hoisted) = hoist progbody
-		       
+
     val csed = cse M.empty M.empty hoisted
 
     val elimed = elimSwitches M.empty M.empty csed
@@ -522,19 +522,19 @@ in
     (* some advertising stuff! *)
     (* if !CTRL.printABC then
      * 	(say "\nhello! This is ABCOpt!\n";
-     * 
+     *
      * 	 (say "[Before ABCOpt...]\n\n";
      * 	  PP.printProg pgm);
-     * 	 
+     *
      * 	 (say "\n[After Hoisting...]\n\n";
      * 	  PP.printProg (progkind, progname, progargs, hoisted));
-     * 	 
+     *
      * 	 (say "\n[After CSE...]\n\n";
      * 	  PP.printProg (progkind, progname, progargs, csed));
-     * 
+     *
      * 	 (say "\n[After Elim...]\n\n";
      * 	  PP.printProg (progkind, progname, progargs, elimed));
-     * 
+     *
      * 	 say "\nbyebye! i'm done!\n\n")
      * else (); *)
 

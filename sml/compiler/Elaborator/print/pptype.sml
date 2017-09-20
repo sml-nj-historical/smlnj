@@ -1,6 +1,8 @@
-(* Copyright 1991 by AT&T Bell Laboratories *)
-(* Copyright 2003 by The SML/NJ Fellowship *)
-(* pptype.sml *)
+(* pptype.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 (* modified to use SML/NJ Lib PP. [dbm, 7/30/03]) *)
 

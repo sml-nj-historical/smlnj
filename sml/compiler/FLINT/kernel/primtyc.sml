@@ -188,7 +188,7 @@ structure PrimTyc :> PRIM_TYC =
 	    find primTycons
 	  end
 
-    (** check the boxity of values of each prim tyc *)
+  (** check the boxity of values of each prim tyc *)
     fun unboxed (PT_INT32 | PT_REAL) = true
       | unboxed _ = false
 

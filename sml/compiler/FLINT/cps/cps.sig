@@ -1,5 +1,8 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* cps.sig *)
+(* cps.sig
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature CPS = sig
 
@@ -25,18 +28,18 @@ structure P : sig
     (* numkind includes kind and size *)
     datatype numkind = INT of int | UINT of int | FLOAT of int
 
-    datatype arithop = + | - | * | / | ~ | abs 
-                     | fsqrt | fsin | fcos | ftan 
+    datatype arithop = + | - | * | / | ~ | abs
+                     | fsqrt | fsin | fcos | ftan
 	             | lshift | rshift | rshiftl | andb | orb | xorb | notb
 		     | rem | div | mod
 
     datatype cmpop = > | >= | < | <= | eql | neq
 
     (* fcmpop conforms to the IEEE std 754 predicates. *)
-    datatype fcmpop 
-      = fEQ (* = *)  | fULG (* ?<> *) | fUN (* ? *)   | fLEG (* <=> *) 
-      | fGT (* > *)  | fGE  (* >= *)  | fUGT (* ?> *) | fUGE (* ?>= *) 
-      | fLT (* < *)  | fLE  (* <= *)  | fULT (* ?< *) | fULE (* ?<= *) 
+    datatype fcmpop
+      = fEQ (* = *)  | fULG (* ?<> *) | fUN (* ? *)   | fLEG (* <=> *)
+      | fGT (* > *)  | fGE  (* >= *)  | fUGT (* ?> *) | fUGE (* ?>= *)
+      | fLT (* < *)  | fLE  (* <= *)  | fULT (* ?< *) | fULE (* ?<= *)
       | fLG (* <> *) | fUE  (* ?= *) | fsgn
 
 
@@ -45,7 +48,7 @@ structure P : sig
       = cmp of {oper: cmpop, kind: numkind}
       | fcmp of {oper: fcmpop, size: int}
       | boxed | unboxed | peql | pneq
-      | streq | strneq  
+      | streq | strneq
           (* streq(n,a,b) is defined only if strings a and b have
 	     exactly the same length n>1 *)
 
@@ -89,7 +92,7 @@ structure P : sig
       | gettag | mkspecial | wrap | unwrap | cast | getcon | getexn
       | fwrap | funwrap | iwrap | iunwrap | i32wrap | i32unwrap
       | getseqdata | recsubscript | raw64subscript | newarray0
-      | rawrecord of record_kind option 
+      | rawrecord of record_kind option
            (* allocate uninitialized words from the heap; optionally
             * initialize the tag.
             *)
@@ -102,7 +105,7 @@ structure P : sig
     val imul : arith
     val idiv : arith
     val ineg : arith
-		    
+
     val fadd : arith
     val fsub : arith
     val fmul : arith
@@ -125,13 +128,13 @@ structure P : sig
     val fle  : branch
     val flt  : branch
 
-    val arity : arithop -> int 
+    val arity : arithop -> int
 
 end (* P *)
 
-type lvar 
+type lvar
 
-datatype value 
+datatype value
   = VAR of lvar
   | LABEL of lvar
   | INT of int
@@ -141,19 +144,19 @@ datatype value
   | OBJECT of Unsafe.Object.object
   | VOID
 
-datatype accesspath 
-  = OFFp of int 
+datatype accesspath
+  = OFFp of int
   | SELp of int * accesspath
 
 datatype fun_kind
-  = CONT           
-  | KNOWN          
-  | KNOWN_REC      
-  | KNOWN_CHECK    
-  | KNOWN_TAIL     
-  | KNOWN_CONT     
-  | ESCAPE         
-  | NO_INLINE_INTO 
+  = CONT
+  | KNOWN
+  | KNOWN_REC
+  | KNOWN_CHECK
+  | KNOWN_TAIL
+  | KNOWN_CONT
+  | ESCAPE
+  | NO_INLINE_INTO
 
 datatype cexp
   = RECORD of record_kind * (value * accesspath) list * lvar * cexp
@@ -170,8 +173,8 @@ datatype cexp
   (* experimental "raw C call" (Blume, 1/2001) *)
   (* When non-empty, the string contains the linkage info, which
    * is a string of the form:
-   *      shared library name/name of the C function. 
-   *) 
+   *      shared library name/name of the C function.
+   *)
   | RCC of rcc_kind * string * CTypes.c_proto * value list *
 	   (lvar * cty) list * cexp
 and rcc_kind = FAST_RCC | REENTRANT_RCC
@@ -183,7 +186,7 @@ val ctyToString : cty -> string
 val hasRCC : cexp -> bool
 val sizeOf : cty -> int   (* size of its representation in bits *)
 val isFloat : cty -> bool (* is it a floating point type? *)
-val isTagged : cty -> bool 
+val isTagged : cty -> bool
 
 val BOGt : cty
 

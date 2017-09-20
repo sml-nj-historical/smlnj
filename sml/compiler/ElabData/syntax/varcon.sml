@@ -26,14 +26,14 @@ datatype var
        scheme: T.tyfun}
   | ERRORvar                          (* error variables *)
 
-type datacon = T.datacon                     
+type datacon = T.datacon
 
 datatype value
   = VAL of var
   | CON of datacon
 
 fun mkVALvar (id, acc) =
-      VALvar{path = SP.SPATH [id], 
+      VALvar{path = SP.SPATH [id],
              typ = ref T.UNDEFty,
              access = acc,
 	     btvs = ref [],

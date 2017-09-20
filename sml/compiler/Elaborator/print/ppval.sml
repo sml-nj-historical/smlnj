@@ -6,7 +6,7 @@
 
 (* modified to use SML/NJ Lib PP. [dbm, 7/30/03]) *)
 
-signature PPVAL = 
+signature PPVAL =
 sig
   val ppAccess: PrettyPrintNew.stream -> Access.access -> unit
   val ppRep: PrettyPrintNew.stream -> Access.conrep -> unit
@@ -15,7 +15,7 @@ sig
   val ppDebugDcon : PrettyPrintNew.stream
 		    -> StaticEnv.staticEnv -> VarCon.datacon -> unit
   val ppDebugVar: (PrimopId.prim_id -> string) ->
-		  PrettyPrintNew.stream 
+		  PrettyPrintNew.stream
 		  -> StaticEnv.staticEnv -> VarCon.var -> unit
 end (* signature PPVAL *)
 
@@ -26,11 +26,11 @@ local
   structure PP = PrettyPrintNew
   structure PU = PPUtilNew
   structure TU = TypesUtil
-  structure LU = Lookup 
+  structure LU = Lookup
   structure A = Access
   open PrettyPrintNew PPUtilNew VarCon Types
 
-in 
+in
 
 val internals = ElabControl.internals
 
@@ -83,17 +83,17 @@ fun ppConBinding ppstrm =
     let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
 	fun ppCon (DATACON{name, typ, rep=A.EXN _, ...}, env) =
 		(openHVBox 0;
-		 pps "exception "; ppSym ppstrm name; 
+		 pps "exception "; ppSym ppstrm name;
                  if BasicTypes.isArrowType typ then
-                   (pps " of "; 
+                   (pps " of ";
    		    ppType env ppstrm (BasicTypes.domain typ))
                  else ();
 		 closeBox())
-	  | ppCon (con,env) = 
+	  | ppCon (con,env) =
 	      let exception Hidden
 		  val visibleDconTyc =
 		      let val tyc = TU.dconTyc con
-		       in 
+		       in
 			  (TypesUtil.equalTycon
 			      (LU.lookTyc
 			         (env,SymPath.SPATH
@@ -102,7 +102,7 @@ fun ppConBinding ppstrm =
 			       tyc)
 			     handle Hidden => false)
 		      end
-	       in if !internals orelse not visibleDconTyc 
+	       in if !internals orelse not visibleDconTyc
 	          then (openHVBox 0;
 			pps "con ";
 			ppDatacon(env,con) ppstrm;
@@ -118,29 +118,29 @@ fun ppVar ppstrm (VALvar {access,path,...}) =
   | ppVar ppstrm (OVLDvar {name,...}) = ppSym ppstrm (name)
   | ppVar ppstrm (ERRORvar) = PP.string ppstrm "<errorvar>"
 
-fun ppDebugVar ii2string ppstrm env  = 
+fun ppDebugVar ii2string ppstrm env  =
     let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
 	val ppAccess = ppAccess ppstrm
         val ppInfo = ppInfo ii2string ppstrm
-	fun ppDV(VALvar {access,path, btvs, typ,prim}) = 
+	fun ppDV(VALvar {access,path, btvs, typ,prim}) =
 	     (openHVBox 0;
 	      pps "VALvar";
 	      openHVBox 3;
 	      pps "({access="; ppAccess access; ppcomma_nl ppstrm;
               pps "prim="; ppInfo prim; ppcomma_nl ppstrm;
 	      pps "path="; pps (SymPath.toString path); ppcomma_nl ppstrm;
-	      pps "typ=ref "; ppType env ppstrm (!typ); 
+	      pps "typ=ref "; ppType env ppstrm (!typ);
 	      pps "})";
 	      closeBox(); closeBox())
-	  | ppDV (OVLDvar {name,options,scheme}) = 
+	  | ppDV (OVLDvar {name,options,scheme}) =
 	     (openHVBox 0;
 	      pps "OVLDvar";
 	      openHVBox 3;
 	      pps "({name="; ppSym ppstrm (name); ppcomma_nl ppstrm;
-	      pps "options=["; 
+	      pps "options=[";
 	      (ppvseq ppstrm 0 ","
 	       (fn ppstrm => fn {indicator,variant} =>
-		  (pps "{indicator=";ppType env ppstrm  indicator; 
+		  (pps "{indicator=";ppType env ppstrm  indicator;
 		   ppcomma_nl ppstrm;
 		   pps " variant =";
 		   ppDebugVar ii2string ppstrm env variant; pps "}"))
@@ -155,7 +155,7 @@ fun ppDebugVar ii2string ppstrm env  =
 
 fun ppVariable ppstrm  =
     let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
-	fun ppV(env:StaticEnv.staticEnv,VALvar{btvs,path,access,typ,prim}) = 
+	fun ppV(env:StaticEnv.staticEnv,VALvar{btvs,path,access,typ,prim}) =
 	      (openHVBox 0;
 	       pps(SymPath.toString path);
 	       if !internals then ppAccess ppstrm access else ();
@@ -163,7 +163,7 @@ fun ppVariable ppstrm  =
 	       closeBox())
 	  | ppV (env,OVLDvar {name,options=optl,scheme=TYFUN{body,...}}) =
 	      (openHVBox 0;
-	       ppSym ppstrm (name); pps " : "; ppType env ppstrm body; 
+	       ppSym ppstrm (name); pps " : "; ppType env ppstrm body;
 	       pps " as ";
 	       ppSequence ppstrm
 		 {sep=C PP.break {nsp=1,offset=0},

@@ -2,7 +2,7 @@
 (* limit.sml *)
 
 signature LIMIT = sig
-  val nolimit : CPS.function list -> 
+  val nolimit : CPS.function list ->
                   CPS.function list * (CPS.lvar -> (int * int))
 end (* signature LIMIT *)
 
@@ -22,7 +22,7 @@ fun findescapes fl =
   let exception Limit
       val m : fun_kind IntHashTable.hash_table = IntHashTable.mkTable(32,Limit)
       val _ = app (fn (k,f,_,_,_) => IntHashTable.insert m (f,k)) fl
-      val escapes = IntHashTable.lookup m 
+      val escapes = IntHashTable.lookup m
    in {escapes = escapes,
        check = fn f => case escapes f of
 			   KNOWN => IntHashTable.insert m (f,KNOWN_CHECK)
@@ -30,14 +30,14 @@ fun findescapes fl =
   end
 
 (* path now counts instructions as well as allocations, for polling *)
-fun path escapes fl = 
+fun path escapes fl =
   let exception Limit'
       val b : cexp IntHashTable.hash_table = IntHashTable.mkTable(32,Limit')
       val _ = app (IntHashTable.insert b o (fn (_,f,_,_,body) => (f,body))) fl
       val body = IntHashTable.lookup b
 
       val m : {known: fun_kind, alloc: int, instrs: int}
-		  IntHashTable.hash_table = 
+		  IntHashTable.hash_table =
 	          IntHashTable.mkTable(32,Limit')
       val look = IntHashTable.lookup m
       val storeListSz = 2  (* size of store list entry *)
@@ -50,23 +50,23 @@ fun path escapes fl =
         | g(d, SWITCH(_,_,el)) = foldr Int.max 0 (map (fn e => g(d,e)) el)
 	| g(d, SETTER(P.assign, _, e)) = g(d+storeListSz, e)
         | g(d, SETTER(P.update,_,e)) = g(d+storeListSz, e)
-            (*** should be +0 when unboxedfloat is turned on ***)   
-        | g(d, ARITH(P.arith{kind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)   
-        | g(d, ARITH(P.arith{kind=P.INT _,...},_,_,_,e)) = g(d+1, e)   
+            (*** should be +0 when unboxedfloat is turned on ***)
+        | g(d, ARITH(P.arith{kind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)
+        | g(d, ARITH(P.arith{kind=P.INT _,...},_,_,_,e)) = g(d+1, e)
 	| g(d, ARITH(P.testu _, _, _, _, e)) = g(d+1, e)
 	| g(d, ARITH(P.test _, _, _, _, e)) = g(d+1, e)
 	| g(d, ARITH(P.test_inf _, _, _, _, e)) =
 	    error "9827489 test_inf in limit"
         | g(d, ARITH(_,_,_,_,e)) = g(d,e)
         | g(d, PURE(P.pure_arith{kind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)
-        | g(d, PURE(P.real{tokind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)       
-        | g(d, PURE(P.fwrap,_,_,_,e)) = g(d+4, e)     
-        | g(d, PURE(P.iwrap,_,_,_,e)) = g(d+2, e)     
-        | g(d, PURE(P.i32wrap,_,_,_,e)) = g(d+2, e)     
+        | g(d, PURE(P.real{tokind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)
+        | g(d, PURE(P.fwrap,_,_,_,e)) = g(d+4, e)
+        | g(d, PURE(P.iwrap,_,_,_,e)) = g(d+2, e)
+        | g(d, PURE(P.i32wrap,_,_,_,e)) = g(d+2, e)
 	| g(d, PURE(P.newarray0,_,_,_,e)) = g(d+5, e)
 	| g(d, PURE(P.makeref, _, _, _, e)) = g(d+2, e)
 	| g(d, PURE(P.mkspecial, _, _, _, e)) = g(d+2, e)
-        | g(d, PURE(P.rawrecord tag,[INT n],_,_,e)) = 
+        | g(d, PURE(P.rawrecord tag,[INT n],_,_,e)) =
              g(d+n+(case tag of SOME _ => 1 | NONE => 0), e)
 	| g(d, PURE((P.trunc_inf _ | P.extend_inf _ | P.copy_inf _),
 		    _, _, _, e)) =
@@ -77,9 +77,9 @@ fun path escapes fl =
         | g(d, PURE(_,_,_,_,e)) = g(d,e)
 	| g(d, RCC(_,_,_,_,_,e)) = g(d, e)
         | g(d, BRANCH(_,_,_,a,b)) = Int.max(g(d,a), g(d,b))
-        | g(d, APP(LABEL w, _)) = 
+        | g(d, APP(LABEL w, _)) =
              (case maxpath w
-	       of {known=KNOWN, alloc=n, instrs=i} => 
+	       of {known=KNOWN, alloc=n, instrs=i} =>
 		     if d+n > MAX_ALLOC
 		     then (IntHashTable.insert m (w,{known=KNOWN_CHECK,
 						     alloc=n,
@@ -96,13 +96,13 @@ fun path escapes fl =
         | h(d, OFFSET(_,_,_,e)) = h(d+1, e)
         | h(d, SWITCH(_,_,el)) = foldr Int.max 1 (map (fn e => g(d,e)) el)
         | h(d, SETTER(_,_,e)) = h(d+1, e)
-        | h(d, ARITH(_,_,_,_,e)) = h(d+1, e)      
-        | h(d, PURE(_,_,_,_,e)) = h(d+1, e)      
+        | h(d, ARITH(_,_,_,_,e)) = h(d+1, e)
+        | h(d, PURE(_,_,_,_,e)) = h(d+1, e)
         | h(d, LOOKER(_,_,_,_,e)) = h(d+1, e)
 	| h(d, RCC(_,_,_,_,_,e)) = h(d+1, e)
         | h(d, BRANCH(_,_,_,a,b)) = Int.max(h(d,a), h(d,b)) + 1
-        | h(d, APP(LABEL w, _)) = 
-             (case maxpath w of 
+        | h(d, APP(LABEL w, _)) =
+             (case maxpath w of
 		  {known=KNOWN, alloc, instrs=i} => d+i
 		| _ => d)
         | h(d, APP(_, _)) = d
@@ -136,7 +136,7 @@ fun path escapes fl =
       val nfl = map (fn (fk,v,args,cl,ce) => (#known(look v),v,args,cl,ce)) fl
    in (nfl, fn x => (let val f = look x in (#alloc f,#instrs f) end))
   end
-		         
+
 fun nolimit fl =
   let val {escapes, check} = findescapes fl
       fun makenode (_,f,vl,_,body) =
@@ -150,7 +150,7 @@ fun nolimit fl =
 		| edges (PURE(_,_,_,_,e)) = edges e
 		| edges (RCC(_,_,_,_,_,e)) = edges e
 		| edges (BRANCH(_,_,_,a,b)) = edges a @ edges b
-                | edges (APP(LABEL w, _)) = (case escapes w of KNOWN => [w] 
+                | edges (APP(LABEL w, _)) = (case escapes w of KNOWN => [w]
 		                                             | _ => nil)
                 | edges (APP _) = nil
 		| edges (FIX _) = error "8933 in limit"
@@ -167,7 +167,7 @@ fun nolimit fl =
 val nolimit = fn fl =>
   if !CGoptions.printit
   then let val info as (newfl,limits) = nolimit fl
-	   fun showinfo (k,f,_,_,_) = 
+	   fun showinfo (k,f,_,_,_) =
 	     let val (alloc,instrs) = limits f
 		 val s = Int.toString alloc
 		 val i = Int.toString instrs

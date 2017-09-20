@@ -1,7 +1,9 @@
 (* modules.sml
  *
- * (C) 2001 Lucent Technologies, Bell Labs
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
+
 structure Modules : MODULES =
 struct
 

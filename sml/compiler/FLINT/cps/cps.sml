@@ -1,5 +1,8 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* cps.sml *)
+(* cps.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure CPS = struct
 
@@ -28,18 +31,18 @@ structure P = struct
     (* numkind includes kind and size *)
     datatype numkind = INT of int | UINT of int | FLOAT of int
 
-    datatype arithop = + | - | * | / | ~ | abs 
-                     | fsqrt | fsin | fcos | ftan 
+    datatype arithop = + | - | * | / | ~ | abs
+                     | fsqrt | fsin | fcos | ftan
 	             | lshift | rshift | rshiftl | andb | orb | xorb | notb
 		     | rem | div | mod
 
     datatype cmpop = > | >= | < | <= | eql | neq
 
     (* fcmpop conforms to the IEEE std 754 predicates. *)
-    datatype fcmpop 
-      = fEQ (* = *)  | fULG (* ?<> *) | fUN (* ? *)   | fLEG (* <=> *) 
-      | fGT (* > *)  | fGE  (* >= *)  | fUGT (* ?> *) | fUGE (* ?>= *) 
-      | fLT (* < *)  | fLE  (* <= *)  | fULT (* ?< *) | fULE (* ?<= *) 
+    datatype fcmpop
+      = fEQ (* = *)  | fULG (* ?<> *) | fUN (* ? *)   | fLEG (* <=> *)
+      | fGT (* > *)  | fGE  (* >= *)  | fUGT (* ?> *) | fUGE (* ?>= *)
+      | fLT (* < *)  | fLE  (* <= *)  | fULT (* ?< *) | fULE (* ?<= *)
       | fLG (* <> *) | fUE  (* ?= *)  | fsgn
 
     (* These are two-way branches dependent on pure inputs *)
@@ -47,7 +50,7 @@ structure P = struct
       = cmp of {oper: cmpop, kind: numkind}    (* numkind cannot be FLOAT *)
       | fcmp of {oper: fcmpop, size: int}
       | boxed | unboxed | peql | pneq
-      | streq | strneq 
+      | streq | strneq
           (* streq(n,a,b) is defined only if strings a and b have
 	     exactly the same length n>1 *)
 
@@ -95,12 +98,12 @@ structure P = struct
          (* allocate uninitialized words from the heap *)
       | condmove of branch
 
-    local 
+    local
       fun ioper (op > : cmpop)  = (op <= : cmpop)
 	| ioper op <= = op >
-	| ioper op <  = op >= 
+	| ioper op <  = op >=
 	| ioper op >= = op <
-	| ioper eql   = neq 
+	| ioper eql   = neq
 	| ioper neq   = eql
 
       fun foper fEQ   = fULG
@@ -118,12 +121,12 @@ structure P = struct
 	| foper fUE   = fLG
 	| foper fUN   = fLEG
 	| foper fsgn  = bug "fsgn has no opposite"
-    in 
-      fun opp boxed = unboxed 
+    in
+      fun opp boxed = unboxed
 	| opp unboxed = boxed
-	| opp strneq = streq 
+	| opp strneq = streq
 	| opp streq = strneq
-	| opp peql = pneq 
+	| opp peql = pneq
 	| opp pneq = peql
 	| opp (cmp{oper,kind}) = cmp{oper=ioper oper,kind=kind}
 	| opp (fcmp{oper,size}) = fcmp{oper=foper oper, size=size}
@@ -147,7 +150,7 @@ structure P = struct
     val ige = cmp{oper=op >=,kind=INT 31}
     val ile = cmp{oper=op <=,kind=INT 31}
     val ilt = cmp{oper=op <,kind=INT 31}
-(*  val iltu = cmp{oper=ltu, kind=INT 31} 
+(*  val iltu = cmp{oper=ltu, kind=INT 31}
     val igeu = cmp{oper=geu,kind=INT 31}
 *)
     val feql =fcmp{oper=fEQ, size=64}
@@ -164,7 +167,7 @@ end (* P *)
 
 type lvar = LambdaVar.lvar
 
-datatype value 
+datatype value
   = VAR of lvar
   | LABEL of lvar
   | INT of int
@@ -174,8 +177,8 @@ datatype value
   | OBJECT of Unsafe.Object.object
   | VOID
 
-datatype accesspath 
-  = OFFp of int 
+datatype accesspath
+  = OFFp of int
   | SELp of int * accesspath
 
 datatype fun_kind
@@ -189,7 +192,7 @@ datatype fun_kind
 	              after the closure phase, escaping user function *)
   | NO_INLINE_INTO (* before the closure phase,
 		      a user function inside of which no in-line expansions
-		      should be performed; 
+		      should be performed;
 		      does not occur after the closure phase *)
 
 datatype cexp
@@ -212,7 +215,7 @@ withtype function = fun_kind * lvar * lvar list * cty list * cexp
 fun hasRCC(cexp) = let
   fun chkList(c::rest) = hasRCC(c) orelse chkList(rest)
     | chkList [] = false
-in 
+in
   case cexp
   of RCC _ => true
    | RECORD(_, _, _, e) => hasRCC e
@@ -228,7 +231,7 @@ in
    | PURE(_, _, _, _, e) => hasRCC(e)
 end
 
-fun sizeOf(FLTt) = 64 
+fun sizeOf(FLTt) = 64
   | sizeOf(INTt | INT32t | PTRt _ | FUNt | CNTt | DSPt) = 32
 
 fun isFloat(FLTt) = true
@@ -248,7 +251,7 @@ fun ctyToString(INTt) =  "[I]"
   | ctyToString(DSPt) =  "[D]"
 
 fun combinepaths(p,OFFp 0) = p
-  | combinepaths(p,q) = 
+  | combinepaths(p,q) =
     let val rec comb =
 	fn (OFFp 0) => q
 	 | (OFFp i) => (case q of
@@ -273,28 +276,28 @@ fun ltflt lt = if LT.lt_eqv(lt, lt_real) then true else false
 
 fun rtyc (f, []) = RPT 0
   | rtyc (f, ts) =
-      let fun loop (a::r, b, len) = 
+      let fun loop (a::r, b, len) =
                 if f a then loop(r, b, len+1) else loop(r, false, len+1)
-            | loop ([], b, len) = if b then FPT len else RPT len  
+            | loop ([], b, len) = if b then FPT len else RPT len
        in loop(ts, true, 0)
       end
 
 fun ctyc tc =
-  LT.tcw_prim(tc, 
+  LT.tcw_prim(tc,
      fn pt => (if pt = PT.ptc_int31 then INTt
                else if pt = PT.ptc_int32 then INT32t
                     else if pt = PT.ptc_real then FLTt
                          else BOGt),
-     fn tc => 
+     fn tc =>
        LT.tcw_tuple (tc, fn ts => PTRt(rtyc(tcflt, ts)),
           fn tc => if LT.tcp_arrow tc then FUNt
                    else if LT.tcp_cont tc then CNTt
                         else BOGt))
 
-fun ctype lt = 
+fun ctype lt =
   LT.ltw_tyc(lt, fn tc => ctyc tc,
-      fn lt => 
-        LT.ltw_str(lt, fn ts => PTRt(rtyc(fn _ => false, ts)), 
+      fn lt =>
+        LT.ltw_str(lt, fn ts => PTRt(rtyc(fn _ => false, ts)),
             fn lt => if LT.ltp_fct lt then FUNt
                      else if LT.ltp_cont lt then CNTt
                           else BOGt))

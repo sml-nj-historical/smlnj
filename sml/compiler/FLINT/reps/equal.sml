@@ -1,21 +1,24 @@
-(* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
-(* equal.sml *)
+(* equal.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
-signature EQUAL = 
+signature EQUAL =
 sig
 
-  (* 
+  (*
    * Constructing generic equality functions; the current version will
    * use runtime polyequal function to deal with abstract types. (ZHONG)
    *)
   val equal_branch : FLINT.primop * FLINT.value list * FLINT.lexp * FLINT.lexp
                      -> FLINT.lexp
-  val debugging : bool ref     
+  val debugging : bool ref
 
 end (* signature EQUAL *)
 
 
-structure Equal : EQUAL = 
+structure Equal : EQUAL =
 struct
 
 local structure BT = BasicTypes
@@ -34,7 +37,7 @@ val mkv = LambdaVar.mkLvar
 val ident = fn x => x
 
 
-val (trueDcon', falseDcon') = 
+val (trueDcon', falseDcon') =
   let val lt = LT.ltc_arrow(LT.ffc_rrflint, [LT.ltc_unit], [LT.ltc_bool])
       fun h (Types.DATACON{name, rep, ...}) = (name, rep, lt)
    in (h BT.trueDcon, h BT.falseDcon)
@@ -43,7 +46,7 @@ val (trueDcon', falseDcon') =
 val tcEqv = LT.tc_eqv
 
 
-fun boolLexp b = 
+fun boolLexp b =
   let val v = mkv() and w = mkv()
       val dc = if b then trueDcon' else falseDcon'
    in RECORD(FU.rk_tuple, [], v, CON(dc, [], VAR v, w, RET[VAR w]))

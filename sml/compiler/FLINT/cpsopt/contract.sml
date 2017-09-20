@@ -1,5 +1,8 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* contract.sml *)
+(* contract.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 (*
 Transformations performed by the contracter:

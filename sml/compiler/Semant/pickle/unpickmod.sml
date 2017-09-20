@@ -155,9 +155,9 @@ structure UnpickMod : UNPICKMOD = struct
 	#[P.GT, P.GTE, P.LT, P.LTE, P.LEU, P.LTU, P.GEU, P.GTU, P.EQL, P.NEQ, P.FSGN]
 
     val arithop_table =
-	#[P.ADD, P.SUB, P.MUL, P.QUOT, P.NEG, P.ABS, P.LSHIFT, P.RSHIFT, P.RSHIFTL,
+	#[P.ADD, P.SUB, P.MUL, P.NEG, P.FDIV, P.ABS, P.LSHIFT, P.RSHIFT, P.RSHIFTL,
 	  P.ANDB, P.ORB, P.XORB, P.NOTB, P.FSQRT, P.FSIN, P.FCOS, P.FTAN,
-	  P.REM, P.DIV, P.MOD, P.FDIV]
+	  P.QUOT, P.REM, P.DIV, P.MOD]
 
     val eqprop_table =
 	#[T.YES, T.NO, T.IND, T.OBJ, T.DATA, T.ABS, T.UNDEF]

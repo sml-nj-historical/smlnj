@@ -11,7 +11,7 @@ sig
 
   val conToString : PLambda.con -> string
   val ppLexp : int -> PrettyPrintNew.stream -> PLambda.lexp -> unit
-  val ppMatch : StaticEnv.staticEnv ->  
+  val ppMatch : StaticEnv.staticEnv ->
                   (Absyn.pat * PLambda.lexp) list -> unit
   val ppFun : PrettyPrintNew.stream -> PLambda.lexp -> LambdaVar.lvar -> unit
 
@@ -20,7 +20,7 @@ sig
 end (* signature PPLEXP *)
 
 
-structure PPLexp : PPLEXP = 
+structure PPLexp : PPLEXP =
 struct
 
 local structure A = Absyn
@@ -30,7 +30,7 @@ local structure A = Absyn
       structure PU = PPUtilNew
       structure LT = PLambdaType
       open PLambda PPUtilNew
-in 
+in
 
 fun bug s = ErrorMsg.impossible ("PPLexp: "^s)
 
@@ -39,7 +39,7 @@ val lvarName = LambdaVar.lvarName
 fun app2(f, [], []) = ()
   | app2(f, a::r, b::z) = (f(a, b); app2(f, r, z))
   | app2(f, _, _) = bug "unexpected list arguments in function app2"
-  
+
 fun conToString (DATAcon((sym, _, _), _, v)) = ((S.name sym) ^ "." ^ (lvarName v))
   | conToString (INTcon i) = Int.toString i
   | conToString (INT32con i) = "(I32)" ^ (Int32.toString i)
@@ -51,7 +51,7 @@ fun conToString (DATAcon((sym, _, _), _, v)) = ((S.name sym) ^ "." ^ (lvarName v
   | conToString (VLENcon n) = Int.toString n
 
 (** use of complex in printLexp may lead to stupid n^2 behavior. *)
-fun complex le = 
+fun complex le =
   let fun h l = List.exists g l
 
       and g (FN(_, _, b)) = g b
@@ -61,11 +61,11 @@ fun complex le =
 
         | g (LET _) = true
         | g (TFN(_, b)) = g b
-        | g (TAPP(l, [])) = g l 
+        | g (TAPP(l, [])) = g l
         | g (TAPP(l, _)) = true
         | g (GENOP(_,_,_,_)) = true
         | g (PACK(_, _, _, l)) = g l
-       
+
         | g (RECORD l) = h l
         | g (SRECORD l) = h l
         | g (VECTOR (l, _)) = h l
@@ -75,7 +75,7 @@ fun complex le =
         | g (CON(_, _, l)) = true
 (*      | g (DECON(_, _, l)) = true *)
 
-        | g (HANDLE _) = true 
+        | g (HANDLE _) = true
         | g (RAISE(l, _)) = g l
         | g (ETAG (l, _)) = g l
 
@@ -86,13 +86,13 @@ fun complex le =
    in g le
   end
 
-fun ppLexp (pd:int) ppstrm (l: lexp): unit = 
+fun ppLexp (pd:int) ppstrm (l: lexp): unit =
     let val {openHOVBox, openHVBox, closeBox, break, newline, pps, ppi, ...} =
             en_pp ppstrm
 (*
 	val ppList' : {pp:PP.stream -> 'a -> unit, sep: string} -> 'a list -> unit =
               fn x => PPLty.ppList ppstrm x
-	       (* eta-expansion of ppList to avoid value restriction *) 
+	       (* eta-expansion of ppList to avoid value restriction *)
 *)
         val ppLexp' = ppLexp (pd-1) ppstrm
         val ppLty' = PPLty.ppLty (pd-1) ppstrm
@@ -139,13 +139,13 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
                ppClosedSeq ("(",",",")") (fn s => ppl (pd-1)) l;
                closeBox ())
 
-          | ppl pd (PRIM(p,t,ts)) = 
+          | ppl pd (PRIM(p,t,ts)) =
             if pd < 1 then pps "<PRIM>" else
             (openHOVBox 4;
               pps "PRM(";
               openHOVBox 0;
                pps(Primop.prPrimop p); pps ","; br1 0;
-               ppLty' t; 
+               ppLty' t;
 	       pps ",";
 	       br1 0;
                ppClosedSeq ("[",",","]") (PPLty.ppTyc (pd-1)) ts;
@@ -169,7 +169,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
                 closeBox ()
             end
 
-          | ppl pd (FN(v,t,l)) = 
+          | ppl pd (FN(v,t,l)) =
             if pd < 1 then pps "<FN>" else
             (openHOVBox 3; pps "FN(";
               pps(lvarName v); pps ":"; br1 0; ppLty' t; pps ",";
@@ -177,7 +177,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
               ppl (pd-1) l; pps ")";
              closeBox())
 
-          | ppl pd (CON((s, c, lt), ts, l)) = 
+          | ppl pd (CON((s, c, lt), ts, l)) =
             if pd < 1 then pps "<FN>" else
             (openHOVBox 4;
               pps "CON(";
@@ -192,20 +192,20 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
              closeBox())
 
 (*
-        | ppl (DECON((s, c, lt), ts, l)) = 
+        | ppl (DECON((s, c, lt), ts, l)) =
             (pps "DECON(("; pps(S.name s); pps ","; ppsrep c; pps ",";
              ppLty lt; pps "), ["; plist(prTyc, ts, ","); pps "], ";
              if complex l then (indent 4; ppl l; pps ")"; undent 4)
              else (g l; pps ")"))
 *)
-          | ppl pd (APP(FN(v,_,l),r)) = 
+          | ppl pd (APP(FN(v,_,l),r)) =
             if pd < 1 then pps "<LET*>" else
             (openHOVBox 5;
               pps "(APP)";
               ppl (pd-1) (LET(v, r, l));
              closeBox())
-        
-          | ppl pd (LET(v, r, l)) = 
+
+          | ppl pd (LET(v, r, l)) =
             if pd < 1 then pps "<LET>" else
             (openHVBox 2;
               openHOVBox 4;
@@ -215,7 +215,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
               ppl (pd-1) l;
              closeBox())
 
-          | ppl pd (APP(l, r)) = 
+          | ppl pd (APP(l, r)) =
             if pd < 1 then pps "<APP>" else
             (pps "APP(";
              openHVBox 0;
@@ -223,7 +223,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
              closeBox();
              pps ")")
 
-          | ppl pd (TFN(ks, b)) = 
+          | ppl pd (TFN(ks, b)) =
             if pd < 1 then pps "<TFN>" else
             (openHOVBox 0;
              pps "TFN(";
@@ -233,8 +233,8 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
              closeBox();
              pps ")";
              closeBox())
-                  
-          | ppl pd (TAPP(l, ts)) = 
+
+          | ppl pd (TAPP(l, ts)) =
             if pd < 1 then pps "<TAP>" else
             (openHOVBox 0;
               pps "TAPP(";
@@ -243,9 +243,9 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
                ppClosedSeq ("[",",","]") (PPLty.ppTyc (pd-1)) ts;
               closeBox();
               pps ")";
-             closeBox()) 
+             closeBox())
 
-          | ppl pd (GENOP(dict, p, t, ts)) = 
+          | ppl pd (GENOP(dict, p, t, ts)) =
             if pd < 1 then pps "<GEN>" else
             (openHOVBox 4;
               pps "GEN(";
@@ -257,10 +257,10 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
               pps ")";
              closeBox ())
 
-          | ppl pd (PACK(lt, ts, nts, l)) = 
+          | ppl pd (PACK(lt, ts, nts, l)) =
             if pd < 1 then pps "<PACK>" else
             (openHOVBox 0;
-              pps "PACK("; 
+              pps "PACK(";
               openHVBox 0;
                openHOVBox 0;
                 app2 (fn (tc,ntc) =>
@@ -280,7 +280,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
                       (openHOVBox 2;
                        pps (conToString c); pps " =>"; br1 0; ppl (pd-1) l;
                        closeBox())
-                  | switch ((c,l)::more) = 
+                  | switch ((c,l)::more) =
                       (openHOVBox 2;
                        pps (conToString c); pps " =>"; br1 0; ppl (pd-1) l;
                        closeBox();
@@ -333,7 +333,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
                 closeBox()
             end
 
-          | ppl pd (RAISE(l,t)) = 
+          | ppl pd (RAISE(l,t)) =
             if pd < 1 then pps "<RAISE>" else
             (openHOVBox 0;
               pps "RAISE(";
@@ -351,21 +351,21 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
              pps "WITH"; br1 0; ppl (pd-1) withlexp;
              closeBox())
 
-          | ppl pd (WRAP(t, _, l)) = 
+          | ppl pd (WRAP(t, _, l)) =
             if pd < 1 then pps "<WRAP>" else
             (openHOVBox 0;
               pps "WRAP("; ppTyc' t; pps ",";
               newline();
-              ppl (pd-1) l; 
+              ppl (pd-1) l;
               pps ")";
              closeBox())
 
-          | ppl pd (UNWRAP(t, _, l)) = 
+          | ppl pd (UNWRAP(t, _, l)) =
             if pd < 1 then pps "<WRAP>" else
             (openHOVBox 0;
               pps "UNWRAP("; ppTyc' t; pps ",";
               newline();
-              ppl (pd-1) l; 
+              ppl (pd-1) l;
               pps ")";
              closeBox())
 
@@ -375,7 +375,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
 (* ppMatch : StaticEnv.statenv * (Absyn.pat * lexp) list -> unit *)
 fun ppMatch env (rules: (Absyn.pat * lexp) list) =
     let val pd = !Control.Print.printDepth
-        fun ppMatch' ppstrm ((p,r)::more) = 
+        fun ppMatch' ppstrm ((p,r)::more) =
                  (PP.openHVBox ppstrm (PP.Rel 0);
                    PP.openHOVBox ppstrm (PP.Rel 2);
                     PPAbsyn.ppPat env ppstrm (p,pd);
@@ -390,13 +390,13 @@ fun ppMatch env (rules: (Absyn.pat * lexp) list) =
     end
 
 fun ppFun ppstrm l v =
-  let fun last (DA.LVAR x) = x 
+  let fun last (DA.LVAR x) = x
         | last (DA.PATH(r,_)) = last r
         | last _ = bug "unexpected access in last"
 
       fun find le =
         case le
-          of VAR w => 
+          of VAR w =>
                if (v=w)
                then PU.pps ppstrm ("VAR " ^ lvarName v ^ " is free in <lexp>\n")
                else ()
@@ -412,24 +412,24 @@ fun ppFun ppstrm l v =
            | SWITCH (l,_,ls,d) =>
              (find l; app (fn(_,l) => find l) ls;
               case d of NONE => () | SOME l => find l)
-           | RECORD l => app find l 
-           | SRECORD l => app find l 
-           | VECTOR (l, t) => app find l 
+           | RECORD l => app find l
+           | SRECORD l => app find l
+           | VECTOR (l, t) => app find l
            | SELECT(_,l) => find l
            | CON((_, DA.EXN p, _), _, e) => (find(VAR(last p)); find e)
            | CON(_,_,e) => find e
 (*
          | DECON((_, DA.EXN p, _), _, e) => (find(VAR(last p)); find e)
-         | DECON(_,_,e) => find e  
+         | DECON(_,_,e) => find e
 *)
-           | HANDLE(e,h) => (find e; find h) 
+           | HANDLE(e,h) => (find e; find h)
            | RAISE(l,_) => find l
-           | INT _ => () | WORD _ => () 
-           | INT32 _ => () | WORD32 _ => () 
+           | INT _ => () | WORD _ => ()
+           | INT32 _ => () | WORD32 _ => ()
            | STRING _ => () | REAL _ => ()
            | ETAG (e,_) => find e
            | PRIM _ => ()
-           | GENOP ({default=e1,table=es}, _, _, _) => 
+           | GENOP ({default=e1,table=es}, _, _, _) =>
              (find e1; app (fn (_, x) => find x) es)
            | WRAP(_, _, e) => find e
            | UNWRAP(_, _, e) => find e

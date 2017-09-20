@@ -13,7 +13,7 @@ type lvar = LambdaVar.lvar
 
 type dataconstr = Symbol.symbol * Access.conrep * lty
 
-datatype con 
+datatype con
   = DATAcon of dataconstr * tyc list * lvar
   | INTcon of int
   | INT32con of Int32.int
@@ -22,7 +22,7 @@ datatype con
   | WORD32con of Word32.word
   | REALcon of string
   | STRINGcon of string
-  | VLENcon of int 
+  | VLENcon of int
 
 datatype lexp
   = VAR of lvar
@@ -34,7 +34,7 @@ datatype lexp
   | STRING of string
   | PRIM of Primop.primop * lty * tyc list
   | GENOP of dict * Primop.primop * lty * tyc list
- 
+
   | FN of lvar * lty * lexp
   | FIX of lvar list * lty list * lexp list * lexp
   | APP of lexp * lexp
@@ -43,19 +43,19 @@ datatype lexp
   | TFN of tkind list * lexp
   | TAPP of lexp * tyc list
 
-  | RAISE of lexp * lty 
+  | RAISE of lexp * lty
   | HANDLE of lexp * lexp
-  | ETAG of lexp * lty                 
+  | ETAG of lexp * lty
 
   | CON of dataconstr * tyc list * lexp
   | SWITCH of lexp * Access.consig * (con * lexp) list * lexp option
 
   | VECTOR of lexp list * tyc
   | RECORD of lexp list
-  | SRECORD of lexp list    
+  | SRECORD of lexp list
   | SELECT of int * lexp
 
-  | PACK of lty * tyc list * tyc list * lexp   
+  | PACK of lty * tyc list * tyc list * lexp
   | WRAP of tyc * bool * lexp
   | UNWRAP of tyc * bool * lexp
 
