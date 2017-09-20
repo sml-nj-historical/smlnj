@@ -1067,7 +1067,7 @@ fun tyToString ty =
 	 | CONty(tyc,args) =>
 	   if BT.isArrow ty
 	   then "(" ^ tyToString BT.domain ty ^ " -> " ^ tyToString BT.range ty ^ ")"
-	   else (if null args then "" else "("^showArgs args^")) ^ Symbol.name(tycName tyc)
+	   else (if null args then "" else "("^showArgs args^")") ^ Symbol.name(tycName tyc)
 	 | POLYty{tyfun=TYFUN{body,arity},...} =>
 	   "<P" ^ Int.toString arity ^ ">[" ^ tyToString body ^ "]"
 	 | WILDCARDty => "<wc>"
