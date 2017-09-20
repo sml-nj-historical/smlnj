@@ -863,7 +863,7 @@ in
 
 	and tyckind arg = let
 	    val op $ = PU.$ TYCKIND
-	    fun tk (T.PRIMITIVE pt) = "a" $ [int pt]
+	    fun tk (T.PRIMITIVE) = "a" $ []
 	      | tk (T.DATATYPE { index, family, stamps, root, freetycs, stripped }) =
 		"b" $ [int index, option entVar root, bool stripped,
 		       dtypeInfo (stamps, family, freetycs)]

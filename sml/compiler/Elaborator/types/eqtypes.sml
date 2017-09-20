@@ -206,7 +206,7 @@ let val tycons = ref StampMap.empty
                                   updateMap depend
 					(stamp, deps @ applyMap'(depend,stamp))
                               end
-                            | (FLEXTYC _ | ABSTRACT _ | PRIMITIVE _) =>
+                            | (FLEXTYC _ | ABSTRACT _ | PRIMITIVE) =>
                               let val eq' = join(applyMap''(eqprop,stamp), !eq)
                               in
 				  eq := eq';

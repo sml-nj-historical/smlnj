@@ -180,40 +180,24 @@ and tycTyc(tc, d) =
             end
 *)
 
-      fun h (PRIMITIVE pt, _) = LT.tcc_prim (PrimTyc.pt_fromint pt)
-        | h (DATATYPE {index, family, freetycs, stamps, ...}, _) =
-              let val tc = dtsFam (freetycs, family)
-                  val n = Vector.length stamps
-                  val names = Vector.map (fn ({tycname,...}: dtmember) => Symbol.name tycname)
-                                         (#members family)
-                  (* invariant: n should be the number of family members *)
-               in LT.tcc_fix((n, names, tc, (map g freetycs)), index)
-              end
-        | h (ABSTRACT tc, 0) = (g tc)
-              (*>>> LT.tcc_abs(g tc) <<<*)
-        | h (ABSTRACT tc, n) = (g tc)
-              (*>>> we tempoarily turned off the use of abstract tycons in
-                    the intermediate language; proper support of ML-like
-                    abstract types in the IL may require changes to the
-                    ML language. (ZHONG)
-              let val ks = LT.tkc_arg n
-                  fun fromto(i,j) = if i < j then (i::fromto(i+1,j)) else []
-                  val fs = fromto(0, n)
-                  val ts = map (fn i => LT.tcc_var(DI.innermost, i)) fs
-                  val b = LT.tcc_app(tycTyc(tc, DI.next d), ts)
-               in LT.tcc_fn(ks, LT.tcc_abs b)
-              end
-              <<<*)
-        | h (FLEXTYC tp, _) = tpsTyc d tp
-        | h (FORMAL, _) = bug "unexpected FORMAL kind in tycTyc-h"
-        | h (TEMP, _) = bug "unexpected TEMP kind in tycTyc-h"
 
-      and g (tycon as GENtyc { arity, kind, ... }) =
-	  (case kind of
-	       k as DATATYPE _ =>
-               if TU.eqTycon(tycon, BT.refTycon) then LT.tcc_prim (PT.ptc_ref)
-               else h(k, arity)
-	     | k => h (k, arity))
+      and g (tycon as GENtyc { arity, kind, stamp, ... }) =
+	  (case kind
+	     of PRIMITIVE => LT.tcc_prim(PrimTyc.pt_fromstamp stamp)
+              | DATATYPE {index, family, freetycs, stamps, ...} =>
+		if TU.eqTycon(tycon, BT.refTycon) then LT.tcc_prim (PT.ptc_ref)
+		else let val tc = dtsFam (freetycs, family)
+			 val n = Vector.length stamps
+			 val names = Vector.map
+				       (fn ({tycname,...}: dtmember) => Symbol.name tycname)
+				       (#members family)
+                          (* invariant: n should be the number of family members *)
+		     in LT.tcc_fix((n, names, tc, (map g freetycs)), index)
+		     end
+              | ABSTRACT tc => (g tc) (*>>> LT.tcc_abs(g tc) <<<*)
+              | FLEXTYC tp => tpsTyc d tp
+              | FORMAL => bug "unexpected FORMAL kind in tycTyc-h"
+              | TEMP => bug "unexpected TEMP kind in tycTyc-h")
         | g (DEFtyc{tyfun, ...}) = tfTyc(tyfun, d)
         | g (RECtyc i) = recTyc i
         | g (FREEtyc i) = freeTyc i

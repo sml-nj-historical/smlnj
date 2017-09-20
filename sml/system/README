@@ -362,7 +362,7 @@ seems to mean: a relative path starting with an arc named <foo>.
 + Why anchored paths?
 
 The important point is that one can change the mapping of the anchor,
-and the tranlation of the (anchored) path name -- together will all
+and the translation of the (anchored) path name -- together will all
 file names derived from it -- will also change accordingly -- even
 very late in the game.  CM avoids "elaborating" path names until it
 really needs them when it is time to open files.  CM is also willing
@@ -388,7 +388,7 @@ that CM will look for a library named
 sml.boot.<arch>-<os>/basis.cm/basis.cm -- and so forth.
 
 [Note, there are some anchors in "pathconfig" that have no
-corresponding sub-directory of the boot director.  Examples are
+corresponding sub-directory of the boot directory.  Examples are
 "root.cm", "cm", and so on.  The reason is that there are no stable
 libraries whose description files are named using these anchors;
 everything anchored at "$cm" is a group but not a library.]

@@ -259,7 +259,7 @@ fun test(ty, 0) = raise Poly
 
 	| CONty (tyc as GENtyc { kind, eq, stamp, arity, path, ... }, tyl) =>
 	  (case (!eq, kind) of
-	       (YES, PRIMITIVE _) => atomeq (tyc, ty)
+	       (YES, PRIMITIVE) => atomeq (tyc, ty)
 
 	     | (YES, ABSTRACT tyc') => test (CONty (tyc', tyl), depth)
 

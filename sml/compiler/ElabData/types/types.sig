@@ -60,7 +60,7 @@ and tycpath
   | TP_SEL of tycpath * int
 
 and tyckind
-  = PRIMITIVE of int		(* primitive kinds are abstractly numbered *)
+   = PRIMITIVE 		(* primitive tycons *)
   | ABSTRACT of tycon
   | DATATYPE of
      {index: int,

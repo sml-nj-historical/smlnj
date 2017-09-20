@@ -11,7 +11,6 @@ structure BasicTypes : BASICTYPES =
     structure IP = InvPath
     structure T = Types
     structure IP = InvPath
-    structure PTN = PrimTycNum
 
     fun bug msg = ErrorMsg.impossible("BasicTypes: "^msg)
 
@@ -40,7 +39,7 @@ structure BasicTypes : BASICTYPES =
 	     path = IP.IPATH [Symbol.tycSymbol "->"],
 	     arity = 2,
 	     eq = ref T.NO,
-	     kind = T.PRIMITIVE PTN.ptn_arrow,
+	     kind = T.PRIMITIVE,
 	     stub = NONE
 	  }
     infix -->
@@ -86,16 +85,16 @@ structure BasicTypes : BASICTYPES =
 
   (*** primitive types ***)
 
-    fun mkpt (sym, arity, eqprop, ptn) = T.GENtyc{
+    fun mkpt (sym, arity, eqprop) = T.GENtyc{
 	    stamp = Stamps.special sym,
             path = IP.IPATH[Symbol.tycSymbol sym],
 	    arity = arity,
             eq = ref eqprop,
-	    kind = T.PRIMITIVE ptn,
+	    kind = T.PRIMITIVE,
 	    stub = NONE
 	  }
 
-    val word32Tycon = mkpt("word32", 0, T.YES, PTN.ptn_int32)
+    val word32Tycon = mkpt("word32", 0, T.YES)
     val word32Ty = T.CONty(word32Tycon, nil)
 
   (* used to represent Int64.int on 32-bit machines *)
@@ -118,45 +117,45 @@ structure BasicTypes : BASICTYPES =
 	    (tyc, T.CONty (tyc, []))
 	  end
 
-    val (intTycon, intTy) = pt2tct ("int", 0, T.YES, PTN.ptn_int)
-    val (int32Tycon, int32Ty) = pt2tct ("int32", 0, T.YES, PTN.ptn_int)
+    val (intTycon, intTy) = pt2tct ("int", 0, T.YES)
+    val (int32Tycon, int32Ty) = pt2tct ("int32", 0, T.YES)
 
     val int64Tycon = mk64 "int64"
     val int64Ty = T.CONty (int64Tycon, [])
 
-    val (intinfTycon, intinfTy) = pt2tct ("intinf", 0, T.YES, PTN.ptn_intinf)
-    val (realTycon, realTy) = pt2tct ("real", 0, T.NO, PTN.ptn_real)
+    val (intinfTycon, intinfTy) = pt2tct ("intinf", 0, T.YES)
+    val (realTycon, realTy) = pt2tct ("real", 0, T.NO)
 
-    val arrayTycon = mkpt ("array", 1, T.OBJ, PTN.ptn_array)
-    val vectorTycon = mkpt ("vector", 1, T.YES, PTN.ptn_vector)
+    val arrayTycon = mkpt ("array", 1, T.OBJ)
+    val vectorTycon = mkpt ("vector", 1, T.YES)
 
-    val (wordTycon, wordTy) = pt2tct("word", 0, T.YES, PTN.ptn_int31)
-    val (word8Tycon, word8Ty) = pt2tct("word8", 0, T.YES, PTN.ptn_int31)
+    val (wordTycon, wordTy) = pt2tct("word", 0, T.YES)
+    val (word8Tycon, word8Ty) = pt2tct("word8", 0, T.YES)
 
     val word64Tycon = mk64 "word64"
     val word64Ty = T.CONty (word64Tycon, [])
 
-    val (stringTycon, stringTy) = pt2tct ("string", 0, T.YES, PTN.ptn_string)
+    val (stringTycon, stringTy) = pt2tct ("string", 0, T.YES)
 
-    val (charTycon, charTy) = pt2tct ("char", 0, T.YES, PTN.ptn_int)
+    val (charTycon, charTy) = pt2tct ("char", 0, T.YES)
 
-    val (exnTycon, exnTy) = pt2tct ("exn", 0, T.NO, PTN.ptn_exn)
+    val (exnTycon, exnTy) = pt2tct ("exn", 0, T.NO)
 
-    val contTycon = mkpt("cont", 1, T.NO, PTN.ptn_cont)
-    val ccontTycon = mkpt("control_cont", 1, T.NO, PTN.ptn_ccont)
+    val contTycon = mkpt("cont", 1, T.NO)
+    val ccontTycon = mkpt("control_cont", 1, T.NO)
 
-    val arrayTycon = mkpt ("array", 1, T.OBJ, PTN.ptn_array)
-    val vectorTycon = mkpt ("vector", 1, T.YES, PTN.ptn_vector)
+    val arrayTycon = mkpt ("array", 1, T.OBJ)
+    val vectorTycon = mkpt ("vector", 1, T.YES)
 
-    val objectTycon = mkpt("object", 0, T.NO, PTN.ptn_obj)
+    val objectTycon = mkpt("object", 0, T.NO)
 
-    val c_functionTycon = mkpt("c_function", 0, T.NO, PTN.ptn_cfun)
+    val c_functionTycon = mkpt("c_function", 0, T.NO)
 
-    val word8arrayTycon = mkpt("word8array", 0, T.OBJ, PTN.ptn_barray)
+    val word8arrayTycon = mkpt("word8array", 0, T.OBJ)
 
-    val real64arrayTycon = mkpt("real64array", 0, T.OBJ, PTN.ptn_rarray)
+    val real64arrayTycon = mkpt("real64array", 0, T.OBJ)
 
-    val spin_lockTycon = mkpt("spin_lock", 0, T.NO, PTN.ptn_slock)
+    val spin_lockTycon = mkpt("spin_lock", 0, T.NO)
 
   (*** predefined datatypes ***)
     val alpha = T.IBOUND 0

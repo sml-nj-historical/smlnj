@@ -8,7 +8,6 @@ Group
         signature ELAB_CONTROL
 	structure ElabControl
 
-	signature PRIM_TYC_NUM
 	signature BASICTYPES
 (*	signature INSTANTIATE_PARAM *)
 	signature INSTANTIATE
@@ -24,7 +23,6 @@ Group
 	functor ElabModFn
 	functor ElabTopFn
 
-	structure PrimTycNum
 	structure BasicTypes
 	structure ElabUtil
 	structure SpecialSymbols

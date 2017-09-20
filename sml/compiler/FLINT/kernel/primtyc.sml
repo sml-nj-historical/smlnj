@@ -5,8 +5,8 @@ structure PrimTyc :> PRIM_TYC =
 struct
 
 local fun bug s = ErrorMsg.impossible ("PrimTyc: " ^ s)
-      structure PTN = PrimTycNum
-
+      (* structure PTN = PrimTycNum *)
+      structure BT = BasicTypes
 in
 
 (* 
@@ -23,7 +23,7 @@ in
  * denote various possible representation types. (ZHONG)
  *)
 
-datatype ptyc
+datatype primtyc
   = PT_INT31                         (* 31-bit integer *)
   | PT_INT32                         (* 32-bit integer *)
   | PT_REAL                          (* 64-bit real *)
@@ -34,20 +34,11 @@ datatype ptyc
   | PT_VECTOR                        (* the polymorphic vector tyc *)
   | PT_REF                           (* the polymorphic reference tyc *)
   | PT_LIST                          (* the polymorphic list tyc *)
-  | PT_ETAG                          (* the exception tag type *)
 
   | PT_CONT                          (* the general-continuation tyc *)
   | PT_CCONT                         (* the control-continuation tyc *)
   | PT_ARROW                         (* the function tyc *)
-  | PT_OPTION                        (* the option tyc is optional *)
 
-  | PT_BOXED                         (* the boxed tyc; used for wrapping *)
-  | PT_TGD                           (* the tagged tyc; with a integer *)
-  | PT_UTGD                          (* the untagged tyc; no int tags *)
-  | PT_TNSP                          (* the transparent tyc; fit-in-1-word *)
-
-  | PT_DYN                           (* the dynamic type; with runtime ty *)
-  | PT_VOID                          (* generic machine word; supports GC *)
   | PT_OBJ
   | PT_CFUN
   | PT_BARRAY
@@ -56,105 +47,148 @@ datatype ptyc
 
   | PT_INTINF
 
-(** the primtive type constructor *)
-type primtyc = ptyc * int * int      (* ptyc, arity, generic primtyc numbers *)
+  | PT_ETAG
+  | PT_VOID
 
-(** the set of primitive type constructors *)
-val ptc_int31  = (PT_INT31, 0, PTN.ptn_int31)
-val ptc_int32  = (PT_INT32, 0, PTN.ptn_int32)
-val ptc_real   = (PT_REAL,  0, PTN.ptn_real)
-val ptc_string = (PT_STRING,0, PTN.ptn_string)
-val ptc_exn    = (PT_EXN,   0, PTN.ptn_exn)
-val ptc_void   = (PT_VOID,  0, PTN.ptn_void)
-val ptc_array  = (PT_ARRAY, 1, PTN.ptn_array)
-val ptc_vector = (PT_VECTOR,1, PTN.ptn_vector)
-val ptc_ref    = (PT_REF,   1, PTN.ptn_ref)
-val ptc_list   = (PT_LIST,  1, PTN.ptn_list)
-val ptc_etag   = (PT_ETAG,  1, PTN.ptn_etag)
-val ptc_cont   = (PT_CONT,  1, PTN.ptn_cont)
-val ptc_ccont  = (PT_CCONT, 1, PTN.ptn_ccont)
-val ptc_arrow  = (PT_ARROW, 2, PTN.ptn_arrow)
-val ptc_option = (PT_OPTION,1, PTN.ptn_option)
-val ptc_boxed  = (PT_BOXED, 1, PTN.ptn_boxed)
-val ptc_tgd    = (PT_TGD,   1, PTN.ptn_tgd)
-val ptc_utgd   = (PT_UTGD,  1, PTN.ptn_utgd)
-val ptc_tnsp   = (PT_TNSP,  1, PTN.ptn_tnsp)
-val ptc_dyn    = (PT_DYN,   1, PTN.ptn_dyn)
-val ptc_obj    = (PT_OBJ,   0, PTN.ptn_obj)
-val ptc_cfun   = (PT_CFUN,  0, PTN.ptn_cfun)
-val ptc_barray = (PT_BARRAY,0, PTN.ptn_barray)
-val ptc_rarray = (PT_RARRAY,0, PTN.ptn_rarray)
-val ptc_slock  = (PT_SLOCK, 0, PTN.ptn_slock)
-val ptc_intinf = (PT_INTINF,0, PTN.ptn_intinf)
+val ptc_int31 = PT_INT31
+val ptc_int32 = PT_INT32
+val ptc_real  = PT_REAL
+val ptc_string = PT_STRING
+val ptc_exn    = PT_EXN
+                 
+val ptc_array  = PT_ARRAY
+val ptc_vector = PT_VECTOR
+val ptc_ref    = PT_REF
+val ptc_list   = PT_LIST   (* currently not used *)
+                 
+val ptc_cont   = PT_CONT
+val ptc_ccont  = PT_CCONT
+val ptc_arrow  = PT_ARROW
 
+val ptc_obj    = PT_OBJ
+val ptc_cfun   = PT_CFUN
+val ptc_barray = PT_BARRAY
+val ptc_rarray = PT_RARRAY
+val ptc_slock  = PT_SLOCK
+
+val ptc_etag   = PT_ETAG
+val ptc_void   = PT_VOID
 
 (** get the arity of a particular primitive tycon *)
-fun pt_arity(_, i, _) = i
+fun pt_arity ptyc =
+    case ptyc
+     of PT_INT31 => 0
+     | PT_INT32 =>  0
+     | PT_REAL =>   0
+     | PT_STRING => 0
+     | PT_EXN =>    0
+     | PT_ARRAY =>  1
+     | PT_VECTOR => 1
+     | PT_REF =>    1
+     | PT_LIST =>   1
+     | PT_CONT =>   1
+     | PT_CCONT =>  1
+     | PT_ARROW =>  2
+     | PT_OBJ =>    0
+     | PT_CFUN =>   0
+     | PT_BARRAY => 0
+     | PT_RARRAY => 0
+     | PT_SLOCK =>  0
+     | PT_INTINF => 0
+     | PT_ETAG =>   1
+     | PT_VOID =>   0
 
 (** each primitive type constructor is equipped with a key *)
-fun pt_toint (_, _, k) = k
+fun pt_toint ptyc =
+    case ptyc
+     of PT_INT31 => 0
+     | PT_INT32 =>  1
+     | PT_REAL =>   2
+     | PT_STRING => 3
+     | PT_EXN =>    4
+     | PT_ARRAY =>  5
+     | PT_VECTOR => 6
+     | PT_REF =>    7
+     | PT_LIST =>   8
+     | PT_CONT =>   9
+     | PT_CCONT =>  10
+     | PT_ARROW =>  11
+     | PT_OBJ =>    12
+     | PT_CFUN =>   13
+     | PT_BARRAY => 14
+     | PT_RARRAY => 15
+     | PT_SLOCK =>  16
+     | PT_INTINF => 17
+     | PT_ETAG =>   18
+     | PT_VOID =>   19
 
-val pt_fromint = let
-    val ptlist =
-	[ptc_int31, ptc_int32, ptc_real, ptc_string,
-	 ptc_exn, ptc_void, ptc_array, ptc_vector,
-	 ptc_ref, ptc_list, ptc_etag, ptc_cont, ptc_ccont,
-	 ptc_arrow, ptc_option, ptc_boxed, ptc_tgd, ptc_utgd,
-	 ptc_tnsp, ptc_dyn, ptc_obj, ptc_cfun, ptc_barray,
-	 ptc_rarray, ptc_slock, ptc_intinf]
-    fun gt ((_, _, n1), (_, _, n2)) = n1 > n2
-    val ptvec = Vector.fromList (ListMergeSort.sort gt ptlist)
+local 
+  val ptyclist =
+    [PT_INT31, PT_INT32, PT_REAL, PT_STRING, PT_EXN, PT_ARRAY, PT_VECTOR, PT_REF, PT_LIST,
+     PT_CONT, PT_CCONT, PT_ARROW, PT_OBJ, PT_CFUN, PT_BARRAY, PT_RARRAY,
+     PT_SLOCK, PT_INTINF, PT_ETAG, PT_VOID]
+
+  val ptycvec = Vector.fromList ptyclist
 in
-    fn k => (Vector.sub (ptvec, k)
-	     handle Subscript => bug "unexpected integer in pt_fromint")
+fun pt_fromint k = 
+    (Vector.sub (ptycvec, k)
+     handle Subscript => bug "unexpected integer in pt_fromint")
 end
 
-fun pt_eq ((_,_,ptn1): primtyc, (_,_,ptn2): primtyc) = (ptn1 = ptn2)
+fun pt_eq (ptyc1: primtyc, ptyc2: primtyc) = (ptyc1 = ptyc2)
+
+val primTycons =
+    [BT.intTycon, BT.int32Tycon, BT.realTycon, BT.stringTycon, BT.exnTycon,
+     BT.arrayTycon, BT.vectorTycon, BT.refTycon, BT.listTycon, BT.contTycon, BT.ccontTycon,
+     BT.arrowTycon, BT.objectTycon, BT.c_functionTycon, BT.word8arrayTycon,
+     BT.real64arrayTycon, BT.spin_lockTycon, BT.intinfTycon]
+
+val primTyconStamps = map TypesUtil.tycStamp primTycons
+
+fun pt_fromstamp stamp =
+    case (List.findi (fn (n,s) => Stamps.eq(stamp,s)) primTyconStamps)
+     of SOME(i,_) => pt_fromint i
+     |  NONE => bug "pt_fromstamp: primitive tycon not found"
 
 (** printing out the primitive type constructor *)
-fun pt_print (pt, _, _) =
-  let fun g (PT_INT31)  = "I"
-        | g (PT_INT32)  = "W"
-        | g (PT_REAL)   = "F"
-        | g (PT_STRING) = "N"      
-        | g (PT_EXN)    = "X" 
-        | g (PT_ARRAY)  = "A"       
-        | g (PT_VECTOR) = "V"      
-        | g (PT_REF)    = "P"         
-        | g (PT_LIST)   = "L"        
-        | g (PT_ETAG)   = "G"        
-        | g (PT_CONT)   = "D"       
-        | g (PT_CCONT)  = "C"       
-        | g (PT_ARROW)  = "R"       
-        | g (PT_OPTION) = "O"
-        | g (PT_BOXED)  = "K"
-        | g (PT_TGD)    = "T"
-        | g (PT_UTGD)   = "U"
-        | g (PT_TNSP)   = "S"
-        | g (PT_DYN)    = "Y"
-        | g (PT_VOID)   = "Z"
-        | g (PT_OBJ)    = "OB"
-        | g (PT_CFUN)   = "CF"
-        | g (PT_BARRAY) = "BA"
-        | g (PT_RARRAY) = "RA"
-        | g (PT_SLOCK)  = "SL"
-	| g (PT_INTINF) = "II"
-   in g pt
-  end
+fun pt_print ptyc =
+    (case ptyc
+      of PT_INT31  => "I"
+       | PT_INT32  => "W"
+       | PT_REAL   => "F"
+       | PT_STRING => "N"      
+       | PT_EXN    => "X" 
+       | PT_ARRAY  => "A"       
+       | PT_VECTOR => "V"      
+       | PT_REF    => "P"         
+       | PT_LIST   => "L"        
+       | PT_CONT   => "D"       
+       | PT_CCONT  => "C"       
+       | PT_ARROW  => "R"       
+       | PT_OBJ    => "OB"
+       | PT_CFUN   => "CF"
+       | PT_BARRAY => "BA"
+       | PT_RARRAY => "RA"
+       | PT_SLOCK  => "SL"
+       | PT_INTINF => "II"
+       | PT_ETAG   => "G"
+       | PT_VOID   => "Z"
+    )
 
 (** check the boxity of values of each prim tyc *)
-fun unboxed ((PT_INT32 | PT_REAL), _, _) = true
+fun unboxed (PT_INT32 | PT_REAL) = true
   | unboxed _ = false 
 
-fun bxupd ((PT_INT31 | PT_INT32 | PT_REAL), _, _) = false
-  | bxupd ((PT_LIST | PT_OPTION | PT_VOID), _, _) = false
-  | bxupd ((PT_TNSP | PT_TGD | PT_UTGD | PT_BOXED | PT_DYN), _, _) = false
+(* appears to be unused
+fun bxupd (PT_INT31 | PT_INT32 | PT_REAL | PT_VOID) = false
+  | bxupd PT_LIST = false
   | bxupd _ = true
-
-fun ubxupd (PT_INT31, _, _) = true
+*)
+		    
+fun ubxupd PT_INT31 = true
   | ubxupd _ = false
 
-fun isvoid ((PT_INT31 | PT_INT32 | PT_REAL | PT_STRING), _, _) = false
+fun isvoid (PT_INT31 | PT_INT32 | PT_REAL | PT_STRING) = false
   | isvoid _ = true
 
 end (* toplevel local *)

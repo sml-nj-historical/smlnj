@@ -145,7 +145,7 @@ end
 fun ppkind ppstrm kind =
     pps ppstrm
       (case kind
-	 of PRIMITIVE _ => "P" | FORMAL => "F"
+	 of PRIMITIVE => "P" | FORMAL => "F"
           | FLEXTYC _ => "X" | ABSTRACT _ => "A"
 	  | TEMP => "T"
 	  | DATATYPE {stripped,...} =>
@@ -189,7 +189,7 @@ fun strength(ty) =
       of VARty(ref(INSTANTIATED ty')) => strength(ty')
        | CONty(tycon, args) =>
 	   (case tycon
- 	      of GENtyc { stamp, kind = PRIMITIVE _, ... } =>
+ 	      of GENtyc { stamp, kind = PRIMITIVE, ... } =>
 		 if Stamps.eq(stamp,arrowStamp) then 0 else 2
 	       | RECORDtyc (_::_) =>  (* excepting type unit *)
 		 if Tuples.isTUPLEtyc(tycon) then 1 else 2
@@ -309,7 +309,7 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 		     case tycon
 		      of GENtyc { stamp, kind, ... } =>
 			 (case kind of
-			      PRIMITIVE _ =>
+			      PRIMITIVE =>
 			      if Stamps.eq(stamp,arrowStamp)
 			      then case args
 			            of [domain,range] =>

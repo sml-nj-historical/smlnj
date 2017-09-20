@@ -311,7 +311,7 @@ local
 	CONty(GENtyc{stamp = Stamps.fresh generator,
 		     path = IP.IPATH[Symbol.tycSymbol "dummy"],
 		     arity = 0, eq = ref YES, stub = NONE,
-                     kind = PRIMITIVE CorePrimTycNum.ptn_void},[])
+                     kind = PRIMITIVE},[])
          (*
           * Making dummy type is a temporary hack ! pt_void is not used
           * anywhere in the source language ... Requires major clean up

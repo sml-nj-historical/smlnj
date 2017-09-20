@@ -232,7 +232,7 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 
 	   | T.CONty(tyc as T.GENtyc { kind, stamp, eq, ... }, argtys) =>
 	     (case (kind, !eq)
-	       of (T.PRIMITIVE _, _) =>
+	       of (T.PRIMITIVE, _) =>
 		  let fun ppWord s = PP.string ppstrm ("0wx"^s)
 		  in
 	              if TU.eqTycon(tyc,BT.intTycon) then

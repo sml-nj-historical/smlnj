@@ -63,7 +63,7 @@ and tycpath (* FLINT!!! *)
     | TP_SEL of tycpath * int
 
 and tyckind
-  = PRIMITIVE of int		(* primitive kinds are abstractly numbered *)
+  = PRIMITIVE		          (* primitive tycons *)
   | DATATYPE of
      {index: int,
       stamps: ST.stamp vector,

@@ -588,7 +588,7 @@ structure UnpickMod : UNPICKMOD = struct
 	end
 
 	and tyckind () = let
-	    fun tk #"a" = T.PRIMITIVE (int ())
+	    fun tk #"a" = T.PRIMITIVE
 	      | tk #"b" = let
 		    val index = int ()
 		    val root = entVarOption ()
