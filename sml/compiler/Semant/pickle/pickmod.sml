@@ -963,15 +963,6 @@ in
 	    ty arg
 	end
 
-(* replaced by primId and strPrimElem below -- should be removed after
- * testing. [dbm: 7/10/06]
-	val op $ = PU.$ II
-	fun inl_info i =
-	    II.match i { inl_prim = fn (p, t) => "A" $ [primop p, ty t],
-			 inl_str = fn sl => "B" $ [list inl_info sl],
-			 inl_no = fn () => "C" $ [] }
-*)
-
         val op $ = PU.$ PI
 (* FIXME: need to pickle triple *)
         fun primId (POI.Prim s) = "A" $ [string (PrimopBind.nameOf s)]

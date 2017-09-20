@@ -28,6 +28,7 @@ val ptc_barray : primtyc
 val ptc_rarray : primtyc 
 val ptc_slock  : primtyc
 
+(* ptc_void and pct_etag do not correspond to "real" primitive types (from BasisTypes) *)
 val ptc_void   : primtyc
 val ptc_etag   : primtyc
 
