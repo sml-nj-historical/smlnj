@@ -4,16 +4,16 @@
  * All rights reserved.
  *)
 
-structure Primop : PRIMOP = 
+structure Primop : PRIMOP =
 struct
 
   (* numkind includes kind and number of bits *)
-    datatype numkind 
-      = INT of int 
-      | UINT of int 
+    datatype numkind
+      = INT of int
+      | UINT of int
       | FLOAT of int
 (* QUESTION: what about IntInf.int? *)
- 
+
     datatype arithop
       = ADD | SUB | MUL | NEG			(* int or float *)
       | FDIV | ABS | FSQRT | FSIN | FCOS | FTAN	(* floating point only *)
@@ -62,7 +62,7 @@ struct
 	  }
       | NUMUPDATE of {				(* E: L?: store, etc. *)
 	    kind: numkind, checked: bool
-	  } 
+	  }
       | SUBSCRIPT                  		(* E: polymorphic array subscript *)
       | SUBSCRIPTV				(* E: poly vector subscript *)
       | INLSUBSCRIPT				(* E: L: poly array subscript *)
@@ -98,7 +98,7 @@ struct
       | INLABS of numkind			(* E: L: abs *)
       | INLNOT					(* E: L: bool not operator *)
       | INLCOMPOSE				(* E: L: compose "op o"  operator *)
-      | INLBEFORE				(* E: L: "before" operator *) 
+      | INLBEFORE				(* E: L: "before" operator *)
       | INLIGNORE				(* E: L: "ignore" function *)
     (* primops to support new array representations *)
       | NEW_ARRAY0				(* E: allocate zero-length array header *)
@@ -125,7 +125,7 @@ struct
 	  } option
    (* Allocate uninitialized storage on the heap.
     * The record is meant to hold short-lived C objects, i.e., they
-    * are not ML pointers.  The representation is 
+    * are not ML pointers.  The representation is
     * the same as RECORD with tag tag_raw32 or tag_fblock.
     *)
       | RAW_RECORD of { fblock: bool }  (* E: *)
@@ -196,7 +196,7 @@ struct
       | prPrimop (INLRSHIFTL kind) = "inlrshiftl_" ^ prNumkind kind
       | prPrimop (CMP{oper,kind}) = let
 	  val rator = (case oper
-		 of GT => ">_" | LT => "<_" | GTE => "<=_" | LTE => "<=_"
+		 of GT => ">_" | LT => "<_" | GTE => ">=_" | LTE => "<=_"
 		  | GEU => ">=U_" | GTU => ">U_" | LEU => "<=U_" | LTU => "<U_"
 		  | EQL => "=_" | NEQ => "<>_" | FSGN => "fsgn_"
 		(* end case *))
@@ -236,9 +236,9 @@ struct
       | prPrimop CAST = "cast"
       | prPrimop WCAST = "wcast"
       | prPrimop PTREQL = "ptreql"
-      | prPrimop PTRNEQ = "ptrneq"  
+      | prPrimop PTRNEQ = "ptrneq"
       | prPrimop POLYEQL = "polyeql"
-      | prPrimop POLYNEQ = "polyneq"  
+      | prPrimop POLYNEQ = "polyneq"
       | prPrimop GETHDLR = "gethdlr"
       | prPrimop MAKEREF = "makeref"
       | prPrimop SETHDLR = "sethdlr"
@@ -290,7 +290,7 @@ struct
       | prPrimop (RAW_LOAD nk) = concat ["raw_load(", prNumkind nk, ")"]
       | prPrimop (RAW_STORE nk) = concat ["raw_store(", prNumkind nk, ")"]
       | prPrimop (RAW_CCALL _) = "raw_ccall"
-      | prPrimop (RAW_RECORD { fblock }) = 
+      | prPrimop (RAW_RECORD { fblock }) =
 	  concat ["raw_", if fblock then "fblock" else "iblock", "_record"]
       | prPrimop INLIDENTITY = "inlidentity"
       | prPrimop CVT64 = "cvt64"
