@@ -119,9 +119,14 @@ structure BasicTypes : BASICTYPES =
 
     val (intTycon, intTy) = pt2tct ("int", 0, T.YES)
     val (int32Tycon, int32Ty) = pt2tct ("int32", 0, T.YES)
-
-    val int64Tycon = mk64 "int64"
-    val int64Ty = T.CONty (int64Tycon, [])
+    val (int64Tycon, int64Ty) = if Target.is64
+	  then pt2tct ("int64", 0, T.YES)
+	  else let
+	  (* use pairs of ints to represent 64-bit ints on 32-bit machines *)
+	    val int64Tycon = mk64 "int64"
+	    in
+	      (int64Tycon, T.CONty (int64Tycon, []))
+	    end
 
     val (intinfTycon, intinfTy) = pt2tct ("intinf", 0, T.YES)
     val (realTycon, realTy) = pt2tct ("real", 0, T.NO)

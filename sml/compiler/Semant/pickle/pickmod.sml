@@ -285,7 +285,6 @@ in
 	  | arithopc P.SUB = "\001"
 	  | arithopc P.MUL = "\002"
 	  | arithopc P.QUOT = "\003"
-(* FIXME: also need FDIV *)
 	  | arithopc P.NEG = "\004"
 	  | arithopc P.ABS = "\005"
 	  | arithopc P.LSHIFT = "\006"
@@ -302,6 +301,7 @@ in
 	  | arithopc P.REM = "\017"
 	  | arithopc P.DIV = "\018"
 	  | arithopc P.MOD = "\019"
+	  | arithopc P.FDIV = "\020"
     in
 	arithopc oper $ []
     end
@@ -964,8 +964,11 @@ in
 	end
 
         val op $ = PU.$ PI
-(* FIXME: need to pickle triple *)
-        fun primId (POI.Prim s) = "A" $ [string (PrimopBind.nameOf s)]
+        fun primId (POI.Prim s) = "A" $ [
+		string (PrimopBind.nameOf s),
+		ty (PrimopBind.typeOf s),
+		primop (PrimopBind.defnOf s)
+	      ]
           | primId (POI.NonPrim) = "B" $ []
 
         val op $ = PU.$ SPE

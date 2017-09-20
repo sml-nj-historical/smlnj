@@ -155,10 +155,9 @@ structure UnpickMod : UNPICKMOD = struct
 	#[P.GT, P.GTE, P.LT, P.LTE, P.LEU, P.LTU, P.GEU, P.GTU, P.EQL, P.NEQ, P.FSGN]
 
     val arithop_table =
-	#[P.ADD, P.SUB, P.MUL, P.DIV, P.NEG, P.ABS, P.LSHIFT, P.RSHIFT, P.RSHIFTL,
+	#[P.ADD, P.SUB, P.MUL, P.QUOT, P.NEG, P.ABS, P.LSHIFT, P.RSHIFT, P.RSHIFTL,
 	  P.ANDB, P.ORB, P.XORB, P.NOTB, P.FSQRT, P.FSIN, P.FCOS, P.FTAN,
-	  P.REM, P.DIV, P.MOD]
-(* FIXME: need FDIV and QUOT *)
+	  P.REM, P.DIV, P.MOD, P.FDIV]
 
     val eqprop_table =
 	#[T.YES, T.NO, T.IND, T.OBJ, T.DATA, T.ABS, T.UNDEF]
@@ -729,14 +728,19 @@ structure UnpickMod : UNPICKMOD = struct
 
         and iilist () = list iiListM inl_info ()
  *)
-        and primId () =
-            let
-                fun p #"A" = (* POI.Prim (string ()) *) raise Fail "unpickle prim_id"
-                  | p #"B" = POI.NonPrim
-		  | p _ = raise Format
-            in
-                share primIdM p
-            end
+        and primId () = let
+	      fun p #"A" = let
+		      val n = string ()
+		      val ty = ty ()
+		      val p = primop ()
+		    in
+		      POI.Prim (PrimopBind.mk (n, ty, p))
+		    end
+		| p #"B" = POI.NonPrim
+		| p _ = raise Format
+	      in
+		share primIdM p
+	      end
 
         and strPrimElem () =
             let

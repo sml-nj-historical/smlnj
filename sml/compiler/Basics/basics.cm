@@ -43,6 +43,9 @@ Group
 
 	signature PIDENV
 	functor PidEnvFn
+
+	signature TARGET
+	structure Target
 is
 	main/basiccontrol.sml
 
@@ -77,6 +80,13 @@ is
 
 	miscutil/wordstr-hashtable.sml
 	miscutil/symbol-hashtable.sml
+
+	mlcomp/target.sig
+#if defined(SIZE_32)
+	mlcomp/target32.sml
+#else
+	mlcomp/target64.sml
+#endif
 
 	$smlnj/basis/basis.cm
 	$smlnj/smlnj-lib/smlnj-lib.cm

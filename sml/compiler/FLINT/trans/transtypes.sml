@@ -181,9 +181,9 @@ and tycTyc(tc, d) =
 *)
 
 
-      and g (tycon as GENtyc { arity, kind, stamp, ... }) =
+      and g (tycon as GENtyc { arity, kind, ... }) =
 	  (case kind
-	     of PRIMITIVE => LT.tcc_prim(PrimTyc.pt_fromstamp stamp)
+	     of PRIMITIVE => LT.tcc_prim(PrimTyc.pt_fromtyc tycon)
               | DATATYPE {index, family, freetycs, stamps, ...} =>
 		if TU.eqTycon(tycon, BT.refTycon) then LT.tcc_prim (PT.ptc_ref)
 		else let val tc = dtsFam (freetycs, family)

@@ -27,7 +27,7 @@ Dead variable elimination:         [down,up]       [down,up]
  Arguments                            [D, ]        [dropargs, ]
 
 Conversion Primops:
- testu					U(n)	
+ testu					U(n)
  test					T(n)
  copy					C(n)
  extend					X(n)
@@ -43,7 +43,7 @@ signature CONTRACT = sig
                   -> CPS.function
 end (* signature CONTRACT *)
 
-functor Contract(MachSpec : MACH_SPEC) : CONTRACT = 
+functor Contract(MachSpec : MACH_SPEC) : CONTRACT =
 struct
 
 local
@@ -76,11 +76,11 @@ fun app2(f,nil,nil) = ()
   | app2(f,a::al,b::bl) = (f(a,b);app2(f,al,bl))
   | app2(f,_,_) = bug "NContract app2 783"
 
-fun sameName(x,VAR y) = LV.sameName(x,y) 
-  | sameName(x,LABEL y) = LV.sameName(x,y) 
+fun sameName(x,VAR y) = LV.sameName(x,y)
+  | sameName(x,LABEL y) = LV.sameName(x,y)
   | sameName _ = ()
 
-fun complain(t1,t2,s) = 
+fun complain(t1,t2,s) =
   (say (s^"  ____ Type conflicting while contractions =====> \n    ");
    say (LT.lt_print t1); say "\n and   \n    "; say (LT.lt_print t2);
    say "\n \n";
@@ -103,19 +103,19 @@ fun checklty s (t1,t2) =  ()
         | g (LT.RBOXED, LT.BOXED) = ()         (* this is temporary *)
         | g (LT.ARROW(t1,t2),LT.ARROW(t1',t2')) =
              (g(LT.out t1,LT.out t1'); g(LT.out t2, LT.out t2'))
-        | g (LT.RECORD l1,LT.RECORD l2) = 
+        | g (LT.RECORD l1,LT.RECORD l2) =
              app2(g,map LT.out l1, map LT.out l2)
-        | g (LT.CONT t1,LT.CONT t2) = g(LT.out t1,LT.out t2) 
+        | g (LT.CONT t1,LT.CONT t2) = g(LT.out t1,LT.out t2)
         | g (t1,t2) = complain(LT.inj t1, LT.inj t2,"CTR *** "^s)
-  in  g(LT.out t1, LT.out t2) 
+  in  g(LT.out t1, LT.out t2)
   end
 *)
 
-val isCont = LT.lt_iscont 
+val isCont = LT.lt_iscont
 
 fun equalUptoAlpha(ce1,ce2) =
   let fun equ pairs =
-        let fun same(VAR a, VAR b) = 
+        let fun same(VAR a, VAR b) =
 	          let fun look((x,y)::rest) = a=x andalso b=y orelse look rest
 		        | look nil = false
 		  in  a=b orelse look pairs
@@ -136,21 +136,21 @@ fun equalUptoAlpha(ce1,ce2) =
             fun all2 f (e::r,e'::r') = f(e,e') andalso all2 f (r,r')
               | all2 f (nil,nil) = true
               | all2 f _ = false
-            val rec sameexp = 
+            val rec sameexp =
 	     fn (SELECT(i,v,w,_,e),SELECT(i',v',w',_,e')) =>
 		   i=i' andalso same(v,v') andalso samewith(w,w') (e,e')
               | (RECORD(k,vl,w,e),RECORD(k',vl',w',e')) =>
-		   (k = k') andalso samefields(vl,vl') 
+		   (k = k') andalso samefields(vl,vl')
                    andalso samewith (w,w') (e,e')
               | (OFFSET(i,v,w,e),OFFSET(i',v',w',e')) =>
 		   i=i' andalso same(v,v') andalso samewith(w,w') (e,e')
               | (SWITCH(v,c,el),SWITCH(v',c',el')) =>
 		   same(v,v') andalso all2 (samewith(c,c')) (el,el')
-	      | (APP(f,vl),APP(f',vl')) => 
+	      | (APP(f,vl),APP(f',vl')) =>
                    same(f,f') andalso all2 same (vl,vl')
               | (FIX(l,e),FIX(l',e')) => (* punt! *) false
 	      | (BRANCH(i,vl,c,e1,e2),BRANCH(i',vl',c',e1',e2')) =>
-		   i=i' andalso all2 same (vl,vl') 
+		   i=i' andalso all2 same (vl,vl')
 		   andalso samewith(c,c') (e1,e1')
 		   andalso samewith(c,c') (e2,e2')
 	      | (LOOKER(i,vl,w,_,e),LOOKER(i',vl',w',_,e')) =>
@@ -184,7 +184,7 @@ datatype info = FNinfo of {args: lvar list,
               | IFIDIOMinfo of {body : (lvar * cexp * cexp) option ref}
 	      | MISCinfo of cty
 
-fun contract {function=(fkind,fvar,fargs,ctyl,cexp), 
+fun contract {function=(fkind,fvar,fargs,ctyl,cexp),
               table, click, last, size=cpssize} =
 (* NOTE: the "last" argument is currently ignored. *)
 let
@@ -202,7 +202,7 @@ val type_flag = (!CG.checkcps1) andalso (!CG.checkcps2) andalso rep_flag
 (* It would be nice to get rid of this type stuff one day. *)
 local
 
-exception NCONTRACT 
+exception NCONTRACT
 
 fun valueName(VAR v) = LV.lvarName v
   | valueName(INT i) = "Int"^Int.toString(i)
@@ -211,13 +211,13 @@ fun valueName(VAR v) = LV.lvarName v
   | valueName _ = "<others>"
 
 fun argLty [] = LT.ltc_int
-  | argLty [t] = 
-      LT.ltw_tuple(t, 
+  | argLty [t] =
+      LT.ltw_tuple(t,
             (fn xs as (_::_) => if (length(xs) < MachSpec.maxRepRegs)
                         then LT.ltc_tuple [t] else t
               | _ => t),
-            fn t => 
-               LT.ltw_str(t, 
+            fn t =>
+               LT.ltw_str(t,
                   (fn xs as (_::_) => if (length(xs) < MachSpec.maxRepRegs)
                               then LT.ltc_tuple [t] else t
                     | _ => t),
@@ -229,8 +229,8 @@ val addty = if type_flag then IntHashTable.insert table else (fn _ => ())
 in
 
 (* Only used when dropping args in reduce(FIX) case. *)
-fun getty v = 
-  if type_flag then 
+fun getty v =
+  if type_flag then
              (IntHashTable.lookup table v) handle _ =>
                    (Control.Print.say ("NCONTRACT: Can't find the variable "^
                             (Int.toString v)^" in the table ***** \n");
@@ -255,25 +255,25 @@ fun mkv(t) = let val v = LV.mkLvar()
              in  v
              end
 
-fun ltc_fun (x, y) = 
+fun ltc_fun (x, y) =
   if (LT.ltp_tyc x) andalso (LT.ltp_tyc y) then LT.ltc_parrow(x, y)
   else LT.ltc_pfct(x, y)
 
 fun mkfnLty(_,_,nil) = bug "mkfnLty in nflatten"
-  | mkfnLty(k,CNTt::_,x::r) = 
+  | mkfnLty(k,CNTt::_,x::r) =
       LT.ltw_iscont(x, fn [t2] => (k,ltc_fun(argLty r,t2))
-                        | _ => bug "unexpected mkfnLty", 
+                        | _ => bug "unexpected mkfnLty",
              fn [t2] => (k,ltc_fun(argLty r, LT.ltc_tyc t2))
-              | _ => bug "unexpected mkfnLty", 
+              | _ => bug "unexpected mkfnLty",
              fn x => (k, ltc_fun(argLty r,x)))
   | mkfnLty(k,_,r) = (k, LT.ltc_cont([argLty r]))
 
 (* Only used in newname *)
-fun sameLty(x,u) = 
+fun sameLty(x,u) =
   let val s = (LV.lvarName(x))^(" *and* "^valueName(u))
   in  if type_flag then checklty s (getty x,grabty u)
       else ()
-  end  
+  end
 
 end (* local *)
 
@@ -284,7 +284,7 @@ local exception UsageMap
 in  val m : {info: info, used : int ref, called : int ref}
 		IntHashTable.hash_table =
 	        IntHashTable.mkTable(128, UsageMap)
-    val get = fn i => IntHashTable.lookup m i 
+    val get = fn i => IntHashTable.lookup m i
 	        handle UsageMap => bug ("UsageMap on " ^ Int.toString i)
     val enter = IntHashTable.insert m
     fun rmv i = ignore (IntHashTable.remove m i) handle _ => ()
@@ -299,7 +299,7 @@ fun use_less(VAR v) = if deadup then dec(#used(get v)) else ()
 fun usedOnce v = !(#used(get v)) = 1
 fun used v = !(#used(get v)) > 0
 
-fun call(VAR v) = 
+fun call(VAR v) =
     let val {called,used,...} = get v
     in  inc called; inc used
     end
@@ -312,7 +312,7 @@ fun call_less(VAR v) = if deadup then
 		       else ()
   | call_less(LABEL v) = call_less(VAR v)
   | call_less _ = ()
-fun call_and_clobber(VAR v) = 
+fun call_and_clobber(VAR v) =
     let val {called,used,info} = get v
     in  inc called; inc used;
 	case info
@@ -326,12 +326,12 @@ fun enterREC(w,kind,vl) = enter(w,{info=RECinfo(kind,vl), called=ref 0,used=ref 
 fun enterMISC (w,ct) = enter(w,{info=MISCinfo ct, called=ref 0, used=ref 0})
 val miscBOG = MISCinfo BOGt
 fun enterMISC0 w = enter(w,{info=miscBOG, called=ref 0, used=ref 0})
-fun enterWRP(w,p,u) = 
+fun enterWRP(w,p,u) =
       enter(w,{info=WRPinfo(p,u), called=ref 0, used=ref 0})
 
 fun enterFN (_,f,vl,cl,cexp) =
       (enter(f,{called=ref 0,used=ref 0,
-		info=FNinfo{args=vl, 
+		info=FNinfo{args=vl,
 			    body=ref(if CGbetacontract then SOME cexp
 				     else NONE),
 			    specialuse=ref NONE,
@@ -343,8 +343,8 @@ fun enterFN (_,f,vl,cl,cexp) =
    (1) whether a function will be inlined for the if idiom;
    (2) whether a function will drop some arguments.
  *********************************************************************)
-fun checkFunction(_,f,vl,_,_) = 
- (case get f 
+fun checkFunction(_,f,vl,_,_) =
+ (case get f
     of {called=ref 2,used=ref 2,
 	info=FNinfo{specialuse=ref(SOME(ref 1)),
 		    body as ref(SOME(BRANCH(_,_,c,a,b))),...},...} =>
@@ -369,10 +369,10 @@ val rec pass1 = fn cexp => p1 false cexp
 and p1 = fn no_inline =>
 let val rec g1 =
  fn RECORD(kind,vl,w,e) => (enterREC(w,kind,vl); app (use o #1) vl; g1 e)
-  | SELECT (i,v,w,ct,e) => 
+  | SELECT (i,v,w,ct,e) =>
       (enter(w,{info=SELinfo(i,v,ct), called=ref 0, used=ref 0});
        use v; g1 e)
-  | OFFSET (i,v,w,e) => 
+  | OFFSET (i,v,w,e) =>
       (enter(w,{info=OFFinfo(i,v), called=ref 0, used=ref 0});
        use v; g1 e)
   | APP(f, vl) => (if no_inline
@@ -389,9 +389,9 @@ let val rec g1 =
 		  e2 as APP(VAR f2, [INT 0])) =>
        (case get f1
 	 of {info=FNinfo{body=ref(SOME(BRANCH(P.cmp{oper=P.neq,...},[INT 0, VAR w2],_,_,_))),
-			 args=[w1],specialuse,...},...} => 
+			 args=[w1],specialuse,...},...} =>
               (* Handle IF IDIOM *)
-    	      if f1=f2 andalso w1=w2 
+    	      if f1=f2 andalso w1=w2
 	      then let val {used,...}=get w1
 		   in  specialuse := SOME used
 		   end
@@ -424,7 +424,7 @@ fun ren(v0 as VAR v) = (ren(mapm2 v) handle Beta => v0)
   | ren(v0 as LABEL v) = (ren(mapm2 v) handle Beta => v0)
   | ren x = x
 
-fun newname (vw as (v,w)) = 
+fun newname (vw as (v,w)) =
  let val {used=ref u,called=ref c,...} = get v
      fun f(VAR w') = let val {used,called,...} = get w'
 	             in  used := !used + u; called := !called + c
@@ -456,7 +456,7 @@ fun drop_body(APP(f,vl)) = (call_less f; app use_less vl)
   | drop_body(RECORD(_,vl,_,e)) = (app (use_less o #1) vl; drop_body e)
   | drop_body(FIX(l,e)) = (app (drop_body o #5) l; drop_body e)
   | drop_body(SWITCH(v,_,el)) = (use_less v; app drop_body el)
-  | drop_body(BRANCH(_,vl,_,e1,e2)) = (app use_less vl; 
+  | drop_body(BRANCH(_,vl,_,e1,e2)) = (app use_less vl;
 				       drop_body e1; drop_body e2)
   | drop_body(SETTER(_,vl,e)) = (app use_less vl; drop_body e)
   | drop_body(LOOKER(_,vl,_,_,e)) = (app use_less vl; drop_body e)
@@ -475,9 +475,9 @@ fun sameLvar(lvar, VAR lv) = lv = lvar
   | sameLvar _ = false
 
 fun cvtPreCondition(n:int, n2, x, v2) =
-  n = n2 andalso usedOnce(x) andalso sameLvar(x, ren v2) 
+  n = n2 andalso usedOnce(x) andalso sameLvar(x, ren v2)
 fun cvtPreCondition_inf(x, v2) =
-  usedOnce(x) andalso sameLvar(x, ren v2) 
+  usedOnce(x) andalso sameLvar(x, ren v2)
 
 val rec reduce = fn cexp => g NONE cexp
 and g = fn hdlr =>
@@ -500,17 +500,17 @@ let val rec g' =
 		    | RECinfo(kind, l) => (SOME kind, length l)
 		    | _ => (NONE, ~1))
 	      | objInfo _ = (NONE, ~1)
-                             
+
 	    fun samevar(VAR x,VAR y) = (x=y)
 	      | samevar _ = false
 
-	    fun check1((VAR z)::r,j,a) = 
-		  (case (get z) 
-		    of {info=SELinfo(i,b,_),...} => 
+	    fun check1((VAR z)::r,j,a) =
+		  (case (get z)
+		    of {info=SELinfo(i,b,_),...} =>
 			   (if ((i=j) andalso (samevar(ren b,a)))
 			    then check1(r,j+1,a) else NONE)
 		     | _ => NONE)
-	      | check1(_::r,j,_) = NONE 
+	      | check1(_::r,j,_) = NONE
 	      | check1([],j,a) = (case objInfo a
 		   of (SOME kind', n) => if (kind = kind') andalso (n = j)
 			then SOME a
@@ -518,23 +518,23 @@ let val rec g' =
 		    | (NONE, _) => NONE
 		  (* end case *))
 
-	    fun check((VAR z)::r) = 
+	    fun check((VAR z)::r) =
 		  (case (get z)
-		    of {info=SELinfo(0,a,_),...} => 
+		    of {info=SELinfo(0,a,_),...} =>
 			  check1(r,1,ren a)
 		     | _ => NONE)
 	      | check _ = NONE
 
 	    val vl'' = map #1 vl'
 
-	     in case (check(vl'')) 
-		 of NONE => 
+	     in case (check(vl''))
+		 of NONE =>
 		     (let val e' = g' e
 		       in if !used=0 andalso deadup
 			  then (click "B1"; app use_less vl''; e')
 			  else RECORD(kind, vl', w, e')
 		      end)
-		  | SOME z => 
+		  | SOME z =>
 		     (newname(w,z); click "B2"; (*** ? ***)
 		      app use_less vl''; g' e)
 	    end
@@ -552,9 +552,9 @@ let val rec g' =
 				     of {info=RECinfo(_, vl),...} =>
 					 (let val z = #1(List.nth(vl,i))
 					      val z' = ren z
-					  in 
+					  in
                                              case z'
-                                               of REAL _ => NONE 
+                                               of REAL _ => NONE
                                                 | _  => SOME z'
 					  end handle Subscript => NONE)
 				      | _ => NONE)
@@ -587,8 +587,8 @@ let val rec g' =
 		     in the FIX case below. *)
 		  case z(vl',live)
 		    of nil => [INT 0]
-		     | [u] => 
-                         LT.ltw_iscont(grabty u, 
+		     | [u] =>
+                         LT.ltw_iscont(grabty u,
                               fn _ => [u, INT 0],
                               fn _ => [u, INT 0],
                               fn _ => [u])
@@ -650,7 +650,7 @@ let val rec g' =
 				   then let val x = mkv(LT.ltc_int)
 				         in  dropclicks(drop - 1);
 				             enterMISC0 x;
-				             (vl'@[x], cl'@[INTt], 
+				             (vl'@[x], cl'@[INTt],
                                               tt'@[LT.ltc_int])
 				        end
                                    else (dropclicks(drop);
@@ -714,16 +714,16 @@ let val rec g' =
 	    of nil => e'
 	     | l5 => FIX(map #1 l5, e')
       end
-   | SWITCH(v,c,el) => 
+   | SWITCH(v,c,el) =>
       (case ren v
-        of v' as INT i => 
-	     if !CG.switchopt 
+        of v' as INT i =>
+	     if !CG.switchopt
              then let fun f(e::el,j) = (if i=j then () else drop_body e;
 					f(el,j+1))
 		        | f(nil,_) = ()
 		  in  click "h";
 		       f(el,0);
-		       newname(c,INT 0); 
+		       newname(c,INT 0);
 		       g' (List.nth(el,i))
 		  end
 	     else SWITCH(v', c, map g' el)
@@ -731,7 +731,7 @@ let val rec g' =
    | LOOKER(P.gethdlr,_,w,t,e) =>
       (if !CG.handlerfold
        then case hdlr
-             of NONE => if used w 
+             of NONE => if used w
                         then LOOKER(P.gethdlr,[],w,t,g (SOME(VAR w)) e)
 		        else (click "i"; g' e)
               | SOME w' => (click "j"; newname(w,w'); g' e)
@@ -742,19 +742,19 @@ let val rec g' =
 	  fun sameVar (VAR x, VAR y) = x = y
 	    | sameVar _ = false
       in  if !CG.handlerfold
-	  then case hdlr 
-		 of SOME v'' => 
+	  then case hdlr
+		 of SOME v'' =>
 		     if sameVar (v', v'') then (click "k"; use_less v''; e')
 		     else SETTER(P.sethdlr,[v'],e')
 		  | _ => SETTER(P.sethdlr,[v'],e')
 	  else SETTER(P.sethdlr,[v'],e')
       end
 (* | SETTER(i,vl,e) => SETTER(i, map ren vl, g' e) *)
-   | SETTER(i,vl,e) => 
+   | SETTER(i,vl,e) =>
       let val vl' = map ren vl
       in  SETTER(setter (i, vl'), vl', g' e)
       end
-   | LOOKER(i,vl,w,t,e) => 
+   | LOOKER(i,vl,w,t,e) =>
       let val vl' = map ren vl
 	  val {used,...} = get w
       in  if !used=0 andalso !CG.deadvars
@@ -773,11 +773,11 @@ let val rec g' =
       if cvtPreCondition(n, n2, x, v2) andalso n = m then
 	(click "T(1)"; ARITH(P.test_inf m, [ren v, ren f], x2, t2, g' e2))
       else ARITH(P.test_inf n, [ren v, ren f], x, t, g' e)
-   | ARITH(P.test(p,n),[v],x,t,e as ARITH(P.test(n2,m),[v2],x2,t2,e2)) => 
+   | ARITH(P.test(p,n),[v],x,t,e as ARITH(P.test(n2,m),[v2],x2,t2,e2)) =>
       if cvtPreCondition(n, n2, x, v2) then
 	(click "T(2)"; ARITH(P.test(p,m), [ren v], x2, t2, g' e2))
       else ARITH(P.test(p,n), [ren v], x, t, g' e)
-   | ARITH(P.test_inf n,[v, f],x,t,e as ARITH(P.test(n2,m),[v2],x2,t2,e2)) => 
+   | ARITH(P.test_inf n,[v, f],x,t,e as ARITH(P.test(n2,m),[v2],x2,t2,e2)) =>
       if cvtPreCondition(n, n2, x, v2) then
 	(click "T(2)"; ARITH(P.test_inf m, [ren v, ren f], x2, t2, g' e2))
       else ARITH(P.test_inf n, [ren v, ren f], x, t, g' e)
@@ -785,7 +785,7 @@ let val rec g' =
       if cvtPreCondition(n, n2, x, v2) andalso n = m then
 	(click "U(1)"; ARITH(P.testu(p,m), [ren v], x2, t2, g' e2))
       else ARITH(P.testu(p,n), [ren v], x, t, g' e)
-   | ARITH(P.testu(p,n),[v],x,t,e as ARITH(P.testu(n2,m),[v2],x2,t2,e2)) => 
+   | ARITH(P.testu(p,n),[v],x,t,e as ARITH(P.testu(n2,m),[v2],x2,t2,e2)) =>
       if cvtPreCondition(n, n2, x, v2) then
 	(click "U(2)"; ARITH(P.testu(p,m), [ren v], x2, t2, g' e2))
       else ARITH(P.testu(p,n), [ren v], x, t, g' e)
@@ -801,30 +801,30 @@ let val rec g' =
 
    | PURE(P.trunc(p,n), [v], x, t, e as PURE(pure, [v2], x2, t2, e2)) => let
       fun skip() = PURE(P.trunc(p,n), [ren v], x, t, g' e)
-      fun checkClicked(tok, n2, m, pureOp) = 
-	if cvtPreCondition(n, n2, x, v2) then 
-	  (click tok; 
+      fun checkClicked(tok, n2, m, pureOp) =
+	if cvtPreCondition(n, n2, x, v2) then
+	  (click tok;
 	   PURE(pureOp(p,m), [ren v], x2, t2, g' e2))
 	else skip()
      in
        case pure
 	of P.trunc(n2,m) => checkClicked("R(1)", n2, m, P.trunc)
-         | P.copy(n2,m) => 
+         | P.copy(n2,m) =>
 	    if n2=m then checkClicked("R(2)", n2, m, P.trunc) else skip()
 	 | _  => skip()
      end
    | PURE(P.trunc_inf n, [v, f], x, t,
 	  e as PURE(pure, [v2], x2, t2, e2)) => let
       fun skip() = PURE(P.trunc_inf n, [ren v, ren f], x, t, g' e)
-      fun checkClicked(tok, n2, m) = 
-	if cvtPreCondition(n, n2, x, v2) then 
-	  (click tok; 
+      fun checkClicked(tok, n2, m) =
+	if cvtPreCondition(n, n2, x, v2) then
+	  (click tok;
 	   PURE(P.trunc_inf m, [ren v, ren f], x2, t2, g' e2))
 	else skip()
      in
        case pure
 	of P.trunc(n2,m) => checkClicked("R(1)", n2, m)
-         | P.copy(n2,m) => 
+         | P.copy(n2,m) =>
 	    if n2=m then checkClicked("R(2)", n2, m) else skip()
 	 | _  => skip()
      end
@@ -837,7 +837,7 @@ let val rec g' =
 	     PURE(P.extend(p,n), [ren v], x, t, g' e)
    | PURE(P.extend(p,n), [v], x, t, e as PURE(pure, [v2], x2, t2, e2)) => let
        fun skip() = PURE(P.extend(p,n), [ren v], x, t, g' e)
-       fun checkClicked(tok, n2, pureOp) = 
+       fun checkClicked(tok, n2, pureOp) =
 	 if cvtPreCondition(n, n2, x, v2) then
 	   (click tok;
 	    PURE(pureOp, [ren v], x2, t2, g' e2))
@@ -845,10 +845,10 @@ let val rec g' =
      in
        case pure
 	of P.extend(n2,m) => checkClicked("X(1)", n2, P.extend (p, m))
-         | P.copy(n2,m) => 
+         | P.copy(n2,m) =>
 	    if n2 = m then checkClicked("X(2)", n2, P.extend (p, m))
 	    else skip()
-	 | P.trunc(n2,m) => 
+	 | P.trunc(n2,m) =>
 	    if m >= p then checkClicked("X(3)", n2, P.extend (p, m))
 	    else checkClicked("X(4)", n2, P.trunc (p, m))
 	 | _ => skip()
@@ -910,18 +910,18 @@ let val rec g' =
    | PURE(P.copy(p,n), [v], x, t, e as PURE(pure, [v2], x2, t2, e2)) => let
        val v' = [ren v]
        fun skip () = PURE(P.copy(p,n), v', x, t, g' e)
-       fun checkClicked(tok, n2, pureOp) = 
+       fun checkClicked(tok, n2, pureOp) =
 	 if cvtPreCondition(n, n2, x, v2) then
 	   (click tok; PURE(pureOp, v', x2, t2, g' e2))
 	 else skip()
      in
        case pure
 	of P.copy(n2,m) => checkClicked("C(1)", n2, P.copy (p, m))
-         | P.extend(n2,m) => 
+         | P.extend(n2,m) =>
 	    if n > p then checkClicked("C(2)", n2, P.copy (p, m))
 	    else if n = p then checkClicked("C(2)", n2, P.extend (p, m))
 	    else skip()
-   	 | P.trunc(n2,m) => 
+   	 | P.trunc(n2,m) =>
             if m >= p then checkClicked("C(3)", n2, P.copy (p, m))
 	    else if m < p then checkClicked("C(4)", n2, P.trunc (p, m))
 	    else skip()
@@ -944,7 +944,7 @@ let val rec g' =
    | PURE(P.copy(p,n), [v], x, t, e as ARITH(a, [v2], x2, t2, e2)) => let
        val v' = [ren v]
        fun skip () = PURE(P.copy(p,n), v', x, t, g' e)
-       fun checkClicked(tok, n2, class, arithOp) = 
+       fun checkClicked(tok, n2, class, arithOp) =
 	 if cvtPreCondition(n, n2, x, v2) then
 	   (click tok; class(arithOp, v', x2, t2, g' e2))
 	 else skip()
@@ -953,7 +953,7 @@ let val rec g' =
 	of P.test(n2,m) =>
 	   if m >= p then checkClicked("C5", n2, PURE, P.copy (p, m))
 	   else checkClicked("C6", n2, ARITH, P.test (p, m))
-	 | P.testu(n2,m) => 
+	 | P.testu(n2,m) =>
 	   if m > p then checkClicked("C7", n2, PURE, P.copy (p, m))
 	   else checkClicked("C8", n2, ARITH, P.testu (p, m))
 	 | _ => skip()
@@ -993,22 +993,22 @@ let val rec g' =
           (* Maximum number of speculatively executed conditional moves *)
           val MAX_CONDMOVE_HOIST = 3
 
-          (* This function creates conditional move from 
+          (* This function creates conditional move from
            * branches of the form:
            *    BRANCH(i,vl,c,APP(f,[x1]),APP(f,[x2]))
            *)
-          fun conditionalMove() = 
-              let (* Hoist conditional moves up from branches 
+          fun conditionalMove() =
+              let (* Hoist conditional moves up from branches
                    * This will make them speculatively.
                    * We limit this number to MAX_CONDMOVE_HOIST, so
                    * that we don't speculatively execute everything.
                    *)
                   fun hoist(e, 0) = (fn k => k, e)
-                    | hoist(PURE(p as P.condmove _,vl,x,t,e), n) = 
+                    | hoist(PURE(p as P.condmove _,vl,x,t,e), n) =
                       let val (k, e) = hoist(e, n-1)
                           fun newK e = PURE(p,vl,x,t,k e)
                       in  (newK, e)
-                      end 
+                      end
                     | hoist(e, _) = (fn k => k, e)
                   val (k1, e1) = hoist(g' e1, MAX_CONDMOVE_HOIST)
                   val (k2, e2) = hoist(g' e2, MAX_CONDMOVE_HOIST)
@@ -1017,7 +1017,7 @@ let val rec g' =
                   fun default() = BRANCH(i, vl', c, k1 e1, k2 e2)
 
                       (* detemine the type of conditional move *)
-                  fun findType(f,x,y) = 
+                  fun findType(f,x,y) =
                   let fun getTy(x,again) =
                          case x of
                            STRING _ => SOME BOGt
@@ -1032,11 +1032,11 @@ let val rec g' =
                          FNinfo{args=[f_arg], ...} =>
                          (case #info(get f_arg) of
                             MISCinfo t => SOME t (* found type *)
-                         | _ => findTy() 
+                         | _ => findTy()
                          )
-                       |  _ => findTy() 
-                  end 
- 
+                       |  _ => findTy()
+                  end
+
               in  case (i, e1, e2) of
                     (* String compares are complex, so we punt on them *)
                     ((P.streq | P.strneq), _, _) => default()
@@ -1053,11 +1053,11 @@ let val rec g' =
                       | _ => (say "COND MOVE failed\n"; default())
                       )
                       else default()
-                  | _ => default() 
+                  | _ => default()
               end
 
           fun noConditionalMove() = BRANCH(i, vl', c, g' e1, g' e2)
- 
+
 	  fun h() = (if !CG.branchfold andalso equalUptoAlpha(e1,e2)
 		     then (click "z";
 			   app use_less vl';
@@ -1065,14 +1065,14 @@ let val rec g' =
 			   drop_body e2;
 			   g' e1)
 		     else if !CG.comparefold
-		     then if branch(i,vl') 
-			       then (newname(c,INT 0); 
+		     then if branch(i,vl')
+			       then (newname(c,INT 0);
 				     app use_less vl';
-				     drop_body e2; 
+				     drop_body e2;
 				     g' e1)
-			       else (newname(c,INT 0); 
+			       else (newname(c,INT 0);
 				     app use_less vl';
-				     drop_body e1; 
+				     drop_body e1;
 				     g' e2)
 		     else raise ConstFold)
 		 handle ConstFold => noConditionalMove()
@@ -1105,11 +1105,11 @@ end
     fn (P.unboxed, vl) => not(branch(P.boxed, vl))
      | (P.boxed, [INT _]) => (click "n"; false)
      | (P.boxed, [STRING s]) => (click "o"; true)
-     | (P.boxed, [VAR v]) => 
+     | (P.boxed, [VAR v]) =>
 	   (case get v
 	     of {info=RECinfo _, ...} => (click "p"; true)
 	      | _ => raise ConstFold)
-     | (P.cmp{oper=P.<, kind}, [VAR v, VAR w]) => 
+     | (P.cmp{oper=P.<, kind}, [VAR v, VAR w]) =>
 	   if v=w then (click "v"; false) else raise ConstFold
      | (P.cmp{oper=P.<, kind=P.INT 31}, [INT i, INT j]) => (click "w"; i<j)
      | (P.cmp{oper=P.>,kind}, [w,v]) =>
@@ -1118,15 +1118,15 @@ end
 	   branch(P.cmp{oper=P.>=,kind=kind},[v,w])
      | (P.cmp{oper=P.>=,kind}, vl) =>
 	   not(branch(P.cmp{oper=P.<,kind=kind}, vl))
-     | (P.cmp{oper=P.<,kind=P.UINT 31}, [INT i, INT j]) => 
-	   (click "w"; if j<0 then i>=0 orelse i<j else i>=0 andalso i<j) 
-     | (P.cmp{oper=P.eql, kind}, [VAR v, VAR w]) => 
+     | (P.cmp{oper=P.<,kind=P.UINT 31}, [INT i, INT j]) =>
+	   (click "w"; if j<0 then i>=0 orelse i<j else i>=0 andalso i<j)
+     | (P.cmp{oper=P.eql, kind}, [VAR v, VAR w]) =>
 	 (case kind
   	   of P.FLOAT _ => raise ConstFold (* incase of NaN's *)
 	    | _ => if v=w then  (click "v"; true) else raise ConstFold
  	           (*esac*))
      | (P.cmp{oper=P.eql,...}, [INT i, INT j]) => (click "w"; i=j)
-     | (P.cmp{oper=P.neq,kind}, vl) => 
+     | (P.cmp{oper=P.neq,kind}, vl) =>
 	   not(branch(P.cmp{oper=P.eql,kind=kind}, vl))
      | (P.peql, [INT i, INT j]) => (click "w"; i=j)
      | (P.pneq, [v,w]) => not(branch(P.peql,[w,v]))
@@ -1137,6 +1137,7 @@ end
      | (P.arith{oper=P.*,...}, [v, INT 1]) => (click "G"; v)
      | (P.arith{oper=P.*,...}, [INT 0, _]) => (click "H"; INT 0)
      | (P.arith{oper=P.*,...}, [_, INT 0]) => (click "I"; INT 0)
+(* FIXME: not 32-bit dependent code *)
      | (P.arith{oper=P.*,kind=P.INT 31}, [INT i, INT j]) =>
 		let val x = i*j in x+x+2; click "J"; INT x end
      | (P.arith{oper=P./,...}, [v, INT 1]) => (click "K"; v)
@@ -1195,7 +1196,7 @@ end
 	   (click "T"; INT 0)
      | (P.real{fromkind=P.INT 31,tokind=P.FLOAT 64}, [INT i]) =>
 	   (REAL(Int.toString i ^ ".0"))  (* isn't this cool? *)
-     | (P.funwrap,[x as VAR v]) => 
+     | (P.funwrap,[x as VAR v]) =>
           (case get(v) of {info=WRPinfo(P.fwrap,u),...} =>
 			    (click "U"; use_less x; u)
                         | _ => raise ConstFold)
@@ -1228,7 +1229,7 @@ in  debugprint "Contract: "; debugflush();
     let val cexp' = reduce cexp
     in  debugprint "\n";
 	if debug
-	    then (debugprint "After contract: \n"; 
+	    then (debugprint "After contract: \n";
 		  PPCps.prcps cexp')
 	else ();
 	(fkind, fvar, fargs, ctyl, cexp')

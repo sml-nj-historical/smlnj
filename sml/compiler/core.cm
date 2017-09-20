@@ -127,6 +127,10 @@ Group
 	structure DebIndex
 
 	structure PPLty
+
+	signature TARGET
+	structure Target
+
 is
 
 TopLevel/environ/environ.sig
