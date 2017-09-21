@@ -1060,16 +1060,18 @@ fun tyToString ty =
 	    case tys
 	     of nil => ""
 	      | [ty] => tyToString ty
-	      | ty::tys => toToString ty ^ "," ^ showargs tys
+	      | ty::tys => concat[tyToString ty, ",", showargs tys]
     in case ty
 	of VARty _ => "<tv>"
-	 | IBOUND n => "<"^Int.toString n^">"
+	 | IBOUND n => concat["<", Int.toString n, ">"]
 	 | CONty(tyc,args) =>
-	   if BT.isArrow ty
-	   then "(" ^ tyToString BT.domain ty ^ " -> " ^ tyToString BT.range ty ^ ")"
-	   else (if null args then "" else "("^showArgs args^")") ^ Symbol.name(tycName tyc)
+	   if BT.isArrowType ty
+	      then concat["(", tyToString (BT.domain ty), " -> ", tyToString (BT.range ty), ")"]
+	   else if null args
+	      then Symbol.name(tycName tyc)
+	      else concat["(", showargs args, ") ", Symbol.name(tycName tyc)]
 	 | POLYty{tyfun=TYFUN{body,arity},...} =>
-	   "<P" ^ Int.toString arity ^ ">[" ^ tyToString body ^ "]"
+	   concat["<P", Int.toString arity, ">[", tyToString body, "]"]
 	 | WILDCARDty => "<wc>"
 	 | UNDEFty => "<ud>"
 	 | MARKty (ty,_) => tyToString ty
