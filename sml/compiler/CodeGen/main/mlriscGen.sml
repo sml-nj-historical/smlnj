@@ -1,11 +1,13 @@
-(* mlriscGen.sml --- translate CPS to MLRISC.
+(* mlriscGen.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Translate CPS to MLRISC.
  *
  * This version of MLRiscGen also injects GC types to the MLRISC backend.
  * I've also reorganized it a bit and added a few comments
  * so that I can understand it.
- *
- * COPYRIGHT (c) 1996 AT&T Bell Laboratories.
- *
  *)
 
 signature MLRISCGEN =
@@ -103,8 +105,10 @@ struct
       GCCells(structure C = Cells
               structure GC = SMLGCType)
 
+(* 64BIT: *)
   val I31    = SMLGCType.I31     (* tagged integers *)
   val I32    = SMLGCType.I32     (* untagged integers *)
+(* REAL32: *)
   val REAL64 = SMLGCType.REAL64  (* untagged floats *)
   val PTR    = SMLGCType.PTR     (* boxed objects *)
   val NO_OPT = [#create An.NO_OPTIMIZATION ()]
@@ -117,10 +121,12 @@ struct
   val i32 = #create An.MARK_REG(fn r => enterGC(r,I32))
   val i31 = #create An.MARK_REG(fn r => enterGC(r,I31))
   val flt = #create An.MARK_REG(fn r => enterGC(r,REAL64))
-  fun ctyToAnn CPS.INTt   = i31
-    | ctyToAnn CPS.INT32t = i32
-    | ctyToAnn CPS.FLTt   = flt
-    | ctyToAnn _          = ptr
+  fun ctyToAnn CPS.TINTt = i31
+    | ctyToAnn (CPS.INTt 32) = i32
+    | ctyToAnn (CPS.INTt _) = raise Fail "unsupported INTt size"
+    | ctyToAnn (CPS.FLTt 64) = flt
+    | ctyToAnn (CPS.FLTt _) = raise Fail "unsupported FLTt size"
+    | ctyToAnn _ = ptr
 
   (*
    * Convert kind to gc type
@@ -129,10 +135,12 @@ struct
     | kindToGCty(CPS.P.UINT 31) = I31
     | kindToGCty(_) = I32
 
-  fun ctyToGCty(CPS.FLTt)   = REAL64
-    | ctyToGCty(CPS.INTt)   = I31
-    | ctyToGCty(CPS.INT32t) = I32
-    | ctyToGCty _           = PTR
+  fun ctyToGCty (CPS.FLTt 64) = REAL64
+    | ctyToGCty (CPS.FLTt _) = raise Fail "unsupported FLTt size"
+    | ctyToGCty CPS.TINTt = I31		(*64BIT: FIXME *)
+    | ctyToGCty (CPS.INTt 32) = I32
+    | ctyToGCty (CPS.INTt _) = raise Fail "unsupported INTt size"
+    | ctyToGCty _ = PTR
 
   (*
    * Make a GC livein/liveout annotation
@@ -267,13 +275,14 @@ struct
        * We also annotate the gc types of these temporaries.
        *)
       fun known [] = []
-        | known(cty::rest) =
-            (case cty of
-              CPS.FLTt   => M.FPR(M.FREG(fty,newFreg REAL64))
-            | CPS.INTt   => M.GPR(M.REG(ity,newReg I31))
-            | CPS.INT32t => M.GPR(M.REG(ity,newReg I32))
-            | _          => M.GPR(M.REG(pty,newReg PTR))
-            )::known rest
+        | known(cty::rest) = (case cty
+	     of CPS.FLTt 64 => M.FPR(M.FREG(fty,newFreg REAL64))
+              | CPS.FLTt _ => raise Fail "unsupported FLTt size"  (* REAL32: FIXME *)
+              | CPS.TINTt => M.GPR(M.REG(ity,newReg I31))
+              | CPS.INTt 32 => M.GPR(M.REG(ity,newReg I32))
+              | CPS.INTt _ => raise Fail "unsupported INTt size"  (* 64BIT: FIXME *)
+              | _ => M.GPR(M.REG(pty,newReg PTR))
+            (* end case *)) :: known rest
 
       (*
        * labelTbl is a mapping of function names (CPS.lvars) to labels.
@@ -469,11 +478,11 @@ struct
           (*
            * Function grabty lookups the CPS type of a value expression in CPS.
            *)
-          fun grabty(CPS.VAR v) = typmap v
-            | grabty(CPS.LABEL v) = typmap v
-            | grabty(CPS.INT _) = CPS.INTt
-            | grabty(CPS.INT32 _) = CPS.INT32t
-            | grabty(CPS.VOID) = CPS.FLTt
+          fun grabty (CPS.VAR v) = typmap v
+            | grabty (CPS.LABEL v) = typmap v
+            | grabty (CPS.INT _) = CPS.TINTt
+            | grabty (CPS.INT32 _) = CPS.INTt 32 (* 64BIT: FIXME *)
+            | grabty (CPS.VOID) = CPS.FLTt 64 (* why? *)
             | grabty _ = CPS.BOGt
 
           (*
@@ -1256,7 +1265,8 @@ raise ex)
                    | (P.unboxed,[v,a,b]) => (unboxed v, a, b)
                    | _ => error "condmove"
               in  case t of
-                     FLTt =>
+(* REAL32: FIXME *)
+                     FLTt 64 =>
                        computef64(x,
                           M.FCOND(64, cmp, fregbind a, fregbind b), e, hp)
                    | _    =>
@@ -1363,7 +1373,7 @@ raise ex)
           and funnySelect(i, k, x, t, e, hp) =
               let val unboxedfloat = MS.unboxedFloats
                   fun isFlt t =
-                    if unboxedfloat then (case t of FLTt => true | _ => false)
+                    if unboxedfloat then (case t of FLTt _ => true | _ => false)
                     else false
                   fun fallocSp(x,e,hp) =
                     (addFregBinding(x,M.FREG(fty,newFreg REAL64));gen(e, hp))
@@ -1478,7 +1488,7 @@ raise ex)
 
             (*** SELECT ***)
             | gen(SELECT(i, INT k, x, t, e), hp) = funnySelect(i,k,x,t,e,hp)
-            | gen(SELECT(i, v, x, FLTt, e), hp) = fselect(i, v, x, e, hp)
+            | gen(SELECT(i, v, x, FLTt 64, e), hp) = fselect(i, v, x, e, hp) (* REAL32: *)
             | gen(SELECT(i, v, x, t, e), hp) = select(i, v, x, t, e, hp)
 
             (*** OFFSET ***)
@@ -1723,7 +1733,7 @@ raise ex)
             | gen(PURE(P.i32wrap,[u],w,_,e), hp) =
                 mkI32block([(u, offp0)], w, e, hp)
             | gen(PURE(P.i32unwrap,[u],w,_,e), hp) =
-                select(0, u, w, INT32t, e, hp)
+                select(0, u, w, INTt 32, e, hp)
 
             | gen(PURE(P.wrap,[u],w,_,e), hp) = copy(PTR, w, u, e, hp)
             | gen(PURE(P.unwrap,[u],w,_,e), hp) = copy(I32, w, u, e, hp)
@@ -1946,7 +1956,7 @@ raise ex)
                 rawload (kind, M.ADD(addrTy,regbind i, regbind j), x, e, hp)
 
             (*** SETTER ***)
-            | gen(SETTER(P.rawupdate FLTt,[v,i,w],e),hp) =
+            | gen(SETTER(P.rawupdate(FLTt 64),[v,i,w],e),hp) =
                 (emit(M.FSTORE(fty,scale8(regbind' v, i), fregbind w,R.memory));
                  gen(e, hp))
             | gen(SETTER(P.rawupdate _,[v,i,w],e),hp) =
@@ -2038,11 +2048,11 @@ raise ex)
                           arg
               in  case (result, wtl) of
                     ([], [(w, _)]) => defI31 (w, mlZero, e, hp)
-		  | ([M.FPR x],[(w,CPS.FLTt)]) => treeifyDefF64 (w, x, e, hp)
+		  | ([M.FPR x],[(w,CPS.FLTt 64)]) => treeifyDefF64 (w, x, e, hp) (* REAL32: *)
                         (* more sanity checking here ? *)
-                  | ([M.GPR x],[(w,CPS.INT32t)]) => defI32 (w, x, e, hp)
+                  | ([M.GPR x],[(w,CPS.INTt 32)]) => defI32 (w, x, e, hp) (* 64BIT: *)
                   | ([M.GPR x],[(w,CPS.PTRt _)]) => defBoxed (w, x, e, hp)
-		  | ([M.GPR x1, M.GPR x2],[(w1,CPS.INT32t),(w2,CPS.INT32t)]) =>
+		  | ([M.GPR x1, M.GPR x2],[(w1,CPS.INTt 32),(w2,CPS.INTt 32)]) =>
 		      let val (r1, r2) = (newReg I32, newReg I32)
 		      in addRegBinding(w1, r1);
 			 addRegBinding(w2, r2);

@@ -71,35 +71,39 @@ end (* local *)
  *              CONSTANTS AND UTILITY FUNCTIONS                            *
  ***************************************************************************)
 
-fun unwrapf64(u,x,ce) = PURE(P.funwrap,[u],x,FLTt,ce)
-fun unwrapi32(u,x,ce) = PURE(P.i32unwrap,[u],x,INT32t,ce)
-fun wrapf64(u,x,ce)   = PURE(P.fwrap,[u],x,BOGt,ce)
-fun wrapi32(u,x,ce)   = PURE(P.i32wrap,[u],x,BOGt,ce)
+fun unwrapf64 (u,x,ce) = PURE(P.funwrap,[u],x,FLTt 64,ce)	(* REAL32: FIXME *)
+fun unwrapi32 (u,x,ce) = PURE(P.i32unwrap,[u],x,INTt 32,ce)	(* 64BIT: FIXME *)
+fun wrapf64 (u,x,ce)   = PURE(P.fwrap,[u],x,BOGt,ce)		(* REAL32: FIXME *)
+fun wrapi32 (u,x,ce)   = PURE(P.i32wrap,[u],x,BOGt,ce)		(* 64BIT: FIXME *)
 
-fun all_float (FLTt::r) = all_float r
+fun all_float (FLTt _::r) = all_float r
   | all_float (_::r) = false
   | all_float [] = true
 
 fun selectFL(i,u,x,ct,ce) = SELECT(i,u,x,ct,ce)
 
-fun selectNM(i,u,x,ct,ce) =
-  (case ct
-    of FLTt => mkfn(fn v => SELECT(i,u,v,BOGt,unwrapf64(VAR v,x,ce)))
-     | INT32t => mkfn(fn v => SELECT(i,u,v,BOGt,unwrapi32(VAR v,x,ce)))
-     | _ => SELECT(i,u,x,ct,ce))
+fun selectNM(i,u,x,ct,ce) = (case ct
+       of FLTt 64 => mkfn(fn v => SELECT(i,u,v,BOGt,unwrapf64(VAR v,x,ce)))
+	| FLTt _ => raise Fail "unsupported FLTt size" (* REAL32: FIXME *)
+	| INTt 32 => mkfn(fn v => SELECT(i,u,v,BOGt,unwrapi32(VAR v,x,ce)))
+	| INTt _ => raise Fail "unsupported INTt size" (* 64BIT: FIXME *)
+	| _ => SELECT(i,u,x,ct,ce)
+      (* end case *))
 
 fun recordFL(ul,_,w,ce) =
-  RECORD(RK_FBLOCK, map (fn u => (u,OFFp 0)) ul, w, ce)
+      RECORD(RK_FBLOCK, map (fn u => (u,OFFp 0)) ul, w, ce)
 
 fun recordNM(ul,ts,w,ce) =
-  let fun g(FLTt::r,u::z,l,h) =
+  let fun g (FLTt 64::r,u::z,l,h) =
             mkfn(fn v => g(r, z, (VAR v,OFFp 0)::l,
                           fn ce => h(wrapf64(u,v,ce))))
-        | g(INT32t::r,u::z,l,h) =
+        | g (FLTt _ ::_, _, _, _) = raise Fail "unsupported FLTt size" (* REAL32: FIXME *)
+        | g (INTt 32::r,u::z,l,h) =
             mkfn(fn v => g(r, z, (VAR v,OFFp 0)::l,
                               fn ce => h(wrapi32(u,v,ce))))
-        | g(_::r,u::z,l,h) = g(r, z, (u,OFFp0)::l, h)
-        | g([],[],l,h) = (rev l, h)
+        | g (INTt _ ::_, _, _, _) = raise Fail "unsupported INTt size" (* 64BIT: FIXME *)
+        | g (_::r,u::z,l,h) = g(r, z, (u,OFFp0)::l, h)
+        | g ([],[],l,h) = (rev l, h)
         | g _ = bug "unexpected in recordNM in convert"
 
       val (nul,header) = g(ts,ul,[],fn x => x)
@@ -120,18 +124,20 @@ fun cmpop stuff =
   (case stuff
     of {oper=AP.EQL,kind=AP.INT 31} => P.ieql
      | {oper=AP.NEQ,kind=AP.INT 31} => P.ineq
-     | {oper,kind=AP.FLOAT size} =>
-       let val o =
-	   case AP.GT   => P.fGT
-	      | AP.GTE  => P.fGE
-	      | AP.LT   => P.fLT
-	      | AP.LTE  => P.fLE
- 	      | AP.EQL  => P.fEQ
- 	      | AP.NEQ  => P.fULG
-	      | AP.FSGN => P.fsgn
- 	      | _       => bug "cmpop:kind=AP.FLOAT"
-          in P.fcmp{oper= o, size=size}
-         end
+     | {oper,kind=AP.FLOAT size} => let
+	  val rator = (case oper
+		of AP.GT => P.fGT
+		 | AP.GTE  => P.fGE
+		 | AP.LT   => P.fLT
+		 | AP.LTE  => P.fLE
+		 | AP.EQL  => P.fEQ
+		 | AP.NEQ  => P.fULG
+		 | AP.FSGN => P.fsgn
+		 | _       => bug "cmpop:kind=AP.FLOAT"
+	       (* end case *))
+	  in
+	    P.fcmp{oper= rator, size=size}
+          end
      | {oper, kind} =>
          let fun check (_, AP.UINT _) = ()
  	       | check (oper, _) = bug ("check" ^ oper)
@@ -160,20 +166,24 @@ fun map_branch p =
      | _ => bug "unexpected primops in map_branch")
 
 (* primwrap: cty -> P.pure *)
-fun primwrap(INTt) = P.iwrap
-  | primwrap(INT32t) = P.i32wrap
-  | primwrap(FLTt) = P.fwrap
+fun primwrap (TINTt) = P.iwrap
+  | primwrap (INTt 32) = P.i32wrap
+  | primwrap (INTt _) = raise Fail "unsupported INTt size" (* 64BIT: *)
+  | primwrap (FLTt 64) = P.fwrap
+  | primwrap (FLTt _) = raise Fail "unsupported FLTt size" (* REAL32: *)
   | primwrap _ = P.wrap
 (*
-fun primwrap(INTt sz) = P.iwrap sz
+fun primwrap(TINTt sz) = P.iwrap sz
   | primwrap(FLTt sz) = P.fwrap sz
   | primwrap _ = P.wrap
 *)
-		     
+
 (* primunwrap: cty -> P.pure *)
-fun primunwrap(INTt) = P.iunwrap
-  | primunwrap(INT32t) = P.i32unwrap
-  | primunwrap(FLTt) = P.funwrap
+fun primunwrap (TINTt) = P.iunwrap
+  | primunwrap (INTt 32) = P.i32unwrap
+  | primunwrap (INTt _) = raise Fail "unsupported INTt size" (* 64BIT: *)
+  | primunwrap (FLTt 64) = P.funwrap
+  | primunwrap (FLTt _) = raise Fail "unsupported FLTt size" (* REAL32: *)
   | primunwrap _ = P.unwrap
 
 (* arithop: AP.arithop -> P.arithop *)
@@ -306,11 +316,11 @@ fun do_switch_gen ren = Switch.switch {
                                                    STRING str], mkv(), a, b)),
    E_switch = (fn (v,l) => SWITCH(v, mkv(), l)),
    E_add    = (fn (x,y,c) =>
-                    mkfn(fn v => ARITH(P.iadd,[x,y],v,INTt,c(VAR v)))),
-   E_gettag = (fn (x,c) => mkfn(fn v => PURE(P.getcon,[x],v,INTt,c(VAR v)))),
-   E_unwrap = (fn (x,c) => mkfn(fn v => PURE(P.unwrap,[x],v,INTt,c(VAR v)))),
+                    mkfn(fn v => ARITH(P.iadd,[x,y],v,TINTt,c(VAR v)))),
+   E_gettag = (fn (x,c) => mkfn(fn v => PURE(P.getcon,[x],v,TINTt,c(VAR v)))),
+   E_unwrap = (fn (x,c) => mkfn(fn v => PURE(P.unwrap,[x],v,TINTt,c(VAR v)))),
    E_getexn = (fn (x,c) => mkfn(fn v => PURE(P.getexn,[x],v,BOGt,c(VAR v)))),
-   E_length = (fn (x,c) => mkfn(fn v => PURE(P.length,[x],v,INTt,c(VAR v)))),
+   E_length = (fn (x,c) => mkfn(fn v => PURE(P.length,[x],v,TINTt,c(VAR v)))),
    E_boxed  = (fn (x,a,b) => BRANCH(P.boxed,[x],mkv(),a,b)),
    E_path   = (fn (DA.LVAR v, k) => k(ren v)
                 | _ =>  bug "unexpected path in convpath")}
@@ -534,7 +544,7 @@ fun convert fdec =
                                           default=APP(VAR df, [INT 0])}
                      in case d
                          of NONE => b
-                          | SOME de => FIX([(CONT, df, [mkv()], [INTt],
+                          | SOME de => FIX([(CONT, df, [mkv()], [TINTt],
                                            loop(de, kont))], b)
                     end
                in header(body)
@@ -652,8 +662,8 @@ fun convert fdec =
 	  | F.PRIMOP ((_,AP.RAW_CCALL (SOME i),lt,ts),f::a::_::_,v,e) => let
 		val { c_proto, ml_args, ml_res_opt, reentrant } = i
 		val c_proto = cvtCProto c_proto
-		fun cty AP.CCR64 = FLTt
-		  | cty AP.CCI32 = INT32t
+		fun cty AP.CCR64 = FLTt 64	(* REAL32: FIXME *)
+		  | cty AP.CCI32 = INTt 32	(* 64BIT: FIXME *)
 		  | cty AP.CCML = BOGt
 		  | cty AP.CCI64 = BOGt
 		val a' = lpvar a
@@ -665,13 +675,14 @@ fun convert fdec =
                           F.STRING linkage => (al, linkage)
                         | _  => (lpvar f :: al, "")
 		in  case ml_res_opt of
-			NONE => RCC (rcckind, linkage, c_proto, al, [(v, INTt)], loop (e, c))
+			NONE => RCC (rcckind, linkage, c_proto, al, [(v, TINTt)], loop (e, c))
+(* 64BIT: this code implements the fake 64-bit integers that are used on 32-bit targets *)
 		      | SOME AP.CCI64 =>
 			let val (v1, v2) = (mkv (), mkv ())
 			in
 			    RCC (rcckind, linkage, c_proto, al,
-				 [(v1, INT32t), (v2, INT32t)],
-				 recordNM([VAR v1, VAR v2],[INT32t,INT32t],
+				 [(v1, INTt 32), (v2, INTt 32)],
+				 recordNM([VAR v1, VAR v2],[INTt 32, INTt 32],
 					  v, loop (e, c)))
 			end
 		      | SOME rt => let

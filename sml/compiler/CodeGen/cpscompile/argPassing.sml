@@ -5,7 +5,7 @@
  *
  *)
 functor ArgPassing (structure C : CPSREGS
-		    structure MS : MACH_SPEC) : ARG_PASSING = 
+		    structure MS : MACH_SPEC) : ARG_PASSING =
 struct
   structure T : MLTREE = C.T
 
@@ -19,7 +19,7 @@ struct
   fun stdarg(vfp)  = T.GPR (C.stdarg(vfp))
   fun stdcont(vfp) = T.GPR (C.stdcont(vfp))
 
-  fun gpregs(vfp) = 
+  fun gpregs(vfp) =
     stdlink(vfp)::stdclos(vfp)::stdarg(vfp)::stdcont(vfp)::map T.GPR C.miscregs
   val fpregs = map T.FPR (C.savedfpregs @ C.floatregs)
 
@@ -29,7 +29,7 @@ struct
       | from(n, []) = error "fromto"
     fun to(k, []) = []
       | to(k, r::rs) = if k > j then [] else r::to(k+1, rs)
-  in 
+  in
     to(i, from(i,regs))
   end
 
@@ -37,15 +37,15 @@ struct
   fun fprfromto(i, j, vfp) = fromto(i, j, fpregs)
   fun calleesaveregs(vfp) = gprfromto(4, k+3, vfp) @ fprfromto(0, kf-1, vfp)
 
-  fun cut_head(n,l) = 
+  fun cut_head(n,l) =
     if n = 0 then l
     else (case l of a::r => cut_head(n-1,r)
                   | _ => error "codegen cuthead 444")
 
-  fun isFlt CPS.FLTt = true  | isFlt _ = false
+  fun isFlt (CPS.FLTt _) = true  | isFlt _ = false
 
   fun scan(t::z, gp, fp) =
-      if isFlt t then (hd fp)::(scan(z,gp,tl fp)) 
+      if isFlt t then (hd fp)::(scan(z,gp,tl fp))
       else (hd gp)::(scan(z,tl gp,fp))
     | scan([], _, _) = []
 
@@ -62,17 +62,17 @@ struct
     val len = length(args)
     val gpr = stdarg(vfp)::gprfromto(k+4, 1+len, vfp)
     val fpr = fprfromto(kf,len, vfp)
-  in 
+  in
    if k > 0 then stdcont(vfp)::(calleesaveregs(vfp) @ scan(rest,gpr,fpr))
    else stdlink(vfp)::stdcont(vfp)::scan(rest,gpr,fpr)
   end
-  
+
   fun standard{fnTy=CPS.CNTt, vfp, argTys} = standardCont(vfp, argTys)
     | standard{vfp, argTys, ...} = standardEscape(vfp, argTys)
 
   (* use an arbitary but fixed set of registers. *)
   fun fixed{vfp, argTys} = let
-    fun iter(CPS.FLTt::rest, regs, f::fregs) = f::iter(rest, regs, fregs)
+    fun iter(CPS.FLTt _::rest, regs, f::fregs) = f::iter(rest, regs, fregs)
       | iter(_::rest, r::regs, fregs) = r::iter(rest, regs, fregs)
       | iter([], _, _) = []
       | iter _ = error "fixed: out of registers"

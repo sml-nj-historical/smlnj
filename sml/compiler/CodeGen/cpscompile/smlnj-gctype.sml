@@ -4,15 +4,15 @@ struct
    structure CPS = CPS
 
    type ty = int
-  
+
    datatype gctype =
      CONST of IntInf.int           (* integer constant *)
    | NONREF of CPS.cty ref         (* non-reference value *)
    | REF of CPS.cty ref            (* a reference, pointer to a gc object *)
    | PLUS of ty * gctype * gctype   (* address arithmetic + *)
    | MINUS of ty * gctype * gctype   (* address arithmetic - *)
-   | ALLOCPTR 
-   | LIMITPTR 
+   | ALLOCPTR
+   | LIMITPTR
    | BOT
    | TOP
 
@@ -34,15 +34,17 @@ struct
      | join(x, TOP) = TOP
      | join(x, y)   = x  (* XXX *)
 
-   fun meet(BOT, x) = BOT 
-     | meet(x, BOT) = BOT 
-     | meet(TOP, x) = x 
-     | meet(x, TOP) = x 
+   fun meet(BOT, x) = BOT
+     | meet(x, BOT) = BOT
+     | meet(TOP, x) = x
+     | meet(x, TOP) = x
      | meet(x, y)   = x  (* XXX *)
 
-  val I31    = NONREF(ref CPS.INTt)    (* tagged integers *)
-  val I32    = NONREF(ref CPS.INT32t)  (* untagged integers *)
-  val REAL64 = NONREF(ref CPS.FLTt)    (* untagged floats *)
+(* 64BIT: change references to I31 and I32 to be more generic!!! *)
+  val I31    = NONREF(ref CPS.TINTt)	(* tagged integers *)
+  val I32    = NONREF(ref(CPS.INTt 32))	(* untagged integers *)
+(* REAL32: add REAL32 support *)
+  val REAL64 = NONREF(ref(CPS.FLTt 64))	(* untagged floats *)
 
   val PTR    = REF(ref(CPS.PTRt(CPS.VPT))) (* boxed objects (pointers) *)
   val INT    = I32 (* untagged integer *)

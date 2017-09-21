@@ -1,7 +1,10 @@
 (* literals.sml
  *
- * COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies.
- * COPYRIGHT (c) 1998 YALE FLINT PROJECT.
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * 64BIT: need support for 64-bit integers
+ * REAL32: need support for 32-bit floats
  *)
 
 signature LITERALS =
@@ -11,7 +14,7 @@ signature LITERALS =
    val litToBytes : lit -> Word8Vector.vector
  end;
 
-structure Literals : LITERALS = 
+structure Literals : LITERALS =
 struct
 
 structure W8V = Word8Vector
@@ -27,7 +30,7 @@ local structure LV = LambdaVar
       open CPS
 in
 
-fun bug msg = ErrorMsg.impossible ("Literals: "^msg) 
+fun bug msg = ErrorMsg.impossible ("Literals: "^msg)
 val ident = fn x => x
 fun mkv _ = LV.mkLvar()
 
@@ -171,7 +174,7 @@ fun litToBytes (LI_TOP[]) = W8V.fromList[]
 (*
 fun liftlits body = bug "FLINT version currently not implemented yet"
 
-fun litsplit (FK_FCT, f, [(v, t)], body) = 
+fun litsplit (FK_FCT, f, [(v, t)], body) =
       if LT.ltp_str t then
         let val (nbody, lit, llt) = liftlits body
             val nt = LT.ltc_str ((LT.ltd_str t)@[llt])
@@ -184,7 +187,7 @@ fun litsplit (FK_FCT, f, [(v, t)], body) =
 (****************************************************************************
  *                    LIFTING LITERALS ON CPS                               *
  ****************************************************************************)
-datatype info 
+datatype info
   = ZZ_STR of string
   | ZZ_FLT of string
   | ZZ_RCD of record_kind * value list
@@ -194,7 +197,7 @@ exception LitInfo
 datatype rlit = RLIT of string * word
 fun toRlit s = RLIT(s, HashString.hashString s)
 fun fromRlit (RLIT(s, _)) = s
-fun rlitcmp (RLIT(s1,i1), RLIT(s2,i2)) = 
+fun rlitcmp (RLIT(s1,i1), RLIT(s2,i2)) =
   if i1 < i2 then LESS
   else if i1 > i2 then GREATER else String.compare(s1, s2)
 structure RlitDict = RedBlackMapFn(struct type ord_key = rlit
@@ -202,7 +205,7 @@ structure RlitDict = RedBlackMapFn(struct type ord_key = rlit
                                  end)
 
 (* lifting all literals from a CPS program *)
-fun liftlits (body, root, offset) = 
+fun liftlits (body, root, offset) =
   let (* the list of record, string, or real constants *)
       val m : info IntHashTable.hash_table = IntHashTable.mkTable(32, LitInfo)
       val freevars : lvar list ref = ref []
@@ -210,7 +213,7 @@ fun liftlits (body, root, offset) =
 
       (* check if an lvar is used by the main program *)
       val refset : Intset.intset = Intset.new()
-      val used : lvar -> unit = Intset.add refset 
+      val used : lvar -> unit = Intset.add refset
       val isUsed : lvar -> bool = Intset.mem refset
 
       (* memoize the information on which corresponds to what *)
@@ -230,16 +233,16 @@ fun liftlits (body, root, offset) =
             val srtv = mkv()
             val srtval = VAR srtv
       in
-      fun entStr s = 
+      fun entStr s =
         let val v = mkv()  (** should hash to remove duplicates **)
             val sd = !sdict
             val rlit = toRlit s
-            val n = 
+            val n =
               (case RlitDict.find(sd, rlit)
                 of SOME k => k
                  | _ => let val _ = (strs := (s :: (!strs)))
                             val k = !strsN
-                            val _ = (strsN := (k+1)) 
+                            val _ = (strsN := (k+1))
                             val _ = (sdict := (RlitDict.insert(sd, rlit, k)))
                          in k
                         end)
@@ -247,7 +250,7 @@ fun liftlits (body, root, offset) =
         end
 
 (* old definition of entStr
-        
+
         let val sd = !sdict
             val rlit = toRlit s
          in (case RlitDict.peek(sd, rlit)
@@ -260,8 +263,8 @@ fun liftlits (body, root, offset) =
         end
 *)
 
-      fun appStr () = 
-        let fun g (a::r, z) = g(r, (STRING a)::z)  
+      fun appStr () =
+        let fun g (a::r, z) = g(r, (STRING a)::z)
               | g ([], z) = z (* reverse to reflecting the correct order *)
             val allStrs = !strs
          in case !strs
@@ -269,59 +272,59 @@ fun liftlits (body, root, offset) =
               | xs => (enter(srtv, ZZ_RCD(RK_RECORD, g(xs,[]))); used srtv)
         end
       end (* local of processing string literals *)
-      
+
       (** a special treatment of real constants *)
       local val reals : string list ref = ref []
             val realsN : int ref = ref 0
             val rdict = ref (RlitDict.empty)
             val rrtv = mkv()
             val rrtval = VAR rrtv
-      in				       
-      fun entReal s = 
+      in
+      fun entReal s =
         let val v = mkv()  (** should hash to remove duplicates **)
             val rd = !rdict
             val rlit = toRlit s
-            val n = 
+            val n =
               (case RlitDict.find(rd, rlit)
                 of SOME k => k
                  | _ => let val _ = (reals := (s :: (!reals)))
                             val k = !realsN
-                            val _ = (realsN := (k+1)) 
+                            val _ = (realsN := (k+1))
                             val _ = (rdict := (RlitDict.insert(rd, rlit, k)))
                          in k
                         end)
-         in (VAR v, fn ce => SELECT(n, rrtval, v, FLTt, ce))
+         in (VAR v, fn ce => SELECT(n, rrtval, v, FLTt 64, ce))	(* REAL32: FIXME *)
         end
 
-      fun appReal () = 
-        let fun g (a::r, z) = g(r, (REAL a)::z)  
+      fun appReal () =
+        let fun g (a::r, z) = g(r, (REAL a)::z)
               | g ([], z) = z (* reverse to reflecting the correct order *)
             val allReals = !reals
-         in case !reals 
+         in case !reals
              of [] => ()
               | xs => (enter(rrtv, ZZ_RCD(RK_FBLOCK, g(xs,[]))); used rrtv)
         end
       end (* local of special treatment of real constants *)
 
       (* translation on the CPS values *)
-      fun lpsv u = 
+      fun lpsv u =
         (case u
           of REAL s => entReal s
            | STRING s => entStr s
            | VAR v => (used v; (u, ident))
            | _ => (u, ident))
 
-      fun lpvs vs = 
-        let fun g (u, (xs, hh)) = 
-              let val (nu, nh) = lpsv u 
-               in (nu::xs, nh o hh) 
+      fun lpvs vs =
+        let fun g (u, (xs, hh)) =
+              let val (nu, nh) = lpsv u
+               in (nu::xs, nh o hh)
               end
          in foldr g ([], ident) vs
         end
 
       (* if all fields of a record are "constant", then we lift it *)
-      fun field ul = 
-        let fun h ((x, OFFp 0)::r, z, rsflag) = 
+      fun field ul =
+        let fun h ((x, OFFp 0)::r, z, rsflag) =
                  if const x then h(r, x::z, rsflag orelse (cstlit x)) else NONE
               | h ([], z, rsflag) = if rsflag then SOME(rev z) else NONE
               | h _ = bug "unexpected case in field"
@@ -333,7 +336,7 @@ fun liftlits (body, root, offset) =
         (case field ul
           of SOME xl => (enter(v, ZZ_RCD(rk, xl)); ident)
            | NONE =>
-               let fun g ((u, p as OFFp 0), (r, hh)) = 
+               let fun g ((u, p as OFFp 0), (r, hh)) =
                          let val (nu, nh) = lpsv u
                           in ((nu, p)::r, nh o hh)
                          end
@@ -343,22 +346,22 @@ fun liftlits (body, root, offset) =
                end)
 
       (* register a wrapped float literal *)
-      fun wrapfloat (u, v, t) = 
+      fun wrapfloat (u, v, t) =
         if const u then (enter(v, ZZ_RCD(RK_FBLOCK, [u])); ident)
         else let val (nu, hh) = lpsv u
               in (fn ce => hh(PURE(P.fwrap, [nu], v, t, ce)))
              end
 
       (* fetch out the literal information *)
-      fun getInfo () = 
+      fun getInfo () =
         let val _ = appReal()   (* register all Reals as a record *)
             val _ = appStr()   (* register all Strings as a record *)
             val allvars = !freevars
             val exports = List.filter isUsed allvars
 
-            val toplit = 
+            val toplit =
               let fun g ([], z) = LI_TOP z
-                    | g (x::r, z) = 
+                    | g (x::r, z) =
                          (case IntHashTable.lookup m x
                            of ZZ_STR s => g(r, (LI_STRING s)::z)
                             | _ => g(r, (LI_VAR x)::z))
@@ -375,14 +378,14 @@ fun liftlits (body, root, offset) =
 		    (ZZ_FLT _) => (* float is wrapped *)
                     bug "currently we don't expect ZZ_FLT in mklit"
                   (* LI_F64BLOCK([s], v, lit) *)
-                  | (ZZ_STR s) => 
+                  | (ZZ_STR s) =>
                     bug "currently we don't expect ZZ_STR in mklit"
                   (* lit   --- or we could inline string *)
                   | (ZZ_RCD(CPS.RK_FBLOCK, vs)) =>
 		    LI_F64BLOCK(map unREAL vs, v, lit)
                  | (ZZ_RCD(CPS.RK_I32BLOCK, vs)) =>
 		   LI_I32BLOCK(map unINT32 vs, v, lit)
-                 | (ZZ_RCD(rk, vs)) => 
+                 | (ZZ_RCD(rk, vs)) =>
                      LI_BLOCK(rk2bk rk, map val2lit vs, v, lit)
 	    end
 
@@ -390,27 +393,27 @@ fun liftlits (body, root, offset) =
             val lit = foldl mklit toplit allvars
 
             val n = length exports
-            val hdr = 
+            val hdr =
               if n = 0 then ident
               else let val rv = mkv()
                        val rval = VAR rv
-                       val rhdr = 
+                       val rhdr =
                          fn ce => SELECT(offset, root, rv, PTRt(RPT n), ce)
 
-                       fun mkhdr (v, (i, hh)) = 
-                         let val nh = 
+                       fun mkhdr (v, (i, hh)) =
+                         let val nh =
                                (case IntHashTable.lookup m v
                                  of (ZZ_FLT _) => bug "ZZ_FLT in mkhdr"
-                                      (* (fn ce => 
+                                      (* (fn ce =>
                                            (SELECT(i, rval, w, PTRt(FPT 1),
                                             SELECT(0, VAR w, v, FLTt, ce)))) *)
                                   | (ZZ_STR s) => bug "ZZ_STR in mkhdr"
-                                      (* (fn ce => 
+                                      (* (fn ce =>
                                             SELECT(i, rval, v, BOGt, ce)) *)
                                   | (ZZ_RCD (rk, vs)) =>
                                       let val n = length vs
-                                          val t = 
-                                            case rk 
+                                          val t =
+                                            case rk
                                              of RK_FBLOCK => PTRt(FPT n)
                                               | RK_VECTOR => BOGt
                                               | _ => PTRt(RPT n)
@@ -428,26 +431,26 @@ fun liftlits (body, root, offset) =
       and loop ce =
         (case ce
           of RECORD (rk, ul, v, e) => record (rk, ul, v) (loop e)
-           | SELECT (i, u, v, t, e) => 
+           | SELECT (i, u, v, t, e) =>
                let val (nu, hh) = lpsv u
                 in hh(SELECT(i, nu, v, t, loop e))
                end
            | OFFSET _ => bug "unexpected OFFSET in loop"
-           | APP (u, ul) => 
+           | APP (u, ul) =>
                let val (nu, h1) = lpsv u
                    val (nl, h2) = lpvs ul
                 in h1(h2(APP(nu, nl)))
                end
            | FIX (fns, e) => FIX(map lpfn fns, loop e)
-           | SWITCH (u, v, es) => 
+           | SWITCH (u, v, es) =>
                let val (nu, hh) = lpsv u
                 in hh(SWITCH(nu, v, map loop es))
                end
-           | BRANCH (p, ul, v, e1, e2) => 
+           | BRANCH (p, ul, v, e1, e2) =>
                let val (nl, hh) = lpvs ul
                 in hh(BRANCH(p, nl, v, loop e1, loop e2))
                end
-           | SETTER (p, ul, e) => 
+           | SETTER (p, ul, e) =>
                let val (nl, hh) = lpvs ul
                 in hh(SETTER(p, nl, loop e))
                end
@@ -460,7 +463,7 @@ fun liftlits (body, root, offset) =
                 in hh(ARITH(p, nl, v, t, loop e))
                end
            | PURE (P.fwrap, [u], v, t, e) => wrapfloat (u, v, t) (loop e)
-           | PURE (p, ul, v, t, e) => 
+           | PURE (p, ul, v, t, e) =>
                let val (nl, hh) = lpvs ul
                 in hh(PURE(p, nl, v, t, loop e))
                end
@@ -475,7 +478,7 @@ fun liftlits (body, root, offset) =
   end
 
 (* the main function *)
-fun litsplit (fk, f, vl as [_,x], [CNTt, t as PTRt(RPT n)], body) = 
+fun litsplit (fk, f, vl as [_,x], [CNTt, t as PTRt(RPT n)], body) =
       let val nt = PTRt(RPT (n+1))
           val (nbody, lit) = liftlits(body, VAR x, n)
        in ((fk, f, vl, [CNTt, nt], nbody), lit)

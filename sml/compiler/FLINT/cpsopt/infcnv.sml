@@ -1,10 +1,11 @@
 (* infcnv.sml
  *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Expand out any remaining occurences of test_inf, trunc_inf, extend_inf,
  * and copy_inf.  These primops carry a second argument which is a
  * function that performs the operation for 32 bit precision.
- *
- * (C) 2003 The SML/NJ fellowship.
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
@@ -64,7 +65,7 @@ end = struct
 		  val v' = mkI32var ()
 		  val e' = cexp e
 	      in
-		  C.FIX ([(C.CONT, k, [v'], [C.INT32t],
+		  C.FIX ([(C.CONT, k, [v'], [C.INTt 32],  (* 64BIT: FIXME *)
 			   C.ARITH (C.P.test (32, i), [C.VAR v'], v, t, e'))],
 			 C.APP (f, [C.VAR k, x]))
 	      end
@@ -75,7 +76,7 @@ end = struct
 		  val v' = mkI32var ()
 		  val e' = cexp e
 	      in
-		  C.FIX ([(C.CONT, k, [v'], [C.INT32t],
+		  C.FIX ([(C.CONT, k, [v'], [C.INTt 32],  (* 64BIT: FIXME *)
 			   C.PURE (C.P.trunc (32, i), [C.VAR v'], v, t, e'))],
 			 C.APP (f, [C.VAR k, x]))
 	      end
@@ -85,7 +86,7 @@ end = struct
 		  val e' = cexp e
 	      in
 		  C.FIX ([(C.CONT, k, [v], [t], e')],
-			 C.PURE (C.P.copy (i, 32), [x], v', C.INT32t,
+			 C.PURE (C.P.copy (i, 32), [x], v', C.INTt 32,  (* 64BIT: FIXME *)
 				 C.APP (f, [C.VAR k, C.VAR v', C.INT 0])))
 	      end
 	  | cexp (C.PURE (C.P.extend_inf i, [x, f], v, t, e)) =
@@ -94,7 +95,7 @@ end = struct
 		  val e' = cexp e
 	      in
 		  C.FIX ([(C.CONT, k, [v], [t], e')],
-			 C.PURE (C.P.extend (i, 32), [x], v', C.INT32t,
+			 C.PURE (C.P.extend (i, 32), [x], v', C.INTt 32,  (* 64BIT: FIXME *)
 				 C.APP (f, [C.VAR k, C.VAR v', C.INT 1])))
 	      end
 	  | cexp (C.PURE (p, xl, v, t, e)) =

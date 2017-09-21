@@ -1,24 +1,27 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* uncurry.sml *)
+(* uncurry.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 functor Uncurry(MachSpec : MACH_SPEC) : ETASPLIT  =
 struct
 
-local open CPS 
+local open CPS
       structure LT = LtyExtern
       structure LV = LambdaVar
 in
 
 fun bug s = ErrorMsg.impossible ("Uncurry: " ^ s)
 
-fun freein v = 
+fun freein v =
   let fun try(VAR w) = v=w
 	| try(LABEL w) = v=w
 	| try _ = false
 
       fun any(w :: rest) = try w orelse any rest
 	| any nil = false
-      
+
       fun any1((w,_)::rest) = try w orelse any1 rest
 	| any1 nil = false
 
@@ -39,7 +42,7 @@ fun freein v =
   end
 
 fun etasplit {function=(fkind,fvar,fargs,ctyl,cexp),
-	      table=typtable, click} = 
+	      table=typtable, click} =
 let
 
 val debug = !Control.CG.debugcps (* false *)
@@ -57,24 +60,24 @@ fun extendLty(t,[]) = t
 (* count the number of GP and FP registers needed for a list of lvars *)
 val unboxedfloat = MachSpec.unboxedFloats
 
-fun isFltCty FLTt = unboxedfloat 
+fun isFltCty (FLTt _) = unboxedfloat
   | isFltCty _ = false
 
 val numCSgpregs = MachSpec.numCalleeSaves
 val numCSfpregs = MachSpec.numFloatCalleeSaves
 val maxgpregs = MachSpec.numRegs - numCSgpregs - 1
-val maxfpregs = MachSpec.numFloatRegs - numCSfpregs - 2  
+val maxfpregs = MachSpec.numFloatRegs - numCSfpregs - 2
 
-fun checklimit(cl) = 
-  let fun h(FLTt::r, m, n) = if unboxedfloat then h(r,m,n+1) else h(r,m+1,n)
+fun checklimit(cl) =
+  let fun h(FLTt _::r, m, n) = if unboxedfloat then h(r,m,n+1) else h(r,m+1,n)
         | h(_::r, m, n) = h(r,m+1,n)
         | h([], m, n) = (m <= maxgpregs) andalso (n <= maxfpregs)
    in h(cl, 0, 0)
   end
 
 exception NEWETA
-fun getty v = 
-  if type_flag 
+fun getty v =
+  if type_flag
   then (IntHashTable.lookup typtable v) handle _ =>
                 (Control.Print.say ("NEWETA: Can't find the variable "^
                             (Int.toString v)^" in the typtable ***** \n");
@@ -93,7 +96,7 @@ fun copyLvar v = let val x = LV.dupLvar(v)
                                 | _ => false
  *)
 
-val rec reduce = 
+val rec reduce =
    fn RECORD(k,vl,w,e) => RECORD(k, vl, w, reduce e)
     | SELECT(i,v,w,t,e) => SELECT(i, v, w, t, reduce e)
     | OFFSET(i,v,w,e) => OFFSET(i, v, w, reduce e)
@@ -107,7 +110,7 @@ val rec reduce =
     | SETTER(i,vl,e) => SETTER(i, vl, reduce e)
     | FIX(l,e) =>
        let fun uncurry(fd as (CONT,_,_,_,_)) = [reduce_body(fd)]
-	     | uncurry(fd as 
+	     | uncurry(fd as
 		       (fk,f,k::vl,ct::cl,body as FIX([(gk,g,ul,cl',body2)],
 						      APP(VAR c,[VAR g'])))) =
                 if k=c andalso g=g' (* andalso userfun(g) *)
@@ -123,7 +126,7 @@ val rec reduce =
 			in click "u";
 			    (NO_INLINE_INTO,f,k'::vl',ct::cl,
 			     FIX([(gk,g',ul',cl',APP(VAR f',
-						     map VAR (ul' @ vl')))], 
+						     map VAR (ul' @ vl')))],
 				 APP(VAR(k'),[VAR g'])))
 			    ::uncurry(fk,f',ul@vl,cl'@cl,body2)
 			end

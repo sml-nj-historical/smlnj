@@ -25,12 +25,12 @@ datatype cty = INTt | INT32t | PTRt of pkind
          | FUNt | FLTt | CNTt | DSPt
 *)
 datatype cty
-  = TINTt  (* tagged integers *)
-  | INTt of int  (* untagged integers of given size *)
-  | PTRt of pkind  (* pointer *)
-  | FUNt (* function? *)
-  | FLTt of int  (* float of given size *)
-  | CNTt (* continuation *)
+  = TINTt		(* tagged integers *)
+  | INTt of int		(* untagged integers of given size *)
+  | PTRt of pkind	(* pointer *)
+  | FUNt		(* function? *)
+  | FLTt of int		(* float of given size *)
+  | CNTt		(* continuation *)
 
 structure P : sig
 
@@ -146,6 +146,10 @@ type lvar
 datatype value
   = VAR of lvar
   | LABEL of lvar
+(* BIT64: REAL32: replace INT, INT32, and REAL with
+  | INT of {v : IntInf.int, sz : int}
+  | REAL of {v : string, sz : int}
+*)
   | INT of int
   | INT32 of Word32.word
   | REAL of string

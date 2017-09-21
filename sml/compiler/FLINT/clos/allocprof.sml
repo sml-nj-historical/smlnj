@@ -1,5 +1,8 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* allocprof.sml *)
+(* allocprof.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure AllocProf =
 struct
@@ -61,8 +64,8 @@ fun prof(s,i) = (* Header to increment slot s by i *)
  (fn ce => let val a1 = mkLvar() and a2 = mkLvar()
 	       and x = mkLvar() and n = mkLvar()
 	   in  LOOKER(P.getpseudo,[INT PROFREG],a1,BOGt,
-	       LOOKER(P.subscript,[VAR a1,INT s],x,INTt,
-	       ARITH(P.iadd,[VAR x,INT i],n,INTt,
+	       LOOKER(P.subscript,[VAR a1,INT s],x,TINTt,
+	       ARITH(P.iadd,[VAR x,INT i],n,TINTt,
 	       LOOKER(P.getpseudo,[INT PROFREG],a2,BOGt,
 	       SETTER(P.unboxedupdate,[VAR a2,INT s,VAR n],ce)))))
 	   end)
@@ -75,14 +78,14 @@ fun profSlots(base,slots,ovfl) cost =
 val id = (fn x => x)
 in
 
-local val profLinks0 = profSlots(LINKS,LINKSLOTS,LINKOVFL) 
-in 
+local val profLinks0 = profSlots(LINKS,LINKSLOTS,LINKOVFL)
+in
 fun profLinks(cost) = if cost=0 then id else profLinks0 cost
 end
 
 fun profRecLinks(l) = foldr (fn (cost,h) => profLinks(cost) o h) id l
 
-local val profRecord0 = profSlots(RECORDS,RECORDSLOTS,RECORDOVFL) 
+local val profRecord0 = profSlots(RECORDS,RECORDSLOTS,RECORDOVFL)
 in
 fun profRecord(cost) = if cost=0 then id else profRecord0 cost
 end
@@ -114,7 +117,7 @@ fun profRefCell k = prof(REFCELLS,k)
 val profRefList = prof(REFLISTS,1)
 
 val profTLCHECK = prof(TLIMITCHECK,1)
- 
+
 val profALCHECK = prof(ALIMITCHECK,1)
 
 end (* local *)
@@ -141,7 +144,7 @@ fun print_profile_info(outstrm) =
         end
       fun muldiv(i,j,k) =
         (i*j div k) handle Overflow => muldiv(i,j div 2, k div 2)
-      fun decfield(n,j,k,w1,w2) = 
+      fun decfield(n,j,k,w1,w2) =
         field(decimal(im (muldiv(n,j,k)),w1)
 	    handle Div => "",w2)
       (* Returns the percentage i/j to 1 decimal place in a field of width k *)
@@ -150,7 +153,7 @@ fun print_profile_info(outstrm) =
       fun percent2(i,j,k) = decfield(10000,i,j,2,k)
 
       fun for(start,upto,f) =
-        let fun iter(i,cum:int) = 
+        let fun iter(i,cum:int) =
               if i < upto then iter(i+1,cum + f(i)) else cum
          in  iter(start,0)
         end
@@ -180,12 +183,12 @@ fun print_profile_info(outstrm) =
 
       val num_kclosures = for(0, KCLOSURESLOTS,fn i => kclosures(i))
       val space_kclosures = for(1, KCLOSURESLOTS, fn i => kclosures(i) * (i+1))
-      val space_kclosures = 
+      val space_kclosures =
                space_kclosures + getprof(KCLOSUREOVFL) + kclosures(0)
 
       val num_cclosures = for(0, CCLOSURESLOTS,fn i => cclosures(i))
       val space_cclosures = for(1, CCLOSURESLOTS, fn i => cclosures(i) * (i+1))
-      val space_cclosures = 
+      val space_cclosures =
                space_cclosures + getprof(CCLOSUREOVFL) + cclosures(0)
 
       val num_closure_accesses = for(0, LINKSLOTS, fn i => links(i))
@@ -211,11 +214,11 @@ fun print_profile_info(outstrm) =
 		 + getprof(ARRAYS) + getprof(STRINGS)+ getprof(REFCELLS)
 
       val sgetprof = im o getprof
-	  
+
       fun printLinks() =
         if num_closure_accesses>0 then
 	(for'(1, LINKSLOTS,
-	      fn k => 
+	      fn k =>
 		 if links(k) > 0 then
 		 printf[ifield(k,4),
 			ifield(links(k),13),
@@ -244,7 +247,7 @@ fun print_profile_info(outstrm) =
         if num>0 then
 	(printf[name,":\n"];
 	 for'(1, slots,
-	      fn k => 
+	      fn k =>
 		 if getstat(k) > 0 then
 		 printf[ifield(k,6),
 			ifield(getstat(k),9),
@@ -398,7 +401,7 @@ fun print_profile_info(outstrm) =
   end (* fun print_profile_info *)
 
 
-fun reset() = (print "New  alloc profvec, size "; 
+fun reset() = (print "New  alloc profvec, size ";
 	       print (Int.toString PROFSIZE); print "\n";
 	       Unsafe.setPseudo(Array.array(PROFSIZE,0),PROFREG))
 

@@ -237,27 +237,28 @@ in
    | PURE(_, _, _, _, e) => hasRCC(e)
 end
 
-fun sizeOf(FLTt) = 64
-  | sizeOf(INTt | INT32t | PTRt _ | FUNt | CNTt | DSPt) = 32
+fun sizeOf (FLTt sz) = sz
+  | sizeOf (INTt sz) = sz
+  | sizeOf (TINTt | PTRt _ | FUNt | CNTt) = Target.mlValueSz
 
-fun isFloat(FLTt) = true
-  | isFloat(INTt | INT32t | PTRt _ | FUNt | CNTt | DSPt) = false
+fun isFloat (FLTt _) = true
+  | isFloat _ = false
 
-fun isTagged(FLTt | INT32t) = false
-  | isTagged(INTt | PTRt _ | FUNt | CNTt | DSPt) = true
+fun isTagged (FLTt _) = false
+  | isTagged (INTt _) = false
+  | isTagged _ = true
 
-fun ctyToString(INTt) =  "[I]"
-  | ctyToString(INT32t) =  "[I32]"
-  | ctyToString(FLTt) =  "[R]"
-  | ctyToString(PTRt (RPT k)) =  ("[PR"^(Int.toString(k))^"]")
-  | ctyToString(PTRt (FPT k)) =  ("[PF"^(Int.toString(k))^"]")
-  | ctyToString(PTRt (VPT)) =  "[PV]"
-  | ctyToString(FUNt) =  "[F]"
-  | ctyToString(CNTt) =  "[C]"
-  | ctyToString(DSPt) =  "[D]"
+fun ctyToString (TINTt) =  "[I]"
+  | ctyToString (INTt sz) = concat["[I", Int.toString sz, "]"]
+  | ctyToString (FLTt sz) = concat["[R", Int.toString sz, "]"]
+  | ctyToString (PTRt (RPT k)) =  concat["[PR", Int.toString k, "]"]
+  | ctyToString (PTRt (FPT k)) =  concat["[PF", Int.toString k, "]"]
+  | ctyToString (PTRt (VPT)) =  "[PV]"
+  | ctyToString (FUNt) = "[FN]"
+  | ctyToString (CNTt) = "[C]"
 
-fun combinepaths(p,OFFp 0) = p
-  | combinepaths(p,q) =
+fun combinepaths (p, OFFp 0) = p
+  | combinepaths (p, q) =
     let val rec comb =
 	fn (OFFp 0) => q
 	 | (OFFp i) => (case q of
@@ -267,8 +268,8 @@ fun combinepaths(p,OFFp 0) = p
     in comb p
     end
 
-fun lenp(OFFp _) = 0
-  | lenp(SELp(_,p)) = 1 + lenp p
+fun lenp (OFFp _) = 0
+  | lenp (SELp(_,p)) = 1 + lenp p
 
 val BOGt = PTRt(VPT)  (* bogus pointer type whose length is unknown *)
 
@@ -288,17 +289,31 @@ fun rtyc (f, []) = RPT 0
        in loop(ts, true, 0)
       end
 
-fun ctyc tc =
-  LT.tcw_prim(tc,
-     fn pt => (if pt = PT.ptc_int31 then INTt
-               else if pt = PT.ptc_int32 then INT32t
-                    else if pt = PT.ptc_real then FLTt
-                         else BOGt),
-     fn tc =>
-       LT.tcw_tuple (tc, fn ts => PTRt(rtyc(tcflt, ts)),
-          fn tc => if LT.tcp_arrow tc then FUNt
-                   else if LT.tcp_cont tc then CNTt
-                        else BOGt))
+local
+  val ptc_int = if Target.is64
+	then raise Fail "need ptc_int63"	(* 64BIT: FIXME *)
+	else PT.ptc_int31
+in
+fun ctyc tc = LT.tcw_prim (tc,
+      fn pt =>
+	if PT.pt_eq(pt, ptc_int) then TINTt
+	else if PT.pt_eq(pt, PT.ptc_int32) then INTt 32
+(* 64BIT:
+        else if PT.pt_eq(pt, PT.ptc_int64) then INTt 64
+*)
+(* REAL32: uncomment for Real32 support
+        else if PT.pt_eq(pt, PT.ptc_real32) then FLTt 32
+        else if PT.pt_eq(pt, PT.ptc_real64) then FLTt 64
+*)
+        else if PT.pt_eq(pt, PT.ptc_real) then FLTt Target.defaultRealSz
+        else BOGt,
+      fn tc => LT.tcw_tuple (tc,
+	  fn ts => PTRt(rtyc(tcflt, ts)),
+          fn tc =>
+	    if LT.tcp_arrow tc then FUNt
+	    else if LT.tcp_cont tc then CNTt
+	    else BOGt))
+end (* local *)
 
 fun ctype lt =
   LT.ltw_tyc(lt, fn tc => ctyc tc,
@@ -312,4 +327,3 @@ end (* local ctype *)
 
 end (* top-level local *)
 end (* structure CPS *)
-

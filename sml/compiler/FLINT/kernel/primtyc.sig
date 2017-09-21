@@ -10,9 +10,16 @@ signature PRIM_TYC =
     eqtype primtyc
 
   (** the primitive type constructors *)
-    val ptc_int31  : primtyc
+    val ptc_int31  : primtyc	(* 64BIT: should this be ptc_int, or should we add ptc_int63? *)
     val ptc_int32  : primtyc
+(* 64BIT:
+    val ptc_int64  : primtyc
+*)
     val ptc_real   : primtyc
+(* REAL32:
+    val ptc_real32 : primtyc
+    val ptc_real64 : primtyc
+*)
     val ptc_string : primtyc
     val ptc_exn    : primtyc
 

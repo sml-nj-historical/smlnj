@@ -646,14 +646,14 @@ let val rec g' =
 				   let val x = mkv(LT.ltc_int)
 				   in  dropclicks(drop - 1);
 				       enterMISC0 x;
-				       ([x],[INTt],[LT.ltc_int])
+				       ([x],[TINTt],[LT.ltc_int])
 				   end
 			        | [x] =>
                                    if (isCont x)
 				   then let val x = mkv(LT.ltc_int)
 				         in  dropclicks(drop - 1);
 				             enterMISC0 x;
-				             (vl'@[x], cl'@[INTt],
+				             (vl'@[x], cl'@[TINTt],
                                               tt'@[LT.ltc_int])
 				        end
                                    else (dropclicks(drop);
@@ -1025,8 +1025,8 @@ let val rec g' =
                          case x of
                            STRING _ => SOME BOGt
                          | LABEL _ => SOME BOGt
-                         | REAL _ => SOME FLTt
-                         | INT32 _ => SOME INT32t
+                         | REAL _ => SOME(FLTt 64) (* REAL32: FIXME *)
+                         | INT32 _ => SOME(INTt 32) (* 64BIT: FIXME *)
                          | INT _ => SOME BOGt
                          | _ => again()
                       fun findTy() =
