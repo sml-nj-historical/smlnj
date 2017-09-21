@@ -27,13 +27,13 @@ struct
      ** after elaborations *)
     (*
     val fixityparse =
-	(* Stats.doPhase (Stats.makePhase "Compiler 005 fixityparse") *) 
+	(* Stats.doPhase (Stats.makePhase "Compiler 005 fixityparse") *)
 	    FixityParse.fixityparse
     val lazycomp =
 	(* Stats.doPhase (Stats.makePhase "Compiler 006 lazycomp") *)
 	    LazyComp.lazycomp
      *)
-    val pickUnpick = 
+    val pickUnpick =
 	Stats.doPhase (Stats.makePhase "Compiler 036 pickunpick") CC.pickUnpick
 
     (** take ast, do semantic checks,
@@ -41,13 +41,13 @@ struct
     fun elaborate {ast, statenv=senv, compInfo=cinfo, guid} = let
 
 	val (absyn, nenv) = ElabTop.elabTop(ast, senv, cinfo)
-	val (absyn, nenv) = 
+	val (absyn, nenv) =
             if CompInfo.anyErrors cinfo then
 		(Absyn.SEQdec nil, StaticEnv.empty)
 	    else (absyn, nenv)
 	val { pid, pickle, exportLvars, exportPid, newenv } =
 	    pickUnpick { context = senv, env = nenv, guid = guid }
-    in {absyn=absyn, newstatenv=newenv, exportPid=exportPid, 
+    in {absyn=absyn, newstatenv=newenv, exportPid=exportPid,
 	exportLvars=exportLvars, staticPid = pid, pickle = pickle }
     end (* function elaborate *)
 
@@ -76,7 +76,7 @@ struct
     in
     (** instrumenting the abstract syntax to do time- and space-profiling *)
     fun instrument {source, senv, compInfo} =
-	SProf.instrumDec (senv, compInfo) source 
+	SProf.instrumDec (senv, compInfo) source
 	o TProf.instrumDec PrimopId.isPrimCallcc (senv, compInfo)
 	o TDPInstrument.instrument isSpecial (senv, compInfo)
     end
@@ -102,7 +102,7 @@ struct
 	end
 
     val translate =
-	Stats.doPhase (Stats.makePhase "Compiler 040 translate") translate 
+	Stats.doPhase (Stats.makePhase "Compiler 040 translate") translate
 
 
     (*************************************************************************
@@ -130,7 +130,7 @@ struct
 	in
 	    addCode codeSz;
 	    { csegments=csegs, inlineExp=inlineExp, imports = revisedImports }
-	end 
+	end
     end (* local codegen *)
 
     (*
@@ -141,11 +141,11 @@ struct
     (*************************************************************************
      *                         COMPILATION                                   *
      *        = ELABORATION + TRANSLATION TO FLINT + CODE GENERATION         *
-     * used by interact/evalloop.sml, cm/compile/compile.sml only            * 
+     * used by interact/evalloop.sml, cm/compile/compile.sml only            *
      *************************************************************************)
     (** compiling the ast into the binary code = elab + translate + codegen *)
     fun compile {source, ast, statenv, symenv, compInfo=cinfo,
-		 checkErr=check, splitting, guid } = 
+		 checkErr=check, splitting, guid } =
 	let val {absyn, newstatenv, exportLvars, exportPid,
 		 staticPid, pickle } =
 		elaborate {ast=ast, statenv=statenv, compInfo=cinfo,
@@ -156,14 +156,14 @@ struct
 				    compInfo=cinfo} absyn
 			before (check "instrument")
 
-	    val {flint, imports} = 
-		translate {absyn=absyn, exportLvars=exportLvars, 
-			   newstatenv=newstatenv, oldstatenv=statenv, 
+	    val {flint, imports} =
+		translate {absyn=absyn, exportLvars=exportLvars,
+			   newstatenv=newstatenv, oldstatenv=statenv,
 			   compInfo=cinfo}
 		before check "translate"
 
-	    val { csegments, inlineExp, imports = revisedImports } = 
-		codegen { flint = flint, imports = imports, symenv = symenv, 
+	    val { csegments, inlineExp, imports = revisedImports } =
+		codegen { flint = flint, imports = imports, symenv = symenv,
 			  splitting = splitting, compInfo = cinfo }
 		before (check "codegen")
 	(*
