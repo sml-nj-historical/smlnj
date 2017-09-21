@@ -20,8 +20,17 @@ datatype record_kind
   | RK_I32BLOCK
 
 datatype pkind = VPT | RPT of int | FPT of int
+(*
 datatype cty = INTt | INT32t | PTRt of pkind
          | FUNt | FLTt | CNTt | DSPt
+*)
+datatype cty
+  = TINTt  (* tagged integers *)
+  | INTt of int  (* untagged integers of given size *)
+  | PTRt of pkind  (* pointer *)
+  | FUNt (* function? *)
+  | FLTt of int  (* float of given size *)
+  | CNTt (* continuation *)
 
 structure P : sig
 

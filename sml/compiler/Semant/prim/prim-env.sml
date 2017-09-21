@@ -143,13 +143,6 @@ structure PrimEnv : PRIM_ENV =
   phase (and FLINT?).
   *)
 
-  (*
-  val v1 = T.IBOUND 0
-  fun p1 t = T.POLYty {sign=[false], tyfun=T.TYFUN {arity=1, body=t}}
-  *)
-  (* the generic type (All 'a).'a *)
-    val all = T.POLYty {sign=[false], tyfun=T.TYFUN {arity=1, body=T.IBOUND 0}}
-
   (* uList structure *)
     val uList = let
 	  val ev = ST.special "uListVar"

@@ -22,7 +22,6 @@ structure PrimopBind : sig
   end = struct
 
     structure T = Types
-    structure BT = BasicTypes
     structure P = Primop
 
     type primop_bind = string * T.ty * P.primop

@@ -410,6 +410,7 @@ in
 	      | P.EXTEND_INF i => ?125 $ [int i]
 	      | P.COPY_INF i => ?126 $ [int i]
 
+           (* primop_table elements on unpickling *)
 	      | P.MKETAG => %?0
 	      | P.WRAP => %?1
 	      | P.UNWRAP => %?2
@@ -418,9 +419,9 @@ in
 	      | P.INLSUBSCRIPT => %?5
 	      | P.INLSUBSCRIPTV => %?6
 	      | P.INLMKARRAY => %?7
-
 	      | P.PTREQL => %?8
 	      | P.PTRNEQ => %?9
+
 	      | P.POLYEQL => %?10
 	      | P.POLYNEQ => %?11
 	      | P.BOXED => %?12
@@ -428,11 +429,10 @@ in
 	      | P.LENGTH => %?14
 	      | P.OBJLENGTH => %?15
 	      | P.CAST => %?16
-(* GETRUNVEC is no longer a primop
-	      | P.GETRUNVEC => %?17
-*)
+	      (* drop GETRUNVEC @ 17 *)
 	      | P.MARKEXN => %?18
 	      | P.GETHDLR => %?19
+
 	      | P.SETHDLR => %?20
 	      | P.GETVAR => %?21
 	      | P.SETVAR => %?22
@@ -443,25 +443,21 @@ in
 	      | P.MAKEREF => %?27
 	      | P.CALLCC => %?28
 	      | P.CAPTURE => %?29
+
 	      | P.THROW => %?30
 	      | P.DEREF => %?31
-	      | P.ASSIGN => %?32
-	      (* NOTE: P.UNBOXEDASSIGN is defined below *)
+	      | P.ASSIGN => %?32 (* NOTE: P.UNBOXEDASSIGN is defined below @ 36 *)
 	      | P.UPDATE => %?33
 	      | P.INLUPDATE => %?34
-(* BOXEDUPDATE is no longer a primop
-	      | P.BOXEDUPDATE => %?35
-*)
+	      (* drop BOXEDUPDATE @ 35 *)
 	      | P.UNBOXEDUPDATE => %?36
-
 	      | P.GETTAG => %?37
 	      | P.MKSPECIAL => %?38
 	      | P.SETSPECIAL => %?39
+
 	      | P.GETSPECIAL => %?40
-(* no longer primops
-	      | P.USELVAR => %?41
-	      | P.DEFLVAR => %?42
-*)
+              (* drop USELVAR @ 41 *)
+	      (* drop DEFLVAR @ 42 *)
 	      | P.INLNOT => %?43
 	      | P.INLCOMPOSE => %?44
 	      | P.INLBEFORE => %?45
@@ -469,6 +465,7 @@ in
 	      | P.INL_VECTOR => %?47
 	      | P.ISOLATE => %?48
 	      | P.WCAST => %?49
+
 	      | P.NEW_ARRAY0 => %?50
 	      | P.GET_SEQ_DATA => %?51
 	      | P.SUBSCRIPT_REC => %?52

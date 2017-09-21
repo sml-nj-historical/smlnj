@@ -78,7 +78,7 @@ structure UnpickMod : UNPICKMOD = struct
     (* The order of the entries in the following tables
      * must be coordinated with pickmod! *)
     val primop_table =
-	#[P.MKETAG,
+	#[P.MKETAG,  (* 0 *)
 	  P.WRAP,
 	  P.UNWRAP,
 	  P.SUBSCRIPT,
@@ -86,23 +86,21 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.INLSUBSCRIPT,
 	  P.INLSUBSCRIPTV,
 	  P.INLMKARRAY,
-
 	  P.PTREQL,
 	  P.PTRNEQ,
-	  P.POLYEQL,
+
+	  P.POLYEQL, (* 10 *)
 	  P.POLYNEQ,
 	  P.BOXED,
 	  P.UNBOXED,
 	  P.LENGTH,
 	  P.OBJLENGTH,
 	  P.CAST,
-(* GETRUNVEC is no longer a primop
-	  P.GETRUNVEC,
-*)
-          P.CAST, (* placeholder for GETRUNVEC!!! *)
+          P.CAST, (* placeholder for GETRUNVEC!!! @ 17 *)
 	  P.MARKEXN,
 	  P.GETHDLR,
-	  P.SETHDLR,
+
+	  P.SETHDLR, (* 20 *)
 	  P.GETVAR,
 	  P.SETVAR,
 	  P.GETPSEUDO,
@@ -112,27 +110,21 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.MAKEREF,
 	  P.CALLCC,
 	  P.CAPTURE,
-	  P.THROW,
+
+	  P.THROW,   (* 30 *)
 	  P.DEREF,
 	  P.ASSIGN,
 	  P.UPDATE,
 	  P.INLUPDATE,
-(* BOXEDUPDATE is no longer a primop
-	  P.BOXEDUPDATE,
-*)
-          P.CAST, (* placeholder for BOXEDUPDATE!!! *)
+          P.CAST, (* placeholder for BOXEDUPDATE!!! @ 35 *)
 	  P.UNBOXEDUPDATE,
-
 	  P.GETTAG,
 	  P.MKSPECIAL,
 	  P.SETSPECIAL,
-	  P.GETSPECIAL,
-(* no longer primops
-	  P.USELVAR,
-	  P.DEFLVAR,
-*)
-          P.CAST, (* placeholder for USELVAR!!! *)
-          P.CAST, (* placeholder for DEFLVAR!!! *)
+
+	  P.GETSPECIAL, (* 40 *)
+          P.CAST, (* placeholder for USELVAR!!! @ 41 *)
+          P.CAST, (* placeholder for DEFLVAR!!! @ 42 *)
 	  P.INLNOT,
 	  P.INLCOMPOSE,
 	  P.INLBEFORE,
@@ -140,7 +132,8 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.INL_VECTOR,
 	  P.ISOLATE,
 	  P.WCAST,
-	  P.NEW_ARRAY0,
+
+	  P.NEW_ARRAY0, (* 50 *)
 	  P.GET_SEQ_DATA,
 	  P.SUBSCRIPT_REC,
 	  P.SUBSCRIPT_RAW64,
@@ -148,11 +141,11 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.RAW_CCALL NONE,
 	  P.INLIGNORE,
 	  P.INLIDENTITY,
-	  P.CVT64
+	  P.CVT64  (* 58 *)
         ]
 
     val cmpop_table =
-	#[P.GT, P.GTE, P.LT, P.LTE, P.LEU, P.LTU, P.GEU, P.GTU, P.EQL, P.NEQ, P.FSGN]
+	#[P.LT, P.LTE, P.GT, P.GTE, P.LEU, P.LTU, P.GEU, P.GTU, P.EQL, P.NEQ, P.FSGN]
 
     val arithop_table =
 	#[P.ADD, P.SUB, P.MUL, P.NEG, P.FDIV, P.ABS, P.LSHIFT, P.RSHIFT, P.RSHIFTL,
@@ -450,7 +443,6 @@ structure UnpickMod : UNPICKMOD = struct
 	val tyM = UU.mkMap ()
 	val tyOptionM = UU.mkMap ()
 	val tyListM = UU.mkMap ()
-	val iiM = UU.mkMap ()
 	val primIdM = UU.mkMap ()
         val strPrimElemM = UU.mkMap ()
 	val speListM = UU.mkMap()
@@ -716,18 +708,6 @@ structure UnpickMod : UNPICKMOD = struct
 	    (l, branch trl)
 	end
 
-(* GK: replaced by primId and strPrimInfo type distinction
-	and inl_info () = let
-	    fun ii #"A" = II.INL_PRIM (primop (), ty ())
-	      | ii #"B" = II.INL_STR (iilist ())
-	      | ii #"C" = II.INL_NO
-	      | ii _ = raise Format
-	in
-	    share iiM ii
-	end
-
-        and iilist () = list iiListM inl_info ()
- *)
         and primId () = let
 	      fun p #"A" = let
 		      val n = string ()

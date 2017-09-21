@@ -115,21 +115,22 @@ fun numkind (AP.INT bits) = P.INT bits
   | numkind (AP.UINT bits) = P.UINT bits
   | numkind (AP.FLOAT bits) = P.FLOAT bits
 
-(* cmpop: AP.stuff -> P.branch *)
+(* cmpop: {oper: AP.cmpop, kind: AP.numkind} -> P.branch *)
 fun cmpop stuff =
   (case stuff
     of {oper=AP.EQL,kind=AP.INT 31} => P.ieql
      | {oper=AP.NEQ,kind=AP.INT 31} => P.ineq
      | {oper,kind=AP.FLOAT size} =>
-         let fun c AP.GT   = P.fGT
-	       | c AP.GTE  = P.fGE
-	       | c AP.LT   = P.fLT
-	       | c AP.LTE  = P.fLE
- 	       | c AP.EQL  = P.fEQ
- 	       | c AP.NEQ  = P.fULG
-	       | c AP.FSGN = P.fsgn
- 	       | c _ = bug "cmpop:kind=AP.FLOAT"
-          in P.fcmp{oper= c oper, size=size}
+       let val o =
+	   case AP.GT   => P.fGT
+	      | AP.GTE  => P.fGE
+	      | AP.LT   => P.fLT
+	      | AP.LTE  => P.fLE
+ 	      | AP.EQL  => P.fEQ
+ 	      | AP.NEQ  => P.fULG
+	      | AP.FSGN => P.fsgn
+ 	      | _       => bug "cmpop:kind=AP.FLOAT"
+          in P.fcmp{oper= o, size=size}
          end
      | {oper, kind} =>
          let fun check (_, AP.UINT _) = ()
@@ -163,7 +164,12 @@ fun primwrap(INTt) = P.iwrap
   | primwrap(INT32t) = P.i32wrap
   | primwrap(FLTt) = P.fwrap
   | primwrap _ = P.wrap
-
+(*
+fun primwrap(INTt sz) = P.iwrap sz
+  | primwrap(FLTt sz) = P.fwrap sz
+  | primwrap _ = P.wrap
+*)
+		     
 (* primunwrap: cty -> P.pure *)
 fun primunwrap(INTt) = P.iunwrap
   | primunwrap(INT32t) = P.i32unwrap
