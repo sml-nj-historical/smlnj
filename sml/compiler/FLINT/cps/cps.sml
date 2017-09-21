@@ -219,23 +219,23 @@ and rcc_kind = FAST_RCC | REENTRANT_RCC
 withtype function = fun_kind * lvar * lvar list * cty list * cexp
 
 fun hasRCC(cexp) = let
-  fun chkList(c::rest) = hasRCC(c) orelse chkList(rest)
-    | chkList [] = false
-in
-  case cexp
-  of RCC _ => true
-   | RECORD(_, _, _, e) => hasRCC e
-   | SELECT(_, _, _, _, e) => hasRCC e
-   | OFFSET(_, _, _, e) => hasRCC e
-   | APP _ => false
-   | FIX(fl, e) => hasRCC(e) orelse chkList(map (fn (_, _, _, _, e) => e) fl)
-   | SWITCH(_, _, ce) => chkList(ce)
-   | BRANCH(_, _, _, c1, c2) => hasRCC(c1) orelse hasRCC(c2)
-   | SETTER(_, _, e) => hasRCC(e)
-   | LOOKER(_, _, _, _, e) => hasRCC(e)
-   | ARITH(_, _, _, _, e) => hasRCC(e)
-   | PURE(_, _, _, _, e) => hasRCC(e)
-end
+      fun chkList(c::rest) = hasRCC(c) orelse chkList(rest)
+	| chkList [] = false
+      in
+	case cexp
+	 of RCC _ => true
+	  | RECORD(_, _, _, e) => hasRCC e
+	  | SELECT(_, _, _, _, e) => hasRCC e
+	  | OFFSET(_, _, _, e) => hasRCC e
+	  | APP _ => false
+	  | FIX(fl, e) => hasRCC(e) orelse chkList(map (fn (_, _, _, _, e) => e) fl)
+	  | SWITCH(_, _, ce) => chkList(ce)
+	  | BRANCH(_, _, _, c1, c2) => hasRCC(c1) orelse hasRCC(c2)
+	  | SETTER(_, _, e) => hasRCC(e)
+	  | LOOKER(_, _, _, _, e) => hasRCC(e)
+	  | ARITH(_, _, _, _, e) => hasRCC(e)
+	  | PURE(_, _, _, _, e) => hasRCC(e)
+      end
 
 fun sizeOf (FLTt sz) = sz
   | sizeOf (INTt sz) = sz
@@ -251,49 +251,51 @@ fun isTagged (FLTt _) = false
 fun ctyToString (TINTt) =  "[I]"
   | ctyToString (INTt sz) = concat["[I", Int.toString sz, "]"]
   | ctyToString (FLTt sz) = concat["[R", Int.toString sz, "]"]
-  | ctyToString (PTRt (RPT k)) =  concat["[PR", Int.toString k, "]"]
-  | ctyToString (PTRt (FPT k)) =  concat["[PF", Int.toString k, "]"]
+  | ctyToString (PTRt (RPT k)) = concat["[PR", Int.toString k, "]"]
+  | ctyToString (PTRt (FPT k)) = concat["[PF", Int.toString k, "]"]
   | ctyToString (PTRt (VPT)) =  "[PV]"
   | ctyToString (FUNt) = "[FN]"
   | ctyToString (CNTt) = "[C]"
 
 fun combinepaths (p, OFFp 0) = p
-  | combinepaths (p, q) =
-    let val rec comb =
-	fn (OFFp 0) => q
-	 | (OFFp i) => (case q of
-		          (OFFp j) => OFFp(i+j)
-		        | (SELp(j,p)) => SELp(i+j,p))
-	 | (SELp(i,p)) => SELp(i,comb p)
-    in comb p
-    end
+  | combinepaths (p, q) = let
+      fun comb (OFFp 0) = q
+        | comb (OFFp i) = (case q
+	     of (OFFp j) => OFFp(i+j)
+	      | (SELp(j,p)) => SELp(i+j,p)
+	    (* end case *))
+	| comb (SELp(i,p)) = SELp(i, comb p)
+      in
+	comb p
+      end
 
 fun lenp (OFFp _) = 0
   | lenp (SELp(_,p)) = 1 + lenp p
 
 val BOGt = PTRt(VPT)  (* bogus pointer type whose length is unknown *)
 
-local structure LT = LtyExtern
-      val tc_real = LT.tcc_real
-      val lt_real = LT.ltc_real
+local
+  structure LT = LtyExtern
+  val tc_real = LT.tcc_real (* REAL32: this code assumes only one float type *)
+  val lt_real = LT.ltc_real
+  val ptc_int = if Target.is64
+	then raise Fail "need ptc_int63"  (* 64BIT: need ptc_int63 or ptc_int for tagged int *)
+	else PT.ptc_int31
 in
 
+(* REAL32: this code assumes only one float type *)
 fun tcflt tc = if LT.tc_eqv(tc, tc_real) then true else false
 fun ltflt lt = if LT.lt_eqv(lt, lt_real) then true else false
 
 fun rtyc (f, []) = RPT 0
-  | rtyc (f, ts) =
-      let fun loop (a::r, b, len) =
-                if f a then loop(r, b, len+1) else loop(r, false, len+1)
-            | loop ([], b, len) = if b then FPT len else RPT len
-       in loop(ts, true, 0)
+  | rtyc (f, ts) = let
+      fun loop (a::r, b, len) =
+	    if f a then loop(r, b, len+1) else loop(r, false, len+1)
+	| loop ([], b, len) = if b then FPT len else RPT len
+      in
+	loop(ts, true, 0)
       end
 
-local
-  val ptc_int = if Target.is64
-	then raise Fail "need ptc_int63"	(* 64BIT: FIXME *)
-	else PT.ptc_int31
-in
 fun ctyc tc = LT.tcw_prim (tc,
       fn pt =>
 	if PT.pt_eq(pt, ptc_int) then TINTt
@@ -313,7 +315,6 @@ fun ctyc tc = LT.tcw_prim (tc,
 	    if LT.tcp_arrow tc then FUNt
 	    else if LT.tcp_cont tc then CNTt
 	    else BOGt))
-end (* local *)
 
 fun ctype lt =
   LT.ltw_tyc(lt, fn tc => ctyc tc,
