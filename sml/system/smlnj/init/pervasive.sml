@@ -39,6 +39,7 @@ local
 
     structure CII = CoreIntInf
 
+(* FIXME: this wrapper breaks inlining of Word8 arithmetic!!!! *)
     fun w8adapt oper args = W8.andb (oper args, 0wxFF)
     val w8plus = w8adapt W8.+
     val w8minus = w8adapt W8.-
