@@ -145,7 +145,7 @@ structure UnpickMod : UNPICKMOD = struct
         ]
 
     val cmpop_table =
-	#[P.LT, P.LTE, P.GT, P.GTE, P.LEU, P.LTU, P.GEU, P.GTU, P.EQL, P.NEQ, P.FSGN]
+	#[P.GT, P.GTE, P.LT, P.LTE, P.LEU, P.LTU, P.GEU, P.GTU, P.EQL, P.NEQ, P.FSGN]
 
     val arithop_table =
 	#[P.ADD, P.SUB, P.MUL, P.NEG, P.FDIV, P.ABS, P.LSHIFT, P.RSHIFT, P.RSHIFTL,
