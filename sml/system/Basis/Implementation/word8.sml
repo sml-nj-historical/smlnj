@@ -1,8 +1,9 @@
 (* word8.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
+
 structure Word8Imp : WORD =
   struct
 
