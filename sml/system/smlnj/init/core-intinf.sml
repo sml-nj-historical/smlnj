@@ -572,49 +572,56 @@ end = struct
 	    (qt,rm)
 	end
 
+  (* general case for quotRem *)
+    fun quotRem'' ({digits=xDigits, negative=xNeg}, {digits=yDigits, negative=yNeg}) = let
+	  val (q, r) = natdivmod (xDigits, yDigits)
+	  in (
+	    if InLine.<> (xNeg, yNeg) then zneg q else posi q,
+	    if xNeg then zneg r else posi r
+	  ) end
+
     fun quotRem' (_, BI { digits = [], ... }) = raise Assembly.Div
       | quotRem' (BI { digits = [], ... }, _) = (zero, zero)
-      | quotRem' (BI x, BI y) = let
-	    val (q, r) = natdivmod (#digits x, #digits y)
-	in
-	    (if InLine.<> (#negative x, #negative y) then zneg q else posi q,
-	     if #negative x then zneg r else posi r)
-	end
+      | quotRem' (BI x, BI y) = quotRem'' (x, y)
+
+  (* general case for divMod *)
+    fun divMod'' ({digits=xDigits, negative=xNeg}, {digits=yDigits, negative=yNeg}) =
+	  if InLine.= (xNeg, yNeg)
+	    then let
+	      val (q, r) = natdivmod (xDigits, yDigits)
+	      in
+		(posi q, if xNeg then zneg r else posi r)
+	      end
+	    else let
+	      val (q, r) = natdivmod (natdec xDigits, yDigits)
+	      val mdd = natsub (yDigits, r, true)
+	      in
+		(negi (natinc q), if xNeg then posi mdd else zneg mdd)
+	      end
 
     fun divMod' (_, BI { digits = [], ... }) = raise Assembly.Div
       | divMod' (BI { digits = [], ... }, _) = (zero, zero)
-      | divMod' (BI x, BI y) =
-	  if InLine.= (#negative x, #negative y) then
-	      let val (q, r) = natdivmod (#digits x, #digits y)
-	      in
-		  (posi q, if #negative x then zneg r else posi r)
-	      end
-	  else
-	      let val (m, n) = (#digits x, #digits y)
-		  val (q, r) = natdivmod (natdec m, n)
-		  val mdd = natsub (n, r, true)
-	      in
-		  (negi (natinc q),
-		   if #negative x then posi mdd else zneg mdd)
-	      end
+      | divMod' (BI x, BI y) = divMod'' (x, y)
 
     fun div' arg = #1 (divMod' arg)
     fun quot' arg = #1 (quotRem' arg)
 
-    (* For div and mod we special-case a divisor of 2 (common even-odd test) *)
-    fun mod' (BI { digits = [], ... }, _) = zero
+  (* For mod and rem we special-case a divisor of 2 (common even-odd test) *)
+    fun mod' (_, BI { digits = [], ... }) = raise Assembly.Div
+      | mod' (BI { digits = [], ... }, _) = zero
       | mod' (BI { digits = low :: _, ... },
 	      BI { digits = [0w2], negative }) =
 	  if InLine.w31eq (InLine.w31andb (low, 0w1), 0w0) then zero
 	  else BI { digits = [0w1], negative = negative }
-      | mod' arg = #2 (divMod' arg)
+      | mod' (BI x, BI y) = #2 (divMod'' (x, y))
 
-    fun rem' (BI { digits = [], ... }, _) = zero
+    fun rem' (_, BI { digits = [], ... }) = raise Assembly.Div
+      | rem' (BI { digits = [], ... }, _) = zero
       | rem' (BI { digits = low :: _, negative },
 	      BI { digits = [0w2], ... }) =
 	  if InLine.w31eq (InLine.w31andb (low, 0w1), 0w0) then zero
 	  else BI { digits = [0w1], negative = negative }
-      | rem' arg = #2 (quotRem' arg)
+      | rem' (BI x, BI y) = #2 (quotRem'' (x, y))
 
     fun natpow (_, 0) = [0w1]
       | natpow ([], n) = if InLine.i31lt (n, 0) then raise Assembly.Div else []
@@ -659,4 +666,5 @@ end = struct
     val >= = fabs2c ge
     val abs = fabs1 abs'
     val compare = fabs2c compare'
+
 end
