@@ -12,9 +12,11 @@
 structure PrimopId : PRIMOP_ID = 
 struct
 
-  (* in the front end, primops are identified by a unique primop name,
-     represented as a string. See the file DEVNOTES/Flint/primop-list
-     for the catalog of primop names with their types and primop specs *)
+  (* primops are represented by values of the abstract type primop_bind,
+     which contains the name, type, and primop value of the primop.
+     The file DEVNOTES/Flint/primop-list provides a catalog of primop names
+     with their types and primop values, which corresponds to the list
+     PrimopBindings/prims.  See dev-notes/prim/primops.txt. *)
 
   datatype prim_id = Prim of PrimopBind.primop_bind | NonPrim
 

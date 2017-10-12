@@ -744,6 +744,7 @@ structure PrimopBindings : sig
     end (* local *)
 
 (* Debugging *)
+(*
 fun prBind bind = let
       val n = PrimopBind.nameOf bind
       val ty = PrimopBind.typeOf bind
@@ -754,9 +755,11 @@ fun prBind bind = let
 	    Primop.prPrimop p, "\n"
 	  ])
       end
+
 val _ = (
 	Control_Print.say "********************* Primop Bindings ********************\n";
 	List.app prBind prims;
 	Control_Print.say "********************\n")
-
-  end
+*)
+    
+end (* structure PrimopBindings *)
