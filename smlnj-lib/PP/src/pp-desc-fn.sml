@@ -1,6 +1,6 @@
 (* pp-desc-fn.sml
  *
- * COPYRIGHT (c) 2005 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * This functor implements a declarative way to specify pretty-printing

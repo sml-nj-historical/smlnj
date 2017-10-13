@@ -1,6 +1,7 @@
 (* pp-device-sig.sml
  *
- * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * A pretty-printer device is an abstraction of an output stream.
  *)
@@ -25,7 +26,7 @@ signature PP_DEVICE =
 	(* push/pop a style from the devices style stack.  A pop on an
 	 * empty style stack is a nop.
 	 *)
- 
+
     val defaultStyle : device -> style
 	(* the default style for the device (this is the current style,
 	 * if the style stack is empty).
