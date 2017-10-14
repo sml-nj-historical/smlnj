@@ -1,7 +1,11 @@
-/* ml-base.h
+/*! \file ml-base.h
  *
- * COPYRIGHT (c) 1992 AT&T Bell Laboratories
- *
+ * \author John Reppy
+ */
+
+/*
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  */
 
 #ifndef _ML_BASE_
@@ -119,7 +123,7 @@ extern void AssertFail (const char *a, const char *file, int line);
 /** C types used in the run-time system **/
 #ifdef SIZES_C64_ML32
 typedef Unsigned32_t ml_val_t;
-#else // ML values and pointers have the same size
+#else /* ML values and pointers have the same size */
 typedef struct { Word_t v[1]; } ml_object_t; /* something for an ml_val_t to point to */
 typedef ml_object_t *ml_val_t;
 #endif
