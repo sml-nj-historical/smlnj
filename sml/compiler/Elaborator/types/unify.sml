@@ -91,10 +91,6 @@ exception Unify of unifyFail
 
 val eqLabel = Symbol.eq
 
-(* eqLitKind : litKind -> bool.  Does a litKind support equality? *)
-fun eqLitKind (lk : T.litKind) =
-    case lk of (INT | WORD | CHAR | STRING) => true | REAL => false
-
 (*
  * tyconEqprop tycon:
  *

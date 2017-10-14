@@ -78,14 +78,6 @@ fun typeFormals n =
      in loop 0
     end
 
-fun litKindPrintName (lk: T.litKind) =
-    case lk
-      of T.INT => "int"  (* or "INT" *)
-       | T.WORD => "word" (* or "WORD" *)
-       | T.REAL => "real" (* or "REAL" *)
-       | T.CHAR => "char" (* or "CHAR" *)
-       | T.STRING => "string" (* or "STRING" *)
-
 local  (* WARNING -- compiler global variables *)
   val count = ref(~1)
   val metaTyvars = ref([]:tyvar list)
@@ -115,12 +107,9 @@ fun annotate (name,annotation,depthOp) =
 		      | NONE => nil))
     else name
 
-fun sourcesToString (OVAR(name,_)::_) = Symbol.name name
-  | sourcesToString (OLIT(kind,_,_)::_) =
-      (case kind
-        of INT => "int"
-         | WORD => "word"
-         | _ => "?")
+fun sourcesToString (OVAR(name,_) :: _) = Symbol.name name
+  | sourcesToString (OINT _ :: _) = "int"
+  | sourcesToString (OWORD _ :: _) = "word"
   | sourcesToString nil = bug "sourcesToString"
 
 fun tyvarPrintname (tyvar) =

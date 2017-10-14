@@ -13,16 +13,14 @@ type polysign (* = bool list *)
 
 datatype eqprop = YES | NO | IND | OBJ | DATA | ABS | UNDEF
 
-datatype litKind = INT | WORD | REAL | CHAR | STRING
-
 datatype openTvKind
   = META
   | FLEX of (label * ty) list
 
 and ovldSource
-  = OVAR of Symbol.symbol * SourceMap.region   (* overloaded variable *)
-  | OLIT of litKind * IntInf.int * SourceMap.region
-     (* overloaded int or word literal *)
+  = OVAR of Symbol.symbol * SourceMap.region	(* overloaded variable *)
+  | OINT of IntInf.int * SourceMap.region	(* overloaded int literal *)
+  | OWORD of IntInf.int * SourceMap.region	(* overloaded word literal *)
   (* in future, may need to add real, char, string literals as sources *)
 
 and tvKind

@@ -21,9 +21,6 @@ type polysign = bool list
 
 datatype eqprop = YES | NO | IND | OBJ | DATA | ABS | UNDEF
 
-datatype litKind = INT | WORD | REAL | CHAR | STRING
-(* currently only INT and WORD literal overloading are implemented *)
-
 datatype openTvKind
   = META                          (* metavariables:
                                      depth = infinity for meta-args
@@ -31,9 +28,9 @@ datatype openTvKind
   | FLEX of (label * ty) list     (* flex record variables *)
 
 and ovldSource
-  = OVAR of S.symbol * SourceMap.region   (* overloaded variable *)
-  | OLIT of litKind * IntInf.int * SourceMap.region
-     (* overloaded int or word literal *)
+  = OVAR of S.symbol * SourceMap.region		(* overloaded variable *)
+  | OINT of IntInf.int * SourceMap.region	(* overloaded int literal *)
+  | OWORD of IntInf.int * SourceMap.region	(* overloaded word literal *)
   (* in future, may need to add real, char, string literals as sources *)
 
 and tvKind
