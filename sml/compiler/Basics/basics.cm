@@ -1,0 +1,96 @@
+(* basics.cm
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Basic definitions and utilities used within the SML/NJ compiler.
+ *)
+
+Group
+
+	signature BASIC_CONTROL
+	structure BasicControl
+
+	signature PRINTCONTROL
+	structure Control_Print
+
+	signature SYMBOL
+	signature FASTSYMBOL
+	signature PERSSTAMPS
+	signature FIXITY
+	structure Symbol
+	structure FastSymbol
+	structure PersStamps
+	structure PersMap
+	structure Fixity
+
+	signature SOURCE
+	signature SOURCE_MAP
+	signature ERRORMSG
+	signature PRETTYPRINT
+	signature STATS
+
+	structure Source
+	structure SourceMap
+	structure ErrorMsg
+	structure CompileExn
+	structure PrettyPrint
+
+	structure PrettyPrintNew
+
+	structure Stats
+	structure PrintUtil
+	structure WordStringHashTable
+	structure SymbolHashTable
+
+	signature PIDENV
+	functor PidEnvFn
+
+	signature TARGET
+	structure Target
+is
+	main/basiccontrol.sml
+
+	mlcomp/symbol.sig
+	mlcomp/fastsymbol.sig
+	mlcomp/symbol.sml
+	mlcomp/fastsymbol.sml
+	mlcomp/fixity.sml
+	mlcomp/compileexn.sml
+	mlcomp/persstamps.sig
+	mlcomp/persstamps.sml
+	mlcomp/persmap.sml
+	mlcomp/pidenv.sig
+	mlcomp/pidenv.sml
+
+	source/source.sig
+	source/source.sml
+	source/sourcemap.sig
+	source/sourcemap.sml
+	source/pathnames.sml
+
+	errormsg/errormsg.sig
+	errormsg/errormsg.sml
+
+	stats/stats.sml
+
+	print/printcontrol.sml
+	print/printutil.sig
+	print/printutil.sml
+	print/pp-init.sml
+	print/pp-init-new.sml
+
+	miscutil/wordstr-hashtable.sml
+	miscutil/symbol-hashtable.sml
+
+	mlcomp/target.sig
+#if defined(SIZE_32)
+	mlcomp/target32.sml
+#else
+	mlcomp/target64.sml
+#endif
+
+	$smlnj/basis/basis.cm
+	$smlnj/smlnj-lib/smlnj-lib.cm
+	$smlnj/smlnj-lib/pp-lib.cm
+	$smlnj/smlnj-lib/controls-lib.cm
