@@ -46,22 +46,25 @@ Group
 	signature PIDENV
 	functor PidEnvFn
 
+	structure IntConst
+
 	signature TARGET
 	structure Target
 is
 	main/basiccontrol.sml
 
-	mlcomp/symbol.sig
+	mlcomp/compileexn.sml
 	mlcomp/fastsymbol.sig
-	mlcomp/symbol.sml
 	mlcomp/fastsymbol.sml
 	mlcomp/fixity.sml
-	mlcomp/compileexn.sml
+        mlcomp/int-const.sml
 	mlcomp/persstamps.sig
 	mlcomp/persstamps.sml
 	mlcomp/persmap.sml
 	mlcomp/pidenv.sig
 	mlcomp/pidenv.sml
+	mlcomp/symbol.sig
+	mlcomp/symbol.sml
 
 	source/source.sig
 	source/source.sml

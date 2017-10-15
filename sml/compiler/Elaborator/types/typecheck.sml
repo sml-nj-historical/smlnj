@@ -1,5 +1,8 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* typecheck.sml *)
+(* typecheck.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature TYPECHECK =
 sig
@@ -399,8 +402,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
 	      (typ := mkMETAtyBounded depth; (pat,MARKty(!typ, region)))
 			             (* multiple occurrence due to or-pat *)
        | VARpat(VALvar{typ, ...}) => (pat, MARKty(!typ, region))
-       | INTpat (_,ty) => (oll_push ty; (pat,MARKty(ty, region)))
-       | WORDpat (_,ty) => (oll_push ty; (pat,MARKty(ty, region)))
+       | NUMpat{ty, ...} => (oll_push ty; (pat, MARKty(ty, region)))
        | REALpat _ => (pat,MARKty(realTy, region))
        | STRINGpat _ => (pat,MARKty(stringTy, region))
        | CHARpat _ => (pat,MARKty(charTy, region))
@@ -526,8 +528,7 @@ in
            let val (ty,insts) = instantiatePoly typ
             in (CONexp(dcon, insts), MARKty(ty, region))
            end
-       | INTexp (_,ty)  => (oll_push ty; (exp, MARKty(ty, region)))
-       | WORDexp (_,ty) => (oll_push ty; (exp, MARKty(ty, region)))
+       | NUMexp{ty, ...} => (oll_push ty; (exp, MARKty(ty, region)))
        | REALexp _ => (exp,MARKty(realTy, region))
        | STRINGexp _ => (exp,MARKty(stringTy, region))
        | CHARexp _ => (exp,MARKty(charTy, region))

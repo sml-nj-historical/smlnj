@@ -313,8 +313,8 @@ let
 	   (clean_pat (error region)
               (pat_id(SP.SPATH path, env, error region, compInfo)),
 	    TS.empty)
-       | IntPat s => (INTpat(s,mkIntLiteralTy(s,region)),TS.empty)
-       | WordPat s => (WORDpat(s,mkWordLiteralTy(s,region)),TS.empty)
+       | IntPat s => (NUMpat{ty = mkIntLiteralTy(s,region), value = s}, TS.empty)
+       | WordPat s => (NUMpat{ty = mkWordLiteralTy(s,region), value = s}, TS.empty)
        | StringPat s => (STRINGpat s,TS.empty)
        | CharPat s => (CHARpat s,TS.empty)
        | RecordPat {def,flexibility} =>
@@ -483,8 +483,8 @@ let
 			     end
 		      else CONexp(d, [])),
 		TS.empty, no_updt)
-	   | IntExp s => (INTexp(s,mkIntLiteralTy(s,region)),TS.empty,no_updt)
-           | WordExp s => (WORDexp(s,mkWordLiteralTy(s,region)),TS.empty,no_updt)
+	   | IntExp s => (NUMexp{ty = mkIntLiteralTy(s,region), value = s}, TS.empty, no_updt)
+	   | WordExp s => (NUMexp{ty = mkWordLiteralTy(s,region), value = s}, TS.empty, no_updt)
 	   | RealExp r => (REALexp r,TS.empty,no_updt)
 	   | StringExp s => (STRINGexp s,TS.empty,no_updt)
 	   | CharExp s => (CHARexp s,TS.empty,no_updt)

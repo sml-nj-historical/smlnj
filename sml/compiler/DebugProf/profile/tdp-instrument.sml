@@ -96,7 +96,7 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	    fn s => List.exists (fn s' => Symbol.eq (s, s')) l
 	end
 *)
-	     
+
 	fun cons (s, []) = if isSpecial s then [] else [(s, 0)]
 	  | cons (s, l as ((s', m) :: t)) =
 	      if isSpecial s then l
@@ -123,7 +123,7 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	val tdp_module_var = tmpvar ("<tdp_module>", BT.intTy)
 
 	fun VARexp v = A.VARexp (ref v, [])
-	fun INTexp i = A.INTexp (IntInf.fromInt i, BT.intTy)
+	fun INTexp i = A.NUMexp{value = IntInf.fromInt i, ty = BT.intTy}
 
 	val uExp = AU.unitExp
 	val pushexp = A.APPexp (VARexp tdp_push_var, uExp)
@@ -276,9 +276,8 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	      A.CONSTRAINTexp (i_exp tail loc e, t)
 	  | i_exp tail (n, _) (A.MARKexp (e, r)) =
 	      A.MARKexp (i_exp tail (n, r) e, r)
-	  | i_exp _ _ (e as (A.VARexp _ | A.CONexp _ | A.INTexp _ |
-			     A.WORDexp _ | A.REALexp _ | A.STRINGexp _ |
-			     A.CHARexp _)) = e
+	  | i_exp _ _ (e as (A.VARexp _ | A.CONexp _ | A.NUMexp _ |
+			     A.REALexp _ | A.STRINGexp _ | A.CHARexp _)) = e
 
 	and i_dec loc (A.VALdec l) = A.VALdec (map (i_vb loc) l)
 	  | i_dec loc (A.VALRECdec l) = A.VALRECdec (map (i_rvb loc) l)

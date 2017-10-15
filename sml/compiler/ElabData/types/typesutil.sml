@@ -698,8 +698,7 @@ local open Absyn in
 
 fun isValue (VARexp _) = true
   | isValue (CONexp _) = true
-  | isValue (INTexp _) = true
-  | isValue (WORDexp _) = true
+  | isValue (NUMexp _) = true
   | isValue (REALexp _) = true
   | isValue (STRINGexp _) = true
   | isValue (CHARexp _) = true

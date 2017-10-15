@@ -1504,29 +1504,28 @@ and mkExp (exp, d) =
 	       val c = mkCE(dc, ts, SOME(g e2), d)
 	       val _ = if !debugging then ppLexp c else ()
 	   in c end)
-        | g (INTexp (s, t)) =
-	  (debugmsg ">>mkExp INTexp";
-             ((if TU.equalType (t, BT.intTy) then INT (LN.int s)
-               else if TU.equalType (t, BT.int32Ty) then INT32 (LN.int32 s)
-	       else if TU.equalType (t, BT.intinfTy) then VAR (getII s)
-	       else if TU.equalType (t, BT.int64Ty) then
-		   let val (hi, lo) = LN.int64 s
+        | g (NUMexp{value, ty}) =
+	  (debugmsg ">>mkExp NUMexp";
+             ((if TU.equalType (ty, BT.intTy) then INT (LN.int value)
+               else if TU.equalType (ty, BT.int32Ty) then INT32 (LN.int32 value)
+	       else if TU.equalType (ty, BT.intinfTy) then VAR (getII value)
+	       else if TU.equalType (ty, BT.int64Ty) then
+		   let val (hi, lo) = LN.int64 value
 		   in RECORD [WORD32 hi, WORD32 lo]
 		   end
-               else bug "translate INTexp")
-              handle Overflow => (repErr "int constant too large"; INT 0)))
-
-        | g (WORDexp(s, t)) =
-	  (debugmsg ">>WORDexp";
-             ((if TU.equalType (t, BT.wordTy) then WORD (LN.word s)
-               else if TU.equalType (t, BT.word8Ty) then WORD (LN.word8 s)
-               else if TU.equalType (t, BT.word32Ty) then WORD32 (LN.word32 s)
-	       else if TU.equalType (t, BT.word64Ty) then
-		   let val (hi, lo) = LN.word64 s
+               else if TU.equalType (ty, BT.wordTy) then WORD (LN.word value)
+               else if TU.equalType (ty, BT.word8Ty) then WORD (LN.word8 value)
+               else if TU.equalType (ty, BT.word32Ty) then WORD32 (LN.word32 value)
+	       else if TU.equalType (ty, BT.word64Ty) then
+		   let val (hi, lo) = LN.word64 value
 		   in RECORD [WORD32 hi, WORD32 lo]
 		   end
-               else (ppType t; bug "translate WORDexp"))
-               handle Overflow => (repErr "word constant too large"; INT 0)))
+               else (ppType ty; bug "translate NUMexp"))
+              handle Overflow => (repErr(concat[
+		    "int/word constant ", IntInf.toString value,
+		    " too large for ", TU.tyToString(TU.headReduceType ty)
+		  ]);
+		INT 0)))
 
         | g (REALexp s) = REAL s
         | g (STRINGexp s) = STRING s
@@ -1646,25 +1645,24 @@ and transIntInf d s =
     let val consexp = CONexp (BT.consDcon, [ref (TP.INSTANTIATED BT.wordTy)])
 	fun build [] = CONexp (BT.nilDcon, [ref (TP.INSTANTIATED BT.wordTy)])
 	  | build (d :: ds) = let
-		val i = Word.toIntX d
-	    in
-		APPexp (consexp,
-			EU.TUPLEexp [WORDexp (IntInf.fromInt i, BT.wordTy),
-				     build ds])
-	    end
+	      val i = Word.toIntX d
+	      in
+		APPexp (consexp, EU.TUPLEexp [
+		    NUMexp{value = IntInf.fromInt i, ty = BT.wordTy},
+		    build ds
+		  ])
+	      end
+	fun mkSmallFn s = coreAcc(if LN.isNegative s then "makeSmallNegInf" else "makeSmallPosInf")
+	fun mkFn s = coreAcc(if LN.isNegative s then "makeNegInf" else "makePosInf")
 	fun small w =
-	    APP (coreAcc (if LN.isNegative s then "makeSmallNegInf"
-			  else "makeSmallPosInf"),
-		 mkExp (WORDexp (IntInf.fromInt (Word.toIntX w), BT.wordTy),
-			d))
-    in
-	case LN.repDigits s of
-	    [] => small 0w0
-	  | [w] => small w
-	  | ws => APP (coreAcc (if LN.isNegative s then "makeNegInf"
-				else "makePosInf"),
-		       mkExp (build ws, d))
-    end
+	      APP (mkSmallFn s,
+		mkExp (NUMexp{value = IntInf.fromInt (Word.toIntX w), ty = BT.wordTy}, d))
+        in
+	  case LN.repDigits s
+           of [] => small 0w0
+	    | [w] => small w
+	    | ws => APP (mkFn s, mkExp (build ws, d))
+        end
 
 (* Wrap bindings for IntInf.int literals around body. *)
 fun wrapII body = let

@@ -48,13 +48,13 @@ fun bug s = ErrorMsg.impossible ("Prof: "^s)
 val anonSym = S.varSymbol "anon"
 val intreftype = CONty(refTycon, [intTy])
 
-fun poly1 ty = 
+fun poly1 ty =
   POLYty{sign=[false], tyfun=TYFUN{arity=1, body=ty}}
 
 (* We get this stuff via CoreAccess now.  This way we don't need
  * to know the actual primops.... *)
 (*
-val updateop = 
+val updateop =
   let val t = poly1(tupleTy[CONty(arrayTycon,[IBOUND 0]),
   			    intTy, IBOUND 0] --> unitTy)
    in VALvar{path=SP.SPATH[S.varSymbol "unboxedupdate"], typ=ref t,
@@ -62,7 +62,7 @@ val updateop =
 	     info=II'.mkPrimInfo(P.UNBOXEDUPDATE, t)}
   end
 
-val assignop = 
+val assignop =
   let val t = poly1(tupleTy[CONty(refTycon,[IBOUND 0]), intTy, IBOUND 0]
 		    --> unitTy)
 
@@ -71,27 +71,27 @@ val assignop =
 	     info=II'.mkPrimInfo(P.ASSIGN, t)}
   end
 
-val subop = 
+val subop =
   let val t = poly1(tupleTy[CONty(arrayTycon,[IBOUND 0]), intTy] --> IBOUND 0)
    in VALvar{path=SP.SPATH[S.varSymbol "subscript"], typ=ref t,
              access=A.nullAcc,
 	     info=II'.mkPrimInfo(P.SUBSCRIPT, t)}
   end
 
-val derefop = 
+val derefop =
   let val t = poly1(CONty(refTycon,[IBOUND 0]) --> IBOUND 0)
    in VALvar{path=SP.SPATH [S.varSymbol "!"], typ=ref t,
              access=A.nullAcc, info=II'.mkPrimInfo(P.DEREF, t)}
   end
 
-val addop = 
+val addop =
   let val t = (tupleTy[intTy,intTy] --> intTy)
    in VALvar{path=SP.SPATH[S.varSymbol "iadd"], typ=ref t,
              access=A.nullAcc, info=II'.mkPrimInfo(P.IADD, t)}
   end
 *)
 
-fun tmpvar(str,ty,mkv) = 
+fun tmpvar(str,ty,mkv) =
     let val sym = S.varSymbol str
      in VALvar{access=A.namedAcc(sym, mkv), prim=PrimopId.NonPrim,
                path=SP.SPATH[sym], btvs = ref [], typ=ref ty}
@@ -106,6 +106,8 @@ fun varexp(v as VALvar{typ=ref ty,path,...}) =
 
 fun clean (path as name::names) = if S.eq(name,anonSym) then names else path
   | clean x = x
+
+fun intLiteral n = NUMexp{value = IntInf.fromInt n, ty = intTy}
 
 fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
  let fun getVar name = CoreAccess.getVar env [name]
@@ -124,7 +126,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 
      val currentvar = tmpvar("profCurrent",CONty(refTycon,[intTy]), mkv)
      val currentexp = varexp currentvar
-     
+
      val register = getVar "profile_register"
 
      local
@@ -149,16 +151,16 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
      val intUpdTy = tupleTy[CONty(arrayTycon,[intTy]),intTy,intTy] --> unitTy
      val intSubTy = tupleTy[CONty(arrayTycon,[intTy]),intTy] --> intTy
 
-     fun BUMPCCexp (ccvara : int) = 
+     fun BUMPCCexp (ccvara : int) =
        let val lvar = tmpvar("indexvar",intTy,mkv)
-	in APPexp(VARexp(ref updateop, [ref(INSTANTIATED(intTy))]),  
+	in APPexp(VARexp(ref updateop, [ref(INSTANTIATED(intTy))]),
 	       TUPLEexp[countarray,
-		INTexp (IntInf.fromInt ccvara, intTy),
+		intLiteral ccvara,
 		   APPexp(varexp addop,
-		     TUPLEexp[APPexp(VARexp(ref subop,[ref(INSTANTIATED(intTy))]),
-			       TUPLEexp[countarray,
-			               INTexp(IntInf.fromInt ccvara,intTy)]),
-					     INTexp (IntInf.fromInt 1,intTy)])])
+		     TUPLEexp[
+			APPexp(VARexp(ref subop,[ref(INSTANTIATED(intTy))]),
+			       TUPLEexp[countarray, intLiteral ccvara]),
+			intLiteral 1])])
        end
 
      val intAssTy = tupleTy[CONty(refTycon,[intTy]),intTy] --> unitTy
@@ -167,16 +169,14 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 	 let val lvar = tmpvar("indexvar",intTy, mkv)
 	  in LETexp(VALdec[VB{pat=VARpat(lvar),
 			      exp=APPexp(varexp addop,
-					 TUPLEexp[INTexp (IntInf.fromInt ccvara,
-							  intTy),
-						  baseexp]),
+					 TUPLEexp[intLiteral ccvara, baseexp]),
 			      tyvars=ref nil,
 			      boundtvs=[]}],
-		    APPexp(VARexp(ref assignop,[ref(INSTANTIATED(intTy))]),  
+		    APPexp(VARexp(ref assignop,[ref(INSTANTIATED(intTy))]),
 			   TUPLEexp[currentexp, varexp lvar]))
 	 end
 
-     fun instrdec(sp as (names,ccvara), VALdec vbl) = 
+     fun instrdec(sp as (names,ccvara), VALdec vbl) =
            let fun getvar(VARpat v) = SOME v
 	         | getvar(CONSTRAINTpat(p,_)) = getvar p
    	         | getvar _ = NONE
@@ -187,56 +187,56 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                           (case prim
                              of PrimopId.NonPrim => vb
                               | _ => VB{pat=pat, tyvars=tyvars,
-			                exp=instrexp (n::clean names, 
+			                exp=instrexp (n::clean names,
                                                       ccvara) false exp,
   			                boundtvs=boundtvs})
                        | SOME(VALvar{prim, ...}) =>
                           (case prim
                              of PrimopId.NonPrim => vb
-                              | _ =>  VB{pat=pat, exp=instrexp sp false exp, 
+                              | _ =>  VB{pat=pat, exp=instrexp sp false exp,
                                          tyvars=tyvars, boundtvs=boundtvs})
-		       | _ => VB{pat=pat, exp=instrexp sp false exp, 
+		       | _ => VB{pat=pat, exp=instrexp sp false exp,
                                  tyvars=tyvars, boundtvs=boundtvs})
-                           
+
             in VALdec (map instrvb vbl)
            end
 
-       | instrdec(sp as (names,ccvara), VALRECdec rvbl) = 
+       | instrdec(sp as (names,ccvara), VALRECdec rvbl) =
            let fun instrrvb (RVB{var as VALvar{path=SP.SPATH[n],...},
                                  exp,resultty,tyvars,boundtvs}) =
                      RVB{exp=instrexp(n::clean names, ccvara) false exp,
                          var=var, resultty=resultty, tyvars=tyvars,
                          boundtvs=boundtvs}
- 
+
                  | instrrvb _ = bug "VALRECdec in instrdec"
             in VALRECdec(map instrrvb rvbl)
            end
 
-       | instrdec(sp, ABSTYPEdec {abstycs,withtycs,body}) = 
-           ABSTYPEdec {abstycs=abstycs,withtycs=withtycs, 
+       | instrdec(sp, ABSTYPEdec {abstycs,withtycs,body}) =
+           ABSTYPEdec {abstycs=abstycs,withtycs=withtycs,
                        body=instrdec(sp,body)}
 
-       | instrdec(sp, STRdec strbl) = 
+       | instrdec(sp, STRdec strbl) =
            STRdec (map (fn strb => instrstrb(sp,strb)) strbl)
 
-       | instrdec(sp, ABSdec strbl) = 
+       | instrdec(sp, ABSdec strbl) =
            ABSdec (map (fn strb => instrstrb(sp,strb)) strbl)
 
-       | instrdec(sp, FCTdec fctbl) = 
+       | instrdec(sp, FCTdec fctbl) =
            FCTdec (map (fn fctb => instrfctb(sp,fctb)) fctbl)
-     
+
        | instrdec(sp, LOCALdec(localdec,visibledec)) =
            LOCALdec(instrdec (sp,localdec), instrdec (sp,visibledec))
-     
-       | instrdec(sp, SEQdec decl) = 
+
+       | instrdec(sp, SEQdec decl) =
            SEQdec (map (fn dec => instrdec(sp,dec)) decl)
 
-       | instrdec(sp, MARKdec(dec,region)) = 
+       | instrdec(sp, MARKdec(dec,region)) =
            MARKdec(instrdec (sp,dec), region)
 
        | instrdec(sp, other) = other
 
-     and instrstrexp(names, LETstr(d,body)) = 
+     and instrstrexp(names, LETstr(d,body)) =
            LETstr(instrdec((names,0),d), instrstrexp(names,body))
 
        | instrstrexp(names,MARKstr(body,region)) =
@@ -244,13 +244,13 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 
        | instrstrexp(names, x) = x
 
-     and instrstrb ((names,ccvara), STRB{name, str, def}) = 
+     and instrstrb ((names,ccvara), STRB{name, str, def}) =
            STRB{str=str, def=instrstrexp(name::names,def), name=name}
 
-     and instrfctexp(names, FCTfct {param, def, argtycs}) = 
+     and instrfctexp(names, FCTfct {param, def, argtycs}) =
            FCTfct{param=param, def=instrstrexp(names,def), argtycs=argtycs}
 
-       | instrfctexp(names, LETfct(d,body)) = 
+       | instrfctexp(names, LETfct(d,body)) =
            LETfct(instrdec((names,0),d), instrfctexp(names,body))
 
        | instrfctexp(names,MARKfct(body,region)) =
@@ -268,7 +268,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                  fun instrrules tr = map (fn (RULE(p,e)) => RULE(p, tr e))
 
                  val rec instr:(exp->exp) =
-                  fn RECORDexp l => 
+                  fn RECORDexp l =>
                        RECORDexp(map (fn (lab,exp) => (lab,iinstr exp)) l)
 
                    | VECTORexp(l,t) => VECTORexp((map iinstr l),t)
@@ -296,7 +296,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                        let fun safe(VARexp(ref(VALvar{prim, ...}), _)) =
                                (case prim
                                  of PrimopId.NonPrim => false
-                                  | _ => 
+                                  | _ =>
                                      if mayReturnMoreThanOnce prim then false
 				     else true)
                              | safe(MARKexp(e,_)) = safe e
@@ -304,7 +304,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                              | safe(SEQexp[e]) = safe e
                              | safe _ = false
 
-                           fun rator_instr a = 
+                           fun rator_instr a =
                              case a
                               of APPexp(randf,_) =>
                                    if safe randf then iinstr else oinstr
@@ -324,7 +324,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                                                       exp=APPexp(f', oinstr a),
                                                       tyvars=ref nil,
                                                       boundtvs=[]}],
-                                            SEQexp([SETCURRENTexp(ccvara), 
+                                            SEQexp([SETCURRENTexp(ccvara),
                                                     varexp lvar]))
                                 end
                        end
@@ -332,7 +332,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                    | CONSTRAINTexp(e,t) => CONSTRAINTexp(instr e, t)
 
                    | HANDLEexp (e, (l,t)) =>
-                       let fun rule(RULE(p,e)) = 
+                       let fun rule(RULE(p,e)) =
                              RULE(p,SEQexp[SETCURRENTexp ccvara, instr e])
                         in HANDLEexp (instr e, (map rule l,t))
                        end
@@ -343,15 +343,15 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 
                    | PACKexp(e, t, tycs) => PACKexp(oinstr e, t, tycs)
 
-                   | CASEexp (e, l, b) => 
+                   | CASEexp (e, l, b) =>
                        CASEexp(iinstr e, instrrules instr l, b)
 
                    | FNexp(l,t) =>
                        let fun dot (a,[z]) = S.name z :: a
-                             | dot (a,x::rest) = 
+                             | dot (a,x::rest) =
                                  dot("." :: S.name x :: a, rest)
                              | dot _ = bug "no path in instrexp"
-          
+
                            val name =  concat (dot ([], names))
                            val ccvara' = makeEntry(name)
                            val lvar = tmpvar("fnvar",t,mkv);
@@ -359,7 +359,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                            val exnMatch = CoreAccess.getCon env ["Match"]
 
                            val RULE(_,special) = List.last l
-                        in FNexp ([RULE(VARpat(lvar), 
+                        in FNexp ([RULE(VARpat(lvar),
                                 SEQexp ([BUMPCCexp(ccvara'),
                                          SETCURRENTexp(ccvara'),
                                          CASEexp(varexp lvar,
@@ -371,7 +371,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                                   ], t)
                        end
                    | MARKexp(e,region) => MARKexp(instr e, region)
-                   | e => e 
+                   | e => e
 
               in instr
              end
@@ -380,15 +380,15 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 
      val absyn1 = instrdec(([],0),absyn)
 
-     (* 
+     (*
       * The following break the invariant set in the absyn.sml where
       * the pat in each VB binding should bind single variables !;
       * The following VB only binds monomorphic variables, so it is
       * probably ok for the time being. We definitely should clean it
       * up some time in the future. (ZHONG)
-      *) 
+      *)
 
-     val absyn2 = 
+     val absyn2 =
        LOCALdec(VALdec[VB{pat=TUPLEpat[VARpat basevar,
                                        VARpat countarrayvar,
                                        VARpat currentvar],
@@ -403,7 +403,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
   in absyn2
  end
 
-fun instrumDec mrmto (env, compInfo) absyn = 
+fun instrumDec mrmto (env, compInfo) absyn =
       if !SMLofNJ.Internals.ProfControl.profMode
 	then instrumDec' mrmto (env, compInfo) absyn
 	else absyn

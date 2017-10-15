@@ -1,6 +1,7 @@
 (* literal-to-num.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Conversions from integer/word literals (which are represented as
  * arbitrary precision ints) to fixed size.

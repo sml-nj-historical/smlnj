@@ -1,5 +1,8 @@
-(* Copyright 1992 by AT&T Bell Laboratories *)
-(* elabutil.sml *)
+(* elabutil.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure ElabUtil : ELABUTIL =
 struct
@@ -15,10 +18,10 @@ local structure SP = SymPath
       structure V = VarCon
       structure BT = BasicTypes
 
-      open Symbol Absyn Ast ErrorMsg PrintUtil AstUtil Types BasicTypes 
+      open Symbol Absyn Ast ErrorMsg PrintUtil AstUtil Types BasicTypes
            EqTypes ModuleUtil TypesUtil VarCon
 
-in 
+in
 
 (* debugging *)
 val say = Control_Print.say
@@ -48,7 +51,7 @@ type compInfo = Absyn.dec CompInfo.compInfo
 
 fun newVALvar(s, mkv) = V.mkVALvar(s, A.namedAcc(s, mkv))
 
-fun smash f l = 
+fun smash f l =
     let fun h(a,(pl,oldl,newl)) =
 	  let val (p,old,new) = f a
 	   in (p::pl,old@oldl,new@newl)
@@ -57,7 +60,7 @@ fun smash f l =
     end
 
 local
-  fun uniq ((a0 as (a,_,_))::(r as (b,_,_)::_)) = 
+  fun uniq ((a0 as (a,_,_))::(r as (b,_,_)::_)) =
 	if S.eq(a,b) then uniq r else a0::uniq r
     | uniq l = l
   fun gtr ((a,_,_), (b,_,_)) =  let
@@ -83,7 +86,7 @@ val bogusID = S.varSymbol "*bogus*"
 val bogusExnID = S.varSymbol "*Bogus*"
 
 
-val TRUEpat = CONpat(trueDcon,[]) 
+val TRUEpat = CONpat(trueDcon,[])
 val TRUEexp = CONexp(trueDcon,[])
 val FALSEpat = CONpat(falseDcon,[])
 val FALSEexp = CONexp(falseDcon,[])
@@ -109,7 +112,7 @@ fun checkUniq (err,message,names) =
      in f names'
     end
 
-(* 
+(*
  * Extract all the variables from a pattern
  * NOTE: the "freeOrVars" function in elabcore.sml should probably
  * be merged with this.
@@ -117,11 +120,11 @@ fun checkUniq (err,message,names) =
 fun bindVARp (patlist,err) =
     let val vl = ref (nil: symbol list)
 	val env = ref(SE.empty: SE.staticEnv)
-	fun f (VARpat(v as VALvar{path=SP.SPATH[name],...})) = 
+	fun f (VARpat(v as VALvar{path=SP.SPATH[name],...})) =
 	       (if S.eq(name, EQUALsym)
 		then err WARN "rebinding =" nullErrorBody
 		else ();
-		env := SE.bind(name,B.VALbind v,!env); 
+		env := SE.bind(name,B.VALbind v,!env);
 		vl := name :: !vl)
 	  | f (RECORDpat{fields,...}) = app(fn(_,pat)=>f pat) fields
 	  | f (VECTORpat(pats,_)) = app f pats
@@ -143,11 +146,11 @@ fun isPrimPat (VARpat{info, ...}) = II.isPrimInfo(info)
 *)
 
 
-(* sort the labels in a record the order is redefined to take the usual 
+(* sort the labels in a record the order is redefined to take the usual
    ordering on numbers expressed by strings (tuples) *)
 
-local 
-  fun sort x = 
+local
+  fun sort x =
     ListMergeSort.sort (fn ((a,_),(b,_)) => TypesUtil.gtLabel (a,b)) x
 in fun sortRecord(l,err) =
      (checkUniq(err, "duplicate label in record",map #1 l);
@@ -165,22 +168,22 @@ fun makeRECORDexp(fields,err) =
 
 val TUPLEexp = AbsynUtil.TUPLEexp
 
-fun TPSELexp(e, i) = 
+fun TPSELexp(e, i) =
     let val lab = LABEL{number=i-1, name=(Tuples.numlabel i)}
      in SELECTexp(lab, e)
     end
 
-(* Adds a default case to a list of rules. 
-   If given list is marked, all ordinarily-marked expressions 
-     in default case are also marked, using end of given list 
+(* Adds a default case to a list of rules.
+   If given list is marked, all ordinarily-marked expressions
+     in default case are also marked, using end of given list
      as location.
    KLUDGE! The debugger distinguishes marks in the default case by
-     the fact that start and end locations for these marks 
+     the fact that start and end locations for these marks
      are the same! DBM: Is that you, Andrew Tolmach?  Is this
      kludge still relevant?  Probably not! *)
 fun completeMatch'' rule [r as RULE(pat,MARKexp(_,(_,right)))] =
       [r, rule (fn exp => MARKexp(exp,(right,right)))]
-  | completeMatch'' rule 
+  | completeMatch'' rule
                     [r as RULE(pat,CONSTRAINTexp(MARKexp(_,(_,right)),_))] =
       [r, rule (fn exp => MARKexp(exp,(right,right)))]
   | completeMatch'' rule [r] = [r,rule (fn exp => exp)]
@@ -192,9 +195,9 @@ fun completeMatch' (RULE(p,e)) =
     completeMatch'' (fn marker => RULE(p,marker e))
 
 fun completeMatch(env,exnName: string) =
-    completeMatch'' 
+    completeMatch''
       (fn marker =>
-          RULE(WILDpat, 
+          RULE(WILDpat,
 	       marker(RAISEexp(CONexp(CoreAccess.getExn env [exnName],[]),
 			       UNDEFty))))
 (** Updated to the ty option type - GK *)
@@ -203,8 +206,8 @@ val trivialCompleteMatch = completeMatch(SE.empty,"Match")
 
 val TUPLEpat = AbsynUtil.TUPLEpat
 
-fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) = 
-  let fun g (RVB{var=v as VALvar{path=SP.SPATH [sym], ...}, ...}, nvars) = 
+fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) =
+  let fun g (RVB{var=v as VALvar{path=SP.SPATH [sym], ...}, ...}, nvars) =
           let val nv = newVALvar(sym, mkv)
           in ((v, nv, sym)::nvars)
           end
@@ -212,43 +215,43 @@ fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) =
       val vars = foldr g [] rvbs
       val odec = VALRECdec rvbs
 
-      val tyvars = 
+      val tyvars =
         case rvbs
          of (RVB{tyvars,...})::_ => tyvars
           | _ => bug "unexpected empty rvbs list in wrapRECdecGen"
 
-   in (vars, 
+   in (vars,
        case vars
         of [(v, nv, sym)] =>
             (VALdec [VB{pat=VARpat nv, boundtvs=[], tyvars=tyvars,
-                        exp=LETexp(odec, VARexp(ref v, []))}]) 
-         | _ => 
-          (let val vs = map (fn (v, _, _) => VARexp(ref v, [])) vars 
+                        exp=LETexp(odec, VARexp(ref v, []))}])
+         | _ =>
+          (let val vs = map (fn (v, _, _) => VARexp(ref v, [])) vars
                val rootv = newVALvar(internalSym, mkv)
-               val rvexp = VARexp(ref rootv, []) 
-               val nvdec = 
+               val rvexp = VARexp(ref rootv, [])
+               val nvdec =
                  VALdec([VB{pat=VARpat rootv, boundtvs=[], tyvars=tyvars,
                             exp=LETexp(odec, TUPLEexp vs)}])
 
-               fun h([], _, d) =  
+               fun h([], _, d) =
                      LOCALdec(nvdec, SEQdec(rev d))
-                 | h((_,nv,_)::r, i, d) = 
+                 | h((_,nv,_)::r, i, d) =
                      let val nvb = VB{pat=VARpat nv, boundtvs=[],
                                       exp=TPSELexp(rvexp,i),tyvars=ref []}
                       in h(r, i+1, VALdec([nvb])::d)
                      end
             in h(vars, 1, [])
            end))
-  end 
+  end
 
-fun wrapRECdec0 (rvbs, compInfo) = 
+fun wrapRECdec0 (rvbs, compInfo) =
   let val (vars, ndec) = wrapRECdecGen(rvbs, compInfo)
    in case vars
        of [(_, nv, _)] => (nv, ndec)
         | _ => bug "unexpected case in wrapRECdec0"
   end
 
-fun wrapRECdec (rvbs, compInfo) = 
+fun wrapRECdec (rvbs, compInfo) =
   let val (vars, ndec) = wrapRECdecGen(rvbs, compInfo)
       fun h((v, nv, sym), env) = SE.bind(sym, B.VALbind nv, env)
       val nenv = foldl h SE.empty vars
@@ -260,13 +263,13 @@ val argVarSym = S.varSymbol "arg"
 fun cMARKexp (e, r) = if !ElabControl.markabsyn then MARKexp (e, r) else e
 
 fun FUNdec (completeMatch, fbl,
-	    compInfo as {mkLvar=mkv,errorMatch,...}: compInfo) = 
+	    compInfo as {mkLvar=mkv,errorMatch,...}: compInfo) =
     let fun fb2rvb ({var, clauses as ({pats,resultty,exp}::_),tyvars,region}) =
 	    let fun getvar _ =  newVALvar(argVarSym, mkv)
 		val vars = map getvar pats
 		fun not1(f,[a]) = a
 		  | not1(f,l) = f l
-		fun dovar valvar = VARexp(ref(valvar),[]) 
+		fun dovar valvar = VARexp(ref(valvar),[])
 		fun doclause ({pats,exp,resultty=NONE}) =
 			      RULE(not1(TUPLEpat,pats), exp)
 		  | doclause ({pats,exp,resultty=SOME ty}) =
@@ -280,10 +283,10 @@ fun FUNdec (completeMatch, fbl,
 			         (fn e => MARKexp(e,(a,b)))
 			      | _ => fn e => e
 *)
-		fun makeexp [var] = 
+		fun makeexp [var] =
                       FNexp(completeMatch(map doclause clauses),UNDEFty)
-		  | makeexp vars = 
-                      foldr (fn (w,e) => 
+		  | makeexp vars =
+                      foldr (fn (w,e) =>
                              FNexp(completeMatch [RULE(VARpat w,(*mark*) e)],
                                    UNDEFty))
 				(CASEexp(TUPLEexp(map dovar vars),
@@ -303,7 +306,7 @@ fun FUNdec (completeMatch, fbl,
 fun makeHANDLEexp(exp, rules, compInfo as {mkLvar=mkv, ...}: compInfo) =
     let val v = newVALvar(exnID, mkv)
         val r = RULE(VARpat v, RAISEexp(VARexp(ref(v),[]),UNDEFty)) (** Updated to the ty option type - GK*)
-	val rules = completeMatch' r rules 
+	val rules = completeMatch' r rules
      in HANDLEexp(exp, (rules,UNDEFty))
     end
 
@@ -311,33 +314,33 @@ fun makeHANDLEexp(exp, rules, compInfo as {mkLvar=mkv, ...}: compInfo) =
 (* transform a VarPat into either a variable or a constructor. If we are given
    a long path (>1) then it has to be a constructor. *)
 
-fun pat_id (spath, env, err, compInfo as {mkLvar=mkv, ...}: compInfo) = 
+fun pat_id (spath, env, err, compInfo as {mkLvar=mkv, ...}: compInfo) =
     case spath
       of SymPath.SPATH[id] =>
 	   ((case LU.lookValSym (env,id,fn _ => raise SE.Unbound)
-	       of V.CON c => CONpat(c,[]) 
+	       of V.CON c => CONpat(c,[])
 	        | _ => VARpat(newVALvar(id,mkv)))
 	    handle SE.Unbound => VARpat(newVALvar(id,mkv)))
        | _ =>
 	   CONpat((case LU.lookVal (env,spath,err)
 		     of V.VAL c =>
-			(err COMPLAIN 
+			(err COMPLAIN
 			  ("variable found where constructor is required: "^
 			   SymPath.toString spath)
 			  nullErrorBody;
-			 (bogusCON,[])) 
-		      | V.CON c => (c,[])) 
+			 (bogusCON,[]))
+		      | V.CON c => (c,[]))
 		   handle SE.Unbound => bug "unbound untrapped")
 
 fun makeRECORDpat(l,flex,err) =
     RECORDpat{fields=sortRecord(l,err), flex=flex, typ=ref UNDEFty}
 
-fun clean_pat err (CONpat(DATACON{const=false,name,...},_)) = 
+fun clean_pat err (CONpat(DATACON{const=false,name,...},_)) =
       (err COMPLAIN ("data constructor "^S.name name^
 		     " used without argument in pattern")
          nullErrorBody;
        WILDpat)
-  | clean_pat err (p as CONpat(DATACON{lazyp=true,...},_)) = 
+  | clean_pat err (p as CONpat(DATACON{lazyp=true,...},_)) =
       APPpat(BT.dollarDcon,[],p) (* LAZY *) (* second argument = nil OK? *)
   | clean_pat err (MARKpat(p,region)) = MARKpat(clean_pat err p, region)
   | clean_pat err p = p
@@ -345,7 +348,7 @@ fun clean_pat err (CONpat(DATACON{const=false,name,...},_)) =
 fun pat_to_string WILDpat = "_"
   | pat_to_string (VARpat(VALvar{path,...})) = SP.toString path
   | pat_to_string (CONpat(DATACON{name,...},_)) = S.name name
-  | pat_to_string (INTpat(i,_)) = IntInf.toString i
+  | pat_to_string (NUMpat num) = IntConst.toString num
   | pat_to_string (REALpat s) = s
   | pat_to_string (STRINGpat s) = s
   | pat_to_string (CHARpat s) = "#"^s
@@ -359,12 +362,12 @@ fun pat_to_string WILDpat = "_"
   | pat_to_string _ = "<illegal pattern>"
 
 fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},tvs),p) =
-      let val p1 = APPpat(d, tvs, p) 
+      let val p1 = APPpat(d, tvs, p)
        in if lazyp (* LAZY *)
 	  then APPpat(BT.dollarDcon, [], p1)
           else p1
       end
-  | makeAPPpat err (CONpat(d as DATACON{name,...},_),_) = 
+  | makeAPPpat err (CONpat(d as DATACON{name,...},_),_) =
       (err COMPLAIN
         ("constant constructor applied to argument in pattern:"
 	 ^ S.name name)
@@ -372,7 +375,7 @@ fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},tvs),p) =
        WILDpat)
   | makeAPPpat err (MARKpat(rator,region),p) =
       MARKpat(makeAPPpat err (rator,p), region)
-  | makeAPPpat err (rator,_) = 
+  | makeAPPpat err (rator,_) =
       (err COMPLAIN (concat["non-constructor applied to argument in pattern: ",
 			     pat_to_string rator])
          nullErrorBody;
@@ -380,9 +383,9 @@ fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},tvs),p) =
 
 fun makeLAYEREDpat ((x as VARpat _), y, _) = LAYEREDpat(x,y)
   | makeLAYEREDpat ((x as MARKpat(VARpat _, reg)), y, _) = LAYEREDpat(x,y)
-  | makeLAYEREDpat (CONSTRAINTpat(x,t), y, err) = 
+  | makeLAYEREDpat (CONSTRAINTpat(x,t), y, err) =
       makeLAYEREDpat(x, CONSTRAINTpat(y,t), err)
-  | makeLAYEREDpat (MARKpat(CONSTRAINTpat(x,t),reg), y, err) = 
+  | makeLAYEREDpat (MARKpat(CONSTRAINTpat(x,t),reg), y, err) =
       makeLAYEREDpat(MARKpat(x,reg), CONSTRAINTpat(y,t), err)
   | makeLAYEREDpat (x,y,err) =
       (err COMPLAIN "pattern to left of \"as\" must be variable" nullErrorBody;
@@ -406,11 +409,11 @@ fun calc_strictness (arity, body) =
 (* checkBoundTyvars: check whether the tyvars appearing in a type (used) are
    bound (as parameters in a type declaration) *)
 fun checkBoundTyvars(used,bound,err) =
-    let val boundset = 
+    let val boundset =
               foldr (fn (v,s) => TS.union(TS.singleton v,s,err))
 	        TS.empty bound
 	fun nasty(ref(INSTANTIATED(VARty v))) = nasty v
-	  | nasty(ubound as ref(UBOUND _)) = 
+	  | nasty(ubound as ref(UBOUND _)) =
 	     err COMPLAIN ("unbound type variable in type declaration: " ^
 			   (PPType.tyvarPrintname ubound))
 		 nullErrorBody
@@ -425,8 +428,8 @@ exception IsRec
 
 (** FLINT in front end **)
 (** formerly defined in translate/nonrec.sml; now done during type checking *)
-fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...}, 
-                           exp, resultty, tyvars, boundtvs}]) = 
+fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...},
+                           exp, resultty, tyvars, boundtvs}]) =
      let fun findexp e =
             (case e
               of VARexp (ref(V.VALvar{access=A.LVAR x, ...}), _) =>
@@ -440,7 +443,7 @@ fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...},
 		   (findexp x; app (fn RULE (_, x) => findexp x) l)
                | RAISEexp (x, _) => findexp x
                | LETexp (d, x) => (finddec d; findexp x)
-               | CASEexp (x, l, _) => 
+               | CASEexp (x, l, _) =>
                    (findexp x; app (fn RULE (_, x) => findexp x) l)
 	       | IFexp { test, thenCase, elseCase } =>
 		   (findexp test; findexp thenCase; findexp elseCase)
@@ -452,8 +455,7 @@ fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...},
 	       | SELECTexp (_, e) => findexp e
 	       | VECTORexp (el, _) => app findexp el
 	       | PACKexp (e, _, _) => findexp e
-	       | (CONexp _ | INTexp _ | WORDexp _ | REALexp _ | STRINGexp _ |
-		  CHARexp _) => ())
+	       | (CONexp _ | NUMexp _ | REALexp _ | STRINGexp _ | CHARexp _) => ())
 
           and finddec d =
             (case d

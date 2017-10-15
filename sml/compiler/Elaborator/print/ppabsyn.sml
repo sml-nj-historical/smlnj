@@ -1,5 +1,8 @@
-(* Copyright 1992 by AT&T Bell Laboratories *)
-(* absyn/ppabsyn.sml *)
+(* ppabsyn.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature PPABSYN =
 sig
@@ -98,18 +101,8 @@ fun ppPat env ppstrm =
 	fun ppPat' (_,0) = pps "<pat>"
 	  | ppPat' (VARpat v,_) = ppVar ppstrm v
 	  | ppPat' (WILDpat,_) = pps "_"
-	  | ppPat' (INTpat(i,t),_) = pps(IntInf.toString i)
-(*	     (begin_block ppstrm PU.INCONSISTENT 2;
-	      pps "("; pps(IntInf.toString i);
-	      pps " :"; PP.break ppstrm {nsp=1,offset=1};
-	      ppType env ppstrm t; pps ")";
-	      end_block ppstrm) *)
-	  | ppPat' (WORDpat(w,t),_) = pps("0w" ^ IntInf.toString w)
-(*	     (openHOVBox 2;
-	      pps "("; pps(IntInf.toString w);
-	      pps " :"; PP.break ppstrm {nsp=1,offset=1};
-	      ppType env ppstrm t; pps ")";
-	      closeBox ()) *)
+(* QUESTION: do we want to tag word literals with a "0w" prefix *)
+          | ppPat' (NUMpat num, _) = pps (IntConst.toString num)
 	  | ppPat' (REALpat r,_) = pps r
 	  | ppPat' (STRINGpat s,_) = PU.pp_mlstr ppstrm s
 	  | ppPat' (CHARpat s,_) = (pps "#"; PU.pp_mlstr ppstrm s)
@@ -244,8 +237,8 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 	fun ppExp'(_,_,0) = pps "<exp>"
 	  | ppExp'(VARexp(ref var,_),_,_) = ppVar ppstrm var
 	  | ppExp'(CONexp(con,_),_,_) = ppDcon ppstrm con
-	  | ppExp'(INTexp (i,t),_,_) = pps(IntInf.toString i)
-	  | ppExp'(WORDexp(w,t),_,_) = pps("0w" ^ IntInf.toString w)
+(* QUESTION: do we want to tag word literals with a "0w" prefix *)
+          | ppExp' (NUMexp num, _, _) = pps(IntConst.toString num)
 	  | ppExp'(REALexp r,_,_) = pps r
 	  | ppExp'(STRINGexp s,_,_) = PU.pp_mlstr ppstrm s
 	  | ppExp'(CHARexp s,_,_) = (pps "#"; PU.pp_mlstr ppstrm s)

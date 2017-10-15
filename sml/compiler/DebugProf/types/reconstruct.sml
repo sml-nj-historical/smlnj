@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1996 AT&T Bell Laboratories *)
-(* reconstruct.sml *)
+(* reconstruct.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 structure Reconstruct : sig val expType : Absyn.exp -> Types.ty end =
 struct
@@ -26,8 +29,7 @@ fun expType(VARexp(ref(VALvar{typ=ref ty,...}),insttvs)) =
      (case typ
        of POLYty{tyfun,...} => TU.applyTyfun(tyfun,map VARty insttvs)
 	| _ => typ)
-  | expType(INTexp (_, t)) = t
-  | expType(WORDexp (_, t)) = t
+  | expType(NUMexp{ty, ...}) = ty
   | expType(REALexp _) = realTy
   | expType(STRINGexp _) = stringTy
   | expType(CHARexp _) = charTy
@@ -48,7 +50,7 @@ fun expType(VARexp(ref(VALvar{typ=ref ty,...}),insttvs)) =
 	| POLYty _ => bug "poly-rator"
 	| WILDCARDty => bug "wildcard-rator"
 	| UNDEFty => bug "undef-rator"
-	| IBOUND _ => bug "ibound-rator" 
+	| IBOUND _ => bug "ibound-rator"
 	| VARty _ => bug "varty-rator"
 	| _ => bug "rator")
   | expType(HANDLEexp(e,h)) = expType e
@@ -67,7 +69,7 @@ fun expType(VARexp(ref(VALvar{typ=ref ty,...}),insttvs)) =
   | expType(SEQexp nil) = bug "expType(SEQexp nil)"
   | expType(CONSTRAINTexp(e,ty)) = expType e
   | expType(MARKexp(e,_)) = expType e
- 
+
 end (* structure Reconstruct *)
 
 
