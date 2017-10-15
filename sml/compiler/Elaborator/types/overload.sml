@@ -6,16 +6,23 @@
 
 signature OVERLOAD =
   sig
+
   (* matching a scheme against a target type -- used declaring overloadings *)
     val matchScheme : Types.tyfun * Types.ty -> Types.ty
 
-    val new : unit ->
-	      { pushv : VarCon.var ref * SourceMap.region * ErrorMsg.complainer
-			-> Types.ty,
-		pushl : Types.ty -> unit,
-		resolve : StaticEnv.staticEnv -> unit }
+  (* create a new overloading environment, which is represented by three functions:
+   *	pushv -- add an overloaded variable to the environment
+   *	pushl -- add an overloaded literal to the environment
+   *	resolve -- resolve the overloadings in the environment
+   *)
+    val new : unit -> {
+	    pushv : VarCon.var ref * SourceMap.region * ErrorMsg.complainer -> Types.ty,
+	    pushl : Types.ty -> unit,
+	    resolve : StaticEnv.staticEnv -> unit
+	  }
 
     val debugging : bool ref (* = ElabControl.debugging = Control.Elab.debugging *)
+
   end  (* signature OVERLOAD *)
 
 structure Overload : OVERLOAD =
