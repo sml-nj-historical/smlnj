@@ -79,7 +79,7 @@ fun mkIntLiteralTy (v : IntInf.int, r : SourceMap.region) : ty =
 fun mkWordLiteralTy (v : IntInf.int, r : SourceMap.region) : ty =
       VARty(mkTyvar(OVLD{
 	  sources = [OWORD(v, r)],
-	  options = OverloadLit.intTypes
+	  options = OverloadLit.wordTypes
 	}))
 
 (* tyvarset management *)
