@@ -1075,5 +1075,40 @@ fun tyToString ty =
 	 | UNDEFty => "<ud>"
 	 | MARKty (ty,_) => tyToString ty
     end
+
+(* return size and signedness information about integer and word types.  We use a width
+ * of zero for IntInf.int.
+ *)
+  fun numInfo ty = let
+	fun int w = {wid = w, signed = true}
+	fun word w = {wid = w, signed = true}
+	in
+	  if equalType(ty, BT.intTy) then int Target.defaultIntSz
+	  else if equalType(ty, BT.wordTy) then word Target.defaultIntSz
+	  else if equalType(ty, BT.intinfTy) then int 0
+	  else if equalType(ty, BT.int32Ty) then int 32
+	  else if equalType(ty, BT.int64Ty) then int 64
+	  else if equalType(ty, BT.word8Ty) then word 8
+	  else if equalType(ty, BT.word32Ty) then word 32
+	  else if equalType(ty, BT.word64Ty) then word 64
+	  else ErrorMsg.impossible(concat[
+	      "TypeUtil.numInfo(", tyToString(headReduceType ty), ")"
+	    ])
+	end
+
+  fun numInRange (n, ty) = let
+	  fun pow2 w = IntInf.<<(1, Word.fromInt w)
+	  in
+	    case numInfo ty
+	     of {wid=0, ...} => true (* IntInf.int literals are always in range! *)
+	      | {wid, signed=true} => let
+		  val limit = pow2(wid-1)
+		  in
+		    (~limit <= n) andalso (n < limit)
+		  end
+	      | {wid, ...} => (n < pow2 wid) (* we assume that n > 0, since it is unsigned *)
+	    (* end case *)
+	  end
+
 end (* local *)
 end (* structure TypesUtil *)

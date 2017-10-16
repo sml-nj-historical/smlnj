@@ -122,4 +122,12 @@ sig
 
   val tyToString : Types.ty -> string
 
+(* return size and signedness information about integer and word types.  We use a width
+ * of zero for IntInf.int.
+ *)
+  val numInfo : Types.ty -> { wid : int, signed : bool }
+
+(* check an integer/word literal value for being in range as defined by its type *)
+  val numInRange : IntInf.int * Types.ty -> bool
+
 end  (* signature TYPESUTIL *)

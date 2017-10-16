@@ -117,28 +117,35 @@ structure BasicTypes : BASICTYPES =
 	    (tyc, T.CONty (tyc, []))
 	  end
 
+  (* integer/word types
+   *
+   * NOTE: if you add a new int or word type here, then you should update the `numInfo`
+   * function in ElabData/types/typeutil.sml
+   *)
     val (intTycon, intTy) = pt2tct ("int", 0, T.YES)
     val (int32Tycon, int32Ty) = pt2tct ("int32", 0, T.YES)
     val (int64Tycon, int64Ty) = if Target.is64
 	  then pt2tct ("int64", 0, T.YES)
 	  else let
-	  (* use pairs of ints to represent 64-bit ints on 32-bit machines *)
+	  (* we use pairs of ints to represent 64-bit ints on 32-bit machines *)
 	    val int64Tycon = mk64 "int64"
 	    in
 	      (int64Tycon, T.CONty (int64Tycon, []))
 	    end
 
     val (intinfTycon, intinfTy) = pt2tct ("intinf", 0, T.YES)
-    val (realTycon, realTy) = pt2tct ("real", 0, T.NO)
-
-    val arrayTycon = mkpt ("array", 1, T.OBJ)
-    val vectorTycon = mkpt ("vector", 1, T.YES)
 
     val (wordTycon, wordTy) = pt2tct("word", 0, T.YES)
     val (word8Tycon, word8Ty) = pt2tct("word8", 0, T.YES)
 
     val word64Tycon = mk64 "word64"
     val word64Ty = T.CONty (word64Tycon, [])
+
+
+    val (realTycon, realTy) = pt2tct ("real", 0, T.NO)
+
+    val arrayTycon = mkpt ("array", 1, T.OBJ)
+    val vectorTycon = mkpt ("vector", 1, T.YES)
 
     val (stringTycon, stringTy) = pt2tct ("string", 0, T.YES)
 
