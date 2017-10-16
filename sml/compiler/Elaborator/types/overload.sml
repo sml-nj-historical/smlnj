@@ -17,7 +17,7 @@ signature OVERLOAD =
    *)
     val new : unit -> {
 	    pushv : VarCon.var ref * SourceMap.region * ErrorMsg.complainer -> Types.ty,
-	    pushl : Types.ty -> unit,
+	    pushl : IntInf.int * Types.ty * ErrorMsg.complainer -> Types.ty,
 	    resolve : StaticEnv.staticEnv -> unit
 	  }
 
@@ -79,10 +79,15 @@ structure Overload : OVERLOAD =
 	    !tyref
 	  end
 
+  (* information about overloaded literals; once the type has been resolved, we use this
+   * information to check that the literal value is within range for its type.
+   *)
+    type num_info = IntInf.int * Ty.ty * ErrorMsg.complainer
+
   (* overloaded functions *)
     fun new () = let
 	  val overloadedvars = ref (nil: (VC.var ref * ErrorMsg.complainer * Ty.tyvar) list)
-	  val overloadedlits = ref (nil: Ty.ty list)
+	  val overloadedlits = ref (nil: num_info list)
 	(* push an overloaded variable onto the var list *)
 	  fun pushvar (refvar as ref(VC.OVLDvar{name,options,scheme}), region, err) = let
 	        val indicators = map #indicator options
@@ -97,7 +102,7 @@ structure Overload : OVERLOAD =
 		end
 	    | pushvar _ = bug "Overload.push"
       (* push an overloaded literal onto the var list *)
-	fun pushlit ty_err = overloadedlits := ty_err :: !overloadedlits
+	fun pushlit info = (overloadedlits := info :: !overloadedlits; #2 info)
       (* resolve overloadings *)
 	fun resolve env = let
 	    (* this function implements defaulting behavior -- if more
@@ -143,7 +148,9 @@ structure Overload : OVERLOAD =
 		      select options
 		    end
 	    (* resolve overloaded literals *)
-	      fun resolveOVLDlit ty = (case ty
+	      fun resolveOVLDlit (value, ty, err) = (
+		  (* first, resolve the type *)
+		    case ty
 		     of Ty.VARty(tyvar as ref(Ty.OVLD{sources,options})) => (
 		          case options
 			   of ty::_ => tyvar := Ty.INSTANTIATED ty (* default *)
@@ -152,7 +159,14 @@ structure Overload : OVERLOAD =
 		      | Ty.VARty(ref(Ty.INSTANTIATED _)) => ()
 			  (* already resolved by type checking *)
 		      | _ => bug "resolveOVLDlit 2"
-		    (* end case *))
+		    (* end case *);
+		  (* then check that the value is in range *)
+		    if TU.numInRange(value, ty)
+		      then ()
+		      else err EM.COMPLAIN (concat[
+			  "literal value ", IntInf.toString value, " is too large for type "
+			])
+			(fn ppstrm => PPType.ppType env ppstrm ty))
 	      in
 		app resolveOVLDlit (rev(!overloadedlits));
 		app resolveOVLDvar (rev(!overloadedvars))

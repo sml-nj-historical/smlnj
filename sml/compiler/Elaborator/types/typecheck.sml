@@ -402,7 +402,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
 	      (typ := mkMETAtyBounded depth; (pat,MARKty(!typ, region)))
 			             (* multiple occurrence due to or-pat *)
        | VARpat(VALvar{typ, ...}) => (pat, MARKty(!typ, region))
-       | NUMpat{ty, ...} => (oll_push ty; (pat, MARKty(ty, region)))
+       | NUMpat{value, ty} => (pat, oll_push(value, ty, err region))
        | REALpat _ => (pat,MARKty(realTy, region))
        | STRINGpat _ => (pat,MARKty(stringTy, region))
        | CHARpat _ => (pat,MARKty(charTy, region))
@@ -528,7 +528,7 @@ in
            let val (ty,insts) = instantiatePoly typ
             in (CONexp(dcon, insts), MARKty(ty, region))
            end
-       | NUMexp{ty, ...} => (oll_push ty; (exp, MARKty(ty, region)))
+       | NUMexp{value, ty} => (exp, oll_push(value, ty, err region))
        | REALexp _ => (exp,MARKty(realTy, region))
        | STRINGexp _ => (exp,MARKty(stringTy, region))
        | CHARexp _ => (exp,MARKty(charTy, region))
