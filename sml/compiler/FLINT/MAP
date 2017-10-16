@@ -27,7 +27,7 @@ kernel/
 
   ltykernel.sig/sml
     normalization and equivalence for tyc and lty
-    defs: LTYKERNEL, LtyKernel: LTYKERNEL    
+    defs: LTYKERNEL, LtyKernel: LTYKERNEL
 
   ltydef.sig/sml
     LtyDef contains the set of abstract constructor, deconstructor, and
@@ -60,7 +60,7 @@ plambda/
   plambda.sig/sml
     the F-omega-like typed intermediate language (type lexp)
     defs: PLAMBDA, PLambda: PLAMBDA
-  
+
   pplexp.sml
     prettyprinting lexp
     defs: PPLEXP, PPLexp: PPLEXP
@@ -101,7 +101,7 @@ flint/
     defs: CHKFLINT, ChkFlint: CHKFLINT
 
   tvarcvt.sml
-    converting between different representations of 
+    converting between different representations of
     type variables in a FLINT program.
     defs: TVARCVT, TvarCvt :> TVARCVT
 
@@ -126,7 +126,7 @@ trans/
 
   transtypes.sml
     translate front-end types to flint types (lty, tyc)
-  
+
   translate.sml
     translate absyn to plambda lexp
 
@@ -141,7 +141,7 @@ main/
 	 (structure Gen: MACHINE_GEN
 	  val collect: (unit -> int) -> CodeObj.code_object) : CODEGENERATOR
     imports:
-       ABCopt, ChkFlint, Closure, Control, Convert, CPStrans, CPSopt, Spill,
+       (*ABCopt,*) ChkFlint, Closure, Control, Convert, CPStrans, CPSopt, Spill,
        CpsSplit, FLINT_Control, FContract, FixFix, FLINT, FSplit, GlobalFix,
        LContract, Lift, Limit, Literals, Loopify, LtyExtern, PPCps, PPFlint,
        Recover, Reify, Specialize, SMLofNJ, TextIO, Wrapping

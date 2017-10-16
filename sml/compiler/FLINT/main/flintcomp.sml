@@ -13,27 +13,27 @@ local structure MachSpec = Gen.MachSpec
       structure CPSopt = CPSopt(MachSpec)
       structure Closure = Closure(MachSpec)
       structure Spill = SpillFn(MachSpec)
-      structure CpsSplit = CpsSplitFun (MachSpec) 
+      structure CpsSplit = CpsSplitFun (MachSpec)
       structure CTRL = FLINT_Control
       structure PP = PPFlint
       structure LT = LtyExtern
       structure O  = Option
       structure F  = FLINT
-in 
+in
 
 structure Machine = Gen
 val architecture = Gen.MachSpec.architecture
 val abi_variant = Gen.abi_variant
 fun bug s = ErrorMsg.impossible ("FLINTComp:" ^ s)
 val say = Control_Print.say
-	  
+
 datatype flintkind = FK_WRAP | FK_REIFY | FK_DEBRUIJN | FK_NAMED | FK_CPS
-								   
+
 fun phase x = Stats.doPhase (Stats.makePhase x)
-	      
+
 val deb2names = phase "FLINT 056 deb2names" TvarCvt.debIndex2names
 val names2deb = phase "FLINT 057 names2deb" TvarCvt.names2debIndex
-		
+
 val lcontract = phase "FLINT 052 lcontract" LContract.lcontract
 (*  val lcontract' = phase "FLINT 052 lcontract'" LContract.lcontract *)
 val fcollect  = phase "FLINT 052a fcollect" Collect.collect
@@ -43,11 +43,13 @@ val fcontract = fn opts => fn lexp => fcontract(opts, fcollect lexp)
 val loopify   = phase "FLINT 057 loopify" Loopify.loopify
 val fixfix    = phase "FLINT 056 fixfix" FixFix.fixfix
 val split     = phase "FLINT 058 split" FSplit.split
+(* not enabled, so don't compiler [JHR; 2017-10-16]
 val abcopt    = phase "FLINT 059 abcopt" ABCOpt.abcOpt
-		
+*)
+
 val typelift  = phase "FLINT 0535 typelift" Lift.typeLift
 val wformed   = phase "FLINT 0536 wformed" Lift.wellFormed
-		
+
 val specialize= phase "FLINT 053 specialize" Specialize.specialize
 val wrapping  = phase "FLINT 054 wrapping" Wrapping.wrapping
 val reify     = phase "FLINT 055 reify" Reify.reify
@@ -65,10 +67,10 @@ val limit     = phase "CPS 110 limit" Limit.nolimit
 val codegen   = phase "CPS 120 cpsgen" Gen.codegen
 
 (** pretty printing for the FLINT and CPS code *)
-val (prF, prC) = 
+val (prF, prC) =
   let fun prGen (flag,printE) s e =
-        if !flag then (say ("\n[After " ^ s ^ " ...]\n\n"); printE e; 
-                       say "\n"; e) 
+        if !flag then (say ("\n[After " ^ s ^ " ...]\n\n"); printE e;
+                       say "\n"; e)
         else e
    in (prGen (CTRL.print, PPFlint.printProg),
        prGen (Control.CG.printit, PPCps.printcps0))
@@ -92,7 +94,7 @@ val fcs : (FLINT.prog -> FLINT.prog) list ref = ref []
 fun flintcomp
 	(flint,
 	 compInfo as {error, sourceName=src, ...}: Absyn.dec CompInfo.compInfo,
-	 splitting) = 
+	 splitting) =
   let fun err severity s =
  	error (0,0) severity (concat["Real constant out of range: ",s,"\n"])
 
@@ -121,7 +123,9 @@ fun flintcomp
 	    | ("lcontract",_)		=> (lcontract f,  fi, fk, p)
 	    | ("fixfix",   _)		=> (fixfix f,     fi, fk, p)
 	    | ("loopify",  _)		=> (loopify f,    fi, fk, p)
+(* not enabled, so don't compiler [JHR; 2017-10-16]
 	    | ("abcopt",  _)		=> (abcopt f,    fi, fk, p)
+*)
 	    | ("specialize",FK_NAMED)	=> (specialize f, fi, fk, p)
 	    | ("wrap",FK_NAMED)		=> (wrapping f,	  fi, FK_WRAP, p)
 	    | ("reify",FK_WRAP)		=> (reify f,      fi, FK_REIFY, p)
@@ -149,7 +153,7 @@ fun flintcomp
 		    end
 		  | ("print",_) =>
 		    (say("\n[After "^l^"...]\n\n"); PP.printFundec f; say "\n")
-		  | ("printsplit", _) => 
+		  | ("printsplit", _) =>
 		    (say "[ splitted ]\n\n"; O.map PP.printFundec fi; say "\n")
 		  | ("check",_) =>
 		    (check (ChkFlint.checkTop, PPFlint.printFundec, "FLINT")
@@ -201,18 +205,18 @@ fun flintcomp
 	  else (flint,fk)
 
       (* finish up with CPS *)
-      val (nc0, ncn, dseg) = 
+      val (nc0, ncn, dseg) =
         let val function = convert flint
             val _ = prC "convert" function
             val function = (prC "cpstrans" o cpstrans) function
-            val function = cpsopt (function,NONE,false) 
+            val function = cpsopt (function,NONE,false)
             val _ = prC "cpsopt" function
 
             val (function, dlit) = litsplit function
 	    val data = litToBytes dlit
             val _ = prC "cpsopt-code" function
 
-            fun gen fx = 
+            fun gen fx =
               let val fx = (prC "closure" o closure) fx
                   val carg = globalfix fx
                   val carg = spill carg

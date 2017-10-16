@@ -2,6 +2,9 @@
  *
  * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
+ *
+ * NOTE: this optimization is not enabled, so we no longer include
+ * it in the compile [JHR; 2017-10-16]
  *)
 
 (* yichen.xie@yale.edu *)
@@ -416,6 +419,11 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 			else (false, add(v1, v2), cmpsIV)
 		    end
 
+		  | decide (F.INT n, F.VAR v) = let
+		      fun lookup (n, v) = (
+			    sayABC (concat["looking for (", IntInf.toString n,"<"^
+				     (lvname v)^")\n");
+(* JHR
 		  | decide (F.INT n, F.VAR v) =
 		    let
 			fun lookup (n, v) =
@@ -435,6 +443,7 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 			if lookup(n, v) then (true, cmpsVV, cmpsIV)
 			else (false, cmpsVV, add(n, v))
 		    end
+*)
 
 		  | decide _ = (false, cmpsVV, cmpsIV)
 

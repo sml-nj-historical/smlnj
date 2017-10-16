@@ -18,7 +18,7 @@
 Group
 	signature BACKEND
 
-        (* To make it possible to dynamically link in the optimizer, 
+        (* To make it possible to dynamically link in the optimizer,
          * we have to export the following to the library.
          * A.Leung.
          *)
@@ -58,7 +58,7 @@ Group
 	structure PrimopBind
 	structure PrimEnv
 	structure Environment
-	structure EnvRef	
+	structure EnvRef
 	structure ModuleId
 	structure GenModIdMap
 	structure PickMod
@@ -92,7 +92,7 @@ Group
 	signature SYMENV
 	signature ENVIRONMENT
 	signature PRIM_ENV
-	signature ENVREF	
+	signature ENVREF
 	signature MODULE_ID
 	signature PICKMOD
 	signature UNPICKMOD
@@ -118,7 +118,7 @@ Group
 	structure LtyKernel
 	structure LtyDef
 	structure LtyExtern
-	structure PrimTyc  
+	structure PrimTyc
 	structure PPFlint
 	structure LContract
 	structure Specialize
@@ -235,7 +235,9 @@ FLINT/opt/specialize.sml
 FLINT/opt/loopify.sml
 FLINT/opt/split.sml
 FLINT/opt/lift.sml
+(* not enabled, so don't compiler [JHR; 2017-10-16]
 FLINT/opt/abcopt.sml
+*)
 FLINT/plambda/chkplexp.sml
 FLINT/plambda/flintnm.sml
 FLINT/plambda/pflatten.sig
@@ -247,9 +249,9 @@ FLINT/plambda/pplexp.sml
 FLINT/plambda/reorder.sml
 FLINT/reps/coerce.sml
 FLINT/reps/equal.sml
-FLINT/reps/reify.sml 
+FLINT/reps/reify.sml
 FLINT/reps/rttype.sml
-FLINT/reps/typeoper.sml 
+FLINT/reps/typeoper.sml
 FLINT/reps/wrapping.sml
 FLINT/trans/module-plists.sml
 FLINT/trans/transtkind.sml
@@ -323,7 +325,7 @@ $smlnj/viscomp/execute.cm
 (* MLRISC libraries. *)
 $smlnj/MLRISC/Lib.cm			(* provides SortedList *)
 $smlnj/MLRISC/Control.cm
-$smlnj/MLRISC/Graphs.cm			
+$smlnj/MLRISC/Graphs.cm
 $smlnj/MLRISC/MLRISC.cm
 $smlnj/MLRISC/Visual.cm
 
