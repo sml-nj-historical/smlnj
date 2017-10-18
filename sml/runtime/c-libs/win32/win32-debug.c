@@ -13,10 +13,10 @@
 
 /* _ml_win32_debug: string -> word
  */
-ml_val_t _ml_win32_debug(ml_state_t *msp, ml_val_t arg)
+ml_val_t _ml_win32_debug (ml_state_t *msp, ml_val_t arg)
 {
-  printf("%s",arg);
-  return ML_unit;
+    SayDebug (STR_MLtoC(arg));
+    return ML_unit;
 }
 
 /* end of win32-debug.c */
