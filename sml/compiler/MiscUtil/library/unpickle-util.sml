@@ -1,4 +1,8 @@
-(*
+(* unpickle-util.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * This is the new "generic" unpickle utility.  It replaces Andrew Appel's
  * original "shareread" module.  The main difference is that instead of
  * using a "universal" type together with numerous injections and projections
@@ -28,7 +32,9 @@
  *
  * October 2000, Matthias Blume
  *)
-signature UNPICKLE_UTIL = sig
+
+signature UNPICKLE_UTIL =
+  sig
 
     exception Format
 
@@ -84,7 +90,7 @@ signature UNPICKLE_UTIL = sig
     val mkSession : charGetter -> session
 
     (* The typical style is to write a "reader" function for each type
-     * The reader function uses a local helper function which takes the
+     * The reader function uses a local helper function that takes the
      * first character of a pickle (this is usually the discriminator that
      * was given to $ or % in the pickler) and returns the unpickled
      * value.  The function recursively calls other "reader" functions.
@@ -122,6 +128,7 @@ signature UNPICKLE_UTIL = sig
     val r_word32 : session -> Word32.word reader
     val r_bool : session -> bool reader
     val r_string : session -> string reader
+    val r_intinf : session -> IntInf.int reader
 
     (* readers for parametric types need their own map *)
     val r_list : session -> 'v list map -> 'v reader -> 'v list reader
@@ -200,7 +207,7 @@ structure UnpickleUtil :> UNPICKLE_UTIL = struct
 	    val large = Word8.toLargeWord
 	    fun loop n = let
 		val w8 = Byte.charToByte (rd ())
-	    in 
+	    in
 		if (w8 & 0w128) = 0w0 then
 		    (n * 0w64 + large (w8 & 0w63), (w8 & 0w64) <> 0w0)
 		else loop (n * 0w128 + large (w8 & 0w127))
@@ -382,4 +389,15 @@ structure UnpickleUtil :> UNPICKLE_UTIL = struct
     in
 	share session m rs
     end
+
+  (* for now, we pickle IntInf.int by pickling its string representation *)
+    fun r_intinf session () = let
+	  val s = r_string session ()
+	  in
+	    case IntInf.fromString s
+	     of SOME n => n
+	      | NONE => raise Format
+	    (* end case *)
+	  end
+
 end

@@ -1,4 +1,8 @@
-(*
+(* pickle-util.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * This is the new "generic" pickle utility which replaces Andrew Appel's
  * original "sharewrite" module.  Aside from formal differences, this
  * new module ended up not being any different from Andrew's.  However,
@@ -32,7 +36,8 @@
  * string and Word8Vector.vector is currently just a cast, so it
  * does not cost anything in the end.
  *)
-signature PICKLE_UTIL = sig
+signature PICKLE_UTIL =
+  sig
 
     type id
 
@@ -70,9 +75,10 @@ signature PICKLE_UTIL = sig
      * hash-conser cannot automatically identify but which should be
      * identified nevertheless, or to identify those parts that would be
      * too expensive to be left to the hash-conser. *)
-    val ah_share : { find : 'ahm * 'v -> id option,
-		     insert : 'ahm * 'v * id -> 'ahm } ->
-        ('ahm, 'v) pickler -> ('ahm, 'v) pickler
+    val ah_share : {
+	    find : 'ahm * 'v -> id option,
+	    insert : 'ahm * 'v * id -> 'ahm
+	  } -> ('ahm, 'v) pickler -> ('ahm, 'v) pickler
 
     (* generating pickles for values of some basic types *)
     val w_bool : ('ahm, bool) pickler
@@ -81,6 +87,7 @@ signature PICKLE_UTIL = sig
     val w_int32 : ('ahm, Int32.int) pickler
     val w_word32 : ('ahm, Word32.word) pickler
     val w_string : ('ahm, string) pickler
+    val w_intinf : ('ahm, IntInf.int) pickler
 
     (* generating pickles for some parameterized types (given a pickler
      * for the parameter) *)
@@ -210,15 +217,15 @@ structure PickleUtil :> PICKLE_UTIL = struct
 
     fun % ti c (hcm, fwdm, ahm, next, si) = let
 	val key = (c, ti, [])
-    in
-	case HCM.find (hcm, key) of
-	    SOME i =>
+        in
+	  case HCM.find (hcm, key)
+	   of SOME i =>
 		([i], STRING c, (hcm, PM.insert (fwdm, next, i),
 				 ahm, next + size c, si))
-	  | NONE =>
+	    | NONE =>
 		([next], STRING c, (HCM.insert (hcm, key, next), fwdm,
 				    ahm, next + size c, si))
-    end
+        end
 
     fun dollar ti (c, []) state = % ti c state
       | dollar ti (c, plh :: plt) (hcm, fwdm, ahm, next, si) = let
@@ -373,6 +380,9 @@ structure PickleUtil :> PICKLE_UTIL = struct
 	    (concat ["\"", String.translate esc s, "\""]) $ [dummy_pickle]
 	end
     end
+
+  (* for now, we pickle IntInf.int by pickling its string representation *)
+    fun w_intinf n = w_string (IntInf.toString n)
 
     local
 	val B = ~9
