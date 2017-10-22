@@ -1081,7 +1081,7 @@ fun tyToString ty =
  *)
   fun numInfo ty = let
 	fun int w = {wid = w, signed = true}
-	fun word w = {wid = w, signed = true}
+	fun word w = {wid = w, signed = false}
 	in
 	  if equalType(ty, BT.intTy) then int Target.defaultIntSz
 	  else if equalType(ty, BT.wordTy) then word Target.defaultIntSz
