@@ -148,7 +148,7 @@ structure Overload : OVERLOAD =
 		      select options
 		    end
 	    (* resolve overloaded literals *)
-	      fun resolveOVLDlit (value, ty, err) = (
+	      fun resolveOVLDlit (value, ty, _) = (
 		  (* first, resolve the type *)
 		    case ty
 		     of Ty.VARty(tyvar as ref(Ty.OVLD{sources,options})) => (
@@ -159,17 +159,25 @@ structure Overload : OVERLOAD =
 		      | Ty.VARty(ref(Ty.INSTANTIATED _)) => ()
 			  (* already resolved by type checking *)
 		      | _ => bug "resolveOVLDlit 2"
-		    (* end case *);
-		  (* then check that the value is in range *)
+		    (* end case *))
+	    (* check that overloaded literals are in range; note that we have
+	     * do this check as a separate pass after *all* overloading has
+	     * been resolved, because literal resolution does not follow
+	     * instance chains.
+	     *)
+	      fun checkLitRange (value, ty, err) =
 		    if TU.numInRange(value, ty)
 		      then ()
 		      else err EM.COMPLAIN (concat[
-			  "literal value ", IntInf.toString value, " is too large for type "
+			  "literal value ", IntInf.toString value,
+			  " is too large for type "
 			])
-			(fn ppstrm => PPType.ppType env ppstrm ty))
+			(fn ppstrm => PPType.ppType env ppstrm ty)
+	      val overloadedLits = rev (!overloadedlits)
 	      in
-		app resolveOVLDlit (rev(!overloadedlits));
-		app resolveOVLDvar (rev(!overloadedvars))
+		app resolveOVLDlit overloadedLits;
+		app resolveOVLDvar (rev(!overloadedvars));
+		app checkLitRange overloadedLits
 	      end
 	  in
 	    {pushv = pushvar, pushl = pushlit, resolve = resolve}
