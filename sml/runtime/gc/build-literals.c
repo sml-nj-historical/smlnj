@@ -1,6 +1,16 @@
-/* build-literals.c
+/*! \file build-literals.c
  *
- * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ * This file implements a simple bytecode interpreter that implements a language
+ * for initializing a record of compile-time constant values.
+ *
+ * This code needs to agree with the code generator in base/FLINT/main/literals.sml
+ *
+ * \author John Reppy
+ */
+
+/*
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  */
 
 #include "ml-base.h"

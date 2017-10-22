@@ -1,10 +1,13 @@
-(* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
-(* flintcomp.sml *)
+(* flintcomp.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
-functor FLINTComp
-	    (structure Gen: MACHINE_GEN
-             val collect: (unit -> int) ->
-			  CodeObj.code_object) : CODEGENERATOR =
+functor FLINTComp (
+    structure Gen: MACHINE_GEN
+    val collect : (unit -> int) -> CodeObj.code_object
+  ) : CODEGENERATOR =
 struct
 
 local structure MachSpec = Gen.MachSpec
@@ -58,8 +61,7 @@ val recover   = phase "FLINT 05a recover" Recover.recover
 val convert   = phase "CPS 060 convert" Convert.convert
 val cpstrans  = phase "CPS 065 cpstrans" CPStrans.cpstrans
 val cpsopt    = phase "CPS 070 cpsopt" CPSopt.reduce
-val litsplit  = phase "CPS 075 litsplit" Literals.litsplit
-val litToBytes = phase "CPS 076 litToBytes" Literals.litToBytes
+val litsplit  = phase "CPS 075 litsplit" Literals.split
 val closure   = phase "CPS 080 closure"  Closure.closeCPS
 val globalfix = phase "CPS 090 globalfix" GlobalFix.globalfix
 val spill     = phase "CPS 100 spill" Spill.spill
@@ -204,32 +206,31 @@ fun flintcomp
 	  then (say "\n!!Forgot reify!!\n"; (reify flint, FK_REIFY))
 	  else (flint,fk)
 
-      (* finish up with CPS *)
+    (* finish up with CPS *)
       val (nc0, ncn, dseg) =
         let val function = convert flint
             val _ = prC "convert" function
             val function = (prC "cpstrans" o cpstrans) function
             val function = cpsopt (function,NONE,false)
             val _ = prC "cpsopt" function
-
-            val (function, dlit) = litsplit function
-	    val data = litToBytes dlit
+	  (* split out heap-allocated literals; litProg is the bytecode *)
+            val (function, litProg) = litsplit function
             val _ = prC "cpsopt-code" function
 
-            fun gen fx =
-              let val fx = (prC "closure" o closure) fx
+            fun gen fx = let
+                  val fx = (prC "closure" o closure) fx
                   val carg = globalfix fx
                   val carg = spill carg
                   val (carg, limit) = limit carg
 		  val epthunk =
 		      codegen { funcs = carg, limits = limit, err = err,
 				source = src }
-	      in
-                  collect epthunk
-              end
+		  in
+                    collect epthunk
+		  end
 
          in case CpsSplit.cpsSplit function
-             of (fun0 :: funn) => (gen fun0, map gen funn, data)
+             of (fun0 :: funn) => (gen fun0, map gen funn, litProg)
               | [] => bug "unexpected case on gen in flintcomp"
         end
    in ({c0=nc0, cn=ncn, data=dseg}, O.map names2deb fi)
