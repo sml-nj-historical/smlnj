@@ -1054,27 +1054,34 @@ fun dummyTyGen () : unit -> Types.ty =
     end
 
 (* a crude translation of types to strings *)
-fun tyToString ty =
-    let fun showargs tys =
-	    case tys
-	     of nil => ""
-	      | [ty] => tyToString ty
-	      | ty::tys => concat[tyToString ty, ",", showargs tys]
-    in case ty
-	of VARty _ => "<tv>"
-	 | IBOUND n => concat["<", Int.toString n, ">"]
-	 | CONty(tyc,args) =>
-	   if BT.isArrowType ty
-	      then concat["(", tyToString (BT.domain ty), " -> ", tyToString (BT.range ty), ")"]
-	   else if null args
-	      then Symbol.name(tycName tyc)
-	      else concat["(", showargs args, ") ", Symbol.name(tycName tyc)]
-	 | POLYty{tyfun=TYFUN{body,arity},...} =>
-	   concat["<P", Int.toString arity, ">[", tyToString body, "]"]
-	 | WILDCARDty => "<wc>"
-	 | UNDEFty => "<ud>"
-	 | MARKty (ty,_) => tyToString ty
-    end
+  fun tyToString ty = let
+	fun showargs tys = (case tys
+	       of nil => ""
+		| [ty] => tyToString ty
+		| ty::tys => concat[tyToString ty, ",", showargs tys]
+	      (* end case *))
+	in
+	  case ty
+	   of VARty(ref kind) => (case kind
+		 of INSTANTIATED _ => "<tv:INSTANTIATED>"
+		  | OPEN _ => "<tv:OPEN>"
+		  | UBOUND _ => "<tv:UBOUND>"
+		  | OVLD _ => "<tv:OVLD>"
+		  | LBOUND _ => "<tv:LBOUND>"
+		(* end case *))
+	    | IBOUND n => concat["<", Int.toString n, ">"]
+	    | CONty(tyc,args) =>
+	      if BT.isArrowType ty
+		 then concat["(", tyToString (BT.domain ty), " -> ", tyToString (BT.range ty), ")"]
+	      else if null args
+		 then Symbol.name(tycName tyc)
+		 else concat["(", showargs args, ") ", Symbol.name(tycName tyc)]
+	    | POLYty{tyfun=TYFUN{body,arity},...} =>
+	      concat["<P", Int.toString arity, ">[", tyToString body, "]"]
+	    | WILDCARDty => "<wc>"
+	    | UNDEFty => "<ud>"
+	    | MARKty (ty,_) => tyToString ty
+	end
 
 (* return size and signedness information about integer and word types.  We use a width
  * of zero for IntInf.int.
@@ -1082,6 +1089,7 @@ fun tyToString ty =
   fun numInfo ty = let
 	fun int w = {wid = w, signed = true}
 	fun word w = {wid = w, signed = false}
+	val ty = prune ty
 	in
 	  if equalType(ty, BT.intTy) then int Target.defaultIntSz
 	  else if equalType(ty, BT.wordTy) then word Target.defaultIntSz
@@ -1092,7 +1100,7 @@ fun tyToString ty =
 	  else if equalType(ty, BT.word32Ty) then word 32
 	  else if equalType(ty, BT.word64Ty) then word 64
 	  else ErrorMsg.impossible(concat[
-	      "TypeUtil.numInfo(", tyToString(headReduceType ty), ")"
+	      "TypeUtil.numInfo(", tyToString ty, ")"
 	    ])
 	end
 
