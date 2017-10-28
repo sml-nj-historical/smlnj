@@ -197,6 +197,12 @@ extern bool_t	UnlimitedHeap;
 extern vproc_state_t	*VProc[];
 extern int		NumVProcs;
 
+#ifdef NDEBUG
+#  define STATIC_INLINE	static
+#else
+#  define STATIC_INLINE static inline
+#endif
+
 #endif /* !_ASM_ */
 
 /* macro to prepend an underscore if necessary and stringify a symbol */

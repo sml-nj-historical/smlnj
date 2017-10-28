@@ -5,7 +5,7 @@
 MAKEFILE = 	makefile.win32
 MAKE =		nmake /F$(MAKEFILE)
 AR =		lib
-ARFLAGS =	
+ARFLAGS =
 RANLIB =	lib
 
 LIB =		libgc.lib
@@ -13,6 +13,7 @@ MP_LIB =	libmp-gc.lib
 
 GC_OBJS =	init-gc.obj call-gc.obj minor-gc.obj major-gc.obj flip.obj gc-util.obj \
 		big-objects.obj ml-objects.obj obj-info.obj build-literals.obj \
+		old-literals.obj \
 		record-ops.obj \
 		$(CHECK_HEAP)
 
@@ -118,6 +119,13 @@ build-literals.obj: \
 		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-objects.h $(INC_DIR)\tags.h \
 		heap.h arena-id.h
 	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) build-literals.c
+
+old-literals.obj: \
+		old-literals.c \
+		$(OBJS_DIR)\ml-sizes.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-objects.h $(INC_DIR)\tags.h \
+		heap.h arena-id.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) old-literals.c
 
 record-ops.obj: \
 		record-ops.c \
