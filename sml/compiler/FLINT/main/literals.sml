@@ -97,6 +97,18 @@ structure Literals : LITERALS =
    *				   from them and push a pointer.
    *	RETURN			-- return the literal that is on the top of the
    *				   stack.
+   *
+   * Encoding:
+   *   INT(i)		0x01 <i>
+   *   RAW32[i]		0x02 <i>
+   *   RAW32[i1,..,in]	0x03 <n> <i1> ... <in>
+   *   RAW64[r]		0x04 <r>
+   *   RAW64[r1,..,rn]	0x05 <n> <r1> ... <rn>
+   *   STR[c1,..,cn]	0x06 <n> <c1> ... <cn>
+   *   LIT(k)		0x07 <k>
+   *   VECTOR(n)	0x08 <n>
+   *   RECORD(n)	0x09 <n>
+   *   RETURN		0xff
    *)
 
     fun w32ToBytes' (w, l) =
