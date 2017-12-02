@@ -4,7 +4,7 @@
  * COPYRIGHT (c) 1998 by AT&T Laboratories.  See COPYRIGHT file for details
  *
  * Random number generator taken from Paulson, pp. 170-171.
- * Recommended by Stephen K. Park and Keith W. Miller, 
+ * Recommended by Stephen K. Park and Keith W. Miller,
  * Random number generators: good ones are hard to find,
  * CACM 31 (1988), 1192-1201
  * Updated to include the new preferred multiplier of 48271
@@ -36,7 +36,7 @@ structure Rand : RAND =
       | chk 0wx7fffffff = m_1
       | chk seed = extToInt seed
 
-    fun random' seed = let 
+    fun random' seed = let
           val hi = seed div q
           val lo = seed mod q
           val test = a * lo - r * hi
@@ -55,11 +55,11 @@ structure Rand : RAND =
     val real_m = Real.fromLargeInt (Int32.toLarge m)
     fun norm s = (Real.fromLargeInt (Word31.toLargeInt s)) / real_m
 
-    fun range (i,j) = 
-          if j < i 
-            then LibBase.failure{module="Random",func="range",msg="hi < lo"}
+    fun range (i,j) =
+          if j < i
+            then LibBase.failure{module="Rand",func="range",msg="hi < lo"}
           else if j = i then fn _ => i
-          else let 
+          else let
             val R = Int32.fromInt j - Int32.fromInt i
             val cvt = Word31.toIntX o Word31.fromLargeInt o Int32.toLarge
             in
