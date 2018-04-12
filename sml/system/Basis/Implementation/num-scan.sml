@@ -1,6 +1,6 @@
 (* num-scan.sml
  *
- * COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * The string conversion for the largest fixed-size int and word types.
@@ -9,12 +9,12 @@
  *)
 
 structure NumScan : sig
-  
+
     val scanWord : StringCvt.radix
 	  -> (char, 'a) StringCvt.reader -> (Word32.word, 'a) StringCvt.reader
     val scanInt  : StringCvt.radix
 	  -> (char, 'a) StringCvt.reader -> (Int32.int, 'a) StringCvt.reader
-    val scanReal : (char, 'a) StringCvt.reader -> (real, 'a) StringCvt.reader 
+    val scanReal : (char, 'a) StringCvt.reader -> (real, 'a) StringCvt.reader
 	(** should be to LargeReal.real **)
 
     type prefix_pat = {
@@ -51,11 +51,11 @@ structure NumScan : sig
 
     val largestWordDiv10 : word32 = 0w429496729	(* 2^32-1 divided by 10 *)
     val largestWordMod10 : word32 = 0w5		(* remainder *)
- 
+
     val largestNegInt32 : word32 = 0wx80000000
     val largestPosInt32 : word32 = 0wx7fffffff
     val minInt32 : Int32.int = ~2147483648
- 
+
   (* A table for mapping digits to values.  Whitespace characters map to
    * 128, "+" maps to 129, "-","~" map to 130, "." maps to 131, and the
    * characters 0-9,A-Z,a-z map to their * base-36 value.  All other
@@ -213,7 +213,7 @@ structure NumScan : sig
 		  cvt (toWord32 next, rest)
 		end
 	  (* end case *))
- 
+
     fun scanOct isWord getc cs = (case (scanPrefix (octPat isWord) getc cs)
 	   of NONE => NONE
 	    | (SOME{neg, next, rest}) => let
@@ -233,7 +233,7 @@ structure NumScan : sig
 		  cvt (toWord32 next, rest)
 		end
 	  (* end case *))
-  
+
     fun scanDec isWord getc cs = (case (scanPrefix (decPat isWord) getc cs)
 	   of NONE => NONE
 	    | (SOME{neg, next, rest}) => let
@@ -256,7 +256,7 @@ structure NumScan : sig
 		  cvt (toWord32 next, rest)
 		end
 	  (* end case *))
-  
+
     fun scanHex isWord getc cs = (case (scanPrefix (hexPat isWord) getc cs)
 	   of NONE => NONE
 	    | (SOME{neg, next, rest}) => let
@@ -276,7 +276,7 @@ structure NumScan : sig
 		  cvt (toWord32 next, rest)
 		end
 	  (* end case *))
-  
+
     fun finalWord scanFn getc cs = (case (scanFn true getc cs)
 	   of NONE => NONE
 	    | (SOME{neg, word, rest}) => SOME(word, rest)
@@ -286,11 +286,11 @@ structure NumScan : sig
       | scanWord StringCvt.OCT = finalWord scanOct
       | scanWord StringCvt.DEC = finalWord scanDec
       | scanWord StringCvt.HEX = finalWord scanHex
- 
+
     local
       (* Type check Bug test case
 	   fun test x = InlineT.Int32.fromLarge (InlineT.Word32.toLargeIntX x)
-       *) 
+       *)
       val fromWord32 = InlineT.Int32.fromLarge o InlineT.Word32.toLargeIntX
     in
 
@@ -307,14 +307,14 @@ structure NumScan : sig
 		  then raise Overflow
                   else SOME(fromWord32 word, rest)
           (* end case *))
- 
-    end (* end local *)
+
+    end (* local *)
 
     fun scanInt StringCvt.BIN = finalInt scanBin
       | scanInt StringCvt.OCT = finalInt scanOct
       | scanInt StringCvt.DEC = finalInt scanDec
       | scanInt StringCvt.HEX = finalInt scanHex
-  
+
   (* scan a string of decimal digits (starting with d), and return their
    * value as a real number.  Also return the number of digits, and the
    * rest of the stream.
@@ -343,19 +343,31 @@ structure NumScan : sig
 	      1.0E0, 1.0E1, 1.0E2, 1.0E3, 1.0E4,
 	      1.0E5, 1.0E6, 1.0E7, 1.0E8, 1.0E9
 	    ]
-      fun scale (tbl, step10 : real) = let
-	    fun f (r, 0) = r
-	      | f (r, exp) = if (I.<(exp, 10))
-		  then (R.*(r, InlineT.PolyVector.sub(tbl, exp)))
-		  else f (R.*(step10, r), I.-(exp, 10))
-	    in
-	      f
-	    end
     in
-    val scaleUp = scale (posTbl, 1.0E10)
-    val scaleDown = scale (negTbl, 1.0E~10)
-    end
+    fun scaleUp (r, exp) = if R.==(r, 0.0)
+	  then r
+	  else let
+	    fun lp (r, 0) = r
+	      | lp (r, exp) = if R.==(Real64Values.negInf, r)
+		  orelse R.==(Real64Values.posInf, r)
+		    then r
+		  else if I.<(exp, 10)
+		    then (R.*(r, InlineT.PolyVector.sub(posTbl, exp)))
+		    else lp (R.*(1.0E10, r), I.-(exp, 10))
+	    in
+	      lp (r, exp)
+	    end
+    fun scaleDown (r, 0) = r
+      | scaleDown (r, exp) = if R.==(r, 0.0)
+	    then r
+	  else if I.<(exp, 10)
+	    then (R.*(r, InlineT.PolyVector.sub(negTbl, exp)))
+	    else scaleDown (R.*(1.0E~10, r), I.-(exp, 10))
+    end (* local *)
 
+  (* scanning real literals from strings.  If the number is too large, it should
+   * be represented by +/- infinity.
+   *)
     fun scanReal getc cs = let
 	  fun scan10 cs = (case (getc cs)
 		 of (SOME(c, cs)) => fscan10 getc (code c, cs)
@@ -367,82 +379,97 @@ structure NumScan : sig
 		(* end case *))
 	  fun negate (true, num) = R.~ num
 	    | negate (false, num) = num
+	(* scan the exponent; return a triple (optExp, overflow, rest), where
+	 * optExp is the integer value of the exponent (NONE for no exponent),
+	 * overflow will be true if the exponent overflowed, and rest is the
+	 * unconsumed part of the character stream.
+	 *)
 	  fun scanExp cs = (case (getc cs)
 		 of SOME(c, cs) => let
 		      val d = code c
-		      fun scan (accum, cs) = (case (getc cs)
+		    (* get the digits of the exponent *)
+		      fun scan (cs, digits) = (case (getc cs)
 			     of SOME(c, cs') => let val d = code c
 				  in
 				    if (d <= 0w9)
-				      then scan (I.+(I.*(accum, 10), W.toIntX d), cs')
-				      else (accum, cs)
+				      then scan (cs', W.toIntX d :: digits)
+				      else (digits, cs)
 				  end
-			      | NONE => (accum, cs)
+			      | NONE => (digits, cs)
 			    (* end case *))
+		     (* convert digits to integer exponent *)
+		      fun digitsToInt [] = 0
+			| digitsToInt (d::digits) = I.+(d, I.*(10, digitsToInt digits))
 		      in
 			if (d <= 0w9)
-			  then SOME (scan (W.toIntX d, cs))
-			  else NONE
+			  then let
+			    val (digits, rest) = scan (cs, [W.toIntX d])
+			    in
+			      (SOME(digitsToInt digits), false, rest)
+				handle Overflow => (NONE, true, rest)
+			    end
+			  else (NONE, false, cs)
 		      end
-		  | NONE => NONE
+		  | NONE => (NONE, false, cs)
 		(* end case *))
-	  fun getExp(num,cs) =
-	      case (getc cs)
-	        of (SOME(c, cs1)) =>
-		    if (code c = eCode)
-		    then (case (getc cs1)
-			    of SOME(c, cs2) =>
-				let val codeC = code c
-				    val (isNeg, cs3) =
-					if (codeC = minusCode) then (true, cs2)
-					else if (codeC = plusCode)
-					  then (false, cs2)
-					else (false, cs1)  (* no sign *)
-				 in case scanExp cs3
-				      of SOME(exp, cs4) =>
-			                 SOME(if isNeg
-					        then scaleDown(num, exp)
-					        else scaleUp(num, exp),
-				              cs4)
-				       | NONE => SOME(num, cs)
-				   (* end case *)
+	  fun getExp (neg, num, cs) = (case (getc cs)
+		 of (SOME(c, cs1)) =>
+		      if (code c = eCode)
+		        then (case (getc cs1)
+			   of SOME(c, cs2) => let
+			      (* get the sign of the exponent *)
+				val codeC = code c
+				val (negExp, cs3) =
+				      if (codeC = minusCode) then (true, cs2)
+				      else if (codeC = plusCode) then (false, cs2)
+				      else (false, cs1)  (* no sign *)
+				val (optExp, overflow, cs4) = scanExp cs3
+				in
+				  case (optExp, overflow)
+				   of (_, true) => if negExp
+					then SOME(negate(neg, 0.0), cs4)
+					else SOME(negate(neg, Real64Values.posInf), cs4)
+				    | (SOME exp, _) => let
+					val num = negate(neg, num)
+					in
+					  if negExp
+					    then SOME(scaleDown(num, exp), cs4)
+					    else SOME(scaleUp(num, exp), cs4)
+					end
+				    | (NONE, _) => SOME(num, cs)
+				  (* end case *)
 				end
-			     | NONE => SOME(num, cs)
-			 (* end case *))
-		    else SOME(num, cs)
-		 | NONE => SOME(num, cs)
-	     (* end case *)
+			    | NONE => SOME(num, cs)
+			  (* end case *))
+			else SOME(num, cs)
+		  | NONE => SOME(num, cs)
+		(* end case *))
 	  in
 	    case (scanPrefix fltPat getc cs)
 	     of NONE => NONE
 	      | (SOME{neg, next, rest}) =>
-		 if (next = ptCode) (* initial point after prefix *)
-		 then (case getFrac rest
-		         of SOME(frac, rest) => 
-		              getExp(negate(neg,frac),rest)
-		          | NONE => NONE (* initial point not followed by digit *)
+		  if (next = ptCode) (* initial point after prefix *)
+		    then (case getFrac rest
+		       of SOME(frac, rest) => getExp(neg, frac, rest)
+			| NONE => NONE (* initial point not followed by digit *)
 		      (* end case *))
-		 else (* ASSERT: next must be a digit *)
-		   (* get whole number part *)
-		   (case fscan10 getc (next, rest)
-		      of SOME(whole, _, rest) =>
-			   (case (getc rest)
-			     of SOME(#".", rest') =>
-				 (* whole part followed by point, get fraction *)
-				(case getFrac rest'
-				   of SOME(frac,rest'') => (* fraction exists *)
-				       getExp(negate(neg,R.+(whole,frac)),rest'')
+		    else ((* ASSERT: next must be a digit *)
+		    (* get whole number part *)
+		      case fscan10 getc (next, rest)
+		       of SOME(whole, _, rest) => (case (getc rest)
+			     of SOME(#".", rest') => (
+				(* whole part followed by point, get fraction *)
+				  case getFrac rest'
+				   of SOME(frac, rest'') => (* fraction exists *)
+				       getExp(neg, R.+(whole, frac), rest'')
                                     | NONE =>
 				       (* no fraction -- point terminates num *)
-				       SOME(negate(neg,whole), rest)
-		                 (* end case *))
-			      | _ => getExp(negate(neg,whole),rest)
+				       SOME(negate(neg, whole), rest)
+		                  (* end case *))
+			      | _ => getExp(neg, whole, rest)
 			   (* end case *))
 		       | NONE => NONE (* ASSERT: this case can't happen *)
 		   (* end case *))
-	
-	  end 
-       
+	  end
+
   end;
-
-

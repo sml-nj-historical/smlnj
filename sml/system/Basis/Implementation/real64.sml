@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure Real64Imp : REAL = 
+structure Real64Imp : REAL =
   struct
     structure I = InlineT.DfltInt
 
@@ -12,7 +12,7 @@ structure Real64Imp : REAL =
 
     infix 4 == !=
     type real = real
-    
+
     fun *+(a:real,b,c) = a*b+c
     fun *-(a:real,b,c) = a*b-c
 
@@ -22,65 +22,30 @@ structure Real64Imp : REAL =
     fun unordered(x:real,y) = Bool.not(x>y orelse x <= y)
     fun ?= (x, y) = (x == y) orelse unordered(x, y)
 
-    fun isNormal x = (case Assembly.A.logb x
-	   of ~1023 => false	(* 0.0 or subnormal *)
-	    | 1024 => false	(* inf or nan *)
-	    | _ => true
-	  (* end case *))
-
-
     val w31_r = InlineT.Real64.from_int32 o InlineT.Int32.copy_word31
 
     val rbase = w31_r CoreIntInf.base
     val baseBits = InlineT.Word31.copyt_int31 CoreIntInf.baseBits
 
-  (* The next three values are computed laboriously, partly to
-   * avoid problems with inaccurate string->float conversions
-   * in the compiler itself.
-   *)
-    val maxFinite = let
-	  fun f(x,i) = if i=1023 then x else f(x*2.0, i + 1)
-	  val y = f(1.0,0)
-	  fun g(z, y, 0) = z
-	    | g(z, y, i) = g (z+y, y*0.5, i - 1)
-	  in
-	    g(0.0,y,53)
-	  end
-
-    val minNormalPos = let
-	  fun f(x) = let
-		val y = x * 0.5
-		in
-		  if isNormal y then f y else x
-		end
-	  in
-	    f 1.0
-	  end
-
-    local
-      (* The x86 uses extended precision (80 bits) internally, therefore 
-       * it is necessary to write out the result of r * 0.5 to get 
-       * 64 bit precision.
-       *)
-      val mem = InlineT.PolyArray.array(1, minNormalPos)
-      val update = InlineT.PolyArray.update
-      val subscript = InlineT.PolyArray.chkSub
-      fun f () = let
-	val r = subscript(mem, 0)
-	val y = r * 0.5
-      in
-	 update(mem, 0, y);
-	 if subscript(mem, 0) == 0.0 then r else f ()
-      end
-    in
-      val minPos = f()
-    end
-
-    val posInf = maxFinite * maxFinite
-    val negInf = ~posInf
+  (* maximum finite 64-bit real value *)
+    val maxFinite = Real64Values.maxFinite
+  (* minimum normalized positive real value *)
+    val minNormalPos = Real64Values.minNormalPos
+  (* minimum positive real value (denormalized) *)
+    val minPos = Real64Values.minPos
+  (* positive infinity *)
+    val posInf = Real64Values.posInf
+  (* negative infinity *)
+    val negInf = Real64Values.negInf
 
     fun isFinite x = negInf < x andalso x < posInf
     fun isNan x = Bool.not(x==x)
+
+    fun isNormal x = (case Assembly.A.logb x
+	   of ~1023 => false	(* 0.0 or subnormal *)
+	    | 1024 => false	(* inf or nan *)
+	    | _ => true
+	  (* end case *))
 
   (* these functions are implemented in base/system/smlnj/init/pervasive.sml *)
     val floor = floor
@@ -119,9 +84,9 @@ structure Real64Imp : REAL =
       | toInt IEEEReal.TO_NEAREST = round
 
     fun toLarge x = x
-    fun fromLarge _ x = x       
+    fun fromLarge _ x = x
 
-    fun sign x = if (x < 0.0) then ~1 else if (x > 0.0) then 1 
+    fun sign x = if (x < 0.0) then ~1 else if (x > 0.0) then 1
                   else if isNan x then raise Domain else 0
     val signBit : real -> bool = InlineT.Real64.signBit
 
@@ -133,13 +98,13 @@ structure Real64Imp : REAL =
     fun compare(x,y) =
 	if x<y then General.LESS
 	else if x>y then General.GREATER
-        else if x == y then General.EQUAL 
+        else if x == y then General.EQUAL
 	else raise IEEEReal.Unordered
-    
-    fun compareReal(x,y) = 
+
+    fun compareReal(x,y) =
         if x<y then IEEEReal.LESS
 	else if x>y then IEEEReal.GREATER
-        else if x == y then IEEEReal.EQUAL 
+        else if x == y then IEEEReal.EQUAL
 	else IEEEReal.UNORDERED
 
 (** This probably needs to be reorganized **)
@@ -170,7 +135,7 @@ structure Real64Imp : REAL =
         rest of the world's logb functions.
         We should fix this systematically some time. *)
 
-    fun toManExp x = 
+    fun toManExp x =
       case Assembly.A.logb x + 1
 	of ~1023 => if x==0.0 then {man=x,exp=0}
 		    else let val {man=m,exp=e} = toManExp(x*1048576.0)
@@ -227,7 +192,7 @@ structure Real64Imp : REAL =
   (* whole and split could be implemented more efficiently if we had
    * control over the rounding mode; but for now we don't.
    *)
-    fun whole x = if x>0.0 
+    fun whole x = if x>0.0
 		    then if x > 0.5
 		      then x-0.5+maxInt-maxInt
 		      else whole(x+1.0)-1.0
@@ -237,11 +202,11 @@ structure Real64Imp : REAL =
 		      else whole(x-1.0)+1.0
 	          else x
 
-    fun split x = let val w = whole x 
+    fun split x = let val w = whole x
                       val f = x-w
 		   in if abs(f)==1.0
 		     then {whole=w+f,frac=0.0}
-		     else {whole=w, frac=f} 
+		     else {whole=w, frac=f}
 		  end
 
     fun realMod x = let
@@ -343,7 +308,7 @@ structure Real64Imp : REAL =
 			 IntInfImp.<< (iman, InlineT.Word31.copyf_int31 exp)
 		     end
 	     end
-  
+
     fun nextAfter _ = raise Fail "Real.nextAfter unimplemented"
 
     val min : real * real -> real = InlineT.Real64.min
