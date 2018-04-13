@@ -3,26 +3,25 @@
 
 (* TODO: this module requires a signature ! *)
 
-structure MCCommon = 
+structure MCCommon =
 struct
 
 local structure EM = ErrorMsg
-      open Types VarCon PLambda Absyn 
+      open Types VarCon PLambda Absyn
 
 in
 
 type dconinfo = datacon * tyvar list
 
-datatype pcon 
+datatype pcon
   = DATApcon of dconinfo
   | INTpcon of int
   | INT32pcon of Int32.int
   | INTINFpcon of IntInf.int
   | WORDpcon of word
   | WORD32pcon of Word32.word
-  | REALpcon of string
   | STRINGpcon of string
-  | VLENpcon of int * ty 
+  | VLENpcon of int * ty
 
 datatype path
   = RECORDPATH of path list
@@ -33,8 +32,8 @@ datatype path
   | ROOTPATH
 
 datatype dectree
-  = CASETEST of 
-      path * Access.consig * (pcon * dectree) list 
+  = CASETEST of
+      path * Access.consig * (pcon * dectree) list
            * dectree option
   | ABSTEST0 of path * dconinfo * dectree * dectree
   | ABSTEST1 of path * dconinfo * dectree * dectree
@@ -59,7 +58,6 @@ fun constantEq (INTcon n, INTcon n') = n = n'
   | constantEq (WORDcon n, WORDcon n') = n = n'
   | constantEq (INT32con n, INT32con n') = n = n'
   | constantEq (WORD32con n, WORD32con n') = n = n'
-  | constantEq (REALcon r, REALcon r') = r = r'
   | constantEq (STRINGcon s, STRINGcon s') = s = s'
   | constantEq (VLENcon n, VLENcon n') = n = n'
   | constantEq (DATAcon(_,krep,_), DATAcon(_,krep',_)) = krep = krep'
@@ -72,25 +70,24 @@ fun constantEq (DATApcon (d1, _), DATApcon (d2, _)) = conEq(d1, d2)
   | constantEq (INTINFpcon n, INTINFpcon n') = n = n'
   | constantEq (WORDpcon n, WORDpcon n') = n = n'
   | constantEq (WORD32pcon n, WORD32pcon n') = n = n'
-  | constantEq (REALpcon r, REALpcon r') = r = r'
   | constantEq (STRINGpcon s, STRINGpcon s') = s = s'
   | constantEq (VLENpcon (n, _), VLENpcon (n',_)) = n = n'
   | constantEq _ = false
 
 
-fun pathEq(RECORDPATH(a::ar),RECORDPATH(b::br)) = 
+fun pathEq(RECORDPATH(a::ar),RECORDPATH(b::br)) =
 	pathEq(a,b) andalso pathEq(RECORDPATH ar, RECORDPATH br)
   | pathEq(RECORDPATH nil, RECORDPATH nil) = true
   | pathEq(PIPATH(i1,p1),PIPATH(i2,p2)) = i1=i2 andalso pathEq(p1,p2)
   | pathEq(VPIPATH(i1,_,p1),VPIPATH(i2,_,p2)) = i1=i2 andalso pathEq(p1,p2)
   | pathEq(VLENPATH(p1, _),VLENPATH(p2,_)) = pathEq(p1,p2)
-  | pathEq(DELTAPATH(c1,p1),DELTAPATH(c2,p2)) = 
+  | pathEq(DELTAPATH(c1,p1),DELTAPATH(c2,p2)) =
 	               constantEq(c1,c2) andalso pathEq(p1,p2)
   | pathEq(ROOTPATH,ROOTPATH) = true
   | pathEq _ = false
 
-fun lookupPath (a, (b,c)::d) = 
-       if pathEq(a,b) then c else lookupPath(a, d) 
+fun lookupPath (a, (b,c)::d) =
+       if pathEq(a,b) then c else lookupPath(a, d)
   | lookupPath _ = bug "unexpected args in lookupPath"
 
 fun abstract x = false

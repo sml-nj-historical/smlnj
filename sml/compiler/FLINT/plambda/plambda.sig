@@ -20,7 +20,6 @@ datatype con
   | INTINFcon of IntInf.int		(* only used with in matchcomp *)
   | WORDcon of word
   | WORD32con of Word32.word
-  | REALcon of string
   | STRINGcon of string
   | VLENcon of int
 

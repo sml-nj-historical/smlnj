@@ -349,7 +349,6 @@ fun pat_to_string WILDpat = "_"
   | pat_to_string (VARpat(VALvar{path,...})) = SP.toString path
   | pat_to_string (CONpat(DATACON{name,...},_)) = S.name name
   | pat_to_string (NUMpat num) = IntConst.toString num
-  | pat_to_string (REALpat s) = s
   | pat_to_string (STRINGpat s) = s
   | pat_to_string (CHARpat s) = "#"^s
   | pat_to_string (RECORDpat _) = "<record>"

@@ -300,7 +300,6 @@ fun do_switch_gen ren = Switch.switch {
                       then raise Switch.TooBig else INT i,
    E_word   = fn w => (* if w >= 0wx20000000
                       then raise Switch.TooBig else *) INT (Word.toIntX w),
-   E_real   = (fn s => REAL s),
    E_switchlimit = 4,
    E_neq    = P.ineq,
    E_w32neq = P.cmp{oper=P.neq,kind=P.UINT 32},

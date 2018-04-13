@@ -1,6 +1,6 @@
 (* flintnm.sml
  *
- * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * Converting the Standard PLambda.lexp into the FLINT IL
@@ -132,7 +132,6 @@ fun tocon con =
       | L.INTINFcon _ => bug "INTINFcon"
       | L.WORDcon x   => F.WORDcon x
       | L.WORD32con x => F.WORD32con x
-      | L.REALcon x   => F.REALcon x
       | L.STRINGcon x => F.STRINGcon x
       | L.VLENcon x   => F.VLENcon x
       | L.DATAcon x => bug "unexpected case in tocon"

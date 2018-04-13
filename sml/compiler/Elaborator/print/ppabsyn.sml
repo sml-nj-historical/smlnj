@@ -103,7 +103,6 @@ fun ppPat env ppstrm =
 	  | ppPat' (WILDpat,_) = pps "_"
 (* QUESTION: do we want to tag word literals with a "0w" prefix *)
           | ppPat' (NUMpat num, _) = pps (IntConst.toString num)
-	  | ppPat' (REALpat r,_) = pps r
 	  | ppPat' (STRINGpat s,_) = PU.pp_mlstr ppstrm s
 	  | ppPat' (CHARpat s,_) = (pps "#"; PU.pp_mlstr ppstrm s)
 	  | ppPat' (LAYEREDpat (v,p),d) =

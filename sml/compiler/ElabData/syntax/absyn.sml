@@ -53,7 +53,6 @@ structure Absyn : ABSYN =
       = WILDpat
       | VARpat of VarCon.var
       | NUMpat of num_lit
-      | REALpat of string
       | STRINGpat of string
       | CHARpat of string
       | CONpat of VarCon.datacon * Ty.tyvar list (* See comment for VARexp *)

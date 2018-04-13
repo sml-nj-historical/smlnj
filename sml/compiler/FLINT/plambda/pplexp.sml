@@ -46,7 +46,6 @@ fun conToString (DATAcon((sym, _, _), _, v)) = ((S.name sym) ^ "." ^ (lvarName v
   | conToString (INTINFcon i) = "(II)" ^ IntInf.toString i
   | conToString (WORDcon i) = "(W)" ^ (Word.toString i)
   | conToString (WORD32con i) = "(W32)" ^ (Word32.toString i)
-  | conToString (REALcon r) = r
   | conToString (STRINGcon s) = PU.mlstr s
   | conToString (VLENcon n) = Int.toString n
 

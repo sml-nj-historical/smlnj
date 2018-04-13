@@ -603,7 +603,9 @@ in
 	      | c (F.INT32con i32, e) = "3" $ [int32 i32, lexp e]
 	      | c (F.WORDcon w, e) = "4" $ [word w, lexp e]
 	      | c (F.WORD32con w32, e) = "5" $ [word32 w32, lexp e]
+(* REALcon has been removed
 	      | c (F.REALcon s, e) = "6" $ [string s, lexp e]
+*)
 	      | c (F.STRINGcon s, e) = "7" $ [string s, lexp e]
 	      | c (F.VLENcon i, e) = "8" $ [int i, lexp e]
 	in

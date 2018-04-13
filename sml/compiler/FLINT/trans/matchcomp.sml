@@ -308,9 +308,6 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 	    in
 	      CASE{bindings = nil, constraints = nil, sign = DA.CNIL, cases = [(con, [rule], nil)]}
 	    end
-      | genAndor (REALpat r, rule) =
-	  CASE {bindings = nil, constraints = nil, sign = DA.CNIL,
-		cases = [(REALpcon r, [rule], nil)]}
       | genAndor (STRINGpat s, rule) =
 	  CASE {bindings = nil, constraints = nil, sign = DA.CNIL,
 		cases = [(STRINGpcon s, [rule], nil)]}
@@ -394,9 +391,6 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 	  if isInt64 ty then mergeAndor64 (LN.int64 value, c, rule)
 	  else if isWord64 ty then mergeAndor64 (LN.word64 value, c, rule)
 	  else bug "bad pattern merge: NUMpat AND (not 64)"
-      | mergeAndor (REALpat r, CASE{bindings, cases, constraints,sign}, rule) =
-	  CASE {bindings = bindings, constraints = constraints, sign=sign,
-		cases = addACase(REALpcon r, nil, rule, cases)}
       | mergeAndor (STRINGpat s, CASE{bindings, cases, constraints,sign}, rule) =
 	  CASE {bindings = bindings, constraints = constraints, sign=sign,
 		cases = addACase(STRINGpcon s, nil, rule, cases)}
@@ -1110,7 +1104,6 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
 	   | INTINFpcon n => (INTINFcon n, env)
            | WORDpcon w => (WORDcon w, env)
            | WORD32pcon w => (WORD32con w, env)
-           | REALpcon r => (REALcon r, env)
            | STRINGpcon s => (STRINGcon s, env))
 
    in case doBindings(envout, subtree)

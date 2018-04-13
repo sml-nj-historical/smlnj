@@ -403,7 +403,6 @@ fun patType(pat: pat, depth, region) : pat * ty =
 			             (* multiple occurrence due to or-pat *)
        | VARpat(VALvar{typ, ...}) => (pat, MARKty(!typ, region))
        | NUMpat{value, ty} => (pat, oll_push(value, ty, err region))
-       | REALpat _ => (pat,MARKty(realTy, region))
        | STRINGpat _ => (pat,MARKty(stringTy, region))
        | CHARpat _ => (pat,MARKty(charTy, region))
        | RECORDpat{fields,flex,typ} =>

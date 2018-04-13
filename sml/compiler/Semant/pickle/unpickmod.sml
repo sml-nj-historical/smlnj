@@ -1389,7 +1389,9 @@ structure UnpickMod : UNPICKMOD = struct
 	      | c #"3" = (F.INT32con (int32 ()), lexp ())
 	      | c #"4" = (F.WORDcon (word ()), lexp ())
 	      | c #"5" = (F.WORD32con (word32 ()), lexp ())
+(* REALcon has been removed
 	      | c #"6" = (F.REALcon (string ()), lexp ())
+*)
 	      | c #"7" = (F.STRINGcon (string ()), lexp ())
 	      | c #"8" = (F.VLENcon (int ()), lexp ())
 	      | c _ = raise Format
