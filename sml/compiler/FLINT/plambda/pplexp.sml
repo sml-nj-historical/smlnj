@@ -113,7 +113,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
           | ppl pd (WORD i) = (pps "(W)"; pps (Word.toString i))
           | ppl pd (INT32 i) = (pps "(I32)"; pps(Int32.toString i))
           | ppl pd (WORD32 i) = (pps "(W32)"; pps(Word32.toString i))
-          | ppl pd (REAL s) = pps s
+          | ppl pd (REAL r) = (pps "(R64)"; pps(RealLit.toString r))
           | ppl pd (STRING s) = pps (mlstr s)
           | ppl pd (ETAG (l,_)) = ppl pd l
 

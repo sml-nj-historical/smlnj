@@ -148,11 +148,11 @@ datatype value
   | LABEL of lvar
 (* BIT64: REAL32: replace INT, INT32, and REAL with
   | INT of {v : IntInf.int, sz : int}
-  | REAL of {v : string, sz : int}
+  | REAL of {v : RealLit.t, sz : int}
 *)
   | INT of int
   | INT32 of Word32.word
-  | REAL of string
+  | REAL of RealLit.t
   | STRING of string
   | OBJECT of Unsafe.Object.object
   | VOID

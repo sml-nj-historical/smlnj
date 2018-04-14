@@ -1,10 +1,13 @@
-(* Copyright 1992 by AT&T Bell Laboratories 
+(* astutil.sig
  *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
+
 signature ASTUTIL =
   sig
 
-    val checkFix : int * ErrorMsg.complainer -> int
+    val checkFix : IntInf.int * ErrorMsg.complainer -> int
 
     (* BUILDS VARIOUS CONSTRUCTIONS *)
     val makeSEQdec : Ast.dec * Ast.dec -> Ast.dec

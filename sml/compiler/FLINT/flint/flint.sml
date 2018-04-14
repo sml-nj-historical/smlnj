@@ -74,7 +74,7 @@ type dcon = S.symbol * A.conrep * lty
  * con: used to specify all possible switching statements. Efficient switch
  * generation can be applied to DATAcon and INTcon. Otherwise, the switch is
  * just a short-hand of the binary branch trees. Some of these instances
- * such as REALcon and VLENcon will go away soon.
+ * such as VLENcon will go away soon.
  *)
 datatype con
   = DATAcon of dcon * tyc list * lvar
@@ -82,18 +82,21 @@ datatype con
   | INT32con of Int32.int
   | WORDcon of word
   | WORD32con of Word32.word
-  | REALcon of string
   | STRINGcon of string
   | VLENcon of int
 
 (** simple values, including variables and static constants. *)
 datatype value
   = VAR of lvar
+(* BIT64: REAL32: replace INT, INT32, and REAL with
+  | INT of {v : IntInf.int, sz : int}
+  | REAL of {v : RealLit.t, sz : int}
+*)
   | INT of int                            (* should use InfInf.int *)
   | INT32 of Int32.int
   | WORD of word
   | WORD32 of Word32.word
-  | REAL of string
+  | REAL of RealLit.t
   | STRING of string
 
 (** the definitions of the lambda expressions *)

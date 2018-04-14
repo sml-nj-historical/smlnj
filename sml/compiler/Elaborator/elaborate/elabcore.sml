@@ -313,8 +313,9 @@ let
 	   (clean_pat (error region)
               (pat_id(SP.SPATH path, env, error region, compInfo)),
 	    TS.empty)
-       | IntPat s => (NUMpat{ty = mkIntLiteralTy(s,region), value = s}, TS.empty)
-       | WordPat s => (NUMpat{ty = mkWordLiteralTy(s,region), value = s}, TS.empty)
+(* TODO: propagate the source string to Absyn for error reporting *)
+       | IntPat(_, s) => (NUMpat{ty = mkIntLiteralTy(s,region), value = s}, TS.empty)
+       | WordPat(_, s) => (NUMpat{ty = mkWordLiteralTy(s,region), value = s}, TS.empty)
        | StringPat s => (STRINGpat s,TS.empty)
        | CharPat s => (CHARpat s,TS.empty)
        | RecordPat {def,flexibility} =>
@@ -483,9 +484,10 @@ let
 			     end
 		      else CONexp(d, [])),
 		TS.empty, no_updt)
-	   | IntExp s => (NUMexp{ty = mkIntLiteralTy(s,region), value = s}, TS.empty, no_updt)
-	   | WordExp s => (NUMexp{ty = mkWordLiteralTy(s,region), value = s}, TS.empty, no_updt)
-	   | RealExp r => (REALexp r,TS.empty,no_updt)
+(* TODO: propagate the source string to Absyn for error reporting *)
+	   | IntExp(_, s) => (NUMexp{ty = mkIntLiteralTy(s,region), value = s}, TS.empty, no_updt)
+	   | WordExp(_, s) => (NUMexp{ty = mkWordLiteralTy(s,region), value = s}, TS.empty, no_updt)
+	   | RealExp(_, r) => (REALexp r,TS.empty,no_updt)
 	   | StringExp s => (STRINGexp s,TS.empty,no_updt)
 	   | CharExp s => (CHARexp s,TS.empty,no_updt)
 	   | RecordExp cells =>

@@ -148,11 +148,13 @@ fun dec ri = (ri := !ri - 1)
 (* - first list is list of formal args
  * - second is list of `up to know known arg'
  * - third is args of the current call. *)
-fun mergearg (NONE,a) = NONE
-  | mergearg (SOME(fv,NONE),a) =
-    if a = F.VAR fv then SOME(fv,NONE) else SOME(fv,SOME a)
-  | mergearg (SOME(fv,SOME b),a) =
-    if a = b orelse a = F.VAR fv then SOME(fv,SOME b) else NONE
+fun mergearg (NONE, _) = NONE
+  | mergearg (SOME(fv, NONE), a) =
+      if FU.valueIsVar fv a then SOME(fv, NONE) else SOME(fv, SOME a)
+  | mergearg (SOME(fv, SOME b), a) =
+      if FU.sameValue(a, b) orelse FU.valueIsVar fv a
+	then SOME(fv, SOME b)
+	else NONE
 
 fun use call (Info{uses,calls,...}) = (inc uses; if call then inc calls else ())
 

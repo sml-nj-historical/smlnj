@@ -329,7 +329,6 @@ structure FContract :> FCONTRACT =
 	    | eqConV (F.INT32con i1,	F.INT32 i2)	= i1 = i2
 	    | eqConV (F.WORDcon i1,	F.WORD i2)	= i1 = i2
 	    | eqConV (F.WORD32con i1,	F.WORD32 i2)	= i1 = i2
-	    | eqConV (F.REALcon r1,	F.REAL r2)	= r1 = r2
 	    | eqConV (F.STRINGcon s1,	F.STRING s2)	= s1 = s2
 	    | eqConV (con,v) = bugval("unexpected comparison with val", v)
 
@@ -442,8 +441,10 @@ structure FContract :> FCONTRACT =
 			    fun cbody () = let
 				  val nm = (foldl (fn (lv,m) => addbind(m, lv, Var(lv, NONE))) nm lvs)
 				  in case loop nm body cont
-				      of F.RET vs => if vs = (map F.VAR lvs) then nle
-						     else F.LET(lvs, nle, F.RET vs)
+				      of F.RET vs =>
+					  if ListPair.allEq (fn (v, lv) => FU.sameValue(v, F.VAR lv)) (vs, lvs)
+					    then nle
+					    else F.LET(lvs, nle, F.RET vs)
 				       | nbody => F.LET(lvs, nle, nbody)
 				  end
 			    in case nle
@@ -604,18 +605,19 @@ structure FContract :> FCONTRACT =
 					* to f, we have to be careful to update its
 					* binding to not refer to f any more since f
 					* will disappear *)
-				       val m = foldl (fn (h,m) =>
-							 if sval2val(lookup m h) = F.VAR f
-							 then addbind(m, h, svg) else m)
-						     m hs
-				   in
+				      fun add (h, m) =
+					    if FU.sameValue(sval2val(lookup m h), F.VAR f)
+					      then addbind(m, h, svg)
+					      else m
+				      val m = foldl add m hs
+				      in
 				       (* I could almost reuse `substitute' but the
 					* unuse in substitute assumes the val is escaping *)
-				       click_eta();
-				       C.transfer(f, g);
-				       unusecall m g;
-				       (addbind(m, f, svg), fs, f::hs)
-				   end
+				        click_eta();
+				        C.transfer(f, g);
+				        unusecall m g;
+				        (addbind(m, f, svg), fs, f::hs)
+				      end
 				end
 			    else (m, fdec::fs, hs)
 			| fcEta (fdec,(m,fs,hs)) = (m,fdec::fs,hs)
@@ -991,8 +993,10 @@ structure FContract :> FCONTRACT =
 		      in if C.dead lvi then (click_deadval(); loop m le cont) else
 			  let fun g (Select(_,sv,0)::ss) =
 				  let fun g' (n,Select(_,sv',i)::ss) =
-					  if n = i andalso (sval2val sv) = (sval2val sv')
-					  then g'(n+1,ss) else NONE
+					  if n = i
+					  andalso FU.sameValue(sval2val sv, sval2val sv')
+					    then g'(n+1,ss)
+					    else NONE
 					| g' (n,[]) =
 					  (case sval2lty sv
 					    of SOME lty =>

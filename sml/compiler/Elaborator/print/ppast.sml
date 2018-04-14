@@ -96,8 +96,8 @@ fun ppPat (context as (env, source_opt)) ppstrm =
         val pp_symbol_list = pp_path ppstrm
 	fun ppPat' (WildPat,_) = (pps "_")
 	  | ppPat' (VarPat p, d) =  pp_symbol_list(p)
-	  | ppPat' (IntPat i,_) = pps(IntInf.toString i)
-	  | ppPat' (WordPat w,_) = pps("0w" ^ IntInf.toString w)
+	  | ppPat' (IntPat(src, _),_) = pps src
+	  | ppPat' (WordPat(src, _),_) = pps src
 	  | ppPat' (StringPat s, _) = pp_mlstr ppstrm s
 	  | ppPat' (CharPat s,_) = (pps "#"; pp_mlstr ppstrm s)
 	  | ppPat' (LayeredPat {varPat,expPat},d) =
@@ -281,9 +281,9 @@ and ppExp (context as (env, source_opt)) ppstrm =
                                  else parenThunk()
                      | _ => parenThunk()
                 end
-	| ppExp' (IntExp i,_,_) = pps (IntInf.toString i)
-	| ppExp' (WordExp w,_,_) = pps ("0w" ^ IntInf.toString w)
-	| ppExp' (RealExp r,_,_) = pps r
+	| ppExp' (IntExp(src, _),_,_) = pps src
+	| ppExp' (WordExp(src, _),_,_) = pps src
+	| ppExp' (RealExp(src, _),_,_) = pps src
 	| ppExp' (StringExp s,_,_) = pp_mlstr ppstrm s
 	| ppExp' (CharExp s,_,_) = (pps "#"; pp_mlstr ppstrm s)
 	| ppExp'(r as RecordExp fields,_,d) =

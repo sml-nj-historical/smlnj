@@ -48,6 +48,10 @@ Group
 
 	structure IntConst
 
+	signature REAL_TO_BITS
+	structure Real64ToBits
+	structure RealLit
+
 	signature TARGET
 	structure Target
 is
@@ -85,6 +89,11 @@ is
 
 	miscutil/wordstr-hashtable.sml
 	miscutil/symbol-hashtable.sml
+
+	reals/real-lit.sml
+	reals/real-to-bits.sig
+	reals/real-to-bits-fn.sml
+	reals/real64-to-bits.sml
 
 	mlcomp/target.sig
 #if defined(SIZE_32)

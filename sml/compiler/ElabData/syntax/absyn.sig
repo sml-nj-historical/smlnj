@@ -15,7 +15,7 @@ signature ABSYN =
       = VARexp of VarCon.var ref * Types.tyvar list (* instance type *)
       | CONexp of VarCon.datacon * Types.tyvar list (* instance type *)
       | NUMexp of num_lit
-      | REALexp of string
+      | REALexp of real_lit
       | STRINGexp of string
       | CHARexp of string
       | RECORDexp of (numberedLabel * exp) list
@@ -105,5 +105,6 @@ signature ABSYN =
 
     withtype fnrules = rule list * Types.ty
          and num_lit = Types.ty IntConst.iconst
+         and real_lit = RealLit.t
 
   end (* signature ABSYN *)

@@ -308,7 +308,6 @@ fun do_switch_gen ren = Switch.switch {
    E_int32  = INT32,
    E_wneq   = P.cmp{oper=P.neq, kind=P.UINT 31},
    E_pneq   = P.pneq,
-   E_fneq   = P.fneq,
    E_less   = P.ilt,
    E_branch = (fn (cmp,x,y,a,b) => BRANCH(cmp,[x,y],mkv(),a,b)),
    E_strneq = (fn (w,str,a,b) => BRANCH(P.strneq, [INT(size str), w,

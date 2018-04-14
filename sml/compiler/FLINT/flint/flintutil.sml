@@ -1,6 +1,6 @@
 (* flintutil.sml
  *
- * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *)
 
@@ -34,6 +34,12 @@ sig
   val freevars : FLINT.lexp -> IntRedBlackSet.set
 
   val dcon_eq : FLINT.dcon * FLINT.dcon -> bool
+
+(* are two FLINT values equal? *)
+  val sameValue : FLINT.value * FLINT.value -> bool
+
+(* is a value a specific variable? *)
+  val valueIsVar : FLINT.lvar -> FLINT.value -> bool
 
 end (* signature FLINTUTIL *)
 
@@ -269,6 +275,22 @@ in case lexp
      | F.BRANCH (po,vs,le1,le2) => fpo(addvs(S.union(loop le1, loop le2), vs), po)
      | F.PRIMOP (po,vs,lv,le) => fpo(addvs(S_rmv(lv, loop le), vs),po)
 end
+
+(* are two FLINT values equal? *)
+  fun sameValue (v1, v2) = (case (v1, v2)
+	 of (VAR x, VAR y) => (x = y)
+	  | (INT n1, INT n2) => (n1 = n2)
+	  | (INT32 n1, INT32 n2) => (n1 = n2)
+	  | (WORD w1, WORD w2) => (w1 = w2)
+	  | (WORD32 w1, WORD32 w2) => (w1 = w2)
+	  | (REAL r1, REAL r2) => RealLit.same(r1, r2)
+	  | (STRING s1, STRING s2) => (s1 = s2)
+	  | _ => false
+	(* end case *))
+
+(* is a value a specific variable? *)
+  fun valueIsVar x (VAR y) = (x = y)
+    | valueIsVar _ _ = false
 
 end (* top-level local *)
 end (* structure FlintUtil *)

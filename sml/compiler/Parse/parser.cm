@@ -2,8 +2,10 @@
  *
  * The part of the SML/NJ frontend that is concerned with parsing.
  *
- * (C) 2001 Lucent Technologies, Bell Labs
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
+
 Group
 	signature PARSER_CONTROL
 	structure ParserControl

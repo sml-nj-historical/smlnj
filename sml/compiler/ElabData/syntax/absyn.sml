@@ -26,7 +26,7 @@ structure Absyn : ABSYN =
 	   the primop. *)
       | CONexp of VarCon.datacon * Ty.tyvar list (* ditto *)
       | NUMexp of num_lit
-      | REALexp of string
+      | REALexp of real_lit
       | STRINGexp of string
       | CHARexp of string
       | RECORDexp of (numberedLabel * exp) list
@@ -133,5 +133,6 @@ structure Absyn : ABSYN =
 
     withtype fnrules = rule list * Ty.ty
          and num_lit = Types.ty IntConst.iconst
+         and real_lit = RealLit.t
 
   end

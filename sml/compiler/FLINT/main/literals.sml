@@ -63,7 +63,7 @@ structure Literals : LITERALS =
     datatype lit_exp
       = LI_TOP of lit_val list
       | LI_BLOCK of (block_kind * lit_val list * lvar * lit_exp)
-      | LI_F64BLOCK of (string list * lvar * lit_exp)
+      | LI_F64BLOCK of (RealLit.t list * lvar * lit_exp)
       | LI_I32BLOCK of (Word32.word list * lvar * lit_exp)
 
     fun rk2bk CPS.RK_VECTOR	= LI_VECTOR
@@ -128,9 +128,8 @@ structure Literals : LITERALS =
     fun emit_RAW32 [i] = W8V.fromList(0wx02 :: w32ToBytes i)
       | emit_RAW32 l =
 	  W8V.fromList(0wx03 :: (intToBytes'(length l, List.foldr w32ToBytes' [] l)))
-    fun emit_RAW64 [r] = W8V.fromList(0wx04 :: strToBytes r)
-      | emit_RAW64 l = W8V.concat(
-	  W8V.fromList(0wx05 :: intToBytes(length l)) :: map Byte.stringToBytes l)
+    fun emit_RAW64 [r] = W8V.fromList(0wx04 :: Word8Vector.toList r)
+      | emit_RAW64 l = W8V.concat(W8V.fromList(0wx05 :: intToBytes(length l)) :: l)
     fun emit_STR s = W8V.concat[
 	    W8V.fromList(0wx06 :: intToBytes(size s)),
 	    Byte.stringToBytes s
@@ -169,8 +168,11 @@ structure Literals : LITERALS =
 		      emit_RECORD(length ls) :: emitLitVals(ls, 0, code)
 		  | emitBlock (LI_VECTOR, ls, code) =
 		      emit_VECTOR(length ls) :: emitLitVals(ls, 0, code)
-		fun emitF64Block (ls, code) =
-		      emit_RAW64(map IEEERealConst.realconst ls) :: code
+		fun emitF64Block (ls, code) = let
+		      val toBits = #1 o Real64ToBits.toBits
+		      in
+		        emit_RAW64(map toBits ls) :: code
+		      end
 		fun emitI32Block (ls, code) = emit_RAW32 ls :: code
 		in
 		  case exp
@@ -201,167 +203,172 @@ structure Literals : LITERALS =
 
     exception LitInfo
 
-    datatype rlit = RLIT of string * word
-    fun toRlit s = RLIT(s, HashString.hashString s)
-    fun fromRlit (RLIT(s, _)) = s
-    fun rlitcmp (RLIT(s1,i1), RLIT(s2,i2)) =
-      if i1 < i2 then LESS
-      else if i1 > i2 then GREATER else String.compare(s1, s2)
-    structure RlitDict = RedBlackMapFn(struct type ord_key = rlit
-					    val compare = rlitcmp
-				     end)
+(* FIXME: we should probably either use hash tables or the raw comparison
+ * functions to implement the dictionaries.
+ *)
+
+  (* string literal dictionary *)
+    datatype slit = SLIT of string * word
+    fun toSlit s = SLIT(s, HashString.hashString s)
+    fun fromSlit (SLIT(s, _)) = s
+    structure SlitDict = RedBlackMapFn(
+      struct
+        type ord_key = slit
+	fun compare (SLIT(s1,i1), SLIT(s2,i2)) =
+	      if i1 < i2 then LESS
+	      else if i1 > i2 then GREATER
+	      else String.compare(s1, s2)
+      end)
+
+  (* real literal dictionary *)
+    datatype rlit = RLIT of RealLit.t * word
+    fun toRlit r = RLIT(r, RealLit.hash r)
+    fun fromRlit (RLIT(r, _)) = r
+    structure RlitDict = RedBlackMapFn(
+      struct
+        type ord_key = rlit
+	fun compare (RLIT(r1,i1), RLIT(r2,i2)) =
+	  if i1 < i2 then LESS
+	  else if i1 > i2 then GREATER
+	  else RealLit.compare(r1, r2)
+      end)
 
     (* lifting all literals from a CPS program *)
-    fun liftlits (body, root, offset) =
-      let (* the list of record, string, or real constants *)
+    fun liftlits (body, root, offset) = let
+        (* the list of record, string, and real constants *)
 	  val m : info IntHashTable.hash_table = IntHashTable.mkTable(32, LitInfo)
 	  val freevars : lvar list ref = ref []
 	  fun addv x = (freevars := (x :: (!freevars)))
-
-	  (* check if an lvar is used by the main program *)
+	(* check if an lvar is used by the main program *)
 	  val refset : Intset.intset = Intset.new()
 	  val used : lvar -> unit = Intset.add refset
 	  val isUsed : lvar -> bool = Intset.mem refset
-
-	  (* memoize the information on which corresponds to what *)
+	(* memoize the information on which corresponds to what *)
 	  fun enter (v, i) = (IntHashTable.insert m (v, i); addv v)
 	  fun const (VAR v) = ((IntHashTable.lookup m v; true) handle _ => false)
 	    | const (INT _ | INT32 _ | REAL _ | STRING _) = true
 	    | const _ = bug "unexpected case in const"
-
 	  fun cstlit (VAR v) = ((IntHashTable.lookup m v; true) handle _ => false)
 	    | cstlit (REAL _ | STRING _) = true
 	    | cstlit _ = false
-
-	  (* register a string literal *)
+	(* register a string literal *)
 	  local val strs : string list ref = ref []
 		val strsN : int ref = ref 0
-		val sdict = ref (RlitDict.empty)
+		val sdict = ref (SlitDict.empty)
 		val srtv = mkv()
 		val srtval = VAR srtv
 	  in
-	  fun entStr s =
-	    let val v = mkv()  (** should hash to remove duplicates **)
+	  fun entStr s = let
+	        val v = mkv()  (** should hash to remove duplicates **)
 		val sd = !sdict
-		val rlit = toRlit s
-		val n =
-		  (case RlitDict.find(sd, rlit)
-		    of SOME k => k
-		     | _ => let val _ = (strs := (s :: (!strs)))
-				val k = !strsN
-				val _ = (strsN := (k+1))
-				val _ = (sdict := (RlitDict.insert(sd, rlit, k)))
-			     in k
+		val rlit = toSlit s
+		val n = (case SlitDict.find(sd, rlit)
+		       of SOME k => k
+			| _ => let
+			    val _ = (strs := (s :: (!strs)))
+			    val k = !strsN
+			    val _ = (strsN := (k+1))
+			    val _ = (sdict := (SlitDict.insert(sd, rlit, k)))
+			    in
+			      k
 			    end)
-	     in (VAR v, fn ce => SELECT(n, srtval, v, BOGt, ce))
-	    end
-
-    (* old definition of entStr
-
-	    let val sd = !sdict
-		val rlit = toRlit s
-	     in (case RlitDict.peek(sd, rlit)
-		  of SOME v => (VAR v, ident)
-		   | _ => let val v = mkv()
-			      val _ = (enter(v, ZZ_STR s); used v)
-			      val _ = (sdict := RlitDict.insert(sd, rlit, v))
-			   in (VAR v, ident)
-			  end)
-	    end
-    *)
-
-	  fun appStr () =
-	    let fun g (a::r, z) = g(r, (STRING a)::z)
+	        in
+		  (VAR v, fn ce => SELECT(n, srtval, v, BOGt, ce))
+	        end
+	  fun appStr () = let
+		fun g (a::r, z) = g(r, (STRING a)::z)
 		  | g ([], z) = z (* reverse to reflecting the correct order *)
 		val allStrs = !strs
-	     in case !strs
-		 of [] => ()
-		  | xs => (enter(srtv, ZZ_RCD(RK_RECORD, g(xs,[]))); used srtv)
-	    end
+	        in
+		  case !strs
+		   of [] => ()
+		    | xs => (enter(srtv, ZZ_RCD(RK_RECORD, g(xs,[]))); used srtv)
+		  (* end case *)
+	        end
 	  end (* local of processing string literals *)
-
-	  (** a special treatment of real constants *)
-	  local val reals : string list ref = ref []
+	(* register a real literal *)
+	  local val reals : RealLit.t list ref = ref []
 		val realsN : int ref = ref 0
 		val rdict = ref (RlitDict.empty)
 		val rrtv = mkv()
 		val rrtval = VAR rrtv
 	  in
-	  fun entReal s =
-	    let val v = mkv()  (** should hash to remove duplicates **)
+	  fun entReal s = let
+	        val v = mkv()  (** should hash to remove duplicates **)
 		val rd = !rdict
 		val rlit = toRlit s
-		val n =
-		  (case RlitDict.find(rd, rlit)
-		    of SOME k => k
-		     | _ => let val _ = (reals := (s :: (!reals)))
-				val k = !realsN
-				val _ = (realsN := (k+1))
-				val _ = (rdict := (RlitDict.insert(rd, rlit, k)))
-			     in k
+		val n = (case RlitDict.find(rd, rlit)
+		       of SOME k => k
+			| _ => let
+			    val _ = (reals := (s :: (!reals)))
+			    val k = !realsN
+			    val _ = (realsN := (k+1))
+			    val _ = (rdict := (RlitDict.insert(rd, rlit, k)))
+			    in
+			      k
 			    end)
-	     in (VAR v, fn ce => SELECT(n, rrtval, v, FLTt 64, ce))	(* REAL32: FIXME *)
-	    end
-
-	  fun appReal () =
-	    let fun g (a::r, z) = g(r, (REAL a)::z)
+	        in
+		  (VAR v, fn ce => SELECT(n, rrtval, v, FLTt 64, ce))	(* REAL32: FIXME *)
+	        end
+	  fun appReal () = let
+	        fun g (a::r, z) = g(r, (REAL a)::z)
 		  | g ([], z) = z (* reverse to reflecting the correct order *)
 		val allReals = !reals
-	     in case !reals
-		 of [] => ()
-		  | xs => (enter(rrtv, ZZ_RCD(RK_FBLOCK, g(xs,[]))); used rrtv)
-	    end
-	  end (* local of special treatment of real constants *)
-
-	  (* translation on the CPS values *)
-	  fun lpsv u =
-	    (case u
-	      of REAL s => entReal s
-	       | STRING s => entStr s
-	       | VAR v => (used v; (u, Fn.id))
-	       | _ => (u, Fn.id))
-
-	  fun lpvs vs =
-	    let fun g (u, (xs, hh)) =
-		  let val (nu, nh) = lpsv u
-		   in (nu::xs, nh o hh)
-		  end
-	     in foldr g ([], Fn.id) vs
-	    end
-
-	  (* if all fields of a record are "constant", then we lift it *)
-	  fun field ul =
-	    let fun h ((x, OFFp 0)::r, z, rsflag) =
-		     if const x then h(r, x::z, rsflag orelse (cstlit x)) else NONE
+	        in
+		  case !reals
+		   of [] => ()
+		    | xs => (enter(rrtv, ZZ_RCD(RK_FBLOCK, g(xs,[]))); used rrtv)
+	        end
+	  end (* local of processing real literals *)
+	(* translation on the CPS values *)
+	  fun lpsv u = (case u
+		 of REAL r => entReal r
+		  | STRING s => entStr s
+		  | VAR v => (used v; (u, Fn.id))
+		  | _ => (u, Fn.id)
+		(* end case *))
+	  fun lpvs vs = let
+		fun g (u, (xs, hh)) = let
+		      val (nu, nh) = lpsv u
+		      in
+			(nu::xs, nh o hh)
+		      end
+	        in
+		  foldr g ([], Fn.id) vs
+	        end
+	(* if all fields of a record are "constant", then we lift it *)
+	  fun field ul = let
+	       fun h ((x, OFFp 0)::r, z, rsflag) = if const x
+			then h(r, x::z, rsflag orelse (cstlit x))
+			else NONE
 		  | h ([], z, rsflag) = if rsflag then SOME(rev z) else NONE
 		  | h _ = bug "unexpected case in field"
-	     in h (ul, [], false)
-	    end
-
-	  (* register a constant record *)
-	  fun record (rk, ul, v) =
-	    (case field ul
-	      of SOME xl => (enter(v, ZZ_RCD(rk, xl)); Fn.id)
-	       | NONE =>
-		   let fun g ((u, p as OFFp 0), (r, hh)) =
-			     let val (nu, nh) = lpsv u
-			      in ((nu, p)::r, nh o hh)
-			     end
+	        in
+		  h (ul, [], false)
+	        end
+	(* register a constant record *)
+	  fun record (rk, ul, v) = (case field ul
+		 of SOME xl => (enter(v, ZZ_RCD(rk, xl)); Fn.id)
+		  | NONE => let
+		      fun g ((u, p as OFFp 0), (r, hh)) = let
+			      val (nu, nh) = lpsv u
+			      in
+				((nu, p)::r, nh o hh)
+			      end
 			 | g _ = bug "unexpected non-zero OFFp in record"
-		       val (nl, hdr) = foldr g ([], Fn.id) ul
-		    in fn ce => hdr(RECORD(rk, nl, v, ce))
-		   end)
-
-	  (* register a wrapped float literal *)
-	  fun wrapfloat (u, v, t) =
-	    if const u then (enter(v, ZZ_RCD(RK_FBLOCK, [u])); Fn.id)
-	    else let val (nu, hh) = lpsv u
-		  in (fn ce => hh(PURE(P.fwrap, [nu], v, t, ce)))
-		 end
-
-	  (* fetch out the literal information *)
-	  fun getInfo () =
-	    let val _ = appReal()   (* register all Reals as a record *)
+		      val (nl, hdr) = foldr g ([], Fn.id) ul
+		      in
+			fn ce => hdr(RECORD(rk, nl, v, ce))
+		      end)
+	(* register a wrapped float literal *)
+	  fun wrapfloat (u, v, t) = if const u
+		then (enter(v, ZZ_RCD(RK_FBLOCK, [u])); Fn.id)
+		else let val (nu, hh) = lpsv u
+		      in (fn ce => hh(PURE(P.fwrap, [nu], v, t, ce)))
+		     end
+	(* fetch out the literal information *)
+	  fun getInfo () = let
+	        val _ = appReal()   (* register all Reals as a record *)
 		val _ = appStr()   (* register all Strings as a record *)
 		val allvars = !freevars
 		val exports = List.filter isUsed allvars
@@ -376,25 +383,25 @@ structure Literals : LITERALS =
 		  end
 
 		fun mklit (v, lit) = let
-		    fun unREAL (CPS.REAL s) = s
+		    fun unREAL (CPS.REAL r) = r
 		      | unREAL _ = bug "unREAL"
 		    fun unINT32 (CPS.INT32 w) = w
 		      | unINT32 _ = bug "unINT32"
-		in
-		    case IntHashTable.lookup m v of
-			(ZZ_FLT _) => (* float is wrapped *)
-			bug "currently we don't expect ZZ_FLT in mklit"
-		      (* LI_F64BLOCK([s], v, lit) *)
-		      | (ZZ_STR s) =>
-			bug "currently we don't expect ZZ_STR in mklit"
-		      (* lit   --- or we could inline string *)
-		      | (ZZ_RCD(CPS.RK_FBLOCK, vs)) =>
-			LI_F64BLOCK(map unREAL vs, v, lit)
-		     | (ZZ_RCD(CPS.RK_I32BLOCK, vs)) =>
-		       LI_I32BLOCK(map unINT32 vs, v, lit)
-		     | (ZZ_RCD(rk, vs)) =>
-			 LI_BLOCK(rk2bk rk, map val2lit vs, v, lit)
-		end
+		    in
+		      case IntHashTable.lookup m v
+		       of (ZZ_FLT _) => (* float is wrapped *)
+			    bug "currently we don't expect ZZ_FLT in mklit"
+			(* LI_F64BLOCK([s], v, lit) *)
+			| (ZZ_STR s) =>
+			    bug "currently we don't expect ZZ_STR in mklit"
+			(* lit   --- or we could inline string *)
+			| (ZZ_RCD(CPS.RK_FBLOCK, vs)) =>
+			    LI_F64BLOCK(map unREAL vs, v, lit)
+			| (ZZ_RCD(CPS.RK_I32BLOCK, vs)) =>
+			    LI_I32BLOCK(map unINT32 vs, v, lit)
+			| (ZZ_RCD(rk, vs)) =>
+			    LI_BLOCK(rk2bk rk, map val2lit vs, v, lit)
+		    end
 
 		(** build up the literal structure *)
 		val lit = foldl mklit toplit allvars
@@ -435,8 +442,7 @@ structure Literals : LITERALS =
 
 	  fun lpfn (fk, f, vl, cl, e) = (fk, f, vl, cl, loop e)
 
-	  and loop ce =
-	    (case ce
+	  and loop ce = (case ce
 	      of RECORD (rk, ul, v, e) => record (rk, ul, v) (loop e)
 	       | SELECT (i, u, v, t, e) =>
 		   let val (nu, hh) = lpsv u

@@ -125,7 +125,7 @@ fun equalUptoAlpha(ce1,ce2) =
 		  end
               | same(LABEL a, LABEL b) = same(VAR a, VAR b)
               | same(INT i, INT j) = i=j
-              | same(REAL a, REAL b) = a=b
+              | same(REAL a, REAL b) = RealLit.same(a, b)
               | same(STRING a, STRING b) = a=b
 	      | same(a,b) = false
             fun samefields((a,ap)::ar,(b,bp)::br) =
@@ -209,7 +209,7 @@ exception NCONTRACT
 
 fun valueName(VAR v) = LV.lvarName v
   | valueName(INT i) = "Int"^Int.toString(i)
-  | valueName(REAL r) = "Real"^r
+  | valueName(REAL r) = "Real"^RealLit.toString r
   | valueName(STRING s) = "<"^s^">"
   | valueName _ = "<others>"
 
@@ -1177,28 +1177,28 @@ end
 			in x+x; click "Y"; INT x
 			end handle Overflow => raise ConstFold)
      | (P.pure_arith{oper=P.lshift,kind=P.INT 31}, [INT 0, _]) =>
-	   (click "Z"; INT 0)
+	  (click "Z"; INT 0)
      | (P.pure_arith{oper=P.lshift,kind=P.INT 31}, [v, INT 0]) =>
-	   (click "1"; v)
+	  (click "1"; v)
      | (P.pure_arith{oper=P.orb,kind=P.INT 31}, [INT i, INT j]) =>
-	   (click "2"; INT(wtoi (Word.orb(itow i, itow j))))
+	  (click "2"; INT(wtoi (Word.orb(itow i, itow j))))
      | (P.pure_arith{oper=P.orb,kind=P.INT 31}, [INT 0, v]) => (click "3"; v)
      | (P.pure_arith{oper=P.orb,kind=P.INT 31}, [v, INT 0]) => (click "4"; v)
      | (P.pure_arith{oper=P.xorb,kind=P.INT 31}, [INT i, INT j]) =>
-	   (click "5"; INT(wtoi (Word.xorb(itow i, itow j))))
+	  (click "5"; INT(wtoi (Word.xorb(itow i, itow j))))
      | (P.pure_arith{oper=P.xorb,kind=P.INT 31}, [INT 0, v]) =>
-	   (click "6"; v)
+	  (click "6"; v)
      | (P.pure_arith{oper=P.xorb,kind=P.INT 31}, [v, INT 0]) => (click "7"; v)
      | (P.pure_arith{oper=P.notb,kind=P.INT 31}, [INT i]) =>
-	   (click "8"; INT(wtoi (Word.notb (itow i))))
+	  (click "8"; INT(wtoi (Word.notb (itow i))))
      | (P.pure_arith{oper=P.andb,kind=P.INT 31}, [INT i, INT j]) =>
-	   (click "9"; INT(wtoi(Word.andb(itow i, itow j))))
+	  (click "9"; INT(wtoi(Word.andb(itow i, itow j))))
      | (P.pure_arith{oper=P.andb,kind=P.INT 31}, [INT 0, _]) =>
-	   (click "0"; INT 0)
+	  (click "0"; INT 0)
      | (P.pure_arith{oper=P.andb,kind=P.INT 31}, [_, INT 0]) =>
-	   (click "T"; INT 0)
+	  (click "T"; INT 0)
      | (P.real{fromkind=P.INT 31,tokind=P.FLOAT 64}, [INT i]) =>
-	   (REAL(Int.toString i ^ ".0"))  (* isn't this cool? *)
+	  REAL(RealLit.fromInt(IntInf.fromInt i))
      | (P.funwrap,[x as VAR v]) =>
           (case get(v) of {info=WRPinfo(P.fwrap,u),...} =>
 			    (click "U"; use_less x; u)

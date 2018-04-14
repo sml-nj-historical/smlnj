@@ -75,7 +75,6 @@ struct
       | toStringCon (F.INT32con i)  = "(I32)" ^ (Int32.toString i)
       | toStringCon (F.WORDcon i)   = "(W)" ^ (Word.toString i)
       | toStringCon (F.WORD32con i) = "(W32)" ^ (Word32.toString i)
-      | toStringCon (F.REALcon r)   = r
       | toStringCon (F.STRINGcon s) = PU.mlstr s
       | toStringCon (F.VLENcon n)   = Int.toString n
 
@@ -87,7 +86,7 @@ struct
       | toStringValue (F.INT32 i)  = "(I32)" ^ Int32.toString i
       | toStringValue (F.WORD i)   = "(W)" ^ Word.toString i
       | toStringValue (F.WORD32 i) = "(W32)" ^ Word32.toString i
-      | toStringValue (F.REAL r)   = r
+      | toStringValue (F.REAL r)   = "(R64)" ^ RealLit.toString r
       | toStringValue (F.STRING s) = PU.mlstr s
 
     val printSval = say o toStringValue

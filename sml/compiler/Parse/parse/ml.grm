@@ -32,9 +32,9 @@ val quotedBogusString = "'BOGUS"
     | IDA of FastSymbol.raw_symbol
     | IDS of FastSymbol.raw_symbol
     | TYVAR of FastSymbol.raw_symbol
-    | INT of IntInf.int | INT0 of IntInf.int
-    | WORD of IntInf.int
-    | REAL of string
+    | INT of string * IntInf.int | INT0 of string * IntInf.int
+    | WORD of string * IntInf.int
+    | REAL of string * RealLit.t
     | STRING of string
     | CHAR of string
     | ABSTYPE | AND
@@ -50,9 +50,9 @@ val quotedBogusString = "'BOGUS"
 %nonterm ident of FastSymbol.raw_symbol
        | id of FastSymbol.raw_symbol
        | idtyc of FastSymbol.raw_symbol
-       | int of IntInf.int
+       | int of string * IntInf.int
        | op_op of unit
-       | qid of (FastSymbol.raw_symbol -> symbol) -> symbol list 
+       | qid of (FastSymbol.raw_symbol -> symbol) -> symbol list
        | selector of symbol
        | tycon of symbol list
        | tlabel of (symbol * ty)
@@ -173,10 +173,10 @@ val quotedBogusString = "'BOGUS"
 %value IDA (rawSymbol(bogusHash,bogusString))
 %value IDS (rawSymbol(bogusHash,bogusString))
 %value TYVAR (rawSymbol(quotedBogusHash,quotedBogusString))
-%value INT (IntInf.fromInt 1)
-%value INT0 (IntInf.fromInt 0)
-%value WORD (IntInf.fromInt 0)
-%value REAL ("0.0")
+%value INT ("1", IntInf.fromInt 1)
+%value INT0 ("0", IntInf.fromInt 0)
+%value WORD ("0w0", IntInf.fromInt 0)
+%value REAL ("0.0", RealLit.zero false)
 %value STRING ("")
 %value CHAR ("a")
 
@@ -191,7 +191,7 @@ id	: IDA		(IDA)
 
 idtyc   : IDA           (IDA)
         | IDS           (IDS)
-			
+
 ident	: IDA 		(IDA)
         | IDS           (IDS)
 	| ASTERISK	(rawSymbol (asteriskHash,asteriskString))
@@ -205,7 +205,7 @@ qid	: IDA DOT qid	(fn kind => strSymbol IDA :: qid kind)
 	| ident		(fn kind => [kind ident])
 
 selector: id		(labSymbol id)
-	| INT		(Symbol.labSymbol(IntInf.toString INT))
+	| INT		(Symbol.labSymbol(IntInf.toString(#2 INT)))
 
 tycon   : IDA DOT tycon		(strSymbol IDA :: tycon)
 	| idtyc			([tycSymbol idtyc])
@@ -501,9 +501,9 @@ qid_p	: qid			([qid strSymbol])
 	| qid qid_p		(qid strSymbol :: qid_p)
 
 fixity	: INFIX			(infixleft 0)
-	| INFIX int		(infixleft (checkFix(IntInf.toInt int,error(intleft,intright))))
+	| INFIX int		(infixleft (checkFix(#2 int, error(intleft, intright))))
 	| INFIXR		(infixright 0)
-	| INFIXR int		(infixright (checkFix(IntInf.toInt int,error(intleft,intright))))
+	| INFIXR int		(infixright (checkFix(#2 int, error(intleft, intright))))
 	| NONFIX		(NONfix)
 
 ldec	: VAL vb		(ValDec(vb,nil))
@@ -680,7 +680,7 @@ sdec	: STRUCTURE strb	(StrDec strb)
 	| ldec			(markdec(ldec,ldecleft,ldecright))
 
 strb	: IDA sigconstraint_op EQUALOP str
-	   		([MarkStrb(Strb{name = strSymbol IDA, def = str, 
+	   		([MarkStrb(Strb{name = strSymbol IDA, def = str,
 					constraint=sigconstraint_op},
 				   (IDAleft,strright))])
 	| strb AND strb		(strb1 @ strb2)

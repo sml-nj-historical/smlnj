@@ -29,7 +29,7 @@ datatype lexp
   | INT32 of Int32.int
   | WORD of word
   | WORD32 of Word32.word
-  | REAL of string
+  | REAL of RealLit.t
   | STRING of string
   | PRIM of Primop.primop * lty * tyc list
   | GENOP of dict * Primop.primop * lty * tyc list

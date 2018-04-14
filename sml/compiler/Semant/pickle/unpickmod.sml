@@ -1364,13 +1364,13 @@ structure UnpickMod : UNPICKMOD = struct
 	val lvarlist = list lvarListM lvar
 
 	fun value () = let
-	    fun v #"a" = F.VAR (lvar ())
-	      | v #"b" = F.INT (int ())
-	      | v #"c" = F.INT32 (int32 ())
-	      | v #"d" = F.WORD (word ())
-	      | v #"e" = F.WORD32 (word32 ())
-	      | v #"f" = F.REAL (string ())
-	      | v #"g" = F.STRING (string ())
+	    fun v #"a" = F.VAR(lvar ())
+	      | v #"b" = F.INT(int ())
+	      | v #"c" = F.INT32(int32 ())
+	      | v #"d" = F.WORD(word ())
+	      | v #"e" = F.WORD32(word32 ())
+	      | v #"f" = F.REAL(RealLit.fromBytes (Byte.stringToBytes (string ())))
+	      | v #"g" = F.STRING(string ())
 	      | v _ = raise Format
 	in
 	    share valueM v

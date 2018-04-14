@@ -304,9 +304,6 @@ CodeGen/main/object-desc.sml
 CodeGen/main/spill-table.sml
 
 (* Miscellaneous utilities. *)
-MiscUtil/bignums/realconst.sml
-MiscUtil/bignums/ieeereal.sml
-
 MiscUtil/print/ppdec.sml
 MiscUtil/print/ppobj.sml
 MiscUtil/print/pptable.sml

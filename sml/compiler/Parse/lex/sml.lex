@@ -159,17 +159,30 @@ real=(~?)(({num}{frac}?{exp})|({num}{frac}{exp}?));
                                      COMPLAIN "quotation implementation error"
 				     nullErrorBody;
                                   Tokens.BEGINQ(yypos,yypos+1)));
-<INITIAL>{real}		=> (Tokens.REAL(stripReal yytext, yypos, yypos+size yytext));
-<INITIAL>[1-9][0-9]*	=> (Tokens.INT(atoi(yytext, 0),yypos,yypos+size yytext));
-<INITIAL>"0b"{binnum}	=> (Tokens.INT0(btoi(yytext, 2),yypos,yypos+size yytext));
-<INITIAL>"~0b"{binnum}	=> (Tokens.INT0(IntInf.~(btoi(yytext, 3)),yypos,yypos+size yytext));
-<INITIAL>"0x"{hexnum}	=> (Tokens.INT0(xtoi(yytext, 2),yypos,yypos+size yytext));
-<INITIAL>"~0x"{hexnum}	=> (Tokens.INT0(IntInf.~(xtoi(yytext, 3)),yypos,yypos+size yytext));
-<INITIAL>"0w"{num}	=> (Tokens.WORD(atoi(yytext, 2),yypos,yypos+size yytext));
-<INITIAL>"0wb"{binnum}	=> (Tokens.WORD(btoi(yytext, 3),yypos,yypos+size yytext));
-<INITIAL>"0wx"{hexnum}	=> (Tokens.WORD(xtoi(yytext, 3),yypos,yypos+size yytext));
-<INITIAL>{num}		=> (Tokens.INT0(atoi(yytext, 0),yypos,yypos+size yytext));
-<INITIAL>~{num}		=> (Tokens.INT0(atoi(yytext, 0),yypos,yypos+size yytext));
+
+<INITIAL>{real}
+	=> (Tokens.REAL((yytext, RealLit.fromString yytext), yypos, yypos+size yytext));
+<INITIAL>[1-9][0-9]*
+	=> (Tokens.INT((yytext, atoi(yytext, 0)), yypos, yypos+size yytext));
+<INITIAL>"0b"{binnum}
+	=> (Tokens.INT0((yytext, btoi(yytext, 2)), yypos, yypos+size yytext));
+<INITIAL>"~0b"{binnum}
+	=> (Tokens.INT0((yytext, IntInf.~(btoi(yytext, 3))), yypos, yypos+size yytext));
+<INITIAL>"0x"{hexnum}
+	=> (Tokens.INT0((yytext, xtoi(yytext, 2)), yypos, yypos+size yytext));
+<INITIAL>"~0x"{hexnum}
+	=> (Tokens.INT0((yytext, IntInf.~(xtoi(yytext, 3))), yypos, yypos+size yytext));
+<INITIAL>"0w"{num}
+	=> (Tokens.WORD((yytext, atoi(yytext, 2)), yypos, yypos+size yytext));
+<INITIAL>"0wb"{binnum}
+	=> (Tokens.WORD((yytext, btoi(yytext, 3)), yypos, yypos+size yytext));
+<INITIAL>"0wx"{hexnum}
+	=> (Tokens.WORD((yytext, xtoi(yytext, 3)), yypos, yypos+size yytext));
+<INITIAL>{num}
+	=> (Tokens.INT0((yytext, atoi(yytext, 0)), yypos, yypos+size yytext));
+<INITIAL>~{num}
+	=> (Tokens.INT0((yytext, atoi(yytext, 0)), yypos, yypos+size yytext));
+
 <INITIAL>\"	=> (charlist := [""]; stringstart := yypos;
                     stringtype := true; YYBEGIN S; continue());
 <INITIAL>\#\"	=> (charlist := [""]; stringstart := yypos;

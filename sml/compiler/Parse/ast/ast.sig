@@ -1,5 +1,7 @@
-(* Copyright 1992 by AT&T Bell Laboratories
+(* ast.sig
  *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 signature AST =
@@ -8,7 +10,14 @@ sig
   type symbol  (* = Symbol.symbol *)
   val infixleft : int -> fixity
   val infixright : int -> fixity
-  type literal = IntInf.int
+
+(* integer/word literal; the string is the literal as it appeared in the source
+ * and the int is the value of the literal.
+ *)
+  type literal = string * IntInf.int
+
+(* real literal; also paired with source string *)
+  type real_lit = string * RealLit.t
 
   (* to mark positions in files *)
   type srcpos  (* = int *)
@@ -37,7 +46,7 @@ sig
     | SeqExp of exp list		(* sequence of expressions *)
     | IntExp of literal		(* integer *)
     | WordExp of literal	(* word literal *)
-    | RealExp of string		(* floating point coded by its string *)
+    | RealExp of real_lit	(* floating point coded by its string *)
     | StringExp of string	(* string *)
     | CharExp of string		(* char *)
     | RecordExp of (symbol * exp) list	(* record *)
@@ -70,16 +79,15 @@ sig
 	  | CharPat of string			(* char *)
 	  | RecordPat of {def:(symbol * pat) list, flexibility:bool}
 						(* record *)
-          | ListPat of pat list		       (*  [list,in,square,brackets] *)
+          | ListPat of pat list		        (*  [list,in,square,brackets] *)
 	  | TuplePat of pat list		(* tuple *)
-          | FlatAppPat of pat fixitem list
-                                        (* patterns prior to fixity parsing *)
-	  | AppPat of {constr:pat,argument:pat}(* application *)
+          | FlatAppPat of pat fixitem list      (* patterns prior to fixity parsing *)
+	  | AppPat of {constr:pat,argument:pat} (* application *)
 	  | ConstraintPat of {pattern:pat,constraint:ty}
-						  (* constraint *)
-	  | LayeredPat of {varPat:pat,expPat:pat}	(* as expressions *)
-          | VectorPat of pat list                 (* vector pattern *)
-	  | MarkPat of pat * region	(* mark a pattern *)
+						(* constraint *)
+	  | LayeredPat of {varPat:pat,expPat:pat} (* as expressions *)
+          | VectorPat of pat list               (* vector pattern *)
+	  | MarkPat of pat * region	        (* mark a pattern *)
 	  | OrPat of pat list			(* or-pattern *)
 
   (* STRUCTURE EXPRESSION *)

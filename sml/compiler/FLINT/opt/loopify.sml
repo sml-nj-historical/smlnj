@@ -102,10 +102,11 @@ end
  * `call' is the list of arguments for the APP
  * `free' is the list of resulting free variables *)
 fun drop_invariant ((v,t),actuals,(filt,func,call,free)) =
-    if !CTRL.dropinvariant andalso List.all (fn a => F.VAR v = a) actuals then
+    if !CTRL.dropinvariant andalso List.all (FlintUtil.valueIsVar v) actuals
+      then
 	(* drop the argument: the free list is unchanged *)
 	(false::filt, func, call, (v,t)::free)
-    else
+      else
 	(* keep the argument: create a new var (used in the call)
 	 * which will replace the old in the free vars *)
 	let val nv = cplv v
@@ -128,7 +129,7 @@ in case le
 		   val tfs = (if tcp then tfs else [])
 	       (* cpsopt uses the following condition:
 		*     escape = 0 andalso !unroll_call > 0
-		*    	    andalso (!call - !unroll_call > 1 
+		*    	    andalso (!call - !unroll_call > 1
 		*    		     orelse List.exists (fn t=>t) inv)
 		* `escape = 0': I don't quite see the need for it, though it
 		*     probably won't change much since etasplit should have
@@ -219,8 +220,8 @@ in case le
      | F.APP(F.VAR f,vs) =>
        (case List.find (fn (ft,ft',filt) => ft = f) tfs
 	 of SOME(ft, ft', filt) => F.APP(F.VAR ft', OU.filter filt vs)
-	  | NONE => 
-	    (case M.find(m,f) 
+	  | NONE =>
+	    (case M.find(m,f)
 	      of SOME(fl, filt) =>
 		   F.APP(F.VAR fl, OU.filter filt vs)
                | NONE => le

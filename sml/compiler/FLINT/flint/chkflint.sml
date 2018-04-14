@@ -334,7 +334,6 @@ fun check phase envs lexp = let
 		      end
 		  | (INTcon _ | WORDcon _) => g LT.ltc_int
 		  | (INT32con _ | WORD32con _) => g LT.ltc_int32
-		  | REALcon _ => g LT.ltc_real
 		  | STRINGcon _ => g ltString
 		  | VLENcon _ => g LT.ltc_int (* ? *)
 	      in typeIn venv' e
