@@ -35,4 +35,4 @@ structure OverloadLit : OVERLOADLIT =
 
     val wordTypes = [BT.wordTy, BT.word8Ty, BT.word32Ty, BT.word64Ty]
 
-end (* structure OverloadLit *)
+  end (* structure OverloadLit *)

@@ -61,6 +61,14 @@ fun bug msg = ErrorMsg.impossible("ElabCore: "^msg)
 
 val debugPrint = (fn x => ED.debugPrint debugging x)
 
+(* REAL32: *)
+(* bounds for Real64.real constant values; these will get moved to overload
+ * resolution once we support more than one size of real.
+ *)
+val minSubnormalReal64 = RealLit.real{isNeg = false, whole="4", frac="9", exp = ~324}
+val minNormalReal64 = RealLit.real{isNeg = false, whole="2", frac="2250738585072014", exp = ~308}
+val maxReal64 = RealLit.real{isNeg = false, whole="1", frac="7976931348623157", exp = 308}
+
 fun showDec(msg,dec,env) =
 (*    ED.withInternals(fn () => *)
       debugPrint(msg,
@@ -487,7 +495,26 @@ let
 (* TODO: propagate the source string to Absyn for error reporting *)
 	   | IntExp(_, s) => (NUMexp{ty = mkIntLiteralTy(s,region), value = s}, TS.empty, no_updt)
 	   | WordExp(_, s) => (NUMexp{ty = mkWordLiteralTy(s,region), value = s}, TS.empty, no_updt)
-	   | RealExp(_, r) => (REALexp r,TS.empty,no_updt)
+	   | RealExp(src, r) => let
+	      (* check the validity of the constant *)
+		val r' = RealLit.abs r
+		in
+(* FIXME: once we support subnormal numbers, change this test *)
+		  if RealLit.lessThan(r', minNormalReal64)
+		    then (
+		      error region EM.WARN (String.concat[
+			  "real literal ", src, " will be rounded to ",
+			  if (RealLit.isNeg r) then "~0.0" else "0.0"
+			]) EM.nullErrorBody;
+		      (REALexp(RealLit.zero(RealLit.isNeg r)), TS.empty, no_updt))
+		  else if RealLit.lessThan(maxReal64, r')
+		    then (
+		      error region EM.COMPLAIN (String.concat[
+			  "real literal ", src, " is too large"
+			]) EM.nullErrorBody;
+                      (REALexp r, TS.empty, no_updt))
+		    else (REALexp r, TS.empty, no_updt)
+		end
 	   | StringExp s => (STRINGexp s,TS.empty,no_updt)
 	   | CharExp s => (CHARexp s,TS.empty,no_updt)
 	   | RecordExp cells =>
