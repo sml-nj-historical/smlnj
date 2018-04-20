@@ -85,7 +85,7 @@ structure RealLit :> sig
     val fromString : string -> t
 
   (* a concrete representation of the literal; note that +/-0 will have the
-   * representation of digits=[0], exp=0.
+   * representation of digits=[], exp=0.
    *)
     datatype rep
       = PosInf          (* positive infinity *)
@@ -159,7 +159,7 @@ structure RealLit :> sig
       | lessThan (NegInf, _) = true
       | lessThan (PosInf, _) = false
       | lessThan (_, PosInf) = false
-      | lessThan (Flt{digits=[0], ...}, Flt{digits=[0], ...}) = false
+      | lessThan (Flt{digits=[], ...}, Flt{digits=[], ...}) = false
       | lessThan (Flt{isNeg=true, ...}, Flt{isNeg=false, ...}) = true
       | lessThan (Flt{isNeg=false, ...}, Flt{isNeg=true, ...}) = false
       | lessThan (Flt{isNeg, digits=d1, exp=e1}, Flt{digits=d2, exp=e2, ...}) =
@@ -329,7 +329,7 @@ structure RealLit :> sig
     fun toString PosInf = "+inf"
       | toString NegInf = "~inf"
       | toString QNaN = "nan"
-      | toString (Flt{isNeg, digits=[0], ...}) = if isNeg then "~0.0" else "0.0"
+      | toString (Flt{isNeg, digits=[], ...}) = if isNeg then "~0.0" else "0.0"
       | toString (Flt{isNeg, digits, exp}) = let
           val s = if isNeg then "~0." else "0."
           val e = if exp < 0
