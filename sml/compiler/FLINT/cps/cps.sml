@@ -138,33 +138,31 @@ structure P = struct
 	| opp (fcmp{oper,size}) = fcmp{oper=foper oper, size=size}
     end
 
-    val iadd = arith{oper=op +,kind=INT 31}
-    val isub = arith{oper=op -,kind=INT 31}
-    val imul = arith{oper=op *,kind=INT 31}
-    val idiv = arith{oper=op /,kind=INT 31}
-    val ineg = arith{oper=op ~,kind=INT 31}
+    val iadd = arith{oper=op +, kind=INT Target.defaultIntSz}
+    val isub = arith{oper=op -, kind=INT Target.defaultIntSz}
+    val imul = arith{oper=op *, kind=INT Target.defaultIntSz}
+    val idiv = arith{oper=op /, kind=INT Target.defaultIntSz}
+    val ineg = arith{oper=op ~, kind=INT Target.defaultIntSz}
 
-    val fadd = arith{oper=op +,kind=FLOAT 64}
-    val fsub = arith{oper=op -,kind=FLOAT 64}
-    val fmul = arith{oper=op *,kind=FLOAT 64}
-    val fdiv = arith{oper=op /,kind=FLOAT 64}
-    val fneg = arith{oper=op ~,kind=FLOAT 64}
+    val fadd = arith{oper=op +, kind=FLOAT Target.defaultRealSz}
+    val fsub = arith{oper=op -, kind=FLOAT Target.defaultRealSz}
+    val fmul = arith{oper=op *, kind=FLOAT Target.defaultRealSz}
+    val fdiv = arith{oper=op /, kind=FLOAT Target.defaultRealSz}
+    val fneg = arith{oper=op ~, kind=FLOAT Target.defaultRealSz}
 
-    val ieql = cmp{oper=eql,kind=INT 31}
-    val ineq = cmp{oper=neq,kind=INT 31}
-    val igt = cmp{oper=op >,kind=INT 31}
-    val ige = cmp{oper=op >=,kind=INT 31}
-    val ile = cmp{oper=op <=,kind=INT 31}
-    val ilt = cmp{oper=op <,kind=INT 31}
-(*  val iltu = cmp{oper=ltu, kind=INT 31}
-    val igeu = cmp{oper=geu,kind=INT 31}
-*)
-    val feql =fcmp{oper=fEQ, size=64}
-    val fneq =fcmp{oper=fLG, size=64}
-    val fgt  =fcmp{oper=fGT, size=64}
-    val fge  =fcmp{oper=fGE, size=64}
-    val fle  =fcmp{oper=fLE, size=64}
-    val flt  =fcmp{oper=fLT, size=64}
+    val ieql = cmp{oper=eql, kind=INT Target.defaultIntSz}
+    val ineq = cmp{oper=neq, kind=INT Target.defaultIntSz}
+    val igt = cmp{oper=op >, kind=INT Target.defaultIntSz}
+    val ige = cmp{oper=op >=, kind=INT Target.defaultIntSz}
+    val ile = cmp{oper=op <=, kind=INT Target.defaultIntSz}
+    val ilt = cmp{oper=op <, kind=INT Target.defaultIntSz}
+
+    val feql = fcmp{oper=fEQ, size=Target.defaultRealSz}
+    val fneq = fcmp{oper=fLG, size=Target.defaultRealSz}
+    val fgt  = fcmp{oper=fGT, size=Target.defaultRealSz}
+    val fge  = fcmp{oper=fGE, size=Target.defaultRealSz}
+    val fle  = fcmp{oper=fLE, size=Target.defaultRealSz}
+    val flt  = fcmp{oper=fLT, size=Target.defaultRealSz}
 
     fun arity op ~ = 1
       | arity _ = 2

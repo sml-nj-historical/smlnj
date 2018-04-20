@@ -1,5 +1,10 @@
-(* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
-(* switch.sml *)
+(* switch.sml
+ *
+ * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * TODO: use binary search!!!
+ *)
 
 signature SWITCH =
 sig
@@ -43,12 +48,8 @@ end
 structure Switch : SWITCH =
 struct
 
-local
-
 structure L = FLINT
 structure A = Access
-
-in
 
 fun bug s = ErrorMsg.impossible ("Switch: " ^ s)
 
@@ -301,6 +302,5 @@ fun int_switch(e: 'value, l, default, inrange) =
 
 end
 
-end (* toplevel local *)
 end (* structure Switch *)
 

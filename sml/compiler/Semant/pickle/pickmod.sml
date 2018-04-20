@@ -608,27 +608,27 @@ in
 *)
 	      | c (F.STRINGcon s, e) = "7" $ [string s, lexp e]
 	      | c (F.VLENcon i, e) = "8" $ [int i, lexp e]
-	in
-	    c arg
-	end
+	    in
+	      c arg
+	    end
 
 	and dcon ((s, cr, t), ts) = let
 	    val op $ = PU.$ DCON
-	in
-	    "x" $ [symbol s, conrep cr, lty t, list tyc ts]
-	end
+	    in
+	      "x" $ [symbol s, conrep cr, lty t, list tyc ts]
+	    end
 
 	and dict { default = v, table = tbls } = let
 	    val op $ = PU.$ DICT
-	in
-	    "y" $ [lvar v, list (pair (list tyc, lvar)) tbls]
-	end
+	    in
+	      "y" $ [lvar v, list (pair (list tyc, lvar)) tbls]
+	    end
 
 	and fprim (dtopt, p, t, ts) = let
 	    val op $ = PU.$ FPRIM
-	in
-	    "z" $ [option dict dtopt, primop p, lty t, list tyc ts]
-	end
+	    in
+	      "z" $ [option dict dtopt, primop p, lty t, list tyc ts]
+	    end
 
 	and lexp arg = let
 	    val op $ = PU.$ E

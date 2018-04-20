@@ -199,12 +199,11 @@ fun check phase envs lexp = let
       fun typeofVar lv = LT.ltLookup (venv,lv,d)
 	  handle ltUnbound =>
 	      errMsg (le, "Unbound Lvar " ^ LV.lvarName lv, LT.ltc_void)
-      val typeofVal =
-       fn VAR lv => typeofVar lv
-	| (INT _ | WORD _) => LT.ltc_int
-	| (INT32 _ | WORD32 _) => LT.ltc_int32
-	| REAL _ => LT.ltc_real
-	| STRING _ => LT.ltc_string
+      fun typeofVal (VAR lv) = typeofVar lv
+	| typeofVal (INT _ | WORD _) = LT.ltc_int
+	| typeofVal (INT32 _ | WORD32 _) = LT.ltc_int32
+        | typeofVal (REAL _) = LT.ltc_real
+	| typeofVal (STRING _) = LT.ltc_string
       fun typeofFn ve (_,lvar,vts,eb) = let
 	fun split ((lv,t), (ve,ts)) =
             (lvarDef le lv;

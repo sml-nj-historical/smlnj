@@ -1379,12 +1379,11 @@ structure UnpickMod : UNPICKMOD = struct
 	val valuelist = list valueListM value
 
 	fun con () = let
-	    fun c #"1" =
-		let
+	    fun c #"1" = let
 		    val (dc, ts) = dcon ()
-		in
-		    (F.DATAcon (dc, ts, lvar ()), lexp ())
-		end
+		    in
+		      (F.DATAcon (dc, ts, lvar ()), lexp ())
+		    end
 	      | c #"2" = (F.INTcon (int ()), lexp ())
 	      | c #"3" = (F.INT32con (int32 ()), lexp ())
 	      | c #"4" = (F.WORDcon (word ()), lexp ())
