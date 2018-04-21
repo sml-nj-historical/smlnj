@@ -1,6 +1,6 @@
 (* overload.sml
  *
- * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *)
 
@@ -17,7 +17,7 @@ signature OVERLOAD =
    *)
     val new : unit -> {
 	    pushv : VarCon.var ref * SourceMap.region * ErrorMsg.complainer -> Types.ty,
-	    pushl : IntInf.int * Types.ty * ErrorMsg.complainer -> Types.ty,
+	    pushl : IntInf.int * string * Types.ty * ErrorMsg.complainer -> Types.ty,
 	    resolve : StaticEnv.staticEnv -> unit
 	  }
 
@@ -82,7 +82,7 @@ structure Overload : OVERLOAD =
   (* information about overloaded literals; once the type has been resolved, we use this
    * information to check that the literal value is within range for its type.
    *)
-    type num_info = IntInf.int * Ty.ty * ErrorMsg.complainer
+    type num_info = IntInf.int * string * Ty.ty * ErrorMsg.complainer
 
   (* overloaded functions *)
     fun new () = let
@@ -102,7 +102,9 @@ structure Overload : OVERLOAD =
 		end
 	    | pushvar _ = bug "Overload.push"
       (* push an overloaded literal onto the var list *)
-	fun pushlit info = (overloadedlits := info :: !overloadedlits; #2 info)
+	fun pushlit info = (
+	      overloadedlits := info :: !overloadedlits;
+	      #3 info)
       (* resolve overloadings *)
 	fun resolve env = let
 	    (* this function implements defaulting behavior -- if more
@@ -148,7 +150,7 @@ structure Overload : OVERLOAD =
 		      select options
 		    end
 	    (* resolve overloaded literals *)
-	      fun resolveOVLDlit (value, ty, _) = (
+	      fun resolveOVLDlit (value, _, ty, _) = (
 		  (* first, resolve the type *)
 		    case ty
 		     of Ty.VARty(tyvar as ref(Ty.OVLD{sources,options})) => (
@@ -165,12 +167,11 @@ structure Overload : OVERLOAD =
 	     * been resolved, because literal resolution does not follow
 	     * instance chains.
 	     *)
-	      fun checkLitRange (value, ty, err) =
+	      fun checkLitRange (value, src, ty, err) =
 		    if TU.numInRange(value, ty)
 		      then ()
 		      else err EM.COMPLAIN (concat[
-			  "literal value ", IntInf.toString value,
-			  " is too large for type "
+			  "literal value ", src, " is too large for type "
 			])
 			(fn ppstrm => PPType.ppType env ppstrm ty)
 	      val overloadedLits = rev (!overloadedlits)

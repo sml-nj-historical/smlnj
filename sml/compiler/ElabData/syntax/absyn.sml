@@ -25,18 +25,18 @@ structure Absyn : ABSYN =
 	   VarCon.var if VarCon.var is bound to a primop. These will then be used to specialize
 	   the primop. *)
       | CONexp of VarCon.datacon * Ty.tyvar list (* ditto *)
-      | NUMexp of num_lit
-      | REALexp of real_lit
+      | NUMexp of string * num_lit	(* string is source text of literal *)
+      | REALexp of string * real_lit	(* string is source text of literal *)
       | STRINGexp of string
       | CHARexp of string
       | RECORDexp of (numberedLabel * exp) list
-      | SELECTexp of numberedLabel * exp           (* record selections *)
+      | SELECTexp of numberedLabel * exp	(* record selections *)
       | VECTORexp of exp list * Ty.ty
-      | PACKexp of exp * Ty.ty * Ty.tycon list           (* abstraction packing *)
+      | PACKexp of exp * Ty.ty * Ty.tycon list	(* abstraction packing *)
       | APPexp of exp * exp
       | HANDLEexp of exp * fnrules
       | RAISEexp of exp * Ty.ty
-      | CASEexp of exp * rule list * bool     (* true: match; false: bind *)
+      | CASEexp of exp * rule list * bool	(* true: match; false: bind *)
       | IFexp of { test: exp, thenCase: exp, elseCase: exp }
       | ANDALSOexp of exp * exp
       | ORELSEexp of exp * exp
@@ -52,7 +52,7 @@ structure Absyn : ABSYN =
     and pat
       = WILDpat
       | VARpat of VarCon.var
-      | NUMpat of num_lit
+      | NUMpat of string * num_lit	(* string is source text of literal *)
       | STRINGpat of string
       | CHARpat of string
       | CONpat of VarCon.datacon * Ty.tyvar list (* See comment for VARexp *)

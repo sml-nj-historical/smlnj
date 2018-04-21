@@ -14,8 +14,8 @@ signature ABSYN =
     datatype exp
       = VARexp of VarCon.var ref * Types.tyvar list (* instance type *)
       | CONexp of VarCon.datacon * Types.tyvar list (* instance type *)
-      | NUMexp of num_lit
-      | REALexp of real_lit
+      | NUMexp of string * num_lit	(* string is source text of literal *)
+      | REALexp of string * real_lit	(* string is source text of literal *)
       | STRINGexp of string
       | CHARexp of string
       | RECORDexp of (numberedLabel * exp) list
@@ -41,7 +41,7 @@ signature ABSYN =
     and pat
       = WILDpat
       | VARpat of VarCon.var
-      | NUMpat of num_lit
+      | NUMpat of string * num_lit	(* string is source text of literal *)
       | STRINGpat of string
       | CHARpat of string
       | CONpat of VarCon.datacon * Types.tyvar list (* instance type *)

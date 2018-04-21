@@ -1,6 +1,6 @@
 (* ppabsyn.sml
  *
- * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *)
 
@@ -101,8 +101,7 @@ fun ppPat env ppstrm =
 	fun ppPat' (_,0) = pps "<pat>"
 	  | ppPat' (VARpat v,_) = ppVar ppstrm v
 	  | ppPat' (WILDpat,_) = pps "_"
-(* QUESTION: do we want to tag word literals with a "0w" prefix *)
-          | ppPat' (NUMpat num, _) = pps (IntConst.toString num)
+          | ppPat' (NUMpat(src, _), _) = pps src
 	  | ppPat' (STRINGpat s,_) = PU.pp_mlstr ppstrm s
 	  | ppPat' (CHARpat s,_) = (pps "#"; PU.pp_mlstr ppstrm s)
 	  | ppPat' (LAYEREDpat (v,p),d) =
@@ -229,19 +228,18 @@ fun trim [x] = []
 
 fun ppExp (context as (env,source_opt)) ppstrm =
     let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = PU.en_pp ppstrm
-	fun lparen() = pps "("
-	fun rparen() = pps ")"
-	fun lpcond(atom) = if atom then pps "(" else ()
-	fun rpcond(atom) = if atom then pps ")" else ()
-	fun ppExp'(_,_,0) = pps "<exp>"
-	  | ppExp'(VARexp(ref var,_),_,_) = ppVar ppstrm var
-	  | ppExp'(CONexp(con,_),_,_) = ppDcon ppstrm con
-(* QUESTION: do we want to tag word literals with a "0w" prefix *)
-          | ppExp' (NUMexp num, _, _) = pps(IntConst.toString num)
-	  | ppExp'(REALexp r,_,_) = pps(RealConst.toString r)
-	  | ppExp'(STRINGexp s,_,_) = PU.pp_mlstr ppstrm s
-	  | ppExp'(CHARexp s,_,_) = (pps "#"; PU.pp_mlstr ppstrm s)
-	  | ppExp'(r as RECORDexp fields,_,d) =
+	fun lparen () = pps "("
+	fun rparen () = pps ")"
+	fun lpcond atom = if atom then pps "(" else ()
+	fun rpcond atom = if atom then pps ")" else ()
+	fun ppExp' (_,_,0) = pps "<exp>"
+	  | ppExp' (VARexp(ref var,_),_,_) = ppVar ppstrm var
+	  | ppExp' (CONexp(con,_),_,_) = ppDcon ppstrm con
+          | ppExp' (NUMexp(src, _), _, _) = pps src
+	  | ppExp' (REALexp(src, _),_,_) = pps src
+	  | ppExp' (STRINGexp s,_,_) = PU.pp_mlstr ppstrm s
+	  | ppExp' (CHARexp s,_,_) = (pps "#"; PU.pp_mlstr ppstrm s)
+	  | ppExp' (r as RECORDexp fields,_,d) =
 	      if isTUPLEexp r
 	      then PU.ppClosedSequence ppstrm
 		     {front=(C PP.string "("),
@@ -261,15 +259,15 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 			   ppExp'(exp,false,d))),
 		      style=PU.INCONSISTENT}
 		     fields
-	  | ppExp'(SELECTexp (LABEL{name,...},exp),atom,d) =
+	  | ppExp' (SELECTexp (LABEL{name,...},exp),atom,d) =
 	      (openHVBox 0;
 	        lpcond(atom);
 	        pps "#"; PU.ppSym ppstrm name;
 	        ppExp'(exp,true,d-1); pps ">";
 		rpcond(atom);
 	       closeBox ())
-	  | ppExp'(VECTORexp(nil,_),_,d) = pps "#[]"
-	  | ppExp'(VECTORexp(exps,_),_,d) =
+	  | ppExp' (VECTORexp(nil,_),_,d) = pps "#[]"
+	  | ppExp' (VECTORexp(exps,_),_,d) =
 	      let fun pr _ exp = ppExp'(exp,false,d-1)
 	      in  PU.ppClosedSequence ppstrm
 		    {front=(C PP.string "#["),
@@ -280,7 +278,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 		     style=PU.INCONSISTENT}
 		    exps
 	      end
-          | ppExp'(PACKexp (e, t, tcs),atom,d) =
+          | ppExp' (PACKexp (e, t, tcs),atom,d) =
 	      if !internals then
 		 (openHOVBox 0;
 		  pps "<PACK: "; ppExp'(e,false,d); pps "; ";
@@ -288,7 +286,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 		  ppType env ppstrm t; pps ">";
 		  closeBox ())
 	      else ppExp'(e,atom,d)
-	  | ppExp'(SEQexp exps,_,d) =
+	  | ppExp' (SEQexp exps,_,d) =
 	      PU.ppClosedSequence ppstrm
 	        {front=(C PP.string "("),
 		 sep=(fn ppstrm => (PP.string ppstrm ";";
@@ -297,13 +295,13 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 		 pr=(fn _ => fn exp => ppExp'(exp,false,d-1)),
 		 style=PU.INCONSISTENT}
 		exps
-	  | ppExp'(e as APPexp _,atom,d) =
+	  | ppExp' (e as APPexp _,atom,d) =
 	      let val infix0 = INfix(0,0)
 	       in lpcond(atom);
 		  ppAppExp(e,nullFix,nullFix,d);
 		  rpcond(atom)
 	      end
-	  | ppExp'(CONSTRAINTexp(e, t),atom,d) =
+	  | ppExp' (CONSTRAINTexp(e, t),atom,d) =
 	     (openHOVBox 0;
 	       lpcond(atom);
 	       ppExp'(e,false,d); pps ":";
@@ -311,7 +309,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 	       ppType env ppstrm t;
 	       rpcond(atom);
 	      closeBox ())
-	  | ppExp'(HANDLEexp(exp, (rules,_)),atom,d) =
+	  | ppExp' (HANDLEexp(exp, (rules,_)),atom,d) =
 	     (openHVBox 0;
 	       lpcond(atom);
 	       ppExp'(exp,atom,d-1); PP.newline ppstrm; pps "handle ";
@@ -320,13 +318,13 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 		  (fn ppstrm => fn r => ppRule context ppstrm (r,d-1)), rules);
 	       rpcond(atom);
 	      closeBox ())
-	  | ppExp'(RAISEexp(exp,_),atom,d) =
+	  | ppExp' (RAISEexp(exp,_),atom,d) =
 	      (openHVBox 0;
 	       lpcond(atom);
 	       pps "raise "; ppExp'(exp,true,d-1);
 	       rpcond(atom);
 	       closeBox ())
-	  | ppExp'(LETexp(dec, exp),_,d) =
+	  | ppExp' (LETexp(dec, exp),_,d) =
 	      (openHVBox 0;
 		pps "let ";
 		openHVBox 0;
@@ -340,7 +338,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 		PP.break ppstrm {nsp=1,offset=0};
 		pps "end";
 	       closeBox ())
-	  | ppExp'(CASEexp(exp, rules, _),_,d) =
+	  | ppExp' (CASEexp(exp, rules, _),_,d) =
 	      (openHVBox 0;
 	       pps "(case "; ppExp'(exp,true,d-1); PU.nl_indent ppstrm 2;
 	       PU.ppvlist ppstrm ("of ","   | ",
@@ -405,7 +403,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 	         ppExp'(expr,false,d-1);
 	       closeBox ();
 	       closeBox ())
-	  | ppExp'(FNexp(rules,_),_,d) =
+	  | ppExp' (FNexp(rules,_),_,d) =
 	      (openHVBox 0;
 	       PU.ppvlist ppstrm ("(fn ","  | ",
 			       (fn ppstrm => fn r =>
@@ -413,7 +411,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 			       trim rules);
 	       rparen();
 	       closeBox ())
-	  | ppExp'(MARKexp (exp,(s,e)),atom,d) =
+	  | ppExp' (MARKexp (exp,(s,e)),atom,d) =
 	      (case source_opt
 		of SOME source =>
 		     if !internals

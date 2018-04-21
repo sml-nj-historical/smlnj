@@ -1,6 +1,6 @@
 (* elabutil.sml
  *
- * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *)
 
@@ -348,7 +348,7 @@ fun clean_pat err (CONpat(DATACON{const=false,name,...},_)) =
 fun pat_to_string WILDpat = "_"
   | pat_to_string (VARpat(VALvar{path,...})) = SP.toString path
   | pat_to_string (CONpat(DATACON{name,...},_)) = S.name name
-  | pat_to_string (NUMpat num) = IntConst.toString num
+  | pat_to_string (NUMpat(src, _)) = src
   | pat_to_string (STRINGpat s) = s
   | pat_to_string (CHARpat s) = "#"^s
   | pat_to_string (RECORDpat _) = "<record>"

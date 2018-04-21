@@ -324,9 +324,10 @@ let
 	   (clean_pat (error region)
               (pat_id(SP.SPATH path, env, error region, compInfo)),
 	    TS.empty)
-(* TODO: propagate the source string to Absyn for error reporting *)
-       | IntPat(_, s) => (NUMpat{ty = mkIntLiteralTy(s,region), ival = s}, TS.empty)
-       | WordPat(_, s) => (NUMpat{ty = mkWordLiteralTy(s,region), ival = s}, TS.empty)
+       | IntPat(src, s) =>
+	  (NUMpat(src, {ty = mkIntLiteralTy(s,region), ival = s}), TS.empty)
+       | WordPat(src, s) =>
+	  (NUMpat(src, {ty = mkWordLiteralTy(s,region), ival = s}), TS.empty)
        | StringPat s => (STRINGpat s,TS.empty)
        | CharPat s => (CHARpat s,TS.empty)
        | RecordPat {def,flexibility} =>
@@ -496,12 +497,14 @@ let
 		      else CONexp(d, [])),
 		TS.empty, no_updt)
 (* TODO: propagate the source string to Absyn for error reporting *)
-	   | IntExp(_, s) => (NUMexp{ty = mkIntLiteralTy(s,region), ival = s}, TS.empty, no_updt)
-	   | WordExp(_, s) => (NUMexp{ty = mkWordLiteralTy(s,region), ival = s}, TS.empty, no_updt)
+	   | IntExp(src, s) =>
+	       (NUMexp(src, {ty = mkIntLiteralTy(s,region), ival = s}), TS.empty, no_updt)
+	   | WordExp(src, s) =>
+	       (NUMexp(src, {ty = mkWordLiteralTy(s,region), ival = s}), TS.empty, no_updt)
 	   | RealExp(src, r) => let
 	      (* check the validity of the constant *)
 		val r' = RealLit.abs r
-		fun mkExp r = REALexp{rval = r, ty = mkRealLiteralTy(r, region)}
+		fun mkExp r = REALexp(src, {rval = r, ty = mkRealLiteralTy(r, region)})
 		in
 (* REAL32: this test gets moved to overload resolution *)
 (* FIXME: once we support subnormal numbers, change this test *)

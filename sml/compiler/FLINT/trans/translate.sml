@@ -1504,7 +1504,7 @@ and mkExp (exp, d) =
 	       val c = mkCE(dc, ts, SOME(g e2), d)
 	       val _ = if !debugging then ppLexp c else ()
 	   in c end)
-        | g (NUMexp{ival, ty}) =
+        | g (NUMexp(src, {ival, ty})) =
 	  (debugmsg ">>mkExp NUMexp";
              ((if TU.equalType (ty, BT.intTy) then INT (LN.int ival)
                else if TU.equalType (ty, BT.int32Ty) then INT32 (LN.int32 ival)
@@ -1522,12 +1522,12 @@ and mkExp (exp, d) =
 		   end
                else (ppType ty; bug "translate NUMexp"))
               handle Overflow => (repErr(concat[
-		    "int/word constant ", IntInf.toString ival,
+		    "literal ", src,
 		    " too large for ", TU.tyToString(TU.headReduceType ty)
 		  ]);
 		INT 0)))
 
-        | g (REALexp{rval, ty}) = REAL rval
+        | g (REALexp(_, {rval, ty})) = REAL rval
         | g (STRINGexp s) = STRING s
         | g (CHARexp s) = INT (Char.ord(String.sub(s, 0)))
              (** NOTE: the above won't work for cross compiling to
@@ -1648,7 +1648,7 @@ and transIntInf d s =
 	      val i = Word.toIntX d
 	      in
 		APPexp (consexp, EU.TUPLEexp [
-		    NUMexp{ival = IntInf.fromInt i, ty = BT.wordTy},
+		    NUMexp("<lit>", {ival = IntInf.fromInt i, ty = BT.wordTy}),
 		    build ds
 		  ])
 	      end
@@ -1656,7 +1656,9 @@ and transIntInf d s =
 	fun mkFn s = coreAcc(if LN.isNegative s then "makeNegInf" else "makePosInf")
 	fun small w =
 	      APP (mkSmallFn s,
-		mkExp (NUMexp{ival = IntInf.fromInt (Word.toIntX w), ty = BT.wordTy}, d))
+		mkExp (
+		  NUMexp("<lit>", {ival = IntInf.fromInt (Word.toIntX w), ty = BT.wordTy}),
+		  d))
         in
 	  case LN.repDigits s
            of [] => small 0w0
