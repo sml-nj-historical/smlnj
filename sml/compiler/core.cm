@@ -235,7 +235,7 @@ FLINT/opt/specialize.sml
 FLINT/opt/loopify.sml
 FLINT/opt/split.sml
 FLINT/opt/lift.sml
-(* not enabled, so don't compiler [JHR; 2017-10-16]
+(* not enabled, so don't compile [JHR; 2017-10-16]
 FLINT/opt/abcopt.sml
 *)
 FLINT/plambda/chkplexp.sml
@@ -261,6 +261,7 @@ FLINT/trans/pequal.sml
 FLINT/trans/primopmap.sml
 FLINT/trans/translate.sml
 FLINT/trans/transtypes.sml
+FLINT/trans/literal-to-num.sml    (* uses CoreIntInf functionality *)
 
 FLINT/lsplit/ls-inline.sml
 
@@ -309,7 +310,6 @@ MiscUtil/print/ppobj.sml
 MiscUtil/print/pptable.sml
 
 MiscUtil/util/feedback.sml
-MiscUtil/util/literal-to-num.sml    (* uses CoreIntInf functionality *)
 
 (* Libraries that are part of the visible compiler framework. *)
 $smlnj/viscomp/basics.cm

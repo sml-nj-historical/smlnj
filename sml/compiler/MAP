@@ -19,7 +19,7 @@ Parse/
   the true abstract syntax)
     ast.sig/sml
       the syntax tree types
-      defs: AST, Ast: AST 
+      defs: AST, Ast: AST
     astutil.sig/sml
       some utility functions
       defs: ASTUTIL, AstUtil: ASTUTIL
@@ -213,9 +213,9 @@ Semant/
   construction of base static environment for environment bootstrap
   and table mapping primop names to intrinsic primop types
     prim.sml
-      define static env primEnv, containing primitive types (PrimTypes), 
+      define static env primEnv, containing primitive types (PrimTypes),
       primops (InLine), and unrolled lists (UnrolledList)
-      defs: PRIM_ENV, PrimEnv: PRIM_ENV  
+      defs: PRIM_ENV, PrimEnv: PRIM_ENV
     primoptypemap.sml
       defines mapping from primop names (strings) to their "intrinsic" types
       defs: PRIMOP_TYPE_MAP, PrimOpTypeMap
@@ -244,7 +244,7 @@ Basic datastructures used in elaboration (including type checking)
 
   ElabData/basics/
   basic representation types used in elaboration, plus coresym
-    lambdavar.sig/sml 
+    lambdavar.sig/sml
       lambda variables, the abstract representation of variables, used
       as roots of dynamic access chains
       defs: LAMBDA_VAR, LambdaVar
@@ -271,7 +271,7 @@ Basic datastructures used in elaboration (including type checking)
   #]
     core-ptnum.sml
       core prim-type numbers (essentially the same as Elaborator/basics/ptnum.sml
-      except only language-standard types are included) 
+      except only language-standard types are included)
       see: Elaborator/basics/ptnum.sml
       defs: CORE_PRIM_TYC_NUM, CorePrimTycNum
     coresym.sml
@@ -407,10 +407,10 @@ Elaborator/
       types from CoreBasicTypes [MOVE to ElabData?]
       see: ElabData/types/core-basictypes.sml
       defs: BasicTypes
-    eqtypes.sml 
+    eqtypes.sml
       equivalence of types
       defs: EQTYPES, EqTypes: EQTYPES
-    unify.sml 
+    unify.sml
       type unification
       defs: UNIFY, Unify: UNIFY
     overloadlit.sml
@@ -535,12 +535,6 @@ MiscUtil/
       Compute minimum feedback vertex set of a given directed graph.
       should be part of a graph library (move to ../library?)
       defs: Feedback
-    literal-to-num.sml
-      Conversions from integer/word literals (which are represented as
-      arbitrary precision ints) to fixed size. a hack that should be
-      replaced by a parameterized numeric types.
-      size numbers
-      defs: LITERAL_TO_NUM, LiteralToNum : LITERAL_TO_NUM
 
 
 3. Middle End

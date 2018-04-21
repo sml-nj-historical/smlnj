@@ -246,9 +246,9 @@ LAMBDA_VAR
 LambdaVar
   ElabData/basics/lambdavar.sml
 LITERAL_TO_NUM
-  MiscUtil/util/literal-to-num.sml
+  FLINT/trans/literal-to-num.sml
 LiteralToNum
-  MiscUtil/util/literal-to-num.sml
+  FLINT/trans/literal-to-num.sml
 LOOKUP
   ElabData/statenv/lookup.sig
 Lookup

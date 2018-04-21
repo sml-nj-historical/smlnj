@@ -130,6 +130,12 @@ trans/
   translate.sml
     translate absyn to plambda lexp
 
+  literal-to-num.sml
+    Conversions from integer/word literals (which are represented as
+    arbitrary precision ints) to fixed size. a hack that should be
+    replaced by a parameterized numeric types.
+    size numbers
+    defs: LITERAL_TO_NUM, LiteralToNum : LITERAL_TO_NUM
 
 opt/
 
@@ -145,3 +151,5 @@ main/
        CpsSplit, FLINT_Control, FContract, FixFix, FLINT, FSplit, GlobalFix,
        LContract, Lift, Limit, Literals, Loopify, LtyExtern, PPCps, PPFlint,
        Recover, Reify, Specialize, SMLofNJ, TextIO, Wrapping
+
+reals/
