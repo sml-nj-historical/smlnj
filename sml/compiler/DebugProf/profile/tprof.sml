@@ -107,7 +107,7 @@ fun varexp(v as VALvar{typ=ref ty,path,...}) =
 fun clean (path as name::names) = if S.eq(name,anonSym) then names else path
   | clean x = x
 
-fun intLiteral n = NUMexp{value = IntInf.fromInt n, ty = intTy}
+fun intLiteral n = NUMexp{ival = IntInf.fromInt n, ty = intTy}
 
 fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
  let fun getVar name = CoreAccess.getVar env [name]

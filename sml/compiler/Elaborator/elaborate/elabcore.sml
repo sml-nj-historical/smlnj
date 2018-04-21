@@ -90,6 +90,9 @@ fun mkWordLiteralTy (v : IntInf.int, r : SourceMap.region) : ty =
 	  options = OverloadLit.wordTypes
 	}))
 
+(* REAL32: eventually this will be an overload instance *)
+fun mkRealLiteralTy (v : RealLit.t, r : SourceMap.region) : ty = realTy
+
 (* tyvarset management *)
 type tyvUpdate = TS.tyvarset -> unit
 val --- = TS.diffPure
@@ -322,8 +325,8 @@ let
               (pat_id(SP.SPATH path, env, error region, compInfo)),
 	    TS.empty)
 (* TODO: propagate the source string to Absyn for error reporting *)
-       | IntPat(_, s) => (NUMpat{ty = mkIntLiteralTy(s,region), value = s}, TS.empty)
-       | WordPat(_, s) => (NUMpat{ty = mkWordLiteralTy(s,region), value = s}, TS.empty)
+       | IntPat(_, s) => (NUMpat{ty = mkIntLiteralTy(s,region), ival = s}, TS.empty)
+       | WordPat(_, s) => (NUMpat{ty = mkWordLiteralTy(s,region), ival = s}, TS.empty)
        | StringPat s => (STRINGpat s,TS.empty)
        | CharPat s => (CHARpat s,TS.empty)
        | RecordPat {def,flexibility} =>
@@ -493,12 +496,14 @@ let
 		      else CONexp(d, [])),
 		TS.empty, no_updt)
 (* TODO: propagate the source string to Absyn for error reporting *)
-	   | IntExp(_, s) => (NUMexp{ty = mkIntLiteralTy(s,region), value = s}, TS.empty, no_updt)
-	   | WordExp(_, s) => (NUMexp{ty = mkWordLiteralTy(s,region), value = s}, TS.empty, no_updt)
+	   | IntExp(_, s) => (NUMexp{ty = mkIntLiteralTy(s,region), ival = s}, TS.empty, no_updt)
+	   | WordExp(_, s) => (NUMexp{ty = mkWordLiteralTy(s,region), ival = s}, TS.empty, no_updt)
 	   | RealExp(src, r) => let
 	      (* check the validity of the constant *)
 		val r' = RealLit.abs r
+		fun mkExp r = REALexp{rval = r, ty = mkRealLiteralTy(r, region)}
 		in
+(* REAL32: this test gets moved to overload resolution *)
 (* FIXME: once we support subnormal numbers, change this test *)
 		  if RealLit.lessThan(r', minNormalReal64)
 		    then (
@@ -506,14 +511,14 @@ let
 			  "real literal ", src, " will be rounded to ",
 			  if (RealLit.isNeg r) then "~0.0" else "0.0"
 			]) EM.nullErrorBody;
-		      (REALexp(RealLit.zero(RealLit.isNeg r)), TS.empty, no_updt))
+		      (mkExp(RealLit.zero(RealLit.isNeg r)), TS.empty, no_updt))
 		  else if RealLit.lessThan(maxReal64, r')
 		    then (
 		      error region EM.COMPLAIN (String.concat[
 			  "real literal ", src, " is too large"
 			]) EM.nullErrorBody;
-                      (REALexp r, TS.empty, no_updt))
-		    else (REALexp r, TS.empty, no_updt)
+                      (mkExp r, TS.empty, no_updt))
+		    else (mkExp r, TS.empty, no_updt)
 		end
 	   | StringExp s => (STRINGexp s,TS.empty,no_updt)
 	   | CharExp s => (CHARexp s,TS.empty,no_updt)

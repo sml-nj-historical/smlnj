@@ -238,7 +238,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 	  | ppExp'(CONexp(con,_),_,_) = ppDcon ppstrm con
 (* QUESTION: do we want to tag word literals with a "0w" prefix *)
           | ppExp' (NUMexp num, _, _) = pps(IntConst.toString num)
-	  | ppExp'(REALexp r,_,_) = pps(RealLit.toString r)
+	  | ppExp'(REALexp r,_,_) = pps(RealConst.toString r)
 	  | ppExp'(STRINGexp s,_,_) = PU.pp_mlstr ppstrm s
 	  | ppExp'(CHARexp s,_,_) = (pps "#"; PU.pp_mlstr ppstrm s)
 	  | ppExp'(r as RECORDexp fields,_,d) =

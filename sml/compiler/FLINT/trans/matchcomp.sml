@@ -298,13 +298,13 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 	  addConstraint ((k,t), NONE, rule, genAndor(bpat, rule))
       | genAndor (LAYEREDpat(APPpat(k,t,lpat), bpat), rule) =
 	  addConstraint ((k,t), SOME lpat, rule, genAndor(bpat, rule))
-      | genAndor (NUMpat{value, ty}, rule) =
-          if isInt64 ty then genAndor64 (LN.int64 value, rule)
-	  else if isWord64 ty then genAndor64 (LN.word64 value, rule)
+      | genAndor (NUMpat{ival, ty}, rule) =
+          if isInt64 ty then genAndor64 (LN.int64 ival, rule)
+	  else if isWord64 ty then genAndor64 (LN.word64 ival, rule)
 	  else let
 	    val con = if TU.equalType(ty, BT.wordTy) orelse TU.equalType(ty, BT.word32Ty)
-		  then wordCon(value, ty, "genAndor WORDpat")
-		  else numCon(value, ty, "genAndor INTpat")
+		  then wordCon(ival, ty, "genAndor WORDpat")
+		  else numCon(ival, ty, "genAndor INTpat")
 	    in
 	      CASE{bindings = nil, constraints = nil, sign = DA.CNIL, cases = [(con, [rule], nil)]}
 	    end
@@ -337,7 +337,7 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 
     (* simulate 64-bit words and ints as pairs of 32-bit words *)
     and genAndor64 ((hi, lo), rule) = let
-	  fun p32 w = NUMpat{value = Word32.toLargeInt w, ty = BT.word32Ty}
+	  fun p32 w = NUMpat{ival = Word32.toLargeInt w, ty = BT.word32Ty}
 	  in
 	    genAndor (AbsynUtil.TUPLEpat [p32 hi, p32 lo], rule)
 	  end
@@ -373,23 +373,23 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 		  AND{bindings=bindings, constraints=constraints,
 		      subtrees=subtrees}
 	      | _ => bug "genAndor returned bogusly")
-      | mergeAndor (NUMpat{value, ty}, c as CASE{bindings, cases, constraints, sign}, rule) =
-	  if isInt64 ty then mergeAndor64 (LN.int64 value, c, rule)
-	  else if isWord64 ty then mergeAndor64 (LN.word64 value, c, rule)
+      | mergeAndor (NUMpat{ival, ty}, c as CASE{bindings, cases, constraints, sign}, rule) =
+	  if isInt64 ty then mergeAndor64 (LN.int64 ival, c, rule)
+	  else if isWord64 ty then mergeAndor64 (LN.word64 ival, c, rule)
 	  else let
 	    val pcon = if TU.equalType(ty, BT.wordTy) orelse TU.equalType(ty, BT.word8Ty)
 		  orelse TU.equalType(ty, BT.word32Ty)
-		    then wordCon(value, ty, "mergeAndor WORDpat")
-		    else numCon(value, ty, "mergeAndor INTpat")
+		    then wordCon(ival, ty, "mergeAndor WORDpat")
+		    else numCon(ival, ty, "mergeAndor INTpat")
 	    in
 	      CASE{
 		  bindings = bindings, constraints = constraints,
 		  sign = sign, cases = addACase(pcon, [], rule, cases)
 		}
 	    end
-      | mergeAndor (NUMpat{value, ty}, c as AND _, rule) =
-	  if isInt64 ty then mergeAndor64 (LN.int64 value, c, rule)
-	  else if isWord64 ty then mergeAndor64 (LN.word64 value, c, rule)
+      | mergeAndor (NUMpat{ival, ty}, c as AND _, rule) =
+	  if isInt64 ty then mergeAndor64 (LN.int64 ival, c, rule)
+	  else if isWord64 ty then mergeAndor64 (LN.word64 ival, c, rule)
 	  else bug "bad pattern merge: NUMpat AND (not 64)"
       | mergeAndor (STRINGpat s, CASE{bindings, cases, constraints,sign}, rule) =
 	  CASE {bindings = bindings, constraints = constraints, sign=sign,
@@ -430,7 +430,7 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 
     (* simulate 64-bit words and ints as pairs of 32-bit words *)
     and mergeAndor64 ((hi, lo), c, rule) =
-	let fun p32 w = NUMpat{value = Word32.toLargeInt w, ty = BT.word32Ty}
+	let fun p32 w = NUMpat{ival = Word32.toLargeInt w, ty = BT.word32Ty}
 	in mergeAndor (AbsynUtil.TUPLEpat [p32 hi, p32 lo], c, rule)
 	end
 

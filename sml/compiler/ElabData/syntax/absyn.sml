@@ -132,7 +132,7 @@ structure Absyn : ABSYN =
     and fctb = FCTB of {name: S.symbol, fct: Modules.Functor, def: fctexp}
 
     withtype fnrules = rule list * Ty.ty
-         and num_lit = Types.ty IntConst.iconst
-         and real_lit = RealLit.t
+         and num_lit = Types.ty IntConst.t
+         and real_lit = Types.ty RealConst.t
 
   end

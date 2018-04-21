@@ -64,6 +64,9 @@ structure CoreInt64 = struct
 
       fun mod64 (x, y) = sub64 (x, mul64 (div64 (x, y), y))
 
+  (* NOTE: a more efficient implementation is to compare the high 32 bits using
+   * signed < and the lower 32 bits using unsigned <.
+   *)
       fun lt64 ((hi1, lo1), (hi2, lo2)) = (case (isneg hi1, isneg hi2)
 	     of (true, false) => true
 	      | (false, true) => false

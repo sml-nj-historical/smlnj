@@ -51,6 +51,7 @@ Group
 	signature REAL_TO_BITS
 	structure Real64ToBits
 	structure RealLit
+	structure RealConst
 
 	signature TARGET
 	structure Target
@@ -67,6 +68,7 @@ is
 	mlcomp/persmap.sml
 	mlcomp/pidenv.sig
 	mlcomp/pidenv.sml
+        mlcomp/real-const.sml
 	mlcomp/symbol.sig
 	mlcomp/symbol.sml
 

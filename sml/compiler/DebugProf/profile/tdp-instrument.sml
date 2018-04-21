@@ -123,7 +123,7 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	val tdp_module_var = tmpvar ("<tdp_module>", BT.intTy)
 
 	fun VARexp v = A.VARexp (ref v, [])
-	fun INTexp i = A.NUMexp{value = IntInf.fromInt i, ty = BT.intTy}
+	fun INTexp i = A.NUMexp{ival = IntInf.fromInt i, ty = BT.intTy}
 
 	val uExp = AU.unitExp
 	val pushexp = A.APPexp (VARexp tdp_push_var, uExp)
