@@ -25,13 +25,19 @@ datatype record_kind
 
 datatype pkind = VPT | RPT of int | FPT of int
 
+(* kinds of integers: size in bits and tagged vs boxed *)
+type intty = {sz : int, tag : bool}
+
 datatype cty
-  = TINTt  (* tagged integers *)
-  | INTt of int  (* untagged integers of given size *)
-  | PTRt of pkind  (* pointer *)
-  | FUNt (* function? *)
-  | FLTt of int  (* float of given size *)
-  | CNTt (* continuation *)
+(* 64BIT:
+  = NUMt of intty	(* integers of the given type *)
+*)
+  = TINTt		(* tagged integers *)
+  | INTt of int		(* untagged integers of given size *)
+  | PTRt of pkind	(* pointer *)
+  | FUNt		(* function? *)
+  | FLTt of int 	(* float of given size *)
+  | CNTt		(* continuation *)
 
 structure P = struct
     (* numkind includes kind and size *)
@@ -175,12 +181,11 @@ datatype value
   = VAR of lvar
   | LABEL of lvar
 (* BIT64: REAL32: replace INT, INT32, and REAL with
-  | INT of {v : IntInf.int, sz : int}
-  | REAL of {v : RealLit.t, sz : int}
+  | NUM of intty IntConst.t
 *)
   | INT of int
   | INT32 of Word32.word
-  | REAL of RealLit.t
+  | REAL of int RealConst.t
   | STRING of string
   | OBJECT of Unsafe.Object.object
   | VOID

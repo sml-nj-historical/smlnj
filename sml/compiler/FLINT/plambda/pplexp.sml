@@ -113,7 +113,8 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
           | ppl pd (WORD i) = (pps "(W)"; pps (Word.toString i))
           | ppl pd (INT32 i) = (pps "(I32)"; pps(Int32.toString i))
           | ppl pd (WORD32 i) = (pps "(W32)"; pps(Word32.toString i))
-          | ppl pd (REAL r) = (pps "(R64)"; pps(RealLit.toString r))
+          | ppl pd (REAL{rval, ty}) =
+	      pps(concat["(R", Int.toString ty, ")", RealLit.toString rval])
           | ppl pd (STRING s) = pps (mlstr s)
           | ppl pd (ETAG (l,_)) = ppl pd l
 
@@ -425,7 +426,8 @@ fun ppFun ppstrm l v =
            | RAISE(l,_) => find l
            | INT _ => () | WORD _ => ()
            | INT32 _ => () | WORD32 _ => ()
-           | STRING _ => () | REAL _ => ()
+	   | REAL _ => ()
+           | STRING _ => ()
            | ETAG (e,_) => find e
            | PRIM _ => ()
            | GENOP ({default=e1,table=es}, _, _, _) =>

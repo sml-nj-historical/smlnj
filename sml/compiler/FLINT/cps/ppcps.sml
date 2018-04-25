@@ -1,16 +1,19 @@
 (* ppcps.sml
  *
- * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *)
 
 signature PPCPS =
-sig
-  val printcps : (CPS.function * LtyDef.lty IntHashTable.hash_table) -> unit
-  val printcps0: CPS.function -> unit
-  val prcps : CPS.cexp -> unit
+  sig
 
-end (* signature PPCPS *)
+    val value2str : CPS.value -> string
+
+    val printcps : (CPS.function * LtyDef.lty IntHashTable.hash_table) -> unit
+    val printcps0: CPS.function -> unit
+    val prcps : CPS.cexp -> unit
+
+  end (* signature PPCPS *)
 
 structure PPCps : PPCPS =
 struct
@@ -22,6 +25,17 @@ in
 val say = Control.Print.say
 
 val sayt = say o CPS.ctyToString
+
+fun value2str (VAR v) = LV.lvarName v
+  | value2str (LABEL v) = "(L)" ^ LV.lvarName v
+  | value2str (INT i) = "(I)" ^ Int.toString i
+  | value2str (INT32 i) = "(I32)" ^ Word32.toString i
+  | value2str (REAL{rval, ty}) = concat[
+	"(R", Int.toString ty, ")", RealLit.toString rval
+      ]
+  | value2str (STRING s) = concat["\"", String.toString s, "\""]
+  | value2str (OBJECT _) = "(object)"
+  | value2str (VOID) = "(void)"
 
 fun numkindName (P.INT bits) = "i" ^ Int.toString bits
   | numkindName (P.UINT bits) = "u" ^ Int.toString bits
@@ -160,24 +174,15 @@ and rkstring rk = (case rk
          | RK_FBLOCK => "RK_FBLOCK"
          | RK_I32BLOCK => "RK_I32BLOCK")
 
-
 fun show0 say =
   let fun sayc (#"\n") = say "\\n"
         | sayc c = say(String.str c)
 
-      fun sayv(VAR v) = say(LV.lvarName v)
-        | sayv(LABEL v) = say("(L)" ^ LV.lvarName v)
-	| sayv(INT i) = say("(I)" ^ Int.toString i)
-	| sayv(INT32 i) = say("(I32)" ^ Word32.toString i)
-	| sayv(REAL r) = say("(R64)" ^ RealLit.toString r)
-	| sayv(STRING s) = (say "\""; app sayc (explode s); say "\"")
-        | sayv(OBJECT _) = say("(object)")
-        | sayv(VOID) = say("(void)")
+      fun sayv v = say(value2str v)
 
       fun sayvlist [v] = sayv v
         | sayvlist nil = ()
 	| sayvlist (v::vl) = (sayv v; say ","; sayvlist vl)
-
 
       fun sayrk(RK_RECORD,n) = ()
         | sayrk(RK_VECTOR,n) = ()

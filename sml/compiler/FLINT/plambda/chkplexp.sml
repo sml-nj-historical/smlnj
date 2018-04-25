@@ -1,5 +1,8 @@
-(* Copyright 1996 by AT&T Bell Laboratories *)
-(* chkplexp.sml *)
+(* chkplexp.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature CHKPLEXP =
 sig
@@ -235,13 +238,17 @@ fun ltConChk le s (DATAcon ((_,rep,lt), ts, v), root, kenv, venv, d) =
           val t = ltFnAppR le "DECON" (t1, root)
        in LT.ltInsert(venv, v, t, d)
       end
-  | ltConChk le s (c, root, kenv, venv, d) =
-      let val nt = (case c of INT32con _ => LT.ltc_int32
-                            | WORD32con _ => LT.ltc_int32
-                            | STRINGcon _ => ltString
-			    | INTINFcon _ => bug "INTINFcon"
-                            |  _ => LT.ltc_int)
-       in ((ltMatch le s (nt, root)) handle Fail _ => say "ConChk ltEquiv\n"); venv
+  | ltConChk le s (c, root, kenv, venv, d) = let
+      val nt = (case c
+(* 64BIT: will need other cases *)
+	     of INT32con _ => LT.ltc_int32
+	      | WORD32con _ => LT.ltc_int32
+	      | STRINGcon _ => ltString
+	      | INTINFcon _ => bug "INTINFcon"
+	      | _ => LT.ltc_int
+	    (* end case *))
+      in
+	((ltMatch le s (nt, root)) handle Fail _ => say "ConChk ltEquiv\n"); venv
       end
 
 (** check : tkindEnv * ltyEnv * DI.depth -> lexp -> lty *)
@@ -270,8 +277,10 @@ fun check (kenv, venv, d) =
 			   (say ("** Lvar ** " ^ (LV.lvarName(v))
 				 ^ " is unbound *** \n");
 			    bug "unexpected lambda code in checkLty"))
+(* 64BIT: will need extra cases *)
 		 | (INT _ | WORD _) => LT.ltc_int
 		 | (INT32 _ | WORD32 _) => LT.ltc_int32
+(* REAL32: will need extra cases *)
 		 | REAL _ => LT.ltc_real
 		 | STRING _ => ltString
 		 | PRIM(p, t, ts) =>

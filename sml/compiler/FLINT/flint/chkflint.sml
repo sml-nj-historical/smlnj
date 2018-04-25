@@ -200,19 +200,20 @@ fun check phase envs lexp = let
 	  handle ltUnbound =>
 	      errMsg (le, "Unbound Lvar " ^ LV.lvarName lv, LT.ltc_void)
       fun typeofVal (VAR lv) = typeofVar lv
+(* 64BIT: REAL64: need more cases *)
 	| typeofVal (INT _ | WORD _) = LT.ltc_int
 	| typeofVal (INT32 _ | WORD32 _) = LT.ltc_int32
         | typeofVal (REAL _) = LT.ltc_real
 	| typeofVal (STRING _) = LT.ltc_string
       fun typeofFn ve (_,lvar,vts,eb) = let
-	fun split ((lv,t), (ve,ts)) =
-            (lvarDef le lv;
-             (LT.ltInsert (ve,lv,t,d), t::ts))
-	val (ve',ts) = foldr split (ve,[]) vts
-	in
-            lvarDef le lvar;
-            (ts, typeIn ve' eb)
-	end
+	    fun split ((lv,t), (ve,ts)) = (
+		  lvarDef le lv;
+		  (LT.ltInsert (ve,lv,t,d), t::ts))
+	    val (ve',ts) = foldr split (ve,[]) vts
+	    in
+	      lvarDef le lvar;
+	      (ts, typeIn ve' eb)
+	    end
 
       (* There are lvars hidden in Access.conrep, used by dcon.
        * These functions just make sure that they are defined in the

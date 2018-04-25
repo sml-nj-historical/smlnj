@@ -1,5 +1,8 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* flatten.sml *)
+(* flatten.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature FLATTEN = sig
   val flatten : {function: CPS.function,
@@ -7,7 +10,7 @@ signature FLATTEN = sig
                  click: string -> unit} -> CPS.function
 end (* signature FLATTEN *)
 
-functor Flatten(MachSpec : MACH_SPEC) : FLATTEN = 
+functor Flatten(MachSpec : MACH_SPEC) : FLATTEN =
 struct
 
 local open CPS
@@ -15,19 +18,19 @@ local open CPS
       structure LV = LambdaVar
       structure CG = Control.CG
 
-in 
+in
 
 val say = Control.Print.say
 fun bug s = ErrorMsg.impossible ("Flatten: " ^ s)
 
-datatype arity = BOT 
+datatype arity = BOT
 	       | UNK  (* an arg seen that isn't a known record *)
 	       | COUNT of int * bool (* int is # of record fields;
-		                        bool is whether any arguments 
+		                        bool is whether any arguments
                                         were unknown records *)
 	       | TOP
 
-datatype info = FNinfo of {arity: arity list ref, 
+datatype info = FNinfo of {arity: arity list ref,
 			   alias: lvar option ref,
 			   escape: bool ref}
 	      | ARGinfo of int ref (* the highest-numbered field selected *)
@@ -47,7 +50,7 @@ fun debugflush() = if debug then Control.Print.flush() else ()
 val rep_flag = MachSpec.representations
 val type_flag = (!CG.checkcps1) andalso (!CG.checkcps2) andalso rep_flag
 
-val selectLty = 
+val selectLty =
   (fn (lt,i) => if type_flag then LT.lt_select(lt,i) else LT.ltc_void)
 
 exception NFLATTEN
@@ -69,40 +72,40 @@ fun mkv(t) = let val v = LV.mkLvar()
               in v
              end
 fun grabty u =
-  let fun g(VAR v) = getty v
-        | g(INT _) = LT.ltc_int
-        | g(REAL _) = LT.ltc_real
-        | g(STRING _) = LT.ltc_void
-        | g(LABEL v) = getty v
-        | g _ = LT.ltc_void
+  let fun g (VAR v) = getty v
+        | g (INT _) = LT.ltc_int
+        | g (REAL _) = LT.ltc_real
+        | g (STRING _) = LT.ltc_void
+        | g (LABEL v) = getty v
+        | g _ = LT.ltc_void (* QUESTION: what about other integer types? *)
    in if type_flag then g u
       else LT.ltc_void
   end
 
 fun argLty [] = LT.ltc_int
-  | argLty [t] = 
-      LT.ltw_tuple(t, 
+  | argLty [t] =
+      LT.ltw_tuple(t,
             (fn xs as (_::_) => if (length(xs) < MachSpec.maxRepRegs)
                         then LT.ltc_tuple [t] else t
               | _ => t),
-            fn t => 
-               LT.ltw_str(t, 
+            fn t =>
+               LT.ltw_str(t,
                   (fn xs as (_::_) => if (length(xs) < MachSpec.maxRepRegs)
                               then LT.ltc_tuple [t] else t
                     | _ => t),
                   fn t => t))
   | argLty r = LT.ltc_str r (* this is INCORRECT !!!!!!! *)
 
-fun ltc_fun (x, y) = 
+fun ltc_fun (x, y) =
   if (LT.ltp_tyc x) andalso (LT.ltp_tyc y) then LT.ltc_parrow(x, y)
   else LT.ltc_pfct(x, y)
 
 fun mkfnLty(_,_,nil) = bug "mkfnLty in nflatten"
-  | mkfnLty(k,CNTt::_,x::r) = 
+  | mkfnLty(k,CNTt::_,x::r) =
       LT.ltw_iscont(x, fn [t2] => (k,ltc_fun(argLty r,t2))
-                        | _ => bug "unexpected mkfnLty", 
+                        | _ => bug "unexpected mkfnLty",
              fn [t2] => (k,ltc_fun(argLty r, LT.ltc_tyc t2))
-              | _ => bug "unexpected mkfnLty", 
+              | _ => bug "unexpected mkfnLty",
              fn x => (k, ltc_fun(argLty r,x)))
   | mkfnLty(k,_,r) = (k, LT.ltc_cont([argLty r]))
 
@@ -113,7 +116,7 @@ val maxregs = maxfree - MachSpec.numCalleeSaves
 local exception UsageMap
       val m: info IntHashTable.hash_table = IntHashTable.mkTable(128, UsageMap)
       val umap = IntHashTable.lookup m
-in  
+in
     fun get i = umap i handle UsageMap => MISCinfo
     val enter = IntHashTable.insert m
 end
@@ -142,11 +145,11 @@ fun enterFN (_,f,vl,_,cexp) =
        app (fn v => enter(v,ARGinfo(ref ~1))) vl)
 
 local exception Found
-in 
+in
 fun findFetch(v,k) body =
       (* find whether field k of variable v is guaranteed to exist *)
   let fun f(RECORD(_, fields,_,e)) = (app g fields; f e)
-	| f(SELECT(i,VAR v',w,_,e)) = 
+	| f(SELECT(i,VAR v',w,_,e)) =
                if v=v' andalso i=k then raise Found else f e
 	| f(SELECT(_,_,_,_,e)) = f e
 	| f(OFFSET(_,_,_,e)) = f e
@@ -173,9 +176,9 @@ fun checkFlatten(_,f,vl,_,body) =
 	      of (COUNT(c,some_non_record_actual),ARGinfo(ref j)) =>
 		     if j > ~1  (* exists a select of the formal parameter *)
 		        andalso headroom-(c-1) >= 0
-		        andalso 
+		        andalso
 			(not (some_non_record_actual orelse !escape)
-			 orelse !CG.extraflatten 
+			 orelse !CG.extraflatten
 			        andalso j=c-1 andalso findFetch(v,j) body)
 		     then a::loop(vl,al,headroom-(c-1))
 		     else TOP::loop(vl,al,headroom)
@@ -212,18 +215,18 @@ val rec pass1 =
 		      of (BOT,RECinfo sz) =>
 			     loop(COUNT(sz,false)::r,vl0,n)
 		       | (BOT,_) => UNK::loop(r,vl,n+1)
-		       | (UNK,RECinfo sz) => 
+		       | (UNK,RECinfo sz) =>
 			     loop(COUNT(sz,true)::r,vl0,n)
 		       | (UNK,_) => UNK::loop(r,vl,n+1)
-		       | (COUNT(a,_),RECinfo sz) => 
+		       | (COUNT(a,_),RECinfo sz) =>
 			     if a = sz then t::loop(r,vl,n+1)
 			     else TOP::loop(r,vl,n+1)
-		       | (COUNT(a,_),_) => 
+		       | (COUNT(a,_),_) =>
 			     COUNT(a,true)::loop(r,vl,n+1)
 		       | _ => TOP::loop(r,vl,n+1))
 	    | loop (_::r, _::vl,n) = TOP::loop(r,vl,n+1)
 	    | loop _ = nil
-      in  app escape vl; 
+      in  app escape vl;
 	  case get f
 	    of FNinfo{arity as ref al,...} => arity := loop(al,vl,0)
 	     | _ => ()
@@ -247,10 +250,10 @@ val rec reduce =
    | BRANCH(i,vl,c,e1,e2) => BRANCH(i,vl,c,reduce e1,reduce e2)
    | APP(f as VAR fv, vl) =>
         (case get fv
-	  of FNinfo{arity=ref al,alias=ref(SOME f'),...} => 
+	  of FNinfo{arity=ref al,alias=ref(SOME f'),...} =>
 	      let fun loop(COUNT(cnt,_)::r,v::vl,args) =
 		  let val lt = grabty v
-		      fun g(i,args) = 
+		      fun g(i,args) =
 			  if i=cnt then loop(r,vl,args)
 			  else let val tt = selectLty(lt,i)
 				   val z = mkv(tt)
@@ -266,7 +269,7 @@ val rec reduce =
    | APP(f,vl) => APP(f,vl)
    | FIX(l,e) =>
       let fun vars(0,_,l,l') = (l,l')
-	    | vars(i,lt,l,l') = 
+	    | vars(i,lt,l,l') =
 	        let val tt = selectLty(lt,i-1)
 	        in  vars(i-1,lt,(mkv(tt))::l,(ctype(tt))::l')
 	        end
@@ -280,7 +283,7 @@ val rec reduce =
 				    v,body)
 		in  (new @ vl', ncl @ cl',bodytransform o bt')
 		end
-	    | newargs(_::r,v::vl,ct::cl) = 
+	    | newargs(_::r,v::vl,ct::cl) =
 		let val (vl',cl',bt') = newargs(r,vl,cl)
 		in  (v::vl',ct::cl',bt')
 		end
@@ -292,7 +295,7 @@ val rec reduce =
 			val (fk',lt) = mkfnLty(fk,ncl, map getty nargs)
 			val _ = newty(f',lt)
 			val wl = map LV.dupLvar vl
-		    in  
+		    in
 			(fk,f,wl,cl,APP(VAR f,map VAR wl))::
 			(fk',f',nargs,ncl,bt body) :: process_args rest
 		    end
@@ -302,7 +305,7 @@ val rec reduce =
       in  FIX(map reduce_body (process_args l), reduce e)
       end
 
- fun fprint (function, s : string) = 
+ fun fprint (function, s : string) =
      (say "\n"; say s; say "\n \n"; PPCps.printcps0 function)
 
    val _ = (debugprint "Flatten: ";  debugflush())

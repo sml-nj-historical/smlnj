@@ -283,7 +283,7 @@ end
 	  | (INT32 n1, INT32 n2) => (n1 = n2)
 	  | (WORD w1, WORD w2) => (w1 = w2)
 	  | (WORD32 w1, WORD32 w2) => (w1 = w2)
-	  | (REAL r1, REAL r2) => RealLit.same(r1, r2)
+	  | (REAL r1, REAL r2) => RealLit.same(#rval r1, #rval r2)
 	  | (STRING s1, STRING s2) => (s1 = s2)
 	  | _ => false
 	(* end case *))

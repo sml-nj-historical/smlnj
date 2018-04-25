@@ -311,7 +311,7 @@ structure Literals : LITERALS =
 		  (VAR v, fn ce => SELECT(n, rrtval, v, FLTt 64, ce))	(* REAL32: FIXME *)
 	        end
 	  fun appReal () = let
-	        fun g (a::r, z) = g(r, (REAL a)::z)
+	        fun g (a::r, z) = g(r, REAL{rval=a, ty=64} :: z)	(* REAL32: FIXME *)
 		  | g ([], z) = z (* reverse to reflecting the correct order *)
 		val allReals = !reals
 	        in
@@ -322,7 +322,7 @@ structure Literals : LITERALS =
 	  end (* local of processing real literals *)
 	(* translation on the CPS values *)
 	  fun lpsv u = (case u
-		 of REAL r => entReal r
+		 of REAL{rval, ...} => entReal rval	(* REAL32: FIXME *)
 		  | STRING s => entStr s
 		  | VAR v => (used v; (u, Fn.id))
 		  | _ => (u, Fn.id)
@@ -383,7 +383,7 @@ structure Literals : LITERALS =
 		  end
 
 		fun mklit (v, lit) = let
-		    fun unREAL (CPS.REAL r) = r
+		    fun unREAL (CPS.REAL{rval, ...}) = rval	(* REAL32: FIXME *)
 		      | unREAL _ = bug "unREAL"
 		    fun unINT32 (CPS.INT32 w) = w
 		      | unINT32 _ = bug "unINT32"

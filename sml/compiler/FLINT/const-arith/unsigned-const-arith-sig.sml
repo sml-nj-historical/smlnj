@@ -51,10 +51,14 @@ signature UNSIGNED_CONST_ARITH =
     val uMul  : width * t * t -> t
     val uDiv  : width * t * t -> t
     val uMod  : width * t * t -> t
-    val uShL  : width * t * t -> t	(* shift left *)
-    val uShR  : width * t * t -> t	(* shift right (zero-extend) *)
+    val uShL  : width * t * t -> t      (* shift left *)
+    val uShR  : width * t * t -> t      (* shift right (zero-extend) *)
 
   (* 2's complement of argument as unsigned value *)
     val uNeg  : width * t -> t
+
+  (* unsigned comparisons, which correctly handle negative arguments *)
+    val uLess   : width * t * t -> bool
+    val uLessEq : width * t * t -> bool
 
   end

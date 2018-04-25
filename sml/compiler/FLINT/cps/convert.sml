@@ -98,12 +98,10 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 
     fun recordNM(ul,ts,w,ce) =
       let fun g (FLTt 64::r,u::z,l,h) =
-		mkfn(fn v => g(r, z, (VAR v,OFFp 0)::l,
-			      fn ce => h(wrapf64(u,v,ce))))
+		mkfn(fn v => g(r, z, (VAR v,OFFp 0)::l, fn ce => h(wrapf64(u,v,ce))))
 	    | g (FLTt _ ::_, _, _, _) = raise Fail "unsupported FLTt size" (* REAL32: FIXME *)
 	    | g (INTt 32::r,u::z,l,h) =
-		mkfn(fn v => g(r, z, (VAR v,OFFp 0)::l,
-				  fn ce => h(wrapi32(u,v,ce))))
+		mkfn(fn v => g(r, z, (VAR v,OFFp 0)::l, fn ce => h(wrapi32(u,v,ce))))
 	    | g (INTt _ ::_, _, _, _) = raise Fail "unsupported INTt size" (* 64BIT: FIXME *)
 	    | g (_::r,u::z,l,h) = g(r, z, (u,OFFp0)::l, h)
 	    | g ([],[],l,h) = (rev l, h)
@@ -300,11 +298,11 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
    *        that gets converted to the right set of bits for the word constant.
    *)
     fun do_switch_gen ren = Switch.switch {
+	    E_switchlimit = 4,
 	    E_int    = fn i => if i < ~0x20000000 orelse i >= 0x20000000
 			       then raise Switch.TooBig else INT i,
 	    E_word   = fn w => (* if w >= 0wx20000000
 			       then raise Switch.TooBig else *) INT (Word.toIntX w),
-	    E_switchlimit = 4,
 	    E_neq    = P.ineq,
 	    E_w32neq = P.cmp{oper=P.neq,kind=P.UINT 32},
 	    E_i32neq = P.cmp{oper=P.neq,kind=P.INT 32},
@@ -313,9 +311,11 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	    E_wneq   = P.cmp{oper=P.neq, kind=P.UINT 31},
 	    E_pneq   = P.pneq,
 	    E_less   = P.ilt,
-	    E_branch = (fn (cmp,x,y,a,b) => BRANCH(cmp,[x,y],mkv(),a,b)),
-	    E_strneq = (fn (w,str,a,b) => BRANCH(P.strneq, [INT(size str), w,
-							    STRING str], mkv(), a, b)),
+	    E_branch = (fn (cmp,x,y,a,b) => BRANCH(cmp, [x,y], mkv(), a, b)),
+	    E_strneq = (fn (w,str,a,b) => BRANCH(
+				P.strneq,
+				[INT(size str), w, STRING str],
+				mkv(), a, b)),
 	    E_switch = (fn (v,l) => SWITCH(v, mkv(), l)),
 	    E_add    = (fn (x,y,c) =>
 			     mkfn(fn v => ARITH(P.iadd,[x,y],v,TINTt,c(VAR v)))),
@@ -436,7 +436,6 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	   | lpvar (F.REAL r) = REAL r
 	   | lpvar (F.STRING s) = STRING s
 
-
 	 (* lpvars : F.value list -> value list *)
 	 fun lpvars vl =
 	   let fun h([], z) = rev z
@@ -506,9 +505,10 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 
 	      | F.RECORD(F.RK_VECTOR _, [], v, e) =>
 		  bug "zero length vectors in convert"
-	      | F.RECORD(rk, [], v, e) =>
-		  let val _ = newname(v, INT 0)
-		   in loop(e, c)
+	      | F.RECORD(rk, [], v, e) => let
+		  val _ = newname(v, INT 0)
+		  in
+		    loop(e, c)
 		  end
 	      | F.RECORD(rk, vl, v, e) =>
 		  let val ts = map get_cty vl

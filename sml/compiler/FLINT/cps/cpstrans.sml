@@ -1,6 +1,6 @@
 (* cpstrans.sml
  *
- * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *)
 
@@ -37,9 +37,9 @@ val CT : cty IntHashTable.hash_table = IntHashTable.mkTable(32,CTYMAP)
 val addty = IntHashTable.insert CT
 val getty = IntHashTable.lookup CT
 fun grabty (VAR v) = ((getty v) handle _ => BOGt)
-  | grabty (REAL _) = FLTt 64	(* REAL32: FIXME need size info for real literals *)
   | grabty (INT _) = TINTt
   | grabty (INT32 _) = INTt 32  (* 64BIT: will need 64-bit integer literals *)
+  | grabty (REAL{ty, ...}) = FLTt ty
   | grabty _ = BOGt
 
 

@@ -1,9 +1,10 @@
 (* machspec.sig
  *
- * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * This signature contains various machine and code-generator specific
- * parameters. 
+ * parameters.
  *
  * When should a code-generator parameter be put in this signature?
  * Only when changing it will yield incompatible code.
@@ -18,7 +19,7 @@ signature MACH_SPEC =
     val architecture : string
 
     val framesize : int
-   
+
   (* code generator flags *)
     val polling : bool
     val unboxedFloats : bool
@@ -59,7 +60,7 @@ signature MACH_SPEC =
 
     val startgcOffset 	: int
     val constBaseRegOffset : int
- 
+
     val quasiStack : bool	(* default false *)
     val quasiFree  : bool	(* default false *)
     val quasiFrameSz : int	(* default 7 *)
@@ -78,7 +79,7 @@ signature MACH_SPEC =
     val fixedArgPassing : bool
     (* Use fixed argument passing registers for known functions that
      * require garbage collection. Only an issue on  the x86 or machines
-     * that have registers implemented as memory locations, i.e., at the 
+     * that have registers implemented as memory locations, i.e., at the
      * call to GC, there aren't enough registers to hold alll the roots.
      * The correct way to solve this problem is to create a record of
      * live variables inside the code that invokes the garbage collector

@@ -22,7 +22,13 @@ signature CPS =
 
     datatype pkind = VPT | RPT of int | FPT of int
 
+  (* type info for integers: size in bits and tagged vs boxed *)
+    type intty = {sz : int, tag : bool}
+
     datatype cty
+(* 64BIT:
+      = NUMt of intty	(* integers of the given type *)
+*)
       = TINTt		(* tagged integers *)
       | INTt of int	(* untagged integers of given size *)
       | PTRt of pkind	(* pointer *)
@@ -144,12 +150,11 @@ signature CPS =
       = VAR of lvar
       | LABEL of lvar
 (* BIT64: REAL32: replace INT, INT32, and REAL with
-      | INT of {v : IntInf.int, sz : int}
-      | REAL of {v : RealLit.t, sz : int}
+      | NUM of intty IntConst.t
 *)
       | INT of int
       | INT32 of Word32.word
-      | REAL of RealLit.t
+      | REAL of int RealConst.t
       | STRING of string
       | OBJECT of Unsafe.Object.object
       | VOID

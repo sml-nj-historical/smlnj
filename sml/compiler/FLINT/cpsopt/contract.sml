@@ -49,11 +49,15 @@ end (* signature CONTRACT *)
 functor Contract(MachSpec : MACH_SPEC) : CONTRACT =
 struct
 
-local
-
 open CPS
 structure LT = LtyExtern
 structure LV = LambdaVar
+structure CA = ConstArith
+
+structure CG = Control.CG
+
+val say = Control.Print.say
+fun bug s = ErrorMsg.impossible ("Contract: " ^ s)
 
 fun inc (ri as ref i) = (ri := i+1)
 fun dec (ri as ref i) = (ri := i-1)
@@ -61,26 +65,12 @@ fun dec (ri as ref i) = (ri := i-1)
 val wtoi = Word.toIntX
 val itow = Word.fromInt
 
-structure CG = Control.CG
-
-in
-
-val say = Control.Print.say
-fun bug s = ErrorMsg.impossible ("Contract: " ^ s)
-
 exception ConstFold
 
-fun sublist pred nil = nil
-  | sublist pred (hd::tl) = if (pred hd) then hd::(sublist pred tl)
-			    else sublist pred tl
-
 fun map1 f (a,b) = (f a, b)
-fun app2(f,nil,nil) = ()
-  | app2(f,a::al,b::bl) = (f(a,b);app2(f,al,bl))
-  | app2(f,_,_) = bug "NContract app2 783"
 
-fun sameName(x,VAR y) = LV.sameName(x,y)
-  | sameName(x,LABEL y) = LV.sameName(x,y)
+fun sameName (x, VAR y) = LV.sameName(x,y)
+  | sameName (x, LABEL y) = LV.sameName(x,y)
   | sameName _ = ()
 
 fun complain(t1,t2,s) =
@@ -107,7 +97,7 @@ fun checklty s (t1,t2) =  ()
         | g (LT.ARROW(t1,t2),LT.ARROW(t1',t2')) =
              (g(LT.out t1,LT.out t1'); g(LT.out t2, LT.out t2'))
         | g (LT.RECORD l1,LT.RECORD l2) =
-             app2(g,map LT.out l1, map LT.out l2)
+             ListPair.appEq g (map LT.out l1, map LT.out l2)
         | g (LT.CONT t1,LT.CONT t2) = g(LT.out t1,LT.out t2)
         | g (t1,t2) = complain(LT.inj t1, LT.inj t2,"CTR *** "^s)
   in  g(LT.out t1, LT.out t2)
@@ -125,13 +115,10 @@ fun equalUptoAlpha(ce1,ce2) =
 		  end
               | same(LABEL a, LABEL b) = same(VAR a, VAR b)
               | same(INT i, INT j) = i=j
-              | same(REAL a, REAL b) = RealLit.same(a, b)
+              | same(REAL a, REAL b) = (#ty a = #ty b) andalso RealLit.same(#rval a, #rval b)
               | same(STRING a, STRING b) = a=b
 	      | same(a,b) = false
-            fun samefields((a,ap)::ar,(b,bp)::br) =
-		ap=bp andalso same(a,b) andalso samefields(ar,br)
-              | samefields(nil,nil) = true
-              | samefields _ = false
+	    fun sameField ((a, ap : accesspath), (b, bp)) = (ap = bp) andalso same(a, b)
 	    fun samewith p = equ (p::pairs)
 	    fun samewith' args =
 		equ (ListPair.foldr (fn ((w, _), (w', _), l) => (w,w')::l)
@@ -143,7 +130,8 @@ fun equalUptoAlpha(ce1,ce2) =
 	     fn (SELECT(i,v,w,_,e),SELECT(i',v',w',_,e')) =>
 		   i=i' andalso same(v,v') andalso samewith(w,w') (e,e')
               | (RECORD(k,vl,w,e),RECORD(k',vl',w',e')) =>
-		   (k = k') andalso samefields(vl,vl')
+		   (k = k')
+		   andalso ListPair.allEq sameField (vl, vl')
                    andalso samewith (w,w') (e,e')
               | (OFFSET(i,v,w,e),OFFSET(i',v',w',e')) =>
 		   i=i' andalso same(v,v') andalso samewith(w,w') (e,e')
@@ -207,10 +195,10 @@ local
 
 exception NCONTRACT
 
-fun valueName(VAR v) = LV.lvarName v
-  | valueName(INT i) = "Int"^Int.toString(i)
-  | valueName(REAL r) = "Real"^RealLit.toString r
-  | valueName(STRING s) = "<"^s^">"
+fun valueName (VAR v) = LV.lvarName v
+  | valueName (INT i) = "Int"^Int.toString i
+  | valueName (REAL{ty, rval}) = concat["(R", Int.toString ty, ")", RealLit.toString rval]
+  | valueName (STRING s) = concat["<", s, ">"]
   | valueName _ = "<others>"
 
 fun argLty [] = LT.ltc_int
@@ -240,11 +228,11 @@ fun getty v =
                     raise NCONTRACT)
   else LT.ltc_void
 fun grabty u =
-  let fun g(VAR v) = getty v
-        | g(INT _) = LT.ltc_int
-        | g(REAL _) = LT.ltc_real
-        | g(STRING _) = LT.ltc_void
-        | g(LABEL v) = getty v
+  let fun g (VAR v) = getty v
+        | g (INT _) = LT.ltc_int
+        | g (REAL _) = LT.ltc_real
+        | g (STRING _) = LT.ltc_void
+        | g (LABEL v) = getty v
         | g _ = LT.ltc_void
   in  if type_flag then g u
       else LT.ltc_void
@@ -279,9 +267,6 @@ fun sameLty(x,u) =
   end
 
 end (* local *)
-
-
-
 
 local exception UsageMap
 in  val m : {info: info, used : int ref, called : int ref}
@@ -339,7 +324,7 @@ fun enterFN (_,f,vl,cl,cexp) =
 				     else NONE),
 			    specialuse=ref NONE,
 			    liveargs=ref NONE}});
-       app2(enterMISC,vl,cl))
+       ListPair.appEq enterMISC (vl, cl))
 
 (*********************************************************************
    checkFunction: used by pass1(FIX ...) to decide
@@ -646,7 +631,7 @@ let val rec g' =
 				   let val x = mkv(LT.ltc_int)
 				   in  dropclicks(drop - 1);
 				       enterMISC0 x;
-				       ([x],[TINTt],[LT.ltc_int])
+				       ([x], [TINTt], [LT.ltc_int])
 				   end
 			        | [x] =>
                                    if (isCont x)
@@ -709,28 +694,28 @@ let val rec g' =
 	  fun reduce_body ((fk,f,vl,cl,body),used,called,info) =
 	         ((fk,f,vl,cl,reduce body),used,called,info)
 	  val l1 = map getinfo l
-	  val l2 = sublist keep l1
+	  val l2 = List.filter keep l1
 	  val e' = g' e
-	  val l3 = sublist keep2 l2
+	  val l3 = List.filter keep2 l2
 	  val l4 = map reduce_body l3
-      in  case (sublist keep3 l4)
+      in  case (List.filter keep3 l4)
 	    of nil => e'
 	     | l5 => FIX(map #1 l5, e')
       end
-   | SWITCH(v,c,el) =>
-      (case ren v
-        of v' as INT i =>
-	     if !CG.switchopt
-             then let fun f(e::el,j) = (if i=j then () else drop_body e;
-					f(el,j+1))
-		        | f(nil,_) = ()
-		  in  click "h";
-		       f(el,0);
-		       newname(c,INT 0);
-		       g' (List.nth(el,i))
-		  end
+   | SWITCH(v,c,el) => (case ren v
+         of v' as INT i => if !CG.switchopt
+             then let
+	       fun f (e::el,j) = (if i=j then () else drop_body e; f(el, j+1))
+		 | f ([],_) = ()
+	       in
+		 click "h";
+		 f(el, 0);
+		 newname(c, INT 0);
+		 g' (List.nth(el,i))
+	       end
 	     else SWITCH(v', c, map g' el)
-	 | v' => SWITCH(v',c, map g' el))
+	  | v' => SWITCH(v',c, map g' el)
+	(* end case *))
    | LOOKER(P.gethdlr,_,w,t,e) =>
       (if !CG.handlerfold
        then case hdlr
@@ -1020,25 +1005,25 @@ let val rec g' =
                   fun default() = BRANCH(i, vl', c, k1 e1, k2 e2)
 
                       (* detemine the type of conditional move *)
-                  fun findType(f,x,y) =
-                  let fun getTy(x,again) =
-                         case x of
-                           STRING _ => SOME BOGt
-                         | LABEL _ => SOME BOGt
-                         | REAL _ => SOME(FLTt 64) (* REAL32: FIXME *)
-                         | INT32 _ => SOME(INTt 32) (* 64BIT: FIXME *)
-                         | INT _ => SOME BOGt
-                         | _ => again()
-                      fun findTy() =
-                          getTy(x, fn _ => getTy(y, fn _ => NONE))
-                  in  case #info(get f) of
-                         FNinfo{args=[f_arg], ...} =>
-                         (case #info(get f_arg) of
-                            MISCinfo t => SOME t (* found type *)
-                         | _ => findTy()
-                         )
-                       |  _ => findTy()
-                  end
+                  fun findType(f,x,y) = let
+                      fun getTy (x, again) = (case x
+			   of STRING _ => SOME BOGt
+			    | LABEL _ => SOME BOGt
+			    | REAL _ => SOME(FLTt 64) (* REAL32: FIXME *)
+(* QUESION: why is this restricted to boxed integers? *)
+			    | INT32 _ => SOME(INTt 32) (* 64BIT: FIXME *)
+			    | INT _ => SOME BOGt
+			    | _ => again()
+			  (* end case *))
+                      fun findTy() = getTy(x, fn _ => getTy(y, fn _ => NONE))
+		      in  case #info(get f) of
+			     FNinfo{args=[f_arg], ...} =>
+			     (case #info(get f_arg) of
+				MISCinfo t => SOME t (* found type *)
+			     | _ => findTy()
+			     )
+			   |  _ => findTy()
+		      end
 
               in  case (i, e1, e2) of
                     (* String compares are complex, so we punt on them *)
@@ -1108,31 +1093,28 @@ end
     fn (P.unboxed, vl) => not(branch(P.boxed, vl))
      | (P.boxed, [INT _]) => (click "n"; false)
      | (P.boxed, [STRING s]) => (click "o"; true)
-     | (P.boxed, [VAR v]) =>
-	   (case get v
-	     of {info=RECinfo _, ...} => (click "p"; true)
-	      | _ => raise ConstFold)
-     | (P.cmp{oper=P.<, kind}, [VAR v, VAR w]) =>
-	   if v=w then (click "v"; false) else raise ConstFold
+     | (P.boxed, [VAR v]) => (case get v
+	 of {info=RECinfo _, ...} => (click "p"; true)
+	  | _ => raise ConstFold)
+     | (P.cmp{oper=P.<, ...}, [VAR v, VAR w]) =>
+	  if v=w then (click "v"; false) else raise ConstFold
      | (P.cmp{oper=P.<, kind=P.INT 31}, [INT i, INT j]) => (click "w"; i<j)
-     | (P.cmp{oper=P.>,kind}, [w,v]) =>
-	   branch(P.cmp{oper=P.<,kind=kind},[v,w])
-     | (P.cmp{oper=P.<=,kind}, [w,v]) =>
-	   branch(P.cmp{oper=P.>=,kind=kind},[v,w])
-     | (P.cmp{oper=P.>=,kind}, vl) =>
-	   not(branch(P.cmp{oper=P.<,kind=kind}, vl))
-     | (P.cmp{oper=P.<,kind=P.UINT 31}, [INT i, INT j]) =>
-	   (click "w"; if j<0 then i>=0 orelse i<j else i>=0 andalso i<j)
-     | (P.cmp{oper=P.eql, kind}, [VAR v, VAR w]) =>
-	 (case kind
-  	   of P.FLOAT _ => raise ConstFold (* incase of NaN's *)
-	    | _ => if v=w then  (click "v"; true) else raise ConstFold
- 	           (*esac*))
+     | (P.cmp{oper=P.>, kind}, [w,v]) =>
+	  branch(P.cmp{oper=P.<, kind=kind},[v,w])
+     | (P.cmp{oper=P.<=, kind}, [w,v]) =>
+	  branch(P.cmp{oper=P.>=, kind=kind},[v,w])
+     | (P.cmp{oper=P.>=, kind}, vl) =>
+	  not(branch(P.cmp{oper=P.<, kind=kind}, vl))
+     | (P.cmp{oper=P.<, kind=P.UINT 31}, [INT i, INT j]) => (
+	  click "w"; if j<0 then i>=0 orelse i<j else i>=0 andalso i<j)
+     | (P.cmp{oper=P.eql, kind=P.FLOAT _}, _) => raise ConstFold (* incase of NaN's *)
+     | (P.cmp{oper=P.eql, ...}, [VAR v, VAR w]) =>
+	  if v=w then  (click "v"; true) else raise ConstFold
      | (P.cmp{oper=P.eql,...}, [INT i, INT j]) => (click "w"; i=j)
-     | (P.cmp{oper=P.neq,kind}, vl) =>
-	   not(branch(P.cmp{oper=P.eql,kind=kind}, vl))
+     | (P.cmp{oper=P.neq, kind}, vl) =>
+	  not(branch(P.cmp{oper=P.eql, kind=kind}, vl))
      | (P.peql, [INT i, INT j]) => (click "w"; i=j)
-     | (P.pneq, [v,w]) => not(branch(P.peql,[w,v]))
+     | (P.pneq, vl) => not(branch(P.peql, vl))
      | _ => raise ConstFold
 
   and arith =
@@ -1163,42 +1145,42 @@ end
 		  let val x = ~i in x+x+2; click "X"; INT x end
      | _ => raise ConstFold
 
+(* pure arithmetic operations; raises ConstFold when there is no reduction *)
   and pure =
-    fn (P.pure_arith{oper=P.rshift,kind=P.INT 31}, [INT i, INT j]) =>
+    fn (P.pure_arith{oper=P.rshift, kind=P.INT 31}, [INT i, INT j]) =>
 	   (click "R"; INT(wtoi (Word.~>>(itow i, itow j))))
-     | (P.pure_arith{oper=P.rshift,kind=P.INT 31}, [INT 0, _]) =>
+     | (P.pure_arith{oper=P.rshift, kind=P.INT 31}, [INT 0, _]) =>
 	   (click "S"; INT 0)
-     | (P.pure_arith{oper=P.rshift,kind=P.INT 31}, [v, INT 0]) =>
+     | (P.pure_arith{oper=P.rshift, kind=P.INT 31}, [v, INT 0]) =>
 	   (click "T"; v)
      | (P.length, [STRING s]) => (click "V"; INT(size s))
-(*         | (P.ordof, [STRING s, INT i]) => (click "W"; INT(ordof(s,i))) *)
-     | (P.pure_arith{oper=P.lshift,kind=P.INT 31}, [INT i, INT j]) =>
+     | (P.pure_arith{oper=P.lshift ,kind=P.INT 31}, [INT i, INT j]) =>
 		       (let val x = wtoi (Word.<<(itow i, itow j))
 			in x+x; click "Y"; INT x
 			end handle Overflow => raise ConstFold)
-     | (P.pure_arith{oper=P.lshift,kind=P.INT 31}, [INT 0, _]) =>
+     | (P.pure_arith{oper=P.lshift, kind=P.INT 31}, [INT 0, _]) =>
 	  (click "Z"; INT 0)
-     | (P.pure_arith{oper=P.lshift,kind=P.INT 31}, [v, INT 0]) =>
+     | (P.pure_arith{oper=P.lshift, kind=P.INT 31}, [v, INT 0]) =>
 	  (click "1"; v)
-     | (P.pure_arith{oper=P.orb,kind=P.INT 31}, [INT i, INT j]) =>
+     | (P.pure_arith{oper=P.orb, kind=P.INT 31}, [INT i, INT j]) =>
 	  (click "2"; INT(wtoi (Word.orb(itow i, itow j))))
-     | (P.pure_arith{oper=P.orb,kind=P.INT 31}, [INT 0, v]) => (click "3"; v)
-     | (P.pure_arith{oper=P.orb,kind=P.INT 31}, [v, INT 0]) => (click "4"; v)
-     | (P.pure_arith{oper=P.xorb,kind=P.INT 31}, [INT i, INT j]) =>
+     | (P.pure_arith{oper=P.orb, kind=P.INT 31}, [INT 0, v]) => (click "3"; v)
+     | (P.pure_arith{oper=P.orb, kind=P.INT 31}, [v, INT 0]) => (click "4"; v)
+     | (P.pure_arith{oper=P.xorb, kind=P.INT 31}, [INT i, INT j]) =>
 	  (click "5"; INT(wtoi (Word.xorb(itow i, itow j))))
-     | (P.pure_arith{oper=P.xorb,kind=P.INT 31}, [INT 0, v]) =>
+     | (P.pure_arith{oper=P.xorb, kind=P.INT 31}, [INT 0, v]) =>
 	  (click "6"; v)
-     | (P.pure_arith{oper=P.xorb,kind=P.INT 31}, [v, INT 0]) => (click "7"; v)
-     | (P.pure_arith{oper=P.notb,kind=P.INT 31}, [INT i]) =>
+     | (P.pure_arith{oper=P.xorb, kind=P.INT 31}, [v, INT 0]) => (click "7"; v)
+     | (P.pure_arith{oper=P.notb, kind=P.INT 31}, [INT i]) =>
 	  (click "8"; INT(wtoi (Word.notb (itow i))))
-     | (P.pure_arith{oper=P.andb,kind=P.INT 31}, [INT i, INT j]) =>
+     | (P.pure_arith{oper=P.andb, kind=P.INT 31}, [INT i, INT j]) =>
 	  (click "9"; INT(wtoi(Word.andb(itow i, itow j))))
      | (P.pure_arith{oper=P.andb,kind=P.INT 31}, [INT 0, _]) =>
 	  (click "0"; INT 0)
-     | (P.pure_arith{oper=P.andb,kind=P.INT 31}, [_, INT 0]) =>
+     | (P.pure_arith{oper=P.andb, kind=P.INT 31}, [_, INT 0]) =>
 	  (click "T"; INT 0)
-     | (P.real{fromkind=P.INT 31,tokind=P.FLOAT 64}, [INT i]) =>
-	  REAL(RealLit.fromInt(IntInf.fromInt i))
+     | (P.real{fromkind=P.INT 31,tokind=P.FLOAT sz}, [INT i]) =>
+	  REAL{rval = RealLit.fromInt(IntInf.fromInt i), ty = sz}
      | (P.funwrap,[x as VAR v]) =>
           (case get(v) of {info=WRPinfo(P.fwrap,u),...} =>
 			    (click "U"; use_less x; u)
@@ -1239,6 +1221,5 @@ in  debugprint "Contract: "; debugflush();
     end
 end
 
-end (* toplevel local *)
 end (* functor Contract *)
 

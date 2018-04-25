@@ -162,7 +162,7 @@ structure CpsBranchProb : CPS_BRANCH_PROB = struct
 		| number(CPS.INT _) = Num
 		| number(CPS.INT32 0w0) = Zero
 		| number(CPS.INT32 _) = Num
-		| number(CPS.REAL r)  = if RealLit.isZero r then Zero else Num
+		| number(CPS.REAL{rval, ...}) = if RealLit.isZero rval then Zero else Num
 		| number _ = Other
 
 	    in

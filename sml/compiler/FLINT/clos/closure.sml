@@ -390,14 +390,7 @@ fun plist p l = (app (fn v => (pr " "; p v)) l; pr "\n")
 val ilist = plist vp
 val iVlist = plist Vp
 val iKlist = plist ifkind
-fun sayv(VAR v) = vp v
-  | sayv(LABEL v) = (pr "(L)"; vp v)
-  | sayv(INT i) = (pr "(I)"; pr(Int.toString i))
-  | sayv(INT32 i) = (pr "(I32)"; pr(Word32.toString i))
-  | sayv(REAL r) = pr(RealLit.toString r)
-  | sayv(STRING s) = (pr "\""; pr s; pr "\"")
-  | sayv(OBJECT _) = pr "**OBJECT**"
-  | sayv(VOID) = pr "**VOID**"
+val sayv = pr o PPCps.value2str
 val vallist = plist sayv
 
 fun printEnv(Env(valueL,closureL,dispL,whatMap)) =

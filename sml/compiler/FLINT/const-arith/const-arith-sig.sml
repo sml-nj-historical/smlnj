@@ -39,7 +39,8 @@ signature CONST_ARITH =
     type width = int
 
   (* narrow a signed-constant to fit within the given number of bits.  Depending on the
-   * semantics of the structure implementing this signature, this operation may raise Overflow.
+   * semantics of the structure implementing this signature, this operation may raise
+   * Overflow.
    *)
     val sNarrow : width * t -> t
 
@@ -47,17 +48,18 @@ signature CONST_ARITH =
     val sAdd  : width * t * t -> t
     val sSub  : width * t * t -> t
     val sMul  : width * t * t -> t
-    val sDiv  : width * t * t -> t	(* division (round toward -∞) *)
-    val sMod  : width * t * t -> t	(* sMod(n, m) = n - m*sDiv(n, m) *)
-    val sQuot : width * t * t -> t	(* division (round toward 0) *)
-    val sRem  : width * t * t -> t	(* sRem(n, m) = n - m*sQuot(n, m) *)
-    val sShL  : width * t * t -> t	(* shift left *)
-    val sShR  : width * t * t -> t	(* shift right (sign-extend) *)
-    val sNeg  : width * t -> t		(* unary negation *)
-    val sAbs  : width * t -> t		(* absolute value *)
+    val sDiv  : width * t * t -> t      (* division (round toward -∞) *)
+    val sMod  : width * t * t -> t      (* sMod(n, m) = n - m*sDiv(n, m) *)
+    val sQuot : width * t * t -> t      (* division (round toward 0) *)
+    val sRem  : width * t * t -> t      (* sRem(n, m) = n - m*sQuot(n, m) *)
+    val sShL  : width * t * t -> t      (* shift left *)
+    val sShR  : width * t * t -> t      (* shift right (sign-extend) *)
+    val sNeg  : width * t -> t          (* unary negation *)
+    val sAbs  : width * t -> t          (* absolute value *)
 
-  (* narrow an unsigned-constant to fit within the given number of bits.  Depending on the
-   * semantics of the structure implementing this signature, this operation may raise Overflow.
+  (* narrow an unsigned-constant to fit within the given number of bits.  Depending on
+   * the semantics of the structure implementing this signature, this operation may
+   * raise Overflow.
    *)
     val uNarrow : int * IntInf.int -> IntInf.int
 
@@ -65,10 +67,14 @@ signature CONST_ARITH =
     val uAdd  : width * t * t -> t
     val uSub  : width * t * t -> t
     val uMul  : width * t * t -> t
-    val uDiv  : width * t * t -> t	(* division (round toward 0) *)
-    val uMod  : width * t * t -> t	(* uMod(n, m) = n - m*uDiv(n, m) *)
-    val uShL  : width * t * t -> t	(* shift left *)
-    val uShR  : width * t * t -> t	(* shift right (zero-extend) *)
+    val uDiv  : width * t * t -> t      (* division (round toward 0) *)
+    val uMod  : width * t * t -> t      (* uMod(n, m) = n - m*uDiv(n, m) *)
+    val uShL  : width * t * t -> t      (* shift left *)
+    val uShR  : width * t * t -> t      (* shift right (zero-extend) *)
+
+  (* unsigned comparisons, which correctly handle negative arguments *)
+    val uLess   : width * t * t -> bool
+    val uLessEq : width * t * t -> bool
 
   (* bitwise operations (these never trap) *)
     val bAnd : width * t * t -> t
@@ -77,8 +83,8 @@ signature CONST_ARITH =
     val bNot : width * t -> t
 
   (* conversions between signed and unsigned interpretations *)
-    val toSigned : width * t -> t	(* unsigned -> signed; uses sNarrow for overflow checking  *)
-    val toUnsigned : width * t -> t	(* signed -> unsigned *)
+    val toSigned : width * t -> t       (* unsigned -> signed; uses sNarrow for overflow checking  *)
+    val toUnsigned : width * t -> t     (* signed -> unsigned *)
 
   end
 

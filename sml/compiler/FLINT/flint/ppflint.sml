@@ -86,7 +86,8 @@ struct
       | toStringValue (F.INT32 i)  = "(I32)" ^ Int32.toString i
       | toStringValue (F.WORD i)   = "(W)" ^ Word.toString i
       | toStringValue (F.WORD32 i) = "(W32)" ^ Word32.toString i
-      | toStringValue (F.REAL r)   = "(R64)" ^ RealLit.toString r
+      | toStringValue (F.REAL{rval, ty}) =
+	  concat["(R", Int.toString ty, ")", RealLit.toString rval]
       | toStringValue (F.STRING s) = PU.mlstr s
 
     val printSval = say o toStringValue

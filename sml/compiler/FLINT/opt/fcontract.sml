@@ -330,7 +330,7 @@ structure FContract :> FCONTRACT =
 	    | eqConV (F.WORDcon i1,	F.WORD i2)	= i1 = i2
 	    | eqConV (F.WORD32con i1,	F.WORD32 i2)	= i1 = i2
 	    | eqConV (F.STRINGcon s1,	F.STRING s2)	= s1 = s2
-	    | eqConV (con,v) = bugval("unexpected comparison with val", v)
+	    | eqConV (con, v) = bugval("unexpected comparison with val", v)
 
 	  exception Lookup
 	  fun lookup m lv = (case M.find(m,lv)

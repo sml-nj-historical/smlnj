@@ -592,7 +592,9 @@ in
 	  | value (F.INT32 i32) = "c" $ [int32 i32]
 	  | value (F.WORD w) = "d" $ [word w]
 	  | value (F.WORD32 w32) = "e" $ [word32 w32]
-	  | value (F.REAL r) = "f" $ [string (Byte.bytesToString (RealLit.toBytes r))]
+	  | value (F.REAL{ty, rval}) = "f" $ [
+		int ty, string (Byte.bytesToString (RealLit.toBytes rval))
+	      ]
 	  | value (F.STRING s) = "g" $ [string s]
 
 	fun con arg = let

@@ -1,6 +1,6 @@
 (* unpickmod.sml
  *
- * COPYRIGHT (c) 2016 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * The new unpickler (based on the new generic unpickling facility).
@@ -1369,7 +1369,10 @@ structure UnpickMod : UNPICKMOD = struct
 	      | v #"c" = F.INT32(int32 ())
 	      | v #"d" = F.WORD(word ())
 	      | v #"e" = F.WORD32(word32 ())
-	      | v #"f" = F.REAL(RealLit.fromBytes (Byte.stringToBytes (string ())))
+	      | v #"f" = F.REAL{
+		      ty = int(),
+		      rval = RealLit.fromBytes (Byte.stringToBytes (string ()))
+		    }
 	      | v #"g" = F.STRING(string ())
 	      | v _ = raise Format
 	in

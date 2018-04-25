@@ -43,6 +43,7 @@ local structure B  = Bindings
       structure TU = TypesUtil
       structure V  = VarCon
       structure EU = ElabUtil
+      structure Tgt = Target
 
       structure IIMap = RedBlackMapFn (type ord_key = IntInf.int
 					val compare = IntInf.compare)
@@ -634,15 +635,17 @@ fun inlineShift(shiftOp, kind, clear) =
 			  RECORD [vw, vcnt])))))
   end
 
+(* inline operators for numeric types *)
 fun inlops nk = let
-    val (lt_arg, zero, overflow) =
-	case nk of
-	    PO.INT 31 => (LT.ltc_int, INT 0, true)
-	  | PO.UINT 31 => (LT.ltc_int, WORD 0w0, false)
-	  | PO.INT 32 => (LT.ltc_int32, INT32 0, true)
-	  | PO.UINT 32 => (LT.ltc_int32, WORD32 0w0, false)
-	  | PO.FLOAT 64 => (LT.ltc_real, REAL(RealLit.zero false), false)
-	  | _ => bug "inlops: bad numkind"
+(* 64BIT: REAL64: type will depend on size *)
+    val (lt_arg, zero, overflow) = (case nk
+	   of PO.INT 31 => (LT.ltc_int, INT 0, true)
+	    | PO.UINT 31 => (LT.ltc_int, WORD 0w0, false)
+	    | PO.INT 32 => (LT.ltc_int32, INT32 0, true)
+	    | PO.UINT 32 => (LT.ltc_int32, WORD32 0w0, false)
+	    | PO.FLOAT sz => (LT.ltc_real, REAL{rval = RealLit.zero false, ty = sz}, false)
+	    | _ => bug "inlops: bad numkind"
+	  (* end case *))
     val lt_argpair = lt_tup [lt_arg, lt_arg]
     val lt_cmp = lt_arw (lt_argpair, lt_bool)
     val lt_neg = lt_arw (lt_arg, lt_arg)
@@ -650,8 +653,7 @@ fun inlops nk = let
     val greater = PRIM (PO.CMP { oper = PO.GT, kind = nk }, lt_cmp, [])
     val equal = PRIM (PO.CMP { oper = PO.EQL, kind = nk }, lt_cmp, [])
     val negate =
-	PRIM (PO.ARITH { oper = PO.NEG, overflow = overflow, kind = nk },
-	      lt_neg, [])
+	  PRIM (PO.ARITH { oper = PO.NEG, overflow = overflow, kind = nk }, lt_neg, [])
 in
     { lt_arg = lt_arg, lt_argpair = lt_argpair, lt_cmp = lt_cmp,
       less = less, greater = greater, equal = equal,
@@ -795,11 +797,11 @@ end
 fun transPrim (prim, lt, ts) =
   let fun g (PO.INLLSHIFT k) = inlineShift(lshiftOp, k, fn _ => lword0(k))
         | g (PO.INLRSHIFTL k) = inlineShift(rshiftlOp, k, fn _ => lword0(k))
-        | g (PO.INLRSHIFT k) = (* preserve sign bit with arithmetic rshift *)
-              let fun clear w = APP(PRIM(rshiftOp k, shiftTy k, []),
-                                    RECORD [w, WORD 0w31])
-               in inlineShift(rshiftOp, k, clear)
-              end
+        | g (PO.INLRSHIFT k) = let (* preserve sign bit with arithmetic rshift *)
+	    fun clear w = APP(PRIM(rshiftOp k, shiftTy k, []), RECORD [w, WORD 0w31])
+	    in
+	      inlineShift(rshiftOp, k, clear)
+	    end
 
 	| g (PO.INLMIN nk) = inlminmax (nk, false)
 	| g (PO.INLMAX nk) = inlminmax (nk, true)
@@ -1030,35 +1032,31 @@ fun transPrim (prim, lt, ts) =
   end (* function transPrim *)
 
 fun genintinfswitch (sv, cases, default) = let
-    val v = mkv ()
-
+      val v = mkv ()
     (* build a chain of equality tests for checking large pattern values *)
-    fun build [] = default
-      | build ((n, e) :: r) =
-	  COND (APP (#getIntInfEq eqDict (), RECORD [VAR v, VAR (getII n)]),
-		e, build r)
-
+      fun build [] = default
+	| build ((n, e) :: r) =
+	    COND (APP (#getIntInfEq eqDict (), RECORD [VAR v, VAR (getII n)]),
+		  e, build r)
     (* split pattern values into small values and large values;
      * small values can be handled directly using SWITCH *)
-    fun split ([], s, l) = (rev s, rev l)
-      | split ((n, e) :: r, sm, lg) =
-	  (case LN.lowVal n of
-	       SOME l => split (r, (INTcon l, e) :: sm, lg)
-	     | NONE => split (r, sm, (n, e) :: lg))
-
-    fun gen () =
-	case split (cases, [], []) of
-	    ([], largeints) => build largeints
-	  | (smallints, largeints) => let
-		val iv = mkv ()
-	    in
-		LET (iv, APP (coreAcc "infLowValue", VAR v),
-		     SWITCH (VAR iv,
-			     DA.CNIL, smallints, SOME (build largeints)))
-	    end
-in
-    LET (v, sv, gen ())
-end
+      fun split ([], s, l) = (rev s, rev l)
+	| split ((n, e) :: r, sm, lg) = (case LN.lowVal n
+	     of SOME l => split (r, (INTcon l, e) :: sm, lg)
+	      | NONE => split (r, sm, (n, e) :: lg)
+	    (* end case *))
+      fun gen () = (case split (cases, [], [])
+	     of ([], largeints) => build largeints
+	      | (smallints, largeints) => let
+		  val iv = mkv ()
+	          in
+		    LET (iv, APP (coreAcc "infLowValue", VAR v),
+		      SWITCH (VAR iv, DA.CNIL, smallints, SOME (build largeints)))
+	          end
+	    (* end case *))
+      in
+	LET (v, sv, gen ())
+      end
 
 
 (***************************************************************************
@@ -1506,6 +1504,7 @@ and mkExp (exp, d) =
 	   in c end)
         | g (NUMexp(src, {ival, ty})) =
 	  (debugmsg ">>mkExp NUMexp";
+(* 64BIT: need extra cases etc. *)
              ((if TU.equalType (ty, BT.intTy) then INT (LN.int ival)
                else if TU.equalType (ty, BT.int32Ty) then INT32 (LN.int32 ival)
 	       else if TU.equalType (ty, BT.intinfTy) then VAR (getII ival)
@@ -1527,7 +1526,8 @@ and mkExp (exp, d) =
 		  ]);
 		INT 0)))
 
-        | g (REALexp(_, {rval, ty})) = REAL rval
+(* REAL32: handle 32-bit reals *)
+        | g (REALexp(_, {rval, ty})) = REAL{rval = rval, ty = Tgt.defaultRealSz}
         | g (STRINGexp s) = STRING s
         | g (CHARexp s) = INT (Char.ord(String.sub(s, 0)))
              (** NOTE: the above won't work for cross compiling to

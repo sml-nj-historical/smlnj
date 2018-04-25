@@ -124,18 +124,16 @@ fun force_raw (pty) =
      in LT.ltc_arrow(LT.ffc_rrflint, [FL.ltc_raw aty], [FL.ltc_raw rty])
     end (* function force_raw *)
 
-fun tocon con =
-    let val _ = 1
-    in case con of
-	L.INTcon x    => F.INTcon x
-      | L.INT32con x  => F.INT32con x
-      | L.INTINFcon _ => bug "INTINFcon"
-      | L.WORDcon x   => F.WORDcon x
-      | L.WORD32con x => F.WORD32con x
-      | L.STRINGcon x => F.STRINGcon x
-      | L.VLENcon x   => F.VLENcon x
-      | L.DATAcon x => bug "unexpected case in tocon"
-    end
+fun tocon con = (case con
+       of L.INTcon x    => F.INTcon x
+	| L.INT32con x  => F.INT32con x
+	| L.INTINFcon _ => bug "INTINFcon"
+	| L.WORDcon x   => F.WORDcon x
+	| L.WORD32con x => F.WORD32con x
+	| L.STRINGcon x => F.STRINGcon x
+	| L.VLENcon x   => F.VLENcon x
+	| L.DATAcon x => bug "unexpected case in tocon"
+      (* end case *))
 
 fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
     let val _ = (debugmsg "tofundec normalize argument:\n";
@@ -289,47 +287,48 @@ and tolexp (venv,d) lexp =
  * - venv is the type environment for values
  * - conts is the continuation
  *)
-and tovalue (venv,d,lexp,cont) =
-    let val _ = debugmsg ">>tovalue"
-	val _ = debugLexp lexp
-	val _ = 1
-    val v = case lexp of
-        (* for simple values, it's trivial *)
-        L.VAR v => cont(F.VAR v, LT.ltLookup(venv, v, d))
-      | L.INT i =>
-         ((i+i+2; cont(F.INT i, LT.ltc_int)) handle Overflow =>
-            (let val _ = debugmsg "toValue INT Overflow"
-		 val z = i div 2
-                 val ne = L.APP(iadd_prim, L.RECORD [L.INT z, L.INT (i-z)])
-              in tovalue(venv, d, ne, cont)
-             end))
-      | L.WORD i =>
-         let val maxWord = 0wx20000000
-          in if Word.<(i, maxWord) then cont(F.WORD i, LT.ltc_int)
-             else let val x1 = Word.div(i, 0w2)
-                      val x2 = Word.-(i, x1)
-                      val ne = L.APP(uadd_prim,
-                                     L.RECORD [L.WORD x1, L.WORD x2])
-                   in tovalue(venv, d, ne, cont)
-                  end
-         end
-      | L.INT32 n => cont(F.INT32 n, LT.ltc_int32)
-      | L.WORD32 n => cont(F.WORD32 n, LT.ltc_int32)
-      | L.REAL x => cont(F.REAL x, LT.ltc_real)
-      | L.STRING s => cont(F.STRING s, LT.ltc_string)
-
-      (* for cases where tolvar is more convenient *)
-      | _ =>
-            let val lv = mkv()
-            in tolvar(venv, d, lv, lexp,
+and tovalue (venv,d,lexp,cont) = let
+      val _ = debugmsg ">>tovalue"
+      val _ = debugLexp lexp
+      val v = (case lexp
+            (* for simple values, it's trivial *)
+             of L.VAR v => cont(F.VAR v, LT.ltLookup(venv, v, d))
+	      | L.INT i =>
+		 ((i+i+2; cont(F.INT i, LT.ltc_int)) handle Overflow =>
+		    (let val _ = debugmsg "toValue INT Overflow"
+			 val z = i div 2
+			 val ne = L.APP(iadd_prim, L.RECORD [L.INT z, L.INT (i-z)])
+		      in tovalue(venv, d, ne, cont)
+		     end))
+	      | L.WORD i =>
+		 let val maxWord = 0wx20000000
+		  in if Word.<(i, maxWord) then cont(F.WORD i, LT.ltc_int)
+		     else let val x1 = Word.div(i, 0w2)
+			      val x2 = Word.-(i, x1)
+			      val ne = L.APP(uadd_prim,
+					     L.RECORD [L.WORD x1, L.WORD x2])
+			   in tovalue(venv, d, ne, cont)
+			  end
+		 end
+	      | L.INT32 n => cont(F.INT32 n, LT.ltc_int32)
+	      | L.WORD32 n => cont(F.WORD32 n, LT.ltc_int32)
+(* REAL32: *)
+	      | L.REAL x => cont(F.REAL x, LT.ltc_real)
+	      | L.STRING s => cont(F.STRING s, LT.ltc_string)
+	    (* for cases where tolvar is more convenient *)
+	      | _ => let
+                  val lv = mkv()
+                  in
+		    tolvar(venv, d, lv, lexp,
 		      fn lty => (debugmsg ">>tovalue tolvar cont";
 				 debugLexp lexp;
 				 cont(F.VAR lv, lty)))
-            end
-    val _ = debugmsg "<<tovalue"
-    in v
-    end
-
+                  end
+	    (* end case *))
+      val _ = debugmsg "<<tovalue"
+      in
+	v
+      end (* tovalue *)
 
 (*
  * tovalues: turns a PLambda lexp into a list of values and a list of types

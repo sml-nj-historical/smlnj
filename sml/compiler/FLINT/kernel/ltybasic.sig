@@ -5,19 +5,19 @@
  * This file contains all the standard operations defined in LtyDef plus
  * the set of common functions used to manipulate kinds, tycs, and ltys.
  * The rule of thumb about what should be included in this file rather
- * than the ltyextern.sml: well, all primitive lambda tkinds, tycs and 
- * ltys should be here, all common utility functions on tkinds, tycs, 
- * and ltys should be here. Functions that are of specific use should 
- * go to the ltyextern.sml. Still, the module LtyExtern will include 
+ * than the ltyextern.sml: well, all primitive lambda tkinds, tycs and
+ * ltys should be here, all common utility functions on tkinds, tycs,
+ * and ltys should be here. Functions that are of specific use should
+ * go to the ltyextern.sml. Still, the module LtyExtern will include
  * all functions defined here, so all clients should use functions via
- * the LtyExtern structure. 
+ * the LtyExtern structure.
  *)
 
-signature LTYBASIC = 
+signature LTYBASIC =
 sig
 
 (*
- * The abstract definitions of tkind, tyc, and lty are in separate files, 
+ * The abstract definitions of tkind, tyc, and lty are in separate files,
  * i.e., ltydef.sig and ltydef.sml. The internal implementation of tkind,
  * tyc, and lty are in the ltykernel.sig and ltykernel.sml files. In general,
  * the clients of the lambda types should never need to understand what is
@@ -28,7 +28,7 @@ sig
 include LTYDEF        (* see ltydef.sig for details *)
 
 (** new a type variable, currently not used *)
-val mkTvar : unit -> tvar 
+val mkTvar : unit -> tvar
 
 (** primitives and utility functions for fflags and rflags *)
 val ffc_plambda: fflag
@@ -55,7 +55,8 @@ val tcc_etag   : tyc -> tyc
 (** primitive lambda ltys *)
 val ltc_int    : lty
 val ltc_int32  : lty
-val ltc_real   : lty
+(* 64BIT: need ltc_int64 *)
+val ltc_real   : lty	(* REAL32: need ltc_real32/ltc_real64 *)
 val ltc_string : lty
 val ltc_exn    : lty
 val ltc_void   : lty
@@ -86,8 +87,8 @@ val lt_print   : lty -> string
 val lt_adj     : lty * depth * depth -> lty
 val tc_adj     : tyc * depth * depth -> tyc
 
-val lt_adj_k   : lty * depth * depth * int -> lty  
-val tc_adj_k   : tyc * depth * depth * int -> tyc  
+val lt_adj_k   : lty * depth * depth * int -> lty
+val tc_adj_k   : tyc * depth * depth * int -> tyc
 
 (** finding out the depth for a tyc's innermost-bound free variables *)
 val tc_depth : tyc * depth -> depth
@@ -100,7 +101,7 @@ val lt_autoflat : lty -> bool * lty list * bool
 val tc_unknown : tyc -> bool
 
 (** utility functions on tkindEnv *)
-type tkindEnv 
+type tkindEnv
 exception tkUnbound
 val initTkEnv: tkindEnv
 val tkLookup : tkindEnv * int * int -> tkind
@@ -113,7 +114,7 @@ val teEmpty : tycEnv
 val teCons : teBinder * tycEnv -> tycEnv
 
 (** the ltyEnv maps from lvar to its lty; notice lty is depth-dependent *)
-type ltyEnv 
+type ltyEnv
 exception ltUnbound
 val initLtyEnv : ltyEnv
 val ltLookup : ltyEnv * LambdaVar.lvar * depth -> lty

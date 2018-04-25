@@ -1,6 +1,6 @@
 (* switch.sml
  *
- * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * TODO: use binary search!!!
@@ -11,10 +11,10 @@ sig
 
  exception TooBig
 
- val switch:
-     {E_int: int -> 'value,   (* may raise TooBig; not all ints need
-			    be representable *)
+ val switch: {
       E_switchlimit : int,
+      E_int: int -> 'value,   (* may raise TooBig; not all ints need
+			    be representable *)
       E_neq: 'comparison,
       E_w32neq: 'comparison,
       E_i32neq: 'comparison,
@@ -27,20 +27,19 @@ sig
       E_branch: 'comparison * 'value * 'value * 'cexp * 'cexp -> 'cexp,
       E_strneq: 'value * string * 'cexp * 'cexp -> 'cexp,
       E_switch: 'value * 'cexp list -> 'cexp,
-      E_add : 'value * 'value * ('value->'cexp) -> 'cexp,
+      E_add : 'value * 'value * ('value -> 'cexp) -> 'cexp,
       E_gettag: 'value * ('value -> 'cexp) -> 'cexp,
       E_getexn: 'value * ('value -> 'cexp) -> 'cexp,
       E_length: 'value * ('value -> 'cexp) -> 'cexp,
       E_unwrap: 'value * ('value -> 'cexp) -> 'cexp,
       E_boxed:  'value * 'cexp * 'cexp -> 'cexp,
       E_path:  Access.access * ('value->'cexp) -> 'cexp
-     } ->
-     {exp: 'value,
+     } -> {
+      exp: 'value,
       sign: Access.consig,
       cases: (FLINT.con * 'cexp) list,
-      default: 'cexp}
-       ->
-       'cexp
+      default: 'cexp
+     } -> 'cexp
 
 end
 
@@ -55,26 +54,10 @@ fun bug s = ErrorMsg.impossible ("Switch: " ^ s)
 
 exception TooBig
 
-fun sublist test =
-  let fun subl(a::r) = if test a then a::(subl r) else subl r
-        | subl x = x
-  in  subl
-  end
-
-fun nthcdr(l, 0) = l
-  | nthcdr(a::r, n) = nthcdr(r, n-1)
-  | nthcdr _ = bug "nthcdr in switch"
-
-fun count test =
-  let fun subl acc (a::r) = subl(if test a then 1+acc else acc) r
-        | subl acc nil = acc
-   in subl 0
-  end
-
-fun switch
-     {E_int: int -> 'value,   (* may raise TooBig; not all ints need
-			    be representable *)
+fun switch {
       E_switchlimit : int,
+      E_int: int -> 'value,   (* may raise TooBig; not all ints need
+			    be representable *)
       E_neq: 'comparison,
       E_w32neq: 'comparison,
       E_i32neq: 'comparison,
@@ -138,7 +121,7 @@ fun switch1(e : 'value, cases : (int*'cexp) list, default : 'cexp, (lo,hi)) =
 	    end
 	| g(n,cases,(lo,hi)) =
 	    let val n2 = n div 2
-		val c2 = nthcdr(cases, n2)
+		val c2 = List.drop(cases, n2)
                 val (l,r) = case c2 of (l1,_,_,_)::r1 => (l1,r1)
                                      | _ => bug "switch.111"
 	     in E_branch(E_less,e,E_int l, g(n2,cases,(lo,l-1)), g(n-n2,c2,(l,hi)))
@@ -194,76 +177,70 @@ fun int_switch(e: 'value, l, default, inrange) =
   fun isexn (L.DATAcon((_,A.EXN _,_),_,_)) = true
     | isexn _ = false
 
- fun exn_switch(w,l,default) =
-   E_getexn(w, fn u =>
-      let fun g((L.DATAcon((_,A.EXN p,_),_,_),x)::r) =
-                E_path(p, fn v => E_branch(E_pneq,u,v, g r, x))
-	    | g nil = default
-	    | g _ = bug "switch.21"
-       in g l
-      end)
+  fun exn_switch(w,l,default) =
+    E_getexn(w, fn u =>
+       let fun g((L.DATAcon((_,A.EXN p,_),_,_),x)::r) =
+		 E_path(p, fn v => E_branch(E_pneq,u,v, g r, x))
+	     | g nil = default
+	     | g _ = bug "switch.21"
+	in g l
+       end)
 
- fun datacon_switch(w,sign,l: (L.con * 'cexp) list, default) =
-   let
-      fun tag (L.DATAcon((_,A.CONSTANT i,_),_,_)) = i
-        | tag (L.DATAcon((_,A.TAGGED i,_),_,_)) = i
-(*      | tag (L.DATAcon((_,A.TAGGEDREC(i,_),_),_,_)) = i *)
-	| tag _ = 0
+ fun datacon_switch(w,sign,l: (L.con * 'cexp) list, default) = let
+	fun tag (L.DATAcon((_,A.CONSTANT i,_),_,_)) = i
+	  | tag (L.DATAcon((_,A.TAGGED i,_),_,_)) = i
+(*        | tag (L.DATAcon((_,A.TAGGEDREC(i,_),_),_,_)) = i *)
+	  | tag _ = 0
+        fun tag'(c, e) = (tag c, e)
+	val (boxed, unboxed) = List.partition (isboxed o #1) l
+	val b = map tag' boxed and u = map tag' unboxed
+        in
+	  case sign
+	   of A.CSIG (0, n) =>
+		E_unwrap(w,fn w' => int_switch(w',u,default,SOME(n-1)))
+	    | A.CSIG (n, 0) =>
+		E_gettag(w,fn w' => int_switch(w',b,default,SOME(n-1)))
+	    | A.CSIG (1, nu) =>
+		E_boxed(w, int_switch(E_int 0, b, default,SOME 0),
+		  E_unwrap(w, fn w' => int_switch(w',u,default,SOME(nu-1))))
+	    | A.CSIG (nb,nu) =>
+		E_boxed(w,
+		  E_gettag(w, fn w' => int_switch(w',b,default,SOME(nb-1))),
+		    E_unwrap(w, fn w' => int_switch(w',u,default,SOME(nu-1))))
+	    | A.CNIL => bug "datacon_switch"
+	  (* end case *)
+        end
 
-      fun tag'(c,e) = (tag c, e)
+  fun coalesce (l : (string * 'a) list) : (int * (string * 'a) list) list = let
+	val l' = ListMergeSort.sort (fn ((s1,_),(s2,_)) => size s1 > size s2) l
+	val s = #1 (List.hd l')
+	fun gather (n, [], current, acc) = (n,current)::acc
+	  | gather (n, (x as (s,a))::rest, current, acc) = let
+	    val s1 = size s
+	    in
+	      if s1 = n then gather(n,rest,x::current,acc)
+	      else gather(s1,rest,[x],(n,current)::acc)
+	    end
+	in
+	  gather (size s, l', [], [])
+	end
 
-      val boxed = sublist (isboxed o #1) l
-      val unboxed = sublist (not o isboxed o #1) l
-      val b = map tag' boxed and u = map tag' unboxed
-
-    in  case sign
-	 of A.CSIG (0, n) =>
-              E_unwrap(w,fn w' => int_switch(w',u,default,SOME(n-1)))
-	  | A.CSIG (n, 0) =>
-              E_gettag(w,fn w' => int_switch(w',b,default,SOME(n-1)))
-	  | A.CSIG (1, nu) =>
-	      E_boxed(w, int_switch(E_int 0, b, default,SOME 0),
-	       E_unwrap(w, fn w' => int_switch(w',u,default,SOME(nu-1))))
-	  | A.CSIG (nb,nu) =>
-              E_boxed(w,
-               E_gettag(w, fn w' => int_switch(w',b,default,SOME(nb-1))),
-	        E_unwrap(w, fn w' => int_switch(w',u,default,SOME(nu-1))))
-          | A.CNIL => bug "datacon_switch"
-   end
-
- fun coalesce(l:(string * 'a)list) : (int * (string * 'a) list) list = let
-     val l' = ListMergeSort.sort (fn ((s1,_),(s2,_)) => size s1 > size s2) l
-     val s = #1 (List.hd l')
-     fun gather(n,[],current,acc) = (n,current)::acc
-       | gather(n,(x as (s,a))::rest,current,acc) = let val s1 = size s
-	 in
-	   if s1 = n then gather(n,rest,x::current,acc)
-	   else gather(s1,rest,[x],(n,current)::acc)
-         end
-  in
-    gather(size s,l',[],[])
-  end
-
- fun string_switch(w,l,default) =
-  let fun strip (L.STRINGcon s, x) = (s,x)
-	| strip _ = bug "string_switch"
-      val b = map strip l
-
-      val bylength = coalesce b
-
-      fun one_len(0,(_,e)::_) = (0,e)
-	| one_len(len,l) =
-	  let fun try nil = default
-	        | try ((s,e)::r) = E_strneq(w,s, try r, e)
-	   in (len,try l)
-	  end
-
-      val genbs =
-             E_length(w,fn len =>
-		      int_switch(len, map one_len bylength, default, NONE))
-
-  in genbs
- end
+  fun string_switch(w,l,default) = let
+        fun strip (L.STRINGcon s, x) = (s,x)
+	  | strip _ = bug "string_switch"
+        val b = map strip l
+        val bylength = coalesce b
+        fun one_len (0, (_,e)::_) = (0, e)
+	  | one_len (len, l) = let
+	      fun try nil = default
+		| try ((s,e)::r) = E_strneq(w, s, try r, e)
+	      in
+		(len,try l)
+	      end
+	in
+	  E_length(w ,fn len =>
+	    int_switch(len, map one_len bylength, default, NONE))
+ 	end
 
  fun word_switch(w, (L.WORDcon wval,e)::r, default) =
        E_branch(E_wneq, w, E_word wval, word_switch(w,r,default), e)
@@ -285,22 +262,22 @@ fun int_switch(e: 'value, l, default, inrange) =
    | int32_switch _ = bug "switch.77"
 
  in fn {cases=nil,default,...} => default
-     | {exp,sign,cases as (c,_)::_,default} =>
-      case c
-       of L.INTcon _ =>
-	     let fun un_int(L.INTcon i, e) = (i,e)
-		   | un_int _ = bug "un_int"
-	      in int_switch(exp,map un_int cases,default,NONE)
-	     end
-        | L.STRINGcon _ => string_switch(exp,cases,default)
-        | L.DATAcon((_,A.EXN _,_),_,_) => exn_switch(exp,cases,default)
-        | L.DATAcon _ => datacon_switch(exp,sign,cases,default)
-	| L.WORDcon _ => word_switch(exp, cases, default)
-	| L.WORD32con _ => word32_switch(exp,cases,default)
-	| L.INT32con _ => int32_switch(exp,cases,default)
-        | _ => bug "unexpected datacon in genswitch"
-
-end
+     | {exp,sign,cases as (c,_)::_,default} => (case c
+	  of L.INTcon _ => let
+		fun un_int(L.INTcon i, e) = (i,e)
+		  | un_int _ = bug "un_int"
+		in
+		  int_switch(exp, map un_int cases, default, NONE)
+		end
+	    | L.WORDcon _ => word_switch(exp, cases, default)
+	    | L.WORD32con _ => word32_switch(exp,cases,default)
+	    | L.INT32con _ => int32_switch(exp,cases,default)
+	    | L.STRINGcon _ => string_switch(exp,cases,default)
+	    | L.DATAcon((_,A.EXN _,_),_,_) => exn_switch(exp,cases,default)
+	    | L.DATAcon _ => datacon_switch(exp,sign,cases,default)
+	    | _ => bug "unexpected datacon in genswitch"
+	 (* end case *))
+  end (* switch *)
 
 end (* structure Switch *)
 
