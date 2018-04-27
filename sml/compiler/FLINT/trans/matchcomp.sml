@@ -100,6 +100,22 @@ fun toDconLty toLty ty =
 fun isInt64 ty = TU.equalType(ty, BT.int64Ty)
 fun isWord64 ty = TU.equalType(ty, BT.word64Ty)
 
+fun numCon (v, ty, msg) =
+      if TU.equalType(ty, BT.intTy)
+	then INTpcon(LN.int v)
+      else if TU.equalType(ty, BT.int32Ty)
+	then INT32pcon (LN.int32 v)
+      else if TU.equalType(ty, BT.intinfTy)
+	then INTINFpcon v
+      else if TU.equalType(ty, BT.wordTy)
+	then WORDpcon(LN.word v)
+      else if TU.equalType(ty, BT.word8Ty)
+	then WORDpcon(LN.word8 v)
+      else if TU.equalType(ty, BT.word32Ty)
+	then WORD32pcon(LN.word32 v)
+(* 64BIT: add cases for int64Ty and word64Ty *)
+	else bug msg
+
 (**************************************************************************)
 type ruleno = int   (* the number identifying a rule *)
 type rules = ruleno list  (* a list (set) of rule numbers *)
@@ -222,8 +238,8 @@ fun preProcessPat toLty (pat, rhs) =
    in (expand pats, (fname, rhsFun))
   end
 
-fun makeAndor (matchRep,err) =
-let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
+fun makeAndor (matchRep,err) = let
+    fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 	  AND{bindings=(rule,v)::bindings, subtrees=subtrees,
 	      constraints=constraints}
       | addBinding (v, rule, CASE{bindings, sign, cases, constraints}) =
@@ -231,32 +247,6 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 	       constraints=constraints}
       | addBinding (v, rule, LEAF{bindings, constraints}) =
 	  LEAF{bindings=(rule,v)::bindings, constraints=constraints}
-
-    fun wordCon(s, t, msg) =
-	let fun conv(wrapFn,convFn) =
-	        wrapFn(convFn s handle Overflow =>
-		       (err EM.COMPLAIN
-			   ("out-of-range word literal in pattern: 0w"
-			    ^IntInf.toString s)
-			   EM.nullErrorBody;
-                       convFn(IntInf.fromInt 0)))
-	 in if TU.equalType(t,BT.wordTy) then
-	      conv(WORDpcon,LN.word)  (* WORDpcon(LN.word s) *)
-	    else if TU.equalType(t,BT.word8Ty) then
-	      conv(WORDpcon,LN.word8) (* WORDpcon(LN.word8 s) *)
-	    else if TU.equalType(t,BT.word32Ty) then
-	      conv(WORD32pcon,LN.word32) (* WORD32pcon(LN.word32 s) *)
-	    else bug msg
-	end
-
-    fun numCon(s, t, msg) =
-      if TU.equalType(t,BT.intTy) then
-	    INTpcon(LN.int s)
-      else if TU.equalType(t,BT.int32Ty) then
-	    INT32pcon (LN.int32 s)
-      else if TU.equalType (t, BT.intinfTy) then
-	  INTINFpcon s
-      else wordCon(s, t, msg)
 
     fun addAConstraint(k, NONE, rule, nil) = [(k, [rule], NONE)]
       | addAConstraint(k, SOME pat, rule, nil) =
@@ -302,11 +292,12 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
           if isInt64 ty then genAndor64 (LN.int64 ival, rule)
 	  else if isWord64 ty then genAndor64 (LN.word64 ival, rule)
 	  else let
-	    val con = if TU.equalType(ty, BT.wordTy) orelse TU.equalType(ty, BT.word32Ty)
-		  then wordCon(ival, ty, "genAndor WORDpat")
-		  else numCon(ival, ty, "genAndor INTpat")
+	    val con = numCon(ival, ty, "genAndor NUMpat")
 	    in
-	      CASE{bindings = nil, constraints = nil, sign = DA.CNIL, cases = [(con, [rule], nil)]}
+	      CASE{
+		  bindings = nil, constraints = nil,
+		  sign = DA.CNIL, cases = [(con, [rule], nil)]
+		}
 	    end
       | genAndor (STRINGpat s, rule) =
 	  CASE {bindings = nil, constraints = nil, sign = DA.CNIL,
@@ -317,8 +308,10 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 	 *       to multi-byte characters.
 	 *)
       | genAndor (CHARpat s, rule) =
-	  CASE {bindings = nil, constraints = nil, sign = DA.CNIL,
-		cases = [(INTpcon (Char.ord(String.sub(s, 0))), [rule], nil)]}
+	  CASE{
+	      bindings = nil, constraints = nil, sign = DA.CNIL,
+	      cases = [(INTpcon (Char.ord(String.sub(s, 0))), [rule], nil)]
+	    }
       | genAndor (RECORDpat{fields,...}, rule) =
 	  AND{bindings = nil, constraints = nil,
 	      subtrees=multiGen(map #2 fields, rule)}
@@ -377,10 +370,7 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 	  if isInt64 ty then mergeAndor64 (LN.int64 ival, c, rule)
 	  else if isWord64 ty then mergeAndor64 (LN.word64 ival, c, rule)
 	  else let
-	    val pcon = if TU.equalType(ty, BT.wordTy) orelse TU.equalType(ty, BT.word8Ty)
-		  orelse TU.equalType(ty, BT.word32Ty)
-		    then wordCon(ival, ty, "mergeAndor WORDpat")
-		    else numCon(ival, ty, "mergeAndor INTpat")
+	    val pcon = numCon(ival, ty, "mergeAndor NUMpat")
 	    in
 	      CASE{
 		  bindings = bindings, constraints = constraints,
@@ -399,12 +389,11 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
        * NOTE: the following won't work for cross compiling
        * to multi-byte characters
        *)
-      | mergeAndor (CHARpat s, CASE{bindings, cases,
-				    constraints, sign}, rule) =
-	  CASE {bindings = bindings, constraints = constraints, sign=sign,
-		cases = addACase(INTpcon(Char.ord(String.sub(s, 0))),
-				 nil, rule, cases)}
-
+      | mergeAndor (CHARpat s, CASE{bindings, cases, constraints, sign}, rule) =
+	  CASE{
+	      bindings = bindings, constraints = constraints, sign=sign,
+	      cases = addACase(INTpcon(Char.ord(String.sub(s, 0))), nil, rule, cases)
+	    }
       | mergeAndor (RECORDpat{fields,...},
 		    AND{bindings, constraints, subtrees}, rule) =
 	  AND{bindings = bindings, constraints = constraints,
@@ -429,10 +418,11 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 	  bug "bad pattern merge"
 
     (* simulate 64-bit words and ints as pairs of 32-bit words *)
-    and mergeAndor64 ((hi, lo), c, rule) =
-	let fun p32 w = NUMpat("<lit>", {ival = Word32.toLargeInt w, ty = BT.word32Ty})
-	in mergeAndor (AbsynUtil.TUPLEpat [p32 hi, p32 lo], c, rule)
-	end
+    and mergeAndor64 ((hi, lo), c, rule) = let
+	  fun p32 w = NUMpat("<lit>", {ival = Word32.toLargeInt w, ty = BT.word32Ty})
+	  in
+	    mergeAndor (AbsynUtil.TUPLEpat [p32 hi, p32 lo], c, rule)
+	  end
 
     and addACase (pcon, pats, rule, nil) =
 	  [(pcon, [rule], multiGen(pats, rule))]
@@ -533,22 +523,23 @@ and flattenAndor (AND {bindings, subtrees, constraints}, path, active) =
 
 (* flattenACase : (pcon * rules * andor list) * path * rules * rules
 		  -> pcon * rules * decision list *)
-and flattenACase((VLENpcon(n, t), rules, subtrees),path,active,defaults) =
-      let val stillActive = intersect(union(rules, defaults), active)
-	  val ruleActive = intersect(rules, active)
-	  fun flattenVSubs (n, nil) = nil
-	    | flattenVSubs (n, subtree::rest) =
-		 (flattenAndor(subtree, VPIPATH(n,t,path), stillActive))
-		 @ (flattenVSubs(n + 1, rest))
-       in (INTpcon n, ruleActive, flattenVSubs(0, subtrees))
+and flattenACase ((VLENpcon(n, t), rules, subtrees), path, active, defaults) = let
+      val stillActive = intersect(union(rules, defaults), active)
+      val ruleActive = intersect(rules, active)
+      fun flattenVSubs (n, nil) = nil
+	| flattenVSubs (n, subtree::rest) =
+	     (flattenAndor(subtree, VPIPATH(n,t,path), stillActive))
+	     @ (flattenVSubs(n + 1, rest))
+      in
+	(INTpcon n, ruleActive, flattenVSubs(0, subtrees))
       end
-  | flattenACase((k as DATApcon (_,t), rules,[subtree]),path,active,defaults) =
+  | flattenACase ((k as DATApcon (_,t), rules,[subtree]),path,active,defaults) =
       let val stillActive = intersect(union(rules, defaults), active)
 	  val ruleActive = intersect(rules, active)
 	  val newPath = DELTAPATH(k,path)
        in (k,ruleActive,flattenAndor(subtree,newPath,stillActive))
       end
-  | flattenACase((constant,rules,nil),path,active,defaults) =
+  | flattenACase ((constant,rules,nil),path,active,defaults) =
       (constant, intersect(rules, active), nil)
   | flattenACase _ =
       bug "illegal subpattern in a case"
@@ -1002,15 +993,21 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
             SELECT(n, VAR(lookupPath(path, env)))
         | genpath (p as DELTAPATH(pcon, path), env) =
             VAR(lookupPath(p, env))
-        | genpath (VPIPATH(n, t, path), env) =
-            let val tc = toTyc t
-                val lt_sub =
-                  let val x = LT.ltc_vector (LT.ltc_tv 0)
-                   in LT.ltc_poly([LT.tkc_mono],
-                    [LT.ltc_parrow(LT.ltc_tuple [x, LT.ltc_int], LT.ltc_tv 0)])
+        | genpath (VPIPATH(n, t, path), env) = let
+            val tc = toTyc t
+	    val lt_sub = let
+                  val x = LT.ltc_vector (LT.ltc_tv 0)
+                  in
+		    LT.ltc_poly([LT.tkc_mono],
+                      [LT.ltc_parrow(LT.ltc_tuple [x, LT.ltc_int], LT.ltc_tv 0)])
                   end
-             in APP(PRIM(PO.SUBSCRIPTV, lt_sub, [tc]),
-                    RECORD[VAR(lookupPath(path, env)), INT n])
+	    in
+	      APP(
+		PRIM(PO.SUBSCRIPTV, lt_sub, [tc]),
+		RECORD[
+		    VAR(lookupPath(path, env)),
+		    INT n
+		  ])
             end
         | genpath (VLENPATH (path, t), env) =
             let val tc = toTyc t
@@ -1034,7 +1031,7 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
 		  | strip _ = bug "genswitch: INTINFcon"
 	    in
 		case default of
-		    NONE => bug "no default in switch on INTINF"
+		    NONE => bug "no default in switch on IntInf"
 		  | SOME d => giis (sv, map strip cases, d)
 	    end
         | genswitch x = SWITCH x
@@ -1090,21 +1087,21 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
              in res::(pass2cases(path, rest, env, rhs))
             end
 
-      and pconToCon(pcon, path, env) =
-        (case pcon
-          of DATApcon (dc, ts) =>
-               let val newvar = mkv()
-                   val nts = map (toTyc o TP.VARty) ts
-                   val nenv = (DELTAPATH(pcon, path), newvar)::env
-                in (DATAcon (mkDcon dc, nts, newvar), nenv)
-               end
-           | VLENpcon(i, t) => (VLENcon i, env)
-           | INTpcon i => (INTcon i, env)
-           | INT32pcon i => (INT32con i, env)
-	   | INTINFpcon n => (INTINFcon n, env)
-           | WORDpcon w => (WORDcon w, env)
-           | WORD32pcon w => (WORD32con w, env)
-           | STRINGpcon s => (STRINGcon s, env))
+      and pconToCon(pcon, path, env) = (case pcon
+	     of DATApcon (dc, ts) =>
+		  let val newvar = mkv()
+		      val nts = map (toTyc o TP.VARty) ts
+		      val nenv = (DELTAPATH(pcon, path), newvar)::env
+		   in (DATAcon (mkDcon dc, nts, newvar), nenv)
+		  end
+	      | VLENpcon(i, t) => (VLENcon i, env)
+	      | INTpcon i => (INTcon i, env)
+	      | INT32pcon i => (INT32con i, env)
+	      | INTINFpcon n => (INTINFcon n, env)
+	      | WORDpcon w => (WORDcon w, env)
+	      | WORD32pcon w => (WORD32con w, env)
+	      | STRINGpcon s => (STRINGcon s, env)
+	    (* end case *))
 
    in case doBindings(envout, subtree)
        of BIND(ROOTPATH, subtree') =>

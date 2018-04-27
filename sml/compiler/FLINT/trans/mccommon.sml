@@ -1,5 +1,8 @@
-(* COPYRIGHT (c) 1996 Bell Laboratories *)
-(* mccommon.sml *)
+(* mccommon.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 (* TODO: this module requires a signature ! *)
 

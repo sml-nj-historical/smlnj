@@ -1502,37 +1502,33 @@ and mkExp (exp, d) =
 	       val c = mkCE(dc, ts, SOME(g e2), d)
 	       val _ = if !debugging then ppLexp c else ()
 	   in c end)
-        | g (NUMexp(src, {ival, ty})) =
-	  (debugmsg ">>mkExp NUMexp";
+        | g (NUMexp(src, {ival, ty})) = (
+	    debugmsg ">>mkExp NUMexp";
 (* 64BIT: need extra cases etc. *)
-             ((if TU.equalType (ty, BT.intTy) then INT (LN.int ival)
-               else if TU.equalType (ty, BT.int32Ty) then INT32 (LN.int32 ival)
-	       else if TU.equalType (ty, BT.intinfTy) then VAR (getII ival)
-	       else if TU.equalType (ty, BT.int64Ty) then
-		   let val (hi, lo) = LN.int64 ival
-		   in RECORD [WORD32 hi, WORD32 lo]
-		   end
-               else if TU.equalType (ty, BT.wordTy) then WORD (LN.word ival)
-               else if TU.equalType (ty, BT.word8Ty) then WORD (LN.word8 ival)
-               else if TU.equalType (ty, BT.word32Ty) then WORD32 (LN.word32 ival)
-	       else if TU.equalType (ty, BT.word64Ty) then
-		   let val (hi, lo) = LN.word64 ival
-		   in RECORD [WORD32 hi, WORD32 lo]
-		   end
-               else (ppType ty; bug "translate NUMexp"))
-              handle Overflow => (repErr(concat[
-		    "literal ", src,
-		    " too large for ", TU.tyToString(TU.headReduceType ty)
-		  ]);
-		INT 0)))
-
+	    if TU.equalType (ty, BT.intTy) then INT (LN.int ival)
+	    else if TU.equalType (ty, BT.int32Ty) then INT32 (LN.int32 ival)
+	    else if TU.equalType (ty, BT.intinfTy) then VAR (getII ival)
+	    else if TU.equalType (ty, BT.int64Ty) then let
+		val (hi, lo) = LN.int64 ival
+		in
+		  RECORD [WORD32 hi, WORD32 lo]
+		end
+	    else if TU.equalType (ty, BT.wordTy) then WORD (LN.word ival)
+	  (* NOTE: 8-bit word is promoted to default tagged word representation *)
+	    else if TU.equalType (ty, BT.word8Ty) then WORD (LN.word8 ival)
+	    else if TU.equalType (ty, BT.word32Ty) then WORD32 (LN.word32 ival)
+	    else if TU.equalType (ty, BT.word64Ty) then let
+		val (hi, lo) = LN.word64 ival
+		in
+		  RECORD [WORD32 hi, WORD32 lo]
+		end
+	      else (ppType ty; bug "translate NUMexp"))
 (* REAL32: handle 32-bit reals *)
         | g (REALexp(_, {rval, ty})) = REAL{rval = rval, ty = Tgt.defaultRealSz}
         | g (STRINGexp s) = STRING s
+(* QUESTION: do we want to map characters to words? *)
+(** NOTE: the following won't work for cross compiling to multi-byte characters **)
         | g (CHARexp s) = INT (Char.ord(String.sub(s, 0)))
-             (** NOTE: the above won't work for cross compiling to
-                       multi-byte characters **)
-
         | g (RECORDexp []) = unitLexp
         | g (RECORDexp xs) =
              if sorted xs then RECORD (map (fn (_,e) => g e) xs)
