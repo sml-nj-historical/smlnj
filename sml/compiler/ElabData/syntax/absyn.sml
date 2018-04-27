@@ -32,7 +32,6 @@ structure Absyn : ABSYN =
       | RECORDexp of (numberedLabel * exp) list
       | SELECTexp of numberedLabel * exp	(* record selections *)
       | VECTORexp of exp list * Ty.ty
-      | PACKexp of exp * Ty.ty * Ty.tycon list	(* abstraction packing *)
       | APPexp of exp * exp
       | HANDLEexp of exp * fnrules
       | RAISEexp of exp * Ty.ty

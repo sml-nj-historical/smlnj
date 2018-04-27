@@ -1405,25 +1405,6 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 (* does nothing -- just use decs and srcvar below
                    val (decs', nv) = (decs, srcvar)
 *)
-(* dbm: was:
-                   val (decs', nv) =
-                     if eqflag then (decs, srcvar)
-                     else (let val acc = DA.namedAcc(sym, mkv)
-                               val resvar =
-                                 VALvar{path=spath, typ=ref restyp,
-                                        access=acc, prim=PrimopId.NonPrim}
-
-                               val ntycs = TU.filterSet(resinst, abstycs)
-                               val exp =
-                                 A.PACKexp(A.VARexp(ref srcvar, instys),
-                                           resinst, ntycs)
-
-                               val vb = A.VB {pat=(A.VARpat resvar), exp=exp,
-                                              boundtvs=btvs, tyvars=ref []}
-
-                            in ((A.VALdec [vb])::decs, resvar)
-                           end)
-*)
 
                    val bindings' = (B.VALbind srcvar)::bindings
                 in packElems(elems, entEnv, decs, bindings')

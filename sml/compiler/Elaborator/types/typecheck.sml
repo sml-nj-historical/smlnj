@@ -741,7 +741,6 @@ in
            let val (e',et) = expType(e,occ,tdepth,region)
             in (MARKexp(e',region),MARKty(et, region))
            end
-       | _ => bug "exptype -- bad expression"
 end
 
 and ruleType(RULE(pat,exp),occ,region) =

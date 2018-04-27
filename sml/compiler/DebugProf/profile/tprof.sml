@@ -341,8 +341,6 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 
                    | LETexp (d, e) => LETexp (instrdec(sp,d), instr e)
 
-                   | PACKexp(e, t, tycs) => PACKexp(oinstr e, t, tycs)
-
                    | CASEexp (e, l, b) =>
                        CASEexp(iinstr e, instrrules instr l, b)
 

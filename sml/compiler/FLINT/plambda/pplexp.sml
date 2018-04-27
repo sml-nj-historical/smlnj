@@ -49,50 +49,38 @@ fun conToString (DATAcon((sym, _, _), _, v)) = ((S.name sym) ^ "." ^ (lvarName v
   | conToString (STRINGcon s) = PU.mlstr s
   | conToString (VLENcon n) = Int.toString n
 
-(** use of complex in printLexp may lead to stupid n^2 behavior. *)
-fun complex le =
-  let fun h l = List.exists g l
+(** use of complex in ppLexp may lead to stupid n^2 behavior. *)
+fun complex (le: lexp) : bool =
+    case le
+     of FN(_, _, b) => complex b
+      | FIX(vl, _, ll, b) => true
+      | APP(FN _, _) => true
+      | APP(l, r) => complex l orelse complex r
+      | LET _ => true
+      | TFN(_, b) => complex b
+      | TAPP(l, []) => complex l
+      | TAPP(l, _) => true
+      | GENOP(_,_,_,_) => true
+      | PACK(_, _, _, l) => complex l
 
-      and g (FN(_, _, b)) = g b
-        | g (FIX(vl, _, ll, b)) = true
-        | g (APP(FN _, _)) = true
-        | g (APP(l, r)) = g l orelse g r
+      | (RECORD l | SRECORD l | VECTOR(l, _)) => List.exists complex l
+      | SELECT(_, l) => complex l
 
-        | g (LET _) = true
-        | g (TFN(_, b)) = g b
-        | g (TAPP(l, [])) = g l
-        | g (TAPP(l, _)) = true
-        | g (GENOP(_,_,_,_)) = true
-        | g (PACK(_, _, _, l)) = g l
+      | SWITCH _ => true
+      | CON(_, _, l) => true
 
-        | g (RECORD l) = h l
-        | g (SRECORD l) = h l
-        | g (VECTOR (l, _)) = h l
-        | g (SELECT(_, l)) = g l
+      | HANDLE _ => true
+      | RAISE(l, _) => complex l
+      | ETAG (l, _) => complex l
 
-        | g (SWITCH _) = true
-        | g (CON(_, _, l)) = true
-(*      | g (DECON(_, _, l)) = true *)
-
-        | g (HANDLE _) = true
-        | g (RAISE(l, _)) = g l
-        | g (ETAG (l, _)) = g l
-
-        | g (WRAP(_, _, l)) = g l
-        | g (UNWRAP(_, _, l)) = g l
-        | g _ = false
-
-   in g le
-  end
+      | WRAP(_, _, l) => complex l
+      | UNWRAP(_, _, l) => complex l
+      | _ => false
 
 fun ppLexp (pd:int) ppstrm (l: lexp): unit =
     let val {openHOVBox, openHVBox, closeBox, break, newline, pps, ppi, ...} =
             en_pp ppstrm
-(*
-	val ppList' : {pp:PP.stream -> 'a -> unit, sep: string} -> 'a list -> unit =
-              fn x => PPLty.ppList ppstrm x
-	       (* eta-expansion of ppList to avoid value restriction *)
-*)
+
         val ppLexp' = ppLexp (pd-1) ppstrm
         val ppLty' = PPLty.ppLty (pd-1) ppstrm
         val ppTyc' = PPLty.ppTyc (pd-1) ppstrm
@@ -178,7 +166,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
              closeBox())
 
           | ppl pd (CON((s, c, lt), ts, l)) =
-            if pd < 1 then pps "<FN>" else
+            if pd < 1 then pps "<CON>" else
             (openHOVBox 4;
               pps "CON(";
               openHOVBox 1; pps "("; pps(S.name s); pps ",";
@@ -191,13 +179,6 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
               ppl (pd-1) l; pps ")";
              closeBox())
 
-(*
-        | ppl (DECON((s, c, lt), ts, l)) =
-            (pps "DECON(("; pps(S.name s); pps ","; ppsrep c; pps ",";
-             ppLty lt; pps "), ["; plist(prTyc, ts, ","); pps "], ";
-             if complex l then (indent 4; ppl l; pps ")"; undent 4)
-             else (g l; pps ")"))
-*)
           | ppl pd (APP(FN(v,_,l),r)) =
             if pd < 1 then pps "<LET*>" else
             (openHOVBox 5;
@@ -414,14 +395,10 @@ fun ppFun ppstrm l v =
               case d of NONE => () | SOME l => find l)
            | RECORD l => app find l
            | SRECORD l => app find l
-           | VECTOR (l, t) => app find l
+           | VECTOR (l, _) => app find l
            | SELECT(_,l) => find l
            | CON((_, DA.EXN p, _), _, e) => (find(VAR(last p)); find e)
            | CON(_,_,e) => find e
-(*
-         | DECON((_, DA.EXN p, _), _, e) => (find(VAR(last p)); find e)
-         | DECON(_,_,e) => find e
-*)
            | HANDLE(e,h) => (find e; find h)
            | RAISE(l,_) => find l
            | INT _ => () | WORD _ => ()

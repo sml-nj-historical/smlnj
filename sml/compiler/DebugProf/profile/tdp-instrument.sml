@@ -206,8 +206,6 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	      A.SELECTexp (l, i_exp false loc e)
 	  | i_exp _ loc (A.VECTORexp (l, t)) =
 	      A.VECTORexp (map (i_exp false loc) l, t)
-	  | i_exp tail loc (A.PACKexp (e, t, tcl)) =
-	      A.PACKexp (i_exp tail loc e, t, tcl)
 	  | i_exp tail loc (e as A.APPexp (f, a)) =
 	    let val mainexp =  A.APPexp (i_exp false loc f, i_exp false loc a)
 	    in

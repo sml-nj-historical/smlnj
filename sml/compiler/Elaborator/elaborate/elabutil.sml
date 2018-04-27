@@ -453,7 +453,6 @@ fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...},
                | MARKexp (x, _) => findexp x
 	       | SELECTexp (_, e) => findexp e
 	       | VECTORexp (el, _) => app findexp el
-	       | PACKexp (e, _, _) => findexp e
 	       | (CONexp _ | NUMexp _ | REALexp _ | STRINGexp _ | CHARexp _) => ())
 
           and finddec d =

@@ -46,7 +46,6 @@ structure Reconstruct : sig
 	    | NONE => bug "expType: SELECTexp")
       | expType(VECTORexp(nil,vty)) = CONty(vectorTycon,[vty])
       | expType(VECTORexp((a::_),vty)) = CONty(vectorTycon,[vty])
-      | expType(PACKexp(e, t, _)) = t
       | expType(APPexp(rator,rand)) =
 	 (case reduceType(expType rator)
 	   of CONty(_,[_,t]) => t

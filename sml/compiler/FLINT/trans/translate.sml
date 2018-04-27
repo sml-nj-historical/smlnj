@@ -1550,22 +1550,6 @@ and mkExp (exp, d) =
               in foldr bind (VECTOR (bexp, tc)) vars
              end
 
-        | g (PACKexp(e, ty, tycs)) = g e
-(* [dbm, 7/10/06]: Does PACKexp do anything now? What was it doing before
- * this was commented out? This appears to be the only place reformat was called
- * Is it also the only place the FLINT PACK constructor is used? [KM???] *)
-(* (commented out by whom, when why?)
-             let val (nty, ks, tps) = TU.reformat(ty, tycs, d)
-                 val ts = map (tpsTyc d) tps
-                 (** use of LtyEnv.tcAbs is a temporary hack (ZHONG) **)
-                 val nts = ListPair.map LtyEnv.tcAbs (ts, ks)
-                 val nd = DI.next d
-              in case (ks, tps)
-                  of ([], []) => g e
-                   | _ => PACK(LT.ltc_poly(ks, [toLty nd nty]),
-                               ts, nts , g e)
-             end
-*)
         | g (SEQexp [e]) = g e
         | g (SEQexp (e::r)) = LET(mkv(), g e, g (SEQexp r))
 
@@ -1756,10 +1740,9 @@ val _ = if ltyerrors
         else ()
 
 
-fun prGen (flag,printE) s e =
-  if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e) else ()
-val _ = prGen(Control.FLINT.print, ppLexp) "Translate" plexp
-
+val _ = if !Control.FLINT.print then (say ("\n\n[After Translate" ^ " ...]\n\n"); ppLexp plexp)
+	else ()
+		 
 (** normalizing the plambda expression into FLINT *)
 val flint = let val _ = debugmsg ">>norm"
 		val _ = if !debugging

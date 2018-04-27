@@ -21,7 +21,6 @@ signature ABSYN =
       | RECORDexp of (numberedLabel * exp) list
       | SELECTexp of numberedLabel * exp
       | VECTORexp of exp list * Types.ty
-      | PACKexp of exp * Types.ty * Types.tycon list
       | APPexp of exp * exp
       | HANDLEexp of exp * fnrules
       | RAISEexp of exp * Types.ty
