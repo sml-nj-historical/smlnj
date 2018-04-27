@@ -41,9 +41,12 @@
  * where
  *  - biased exponent E = e + bias (w bits)
  *  - significand T = b_1 b_2 b_3 ... b_{p-1}
- *  - the bias = p-1.
+ *  - the bias = 2^{w-1} - 1.
  *
  * The width of the representation is w+p.
+ *
+ * For normal numbers, 'b_0' is assumed to be 1 and the exponent 'e' range from 1-bias
+ * to bias.
  *
  * NaNs and Infs are encoded with an exponent of 2^w - 1 (i.e., all 1s).  Specifically,
  * we have the following encodings:
@@ -52,16 +55,22 @@
  *  -inf                [ 1 | 1{w} | 0{p-1} ]
  *  Quiet NaN           [ s | 1{w} | 1 b_2 ... b_{p-1} ]
  *  Signaling NaN       [ s | 1{w} | 0 b_2 ... b_{p-1} ]  -- at least on of the b_i must be 1
+ *
+ * Subnormal numbers are encoded with an exponent of 0 and a non-zero mantissa.
+ *
+ *	r = (-1)^s * 2^{-bias} * 0 . b_1 b_2 ... b_{p-1}
  *)
 signature IEEE_FLOAT_PARAMS =
   sig
 
-  (* the total number of bits in the representation; we expect that this
-   * value is a multiple of 8.
+  (* the total number of bits in the representation; this value should be
+   * a multiple of 8.
    *)
     val width : int
 
-  (* the number of bits in the significand (including the redundant bit) *)
+  (* the number of bits in the significand; this value is one larger than
+   * the width of the mantissa field, since it includes the redundant bit.
+   *)
     val significant : int
 
   (* the exponent bias *)
@@ -86,8 +95,10 @@ functor RealToBitsFn (FP : IEEE_FLOAT_PARAMS) : REAL_TO_BITS =
   (* number of bits in exponent *)
     val expWidth = FP.width - FP.significant
 
+  (* unbiased min and max exponents *)
     val maxExp = Word.toIntX(Word.<<(0w1, W.fromInt(expWidth-1)) - 0w1)
     val minExp = 1 - maxExp
+
     val bias = FP.bias (* biased exponents range from 1<=exp<maxExp *)
 
   (* check for consistency; assume that 16-bit floats are the smallest *)
@@ -98,15 +109,15 @@ functor RealToBitsFn (FP : IEEE_FLOAT_PARAMS) : REAL_TO_BITS =
           if (FP.significant < 11) orelse (width-5 < FP.significant)
             then raise Fail "FloatToBitsFn: invalid significant"
             else ();
-          if (FP.bias <> bias)
-            then raise Fail "FloatToBitsFn: invalid significant"
+          if (FP.bias <> maxExp)
+            then raise Fail "FloatToBitsFn: invalid bias"
             else ())
 
   (* number of bytes needed to represent a float *)
     val numBytes = FP.width div 8
 
   (* number of bytes in the representation that contain at least one bit
-   * of the mantissa.
+   * of the mantissa.  Note that `significant` is the width of mantissa bits + 1.
    *)
     val numMantBytes = (FP.significant + 6) div 8
 
@@ -155,7 +166,7 @@ functor RealToBitsFn (FP : IEEE_FLOAT_PARAMS) : REAL_TO_BITS =
     fun numBitsForInt n = IntInf.log2 n + 1
 
   (* A float is a WHOLE "fraction" and an exponent base TWO. *)
-   type float = {frac : IntInf.int, exp : int}
+    type float = {frac : IntInf.int, exp : int}
 
   (* round a float to n significant binary digits *)
     fun round (float as {frac, exp}, n) = let
