@@ -435,7 +435,7 @@ and coreAcc id =
 	 V.VALvar { access, typ, path, ... } =>
 	 mkAccT(access, toLty DI.top (!typ), getNameOp path)
        | _ => bug "coreAcc in translate")
-    handle NoCore => (warn "no Core access\n"; INT 0)
+    handle NoCore => (warn "no Core access\n"; INT{ival = 0, ty = Tgt.defaultIntSz})
 
 (** expands the flex record pattern and convert the EXN access pat *)
 (** internalize the conrep's access, always exceptions *)
@@ -601,13 +601,12 @@ fun rshiftOp k  = PO.ARITH{oper=PO.RSHIFT, overflow=false,  kind=k}
 fun rshiftlOp k = PO.ARITH{oper=PO.RSHIFTL, overflow=false, kind=k}
 fun lshiftOp k = PO.ARITH{oper=PO.LSHIFT,  overflow=false, kind=k}
 
-fun lword0 (PO.UINT 31) = WORD 0w0
-  | lword0 (PO.UINT 32) = WORD32 0w0
-  | lword0 _  = bug "unexpected case in lword0"
+fun lword0 (PO.UINT sz) = WORD{ival = 0, ty = sz}
 
-fun baselt (PO.UINT 31) = lt_int
-  | baselt (PO.UINT 32) = lt_int32
-  | baselt _  = bug "unexpected case in baselt"
+fun baselt (PO.UINT 32) = lt_int32
+  | baselt (PO.UINT sz) = if (sz = Tgt.defaultIntSz)
+      then lt_int
+      else bug "unexpected case in baselt"
 
 fun shiftTy k =
   let val elem = baselt k
@@ -616,7 +615,8 @@ fun shiftTy k =
   end
 
 fun inlineShift(shiftOp, kind, clear) =
-  let fun shiftLimit (PO.UINT lim | PO.INT lim) = WORD(Word.fromInt lim)
+  let fun shiftLimit (PO.UINT lim | PO.INT lim) =
+	    WORD{ival = IntInf.fromInt lim, ty = Tgt.defaultIntSz}
         | shiftLimit _ = bug "unexpected case in shiftLimit"
 
       val p = mkv() val vp = VAR p
@@ -639,12 +639,11 @@ fun inlineShift(shiftOp, kind, clear) =
 fun inlops nk = let
 (* 64BIT: REAL64: type will depend on size *)
     val (lt_arg, zero, overflow) = (case nk
-	   of PO.INT 31 => (LT.ltc_int, INT 0, true)
-	    | PO.UINT 31 => (LT.ltc_int, WORD 0w0, false)
-	    | PO.INT 32 => (LT.ltc_int32, INT32 0, true)
-	    | PO.UINT 32 => (LT.ltc_int32, WORD32 0w0, false)
+	   of PO.INT 32 => (LT.ltc_int32, INT{ival = 0, ty = 32}, true)
+	    | PO.INT sz => (LT.ltc_int, INT{ival = 0, ty = sz}, true)
+	    | PO.UINT 32 => (LT.ltc_int32, WORD{ival = 0, ty = 32}, false)
+	    | PO.UINT sz => (LT.ltc_int, WORD{ival = 0, ty = sz}, false)
 	    | PO.FLOAT sz => (LT.ltc_real, REAL{rval = RealLit.zero false, ty = sz}, false)
-	    | _ => bug "inlops: bad numkind"
 	  (* end case *))
     val lt_argpair = lt_tup [lt_arg, lt_arg]
     val lt_cmp = lt_arw (lt_argpair, lt_bool)
@@ -798,7 +797,9 @@ fun transPrim (prim, lt, ts) =
   let fun g (PO.INLLSHIFT k) = inlineShift(lshiftOp, k, fn _ => lword0(k))
         | g (PO.INLRSHIFTL k) = inlineShift(rshiftlOp, k, fn _ => lword0(k))
         | g (PO.INLRSHIFT k) = let (* preserve sign bit with arithmetic rshift *)
-	    fun clear w = APP(PRIM(rshiftOp k, shiftTy k, []), RECORD [w, WORD 0w31])
+(* 64BIT: 32-bit assumption!!! *)
+            val w31 = WORD{ival = 31, ty = Tgt.defaultIntSz}
+	    fun clear w = APP(PRIM(rshiftOp k, shiftTy k, []), RECORD [w, w31])
 	    in
 	      inlineShift(rshiftOp, k, clear)
 	    end
@@ -1038,11 +1039,13 @@ fun genintinfswitch (sv, cases, default) = let
 	| build ((n, e) :: r) =
 	    COND (APP (#getIntInfEq eqDict (), RECORD [VAR v, VAR (getII n)]),
 		  e, build r)
+    (* make a small int constant pattern *)
+      fun mkSmall n = INTcon{ival = IntInf.fromInt n, ty = Tgt.defaultIntSz}
     (* split pattern values into small values and large values;
      * small values can be handled directly using SWITCH *)
       fun split ([], s, l) = (rev s, rev l)
 	| split ((n, e) :: r, sm, lg) = (case LN.lowVal n
-	     of SOME l => split (r, (INTcon l, e) :: sm, lg)
+	     of SOME l => split (r, (mkSmall l, e) :: sm, lg)
 	      | NONE => split (r, sm, (n, e) :: lg)
 	    (* end case *))
       fun gen () = (case split (cases, [], [])
@@ -1505,30 +1508,35 @@ and mkExp (exp, d) =
         | g (NUMexp(src, {ival, ty})) = (
 	    debugmsg ">>mkExp NUMexp";
 (* 64BIT: need extra cases etc. *)
-	    if TU.equalType (ty, BT.intTy) then INT (LN.int ival)
-	    else if TU.equalType (ty, BT.int32Ty) then INT32 (LN.int32 ival)
+	    if TU.equalType (ty, BT.intTy) then INT{ival = ival, ty = Tgt.defaultIntSz}
+	    else if TU.equalType (ty, BT.int32Ty) then INT{ival = ival, ty = 32}
 	    else if TU.equalType (ty, BT.intinfTy) then VAR (getII ival)
 	    else if TU.equalType (ty, BT.int64Ty) then let
 		val (hi, lo) = LN.int64 ival
+		fun mkHalf n = WORD{ival = n, ty = 32}
 		in
-		  RECORD [WORD32 hi, WORD32 lo]
+		  RECORD [mkHalf hi, mkHalf lo]
 		end
-	    else if TU.equalType (ty, BT.wordTy) then WORD (LN.word ival)
+	    else if TU.equalType (ty, BT.wordTy) then WORD{ival = ival, ty = Tgt.defaultIntSz}
 	  (* NOTE: 8-bit word is promoted to default tagged word representation *)
-	    else if TU.equalType (ty, BT.word8Ty) then WORD (LN.word8 ival)
-	    else if TU.equalType (ty, BT.word32Ty) then WORD32 (LN.word32 ival)
+	    else if TU.equalType (ty, BT.word8Ty) then WORD{ival = ival, ty = Tgt.defaultIntSz}
+	    else if TU.equalType (ty, BT.word32Ty) then WORD{ival = ival, ty = 32}
 	    else if TU.equalType (ty, BT.word64Ty) then let
 		val (hi, lo) = LN.word64 ival
+		fun mkHalf n = WORD{ival = n, ty = 32}
 		in
-		  RECORD [WORD32 hi, WORD32 lo]
+		  RECORD [mkHalf hi, mkHalf lo]
 		end
 	      else (ppType ty; bug "translate NUMexp"))
 (* REAL32: handle 32-bit reals *)
         | g (REALexp(_, {rval, ty})) = REAL{rval = rval, ty = Tgt.defaultRealSz}
         | g (STRINGexp s) = STRING s
-(* QUESTION: do we want to map characters to words? *)
+(* QUESTION: do we want to map characters to word8? *)
 (** NOTE: the following won't work for cross compiling to multi-byte characters **)
-        | g (CHARexp s) = INT (Char.ord(String.sub(s, 0)))
+        | g (CHARexp s) = INT{
+	      ival = IntInf.fromInt(Char.ord(String.sub(s, 0))),
+	      ty = Tgt.defaultIntSz
+	    }
         | g (RECORDexp []) = unitLexp
         | g (RECORDexp xs) =
              if sorted xs then RECORD (map (fn (_,e) => g e) xs)

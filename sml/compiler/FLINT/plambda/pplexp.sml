@@ -41,11 +41,12 @@ fun app2(f, [], []) = ()
   | app2(f, _, _) = bug "unexpected list arguments in function app2"
 
 fun conToString (DATAcon((sym, _, _), _, v)) = ((S.name sym) ^ "." ^ (lvarName v))
-  | conToString (INTcon i) = Int.toString i
-  | conToString (INT32con i) = "(I32)" ^ (Int32.toString i)
-  | conToString (INTINFcon i) = "(II)" ^ IntInf.toString i
-  | conToString (WORDcon i) = "(W)" ^ (Word.toString i)
-  | conToString (WORD32con i) = "(W32)" ^ (Word32.toString i)
+  | conToString (INTcon{ival, ty=0}) =
+      concat["(II)", IntInf.toString ival]
+  | conToString (INTcon{ival, ty}) =
+      concat["(I", Int.toString ty, ")", IntInf.toString ival]
+  | conToString (WORDcon{ival, ty}) =
+      concat["(W", Int.toString ty, ")", IntInf.toString ival]
   | conToString (STRINGcon s) = PU.mlstr s
   | conToString (VLENcon n) = Int.toString n
 
@@ -97,10 +98,11 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
               elems
 
         fun ppl pd (VAR v) = pps (lvarName v)
-          | ppl pd (INT i) = ppi i
-          | ppl pd (WORD i) = (pps "(W)"; pps (Word.toString i))
-          | ppl pd (INT32 i) = (pps "(I32)"; pps(Int32.toString i))
-          | ppl pd (WORD32 i) = (pps "(W32)"; pps(Word32.toString i))
+	  | ppl pd (INT{ival, ty=0}) = (pps "(II)"; pps(IntInf.toString ival))
+	  | ppl pd (INT{ival, ty}) =
+	      pps(concat["(I", Int.toString ty, ")", IntInf.toString ival])
+	  | ppl pd (WORD{ival, ty}) =
+	      pps(concat["(W", Int.toString ty, ")", IntInf.toString ival])
           | ppl pd (REAL{rval, ty}) =
 	      pps(concat["(R", Int.toString ty, ")", RealLit.toString rval])
           | ppl pd (STRING s) = pps (mlstr s)
@@ -401,8 +403,8 @@ fun ppFun ppstrm l v =
            | CON(_,_,e) => find e
            | HANDLE(e,h) => (find e; find h)
            | RAISE(l,_) => find l
-           | INT _ => () | WORD _ => ()
-           | INT32 _ => () | WORD32 _ => ()
+           | INT _ => ()
+           | WORD _ => ()
 	   | REAL _ => ()
            | STRING _ => ()
            | ETAG (e,_) => find e
@@ -417,9 +419,7 @@ fun ppFun ppstrm l v =
 
 fun stringTag (VAR _) = "VAR"
   | stringTag (INT _) = "INT"
-  | stringTag (INT32 _) = "INT32"
   | stringTag (WORD _) = "WORD"
-  | stringTag (WORD32 _) = "WORD32"
   | stringTag (REAL _) = "REAL"
   | stringTag (STRING _) = "STRING"
   | stringTag (PRIM _) = "PRIM"

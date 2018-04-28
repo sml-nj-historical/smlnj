@@ -18,11 +18,8 @@ type dconinfo = datacon * tyvar list
 
 datatype pcon
   = DATApcon of dconinfo
-  | INTpcon of int
-  | INT32pcon of Int32.int
-  | INTINFpcon of IntInf.int
-  | WORDpcon of word
-  | WORD32pcon of Word32.word
+  | INTpcon of int IntConst.t
+  | WORDpcon of int IntConst.t
   | STRINGpcon of string
   | VLENpcon of int * ty
 
@@ -68,11 +65,8 @@ fun constantEq (INTcon n, INTcon n') = n = n'
 *)
 
 fun constantEq (DATApcon (d1, _), DATApcon (d2, _)) = conEq(d1, d2)
-  | constantEq (INTpcon n, INTpcon n') = n = n'
-  | constantEq (INT32pcon n, INT32pcon n') = n = n'
-  | constantEq (INTINFpcon n, INTINFpcon n') = n = n'
-  | constantEq (WORDpcon n, WORDpcon n') = n = n'
-  | constantEq (WORD32pcon n, WORD32pcon n') = n = n'
+  | constantEq (INTpcon n, INTpcon n') = (#ty n = #ty n') andalso (#ival n = #ival n')
+  | constantEq (WORDpcon n, WORDpcon n') = (#ty n = #ty n') andalso (#ival n = #ival n')
   | constantEq (STRINGpcon s, STRINGpcon s') = s = s'
   | constantEq (VLENpcon (n, _), VLENpcon (n',_)) = n = n'
   | constantEq _ = false

@@ -100,21 +100,34 @@ fun toDconLty toLty ty =
 fun isInt64 ty = TU.equalType(ty, BT.int64Ty)
 fun isWord64 ty = TU.equalType(ty, BT.word64Ty)
 
-fun numCon (v, ty, msg) =
-      if TU.equalType(ty, BT.intTy)
-	then INTpcon(LN.int v)
-      else if TU.equalType(ty, BT.int32Ty)
-	then INT32pcon (LN.int32 v)
-      else if TU.equalType(ty, BT.intinfTy)
-	then INTINFpcon v
-      else if TU.equalType(ty, BT.wordTy)
-	then WORDpcon(LN.word v)
-      else if TU.equalType(ty, BT.word8Ty)
-	then WORDpcon(LN.word8 v)
-      else if TU.equalType(ty, BT.word32Ty)
-	then WORD32pcon(LN.word32 v)
+
+fun numCon (v, ty, msg) = let
+      fun mkWORD sz = WORDpcon{ival = v, ty = sz}
+      fun mkINT sz = INTpcon{ival = v, ty = sz}
+      in
+	if TU.equalType(ty, BT.intTy)
+	  then mkINT Target.defaultIntSz
+	else if TU.equalType(ty, BT.int32Ty)
+	  then mkINT 32
+	else if TU.equalType(ty, BT.intinfTy)
+	  then mkINT 0
+	else if TU.equalType(ty, BT.wordTy)
+	  then mkWORD Target.defaultIntSz
+	else if TU.equalType(ty, BT.word8Ty)
+(* QUESTION: perhaps we should preserve the size for better jump tables? *)
+	  then mkWORD Target.defaultIntSz
+	else if TU.equalType(ty, BT.word32Ty)
+	  then mkWORD 32
 (* 64BIT: add cases for int64Ty and word64Ty *)
-	else bug msg
+	  else bug msg
+      end
+
+(* default integer pattern constant *)
+fun intCon n = INTpcon{ival = IntInf.fromInt n, ty = Target.defaultIntSz}
+
+(* pattern constant for character literal *)
+(* QUESTION: perhaps this should be a Word8.word literal? *)
+fun charCon s = intCon (Char.ord (String.sub (s, 0)))
 
 (**************************************************************************)
 type ruleno = int   (* the number identifying a rule *)
@@ -310,7 +323,7 @@ fun makeAndor (matchRep,err) = let
       | genAndor (CHARpat s, rule) =
 	  CASE{
 	      bindings = nil, constraints = nil, sign = DA.CNIL,
-	      cases = [(INTpcon (Char.ord(String.sub(s, 0))), [rule], nil)]
+	      cases = [(charCon s, [rule], nil)]
 	    }
       | genAndor (RECORDpat{fields,...}, rule) =
 	  AND{bindings = nil, constraints = nil,
@@ -330,7 +343,7 @@ fun makeAndor (matchRep,err) = let
 
     (* simulate 64-bit words and ints as pairs of 32-bit words *)
     and genAndor64 ((hi, lo), rule) = let
-	  fun p32 w = NUMpat("<lit>", {ival = Word32.toLargeInt w, ty = BT.word32Ty})
+	  fun p32 w = NUMpat("<lit>", {ival = w, ty = BT.word32Ty})
 	  in
 	    genAndor (AbsynUtil.TUPLEpat [p32 hi, p32 lo], rule)
 	  end
@@ -392,7 +405,7 @@ fun makeAndor (matchRep,err) = let
       | mergeAndor (CHARpat s, CASE{bindings, cases, constraints, sign}, rule) =
 	  CASE{
 	      bindings = bindings, constraints = constraints, sign=sign,
-	      cases = addACase(INTpcon(Char.ord(String.sub(s, 0))), nil, rule, cases)
+	      cases = addACase(charCon s, nil, rule, cases)
 	    }
       | mergeAndor (RECORDpat{fields,...},
 		    AND{bindings, constraints, subtrees}, rule) =
@@ -419,7 +432,7 @@ fun makeAndor (matchRep,err) = let
 
     (* simulate 64-bit words and ints as pairs of 32-bit words *)
     and mergeAndor64 ((hi, lo), c, rule) = let
-	  fun p32 w = NUMpat("<lit>", {ival = Word32.toLargeInt w, ty = BT.word32Ty})
+	  fun p32 w = NUMpat("<lit>", {ival = w, ty = BT.word32Ty})
 	  in
 	    mergeAndor (AbsynUtil.TUPLEpat [p32 hi, p32 lo], c, rule)
 	  end
@@ -531,7 +544,7 @@ and flattenACase ((VLENpcon(n, t), rules, subtrees), path, active, defaults) = l
 	     (flattenAndor(subtree, VPIPATH(n,t,path), stillActive))
 	     @ (flattenVSubs(n + 1, rest))
       in
-	(INTpcon n, ruleActive, flattenVSubs(0, subtrees))
+	(intCon n, ruleActive, flattenVSubs(0, subtrees))
       end
   | flattenACase ((k as DATApcon (_,t), rules,[subtree]),path,active,defaults) =
       let val stillActive = intersect(union(rules, defaults), active)
@@ -1006,7 +1019,7 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
 		PRIM(PO.SUBSCRIPTV, lt_sub, [tc]),
 		RECORD[
 		    VAR(lookupPath(path, env)),
-		    INT n
+		    INT{ival = IntInf.fromInt n, ty = Target.defaultIntSz}
 		  ])
             end
         | genpath (VLENPATH (path, t), env) =
@@ -1026,8 +1039,8 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
             let val v = mkv()
              in LET(x, LET(v, TAPP(VAR f, ts), APP(VAR v, sv)), e)
             end
-	| genswitch (sv, sign, cases as ((INTINFcon _, _) :: _), default) =
-	    let fun strip (INTINFcon n, e) = (n, e)
+	| genswitch (sv, sign, cases as ((INTcon{ty=0, ...}, _) :: _), default) =
+	    let fun strip (INTcon{ty=0, ival}, e) = (ival, e)
 		  | strip _ = bug "genswitch: INTINFcon"
 	    in
 		case default of
@@ -1096,10 +1109,7 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
 		  end
 	      | VLENpcon(i, t) => (VLENcon i, env)
 	      | INTpcon i => (INTcon i, env)
-	      | INT32pcon i => (INT32con i, env)
-	      | INTINFpcon n => (INTINFcon n, env)
 	      | WORDpcon w => (WORDcon w, env)
-	      | WORD32pcon w => (WORD32con w, env)
 	      | STRINGpcon s => (STRINGcon s, env)
 	    (* end case *))
 

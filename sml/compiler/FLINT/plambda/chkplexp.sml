@@ -241,10 +241,10 @@ fun ltConChk le s (DATAcon ((_,rep,lt), ts, v), root, kenv, venv, d) =
   | ltConChk le s (c, root, kenv, venv, d) = let
       val nt = (case c
 (* 64BIT: will need other cases *)
-	     of INT32con _ => LT.ltc_int32
-	      | WORD32con _ => LT.ltc_int32
+	     of INTcon{ty = 32, ...} => LT.ltc_int32
+	      | WORDcon{ty = 32, ...} => LT.ltc_int32
 	      | STRINGcon _ => ltString
-	      | INTINFcon _ => bug "INTINFcon"
+	      | INTcon{ty = 0, ...} => bug "INTcon: IntInf"
 	      | _ => LT.ltc_int
 	    (* end case *))
       in
@@ -278,8 +278,11 @@ fun check (kenv, venv, d) =
 				 ^ " is unbound *** \n");
 			    bug "unexpected lambda code in checkLty"))
 (* 64BIT: will need extra cases *)
-		 | (INT _ | WORD _) => LT.ltc_int
-		 | (INT32 _ | WORD32 _) => LT.ltc_int32
+		 | INT{ty = 0, ...} => bug "unexpected IntInf in checkLty"
+		 | INT{ty = 32, ...} => LT.ltc_int32
+		 | WORD{ty = 32, ...} => LT.ltc_int32
+		 | INT{ty, ...} => LT.ltc_int
+		 | WORD{ty, ...} => LT.ltc_int
 (* REAL32: will need extra cases *)
 		 | REAL _ => LT.ltc_real
 		 | STRING _ => ltString

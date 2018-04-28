@@ -125,11 +125,11 @@ fun force_raw (pty) =
     end (* function force_raw *)
 
 fun tocon con = (case con
-       of L.INTcon x    => F.INTcon x
-	| L.INT32con x  => F.INT32con x
-	| L.INTINFcon _ => bug "INTINFcon"
-	| L.WORDcon x   => F.WORDcon x
-	| L.WORD32con x => F.WORD32con x
+       of L.INTcon{ty=0, ...} => bug "IntInf"
+	| L.INTcon{ival, ty=32} => F.INT32con(Int32.fromLarge ival)
+	| L.INTcon{ival, ...} => F.INTcon(Int.fromLarge ival)
+	| L.WORDcon{ival, ty=32} => F.WORD32con(Word32.fromLargeInt ival)
+	| L.WORDcon{ival, ...} => F.WORDcon(Word.fromLargeInt ival)
 	| L.STRINGcon x => F.STRINGcon x
 	| L.VLENcon x   => F.VLENcon x
 	| L.DATAcon x => bug "unexpected case in tocon"
@@ -292,26 +292,36 @@ and tovalue (venv,d,lexp,cont) = let
       val _ = debugLexp lexp
       val v = (case lexp
             (* for simple values, it's trivial *)
-             of L.VAR v => cont(F.VAR v, LT.ltLookup(venv, v, d))
-	      | L.INT i =>
-		 ((i+i+2; cont(F.INT i, LT.ltc_int)) handle Overflow =>
-		    (let val _ = debugmsg "toValue INT Overflow"
-			 val z = i div 2
-			 val ne = L.APP(iadd_prim, L.RECORD [L.INT z, L.INT (i-z)])
-		      in tovalue(venv, d, ne, cont)
-		     end))
-	      | L.WORD i =>
-		 let val maxWord = 0wx20000000
-		  in if Word.<(i, maxWord) then cont(F.WORD i, LT.ltc_int)
-		     else let val x1 = Word.div(i, 0w2)
-			      val x2 = Word.-(i, x1)
-			      val ne = L.APP(uadd_prim,
-					     L.RECORD [L.WORD x1, L.WORD x2])
-			   in tovalue(venv, d, ne, cont)
-			  end
-		 end
-	      | L.INT32 n => cont(F.INT32 n, LT.ltc_int32)
-	      | L.WORD32 n => cont(F.WORD32 n, LT.ltc_int32)
+	     of L.VAR v => cont(F.VAR v, LT.ltLookup(venv, v, d))
+	      | L.INT{ival, ty=32} => cont(F.INT32(Int32.fromLarge ival), LT.ltc_int32)
+	      | L.WORD{ival, ty=32} => cont(F.WORD32(Word32.fromLargeInt ival), LT.ltc_int32)
+	      | L.INT{ival, ...} => let
+                  val i = Int.fromLarge ival
+		  fun mkINT i = L.INT{ival = IntInf.fromInt i, ty = Target.defaultIntSz}
+		  in
+		    (i+i+2; cont(F.INT i, LT.ltc_int))
+		      handle Overflow => let
+			val _ = debugmsg "toValue INT Overflow"
+			val z = i div 2
+			val ne = L.APP(iadd_prim, L.RECORD [mkINT z, mkINT (i-z)])
+			in
+			  tovalue(venv, d, ne, cont)
+			end
+		  end
+	      | L.WORD{ival, ...} => let
+		  val i = Word.fromLargeInt ival
+		  fun mkWORD i = L.WORD{ival = Word.toLargeInt i, ty = Target.defaultIntSz}
+		  in
+		    if Word.<(i, 0wx20000000)
+		      then cont(F.WORD i, LT.ltc_int)
+		      else let
+			val x1 = i div 0w2
+			val x2 = i - x1
+			val ne = L.APP(uadd_prim, L.RECORD [mkWORD x1, mkWORD x2])
+			in
+			  tovalue(venv, d, ne, cont)
+			end
+		  end
 (* REAL32: *)
 	      | L.REAL x => cont(F.REAL x, LT.ltc_real)
 	      | L.STRING s => cont(F.STRING s, LT.ltc_string)

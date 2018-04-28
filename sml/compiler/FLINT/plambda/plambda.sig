@@ -27,15 +27,15 @@ signature PLAMBDA =
    *)
     datatype con
       = DATAcon of dataconstr * tyc list * lvar
-(* 64BIT: replace INTcon, INT32con, INTINFcon, WORDcon, WORD32con with
       | INTcon of int IntConst.t	(* sz = 0 for IntInf.int *)
       | WORDcon of int IntConst.t
-*)
+(*
       | INTcon of int
       | INT32con of Int32.int
       | INTINFcon of IntInf.int		(* only used with in matchcomp *)
       | WORDcon of word
       | WORD32con of Word32.word
+*)
       | STRINGcon of string
       | VLENcon of int
 
@@ -52,14 +52,14 @@ signature PLAMBDA =
    *)
     datatype lexp
       = VAR of lvar
-(* 64BIT: replace INT, INT32, WORD, and WORD32 with
       | INT of int IntConst.t	(* sz = 0 for IntInf.int *)
       | WORD of int IntConst.t
-*)
+(*
       | INT of int
       | INT32 of Int32.int
       | WORD of word
       | WORD32 of Word32.word
+*)
       | REAL of int RealConst.t
       | STRING of string
       | PRIM of Primop.primop * lty * tyc list
