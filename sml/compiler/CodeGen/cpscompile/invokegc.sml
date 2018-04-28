@@ -134,9 +134,8 @@ struct
        (*
         * record descriptors
         *)
-   val dtoi = LargeWord.toInt
-   fun unboxedDesc words = dtoi(D.makeDesc(words, D.tag_raw64))
-   fun boxedDesc words   = dtoi(D.makeDesc(words, D.tag_record))
+   fun unboxedDesc words = D.makeDesc'(words, D.tag_raw64)
+   fun boxedDesc words   = D.makeDesc'(words, D.tag_record)
 
        (* the allocation pointer must always in a register! *)
    val allocptrR =
@@ -267,8 +266,7 @@ struct
    (*
     * Partition the root set into types
     *)
-   fun split([], [], boxed, int, float) =
-         {boxed=boxed, int=int, float=float}
+   fun split([], [], boxed, int, float) = {boxed=boxed, int=int, float=float}
      | split(T.GPR r::rl, CPS.INTt _::tl, b, i, f) = split(rl,tl,b,r::i,f)
      | split(T.GPR r::rl, CPS.FLTt _::tl, b, i, f) = error "split: T.GPR"
      | split(T.GPR r::rl, _::tl, b, i, f) = split(rl,tl,r::b,i,f)
@@ -499,7 +497,7 @@ struct
                (* MUST evaluate nested records first *)
                val hp   = evalArgs(fields, hp)
                val desc = if boxed then boxedDesc words else unboxedDesc words
-           in  emit(T.STORE(ity, disp hp, LI desc, R.memory));
+           in  emit(T.STORE(ity, disp hp, T.LI desc, R.memory));
                alloc(hp+wordSz, fields);
                emit(T.MV(addrTy, reg, disp(hp+wordSz)));
                hp + wordSz + Word.toIntX(Word.<<(Word.fromInt words,Word.fromInt logWordSz))

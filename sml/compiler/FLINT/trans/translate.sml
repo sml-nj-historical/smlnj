@@ -1740,9 +1740,10 @@ val _ = if ltyerrors
         else ()
 
 
-val _ = if !Control.FLINT.print then (say ("\n\n[After Translate" ^ " ...]\n\n"); ppLexp plexp)
-	else ()
-		 
+val _ = if !Control.FLINT.print
+	  then (say ("\n\n[After Translate" ^ " ...]\n\n"); ppLexp plexp)
+	  else ()
+
 (** normalizing the plambda expression into FLINT *)
 val flint = let val _ = debugmsg ">>norm"
 		val _ = if !debugging

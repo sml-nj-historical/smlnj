@@ -1,8 +1,11 @@
 (* object-desc.sig
  *
- * COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Abstract interface to the encoding of object description headers.
+ * Note that we use IntInf.int to represent lengths and descriptors so
+ * as to be able to support cross compilation from 32-bits to 64-bits.
  *)
 
 signature OBJECT_DESC =
@@ -10,9 +13,9 @@ signature OBJECT_DESC =
 
     type tag
 
-    val tagWidth : int (* number of bits to hold a tag *)
-    val powTagWidth : int (* 2 ^ tagWidth *)
-    val maxLength : int (* one greater than max length value *)
+    val tagWidth : word			(* number of bits to hold a tag *)
+    val powTagWidth : IntInf.int	(* 2 ^ tagWidth *)
+    val maxLength : IntInf.int		(* one greater than max length value *)
 
   (* tag values *)
     val tag_record : tag
@@ -26,21 +29,22 @@ signature OBJECT_DESC =
     val tag_special : tag
 
   (* build a descriptor from a tag and length *)
-    val makeDesc : (int * tag) -> LargeWord.word
+    val makeDesc : (IntInf.int * tag) -> IntInf.int
+    val makeDesc' : (int * tag) -> IntInf.int
 
   (* fixed descriptors *)
-    val desc_pair : LargeWord.word
-    val desc_ref : LargeWord.word
-    val desc_real64 : LargeWord.word
-    val desc_polyvec : LargeWord.word
-    val desc_polyarr : LargeWord.word
-    val desc_special : LargeWord.word	(* with 0 length *)
+    val desc_pair : IntInf.int
+    val desc_ref : IntInf.int
+    val desc_real64 : IntInf.int
+    val desc_polyvec : IntInf.int
+    val desc_polyarr : IntInf.int
+    val desc_special : IntInf.int	(* with 0 length *)
 
   (* length codes for special descriptors *)
-    val special_evaled_susp : int
-    val special_unevaled_susp : int
-    val special_weak : int
-    val special_nulled_weak : int
+    val special_evaled_susp : IntInf.int
+    val special_unevaled_susp : IntInf.int
+    val special_weak : IntInf.int
+    val special_nulled_weak : IntInf.int
 
   end;
 

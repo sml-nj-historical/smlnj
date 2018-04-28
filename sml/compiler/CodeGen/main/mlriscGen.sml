@@ -171,6 +171,7 @@ struct
   val offp0 = CPS.OFFp 0
   fun LI i = M.LI (M.I.fromInt(ity, i))
   fun LW w = M.LI (M.I.fromWord32(ity, w))
+  fun LW' w = M.LI (M.I.fromWord(ity, w))
   val constBaseRegOffset = LI MachineSpec.constBaseRegOffset
 
   (*
@@ -699,7 +700,7 @@ struct
 
 	(* Allocate a header pair for a known-length vector or array *)
           fun allocHeaderPair (hdrDesc, mem, dataPtr, len, hp) = (
-                emit(M.STORE(ity, ea(C.allocptr, hp), LI hdrDesc, pi(mem,~1)));
+                emit(M.STORE(ity, ea(C.allocptr, hp), M.LI hdrDesc, pi(mem,~1)));
                 emit(M.STORE(ity, ea(C.allocptr, hp+ws), M.REG(ity, dataPtr),pi(mem, 0)));
                 emit(M.STORE(ity, ea(C.allocptr, hp+2*ws), LI(len+len+1), pi(mem, 1)));
                 hp+ws)
@@ -737,9 +738,9 @@ struct
           fun untag (true, e) = untagSigned e
             | untag (false, e) = untagUnsigned e
           and untagUnsigned (CPS.INT i) = LI i
-            | untagUnsigned v          = M.SRL(ity, regbind v, one)
+            | untagUnsigned v = M.SRL(ity, regbind v, one)
           and untagSigned (CPS.INT i) = LI i
-            | untagSigned v          = M.SRA(ity, regbind v, one)
+            | untagSigned v = M.SRA(ity, regbind v, one)
 
           (*
            * Integer operators
@@ -756,41 +757,42 @@ struct
             | int31xor (w, v as CPS.INT _) = int31xor (v,w)
             | int31xor (v, w) = addTag (M.XORB(ity, regbind v, regbind w))
 
-          fun int31mul (signed, mulOp, v, w) =
-          let fun f(CPS.INT k, CPS.INT j) = (LI(k+k), LI(j))
-                | f(CPS.INT k, w) = (untag(signed,w), LI(k+k))
-                | f(v, w as CPS.INT _) = f(w, v)
-                | f(v, w) = (stripTag(regbind v), untag(signed,w))
-              val (v, w) = f(v, w)
-          in  addTag(mulOp(ity, v, w))
-          end
+          fun int31mul (signed, mulOp, v, w) = let
+		fun f (CPS.INT k, CPS.INT j) = (LI(k+k), LI(j))
+		  | f (CPS.INT k, w) = (untag(signed,w), LI(k+k))
+		  | f (v, w as CPS.INT _) = f(w, v)
+		  | f (v, w) = (stripTag(regbind v), untag(signed,w))
+                val (v, w) = f(v, w)
+		in
+		  addTag(mulOp(ity, v, w))
+		end
 
-          fun int31div (signed, drm, v, w) =
-          let val (v, w) =
-              case (v, w) of
-                (CPS.INT k, CPS.INT j) => (LI k, LI j)
-              | (CPS.INT k, w) => (LI k, untag(signed, w))
-              | (v, CPS.INT k) => (untag(signed, v), LI(k))
-              | (v, w) => (untag(signed, v), untag(signed, w))
-          in
-	      (* The only way a 31-bit div can overflow is when the result gets retagged.
-	       * Therefore, we can use M.DIVS instead of M.DIVT. *)
-	      tag (signed,
-                   if signed then M.DIVS (drm, ity, v, w)
-		   else M.DIVU (ity, v, w))
-          end
+          fun int31div (signed, drm, v, w) = let
+		val (v, w) = (case (v, w)
+		       of (CPS.INT k, CPS.INT j) => (LI k, LI j)
+			| (CPS.INT k, w) => (LI k, untag(signed, w))
+			| (v, CPS.INT k) => (untag(signed, v), LI(k))
+			| (v, w) => (untag(signed, v), untag(signed, w))
+		      (* end case *))
+		in
+		(* The only way a 31-bit div can overflow is when the result gets retagged.
+		 * Therefore, we can use M.DIVS instead of M.DIVT.
+		 *)
+		  tag (signed,
+		       if signed then M.DIVS (drm, ity, v, w) else M.DIVU (ity, v, w))
+		end
 
 	  fun int31rem (signed, drm, v, w) = let
-              val (v, w) = case (v, w) of
-			       (CPS.INT k, CPS.INT j) => (LI k, LI j)
-			     | (CPS.INT k, w) => (LI k, untag(signed, w))
-			     | (v, CPS.INT k) => (untag(signed, v), LI(k))
-			     | (v, w) => (untag(signed, v), untag(signed, w))
-	  in
-	      tag (false,		(* will not overflow, so we tag like unsigned *)
-		   if signed then M.REMS (drm, ity, v, w)
-		   else M.REMU (ity, v, w))
-	  end
+                val (v, w) = (case (v, w)
+		       of (CPS.INT k, CPS.INT j) => (LI k, LI j)
+			| (CPS.INT k, w) => (LI k, untag(signed, w))
+			| (v, CPS.INT k) => (untag(signed, v), LI(k))
+			| (v, w) => (untag(signed, v), untag(signed, w))
+		      (* end case *))
+		in
+		  tag (false,		(* cannot overflow, so we tag like unsigned *)
+		       if signed then M.REMS (drm, ity, v, w) else M.REMU (ity, v, w))
+		end
 
           fun int31lshift (CPS.INT k, w) =
                 addTag (M.SLL(ity, LI(k+k), untagUnsigned(w)))
@@ -808,7 +810,7 @@ struct
                 M.LOAD(ity, M.SUB(pty, regbind v, LI ws), getRegionPi(v, ~1))
 
           fun getObjLength v =
-                M.SRL(ity, getObjDescriptor(v), LI(D.tagWidth - 1))
+                M.SRL(ity, getObjDescriptor v, LW'(D.tagWidth - 0w1))
 
           (*
            * Note: because formals are moved into fresh temporaries,
@@ -886,9 +888,9 @@ struct
 
           (* add to storelist, the address where a boxed update has occured *)
           fun recordStore (tmp, hp) = (
-                emit (M.STORE(pty,M.ADD(addrTy, C.allocptr, LI hp), tmp, R.storelist));
-                emit (M.STORE(pty,M.ADD(addrTy,C.allocptr,LI(hp+ws)),
-                                    C.storeptr(vfp),R.storelist));
+                emit (M.STORE(pty, M.ADD(addrTy, C.allocptr, LI hp), tmp, R.storelist));
+                emit (M.STORE(pty, M.ADD(addrTy, C.allocptr, LI(hp+ws)),
+			      C.storeptr(vfp), R.storelist));
                 emit (assign(C.storeptr(vfp), M.ADD(addrTy, C.allocptr, LI hp))))
 
           fun unsignedCmp oper =
@@ -1293,27 +1295,27 @@ raise ex)
 	(* Allocate a normal record *)
           and mkRecord (vl, w, e, hp) = let
                 val len = length vl
-		val desc = dtoi(D.makeDesc (len, D.tag_record))
+		val desc = D.makeDesc' (len, D.tag_record)
 		in
 		  treeifyAlloc(w,
-                     allocRecord(markPTR, memDisambig w, LI desc, vl, hp),
+                     allocRecord(markPTR, memDisambig w, M.LI desc, vl, hp),
                         e, hp+ws+len*ws)
 		end
 
 	(* Allocate a record with I32 components *)
 	  and mkI32block (vl, w, e, hp) = let
                 val len = length vl
-		val desc = dtoi(D.makeDesc (len, D.tag_raw32))
+		val desc = D.makeDesc' (len, D.tag_raw32)
 		in
 		  treeifyAlloc(w,
-		    allocRecord(markI32, memDisambig w, LI desc, vl, hp),
+		    allocRecord(markI32, memDisambig w, M.LI desc, vl, hp),
 		      e, hp+ws+len*ws)
 		end
 
         (* Allocate a floating point record *)
           and mkFblock (vl, w, e, hp) = let
                 val len = List.length vl
-		val desc = dtoi(D.makeDesc(len+len, D.tag_raw64))
+		val desc = D.makeDesc'(len+len, D.tag_raw64)
                 (* At initialization the allocation pointer is aligned on
                  * an odd-word boundary, and the heap offset set to zero. If an
                  * odd number of words have been allocated then the heap pointer
@@ -1324,21 +1326,21 @@ raise ex)
 			else hp
 		in  (* The components are floating point *)
 		  treeifyAlloc(w,
-		     allocFrecord(memDisambig w, LI desc, vl, hp),
+		     allocFrecord(memDisambig w, M.LI desc, vl, hp),
 			e, hp+ws+len*8)
 		end
 
         (* Allocate a vector *)
           and mkVector (vl, w, e, hp) = let
 		val len = length vl
-		val hdrDesc = dtoi(D.desc_polyvec)
-		val dataDesc = dtoi(D.makeDesc(len, D.tag_vec_data))
+		val hdrDesc = D.desc_polyvec
+		val dataDesc = D.makeDesc'(len, D.tag_vec_data)
 		val dataPtr = newReg PTR
 		val mem = memDisambig w
 		val hp' = hp + ws + len*ws
                 in  (* The components are boxed *)
                   (* Allocate the data *)
-                  allocRecord(markPTR, mem, LI dataDesc, vl, hp);
+                  allocRecord(markPTR, mem, M.LI dataDesc, vl, hp);
                   emit(M.MV(pty, dataPtr, ea(C.allocptr, hp+ws)));
                   (* Now allocate the header pair *)
                   treeifyAlloc(w,
@@ -1619,7 +1621,7 @@ raise ex)
             | gen (PURE(P.pure_arith{oper=P.notb, kind}, [v], x, _, e), hp) =
                (case kind
                 of (P.UINT 32 | P.INT 32) =>
-		     defI32(x, M.XORB(ity, regbind v,  LW 0wxFFFFFFFF), e, hp)
+		     defI32(x, M.XORB(ity, regbind v, LW 0wxFFFFFFFF), e, hp)
                  | (P.UINT 31 | P.INT 31) =>
 		     defI31(x, M.SUB(ity, zero, regbind v), e, hp)
 		 | _ => error "unexpected numkind in pure notb arithop"
@@ -1701,13 +1703,13 @@ raise ex)
               end
             | gen (PURE(P.gettag, [v], x, _, e), hp) =
                 defI31(x, tagUnsigned(M.ANDB(ity,
-                             getObjDescriptor(v), LI(D.powTagWidth-1))),
+                             getObjDescriptor(v), M.LI(D.powTagWidth-1))),
                       e, hp)
             | gen (PURE(P.mkspecial, [i, v], x, _, e), hp) =
               let val desc = case i
-                  of INT n => LI(dtoi(D.makeDesc(n, D.tag_special)))
-                   | _ => M.ORB(ity, M.SLL(ity, untagSigned i, LI D.tagWidth),
-                                LI(dtoi D.desc_special))
+                  of INT n => M.LI(D.makeDesc'(n, D.tag_special))
+                   | _ => M.ORB(ity, M.SLL(ity, untagSigned i, LW' D.tagWidth),
+                                M.LI D.desc_special)
               in  (* What gc types are the components? *)
                   treeifyAlloc(x,
                     allocRecord(markNothing, memDisambig x,
@@ -1715,7 +1717,7 @@ raise ex)
                     e, hp+8)
               end
             | gen (PURE(P.makeref, [v], x, _, e), hp) =
-              let val tag = LI(dtoi D.desc_ref)
+              let val tag = M.LI D.desc_ref
                   val mem = memDisambig x
               in  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,LI hp),tag,mem));
                   emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,LI(hp+ws)),
@@ -1741,7 +1743,7 @@ raise ex)
             | gen (PURE(P.getexn,[u],w,t,e), hp) = select(0,u,w,t,e,hp)
             | gen (PURE(P.getseqdata, [u], x, t, e), hp) = select(0,u,x,t,e,hp)
             | gen (PURE(P.recsubscript, [v, INT w], x, t, e), hp) =
-                select(w,v,x,t,e,hp)
+                select(w, v, x, t, e, hp)
             | gen (PURE(P.recsubscript, [v, w], x, _, e), hp) =
                  (* no indirection! *)
               let val mem = arrayRegion(getRegion v)
@@ -1753,14 +1755,14 @@ raise ex)
                                 e, hp)
               end
             | gen (PURE(P.newarray0, [_], x, t, e), hp) =
-              let val hdrDesc = dtoi(D.desc_polyarr)
-                  val dataDesc = dtoi D.desc_ref
+              let val hdrDesc = D.desc_polyarr
+                  val dataDesc = D.desc_ref
                   val dataPtr = newReg PTR
                   val hdrM = memDisambig x
                   val (tagM, valM) = (hdrM, hdrM) (* Allen *)
               in  (* gen code to allocate "ref()" for array data *)
                   emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI hp),
-                               LI dataDesc, tagM));
+                               M.LI dataDesc, tagM));
                   emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI(hp+ws)),
                                mlZero, valM));
                   emit(M.MV(pty, dataPtr, M.ADD(addrTy,C.allocptr,LI(hp+ws))));
@@ -1783,7 +1785,7 @@ raise ex)
 	      (* len of record in 32-bit words *)
 		val len = if ws = 4 andalso fp then n+n else n
 	      (* record descriptor *)
-		val desc = dtoi(D.makeDesc(len, tag))
+		val desc = D.makeDesc'(len, tag)
 	      (* Align floating point *)
 		val hp = if ws = 4 andalso fp
 			 andalso Word.andb(Word.fromInt hp, 0w4) <> 0w0
@@ -1792,7 +1794,7 @@ raise ex)
 		val mem = memDisambig x
 		in
 		(* store tag now! *)
-		  emit(M.STORE(ity, ea(C.allocptr, hp), LI desc, pi(mem, ~1)));
+		  emit(M.STORE(ity, ea(C.allocptr, hp), M.LI desc, pi(mem, ~1)));
 		(* assign the address to x *)
 		  treeifyAlloc(x, hp+ws, e, hp+len*ws+ws)
 		end
@@ -1863,14 +1865,14 @@ raise ex)
               let val xreg = newReg I32
                   val vreg = regbind v
               in  updtHeapPtr hp;
-                  emit(M.MV(ity, xreg, M.ADDT(ity, vreg, regbind(INT32 0wx80000000))));
+                  emit(M.MV(ity, xreg, M.ADDT(ity, vreg, LW 0wx80000000)));
                   defI32(x, vreg, e, 0)
               end
             | gen (ARITH(P.testu(31,31), [v], x, _, e), hp) =
               let val xreg = newReg I31
                   val vreg = regbind v
               in  updtHeapPtr hp;
-                  emit(M.MV(ity,xreg,M.ADDT(ity, vreg, regbind(INT32 0wx80000000))));
+                  emit(M.MV(ity,xreg,M.ADDT(ity, vreg, LW 0wx80000000)));
                   defI31(x, vreg, e, 0)
               end
             | gen (ARITH(P.testu(32,31), [v], x, _, e), hp) =
@@ -1878,7 +1880,7 @@ raise ex)
                   val tmp = newReg I32
                   val tmpR = M.REG(ity,tmp)
                   val lab = newLabel ()
-              in  emit(M.MV(ity, tmp, regbind(INT32 0wx3fffffff)));
+              in  emit(M.MV(ity, tmp, LW 0wx3fffffff));
                   updtHeapPtr hp;
                   emit
 		    (branchWithProb(M.BCC(M.CMP(32, M.LEU, vreg, tmpR),lab),
@@ -1938,7 +1940,7 @@ raise ex)
             | gen (LOOKER(P.getvar, [], x, _, e), hp) = defBoxed(x, C.varptr(vfp), e, hp)
             | gen (LOOKER(P.getspecial, [v], x, _, e), hp) = defBoxed(
 		x,
-		orTag(M.SRA(ity, getObjDescriptor v, LI (D.tagWidth-1))),
+		orTag(M.SRA(ity, getObjDescriptor v, LW'(D.tagWidth-0w1))),
 		e,
 		hp)
             | gen (LOOKER(P.getpseudo, [i], x, _, e), hp) =
@@ -2011,10 +2013,9 @@ raise ex)
               let val ea = M.SUB(ity, regbind v, LI 4)
                   val i' =
                     case i
-		     of INT k => LI(dtoi(D.makeDesc(k, D.tag_special)))
-		      | _ => M.ORB(ity, M.SLL(ity, untagSigned(i),
-                                             LI D.tagWidth),
-                                  LI(dtoi D.desc_special))
+		     of INT k => M.LI(D.makeDesc'(k, D.tag_special))
+		      | _ => M.ORB(ity, M.SLL(ity, untagSigned i, LW' D.tagWidth),
+                                  M.LI D.desc_special)
                   val mem = getRegionPi(v, 0)
               in  emit(M.STORE(ity, ea, i', mem));
                   gen(e, hp)
@@ -2043,15 +2044,16 @@ raise ex)
                     ([], [(w, _)]) => defI31 (w, mlZero, e, hp)
 		  | ([M.FPR x],[(w,CPS.FLTt 64)]) => treeifyDefF64 (w, x, e, hp) (* REAL32: *)
                         (* more sanity checking here ? *)
-                  | ([M.GPR x],[(w,CPS.INTt 32)]) => defI32 (w, x, e, hp) (* 64BIT: *)
-                  | ([M.GPR x],[(w,CPS.PTRt _)]) => defBoxed (w, x, e, hp)
-		  | ([M.GPR x1, M.GPR x2],[(w1,CPS.INTt 32),(w2,CPS.INTt 32)]) =>
-		      let val (r1, r2) = (newReg I32, newReg I32)
-		      in addRegBinding(w1, r1);
-			 addRegBinding(w2, r2);
-			 emit(M.MV(ity,r1,x1));
-			 emit(M.MV(ity,r2,x2));
-			 gen(e,hp)
+                  | ([M.GPR x],[(w, CPS.INTt 32)]) => defI32 (w, x, e, hp) (* 64BIT: *)
+                  | ([M.GPR x],[(w, CPS.PTRt _)]) => defBoxed (w, x, e, hp)
+		  | ([M.GPR x1, M.GPR x2], [(w1,CPS.INTt 32), (w2,CPS.INTt 32)]) => let
+		      val (r1, r2) = (newReg I32, newReg I32)
+		      in
+			addRegBinding(w1, r1);
+			addRegBinding(w2, r2);
+			emit(M.MV(ity,r1,x1));
+			emit(M.MV(ity,r2,x2));
+			gen(e,hp)
 		      end
 		  | _ => error "RCC: bad results"
 	      end
