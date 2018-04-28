@@ -599,8 +599,7 @@ in
 
 	fun con arg = let
 	    val op $ = PU.$ C
-	    fun c (F.DATAcon (dc, ts, v), e) =
-		"1" $ [dcon (dc, ts), lvar v, lexp e]
+	    fun c (F.DATAcon (dc, ts, v), e) = "1" $ [dcon (dc, ts), lvar v, lexp e]
 	      | c (F.INTcon i, e) = "2" $ [int i, lexp e]
 	      | c (F.INT32con i32, e) = "3" $ [int32 i32, lexp e]
 	      | c (F.WORDcon w, e) = "4" $ [word w, lexp e]
