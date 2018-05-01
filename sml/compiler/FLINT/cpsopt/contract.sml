@@ -704,9 +704,9 @@ let val rec g' =
       end
    | SWITCH(v,c,el) => (case ren v
          of v' as INT i => if !CG.switchopt
-             then let
-	       fun f (e::el,j) = (if i=j then () else drop_body e; f(el, j+1))
-		 | f ([],_) = ()
+	     then let
+	       fun f (e::el, j) = (if i=j then () else drop_body e; f(el, j+1))
+		 | f ([], _) = ()
 	       in
 		 click "h";
 		 f(el, 0);
@@ -1089,25 +1089,29 @@ let val rec g' =
 in  g'
 end
 
+(* statically evaluate a boolean test; either return the result or raise ConstFold *)
  and branch =
     fn (P.unboxed, vl) => not(branch(P.boxed, vl))
      | (P.boxed, [INT _]) => (click "n"; false)
+     | (P.boxed, [INT32 _]) => (click "n"; true)
      | (P.boxed, [STRING s]) => (click "o"; true)
      | (P.boxed, [VAR v]) => (case get v
 	 of {info=RECinfo _, ...} => (click "p"; true)
 	  | _ => raise ConstFold)
      | (P.cmp{oper=P.<, ...}, [VAR v, VAR w]) =>
 	  if v=w then (click "v"; false) else raise ConstFold
-     | (P.cmp{oper=P.<, kind=P.INT 31}, [INT i, INT j]) => (click "w"; i<j)
-     | (P.cmp{oper=P.>, kind}, [w,v]) =>
-	  branch(P.cmp{oper=P.<, kind=kind},[v,w])
-     | (P.cmp{oper=P.<=, kind}, [w,v]) =>
-	  branch(P.cmp{oper=P.>=, kind=kind},[v,w])
-     | (P.cmp{oper=P.>=, kind}, vl) =>
-	  not(branch(P.cmp{oper=P.<, kind=kind}, vl))
-     | (P.cmp{oper=P.<, kind=P.UINT 31}, [INT i, INT j]) => (
+     | (P.cmp{oper=P.<=, ...}, [VAR v, VAR w]) =>
+	  if v=w then (click "v"; true) else raise ConstFold
+     | (P.cmp{oper=P.<, kind=P.INT _}, [INT i, INT j]) => (click "w"; i<j)
+     | (P.cmp{oper=P.<, kind=P.UINT _}, [INT i, INT j]) => (
 	  click "w"; if j<0 then i>=0 orelse i<j else i>=0 andalso i<j)
-     | (P.cmp{oper=P.eql, kind=P.FLOAT _}, _) => raise ConstFold (* incase of NaN's *)
+     | (P.cmp{oper=P.>, kind}, [w,v]) =>
+	  branch(P.cmp{oper=P.<, kind=kind}, [v,w])
+     | (P.cmp{oper=P.<=, kind}, [w,v]) =>
+	  branch(P.cmp{oper=P.>=, kind=kind}, [v,w])
+     | (P.cmp{oper=P.>=, kind}, vl) =>
+	  not (branch(P.cmp{oper=P.<, kind=kind}, vl))
+     | (P.cmp{oper=P.eql, kind=P.FLOAT _}, _) => raise ConstFold (* in case of NaN's *)
      | (P.cmp{oper=P.eql, ...}, [VAR v, VAR w]) =>
 	  if v=w then  (click "v"; true) else raise ConstFold
      | (P.cmp{oper=P.eql,...}, [INT i, INT j]) => (click "w"; i=j)
@@ -1118,50 +1122,81 @@ end
      | _ => raise ConstFold
 
   and arith =
-    fn (P.arith{oper=P.*,...}, [INT 1, v]) => (click "F"; v)
-     | (P.arith{oper=P.*,...}, [v, INT 1]) => (click "G"; v)
-     | (P.arith{oper=P.*,...}, [INT 0, _]) => (click "H"; INT 0)
-     | (P.arith{oper=P.*,...}, [_, INT 0]) => (click "I"; INT 0)
+    fn (P.arith{oper=P.*, ...}, [INT 1, v]) => (click "F"; v)
+     | (P.arith{oper=P.*, ...}, [v, INT 1]) => (click "G"; v)
+     | (P.arith{oper=P.*, ...}, [INT 0, _]) => (click "H"; INT 0)
+     | (P.arith{oper=P.*, ...}, [_, INT 0]) => (click "I"; INT 0)
 (* FIXME: not 32-bit dependent code *)
-     | (P.arith{oper=P.*,kind=P.INT 31}, [INT i, INT j]) =>
+     | (P.arith{oper=P.*, kind=P.INT 31}, [INT i, INT j]) =>
 		let val x = i*j in x+x+2; click "J"; INT x end
-     | (P.arith{oper=P./,...}, [v, INT 1]) => (click "K"; v)
-     | (P.arith{oper=P./,...}, [INT i, INT 0]) => raise ConstFold
+     | (P.arith{oper=P./, ...}, [v, INT 1]) => (click "K"; v)
+     | (P.arith{oper=P./, ...}, [INT i, INT 0]) => raise ConstFold
      | (P.arith{oper=P./,kind=P.INT 31}, [INT i, INT j]) =>
 		let val x = Int.quot(i, j) in x+x; click "L"; INT x end
-     | (P.arith{oper=P.div,...}, [v, INT 1]) => (click "K"; v)
-     | (P.arith{oper=P.div,...}, [INT i, INT 0]) => raise ConstFold
-     | (P.arith{oper=P.div,kind=P.INT 31}, [INT i, INT j]) =>
+     | (P.arith{oper=P.div, ...}, [v, INT 1]) => (click "K"; v)
+     | (P.arith{oper=P.div, ...}, [INT i, INT 0]) => raise ConstFold
+     | (P.arith{oper=P.div, kind=P.INT 31}, [INT i, INT j]) =>
 		let val x = Int.div(i, j) in x+x; click "L"; INT x end
      (* FIXME: should we do anything for mod or rem here? *)
-     | (P.arith{oper=P.+,...}, [INT 0, v]) => (click "M"; v)
-     | (P.arith{oper=P.+,...}, [v, INT 0]) => (click "N"; v)
-     | (P.arith{oper=P.+,kind=P.INT 31}, [INT i, INT j]) =>
+     | (P.arith{oper=P.+, ...}, [INT 0, v]) => (click "M"; v)
+     | (P.arith{oper=P.+, ...}, [v, INT 0]) => (click "N"; v)
+     | (P.arith{oper=P.+, kind=P.INT 31}, [INT i, INT j]) =>
 	       let val x = i+j in x+x+2; click "O"; INT x end
-     | (P.arith{oper=P.-,...}, [v, INT 0]) => (click "P"; v)
-     | (P.arith{oper=P.-,kind=P.INT 31}, [INT i, INT j]) =>
+     | (P.arith{oper=P.-, ...}, [v, INT 0]) => (click "P"; v)
+     | (P.arith{oper=P.-, kind=P.INT 31}, [INT i, INT j]) =>
 	       let val x = i-j in x+x+2; click "Q"; INT x end
-     | (P.arith{oper=P.~,kind=P.INT 31,...}, [INT i]) =>
+     | (P.arith{oper=P.~, kind=P.INT 31,...}, [INT i]) =>
 		  let val x = ~i in x+x+2; click "X"; INT x end
      | _ => raise ConstFold
 
 (* pure arithmetic operations; raises ConstFold when there is no reduction *)
   and pure =
-    fn (P.pure_arith{oper=P.rshift, kind=P.INT 31}, [INT i, INT j]) =>
+    fn (P.pure_arith{oper=P.*, ...}, [INT 1, v]) => (click "F"; v)
+     | (P.pure_arith{oper=P.*, ...}, [v, INT 1]) => (click "G"; v)
+     | (P.pure_arith{oper=P.*, ...}, [INT 0, _]) => (click "H"; INT 0)
+     | (P.pure_arith{oper=P.*, ...}, [_, INT 0]) => (click "I"; INT 0)
+(* FIXME: 32-bit dependent code *)
+     | (P.pure_arith{oper=P.*, kind=P.UINT 31}, [INT i, INT j]) => let
+          val x = wtoi (itow i * itow j)
+	  in
+	    (x+x+2) handle Overflow => raise ConstFold;
+	    click "J"; INT x
+	  end
+     | (P.pure_arith{oper=P.+, ...}, [INT 0, v]) => (click "M"; v)
+     | (P.pure_arith{oper=P.+, ...}, [v, INT 0]) => (click "N"; v)
+     | (P.pure_arith{oper=P.+, kind=P.UINT 31}, [INT i, INT j]) => let
+	  val x = wtoi (itow i + itow j)
+	  in
+	    (x+x+2) handle Overflow => raise ConstFold;
+	    click "O"; INT x
+	  end
+     | (P.pure_arith{oper=P.-, ...}, [v, INT 0]) => (click "P"; v)
+     | (P.pure_arith{oper=P.-, kind=P.UINT 31}, [INT i, INT j]) => let
+	  val x = wtoi (itow i - itow j)
+	  in
+	    (x+x+2) handle Overflow => raise ConstFold;
+	    click "Q"; INT x
+	  end
+     | (P.pure_arith{oper=P.rshift, kind=P.INT 31}, [INT i, INT j]) =>
 	   (click "R"; INT(wtoi (Word.~>>(itow i, itow j))))
      | (P.pure_arith{oper=P.rshift, kind=P.INT 31}, [INT 0, _]) =>
 	   (click "S"; INT 0)
      | (P.pure_arith{oper=P.rshift, kind=P.INT 31}, [v, INT 0]) =>
 	   (click "T"; v)
-     | (P.length, [STRING s]) => (click "V"; INT(size s))
-     | (P.pure_arith{oper=P.lshift ,kind=P.INT 31}, [INT i, INT j]) =>
-		       (let val x = wtoi (Word.<<(itow i, itow j))
-			in x+x; click "Y"; INT x
-			end handle Overflow => raise ConstFold)
      | (P.pure_arith{oper=P.lshift, kind=P.INT 31}, [INT 0, _]) =>
 	  (click "Z"; INT 0)
      | (P.pure_arith{oper=P.lshift, kind=P.INT 31}, [v, INT 0]) =>
 	  (click "1"; v)
+     | (P.pure_arith{oper=P.lshift ,kind=P.INT 31}, [INT i, INT j]) =>
+		       (let val x = wtoi (Word.<<(itow i, itow j))
+			in x+x; click "Y"; INT x
+			end handle Overflow => raise ConstFold)
+     | (P.pure_arith{oper=P.andb, kind=P.INT 31}, [INT i, INT j]) =>
+	  (click "9"; INT(wtoi(Word.andb(itow i, itow j))))
+     | (P.pure_arith{oper=P.andb,kind=P.INT 31}, [INT 0, _]) =>
+	  (click "0"; INT 0)
+     | (P.pure_arith{oper=P.andb, kind=P.INT 31}, [_, INT 0]) =>
+	  (click "T"; INT 0)
      | (P.pure_arith{oper=P.orb, kind=P.INT 31}, [INT i, INT j]) =>
 	  (click "2"; INT(wtoi (Word.orb(itow i, itow j))))
      | (P.pure_arith{oper=P.orb, kind=P.INT 31}, [INT 0, v]) => (click "3"; v)
@@ -1173,12 +1208,7 @@ end
      | (P.pure_arith{oper=P.xorb, kind=P.INT 31}, [v, INT 0]) => (click "7"; v)
      | (P.pure_arith{oper=P.notb, kind=P.INT 31}, [INT i]) =>
 	  (click "8"; INT(wtoi (Word.notb (itow i))))
-     | (P.pure_arith{oper=P.andb, kind=P.INT 31}, [INT i, INT j]) =>
-	  (click "9"; INT(wtoi(Word.andb(itow i, itow j))))
-     | (P.pure_arith{oper=P.andb,kind=P.INT 31}, [INT 0, _]) =>
-	  (click "0"; INT 0)
-     | (P.pure_arith{oper=P.andb, kind=P.INT 31}, [_, INT 0]) =>
-	  (click "T"; INT 0)
+     | (P.length, [STRING s]) => (click "V"; INT(size s))
      | (P.real{fromkind=P.INT 31,tokind=P.FLOAT sz}, [INT i]) =>
 	  REAL{rval = RealLit.fromInt(IntInf.fromInt i), ty = sz}
      | (P.funwrap,[x as VAR v]) =>
