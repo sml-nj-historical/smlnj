@@ -52,7 +52,7 @@ structure Literals : LITERALS =
    *                         A MINI-LITERAL LANGUAGE                          *
    ****************************************************************************)
     datatype lit_val
-      = LI_INT of word
+      = LI_INT of IntInf.int	(* tagged integer literal *)
       | LI_STRING of string
       | LI_VAR of lvar
 
@@ -64,14 +64,14 @@ structure Literals : LITERALS =
       = LI_TOP of lit_val list
       | LI_BLOCK of (block_kind * lit_val list * lvar * lit_exp)
       | LI_F64BLOCK of (RealLit.t list * lvar * lit_exp)
-      | LI_I32BLOCK of (Word32.word list * lvar * lit_exp)
+      | LI_I32BLOCK of (IntInf.int list * lvar * lit_exp)
 
     fun rk2bk CPS.RK_VECTOR = LI_VECTOR
       | rk2bk CPS.RK_RECORD = LI_RECORD
       | rk2bk _ = bug "rk2bk: unexpected block kind"
 
     fun val2lit (CPS.VAR v) = LI_VAR v
-      | val2lit (CPS.INT i) = LI_INT(Word.fromInt i)
+      | val2lit (CPS.INT i) = LI_INT(IntInf.fromInt i)
       | val2lit (CPS.STRING s) = LI_STRING s
       | val2lit _ = bug "unexpected case in val2lit"
 
@@ -111,23 +111,22 @@ structure Literals : LITERALS =
    *   RETURN		0xff
    *)
 
-    fun w32ToBytes' (w, l) =
-	    Word8.fromLargeWord(Word32.>>(w, 0w24)) ::
-	    Word8.fromLargeWord(Word32.>>(w, 0w16)) ::
-	    Word8.fromLargeWord(Word32.>>(w, 0w8)) ::
-	    Word8.fromLargeWord w :: l
-    fun w32ToBytes w = w32ToBytes' (w, [])
-    fun w31ToBytes w = w32ToBytes(Word31.toLargeWordX w)
-    fun intToBytes i = w32ToBytes(Word32.fromInt i)
-    fun intToBytes' (i, l) = w32ToBytes'(Word32.fromInt i, l)
+    fun toBytes32 (n, l) =
+	  Word8.fromLargeInt(IntInf.~>>(n, 0w24)) ::
+	  Word8.fromLargeInt(IntInf.~>>(n, 0w16)) ::
+	  Word8.fromLargeInt(IntInf.~>>(n, 0w8)) ::
+	  Word8.fromLargeInt n :: l
+    fun toBytes32' (n, l) = toBytes32 (IntInf.fromInt n, l)
+(* 64BIT: assumption about default int size here *)
+    fun intToBytes n = toBytes32' (n, [])
     fun strToBytes s = map Byte.charToByte (explode s)
 
     val emit_MAGIC = W8V.fromList[0wx19, 0wx98, 0wx10, 0wx22]
     fun emit_DEPTH n = W8V.fromList(intToBytes n)
-    fun emit_INT i = W8V.fromList(0wx01 :: w31ToBytes i)
-    fun emit_RAW32 [i] = W8V.fromList(0wx02 :: w32ToBytes i)
+    fun emit_INT i = W8V.fromList(0wx01 :: toBytes32(i, []))
+    fun emit_RAW32 [i] = W8V.fromList(0wx02 :: toBytes32(i, []))
       | emit_RAW32 l =
-	  W8V.fromList(0wx03 :: (intToBytes'(length l, List.foldr w32ToBytes' [] l)))
+	  W8V.fromList(0wx03 :: (toBytes32'(length l, List.foldr toBytes32 [] l)))
     fun emit_RAW64 [r] = W8V.fromList(0wx04 :: Word8Vector.toList r)
       | emit_RAW64 l = W8V.concat(W8V.fromList(0wx05 :: intToBytes(length l)) :: l)
     fun emit_STR s = W8V.concat[
@@ -385,7 +384,7 @@ structure Literals : LITERALS =
 		fun mklit (v, lit) = let
 		    fun unREAL (CPS.REAL{rval, ...}) = rval	(* REAL32: FIXME *)
 		      | unREAL _ = bug "unREAL"
-		    fun unINT32 (CPS.INT32 w) = w
+		    fun unINT32 (CPS.INT32 w) = Word32.toLargeIntX w
 		      | unINT32 _ = bug "unINT32"
 		    in
 		      case IntHashTable.lookup m v

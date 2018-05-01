@@ -74,10 +74,10 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
    *              CONSTANTS AND UTILITY FUNCTIONS                            *
    ***************************************************************************)
 
-    fun unwrapf64 (u,x,ce) = PURE(P.funwrap,[u],x,FLTt 64,ce)		(* REAL32: FIXME *)
-    fun unwrapi32 (u,x,ce) = PURE(P.i32unwrap,[u],x,INTt 32,ce)		(* 64BIT: FIXME *)
-    fun wrapf64 (u,x,ce)   = PURE(P.fwrap,[u],x,BOGt,ce)		(* REAL32: FIXME *)
-    fun wrapi32 (u,x,ce)   = PURE(P.i32wrap,[u],x,BOGt,ce)		(* 64BIT: FIXME *)
+    fun unwrapf64 (u,x,ce) = PURE(P.funwrap, [u], x, FLTt 64, ce)	(* REAL32: FIXME *)
+    fun unwrapi32 (u,x,ce) = PURE(P.i32unwrap, [u], x, INTt 32, ce)	(* 64BIT: FIXME *)
+    fun wrapf64 (u,x,ce)   = PURE(P.fwrap, [u], x, BOGt, ce)		(* REAL32: FIXME *)
+    fun wrapi32 (u,x,ce)   = PURE(P.i32wrap, [u], x, BOGt, ce)		(* 64BIT: FIXME *)
 
     fun all_float (FLTt _::r) = all_float r
       | all_float (_::r) = false
@@ -426,10 +426,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 
 	 (* lpvar : F.value -> value *)
 	 fun lpvar (F.VAR v) = rename v
-	   | lpvar (F.INT32 i) =
-	       let val int32ToWord32 = Word32.fromLargeInt o Int32.toLarge
-		in INT32 (int32ToWord32 i)
-	       end
+	   | lpvar (F.INT32 i) = INT32(Word32.fromLargeInt(Int32.toLarge i))
 	   | lpvar (F.WORD32 w) = INT32 w
 	   | lpvar (F.INT i) = INT i
 	   | lpvar (F.WORD w) = INT(Word.toIntX w)
@@ -665,8 +662,8 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	      | F.PRIMOP ((_,AP.RAW_CCALL (SOME i),lt,ts),f::a::_::_,v,e) => let
 		    val { c_proto, ml_args, ml_res_opt, reentrant } = i
 		    val c_proto = cvtCProto c_proto
-		    fun cty AP.CCR64 = FLTt 64	(* REAL32: FIXME *)
-		      | cty AP.CCI32 = INTt 32	(* 64BIT: FIXME *)
+		    fun cty AP.CCR64 = FLTt 64		(* REAL32: FIXME *)
+		      | cty AP.CCI32 = INTt 32		(* 64BIT: FIXME *)
 		      | cty AP.CCML = BOGt
 		      | cty AP.CCI64 = BOGt
 		    val a' = lpvar a
