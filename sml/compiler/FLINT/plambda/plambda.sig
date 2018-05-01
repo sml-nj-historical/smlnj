@@ -29,13 +29,6 @@ signature PLAMBDA =
       = DATAcon of dataconstr * tyc list * lvar
       | INTcon of int IntConst.t	(* sz = 0 for IntInf.int *)
       | WORDcon of int IntConst.t
-(*
-      | INTcon of int
-      | INT32con of Int32.int
-      | INTINFcon of IntInf.int		(* only used with in matchcomp *)
-      | WORDcon of word
-      | WORD32con of Word32.word
-*)
       | STRINGcon of string
       | VLENcon of int
 
@@ -54,12 +47,6 @@ signature PLAMBDA =
       = VAR of lvar
       | INT of int IntConst.t	(* sz = 0 for IntInf.int *)
       | WORD of int IntConst.t
-(*
-      | INT of int
-      | INT32 of Int32.int
-      | WORD of word
-      | WORD32 of Word32.word
-*)
       | REAL of int RealConst.t
       | STRING of string
       | PRIM of Primop.primop * lty * tyc list

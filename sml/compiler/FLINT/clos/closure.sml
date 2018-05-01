@@ -1281,7 +1281,10 @@ val isBoxed3 =
 *)
 
 (* check if a variable is an int32 *)
-fun isInt32 (v,_,_) = case get_cty v of INTt 32 => true | _ => false  (* 64BIT: FIXME *)
+fun isInt32 (v,_,_) = (case get_cty v
+       of INTt 32 => true  (* 64BIT: FIXME *)
+        | _ => false
+      (* end case *))
 
 (* count the number of GP and FP registers needed for a list of lvars *)
 fun isFltCty (FLTt _) = unboxedfloat

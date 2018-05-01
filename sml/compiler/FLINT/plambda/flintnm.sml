@@ -293,6 +293,7 @@ and tovalue (venv,d,lexp,cont) = let
       val v = (case lexp
             (* for simple values, it's trivial *)
 	     of L.VAR v => cont(F.VAR v, LT.ltLookup(venv, v, d))
+(* 64BIT: will need to check for ty=64 and possibly other cases *)
 	      | L.INT{ival, ty=32} => cont(F.INT32(Int32.fromLarge ival), LT.ltc_int32)
 	      | L.WORD{ival, ty=32} => cont(F.WORD32(Word32.fromLargeInt ival), LT.ltc_int32)
 	      | L.INT{ival, ...} => let

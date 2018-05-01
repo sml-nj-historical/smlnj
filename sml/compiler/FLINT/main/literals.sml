@@ -66,9 +66,9 @@ structure Literals : LITERALS =
       | LI_F64BLOCK of (RealLit.t list * lvar * lit_exp)
       | LI_I32BLOCK of (Word32.word list * lvar * lit_exp)
 
-    fun rk2bk CPS.RK_VECTOR	= LI_VECTOR
-      | rk2bk CPS.RK_RECORD	= LI_RECORD
-      | rk2bk _		= bug "rk2bk: unexpected block kind"
+    fun rk2bk CPS.RK_VECTOR = LI_VECTOR
+      | rk2bk CPS.RK_RECORD = LI_RECORD
+      | rk2bk _ = bug "rk2bk: unexpected block kind"
 
     fun val2lit (CPS.VAR v) = LI_VAR v
       | val2lit (CPS.INT i) = LI_INT(Word.fromInt i)

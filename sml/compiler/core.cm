@@ -174,7 +174,6 @@ Semant/prim/primop-bindings.sml
 Semant/prim/prim-env.sml
 
 (* The FLINT optimizer ("middle-end"). *)
-FLINT/const-arith/sources.cm
 FLINT/clos/allocprof.sml
 FLINT/clos/cps-split.sml
 FLINT/clos/freemap.sml
@@ -306,6 +305,7 @@ CodeGen/main/object-desc.sml
 CodeGen/main/spill-table.sml
 
 (* Miscellaneous utilities. *)
+MiscUtil/const-arith/sources.cm
 MiscUtil/print/ppdec.sml
 MiscUtil/print/ppobj.sml
 MiscUtil/print/pptable.sml

@@ -300,9 +300,9 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
     fun do_switch_gen ren = Switch.switch {
 	    E_switchlimit = 4,
 	    E_int    = fn i => if i < ~0x20000000 orelse i >= 0x20000000
-			       then raise Switch.TooBig else INT i,
-	    E_word   = fn w => (* if w >= 0wx20000000
-			       then raise Switch.TooBig else *) INT (Word.toIntX w),
+			       then raise Switch.TooBig
+			       else INT i,
+	    E_word   = fn w => INT (Word.toIntX w),
 	    E_neq    = P.ineq,
 	    E_w32neq = P.cmp{oper=P.neq,kind=P.UINT 32},
 	    E_i32neq = P.cmp{oper=P.neq,kind=P.INT 32},

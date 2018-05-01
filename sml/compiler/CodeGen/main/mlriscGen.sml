@@ -177,10 +177,7 @@ struct
   (*
    * The allocation pointer.  This must be a register
    *)
-  val allocptrR =
-      case C.allocptr of
-	  M.REG(_,allocptrR) => allocptrR
-	| _ => error "allocptrR"
+  val M.REG(_,allocptrR) = C.allocptr
 
   (*
    * Dedicated registers.
@@ -223,11 +220,6 @@ struct
    * This dummy annotation is used to get an empty block
    *)
   val EMPTY_BLOCK = #create An.EMPTY_BLOCK ()
-
-  (*
-   * convert object descriptor to int
-   *)
-  val dtoi = LargeWord.toInt
 
   val newLabel = Label.anon
 
@@ -743,13 +735,13 @@ struct
             | untagSigned v = M.SRA(ity, regbind v, one)
 
           (*
-           * Integer operators
+           * Tagged integer operators
            *)
           fun int31add (addOp, CPS.INT k, w) = addOp(ity, LI(k+k), regbind w)
             | int31add (addOp, w, v as CPS.INT _) = int31add(addOp, v, w)
             | int31add (addOp, v, w) = addOp(ity,regbind v,stripTag(regbind w))
 
-          fun int31sub (subOp, CPS.INT k, w) = subOp(ity, LI(k+k+2),regbind w)
+          fun int31sub (subOp, CPS.INT k, w) = subOp(ity, LI(k+k+2), regbind w)
             | int31sub (subOp, v, CPS.INT k) = subOp(ity, regbind v, LI(k+k))
             | int31sub (subOp, v, w) = addTag(subOp(ity, regbind v, regbind w))
 
@@ -758,7 +750,7 @@ struct
             | int31xor (v, w) = addTag (M.XORB(ity, regbind v, regbind w))
 
           fun int31mul (signed, mulOp, v, w) = let
-		fun f (CPS.INT k, CPS.INT j) = (LI(k+k), LI(j))
+		fun f (CPS.INT k, CPS.INT j) = (LI(k+k), LI j)
 		  | f (CPS.INT k, w) = (untag(signed,w), LI(k+k))
 		  | f (v, w as CPS.INT _) = f(w, v)
 		  | f (v, w) = (stripTag(regbind v), untag(signed,w))
@@ -1179,11 +1171,6 @@ raise ex)
           and copyM(31, x, v, k, hp) = copy(I31, x, v, k, hp)
             | copyM(_, x, v, k, hp)  = copy(I32, x, v, k, hp)
 
-          and eqVal (VAR x,VAR y) = x = y
-            | eqVal (LABEL x,LABEL y) = x = y
-            | eqVal (INT x, INT y) = x = y
-            | eqVal _ = false
-
               (* normal branches *)
           and branch (cv, cmp, [v, w], yes, no, hp) =
               let val trueLab = newLabel ()
@@ -1298,8 +1285,8 @@ raise ex)
 		val desc = D.makeDesc' (len, D.tag_record)
 		in
 		  treeifyAlloc(w,
-                     allocRecord(markPTR, memDisambig w, M.LI desc, vl, hp),
-                        e, hp+ws+len*ws)
+		    allocRecord(markPTR, memDisambig w, M.LI desc, vl, hp),
+		      e, hp+ws+len*ws)
 		end
 
 	(* Allocate a record with I32 components *)
@@ -1326,8 +1313,8 @@ raise ex)
 			else hp
 		in  (* The components are floating point *)
 		  treeifyAlloc(w,
-		     allocFrecord(memDisambig w, M.LI desc, vl, hp),
-			e, hp+ws+len*8)
+		    allocFrecord(memDisambig w, M.LI desc, vl, hp),
+		      e, hp+ws+len*8)
 		end
 
         (* Allocate a vector *)
@@ -1494,7 +1481,7 @@ raise ex)
                  defBoxed(x, scaleWord(regbind v, INT i), e, hp)
 
             (*** APP ***)
-            | gen (APP(INT k, args), hp) = updtHeapPtr(hp)
+            | gen (APP(INT k, args), hp) = updtHeapPtr hp
             | gen (APP(VAR f, args), hp) = externalApp(f, args, hp)
             | gen (APP(LABEL f, args), hp) = internalApp(f, args, hp)
 
@@ -1719,8 +1706,8 @@ raise ex)
             | gen (PURE(P.makeref, [v], x, _, e), hp) =
               let val tag = M.LI D.desc_ref
                   val mem = memDisambig x
-              in  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,LI hp),tag,mem));
-                  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,LI(hp+ws)),
+              in  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI hp), tag, mem));
+                  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI(hp+ws)),
                                regbind' v, mem));
                   treeifyAlloc(x, hp+ws, e, hp+2*ws)
               end
@@ -2085,7 +2072,7 @@ raise ex)
 		    then gen(e, hp)
 		    else gen(d, hp)
 		end
-            | gen (BRANCH(P.cmp{oper, kind=P.INT 31}, vw, p, e, d), hp) =
+            | gen (BRANCH(P.cmp{oper, kind=P.INT _}, vw, p, e, d), hp) =
                 branch(p, signedCmp oper, vw, e, d, hp)
             | gen (BRANCH(P.cmp{oper,kind=P.UINT 31},[INT v', INT k'],_,e,d),hp)=
               let open Word
@@ -2102,8 +2089,6 @@ raise ex)
                   then gen(e, hp)
                   else gen(d, hp)
               end
-            | gen (BRANCH(P.cmp{oper, kind=P.UINT 31}, vw, p, e, d), hp) =
-                branch(p, unsignedCmp oper, vw, e, d, hp)
             | gen (BRANCH(P.cmp{oper,kind=P.UINT 32},[INT32 v,INT32 k],_,e,d),
                   hp) =
               let open Word32
@@ -2118,10 +2103,8 @@ raise ex)
                   then gen(e, hp)
                   else gen(d, hp)
               end
-            | gen (BRANCH(P.cmp{oper, kind=P.UINT 32}, vw, p, e, d), hp) =
+            | gen (BRANCH(P.cmp{oper, kind=P.UINT _}, vw, p, e, d), hp) =
                 branch(p, unsignedCmp oper, vw, e, d, hp)
-            | gen (BRANCH(P.cmp{oper, kind=P.INT 32}, vw, p, e, d), hp) =
-                branch(p, signedCmp oper, vw, e, d, hp)
 (* REAL32: FIXME *)
 	    | gen (BRANCH(P.fcmp{oper=P.fsgn,size=64}, [v], p, d, e), hp) = let
 	        val trueLab = newLabel ()
