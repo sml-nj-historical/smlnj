@@ -279,10 +279,8 @@ end
 (* are two FLINT values equal? *)
   fun sameValue (v1, v2) = (case (v1, v2)
 	 of (VAR x, VAR y) => (x = y)
-	  | (INT n1, INT n2) => (n1 = n2)
-	  | (INT32 n1, INT32 n2) => (n1 = n2)
-	  | (WORD w1, WORD w2) => (w1 = w2)
-	  | (WORD32 w1, WORD32 w2) => (w1 = w2)
+	  | (INT n1, INT n2) => (#ty n1 = #ty n2) andalso (#ival n1 = #ival n2)
+	  | (WORD w1, WORD w2) => (#ty w1 = #ty w2) andalso (#ival w1 = #ival w2)
 	  | (REAL r1, REAL r2) => RealLit.same(#rval r1, #rval r2)
 	  | (STRING s1, STRING s2) => (s1 = s2)
 	  | _ => false

@@ -242,36 +242,32 @@ fun int_switch(e: 'value, l, default, inrange) =
 	    int_switch(len, map one_len bylength, default, NONE))
  	end
 
- fun word_switch(w, (L.WORDcon wval,e)::r, default) =
-       E_branch(E_wneq, w, E_word wval, word_switch(w,r,default), e)
+ fun word_switch(w, (L.WORDcon{ival, ...},e)::r, default) =
+       E_branch(E_wneq, w, E_word(Word.fromLargeInt ival), word_switch(w,r,default), e)
    | word_switch(_, nil, default) = default
    | word_switch _ = bug "switch.88"
 
- fun word32_switch(w,(L.WORD32con i32val,e)::r,default) =
-       E_branch(E_w32neq, w, E_word32 i32val, word32_switch(w,r,default), e)
+ fun word32_switch(w,(L.WORDcon{ival, ...},e)::r,default) =
+       E_branch(E_w32neq, w, E_word32(Word32.fromLargeInt ival), word32_switch(w,r,default), e)
    | word32_switch(_, nil, default) = default
    | word32_switch _ = bug "switch.78"
 
- fun int32_switch(w, (L.INT32con i32val, e)::r, default) = let
-       val int32ToWord32 = Word32.fromLargeInt o Int32.toLarge
-     in
-       E_branch(E_i32neq, w, E_int32 (int32ToWord32 i32val),
-		int32_switch(w, r, default), e)
-     end
+ fun int32_switch(w, (L.INTcon{ival, ...}, e)::r, default) =
+       E_branch(E_i32neq, w, E_int32 (Word32.fromLargeInt ival), int32_switch(w, r, default), e)
    | int32_switch(_, nil, default) = default
    | int32_switch _ = bug "switch.77"
 
  in fn {cases=nil,default,...} => default
      | {exp,sign,cases as (c,_)::_,default} => (case c
-	  of L.INTcon _ => let
-		fun un_int(L.INTcon i, e) = (i,e)
+	  of L.INTcon{ty = 31, ...} => let
+		fun un_int(L.INTcon{ival, ...}, e) = (Int.fromLarge ival, e)
 		  | un_int _ = bug "un_int"
 		in
 		  int_switch(exp, map un_int cases, default, NONE)
 		end
-	    | L.WORDcon _ => word_switch(exp, cases, default)
-	    | L.WORD32con _ => word32_switch(exp,cases,default)
-	    | L.INT32con _ => int32_switch(exp,cases,default)
+	    | L.INTcon{ty = 32, ...} => int32_switch(exp,cases,default)
+	    | L.WORDcon{ty = 31, ...} => word_switch(exp, cases, default)
+	    | L.WORDcon{ty = 32, ...} => word32_switch(exp,cases,default)
 	    | L.STRINGcon _ => string_switch(exp,cases,default)
 	    | L.DATAcon((_,A.EXN _,_),_,_) => exn_switch(exp,cases,default)
 	    | L.DATAcon _ => datacon_switch(exp,sign,cases,default)

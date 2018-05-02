@@ -71,21 +71,21 @@ struct
 
     (** con: used to specify all possible switching statements. *)
     fun toStringCon (F.DATAcon((symbol,_,_),_,_))   = S.name symbol
-      | toStringCon (F.INTcon i)    = "(I)" ^ (Int.toString i)
-      | toStringCon (F.INT32con i)  = "(I32)" ^ (Int32.toString i)
-      | toStringCon (F.WORDcon i)   = "(W)" ^ (Word.toString i)
-      | toStringCon (F.WORD32con i) = "(W32)" ^ (Word32.toString i)
+      | toStringCon (F.INTcon{ival, ty}) =
+	  concat["(I", Int.toString ty, ")", IntInf.toString ival]
+      | toStringCon (F.WORDcon{ival, ty}) =
+	  concat["(W", Int.toString ty, ")", IntInf.toString ival]
       | toStringCon (F.STRINGcon s) = PU.mlstr s
       | toStringCon (F.VLENcon n)   = Int.toString n
 
     val printCon = say o toStringCon
 
     (** simple values, including variables and static constants. *)
-    fun toStringValue (F.VAR v)    = LV.lvarName v
-      | toStringValue (F.INT i)    = "(I)" ^ Int.toString i
-      | toStringValue (F.INT32 i)  = "(I32)" ^ Int32.toString i
-      | toStringValue (F.WORD i)   = "(W)" ^ Word.toString i
-      | toStringValue (F.WORD32 i) = "(W32)" ^ Word32.toString i
+    fun toStringValue (F.VAR v) = LV.lvarName v
+      | toStringValue (F.INT{ival, ty}) =
+	  concat["(I", Int.toString ty, ")", IntInf.toString ival]
+      | toStringValue (F.WORD{ival, ty}) =
+	  concat["(W", Int.toString ty, ")", IntInf.toString ival]
       | toStringValue (F.REAL{rval, ty}) =
 	  concat["(R", Int.toString ty, ")", RealLit.toString rval]
       | toStringValue (F.STRING s) = PU.mlstr s

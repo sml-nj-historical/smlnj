@@ -235,6 +235,7 @@ val isFloat  = RT.isFloat
 
 val isPair = RT.isPair
 
+fun tagInt i = INT{ival = IntInf.fromInt i, ty = Target.defaultIntSz}
 
 (****************************************************************************
  *                      TYPED INTERPRETATION OF UNTAGGED                    *
@@ -298,7 +299,7 @@ fun utgd (tc, kenv, rt) =
 fun tgdc (i, tc, kenv, rt) =
   let val nt = LT.tcc_tuple [LT.tcc_int, rt]
    in fn u => let val x = mkv()
-               in RECORD(FU_rk_tuple, [INT i, u], x, WRAP(nt, VAR x))
+               in RECORD(FU_rk_tuple, [tagInt i, u], x, WRAP(nt, VAR x))
               end
   end
 
@@ -356,7 +357,7 @@ fun tcCoerce (kenv, tc, nt, wflag, b) =
 		      | MAYBE z => h(r, i+1, iaddLexp(e, z),
 				     (i, SOME a)::el, res+1))
 
-	  in h(ts, 0, RET[INT 0], [], 0)
+	  in h(ts, 0, RET[tagInt 0], [], 0)
 	 end
      | (TC_ARROW _, _) => (* (tc1, tc2) => *)
         let val (tc1, _) = LT.tcd_parrow tc

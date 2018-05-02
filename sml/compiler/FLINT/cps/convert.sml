@@ -426,10 +426,10 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 
 	 (* lpvar : F.value -> value *)
 	 fun lpvar (F.VAR v) = rename v
-	   | lpvar (F.INT32 i) = INT32(Word32.fromLargeInt(Int32.toLarge i))
-	   | lpvar (F.WORD32 w) = INT32 w
-	   | lpvar (F.INT i) = INT i
-	   | lpvar (F.WORD w) = INT(Word.toIntX w)
+	   | lpvar (F.INT{ival, ty=32}) = INT32(Word32.fromLargeInt ival)
+	   | lpvar (F.WORD{ival, ty=32}) = INT32(Word32.fromLargeInt ival)
+	   | lpvar (F.INT{ival, ...}) = INT(Int.fromLarge ival)
+	   | lpvar (F.WORD{ival, ...}) = INT(Int.fromLarge ival)
 	   | lpvar (F.REAL r) = REAL r
 	   | lpvar (F.STRING s) = STRING s
 

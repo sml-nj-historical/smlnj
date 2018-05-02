@@ -241,9 +241,7 @@ in
     infix 3 $
 
     val int = PU.w_int
-    val int32 = PU.w_int32
-    val word = PU.w_word
-    val word32 = PU.w_word32
+    val intinf = PU.w_intinf
     val string = PU.w_string
     val share = PU.ah_share
     val list = PU.w_list
@@ -588,10 +586,8 @@ in
 
 	val op $ = PU.$ V
 	fun value (F.VAR v) = "a" $ [lvar v]
-	  | value (F.INT i) = "b" $ [int i]
-	  | value (F.INT32 i32) = "c" $ [int32 i32]
-	  | value (F.WORD w) = "d" $ [word w]
-	  | value (F.WORD32 w32) = "e" $ [word32 w32]
+	  | value (F.INT{ty, ival}) = "b" $ [int ty, intinf ival]
+	  | value (F.WORD{ty, ival}) = "d" $ [int ty, intinf ival]
 	  | value (F.REAL{ty, rval}) = "f" $ [
 		int ty, string (Byte.bytesToString (RealLit.toBytes rval))
 	      ]
@@ -600,13 +596,8 @@ in
 	fun con arg = let
 	    val op $ = PU.$ C
 	    fun c (F.DATAcon (dc, ts, v), e) = "1" $ [dcon (dc, ts), lvar v, lexp e]
-	      | c (F.INTcon i, e) = "2" $ [int i, lexp e]
-	      | c (F.INT32con i32, e) = "3" $ [int32 i32, lexp e]
-	      | c (F.WORDcon w, e) = "4" $ [word w, lexp e]
-	      | c (F.WORD32con w32, e) = "5" $ [word32 w32, lexp e]
-(* REALcon has been removed
-	      | c (F.REALcon s, e) = "6" $ [string s, lexp e]
-*)
+	      | c (F.INTcon{ty, ival}, e) = "2" $ [int ty, intinf ival, lexp e]
+	      | c (F.WORDcon{ty, ival}, e) = "4" $ [int ty, intinf ival, lexp e]
 	      | c (F.STRINGcon s, e) = "7" $ [string s, lexp e]
 	      | c (F.VLENcon i, e) = "8" $ [int i, lexp e]
 	    in

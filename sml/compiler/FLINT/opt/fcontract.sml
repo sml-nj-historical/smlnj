@@ -207,6 +207,8 @@ structure FContract :> FCONTRACT =
     val cplv = LambdaVar.dupLvar
     val mklv = LambdaVar.mkLvar
 
+    fun tagInt n = F.INT{ival = IntInf.fromInt n, ty = Target.defaultIntSz}
+
     type options = {etaSplit : bool, tfnInline : bool}
 
     datatype sval
@@ -325,10 +327,8 @@ structure FContract :> FCONTRACT =
 			    (say("while in FContract.used "^(C.LVarString lv)^"\n");
 			     raise x) *)
 
-	  fun eqConV (F.INTcon i1,	F.INT i2)	= i1 = i2
-	    | eqConV (F.INT32con i1,	F.INT32 i2)	= i1 = i2
-	    | eqConV (F.WORDcon i1,	F.WORD i2)	= i1 = i2
-	    | eqConV (F.WORD32con i1,	F.WORD32 i2)	= i1 = i2
+	  fun eqConV (F.INTcon i1,	F.INT i2)	= (#ival i1 = #ival i2)
+	    | eqConV (F.WORDcon i1,	F.WORD i2)	= (#ival i1 = #ival i2)
 	    | eqConV (F.STRINGcon s1,	F.STRING s2)	= s1 = s2
 	    | eqConV (con, v) = bugval("unexpected comparison with val", v)
 
@@ -371,7 +371,7 @@ structure FContract :> FCONTRACT =
 		     | Fun (lv,le,args,_,_) =>
 		       C.unuselexp undertake
 				   (F.LET(map #1 args,
-					  F.RET (map (fn _ => F.INT 0) args),
+					  F.RET (map (fn _ => tagInt 0) args),
 					  le))
 		     | TFun{1=lv,2=le,...} =>
 		       C.unuselexp undertake le
@@ -1018,7 +1018,7 @@ structure FContract :> FCONTRACT =
 			      val svs = map (val2sval m) vs
 			  in case g svs
 			      of SOME sv => (click_record();
-					     loop (substitute(m, lv, sv, F.INT 0)) le cont
+					     loop (substitute(m, lv, sv, tagInt 0)) le cont
 						  before app (unuseval m) vs)
 			       | _ =>
 				 let val nm = addbind(m, lv, Record(lv, svs))

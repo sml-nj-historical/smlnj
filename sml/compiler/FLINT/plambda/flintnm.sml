@@ -126,10 +126,8 @@ fun force_raw (pty) =
 
 fun tocon con = (case con
        of L.INTcon{ty=0, ...} => bug "IntInf"
-	| L.INTcon{ival, ty=32} => F.INT32con(Int32.fromLarge ival)
-	| L.INTcon{ival, ...} => F.INTcon(Int.fromLarge ival)
-	| L.WORDcon{ival, ty=32} => F.WORD32con(Word32.fromLargeInt ival)
-	| L.WORDcon{ival, ...} => F.WORDcon(Word.fromLargeInt ival)
+        | L.INTcon x    => F.INTcon x
+	| L.WORDcon x   => F.WORDcon x
 	| L.STRINGcon x => F.STRINGcon x
 	| L.VLENcon x   => F.VLENcon x
 	| L.DATAcon x => bug "unexpected case in tocon"
@@ -294,30 +292,33 @@ and tovalue (venv,d,lexp,cont) = let
             (* for simple values, it's trivial *)
 	     of L.VAR v => cont(F.VAR v, LT.ltLookup(venv, v, d))
 (* 64BIT: will need to check for ty=64 and possibly other cases *)
-	      | L.INT{ival, ty=32} => cont(F.INT32(Int32.fromLarge ival), LT.ltc_int32)
-	      | L.WORD{ival, ty=32} => cont(F.WORD32(Word32.fromLargeInt ival), LT.ltc_int32)
-	      | L.INT{ival, ...} => let
-                  val i = Int.fromLarge ival
-		  fun mkINT i = L.INT{ival = IntInf.fromInt i, ty = Target.defaultIntSz}
+	      | L.INT(i as {ival, ty=32}) => cont(F.INT i, LT.ltc_int32)
+	      | L.INT i => let
+		  fun mkINT i = L.INT{ival = i, ty = Target.defaultIntSz}
 		  in
-		    (i+i+2; cont(F.INT i, LT.ltc_int))
-		      handle Overflow => let
+		  (* downstream we need to be able to represent i+i+2 as an int, which
+		   * means that we need ~0x20000000 <= i < 0x20000000-1.
+		   *)
+		    if (#ival i < ~0x20000000) orelse (0x1fffffff <= #ival i)
+		      then let
 			val _ = debugmsg "toValue INT Overflow"
-			val z = i div 2
-			val ne = L.APP(iadd_prim, L.RECORD [mkINT z, mkINT (i-z)])
+			val x1 = (#ival i) div 2
+			val x2 = (#ival i) - x1
+			val ne = L.APP(iadd_prim, L.RECORD [mkINT x1, mkINT x2])
 			in
 			  tovalue(venv, d, ne, cont)
 			end
+		      else cont(F.INT i, LT.ltc_int)
 		  end
-	      | L.WORD{ival, ...} => let
-		  val i = Word.fromLargeInt ival
-		  fun mkWORD i = L.WORD{ival = Word.toLargeInt i, ty = Target.defaultIntSz}
+	      | L.WORD(w as {ival, ty=32}) => cont(F.WORD w, LT.ltc_int32)
+	      | L.WORD w => let
+		  fun mkWORD i = L.WORD{ival = i, ty = Target.defaultIntSz}
 		  in
-		    if Word.<(i, 0wx20000000)
-		      then cont(F.WORD i, LT.ltc_int)
+		    if #ival w < 0x1fffffff
+		      then cont(F.WORD w, LT.ltc_int)
 		      else let
-			val x1 = i div 0w2
-			val x2 = i - x1
+			val x1 = (#ival w) div 2
+			val x2 = (#ival w) - x1
 			val ne = L.APP(uadd_prim, L.RECORD [mkWORD x1, mkWORD x2])
 			in
 			  tovalue(venv, d, ne, cont)

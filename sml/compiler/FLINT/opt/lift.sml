@@ -285,11 +285,12 @@ fun lift (e, env, td, d, ad, rename) =
 	fun loopc env v = let
 	    fun c t = (v, t, [], [])
 	in
-	    case v of
-		VAR v' => loopcv env VAR v'
+	    case v
+	     of VAR v' => loopcv env VAR v'
+	      | INT{ty = 32, ...} => c LE.ltc_int32	(* 64BIT: FIXME *)
 	      | INT _ => c LE.ltc_int
+	      | WORD{ty = 32, ...} => c LE.ltc_int32	(* 64BIT: FIXME *)
 	      | WORD _ => c LE.ltc_int
-	      | (INT32 _ | WORD32 _) => c LE.ltc_int32
 	      | REAL _  => c LE.ltc_real		(* REAL32: FIXME *)
 	      | STRING _ => c LE.ltc_string
 	end

@@ -201,8 +201,9 @@ fun check phase envs lexp = let
 	      errMsg (le, "Unbound Lvar " ^ LV.lvarName lv, LT.ltc_void)
       fun typeofVal (VAR lv) = typeofVar lv
 (* 64BIT: REAL64: need more cases *)
+	| typeofVal (INT{ty=32, ...}) = LT.ltc_int32
+	| typeofVal (WORD{ty=32, ...}) = LT.ltc_int32
 	| typeofVal (INT _ | WORD _) = LT.ltc_int
-	| typeofVal (INT32 _ | WORD32 _) = LT.ltc_int32
         | typeofVal (REAL _) = LT.ltc_real
 	| typeofVal (STRING _) = LT.ltc_string
       fun typeofFn ve (_,lvar,vts,eb) = let
@@ -332,8 +333,10 @@ fun check phase envs lexp = let
                           lvarDef le v;
                           foldl2 (extEnv, venv, [v], nts, mismatch fp)
 		      end
+(* 64BIT: need more cases *)
+		  | INTcon{ty=32, ...} => g LT.ltc_int32
+		  | WORDcon{ty=32, ...} => g LT.ltc_int32
 		  | (INTcon _ | WORDcon _) => g LT.ltc_int
-		  | (INT32con _ | WORD32con _) => g LT.ltc_int32
 		  | STRINGcon _ => g ltString
 		  | VLENcon _ => g LT.ltc_int (* ? *)
 	      in typeIn venv' e

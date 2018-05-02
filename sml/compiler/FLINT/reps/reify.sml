@@ -32,6 +32,8 @@ fun debugmsg(m) = if !debugging then say (m^"\n") else ()
 
 val mkv = LambdaVar.mkLvar
 
+fun tagInt i = INT{ival = IntInf.fromInt i, ty = Target.defaultIntSz}
+
 (** a special version of WRAP and UNWRAP for post-reify typechecking *)
 val lt_arw = LT.ltc_tyc o LT.tcc_arrow
 val lt_vfn = lt_arw(LT.ffc_fixed, [LT.tcc_void], [LT.tcc_void])
@@ -202,7 +204,7 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
               | SELECT(u, i, v, e) => SELECT(u, i, v, loop e)
 
               | CON ((_, DA.CONSTANT i, _), _, _, v, e) =>
-                  WRAP(LT.tcc_int, [INT i], v, loop e)
+                  WRAP(LT.tcc_int, [tagInt i], v, loop e)
 
               | CON ((_, DA.EXN (DA.LVAR x), nt), [], u, v, e) =>
                   let val z = mkv()
@@ -210,7 +212,7 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
 			  handle LT.DeconExn => bug "transform loop"
                       val lt_exr =
                         LT.tcc_tuple [LT.tcc_void, tcf ax, LT.tcc_int]
-                   in RECORD(FU.rk_tuple, [VAR x, u, INT 0], z,
+                   in RECORD(FU.rk_tuple, [VAR x, u, tagInt 0], z,
                              WRAP(lt_exr, [VAR z], v, loop e))
                   end
 

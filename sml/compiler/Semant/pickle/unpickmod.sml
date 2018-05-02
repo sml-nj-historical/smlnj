@@ -1284,9 +1284,7 @@ structure UnpickMod : UNPICKMOD = struct
 
 	fun pair m fp p = UU.r_pair session m fp p
 	val int = UU.r_int session
-	val int32 = UU.r_int32 session
-	val word = UU.r_word session
-	val word32 = UU.r_word32 session
+	val intinf = UU.r_intinf session
 	val bool = UU.r_bool session
 
 	val { pid, string, symbol, access, conrep, consig,
@@ -1365,10 +1363,8 @@ structure UnpickMod : UNPICKMOD = struct
 
 	fun value () = let
 	    fun v #"a" = F.VAR(lvar ())
-	      | v #"b" = F.INT(int ())
-	      | v #"c" = F.INT32(int32 ())
-	      | v #"d" = F.WORD(word ())
-	      | v #"e" = F.WORD32(word32 ())
+	      | v #"b" = F.INT{ty = int(), ival = intinf()}
+	      | v #"d" = F.WORD{ty = int(), ival = intinf()}
 	      | v #"f" = F.REAL{
 		      ty = int(),
 		      rval = RealLit.fromBytes (Byte.stringToBytes (string ()))
@@ -1387,13 +1383,8 @@ structure UnpickMod : UNPICKMOD = struct
 		    in
 		      (F.DATAcon (dc, ts, lvar ()), lexp ())
 		    end
-	      | c #"2" = (F.INTcon (int ()), lexp ())
-	      | c #"3" = (F.INT32con (int32 ()), lexp ())
-	      | c #"4" = (F.WORDcon (word ()), lexp ())
-	      | c #"5" = (F.WORD32con (word32 ()), lexp ())
-(* REALcon has been removed
-	      | c #"6" = (F.REALcon (string ()), lexp ())
-*)
+	      | c #"2" = (F.INTcon{ty = int(), ival = intinf()}, lexp ())
+	      | c #"4" = (F.WORDcon{ty = int(), ival = intinf()}, lexp ())
 	      | c #"7" = (F.STRINGcon (string ()), lexp ())
 	      | c #"8" = (F.VLENcon (int ()), lexp ())
 	      | c _ = raise Format

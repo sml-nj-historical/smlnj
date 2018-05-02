@@ -207,7 +207,7 @@ fun UNWRAP(t, u) =
   fun tcode_realN n = n * 5
 
 
-  fun tovalue i = FLINT.INT i
+  fun tovalue i = FLINT.INT{ival = IntInf.fromInt i, ty = Target.defaultIntSz}
   val tolexp = fn tcode => RET[tovalue tcode]
   val tcode_void   : lexp = tolexp tcode_void
   val tcode_record : lexp = tolexp tcode_record
