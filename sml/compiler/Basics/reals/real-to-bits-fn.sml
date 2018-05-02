@@ -58,7 +58,7 @@
  *
  * Subnormal numbers are encoded with an exponent of 0 and a non-zero mantissa.
  *
- *	r = (-1)^s * 2^{-bias} * 0 . b_1 b_2 ... b_{p-1}
+ *      r = (-1)^s * 2^{-bias+1} * 0 . b_1 b_2 ... b_{p-1}
  *)
 signature IEEE_FLOAT_PARAMS =
   sig
@@ -297,11 +297,8 @@ functor RealToBitsFn (FP : IEEE_FLOAT_PARAMS) : REAL_TO_BITS =
             mk
           end
 
-  (* build the byte-vector representation, where isNeg denotes the sign, exp is the word
-   * representation of the biased exponent, and frac is the IntInf.int representation of
-   * the mantissa.
-   *)
-    fun pack (isNeg, exp, frac : IntInf.int) = let
+  (* allocate a byte array and set the sign and exponent fields *)
+    fun mkSignAndExp (isNeg, exp) = let
         (* allocate and initialize space for the result *)
           val bytes = W8A.array(numBytes, 0w0)
         (* set the modify the i'th byte by or'ing in b *)
@@ -315,7 +312,20 @@ functor RealToBitsFn (FP : IEEE_FLOAT_PARAMS) : REAL_TO_BITS =
                   orb (i, w2b (Word.>>(alignedExp, 0w8*Word.fromInt(numExpBytes-i-1))));
                   doExpBytes (i+1))
                 else ()
-          val _ = doExpBytes 0
+          in
+            doExpBytes 0;
+            bytes
+          end
+
+  (* build the byte-vector representation, where isNeg denotes the sign, exp is the word
+   * representation of the biased exponent, and frac is the IntInf.int representation of
+   * the mantissa.
+   *)
+    fun pack (isNeg, exp, frac : IntInf.int) = let
+        (* allocate and initialize space for the result *)
+          val bytes = mkSignAndExp (isNeg, exp)
+        (* set the modify the i'th byte by or'ing in b *)
+          fun orb (i, b) = W8A.update(bytes, i, W8.orb(W8A.sub(bytes, i), b))
         (* process the mantissa *)
           val makebits = makebits frac
           val _ = List.app
@@ -326,18 +336,39 @@ functor RealToBitsFn (FP : IEEE_FLOAT_PARAMS) : REAL_TO_BITS =
             W8A.toVector bytes
           end
 
+  (* build the byte-vector representation for a non-normal representation (i.e., sub-normal
+   * numbers, infinities, or NaNs), where isNeg denotes the sign, exp is the special
+   * exponent value, and frac is the IntInf.int representation of the mantissa.
+   *)
+    fun packSpecial (isNeg, exp, frac : IntInf.int) = let
+        (* allocate and initialize space for the result *)
+          val bytes = mkSignAndExp (isNeg, exp)
+        (* set the modify the i'th byte by or'ing in b *)
+          fun orb (i, b) = W8A.update(bytes, i, W8.orb(W8A.sub(bytes, i), b))
+        (* fill in the mantissa bits *)
+          fun lp (mant, ix) = if (mant > 0)
+                then (
+                  orb (ix, W8.fromLargeInt mant); (* grab low 8 bits of mantissa *)
+                  lp (IntInf.~>>(mant, 0w8), ix - 1))
+                else ()
+          in
+            lp (frac, numBytes-1);
+          (* return the immutable vector representation *)
+            W8A.toVector bytes
+          end
+
     val specialExp = Word.<<(0w1, Word.fromInt expWidth) - 0w1
 
-    val zero = pack(false, 0w0, 0)
-    val posInf = pack (false, specialExp, 0)
-    val negInf = pack (true, specialExp, 0)
-    val quietNaN = pack (false, specialExp, 3)  (* quiet NaN with 0 payload *)
+    fun zero isNeg = pack(isNeg, 0w0, 0)
+    val posInf = packSpecial (false, specialExp, 0)
+    val negInf = packSpecial (true, specialExp, 0)
+    val quietNaN = packSpecial (false, specialExp, 1)  (* quiet NaN with 0 payload *)
 
-    fun toBits lit = (case RealLit.toRep lit
-           of RealLit.PosInf => (posInf, IEEEReal.INF)
-            | RealLit.NegInf => (negInf, IEEEReal.INF)
-            | RealLit.QNaN => (quietNaN, IEEEReal.NAN IEEEReal.QUIET)
-            | RealLit.Flt{isNeg, digits=[], exp} => (pack(isNeg, 0w0, 0), IEEEReal.ZERO)
+    fun classify lit = (case RealLit.toRep lit
+           of RealLit.PosInf => IEEEReal.INF
+            | RealLit.NegInf => IEEEReal.INF
+            | RealLit.QNaN => IEEEReal.NAN IEEEReal.QUIET
+            | RealLit.Flt{isNeg, digits=[], exp} => IEEEReal.ZERO
             | RealLit.Flt{isNeg, digits, exp} => let
               (* convert the digits to a IntInf.int and adjust the exponent *)
                 val (frac_10, exp_10) = let
@@ -351,14 +382,53 @@ functor RealToBitsFn (FP : IEEE_FLOAT_PARAMS) : REAL_TO_BITS =
                 val {frac, exp} = round(flt, FP.significant+1)
               (* adjust exp for size of fraction *)
                 val exp = exp + numBitsForInt frac - 1
-              (* bias exponent and convert to word *)
-                val biasedExp = W.fromInt(exp + maxExp)
                 in
                   if (exp < minExp)
-                    then raise Fail "subnormal floats are not yet implemented"
+                    then let
+                      val diff = Word.fromInt(minExp - exp)
+                      val frac = IntInf.~>>(frac, diff)
+                      in
+                        if frac > 0
+                          then IEEEReal.SUBNORMAL
+                          else IEEEReal.ZERO
+                      end
+                  else if (maxExp < exp)
+                    then IEEEReal.INF
+                    else IEEEReal.NORMAL
+                end
+          (* end case *))
+
+    fun toBits lit = (case RealLit.toRep lit
+           of RealLit.PosInf => (posInf, IEEEReal.INF)
+            | RealLit.NegInf => (negInf, IEEEReal.INF)
+            | RealLit.QNaN => (quietNaN, IEEEReal.NAN IEEEReal.QUIET)
+            | RealLit.Flt{isNeg, digits=[], exp} => (zero isNeg, IEEEReal.ZERO)
+            | RealLit.Flt{isNeg, digits, exp} => let
+              (* convert the digits to a IntInf.int and adjust the exponent *)
+                val (frac_10, exp_10) = let
+                      fun doDigit (d, (m, e)) = (IntInf.fromInt d + 10*m, e-1)
+                      val (frac, exp) = List.foldl doDigit (0, exp) digits
+                      in
+                        (frac, IntInf.toInt exp)
+                      end
+              (* convert to base 2 *)
+                val flt = raiseToPower (round({frac=frac_10, exp=0}, precision), exp_10)
+                val {frac, exp} = round(flt, FP.significant+1)
+              (* adjust exp for size of fraction *)
+                val exp = exp + numBitsForInt frac - 1
+                in
+                  if (exp < minExp)
+                    then let
+                      val diff = Word.fromInt(minExp - exp)
+                      val frac = IntInf.~>>(frac, diff)
+                      in
+                        if frac > 0
+                          then (packSpecial (isNeg, 0w0, frac), IEEEReal.SUBNORMAL)
+                          else (zero isNeg, IEEEReal.ZERO)
+                      end
                   else if (maxExp < exp)
                     then raise Overflow
-                    else (pack (isNeg, biasedExp, frac), IEEEReal.NORMAL)
+                    else (pack (isNeg, W.fromInt(exp + maxExp), frac), IEEEReal.NORMAL)
                 end
           (* end case *))
 

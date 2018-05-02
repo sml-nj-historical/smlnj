@@ -34,6 +34,14 @@ signature REAL_TO_BITS =
   (* the number of bits in the representation *)
     val width : int
 
+  (* classify a real literal based on its representation as an IEEE float of
+   * the given precision.  This function will return ZERO on numbers that are too
+   * small to represent and will return INF for numbers that are too large.  In these
+   * cases, one can use RealLit.isZero and RealLit.isFinite functions to further
+   * classify the number.
+   *)
+    val classify : RealLit.t -> IEEEReal.float_class
+
   (* convert a real literal to its IEEE binary representation; we also
    * return the IEEE classification of the value.  The resulting vector is in
    * big-endian layout (i.e., the sign bit will be the MSB of the first byte).
@@ -42,7 +50,7 @@ signature REAL_TO_BITS =
    *)
     val toBits : RealLit.t -> Word8Vector.vector * IEEEReal.float_class
 
-    val zero : Word8Vector.vector
+    val zero : bool -> Word8Vector.vector
     val negInf : Word8Vector.vector
     val posInf : Word8Vector.vector
     val quietNaN : Word8Vector.vector
