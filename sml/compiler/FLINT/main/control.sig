@@ -1,7 +1,11 @@
-(* control.sig *)
+(* control.sig
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 signature FLINTCONTROL =
-sig
+  sig
 
     val print		: bool ref   (* show IR *)
     val printPhases	: bool ref   (* show phases *)
@@ -37,4 +41,4 @@ sig
     (* only for temporary debugging *)
     val misc		: int ref
 
-end (* signature FLINTCONTROL *)
+  end (* signature FLINTCONTROL *)
