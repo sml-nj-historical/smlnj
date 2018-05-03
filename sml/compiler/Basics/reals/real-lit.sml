@@ -80,7 +80,8 @@ structure RealLit :> sig
     val fromInt : IntInf.int -> t
 
   (* make a REAL token from a string; raises Fail if the string is not a valid
-   * SML string literal.
+   * SML string literal.  Note that Successor ML allows '_' as a separator character
+   * in numeric literals, so we handle that too.
    *)
     val fromString : string -> t
 
@@ -301,30 +302,76 @@ structure RealLit :> sig
               }
           end
 
+    local
+      structure SS = Substring
+    (* is a character #"0" or a #"_" (Successor ML) *)
+      fun isZero #"0" = true
+        | isZero #"_" = true (* Successor ML *)
+        | isZero _ = false
+    (* convert a character in the range #"0" .. #"9" to an integer *)
+      fun mkDigit c = Char.ord c - Char.ord #"0"
+    in
     fun fromString s = let
-          val ss = Substring.full s
-          val (isNeg, rest) = (case Substring.getc ss
+          val num = SS.full s
+          val (isNeg, rest) = (case SS.getc num
                  of SOME(#"~", r) => (true, r)
-                  | _ => (false, ss)
+                  | _ => (false, num)
                 (* end case *))
-          val (whole, rest) = Substring.splitl Char.isDigit rest
-          val rest = Substring.triml 1 rest (* remove "." *)
-          val (frac, rest) = Substring.splitl Char.isDigit rest
+        (* get the digits for the whole number part in reverse order with leading
+         * 0's stripped, the number of digits in the whole part, and the remaining
+         * substring.
+         *)
+          val (whole, wholeLen, rest) = let
+                fun get (ss, len, digits) = (case SS.getc ss
+                       of SOME(#"_", ss) => get (ss, len, digits)
+                        | SOME(c, ss') => if Char.isDigit c
+                            then get (ss', len+1, mkDigit c :: digits)
+                            else (digits, len, ss)
+                        | NONE => (digits, len, ss)
+                      (* end case *))
+                in
+                  get (SS.dropl isZero rest, 0, [])
+                end
+        (* get the fractional digits with trailing 0's stripped and the remaining
+         * substring
+         *)
+          val (frac, rest) = (case SS.getc rest
+                 of SOME(#".", ss) => let
+                      val (frac, rest) =
+                            SS.splitl
+                              (fn #"e" => false | #"E" => false | _ => true)
+                                ss
+                      fun get (ss, digits) = (case SS.getc ss
+                             of SOME(#"_", ss) => get (ss, digits)
+                              | SOME(c, ss') => get (ss', mkDigit c :: digits)
+                              | NONE => List.rev digits
+                            (* end case *))
+                      in
+                        (get (SS.dropr isZero frac, []), rest)
+                      end
+                  | _ => ([], rest) (* empty or else #"e" or #"E" *)
+                (* end case *))
+        (* get the exponent *)
           val exp = if Substring.isEmpty rest
                 then 0
                 else let
-                  val rest = Substring.triml 1 rest (* remove "e" or "E" *)
+                  val rest = (Substring.triml 1 rest) (* trim #"e" or #"E" *)
+                  fun get (ss, exp) = (case SS.getc ss
+                         of SOME(#"_", ss) => get (ss, exp)
+                          | SOME(d, ss) => get (ss, 10*exp + IntInf.fromInt(mkDigit d))
+                          | NONE => exp
+                        (* end case *))
                   in
-                    #1(valOf(IntInf.scan StringCvt.DEC Substring.getc rest))
+                    case SS.getc rest
+                     of SOME(#"~", ss) => ~(get (ss, 0))
+                      | SOME _ => get (rest, 0)
+                      | NONE => 0
+                    (* end case *)
                   end
           in
-            real{
-                isNeg = isNeg,
-                whole = Substring.string whole,
-                frac = Substring.string frac,
-                exp = exp
-              }
+            Flt{isNeg=isNeg, digits=List.revAppend(whole, frac), exp=exp + wholeLen}
           end
+    end (* local *)
 
     fun toString PosInf = "+inf"
       | toString NegInf = "~inf"
