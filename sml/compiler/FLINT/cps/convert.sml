@@ -674,16 +674,17 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 			    case f of
 			      F.STRING linkage => (al, linkage)
 			    | _  => (lpvar f :: al, "")
-		    in  case ml_res_opt of
-			    NONE => RCC (rcckind, linkage, c_proto, al, [(v, TINTt)], loop (e, c))
+		    in  case ml_res_opt
+			 of NONE =>
+			    RCC (rcckind, linkage, c_proto, al, [(v, TINTt)], loop (e, c))
 (* 64BIT: this code implements the fake 64-bit integers that are used on 32-bit targets *)
 			  | SOME AP.CCI64 =>
 			    let val (v1, v2) = (mkv (), mkv ())
 			    in
-				RCC (rcckind, linkage, c_proto, al,
-				     [(v1, INTt 32), (v2, INTt 32)],
-				     recordNM([VAR v1, VAR v2],[INTt 32, INTt 32],
-					      v, loop (e, c)))
+			      RCC (rcckind, linkage, c_proto, al,
+				   [(v1, INTt 32), (v2, INTt 32)],
+				   recordNM([VAR v1, VAR v2],[INTt 32, INTt 32],
+					    v, loop (e, c)))
 			    end
 			  | SOME rt => let
 				val v' = mkv ()
