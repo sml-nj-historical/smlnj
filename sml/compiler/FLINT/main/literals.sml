@@ -71,7 +71,7 @@ structure Literals : LITERALS =
       | rk2bk _ = bug "rk2bk: unexpected block kind"
 
     fun val2lit (CPS.VAR v) = LI_VAR v
-      | val2lit (CPS.INT i) = LI_INT(IntInf.fromInt i)
+      | val2lit (CPS.NUM{ival, ty={tag=true, ...}}) = LI_INT ival
       | val2lit (CPS.STRING s) = LI_STRING s
       | val2lit _ = bug "unexpected case in val2lit"
 
@@ -245,7 +245,7 @@ structure Literals : LITERALS =
 	(* memoize the information on which corresponds to what *)
 	  fun enter (v, i) = (IntHashTable.insert m (v, i); addv v)
 	  fun const (VAR v) = ((IntHashTable.lookup m v; true) handle _ => false)
-	    | const (INT _ | INT32 _ | REAL _ | STRING _) = true
+	    | const (NUM _ | REAL _ | STRING _) = true
 	    | const _ = bug "unexpected case in const"
 	  fun cstlit (VAR v) = ((IntHashTable.lookup m v; true) handle _ => false)
 	    | cstlit (REAL _ | STRING _) = true
@@ -384,7 +384,7 @@ structure Literals : LITERALS =
 		fun mklit (v, lit) = let
 		    fun unREAL (CPS.REAL{rval, ...}) = rval	(* REAL32: FIXME *)
 		      | unREAL _ = bug "unREAL"
-		    fun unINT32 (CPS.INT32 w) = Word32.toLargeIntX w
+		    fun unINT32 (CPS.NUM{ival, ...}) = ival	(* 64BIT: FIXME *)
 		      | unINT32 _ = bug "unINT32"
 		    in
 		      case IntHashTable.lookup m v

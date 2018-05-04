@@ -41,8 +41,8 @@ struct
      | meet(x, y)   = x  (* XXX *)
 
 (* 64BIT: change references to I31 and I32 to be more generic!!! *)
-  val I31    = NONREF(ref CPS.TINTt)	(* tagged integers *)
-  val I32    = NONREF(ref(CPS.INTt 32))	(* untagged integers *)
+  val I31    = NONREF(ref(CPS.NUMt{sz=31, tag=true}))	(* tagged integers *)
+  val I32    = NONREF(ref(CPS.NUMt{sz=32, tag=false}))	(* untagged integers *)
 (* REAL32: add REAL32 support *)
   val REAL64 = NONREF(ref(CPS.FLTt 64))	(* untagged floats *)
 

@@ -104,8 +104,8 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
  end
    fun getval (VAR v) = get v
      | getval (LABEL v) = get v
-     | getval (INT _) = Const
 (* QUESTION: should we return Const for boxed ints? *)
+     | getval (NUM{ty={tag=true, ...}, ...}) = Const
 (*     | getval (REAL _) = Real*)
      | getval _ = Other
    fun call(v, args) = case getval v

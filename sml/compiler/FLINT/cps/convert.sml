@@ -40,6 +40,18 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
     val ident = fn le => le
     val OFFp0 = OFFp 0
 
+  (* integer types/values *)
+    local
+      val tt = {sz = Target.defaultIntSz, tag = true}
+      fun bt sz = {sz = sz, tag = false}
+    in
+    val tagIntTy = NUMt tt
+    fun tagInt n = NUM{ival = n, ty = tt}
+    fun tagInt' n = tagInt(IntInf.fromInt n)
+    fun boxIntTy sz = NUMt(bt sz)
+    fun boxInt (sz, i) = NUM{ival = i, ty = bt sz}
+    end
+
     (* testing if two values are equivalent lvar values *)
     fun veq (VAR x, VAR y) = (x = y)
       | veq _ = false
@@ -75,7 +87,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
    ***************************************************************************)
 
     fun unwrapf64 (u,x,ce) = PURE(P.funwrap, [u], x, FLTt 64, ce)	(* REAL32: FIXME *)
-    fun unwrapi32 (u,x,ce) = PURE(P.i32unwrap, [u], x, INTt 32, ce)	(* 64BIT: FIXME *)
+    fun unwrapi32 (u,x,ce) = PURE(P.i32unwrap, [u], x, boxIntTy 32, ce)	(* 64BIT: FIXME *)
     fun wrapf64 (u,x,ce)   = PURE(P.fwrap, [u], x, BOGt, ce)		(* REAL32: FIXME *)
     fun wrapi32 (u,x,ce)   = PURE(P.i32wrap, [u], x, BOGt, ce)		(* 64BIT: FIXME *)
 
@@ -88,8 +100,8 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
     fun selectNM(i,u,x,ct,ce) = (case ct
 	   of FLTt 64 => mkfn(fn v => SELECT(i,u,v,BOGt,unwrapf64(VAR v,x,ce)))
 	    | FLTt _ => raise Fail "unsupported FLTt size" (* REAL32: FIXME *)
-	    | INTt 32 => mkfn(fn v => SELECT(i,u,v,BOGt,unwrapi32(VAR v,x,ce)))
-	    | INTt _ => raise Fail "unsupported INTt size" (* 64BIT: FIXME *)
+	    | NUMt{sz=32, tag=false} => mkfn(fn v => SELECT(i,u,v,BOGt,unwrapi32(VAR v,x,ce)))
+	    | NUMt{tag=false, ...} => raise Fail "unsupported NUMt size" (* 64BIT: FIXME *)
 	    | _ => SELECT(i,u,x,ct,ce)
 	  (* end case *))
 
@@ -100,9 +112,9 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
       let fun g (FLTt 64::r,u::z,l,h) =
 		mkfn(fn v => g(r, z, (VAR v,OFFp 0)::l, fn ce => h(wrapf64(u,v,ce))))
 	    | g (FLTt _ ::_, _, _, _) = raise Fail "unsupported FLTt size" (* REAL32: FIXME *)
-	    | g (INTt 32::r,u::z,l,h) =
+	    | g (NUMt{sz=32, tag=false}::r,u::z,l,h) =
 		mkfn(fn v => g(r, z, (VAR v,OFFp 0)::l, fn ce => h(wrapi32(u,v,ce))))
-	    | g (INTt _ ::_, _, _, _) = raise Fail "unsupported INTt size" (* 64BIT: FIXME *)
+	    | g (NUMt{tag=false, ...} ::_, _, _, _) = raise Fail "unsupported NUMt size" (* 64BIT: FIXME *)
 	    | g (_::r,u::z,l,h) = g(r, z, (u,OFFp0)::l, h)
 	    | g ([],[],l,h) = (rev l, h)
 	    | g _ = bug "unexpected in recordNM in convert"
@@ -167,9 +179,9 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	  (* end case *))
 
   (* primwrap: cty -> P.pure *)
-    fun primwrap (TINTt) = P.iwrap
-      | primwrap (INTt 32) = P.i32wrap
-      | primwrap (INTt _) = raise Fail "unsupported INTt size" (* 64BIT: *)
+    fun primwrap (NUMt{sz=31, tag=true}) = P.iwrap
+      | primwrap (NUMt{sz=32, tag=false}) = P.i32wrap
+      | primwrap (NUMt _) = raise Fail "unsupported NUMt size" (* 64BIT: *)
       | primwrap (FLTt 64) = P.fwrap
       | primwrap (FLTt _) = raise Fail "unsupported FLTt size" (* REAL32: *)
       | primwrap _ = P.wrap
@@ -180,9 +192,9 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 *)
 
   (* primunwrap: cty -> P.pure *)
-    fun primunwrap (TINTt) = P.iunwrap
-      | primunwrap (INTt 32) = P.i32unwrap
-      | primunwrap (INTt _) = raise Fail "unsupported INTt size" (* 64BIT: *)
+    fun primunwrap (NUMt{sz=31, tag=true}) = P.iunwrap
+      | primunwrap (NUMt{sz=32, tag=false}) = P.i32unwrap
+      | primunwrap (NUMt _) = raise Fail "unsupported NUMt size" (* 64BIT: *)
       | primunwrap (FLTt 64) = P.funwrap
       | primunwrap (FLTt _) = raise Fail "unsupported FLTt size" (* REAL32: *)
       | primunwrap _ = P.unwrap
@@ -290,39 +302,32 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
    *                  SWITCH OPTIMIZATIONS AND COMPILATIONS                  *
    ***************************************************************************)
 
-  (*
-   * BUG: The defintion of E_word is clearly incorrect since it can raise
-   *        an overflow at code generation time. A clean solution would be
-   *        to add a WORD constructor into the CPS language -- daunting! The
-   *        revolting hack solution would be to put the right int constant
-   *        that gets converted to the right set of bits for the word constant.
-   *)
     fun do_switch_gen ren = Switch.switch {
 	    E_switchlimit = 4,
 	    E_int    = fn i => if i < ~0x20000000 orelse i >= 0x20000000
 			       then raise Switch.TooBig
-			       else INT i,
-	    E_word   = fn w => INT (Word.toIntX w),
+			       else tagInt' i,
+	    E_word   = fn w => tagInt (Word.toLargeIntX w),
 	    E_neq    = P.ineq,
 	    E_w32neq = P.cmp{oper=P.neq,kind=P.UINT 32},
 	    E_i32neq = P.cmp{oper=P.neq,kind=P.INT 32},
-	    E_word32 = INT32,
-	    E_int32  = INT32,
+	    E_word32 = fn w => boxInt(32, Word32.toLargeInt w),
+	    E_int32  = fn w => boxInt(32, Word32.toLargeIntX w),
 	    E_wneq   = P.cmp{oper=P.neq, kind=P.UINT 31},
 	    E_pneq   = P.pneq,
 	    E_less   = P.ilt,
 	    E_branch = (fn (cmp,x,y,a,b) => BRANCH(cmp, [x,y], mkv(), a, b)),
 	    E_strneq = (fn (w,str,a,b) => BRANCH(
 				P.strneq,
-				[INT(size str), w, STRING str],
+				[tagInt'(size str), w, STRING str],
 				mkv(), a, b)),
 	    E_switch = (fn (v,l) => SWITCH(v, mkv(), l)),
 	    E_add    = (fn (x,y,c) =>
-			     mkfn(fn v => ARITH(P.iadd,[x,y],v,TINTt,c(VAR v)))),
-	    E_gettag = (fn (x,c) => mkfn(fn v => PURE(P.getcon,[x],v,TINTt,c(VAR v)))),
-	    E_unwrap = (fn (x,c) => mkfn(fn v => PURE(P.unwrap,[x],v,TINTt,c(VAR v)))),
+			     mkfn(fn v => ARITH(P.iadd,[x,y],v,tagIntTy,c(VAR v)))),
+	    E_gettag = (fn (x,c) => mkfn(fn v => PURE(P.getcon,[x],v,tagIntTy,c(VAR v)))),
+	    E_unwrap = (fn (x,c) => mkfn(fn v => PURE(P.unwrap,[x],v,tagIntTy,c(VAR v)))),
 	    E_getexn = (fn (x,c) => mkfn(fn v => PURE(P.getexn,[x],v,BOGt,c(VAR v)))),
-	    E_length = (fn (x,c) => mkfn(fn v => PURE(P.length,[x],v,TINTt,c(VAR v)))),
+	    E_length = (fn (x,c) => mkfn(fn v => PURE(P.length,[x],v,tagIntTy,c(VAR v)))),
 	    E_boxed  = (fn (x,a,b) => BRANCH(P.boxed,[x],mkv(),a,b)),
 	    E_path   = (fn (DA.LVAR v, k) => k(ren v)
 			 | _ =>  bug "unexpected path in convpath")
@@ -426,10 +431,10 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 
 	 (* lpvar : F.value -> value *)
 	 fun lpvar (F.VAR v) = rename v
-	   | lpvar (F.INT{ival, ty=32}) = INT32(Word32.fromLargeInt ival)
-	   | lpvar (F.WORD{ival, ty=32}) = INT32(Word32.fromLargeInt ival)
-	   | lpvar (F.INT{ival, ...}) = INT(Int.fromLarge ival)
-	   | lpvar (F.WORD{ival, ...}) = INT(Int.fromLarge ival)
+	   | lpvar (F.INT{ival, ty=32}) = boxInt(32, ival)
+	   | lpvar (F.WORD{ival, ty=32}) = boxInt(32, ival)
+	   | lpvar (F.INT{ival, ty=31}) = tagInt ival
+	   | lpvar (F.WORD{ival, ty=31}) = tagInt ival
 	   | lpvar (F.REAL r) = REAL r
 	   | lpvar (F.STRING s) = STRING s
 
@@ -503,7 +508,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	      | F.RECORD(F.RK_VECTOR _, [], v, e) =>
 		  bug "zero length vectors in convert"
 	      | F.RECORD(rk, [], v, e) => let
-		  val _ = newname(v, INT 0)
+		  val _ = newname(v, tagInt 0)
 		  in
 		    loop(e, c)
 		  end
@@ -541,10 +546,10 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 			      | proc (cn, e) = (cn, loop(e, kont))
 			    val b = do_switch{sign=sign, exp=lpvar u,
 					      cases=map proc l,
-					      default=APP(VAR df, [INT 0])}
+					      default=APP(VAR df, [tagInt 0])}
 			 in case d
 			     of NONE => b
-			      | SOME de => FIX([(CONT, df, [mkv()], [TINTt],
+			      | SOME de => FIX([(CONT, df, [mkv()], [tagIntTy],
 					       loop(de, kont))], b)
 			end
 		   in header(body)
@@ -663,7 +668,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 		    val { c_proto, ml_args, ml_res_opt, reentrant } = i
 		    val c_proto = cvtCProto c_proto
 		    fun cty AP.CCR64 = FLTt 64		(* REAL32: FIXME *)
-		      | cty AP.CCI32 = INTt 32		(* 64BIT: FIXME *)
+		      | cty AP.CCI32 = boxIntTy 32	(* 64BIT: FIXME *)
 		      | cty AP.CCML = BOGt
 		      | cty AP.CCI64 = BOGt
 		    val a' = lpvar a
@@ -676,14 +681,14 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 			    | _  => (lpvar f :: al, "")
 		    in  case ml_res_opt
 			 of NONE =>
-			    RCC (rcckind, linkage, c_proto, al, [(v, TINTt)], loop (e, c))
+			    RCC (rcckind, linkage, c_proto, al, [(v, tagIntTy)], loop (e, c))
 (* 64BIT: this code implements the fake 64-bit integers that are used on 32-bit targets *)
 			  | SOME AP.CCI64 =>
 			    let val (v1, v2) = (mkv (), mkv ())
 			    in
 			      RCC (rcckind, linkage, c_proto, al,
-				   [(v1, INTt 32), (v2, INTt 32)],
-				   recordNM([VAR v1, VAR v2],[INTt 32, INTt 32],
+				   [(v1, boxIntTy 32), (v2, boxIntTy 32)],
+				   recordNM([VAR v1, VAR v2],[boxIntTy 32, boxIntTy 32],
 					    v, loop (e, c)))
 			    end
 			  | SOME rt => let
@@ -731,7 +736,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 			  | _ => bug "unexpected case in F.PRIMOP"
 		      val vl = lpvars ul
 		   in case map_primop p
-		       of PKS i => let val _ = newname(v, INT 0)
+		       of PKS i => let val _ = newname(v, tagInt 0)
 				    in SETTER(i, vl, loop(e,c))
 				   end
 			| PKA i => ARITH(i, vl, v, ct, loop(e,c))

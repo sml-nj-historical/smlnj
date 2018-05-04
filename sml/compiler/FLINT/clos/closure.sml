@@ -41,6 +41,9 @@ local
   val pr = Control.Print.say
   fun inc (ri as ref i) = ri := i+1
 
+(* tagged int value *)
+fun tagInt i = NUM{ival = IntInf.fromInt i, ty = {sz = 31, tag = true}} (* 64BIT: FIXME *)
+
 (* there is a bug in "CLOSURE SHARING VIA THINNING" where the code is
  * sensitive to the sorting of equal items.  Specifically, the code works
  * using the old (pre 110.78) version of ListMergeSort.sort, which reverses
@@ -247,7 +250,7 @@ fun get_vn([],v) = NONE
 fun subset (x,y) = (case SL.difference(x,y) of [] => true | _ => false)
 
 (* check if a CPS type is a small constant size object *)
-fun smallObj (FLTt _ | TINTt) = true
+fun smallObj (FLTt _ | NUMt{sz=31, tag=true}) = true
   | smallObj _ = false
 
 (* check if a record_kind is sharable by a function of fun_kind *)
@@ -779,7 +782,7 @@ and recordEl(rk, l, w, env) =
                           val nhdr =
                             if (!CGoptions.staticprof) then
                               (SProf.incln (n); hdr o (fn ce =>
-                                SETTER(P.acclink,[INT n,VAR start],ce)))
+                                SETTER(P.acclink,[tagInt n,VAR start],ce)))
                             else hdr
                           val (u,env,nhdr) =
                             if (!CGoptions.sharepath)
@@ -827,7 +830,7 @@ fun fixAccess(args,env) =
                                 (if (n>0) andalso (!CGoptions.staticprof) then
                                      ((SProf.incln (n);
                                        fn ce => SETTER(P.acclink,
-                                                [INT n,VAR rootvar],ce)))
+                                                [tagInt n,VAR rootvar],ce)))
                                  else (fn ce => ce))
                            else AP.profLinks(n)
                       in (env, header o profL(lenp path))
@@ -866,7 +869,7 @@ fun fixArgs(args,env) =
                                      if (n>0) andalso (!CGoptions.staticprof)
                                      then (SProf.incln (n);
                                            fn ce => SETTER(P.acclink,
-                                                  [INT n,VAR rootvar],ce))
+                                                  [tagInt n,VAR rootvar],ce))
                                      else (fn ce => ce)
                                    else AP.profLinks(n)
                                in (z::res,env,hdr o profL(lenp path))
@@ -1282,7 +1285,7 @@ val isBoxed3 =
 
 (* check if a variable is an int32 *)
 fun isInt32 (v,_,_) = (case get_cty v
-       of INTt 32 => true  (* 64BIT: FIXME *)
+       of NUMt{sz=32, tag=false} => true  (* 64BIT: FIXME *)
         | _ => false
       (* end case *))
 
@@ -1907,7 +1910,7 @@ val (nenv, calleeFrags : frags) =
                           of NONE => gpbase
                            | SOME _ => fillCSregs(gpbase,closureName)
 
-            val ncsg = map (fn (SOME v) => VAR v | NONE => INT 0) gpbase
+            val ncsg = map (fn (SOME v) => VAR v | NONE => tagInt 0) gpbase
             val ncsf = map (fn (SOME v) => VAR v | NONE => VOID) fpbase
             val (benv,nenv) = splitEnv(nenv,member (freevCSregs(gpbase,nenv)))
 

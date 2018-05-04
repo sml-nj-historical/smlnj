@@ -62,8 +62,22 @@ fun bug s = ErrorMsg.impossible ("Contract: " ^ s)
 fun inc (ri as ref i) = (ri := i+1)
 fun dec (ri as ref i) = (ri := i-1)
 
-val wtoi = Word.toIntX
-val itow = Word.fromInt
+(* integer types/values *)
+local
+  val tt = {sz = Target.defaultIntSz, tag = true}
+  fun bt sz = {sz = sz, tag = false}
+in
+val tagIntTy = NUMt tt
+fun tagInt n = NUM{ival = n, ty = tt}
+fun tagInt' n = tagInt(IntInf.fromInt n)
+fun boxIntTy sz = NUMt(bt sz)
+fun boxInt {ival, ty} = NUM{ival = ival, ty = bt ty}
+end
+
+(* get the size of an integer operation *)
+fun sizeOfKind (P.INT sz) = sz
+  | sizeOfKind (P.UINT sz) = sz
+  | sizeOfKind (P.FLOAT _) = bug "sizeOfKind(FLOAT _)"
 
 exception ConstFold
 
@@ -114,7 +128,7 @@ fun equalUptoAlpha(ce1,ce2) =
 		  in  a=b orelse look pairs
 		  end
               | same(LABEL a, LABEL b) = same(VAR a, VAR b)
-              | same(INT i, INT j) = i=j
+              | same(NUM i, NUM j) = (#ty i = #ty j) andalso (#ival i = #ival j)
               | same(REAL a, REAL b) = (#ty a = #ty b) andalso RealLit.same(#rval a, #rval b)
               | same(STRING a, STRING b) = a=b
 	      | same(a,b) = false
@@ -196,7 +210,9 @@ local
 exception NCONTRACT
 
 fun valueName (VAR v) = LV.lvarName v
-  | valueName (INT i) = "Int"^Int.toString i
+  | valueName (NUM{ty={sz, ...}, ival}) = concat[
+	"(I", Int.toString sz, ")", IntInf.toString ival
+      ]
   | valueName (REAL{ty, rval}) = concat["(R", Int.toString ty, ")", RealLit.toString rval]
   | valueName (STRING s) = concat["<", s, ">"]
   | valueName _ = "<others>"
@@ -229,7 +245,7 @@ fun getty v =
   else LT.ltc_void
 fun grabty u =
   let fun g (VAR v) = getty v
-        | g (INT _) = LT.ltc_int
+        | g (NUM{ty={tag=true, ...}, ...}) = LT.ltc_int
         | g (REAL _) = LT.ltc_real
         | g (STRING _) = LT.ltc_void
         | g (LABEL v) = getty v
@@ -373,10 +389,10 @@ let val rec g1 =
 		  g1 e;
 		  app checkFunction l)
   | SWITCH(v,c,el) => (use v; enterMISC0 c; app g1 el)
-  | BRANCH(i,vl,c,e1 as APP(VAR f1, [INT 1]),
-		  e2 as APP(VAR f2, [INT 0])) =>
+  | BRANCH(i,vl,c,e1 as APP(VAR f1, [NUM{ival = 1, ...}]),
+		  e2 as APP(VAR f2, [NUM{ival = 0, ...}])) =>
        (case get f1
-	 of {info=FNinfo{body=ref(SOME(BRANCH(P.cmp{oper=P.neq,...},[INT 0, VAR w2],_,_,_))),
+	 of {info=FNinfo{body=ref(SOME(BRANCH(P.cmp{oper=P.neq,...},[NUM{ival = 0, ...}, VAR w2],_,_,_))),
 			 args=[w1],specialuse,...},...} =>
               (* Handle IF IDIOM *)
     	      if f1=f2 andalso w1=w2
@@ -453,10 +469,9 @@ fun drop_body(APP(f,vl)) = (call_less f; app use_less vl)
   | drop_body(RCC(_,_,_,vl,_,e)) = (app use_less vl; drop_body e)
 end (* local *)
 
-
-fun setter (P.update, [_, _, INT _]) = P.unboxedupdate
+fun setter (P.update, [_, _, NUM{ty={tag=true, ...}, ...}]) = P.unboxedupdate
   | setter (P.update, _) = P.update
-  | setter (P.assign, [_, INT _]) = P.unboxedassign
+  | setter (P.assign, [_, NUM{ty={tag=true, ...}, ...}]) = P.unboxedassign
   | setter (i, _) = i
 
 fun sameLvar(lvar, VAR lv) = lv = lvar
@@ -574,11 +589,11 @@ let val rec g' =
 	      in  (* This code may be obsolete.  See the comment
 		     in the FIX case below. *)
 		  case z(vl',live)
-		    of nil => [INT 0]
+		    of nil => [tagInt 0]
 		     | [u] =>
                          LT.ltw_iscont(grabty u,
-                              fn _ => [u, INT 0],
-                              fn _ => [u, INT 0],
+                              fn _ => [u, tagInt 0],
+                              fn _ => [u, tagInt 0],
                               fn _ => [u])
 		     | vl'' => vl''
 	      end
@@ -631,14 +646,14 @@ let val rec g' =
 				   let val x = mkv(LT.ltc_int)
 				   in  dropclicks(drop - 1);
 				       enterMISC0 x;
-				       ([x], [TINTt], [LT.ltc_int])
+				       ([x], [tagIntTy], [LT.ltc_int])
 				   end
 			        | [x] =>
                                    if (isCont x)
 				   then let val x = mkv(LT.ltc_int)
 				         in  dropclicks(drop - 1);
 				             enterMISC0 x;
-				             (vl'@[x], cl'@[TINTt],
+				             (vl'@[x], cl'@[tagIntTy],
                                               tt'@[LT.ltc_int])
 				        end
                                    else (dropclicks(drop);
@@ -703,14 +718,15 @@ let val rec g' =
 	     | l5 => FIX(map #1 l5, e')
       end
    | SWITCH(v,c,el) => (case ren v
-         of v' as INT i => if !CG.switchopt
+	 of v' as NUM{ival, ty={tag=true, ...}} => if !CG.switchopt
 	     then let
+	       val i = IntInf.toInt ival
 	       fun f (e::el, j) = (if i=j then () else drop_body e; f(el, j+1))
 		 | f ([], _) = ()
 	       in
 		 click "h";
 		 f(el, 0);
-		 newname(c, INT 0);
+		 newname(c, tagInt 0);
 		 g' (List.nth(el,i))
 	       end
 	     else SWITCH(v', c, map g' el)
@@ -1011,8 +1027,8 @@ let val rec g' =
 			    | LABEL _ => SOME BOGt
 			    | REAL _ => SOME(FLTt 64) (* REAL32: FIXME *)
 (* QUESION: why is this restricted to boxed integers? *)
-			    | INT32 _ => SOME(INTt 32) (* 64BIT: FIXME *)
-			    | INT _ => SOME BOGt
+			    | NUM{ty={sz=32, ...}, ...} => SOME(boxIntTy 32) (* 64BIT: FIXME *)
+			    | NUM{ty={tag=true, ...}, ...} => SOME BOGt
 			    | _ => again()
 			  (* end case *))
                       fun findTy() = getTy(x, fn _ => getTy(y, fn _ => NONE))
@@ -1049,16 +1065,16 @@ let val rec g' =
 	  fun h() = (if !CG.branchfold andalso equalUptoAlpha(e1,e2)
 		     then (click "z";
 			   app use_less vl';
-			   newname(c,INT 0);
+			   newname(c,tagInt 0);
 			   drop_body e2;
 			   g' e1)
 		     else if !CG.comparefold
 		     then if branch(i,vl')
-			       then (newname(c,INT 0);
+			       then (newname(c,tagInt 0);
 				     app use_less vl';
 				     drop_body e2;
 				     g' e1)
-			       else (newname(c,INT 0);
+			       else (newname(c,tagInt 0);
 				     app use_less vl';
 				     drop_body e1;
 				     g' e2)
@@ -1074,7 +1090,7 @@ let val rec g' =
 		   | _ => NONE
 	    end
       in  case (e1,e2)
-           of (APP(VAR f, [INT 1]), APP(VAR f', [INT 0])) =>
+           of (APP(VAR f, [NUM{ival=1, ...}]), APP(VAR f', [NUM{ival=0, ...}])) =>
 	       (case (f=f', getifidiom(VAR f))
                   of (true,
 	              SOME(body as ref(SOME(c',a,b)))) =>
@@ -1092,8 +1108,7 @@ end
 (* statically evaluate a boolean test; either return the result or raise ConstFold *)
  and branch =
     fn (P.unboxed, vl) => not(branch(P.boxed, vl))
-     | (P.boxed, [INT _]) => (click "n"; false)
-     | (P.boxed, [INT32 _]) => (click "n"; true)
+     | (P.boxed, [NUM{ty={tag, ...}, ...}]) => (click "n"; not tag)
      | (P.boxed, [STRING s]) => (click "o"; true)
      | (P.boxed, [VAR v]) => (case get v
 	 of {info=RECinfo _, ...} => (click "p"; true)
@@ -1102,115 +1117,154 @@ end
 	  if v=w then (click "v"; false) else raise ConstFold
      | (P.cmp{oper=P.<=, ...}, [VAR v, VAR w]) =>
 	  if v=w then (click "v"; true) else raise ConstFold
-     | (P.cmp{oper=P.<, kind=P.INT _}, [INT i, INT j]) => (click "w"; i<j)
-     | (P.cmp{oper=P.<, kind=P.UINT _}, [INT i, INT j]) => (
-	  click "w"; if j<0 then i>=0 orelse i<j else i>=0 andalso i<j)
+     | (P.cmp{oper=P.<, kind=P.INT _}, [NUM i, NUM j]) => (
+	  click "w"; #ival i < #ival j)
+     | (P.cmp{oper=P.<, kind=P.UINT sz}, [NUM i, NUM j]) => (
+	  click "w"; CA.uLess(sz, #ival i, #ival j))
+     | (P.cmp{oper=P.<=, kind=P.INT _}, [NUM i, NUM j]) => (
+	  click "w"; #ival i <= #ival j)
+     | (P.cmp{oper=P.<=, kind=P.UINT sz}, [NUM i, NUM j]) => (
+	  click "w"; CA.uLessEq(sz, #ival i, #ival j))
      | (P.cmp{oper=P.>, kind}, [w,v]) =>
 	  branch(P.cmp{oper=P.<, kind=kind}, [v,w])
-     | (P.cmp{oper=P.<=, kind}, [w,v]) =>
-	  branch(P.cmp{oper=P.>=, kind=kind}, [v,w])
      | (P.cmp{oper=P.>=, kind}, vl) =>
 	  not (branch(P.cmp{oper=P.<, kind=kind}, vl))
      | (P.cmp{oper=P.eql, kind=P.FLOAT _}, _) => raise ConstFold (* in case of NaN's *)
      | (P.cmp{oper=P.eql, ...}, [VAR v, VAR w]) =>
 	  if v=w then  (click "v"; true) else raise ConstFold
-     | (P.cmp{oper=P.eql,...}, [INT i, INT j]) => (click "w"; i=j)
+     | (P.cmp{oper=P.eql, ...}, [NUM i, NUM j]) => (click "w"; #ival i = #ival j)
      | (P.cmp{oper=P.neq, kind}, vl) =>
 	  not(branch(P.cmp{oper=P.eql, kind=kind}, vl))
-     | (P.peql, [INT i, INT j]) => (click "w"; i=j)
+     | (P.peql, [NUM i, NUM j]) => (click "w"; #ival i = #ival j)
      | (P.pneq, vl) => not(branch(P.peql, vl))
      | _ => raise ConstFold
 
   and arith =
-    fn (P.arith{oper=P.*, ...}, [INT 1, v]) => (click "F"; v)
-     | (P.arith{oper=P.*, ...}, [v, INT 1]) => (click "G"; v)
-     | (P.arith{oper=P.*, ...}, [INT 0, _]) => (click "H"; INT 0)
-     | (P.arith{oper=P.*, ...}, [_, INT 0]) => (click "I"; INT 0)
-(* FIXME: not 32-bit dependent code *)
-     | (P.arith{oper=P.*, kind=P.INT 31}, [INT i, INT j]) =>
-		let val x = i*j in x+x+2; click "J"; INT x end
-     | (P.arith{oper=P./, ...}, [v, INT 1]) => (click "K"; v)
-     | (P.arith{oper=P./, ...}, [INT i, INT 0]) => raise ConstFold
-     | (P.arith{oper=P./,kind=P.INT 31}, [INT i, INT j]) =>
-		let val x = Int.quot(i, j) in x+x; click "L"; INT x end
-     | (P.arith{oper=P.div, ...}, [v, INT 1]) => (click "K"; v)
-     | (P.arith{oper=P.div, ...}, [INT i, INT 0]) => raise ConstFold
-     | (P.arith{oper=P.div, kind=P.INT 31}, [INT i, INT j]) =>
-		let val x = Int.div(i, j) in x+x; click "L"; INT x end
+    fn (P.arith{oper=P.*, ...}, [NUM{ival=1, ...}, v]) => (click "F"; v)
+     | (P.arith{oper=P.*, ...}, [v, NUM{ival=1, ...}]) => (click "G"; v)
+     | (P.arith{oper=P.*, ...}, [v as NUM{ival=0, ...}, _]) => (click "H"; v)
+     | (P.arith{oper=P.*, ...}, [_, v as NUM{ival=0, ...}]) => (click "I"; v)
+     | (P.arith{oper=P.*, kind=P.INT sz}, [NUM i, NUM j]) => let
+	  val x = CA.sMul(sz, #ival i, #ival j)
+	  in
+	    click "J"; NUM{ival = x, ty = #ty i}
+	  end
+     | (P.arith{oper=P./, ...}, [v, NUM{ival=1, ...}]) => (click "K"; v)
+     | (P.arith{oper=P./, ...}, [_, NUM{ival=0, ...}]) => raise ConstFold
+     | (P.arith{oper=P./, kind=P.INT sz}, [NUM i, NUM j]) => let
+	  val x = CA.sQuot(sz, #ival i, #ival j)
+	  in
+	    click "L"; NUM{ival = x, ty = #ty i}
+	  end
+     | (P.arith{oper=P.div, ...}, [v, NUM{ival=1, ...}]) => (click "K"; v)
+     | (P.arith{oper=P.div, ...}, [_, NUM{ival=0, ...}]) => raise ConstFold
+     | (P.arith{oper=P.div, kind=P.INT sz}, [NUM i, NUM j]) => let
+	  val x = CA.sDiv(sz, #ival i, #ival j)
+	  in
+	    click "L"; NUM{ival = x, ty = #ty i}
+	  end
      (* FIXME: should we do anything for mod or rem here? *)
-     | (P.arith{oper=P.+, ...}, [INT 0, v]) => (click "M"; v)
-     | (P.arith{oper=P.+, ...}, [v, INT 0]) => (click "N"; v)
-     | (P.arith{oper=P.+, kind=P.INT 31}, [INT i, INT j]) =>
-	       let val x = i+j in x+x+2; click "O"; INT x end
-     | (P.arith{oper=P.-, ...}, [v, INT 0]) => (click "P"; v)
-     | (P.arith{oper=P.-, kind=P.INT 31}, [INT i, INT j]) =>
-	       let val x = i-j in x+x+2; click "Q"; INT x end
-     | (P.arith{oper=P.~, kind=P.INT 31,...}, [INT i]) =>
-		  let val x = ~i in x+x+2; click "X"; INT x end
+     | (P.arith{oper=P.+, ...}, [NUM{ival=0, ...}, v]) => (click "M"; v)
+     | (P.arith{oper=P.+, ...}, [v, NUM{ival=0, ...}]) => (click "N"; v)
+     | (P.arith{oper=P.+, kind=P.INT sz}, [NUM i, NUM j]) => let
+	  val x = CA.sAdd(sz, #ival i, #ival j)
+	  in
+	    click "O"; NUM{ival = x, ty = #ty i}
+	  end
+     | (P.arith{oper=P.-, ...}, [v, NUM{ival=0, ...}]) => (click "P"; v)
+     | (P.arith{oper=P.-, kind=P.INT sz}, [NUM i, NUM j]) => let
+	  val x = CA.sSub(sz, #ival i, #ival j)
+	  in
+	    click "Q"; NUM{ival = x, ty = #ty i}
+	  end
+     | (P.arith{oper=P.~, kind=P.INT sz}, [NUM i]) => let
+	  val x = CA.sNeg(sz, #ival i)
+	  in
+	    click "X"; NUM{ival = x, ty = #ty i}
+	  end
      | _ => raise ConstFold
 
 (* pure arithmetic operations; raises ConstFold when there is no reduction *)
   and pure =
-    fn (P.pure_arith{oper=P.*, ...}, [INT 1, v]) => (click "F"; v)
-     | (P.pure_arith{oper=P.*, ...}, [v, INT 1]) => (click "G"; v)
-     | (P.pure_arith{oper=P.*, ...}, [INT 0, _]) => (click "H"; INT 0)
-     | (P.pure_arith{oper=P.*, ...}, [_, INT 0]) => (click "I"; INT 0)
+    fn (P.pure_arith{oper=P.*, ...}, [NUM{ival=1, ...}, v]) => (click "F"; v)
+     | (P.pure_arith{oper=P.*, ...}, [v, NUM{ival=1, ...}]) => (click "G"; v)
+     | (P.pure_arith{oper=P.*, ...}, [v as NUM{ival=0, ...}, _]) => (click "H"; v)
+     | (P.pure_arith{oper=P.*, ...}, [_, v as NUM{ival=0, ...}]) => (click "I"; v)
 (* FIXME: 32-bit dependent code *)
-     | (P.pure_arith{oper=P.*, kind=P.UINT 31}, [INT i, INT j]) => let
-          val x = wtoi (itow i * itow j)
+     | (P.pure_arith{oper=P.*, kind=P.UINT sz}, [NUM i, NUM j]) => let
+          val x = CA.uMul(sz, #ival i, #ival j)
 	  in
-	    (x+x+2) handle Overflow => raise ConstFold;
-	    click "J"; INT x
+	    click "J"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.pure_arith{oper=P.+, ...}, [INT 0, v]) => (click "M"; v)
-     | (P.pure_arith{oper=P.+, ...}, [v, INT 0]) => (click "N"; v)
-     | (P.pure_arith{oper=P.+, kind=P.UINT 31}, [INT i, INT j]) => let
-	  val x = wtoi (itow i + itow j)
+     | (P.pure_arith{oper=P.+, ...}, [NUM{ival=0, ...}, v]) => (click "M"; v)
+     | (P.pure_arith{oper=P.+, ...}, [v, NUM{ival=0, ...}]) => (click "N"; v)
+     | (P.pure_arith{oper=P.+, kind=P.UINT sz}, [NUM i, NUM j]) => let
+	  val x = CA.uAdd(sz, #ival i, #ival j)
 	  in
-	    (x+x+2) handle Overflow => raise ConstFold;
-	    click "O"; INT x
+	    click "O"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.pure_arith{oper=P.-, ...}, [v, INT 0]) => (click "P"; v)
-     | (P.pure_arith{oper=P.-, kind=P.UINT 31}, [INT i, INT j]) => let
-	  val x = wtoi (itow i - itow j)
+     | (P.pure_arith{oper=P.-, ...}, [v, NUM{ival=0, ...}]) => (click "P"; v)
+     | (P.pure_arith{oper=P.-, kind=P.UINT sz}, [NUM i, NUM j]) => let
+	  val x = CA.uSub(sz, #ival i, #ival j)
 	  in
-	    (x+x+2) handle Overflow => raise ConstFold;
-	    click "Q"; INT x
+	    click "Q"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.pure_arith{oper=P.rshift, kind=P.INT 31}, [INT i, INT j]) =>
-	   (click "R"; INT(wtoi (Word.~>>(itow i, itow j))))
-     | (P.pure_arith{oper=P.rshift, kind=P.INT 31}, [INT 0, _]) =>
-	   (click "S"; INT 0)
-     | (P.pure_arith{oper=P.rshift, kind=P.INT 31}, [v, INT 0]) =>
-	   (click "T"; v)
-     | (P.pure_arith{oper=P.lshift, kind=P.INT 31}, [INT 0, _]) =>
-	  (click "Z"; INT 0)
-     | (P.pure_arith{oper=P.lshift, kind=P.INT 31}, [v, INT 0]) =>
-	  (click "1"; v)
-     | (P.pure_arith{oper=P.lshift ,kind=P.INT 31}, [INT i, INT j]) =>
-		       (let val x = wtoi (Word.<<(itow i, itow j))
-			in x+x; click "Y"; INT x
-			end handle Overflow => raise ConstFold)
-     | (P.pure_arith{oper=P.andb, kind=P.INT 31}, [INT i, INT j]) =>
-	  (click "9"; INT(wtoi(Word.andb(itow i, itow j))))
-     | (P.pure_arith{oper=P.andb,kind=P.INT 31}, [INT 0, _]) =>
-	  (click "0"; INT 0)
-     | (P.pure_arith{oper=P.andb, kind=P.INT 31}, [_, INT 0]) =>
-	  (click "T"; INT 0)
-     | (P.pure_arith{oper=P.orb, kind=P.INT 31}, [INT i, INT j]) =>
-	  (click "2"; INT(wtoi (Word.orb(itow i, itow j))))
-     | (P.pure_arith{oper=P.orb, kind=P.INT 31}, [INT 0, v]) => (click "3"; v)
-     | (P.pure_arith{oper=P.orb, kind=P.INT 31}, [v, INT 0]) => (click "4"; v)
-     | (P.pure_arith{oper=P.xorb, kind=P.INT 31}, [INT i, INT j]) =>
-	  (click "5"; INT(wtoi (Word.xorb(itow i, itow j))))
-     | (P.pure_arith{oper=P.xorb, kind=P.INT 31}, [INT 0, v]) =>
-	  (click "6"; v)
-     | (P.pure_arith{oper=P.xorb, kind=P.INT 31}, [v, INT 0]) => (click "7"; v)
-     | (P.pure_arith{oper=P.notb, kind=P.INT 31}, [INT i]) =>
-	  (click "8"; INT(wtoi (Word.notb (itow i))))
-     | (P.length, [STRING s]) => (click "V"; INT(size s))
-     | (P.real{fromkind=P.INT 31,tokind=P.FLOAT sz}, [INT i]) =>
-	  REAL{rval = RealLit.fromInt(IntInf.fromInt i), ty = sz}
+     | (P.pure_arith{oper=P.rshift, ...}, [i as NUM{ival=0, ...}, _]) => (click "S"; i)
+     | (P.pure_arith{oper=P.rshift, ...}, [v, NUM{ival=0, ...}]) => (click "T"; v)
+     | (P.pure_arith{oper=P.rshift, kind}, [NUM i, NUM j]) => let
+	  val x = CA.sShR(sizeOfKind kind, #ival i, #ival j)
+	  in
+	    click "R"; NUM{ival = x, ty = #ty i}
+	  end
+     | (P.pure_arith{oper=P.rshiftl, ...}, [i as NUM{ival=0, ...}, _]) => (click "S"; i)
+     | (P.pure_arith{oper=P.rshiftl, ...}, [v, NUM{ival=0, ...}]) => (click "T"; v)
+     | (P.pure_arith{oper=P.rshiftl, kind=P.UINT sz}, [NUM i, NUM j]) => let
+	  val x = CA.uShR(sz, #ival i, #ival j)
+	  in
+	    click "R"; NUM{ival = x, ty = #ty i}
+	  end
+     | (P.pure_arith{oper=P.lshift, ...}, [v as NUM{ival=0, ...}, _]) => (click "Z"; v)
+     | (P.pure_arith{oper=P.lshift, ...}, [v, NUM{ival=0, ...}]) => (click "1"; v)
+     | (P.pure_arith{oper=P.lshift, kind=P.INT sz}, [NUM i, NUM j]) => (let
+	  val x = CA.sShL(sz, #ival i, #ival j)
+	  in
+	    click "Y"; NUM{ival = x, ty = #ty i}
+	  end handle Overflow => raise ConstFold)
+     | (P.pure_arith{oper=P.lshift, kind=P.UINT sz}, [NUM i, NUM j]) => let
+	  val x = CA.uShL(sz, #ival i, #ival j)
+	  in
+	    click "Y"; NUM{ival = x, ty = #ty i}
+	  end
+     | (P.pure_arith{oper=P.andb, ...}, [v as NUM{ival=0, ...}, _]) => (click "0"; v)
+     | (P.pure_arith{oper=P.andb, ...}, [_, v as NUM{ival=0, ...}]) => (click "T"; v)
+     | (P.pure_arith{oper=P.andb, kind}, [NUM i, NUM j]) => let
+	  val x = CA.bAnd(sizeOfKind kind, #ival i, #ival j)
+	  in
+	    click "9"; NUM{ival = x, ty = #ty i}
+	  end
+     | (P.pure_arith{oper=P.orb, ...}, [NUM{ival=0, ...}, v]) => (click "3"; v)
+     | (P.pure_arith{oper=P.orb, ...}, [v, NUM{ival=0, ...}]) => (click "4"; v)
+     | (P.pure_arith{oper=P.orb, kind}, [NUM i, NUM j]) => let
+	  val x = CA.bOr(sizeOfKind kind, #ival i, #ival j)
+	  in
+	    click "2"; NUM{ival = x, ty = #ty i}
+	  end
+     | (P.pure_arith{oper=P.xorb, ...}, [NUM{ival=0, ...}, v]) => (click "6"; v)
+     | (P.pure_arith{oper=P.xorb, ...}, [v, NUM{ival=0, ...}]) => (click "7"; v)
+     | (P.pure_arith{oper=P.xorb, kind}, [NUM i, NUM j]) => let
+	  val x = CA.bXor(sizeOfKind kind, #ival i, #ival j)
+	  in
+	    click "5"; NUM{ival = x, ty = #ty i}
+	  end
+     | (P.pure_arith{oper=P.notb,kind}, [NUM i]) => let
+	  val x = CA.bNot(sizeOfKind kind, #ival i)
+	  in
+	    click "8"; NUM{ival = x, ty = #ty i}
+	  end
+     | (P.length, [STRING s]) => (click "V"; tagInt'(size s))
+     | (P.real{fromkind=P.INT _,tokind=P.FLOAT sz}, [NUM{ival, ...}]) =>
+	(* NOTE: this conversion might lose precision *)
+	  REAL{rval = RealLit.fromInt ival, ty=sz}
      | (P.funwrap,[x as VAR v]) =>
           (case get(v) of {info=WRPinfo(P.fwrap,u),...} =>
 			    (click "U"; use_less x; u)

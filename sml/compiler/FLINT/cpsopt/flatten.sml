@@ -73,7 +73,7 @@ fun mkv(t) = let val v = LV.mkLvar()
              end
 fun grabty u =
   let fun g (VAR v) = getty v
-        | g (INT _) = LT.ltc_int
+        | g (NUM{ty={tag=true, ...}, ...}) = LT.ltc_int
         | g (REAL _) = LT.ltc_real
         | g (STRING _) = LT.ltc_void
         | g (LABEL v) = getty v

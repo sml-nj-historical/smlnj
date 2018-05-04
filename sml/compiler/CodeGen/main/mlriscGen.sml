@@ -122,9 +122,9 @@ struct
   val i31 = #create An.MARK_REG(fn r => enterGC(r,I31))
   val flt = #create An.MARK_REG(fn r => enterGC(r,REAL64))
 (* 64BIT: FIXME *)
-  fun ctyToAnn CPS.TINTt = i31
-    | ctyToAnn (CPS.INTt 32) = i32
-    | ctyToAnn (CPS.INTt _) = raise Fail "unsupported INTt size"
+  fun ctyToAnn (CPS.NUMt{sz=31, tag=true}) = i31
+    | ctyToAnn (CPS.NUMt{sz=32, tag=false}) = i32
+    | ctyToAnn (CPS.NUMt _) = raise Fail "unsupported NUMt size"
     | ctyToAnn (CPS.FLTt 64) = flt
     | ctyToAnn (CPS.FLTt _) = raise Fail "unsupported FLTt size"
     | ctyToAnn _ = ptr
@@ -138,9 +138,9 @@ struct
 
   fun ctyToGCty (CPS.FLTt 64) = REAL64
     | ctyToGCty (CPS.FLTt _) = raise Fail "unsupported FLTt size"
-    | ctyToGCty CPS.TINTt = I31		(* 64BIT: FIXME *)
-    | ctyToGCty (CPS.INTt 32) = I32
-    | ctyToGCty (CPS.INTt _) = raise Fail "unsupported INTt size"
+    | ctyToGCty (CPS.NUMt{sz=31, tag=true}) = I31	(* 64BIT: FIXME *)
+    | ctyToGCty (CPS.NUMt{sz=32, tag=false}) = I32
+    | ctyToGCty (CPS.NUMt _) = raise Fail "unsupported NUMt size"
     | ctyToGCty _ = PTR
 
   (*
@@ -171,10 +171,18 @@ struct
   val offp0 = CPS.OFFp 0
   val LI = M.LI
   fun LI' i = LI (M.I.fromInt(ity, i))
-  fun LW w = LI (M.I.fromWord32(ity, w))
   fun LW' w = LI (M.I.fromWord(ity, w))
 
   val constBaseRegOffset = LI' MachineSpec.constBaseRegOffset
+
+(* CPS integer constants *)
+  local
+    val ty = {sz = Target.defaultIntSz, tag = true}
+  in
+  fun cpsInt n = CPS.NUM{ival = n, ty = ty}
+  fun cpsInt' n = cpsInt(IntInf.fromInt n)
+  fun cpsInt32 n = CPS.NUM{ival = n, ty = {sz = 32, tag = false}} (* 64BIT: FIXME *)
+  end (* local *)
 
   (*
    * The allocation pointer.  This must be a register
@@ -274,9 +282,9 @@ struct
         | known(cty::rest) = (case cty
 	     of CPS.FLTt 64 => M.FPR(M.FREG(fty,newFreg REAL64))
               | CPS.FLTt _ => raise Fail "unsupported FLTt size"  (* REAL32: FIXME *)
-              | CPS.TINTt => M.GPR(M.REG(ity,newReg I31))
-              | CPS.INTt 32 => M.GPR(M.REG(ity,newReg I32))
-              | CPS.INTt _ => raise Fail "unsupported INTt size"  (* 64BIT: FIXME *)
+              | CPS.NUMt{sz=31, tag=true} => M.GPR(M.REG(ity,newReg I31))
+              | CPS.NUMt{sz=32, tag=false} => M.GPR(M.REG(ity,newReg I32))
+              | CPS.NUMt _ => raise Fail "unsupported NUMt size"  (* 64BIT: FIXME *)
               | _ => M.GPR(M.REG(pty,newReg PTR))
             (* end case *)) :: known rest
 
@@ -476,8 +484,7 @@ struct
            *)
           fun grabty (CPS.VAR v) = typmap v
             | grabty (CPS.LABEL v) = typmap v
-            | grabty (CPS.INT _) = CPS.TINTt
-            | grabty (CPS.INT32 _) = CPS.INTt 32 (* 64BIT: FIXME *)
+            | grabty (CPS.NUM{ty, ...}) = CPS.NUMt ty
             | grabty (CPS.VOID) = CPS.FLTt 64 (* why? *)
             | grabty _ = CPS.BOGt
 
@@ -517,8 +524,8 @@ struct
             | resolveHpOffset(e) = e
 
           fun regbind (CPS.VAR v) = resolveHpOffset(lookupGpRegTbl v)
-            | regbind (CPS.INT i) = LI' (i+i+1)
-            | regbind (CPS.INT32 w) = LW w
+            | regbind (CPS.NUM{ival, ty={tag=true, ...}}) = LI(ival+ival+1)
+            | regbind (CPS.NUM{ival, ...}) = LI ival
             | regbind (CPS.LABEL v) =
 		laddr(functionLabel(if splitEntry then ~v-1 else v), 0)
             | regbind _ = error "regbind"
@@ -533,8 +540,8 @@ struct
             | resolveHpOffset'(e) = e
 
           fun regbind' (CPS.VAR v) = resolveHpOffset'(lookupGpRegTbl v)
-            | regbind' (CPS.INT i) = LI' (i+i+1)
-            | regbind' (CPS.INT32 w) = LW w
+            | regbind' (CPS.NUM{ival, ty={tag=true, ...}}) = LI(ival+ival+1)
+            | regbind' (CPS.NUM{ival, ...}) = LI ival
             | regbind' (CPS.LABEL v) =
                   laddr(functionLabel(if splitEntry then ~v-1 else v), 0)
             | regbind' _ = error "regbind'"
@@ -731,30 +738,32 @@ struct
 
           fun untag (true, e) = untagSigned e
             | untag (false, e) = untagUnsigned e
-          and untagUnsigned (CPS.INT i) = LI' i
+          and untagUnsigned (CPS.NUM{ty={tag=true, ...}, ival}) = LI ival
+	    | untagUnsigned (CPS.NUM _) = error "untagUnsigned: boxed int"
             | untagUnsigned v = M.SRL(ity, regbind v, one)
-          and untagSigned (CPS.INT i) = LI' i
+          and untagSigned (CPS.NUM{ty={tag=true, ...}, ival}) = LI ival
+	    | untagSigned (CPS.NUM _) = error "untagSigned: boxed int"
             | untagSigned v = M.SRA(ity, regbind v, one)
 
           (*
            * Tagged integer operators
            *)
-          fun int31add (addOp, CPS.INT k, w) = addOp(ity, LI'(k+k), regbind w)
-            | int31add (addOp, w, v as CPS.INT _) = int31add(addOp, v, w)
+          fun int31add (addOp, CPS.NUM{ival=k, ...}, w) = addOp(ity, LI(k+k), regbind w)
+            | int31add (addOp, w, v as CPS.NUM _) = int31add(addOp, v, w)
             | int31add (addOp, v, w) = addOp(ity,regbind v,stripTag(regbind w))
 
-          fun int31sub (subOp, CPS.INT k, w) = subOp(ity, LI'(k+k+2), regbind w)
-            | int31sub (subOp, v, CPS.INT k) = subOp(ity, regbind v, LI'(k+k))
+          fun int31sub (subOp, CPS.NUM{ival=k, ...}, w) = subOp(ity, LI(k+k+2), regbind w)
+            | int31sub (subOp, v, CPS.NUM{ival=k, ...}) = subOp(ity, regbind v, LI(k+k))
             | int31sub (subOp, v, w) = addTag(subOp(ity, regbind v, regbind w))
 
-          fun int31xor (CPS.INT k, w) = M.XORB(ity, LI'(k+k), regbind w)
-            | int31xor (w, v as CPS.INT _) = int31xor (v,w)
+          fun int31xor (CPS.NUM{ival=k, ...}, w) = M.XORB(ity, LI(k+k), regbind w)
+            | int31xor (w, v as CPS.NUM _) = int31xor (v,w)
             | int31xor (v, w) = addTag (M.XORB(ity, regbind v, regbind w))
 
           fun int31mul (signed, mulOp, v, w) = let
-		fun f (CPS.INT k, CPS.INT j) = (LI'(k+k), LI' j)
-		  | f (CPS.INT k, w) = (untag(signed,w), LI'(k+k))
-		  | f (v, w as CPS.INT _) = f(w, v)
+		fun f (CPS.NUM{ival=k, ...}, CPS.NUM{ival=j, ...}) = (LI(k+k), LI j)
+		  | f (CPS.NUM{ival=k, ...}, w) = (untag(signed,w), LI(k+k))
+		  | f (v, w as CPS.NUM _) = f(w, v)
 		  | f (v, w) = (stripTag(regbind v), untag(signed,w))
                 val (v, w) = f(v, w)
 		in
@@ -763,9 +772,9 @@ struct
 
           fun int31div (signed, drm, v, w) = let
 		val (v, w) = (case (v, w)
-		       of (CPS.INT k, CPS.INT j) => (LI' k, LI' j)
-			| (CPS.INT k, w) => (LI' k, untag(signed, w))
-			| (v, CPS.INT k) => (untag(signed, v), LI' k)
+		       of (CPS.NUM{ival=k, ...}, CPS.NUM{ival=j, ...}) => (LI k, LI j)
+			| (CPS.NUM{ival=k, ...}, w) => (LI k, untag(signed, w))
+			| (v, CPS.NUM{ival=k, ...}) => (untag(signed, v), LI k)
 			| (v, w) => (untag(signed, v), untag(signed, w))
 		      (* end case *))
 		in
@@ -778,9 +787,9 @@ struct
 
 	  fun int31rem (signed, drm, v, w) = let
                 val (v, w) = (case (v, w)
-		       of (CPS.INT k, CPS.INT j) => (LI' k, LI' j)
-			| (CPS.INT k, w) => (LI' k, untag(signed, w))
-			| (v, CPS.INT k) => (untag(signed, v), LI' k)
+		       of (CPS.NUM{ival=k, ...}, CPS.NUM{ival=j, ...}) => (LI k, LI j)
+			| (CPS.NUM{ival=k, ...}, w) => (LI k, untag(signed, w))
+			| (v, CPS.NUM{ival=k, ...}) => (untag(signed, v), LI k)
 			| (v, w) => (untag(signed, v), untag(signed, w))
 		      (* end case *))
 		in
@@ -788,15 +797,15 @@ struct
 		       if signed then M.REMS (drm, ity, v, w) else M.REMU (ity, v, w))
 		end
 
-          fun int31lshift (CPS.INT k, w) =
-                addTag (M.SLL(ity, LI'(k+k), untagUnsigned(w)))
-            | int31lshift (v, CPS.INT k) =
-                addTag(M.SLL(ity,stripTag(regbind v), LI' k))
+          fun int31lshift (CPS.NUM{ival=k, ...}, w) =
+                addTag (M.SLL(ity, LI(k+k), untagUnsigned(w)))
+            | int31lshift (v, CPS.NUM{ival=k, ...}) =
+                addTag(M.SLL(ity,stripTag(regbind v), LI k))
             | int31lshift (v,w) =
                 addTag(M.SLL(ity,stripTag(regbind v), untagUnsigned(w)))
 
-          fun int31rshift (rshiftOp, v, CPS.INT k) =
-                orTag(rshiftOp(ity, regbind v, LI' k))
+          fun int31rshift (rshiftOp, v, CPS.NUM{ival=k, ...}) =
+                orTag(rshiftOp(ity, regbind v, LI k))
             | int31rshift (rshiftOp, v, w) =
                 orTag(rshiftOp(ity, regbind v, untagUnsigned(w)))
 
@@ -856,16 +865,16 @@ struct
           end
 
           (* scale-and-add *)
-          fun scale1 (a, CPS.INT 0) = a
-            | scale1 (a, CPS.INT k) = M.ADD(ity, a, LI' k)
+          fun scale1 (a, CPS.NUM{ival=0, ...}) = a
+            | scale1 (a, CPS.NUM{ival, ...}) = M.ADD(ity, a, LI ival)
             | scale1 (a, i) = M.ADD(ity, a, untagSigned(i))
 
-          fun scale4 (a, CPS.INT 0) = a
-            | scale4 (a, CPS.INT i) = M.ADD(ity, a, LI'(i*4))
+          fun scale4 (a, CPS.NUM{ival=0, ...}) = a
+            | scale4 (a, CPS.NUM{ival, ...}) = M.ADD(ity, a, LI(ival*4))
             | scale4 (a, i) = M.ADD(ity, a, M.SLL(ity, untagSigned(i), two))
 
-          fun scale8 (a, CPS.INT 0) = a
-            | scale8 (a, CPS.INT i) = M.ADD(ity, a, LI'(i*8))
+          fun scale8 (a, CPS.NUM{ival=0, ...}) = a
+            | scale8 (a, CPS.NUM{ival, ...}) = M.ADD(ity, a, LI(ival*8))
             | scale8 (a, i) = M.ADD(ity, a, M.SLL(ity, stripTag(regbind i), two))
 
           val scaleWord = (case ws
@@ -1222,7 +1231,7 @@ raise ex)
                             M.LOAD(ity,M.ADD(ity,M.REG(ity, r2),i),R.readonly))
                   fun unroll i =
                       if i=n' then ()
-                      else (emit(M.BCC(cmpWord(LI' i), false_lab));
+                      else (emit(M.BCC(cmpWord(LI i), false_lab));
                             unroll (i+4))
               in  emit(M.MV(ity, r1, M.LOAD(ity, regbind v, R.readonly)));
                   emit(M.MV(ity, r2, M.LOAD(ity, regbind w, R.readonly)));
@@ -1357,7 +1366,7 @@ raise ex)
 (* REAL32: FIXME *)
           and fselect (i, v, x, e, hp) =
                 treeifyDefF64(x,
-		  M.FLOAD(fty, scale8(regbind v, INT i), R.real),
+		  M.FLOAD(fty, scale8(regbind v, cpsInt' i), R.real),
 		  e, hp)
 
           (*
@@ -1365,7 +1374,7 @@ raise ex)
            *)
           and select (i, v, x, t, e, hp) =
                 treeifyDef(x,
-                  M.LOAD(ity,scaleWord(regbind v, INT i), getRegionPi(v, i)),
+                  M.LOAD(ity, scaleWord(regbind v, cpsInt' i), getRegionPi(v, i)),
 		  t, e, hp)
 
           (*
@@ -1382,7 +1391,7 @@ raise ex)
                     executed; its semantics is completely screwed up !
                   *)
               in  if isFlt t then fallocSp(x, e, hp)
-                  else defI32(x, LI' k, e, hp)(* BOGUS *)
+                  else defI32(x, LI k, e, hp)(* BOGUS *)
               end
 
           (*
@@ -1488,21 +1497,22 @@ raise ex)
             | gen (RECORD(_, vl, w, e), hp) = mkRecord(vl, w, e, hp)
 
             (*** SELECT ***)
-            | gen (SELECT(i, INT k, x, t, e), hp) = funnySelect(i,k,x,t,e,hp)
+            | gen (SELECT(i, NUM{ty={tag=true, ...}, ival}, x, t, e), hp) =
+		funnySelect(IntInf.fromInt i, ival, x, t, e, hp)
             | gen (SELECT(i, v, x, FLTt 64, e), hp) = fselect(i, v, x, e, hp) (* REAL32: *)
             | gen (SELECT(i, v, x, t, e), hp) = select(i, v, x, t, e, hp)
 
             (*** OFFSET ***)
             | gen (OFFSET(i, v, x, e), hp) =
-                 defBoxed(x, scaleWord(regbind v, INT i), e, hp)
+		defBoxed(x, scaleWord(regbind v, cpsInt' i), e, hp)
 
             (*** APP ***)
-            | gen (APP(INT k, args), hp) = updtHeapPtr hp
+            | gen (APP(NUM{ty={tag=true, ...}, ...}, args), hp) = updtHeapPtr hp
             | gen (APP(VAR f, args), hp) = externalApp(f, args, hp)
             | gen (APP(LABEL f, args), hp) = internalApp(f, args, hp)
 
             (*** SWITCH ***)
-            | gen (SWITCH(INT _, _, _), hp) = error "SWITCH on constant"
+            | gen (SWITCH(NUM _, _, _), hp) = error "SWITCH on constant"
             | gen (SWITCH(v, _, l), hp) =
               let val lab = newLabel ()
                   val labs = map (fn _ => newLabel()) l
@@ -1683,12 +1693,12 @@ raise ex)
             | gen (PURE(P.objlength, [v], x, _, e), hp) =
                 defI31(x, orTag(getObjLength(v)), e, hp)
             | gen (PURE(P.length, [v], x, t, e), hp) = select(1, v, x, t, e, hp)
-            | gen (PURE(P.subscriptv, [v, INT i], x, t, e), hp) =
+            | gen (PURE(P.subscriptv, [v, ix as NUM{ty={tag=true, ...}, ...}], x, t, e), hp) =
               let (* get data pointer *)
                   val mem  = dataptrRegion v
                   val a    = markPTR(M.LOAD(ity, regbind v, mem))
                   val mem' = arrayRegion mem
-              in  defBoxed(x, M.LOAD(ity, scaleWord(a, INT i), mem'), e, hp)
+              in  defBoxed(x, M.LOAD(ity, scaleWord(a, ix), mem'), e, hp)
               end
             | gen (PURE(P.subscriptv, [v, w], x, _, e), hp) =
               let (* get data pointer *)
@@ -1710,7 +1720,7 @@ raise ex)
                       e, hp)
             | gen (PURE(P.mkspecial, [i, v], x, _, e), hp) =
               let val desc = case i
-                  of INT n => LI(D.makeDesc'(n, D.tag_special))
+                  of NUM{ty={tag=true, ...}, ival} => LI(D.makeDesc(ival, D.tag_special))
                    | _ => M.ORB(ity, M.SLL(ity, untagSigned i, LW' D.tagWidth),
                                 LI D.desc_special)
               in  (* What gc types are the components? *)
@@ -1734,7 +1744,7 @@ raise ex)
             | gen (PURE(P.i32wrap,[u],w,_,e), hp) =
                 mkI32block([(u, offp0)], w, e, hp)
             | gen (PURE(P.i32unwrap,[u],w,_,e), hp) =
-                select(0, u, w, INTt 32, e, hp)
+                select(0, u, w, NUMt{sz=32, tag=false}, e, hp)
 
             | gen (PURE(P.wrap,[u],w,_,e), hp) = copy(PTR, w, u, e, hp)
             | gen (PURE(P.unwrap,[u],w,_,e), hp) = copy(I32, w, u, e, hp)
@@ -1745,8 +1755,8 @@ raise ex)
             | gen (PURE(P.getcon,[u],w,t,e), hp) = select(0,u,w,t,e,hp)
             | gen (PURE(P.getexn,[u],w,t,e), hp) = select(0,u,w,t,e,hp)
             | gen (PURE(P.getseqdata, [u], x, t, e), hp) = select(0,u,x,t,e,hp)
-            | gen (PURE(P.recsubscript, [v, INT w], x, t, e), hp) =
-                select(w, v, x, t, e, hp)
+            | gen (PURE(P.recsubscript, [v, NUM{ty={tag=true, ...}, ival}], x, t, e), hp) =
+                select(IntInf.toInt ival, v, x, t, e, hp)
             | gen (PURE(P.recsubscript, [v, w], x, _, e), hp) =
                  (* no indirection! *)
               let val mem = arrayRegion(getRegion v)
@@ -1774,10 +1784,10 @@ raise ex)
                      allocHeaderPair(hdrDesc, hdrM, dataPtr, 0, hp+2*ws),
                         e, hp+5*ws)
               end
-            | gen (PURE(P.rawrecord NONE, [INT n], x, _, e), hp) =
+            | gen (PURE(P.rawrecord NONE, [NUM{ty={tag=true, ...}, ival}], x, _, e), hp) =
                 (* allocate space for CPS spilling *)
-                treeifyAlloc(x, hp, e, hp+n*ws) (* no tag! *)
-            | gen (PURE(P.rawrecord(SOME rk), [INT n], x, _, e), hp) = let
+                treeifyAlloc(x, hp, e, hp + IntInf.toInt ival * ws) (* no tag! *)
+            | gen (PURE(P.rawrecord(SOME rk), [NUM{ty={tag=true, ...}, ival}], x, _, e), hp) = let
 	      (* allocate an uninitialized record with a tag *)
                 val (tag, fp) = (case rk (* tagged version *)
                        of (RK_FCONT | RK_FBLOCK) => (D.tag_raw64, true)
@@ -1786,10 +1796,11 @@ raise ex)
 			| _ => (D.tag_record, false)
 		      (* end case *))
 	      (* len of record in 32-bit words *)
-		val len = if ws = 4 andalso fp then n+n else n
+		val len = if ws = 4 andalso fp then ival+ival else ival
 	      (* record descriptor *)
-		val desc = D.makeDesc'(len, tag)
+		val desc = D.makeDesc(len, tag)
 	      (* Align floating point *)
+(* 64BIT: REAL32: FIXME *)
 		val hp = if ws = 4 andalso fp
 			 andalso Word.andb(Word.fromInt hp, 0w4) <> 0w0
 		      then hp+4
@@ -1799,7 +1810,7 @@ raise ex)
 		(* store tag now! *)
 		  emit(M.STORE(ity, ea(C.allocptr, hp), LI desc, pi(mem, ~1)));
 		(* assign the address to x *)
-		  treeifyAlloc(x, hp+ws, e, hp+len*ws+ws)
+		  treeifyAlloc(x, hp+ws, e, hp+(IntInf.toInt len)*ws+ws)
 		end
 
             | gen (PURE(P.condmove cmp, vw, x, t, e), hp) =
@@ -2016,7 +2027,7 @@ raise ex)
               let val ea = M.SUB(ity, regbind v, LI 4)
                   val i' =
                     case i
-		     of INT k => LI(D.makeDesc'(k, D.tag_special))
+		     of NUM{ty={tag=true, ...}, ival} => LI(D.makeDesc(ival, D.tag_special))
 		      | _ => M.ORB(ity, M.SLL(ity, untagSigned i, LW' D.tagWidth),
                                   LI D.desc_special)
                   val mem = getRegionPi(v, 0)
@@ -2047,9 +2058,11 @@ raise ex)
                     ([], [(w, _)]) => defI31 (w, mlZero, e, hp)
 		  | ([M.FPR x],[(w,CPS.FLTt 64)]) => treeifyDefF64 (w, x, e, hp) (* REAL32: *)
                         (* more sanity checking here ? *)
-                  | ([M.GPR x],[(w, CPS.INTt 32)]) => defI32 (w, x, e, hp) (* 64BIT: *)
+                  | ([M.GPR x],[(w, CPS.NUMt{sz=32, tag=false})]) => defI32 (w, x, e, hp) (* 64BIT: *)
                   | ([M.GPR x],[(w, CPS.PTRt _)]) => defBoxed (w, x, e, hp)
-		  | ([M.GPR x1, M.GPR x2], [(w1,CPS.INTt 32), (w2,CPS.INTt 32)]) => let
+		  | ([M.GPR x1, M.GPR x2],
+		     [(w1, CPS.NUMt{sz=32, tag=false}), (w2, CPS.NUMt{sz=32, tag=false})]
+		    ) => let
 		      val (r1, r2) = (newReg I32, newReg I32)
 		      in
 			addRegBinding(w1, r1);
@@ -2062,12 +2075,8 @@ raise ex)
 	      end
 
             (*** BRANCH  ***)
-            | gen (BRANCH(P.cmp{oper, kind},[INT v, INT k], _, e, d), hp) =
-		if evalCmp(kind, oper, IntInf.fromInt v, IntInf.fromInt k)
-		  then gen(e, hp)
-		  else gen(d, hp)
-            | gen (BRANCH(P.cmp{oper, kind}, [INT32 v, INT32 k],_,e,d), hp) =
-		if evalCmp(kind, oper, Word32.toLargeIntX v, Word32.toLargeIntX k)
+            | gen (BRANCH(P.cmp{oper, kind}, [NUM v, NUM k], _, e, d), hp) =
+		if evalCmp(kind, oper, #ival v, #ival k)
 		  then gen(e, hp)
 		  else gen(d, hp)
             | gen (BRANCH(P.cmp{oper, kind=P.INT _}, vw, p, e, d), hp) =
@@ -2101,10 +2110,10 @@ raise ex)
               end
             | gen (BRANCH(P.peql, vw, p, e, d), hp) = branch(p, M.EQ, vw, e, d, hp)
             | gen (BRANCH(P.pneq, vw, p, e, d), hp) = branch(p, M.NE, vw, e, d, hp)
-            | gen (BRANCH(P.strneq, [INT n,v,w], p, d, e), hp) =
-                branchStreq(n, v, w, e, d, hp)
-            | gen (BRANCH(P.streq, [INT n,v,w],p,d,e), hp) =
-                branchStreq(n, v, w, d, e, hp)
+            | gen (BRANCH(P.strneq, [NUM{ty={tag=true, ...}, ival},v,w], p, d, e), hp) =
+                branchStreq(ival, v, w, e, d, hp)
+            | gen (BRANCH(P.streq, [NUM{ty={tag=true, ...}, ival},v,w],p,d,e), hp) =
+                branchStreq(ival, v, w, d, e, hp)
             | gen (BRANCH(P.boxed, [x], p, a, b), hp) = branchOnBoxed(p, x, a, b, hp)
             | gen (BRANCH(P.unboxed, [x], p, a, b), hp) = branchOnBoxed(p, x, b, a, hp)
             | gen (e, hp) = (PPCps.prcps e; print "\n"; error "genCluster.gen")

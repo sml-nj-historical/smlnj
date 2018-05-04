@@ -198,6 +198,12 @@ struct
   fun splittable CPS.RK_VECTOR = false (* not supported in backend (yet) *)
     | splittable _             = true
 
+  (* tagged integers *)
+  fun tagInt n = CPS.NUM{
+          ival = IntInf.fromInt n,
+	  ty = {tag = true, sz = Target.defaultIntSz}
+	}
+
   (*-------------------------------------------------------------------------
    *
    * All CPS functions can be independently processed.
@@ -777,7 +783,7 @@ struct
            NONE => e
          | SOME(spillRecord, off, cty) =>
             CPS.SETTER(P.rawupdate cty,
-               [spillRecord, CPS.INT off,CPS.VAR w], e)
+               [spillRecord, tagInt off,CPS.VAR w], e)
 
       (*
        * Emit spill record code
@@ -786,7 +792,7 @@ struct
         | createSpillRecord(numSpills, e) =
       let val (spillRecLvar,_) = genSpillRec()
           val m = numSpills * itemSize
-          val e = CPS.PURE(P.rawrecord NONE,[CPS.INT m],
+          val e = CPS.PURE(P.rawrecord NONE,[tagInt m],
                            spillRecLvar,CPS.BOGt,e)
       in  currentSpillRecord := NONE; (* clear *)
           e
@@ -813,7 +819,7 @@ struct
       fun initRecordItem(record, rk, offset, v, path, e) =
           proj(v, path,
                fn x => CPS.SETTER(P.rawupdate(rkToCty rk),
-                         [CPS.VAR record, CPS.INT offset, CPS.VAR x], e))
+                         [CPS.VAR record, tagInt offset, CPS.VAR x], e))
 
       (*
        * Generate code to create a record.
@@ -821,9 +827,9 @@ struct
       fun createRecord(record, rk, len, consts, e) =
       let val e = emitSpill(record, e)
           val p = P.rawupdate(rkToCty rk)
-          fun init((i, c),e) = CPS.SETTER(p,[CPS.VAR record, CPS.INT i, c], e)
+          fun init((i, c),e) = CPS.SETTER(p,[CPS.VAR record, tagInt i, c], e)
           val e = foldr init e consts
-          val e = CPS.PURE(P.rawrecord(SOME rk),[CPS.INT len],record,CPS.BOGt,e)
+          val e = CPS.PURE(P.rawrecord(SOME rk),[tagInt len],record,CPS.BOGt,e)
       in  e
       end
 

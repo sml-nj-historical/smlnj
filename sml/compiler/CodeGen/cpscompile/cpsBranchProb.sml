@@ -158,10 +158,8 @@ structure CpsBranchProb : CPS_BRANCH_PROB = struct
 	    (* opcode heuristic *)
 	    fun oh () = let
 	      datatype num = Zero | Num | Other
-	      fun number(CPS.INT 0) = Zero
-		| number(CPS.INT _) = Num
-		| number(CPS.INT32 0w0) = Zero
-		| number(CPS.INT32 _) = Num
+	      fun number(CPS.NUM{ival=0, ...}) = Zero
+		| number(CPS.NUM _) = Num
 		| number(CPS.REAL{rval, ...}) = if RealLit.isZero rval then Zero else Num
 		| number _ = Other
 

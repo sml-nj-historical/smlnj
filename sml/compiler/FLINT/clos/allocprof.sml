@@ -57,17 +57,25 @@ val PROFSIZE =        (ARITHOVH+ARITHSLOTS)
 
 val PROFREG = 0  (* use pseudo register 0 *)
 
+(* integer types/values *)
+local
+  val tt = {sz = Target.defaultIntSz, tag = true}
+in
+val tagIntTy = NUMt tt
+fun tagInt n = NUM{ival = IntInf.fromInt n, ty = tt}
+end
+
 in
 
 local
 fun prof(s,i) = (* Header to increment slot s by i *)
  (fn ce => let val a1 = mkLvar() and a2 = mkLvar()
 	       and x = mkLvar() and n = mkLvar()
-	   in  LOOKER(P.getpseudo,[INT PROFREG],a1,BOGt,
-	       LOOKER(P.subscript,[VAR a1,INT s],x,TINTt,
-	       ARITH(P.iadd,[VAR x,INT i],n,TINTt,
-	       LOOKER(P.getpseudo,[INT PROFREG],a2,BOGt,
-	       SETTER(P.unboxedupdate,[VAR a2,INT s,VAR n],ce)))))
+	   in  LOOKER(P.getpseudo,[tagInt PROFREG],a1,BOGt,
+	       LOOKER(P.subscript,[VAR a1,tagInt s],x,tagIntTy,
+	       ARITH(P.iadd,[VAR x,tagInt i],n,tagIntTy,
+	       LOOKER(P.getpseudo,[tagInt PROFREG],a2,BOGt,
+	       SETTER(P.unboxedupdate,[VAR a2,tagInt s,VAR n],ce)))))
 	   end)
 
 fun profSlots(base,slots,ovfl) cost =

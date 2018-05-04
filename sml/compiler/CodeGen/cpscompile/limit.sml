@@ -66,8 +66,8 @@ fun path escapes fl =
 	| g(d, PURE(P.newarray0,_,_,_,e)) = g(d+5, e)
 	| g(d, PURE(P.makeref, _, _, _, e)) = g(d+2, e)
 	| g(d, PURE(P.mkspecial, _, _, _, e)) = g(d+2, e)
-        | g(d, PURE(P.rawrecord tag,[INT n],_,_,e)) =
-             g(d+n+(case tag of SOME _ => 1 | NONE => 0), e)
+        | g(d, PURE(P.rawrecord tag, [NUM{ty={tag=true, ...}, ival}],_,_,e)) =
+             g (d+(IntInf.toInt ival)+(case tag of SOME _ => 1 | NONE => 0), e)
 	| g(d, PURE((P.trunc_inf _ | P.extend_inf _ | P.copy_inf _),
 		    _, _, _, e)) =
 	    error "23487978 *_inf in limit"

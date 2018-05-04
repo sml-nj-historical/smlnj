@@ -37,8 +37,7 @@ val CT : cty IntHashTable.hash_table = IntHashTable.mkTable(32,CTYMAP)
 val addty = IntHashTable.insert CT
 val getty = IntHashTable.lookup CT
 fun grabty (VAR v) = ((getty v) handle _ => BOGt)
-  | grabty (INT _) = TINTt
-  | grabty (INT32 _) = INTt 32  (* 64BIT: will need 64-bit integer literals *)
+  | grabty (NUM{ty, ...}) = NUMt ty
   | grabty (REAL{ty, ...}) = FLTt ty
   | grabty _ = BOGt
 

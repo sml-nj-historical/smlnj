@@ -26,11 +26,7 @@ signature CPS =
     type intty = {sz : int, tag : bool}
 
     datatype cty
-(* 64BIT:
       = NUMt of intty	(* integers of the given type *)
-*)
-      = TINTt		(* tagged integers *)
-      | INTt of int	(* untagged integers of given size *)
       | PTRt of pkind	(* pointer *)
       | FUNt		(* function? *)
       | FLTt of int	(* float of given size *)
@@ -149,11 +145,7 @@ signature CPS =
     datatype value
       = VAR of lvar
       | LABEL of lvar
-(* BIT64: REAL32: replace INT, INT32, and REAL with
       | NUM of intty IntConst.t
-*)
-      | INT of int
-      | INT32 of Word32.word
       | REAL of int RealConst.t
       | STRING of string
       | OBJECT of Unsafe.Object.object

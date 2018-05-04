@@ -28,8 +28,11 @@ val sayt = say o CPS.ctyToString
 
 fun value2str (VAR v) = LV.lvarName v
   | value2str (LABEL v) = "(L)" ^ LV.lvarName v
-  | value2str (INT i) = "(I)" ^ Int.toString i
-  | value2str (INT32 i) = "(I32)" ^ Word32.toString i
+  | value2str (NUM{ival, ty={sz=0, ...}}) = "(II)" ^ IntInf.toString ival
+  | value2str (NUM{ival, ty={tag=true, ...}}) = "(I)" ^ IntInf.toString ival
+  | value2str (NUM{ival, ty={sz, ...}}) = concat[
+	"(I", Int.toString sz, ")", IntInf.toString ival
+      ]
   | value2str (REAL{rval, ty}) = concat[
 	"(R", Int.toString ty, ")", RealLit.toString rval
       ]

@@ -29,11 +29,7 @@ datatype pkind = VPT | RPT of int | FPT of int
 type intty = {sz : int, tag : bool}
 
 datatype cty
-(* 64BIT:
   = NUMt of intty	(* integers of the given type *)
-*)
-  = TINTt		(* tagged integers *)
-  | INTt of int		(* untagged integers of given size *)
   | PTRt of pkind	(* pointer *)
   | FUNt		(* function? *)
   | FLTt of int 	(* float of given size *)
@@ -180,11 +176,7 @@ type lvar = LambdaVar.lvar
 datatype value
   = VAR of lvar
   | LABEL of lvar
-(* BIT64: REAL32: replace INT, INT32, and REAL with
   | NUM of intty IntConst.t
-*)
-  | INT of int
-  | INT32 of Word32.word
   | REAL of int RealConst.t
   | STRING of string
   | OBJECT of Unsafe.Object.object
@@ -245,18 +237,19 @@ fun hasRCC(cexp) = let
       end
 
 fun sizeOf (FLTt sz) = sz
-  | sizeOf (INTt sz) = sz
-  | sizeOf (TINTt | PTRt _ | FUNt | CNTt) = Target.mlValueSz
+  | sizeOf (NUMt{sz=31, tag=true}) = Target.mlValueSz	(* 64BIT: FIXME *)
+  | sizeOf (NUMt{sz, tag=false}) = sz
+  | sizeOf (PTRt _ | FUNt | CNTt) = Target.mlValueSz
 
 fun isFloat (FLTt _) = true
   | isFloat _ = false
 
 fun isTagged (FLTt _) = false
-  | isTagged (INTt _) = false
+  | isTagged (NUMt{tag, ...}) = tag
   | isTagged _ = true
 
-fun ctyToString (TINTt) =  "[I]"
-  | ctyToString (INTt sz) = concat["[I", Int.toString sz, "]"]
+fun ctyToString (NUMt{sz, tag=true}) =  "[I]"
+  | ctyToString (NUMt{sz, ...}) = concat["[I", Int.toString sz, "]"]
   | ctyToString (FLTt sz) = concat["[R", Int.toString sz, "]"]
   | ctyToString (PTRt (RPT k)) = concat["[PR", Int.toString k, "]"]
   | ctyToString (PTRt (FPT k)) = concat["[PF", Int.toString k, "]"]
@@ -305,8 +298,8 @@ fun rtyc (f, []) = RPT 0
 
 fun ctyc tc = LT.tcw_prim (tc,
       fn pt =>
-	if PT.pt_eq(pt, ptc_int) then TINTt
-	else if PT.pt_eq(pt, PT.ptc_int32) then INTt 32
+	if PT.pt_eq(pt, ptc_int) then NUMt{sz=Target.defaultIntSz, tag=true}
+	else if PT.pt_eq(pt, PT.ptc_int32) then NUMt{sz=32, tag=false}
 (* 64BIT:
         else if PT.pt_eq(pt, PT.ptc_int64) then INTt 64
 *)

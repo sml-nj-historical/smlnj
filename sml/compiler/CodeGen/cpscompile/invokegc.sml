@@ -267,7 +267,7 @@ struct
     * Partition the root set into types
     *)
    fun split([], [], boxed, int, float) = {boxed=boxed, int=int, float=float}
-     | split(T.GPR r::rl, CPS.INTt _::tl, b, i, f) = split(rl,tl,b,r::i,f)
+     | split(T.GPR r::rl, CPS.NUMt{tag=false, ...}::tl, b, i, f) = split(rl,tl,b,r::i,f)
      | split(T.GPR r::rl, CPS.FLTt _::tl, b, i, f) = error "split: T.GPR"
      | split(T.GPR r::rl, _::tl, b, i, f) = split(rl,tl,r::b,i,f)
      | split(T.FPR r::rl, CPS.FLTt _::tl, b, i, f) = split(rl,tl,b,i,r::f)
