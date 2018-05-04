@@ -351,8 +351,10 @@ structure RealLit :> sig
                       end
                   | _ => ([], rest) (* empty or else #"e" or #"E" *)
                 (* end case *))
+        (* construct the digit list *)
+          val digits = List.revAppend(whole, frac)
         (* get the exponent *)
-          val exp = if Substring.isEmpty rest
+          val exp = if Substring.isEmpty rest orelse List.null digits
                 then 0
                 else let
                   val rest = (Substring.triml 1 rest) (* trim #"e" or #"E" *)
@@ -369,7 +371,7 @@ structure RealLit :> sig
                     (* end case *)
                   end
           in
-            Flt{isNeg=isNeg, digits=List.revAppend(whole, frac), exp=exp + wholeLen}
+            Flt{isNeg=isNeg, digits=digits, exp=exp + wholeLen}
           end
     end (* local *)
 
