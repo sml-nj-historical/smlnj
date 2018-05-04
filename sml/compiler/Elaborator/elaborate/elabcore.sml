@@ -502,26 +502,27 @@ let
 	   | WordExp(src, s) =>
 	       (NUMexp(src, {ty = mkWordLiteralTy(s,region), ival = s}), TS.empty, no_updt)
 	   | RealExp(src, r) => let
-	      (* check the validity of the constant *)
-		val r' = RealLit.abs r
-		fun mkExp r = REALexp(src, {rval = r, ty = mkRealLiteralTy(r, region)})
+		fun result r =
+		      (REALexp(src, {rval = r, ty = mkRealLiteralTy(r, region)}), TS.empty, no_updt)
 		in
 (* REAL32: this test gets moved to overload resolution *)
-(* FIXME: once we support subnormal numbers, change this test *)
-		  if RealLit.lessThan(r', minNormalReal64)
-		    then (
-		      error region EM.WARN (String.concat[
-			  "real literal ", src, " will be rounded to ",
-			  if (RealLit.isNeg r) then "~0.0" else "0.0"
-			]) EM.nullErrorBody;
-		      (mkExp(RealLit.zero(RealLit.isNeg r)), TS.empty, no_updt))
-		  else if RealLit.lessThan(maxReal64, r')
-		    then (
-		      error region EM.COMPLAIN (String.concat[
-			  "real literal ", src, " is too large"
-			]) EM.nullErrorBody;
-                      (mkExp r, TS.empty, no_updt))
-		    else (mkExp r, TS.empty, no_updt)
+		  case Real64ToBits.classify r
+		   of IEEEReal.INF => (
+		      (* literal would cause overflow when converted to IEEE float format *)
+			error region EM.COMPLAIN (String.concat[
+			    "real literal '", src, "' is too large"
+			  ]) EM.nullErrorBody;
+			result r)
+		    | IEEEReal.ZERO => if RealLit.isZero r
+			then result r
+			else (
+			  error region EM.WARN (String.concat[
+			      "real literal '", src, "' is too small and will be rounded to ",
+			      if (RealLit.isNeg r) then "~0.0" else "0.0"
+			    ]) EM.nullErrorBody;
+			  result (RealLit.zero(RealLit.isNeg r)))
+		    | _ => result r
+		  (* end case *)
 		end
 	   | StringExp s => (STRINGexp s,TS.empty,no_updt)
 	   | CharExp s => (CHARexp s,TS.empty,no_updt)
