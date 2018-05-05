@@ -133,40 +133,41 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
       | numkind (AP.FLOAT bits) = P.FLOAT bits
 
   (* cmpop: {oper: AP.cmpop, kind: AP.numkind} -> P.branch *)
-    fun cmpop stuff =
-      (case stuff
-	of {oper=AP.EQL,kind=AP.INT 31} => P.ieql
-	 | {oper=AP.NEQ,kind=AP.INT 31} => P.ineq
-	 | {oper,kind=AP.FLOAT size} => let
-	      val rator = (case oper
-		    of AP.GT => P.fGT
-		     | AP.GTE  => P.fGE
-		     | AP.LT   => P.fLT
-		     | AP.LTE  => P.fLE
-		     | AP.EQL  => P.fEQ
-		     | AP.NEQ  => P.fULG
-		     | AP.FSGN => P.fsgn
-		     | _       => bug "cmpop:kind=AP.FLOAT"
-		   (* end case *))
-	      in
-		P.fcmp{oper= rator, size=size}
-	      end
-	 | {oper, kind} =>
-	     let fun check (_, AP.UINT _) = ()
-		   | check (oper, _) = bug ("check" ^ oper)
-		 fun c AP.GT  = P.>
-		   | c AP.GTE = P.>=
-		   | c AP.LT  = P.<
-		   | c AP.LTE = P.<=
-		   | c AP.LEU = (check ("leu", kind); P.<= )
-		   | c AP.LTU = (check ("ltu", kind); P.< )
-		   | c AP.GEU = (check ("geu", kind); P.>= )
-		   | c AP.GTU = (check ("gtu", kind); P.> )
-		   | c AP.EQL = P.eql
-		   | c AP.NEQ = P.neq
-		   | c AP.FSGN = bug "cmpop:kind=AP.UINT"
-	      in P.cmp{oper=c oper, kind=numkind kind}
-	     end)
+    fun cmpop stuff = (case stuff
+	   of {oper=AP.EQL,kind=AP.INT 31} => P.ieql
+	    | {oper=AP.NEQ,kind=AP.INT 31} => P.ineq
+	    | {oper,kind=AP.FLOAT size} => let
+		val rator = (case oper
+		      of AP.GT => P.fGT
+		       | AP.GTE  => P.fGE
+		       | AP.LT   => P.fLT
+		       | AP.LTE  => P.fLE
+		       | AP.EQL  => P.fEQ
+		       | AP.NEQ  => P.fULG
+		       | AP.FSGN => P.fsgn
+		       | _       => bug "cmpop:kind=AP.FLOAT"
+		     (* end case *))
+		in
+		  P.fcmp{oper= rator, size=size}
+		end
+	    | {oper, kind} => let
+		fun check (_, AP.UINT _) = ()
+		  | check (oper, _) = bug ("check" ^ oper)
+		fun c AP.GT  = P.>
+		  | c AP.GTE = P.>=
+		  | c AP.LT  = P.<
+		  | c AP.LTE = P.<=
+		  | c AP.LEU = (check ("leu", kind); P.<= )
+		  | c AP.LTU = (check ("ltu", kind); P.< )
+		  | c AP.GEU = (check ("geu", kind); P.>= )
+		  | c AP.GTU = (check ("gtu", kind); P.> )
+		  | c AP.EQL = P.eql
+		  | c AP.NEQ = P.neq
+		  | c AP.FSGN = bug "cmpop:kind=AP.UINT"
+		in
+		  P.cmp{oper=c oper, kind=numkind kind}
+		end
+	  (* end case *))
 
   (* map_branch:  AP.primop -> P.branch *)
     fun map_branch p = (case p
@@ -186,7 +187,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
       | primwrap (FLTt _) = raise Fail "unsupported FLTt size" (* REAL32: *)
       | primwrap _ = P.wrap
 (*
-    fun primwrap(TINTt sz) = P.iwrap sz
+    fun primwrap(NUMP{sz, ...}) = P.iwrap sz
       | primwrap(FLTt sz) = P.fwrap sz
       | primwrap _ = P.wrap
 *)
@@ -230,90 +231,87 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
       | PKA of P.arith
 
   (* map_primop: AP.primop -> pkind *)
-    fun map_primop p =
-      (case p
-	of AP.TEST(from,to) =>   PKA (P.test(from, to))
-	 | AP.TESTU(from,to) =>  PKA (P.testu(from, to))
-	 | AP.COPY(from,to) =>   PKP (P.copy(from,to))
-	 | AP.EXTEND(from,to) => PKP (P.extend(from, to))
-	 | AP.TRUNC(from,to) =>  PKP (P.trunc(from, to))
+    fun map_primop p = (case p
+	   of AP.TEST(from,to) =>   PKA (P.test(from, to))
+	    | AP.TESTU(from,to) =>  PKA (P.testu(from, to))
+	    | AP.COPY(from,to) =>   PKP (P.copy(from,to))
+	    | AP.EXTEND(from,to) => PKP (P.extend(from, to))
+	    | AP.TRUNC(from,to) =>  PKP (P.trunc(from, to))
 
-	 | AP.TEST_INF to => PKA (P.test_inf to)
-	 | AP.TRUNC_INF to => PKP (P.trunc_inf to)
-	 | AP.COPY_INF from => PKP (P.copy_inf from)
-	 | AP.EXTEND_INF from => PKP (P.extend_inf from)
+	    | AP.TEST_INF to => PKA (P.test_inf to)
+	    | AP.TRUNC_INF to => PKP (P.trunc_inf to)
+	    | AP.COPY_INF from => PKP (P.copy_inf from)
+	    | AP.EXTEND_INF from => PKP (P.extend_inf from)
 
-	 | AP.ARITH{oper,kind,overflow=true} =>
-	     PKA(P.arith{oper=arithop oper,kind=numkind kind})
-	 | AP.ARITH{oper,kind,overflow=false} =>
-	     PKP(P.pure_arith{oper=arithop oper,kind=numkind kind})
-	 | AP.ROUND{floor,fromkind,tokind} =>
-	     PKA(P.round{floor=floor, fromkind=numkind fromkind,
-			 tokind=numkind tokind})
-	 | AP.REAL{fromkind,tokind} =>
-	     PKP(P.real{tokind=numkind tokind, fromkind=numkind fromkind})
+	    | AP.ARITH{oper,kind,overflow=true} =>
+		PKA(P.arith{oper=arithop oper,kind=numkind kind})
+	    | AP.ARITH{oper,kind,overflow=false} =>
+		PKP(P.pure_arith{oper=arithop oper,kind=numkind kind})
+	    | AP.ROUND{floor,fromkind,tokind} =>
+		PKA(P.round{floor=floor, fromkind=numkind fromkind,
+			    tokind=numkind tokind})
+	    | AP.REAL{fromkind,tokind} =>
+		PKP(P.real{tokind=numkind tokind, fromkind=numkind fromkind})
 
-	 | AP.SUBSCRIPTV => PKP (P.subscriptv)
-	 | AP.MAKEREF =>    PKP (P.makeref)
-	 | AP.LENGTH =>     PKP (P.length)
-	 | AP.OBJLENGTH =>  PKP (P.objlength)
-	 | AP.GETTAG =>     PKP (P.gettag)
-	 | AP.MKSPECIAL =>  PKP (P.mkspecial)
-(*       | AP.THROW =>      PKP (P.cast) *)
-	 | AP.CAST =>       PKP (P.cast)
-	 | AP.MKETAG =>     PKP (P.makeref)
-	 | AP.NEW_ARRAY0 => PKP (P.newarray0)
-	 | AP.GET_SEQ_DATA => PKP (P.getseqdata)
-	 | AP.SUBSCRIPT_REC => PKP (P.recsubscript)
-	 | AP.SUBSCRIPT_RAW64 => PKP (P.raw64subscript)
+	    | AP.SUBSCRIPTV => PKP (P.subscriptv)
+	    | AP.MAKEREF =>    PKP (P.makeref)
+	    | AP.LENGTH =>     PKP (P.length)
+	    | AP.OBJLENGTH =>  PKP (P.objlength)
+	    | AP.GETTAG =>     PKP (P.gettag)
+	    | AP.MKSPECIAL =>  PKP (P.mkspecial)
+ (*         | AP.THROW =>      PKP (P.cast) *)
+	    | AP.CAST =>       PKP (P.cast)
+	    | AP.MKETAG =>     PKP (P.makeref)
+	    | AP.NEW_ARRAY0 => PKP (P.newarray0)
+	    | AP.GET_SEQ_DATA => PKP (P.getseqdata)
+	    | AP.SUBSCRIPT_REC => PKP (P.recsubscript)
+	    | AP.SUBSCRIPT_RAW64 => PKP (P.raw64subscript)
 
-	 | AP.SUBSCRIPT => PKL (P.subscript)
-	 | AP.NUMSUBSCRIPT{kind,immutable=false,checked=false} =>
-	       PKL(P.numsubscript{kind=numkind kind})
-	 | AP.NUMSUBSCRIPT{kind,immutable=true,checked=false} =>
-	       PKP(P.pure_numsubscript{kind=numkind kind})
-	 | AP.DEREF =>     PKL(P.!)
-	 | AP.GETHDLR =>   PKL(P.gethdlr)
-	 | AP.GETVAR  =>   PKL(P.getvar)
-	 | AP.GETPSEUDO => PKL(P.getpseudo)
-	 | AP.GETSPECIAL =>PKL(P.getspecial)
+	    | AP.SUBSCRIPT => PKL (P.subscript)
+	    | AP.NUMSUBSCRIPT{kind,immutable=false,checked=false} =>
+		  PKL(P.numsubscript{kind=numkind kind})
+	    | AP.NUMSUBSCRIPT{kind,immutable=true,checked=false} =>
+		  PKP(P.pure_numsubscript{kind=numkind kind})
+	    | AP.DEREF =>     PKL(P.!)
+	    | AP.GETHDLR =>   PKL(P.gethdlr)
+	    | AP.GETVAR  =>   PKL(P.getvar)
+	    | AP.GETPSEUDO => PKL(P.getpseudo)
+	    | AP.GETSPECIAL =>PKL(P.getspecial)
 
-	 | AP.SETHDLR => PKS(P.sethdlr)
-	 | AP.NUMUPDATE{kind,checked=false} =>
-	       PKS(P.numupdate{kind=numkind kind})
-	 | AP.UNBOXEDUPDATE => PKS(P.unboxedupdate)
-	 | AP.UPDATE => PKS(P.update)
-	 | AP.ASSIGN => PKS(P.assign)
-	 | AP.UNBOXEDASSIGN => PKS(P.unboxedassign)
-	 | AP.SETVAR => PKS(P.setvar)
-	 | AP.SETPSEUDO => PKS(P.setpseudo)
-	 | AP.SETMARK => PKS(P.setmark)
-	 | AP.DISPOSE => PKS(P.free)
-	 | AP.SETSPECIAL => PKS(P.setspecial)
+	    | AP.SETHDLR => PKS(P.sethdlr)
+	    | AP.NUMUPDATE{kind,checked=false} =>
+		  PKS(P.numupdate{kind=numkind kind})
+	    | AP.UNBOXEDUPDATE => PKS(P.unboxedupdate)
+	    | AP.UPDATE => PKS(P.update)
+	    | AP.ASSIGN => PKS(P.assign)
+	    | AP.UNBOXEDASSIGN => PKS(P.unboxedassign)
+	    | AP.SETVAR => PKS(P.setvar)
+	    | AP.SETPSEUDO => PKS(P.setpseudo)
+	    | AP.SETMARK => PKS(P.setmark)
+	    | AP.DISPOSE => PKS(P.free)
+	    | AP.SETSPECIAL => PKS(P.setspecial)
 
-	 | AP.RAW_LOAD nk => PKL (P.rawload { kind = numkind nk })
-	 | AP.RAW_STORE nk => PKS (P.rawstore { kind = numkind nk })
-	 | AP.RAW_RECORD{ fblock = false } => PKP (P.rawrecord (SOME RK_I32BLOCK))
-	 | AP.RAW_RECORD{ fblock = true } => PKP (P.rawrecord (SOME RK_FBLOCK))
+	    | AP.RAW_LOAD nk => PKL (P.rawload { kind = numkind nk })
+	    | AP.RAW_STORE nk => PKS (P.rawstore { kind = numkind nk })
+	    | AP.RAW_RECORD{ fblock = false } => PKP (P.rawrecord (SOME RK_I32BLOCK))
+	    | AP.RAW_RECORD{ fblock = true } => PKP (P.rawrecord (SOME RK_FBLOCK))
 
-	 | _ => bug ("bad primop in map_primop: " ^ (AP.prPrimop p) ^ "\n"))
+	    | _ => bug ("bad primop in map_primop: " ^ (AP.prPrimop p) ^ "\n")
+	  (* end case *))
 
   (***************************************************************************
    *                  SWITCH OPTIMIZATIONS AND COMPILATIONS                  *
    ***************************************************************************)
 
-    fun do_switch_gen ren = Switch.switch {
+    fun do_switch_gen rename = Switch.switch {
 	    E_switchlimit = 4,
-	    E_int    = fn i => if i < ~0x20000000 orelse i >= 0x20000000
-			       then raise Switch.TooBig
-			       else tagInt' i,
-	    E_word   = fn w => tagInt (Word.toLargeIntX w),
-	    E_neq    = P.ineq,
-	    E_w32neq = P.cmp{oper=P.neq,kind=P.UINT 32},
-	    E_i32neq = P.cmp{oper=P.neq,kind=P.INT 32},
-	    E_word32 = fn w => boxInt(32, Word32.toLargeInt w),
-	    E_int32  = fn w => boxInt(32, Word32.toLargeIntX w),
-	    E_wneq   = P.cmp{oper=P.neq, kind=P.UINT 31},
+	    E_tagint = tagInt,
+	    E_boxint = fn {ival, ty} => boxInt(ty, ival),
+	  (* NOTE: MLRiscGen does not handle comparisons involving small integer types,
+           * so we promote them to the default tagged integer size.
+           *)
+	    E_ineq   = fn ty => P.cmp{oper=P.neq, kind=P.INT(Int.max(ty, Target.defaultIntSz))},
+	    E_wneq   = fn ty => P.cmp{oper=P.neq, kind=P.UINT(Int.max(ty, Target.defaultIntSz))},
 	    E_pneq   = P.pneq,
 	    E_less   = P.ilt,
 	    E_branch = (fn (cmp,x,y,a,b) => BRANCH(cmp, [x,y], mkv(), a, b)),
@@ -325,11 +323,11 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	    E_add    = (fn (x,y,c) =>
 			     mkfn(fn v => ARITH(P.iadd,[x,y],v,tagIntTy,c(VAR v)))),
 	    E_gettag = (fn (x,c) => mkfn(fn v => PURE(P.getcon,[x],v,tagIntTy,c(VAR v)))),
-	    E_unwrap = (fn (x,c) => mkfn(fn v => PURE(P.unwrap,[x],v,tagIntTy,c(VAR v)))),
 	    E_getexn = (fn (x,c) => mkfn(fn v => PURE(P.getexn,[x],v,BOGt,c(VAR v)))),
 	    E_length = (fn (x,c) => mkfn(fn v => PURE(P.length,[x],v,tagIntTy,c(VAR v)))),
+	    E_unwrap = (fn (x,c) => mkfn(fn v => PURE(P.unwrap,[x],v,tagIntTy,c(VAR v)))),
 	    E_boxed  = (fn (x,a,b) => BRANCH(P.boxed,[x],mkv(),a,b)),
-	    E_path   = (fn (DA.LVAR v, k) => k(ren v)
+	    E_path   = (fn (DA.LVAR v, k) => k(rename v)
 			 | _ =>  bug "unexpected path in convpath")
 	  }
 
@@ -437,6 +435,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	   | lpvar (F.WORD{ival, ty=31}) = tagInt ival
 	   | lpvar (F.REAL r) = REAL r
 	   | lpvar (F.STRING s) = STRING s
+	   | lpvar v = bug(concat["lpvar (", PPFlint.toStringValue v, ")"])
 
 	 (* lpvars : F.value list -> value list *)
 	 fun lpvars vl =
