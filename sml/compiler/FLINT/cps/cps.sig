@@ -56,9 +56,7 @@ signature CPS =
 	  = cmp of {oper: cmpop, kind: numkind}
 	  | fcmp of {oper: fcmpop, size: int}
 	  | boxed | unboxed | peql | pneq
-	  | streq | strneq
-	      (* streq(n,a,b) is defined only if strings a and b have
-		 exactly the same length n>1 *)
+          | streq of int | strneq of int (* streq n is defined on strings of length n *)
 
       (* These all update the store *)
 	datatype setter
@@ -108,18 +106,21 @@ signature CPS =
 
 	val opp : branch -> branch
 
+      (* arithmetic on default integers (i.e., Int.int) *)
 	val iadd : arith
 	val isub : arith
 	val imul : arith
 	val idiv : arith
 	val ineg : arith
 
+      (* arithmetic on default reals (i.e., Real.real) *)
 	val fadd : arith
 	val fsub : arith
 	val fmul : arith
 	val fdiv : arith
 	val fneg : arith
 
+      (* comparisons of default integers (i.e., Int.int) *)
 	val ieql : branch
 	val ineq : branch
 	val igt  : branch
@@ -129,6 +130,8 @@ signature CPS =
 (*      val iltu : branch
  *      val igeu : branch
  *)
+
+      (* comparisons of default reals (i.e., Real.real) *)
 	val feql : branch
 	val fneq : branch
 	val fgt  : branch
