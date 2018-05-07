@@ -142,7 +142,7 @@ real=(~?)(({num}{frac}?{exp})|({num}{frac}{exp}?));
                     Tokens.RPAREN(yypos,yypos+1));
 <INITIAL>"."		=> (Tokens.DOT(yypos,yypos+1));
 <INITIAL>"..."		=> (Tokens.DOTDOTDOT(yypos,yypos+3));
-<INITIAL>"'"("'"?)("_"|{num})?{id}
+<INITIAL>"'"{idchars}+
 			=> (TokTable.makeTyvar(yytext,yypos));
 <INITIAL>{id}	        => (TokTable.checkId(yytext, yypos));
 <INITIAL>{full_sym}+    => (if !ParserControl.quotation

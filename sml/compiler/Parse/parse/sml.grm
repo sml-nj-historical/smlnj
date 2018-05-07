@@ -34,6 +34,7 @@ val quotedBogusString = "'BOGUS"
 val quotedBogusHash = HashString.hashString "'BOGUS"
 val quotedBogusString = "'BOGUS"
 
+(* ID (identifiers) is split into IDA (alphanumeric) and IDS (symbolic) *)
   %%
   %term
       EOF | SEMICOLON
@@ -60,7 +61,7 @@ val quotedBogusString = "'BOGUS"
        | idtyc of FastSymbol.raw_symbol
        | int of string * IntInf.int
        | op_op of unit
-       | qid of (FastSymbol.raw_symbol ->symbol) -> symbol list
+       | qid of (FastSymbol.raw_symbol -> symbol) -> symbol list
        | selector of symbol
        | tycon of symbol list
        | tlabel of (symbol * ty)
@@ -217,8 +218,8 @@ qid	: IDA DOT qid	(fn kind => strSymbol IDA :: qid kind)
 selector: id		(labSymbol id)
 	| INT		(Symbol.labSymbol(IntInf.toString(#2 INT)))
 
-tycon   : idtyc DOT tycon (strSymbol idtyc :: tycon)
-	| idtyc		  ([tycSymbol idtyc])
+tycon   : IDA DOT tycon		(strSymbol IDA :: tycon)
+	| idtyc			([tycSymbol idtyc])
 
 tlabel	: selector COLON ty	(selector, ty )
 
@@ -504,13 +505,12 @@ constrs : constrs'		(constrs')
 constrs' : constr		([constr])
 	| constr BAR constrs'	(constr :: constrs')
 
-constr	: op_op ident		(varSymbol ident, NONE)
-	| op_op ident OF ty	(varSymbol ident, SOME ty)
+constr	: op_op id		(varSymbol id, NONE)
+	| op_op id OF ty	(varSymbol id, SOME ty)
 
-eb	: op_op ident		([EbGen{exn=(varSymbol ident),etype=NONE}])
-	| op_op ident OF ty	([EbGen{exn=(varSymbol ident),etype=SOME ty}])
-	| op_op ident EQUALOP qid	([EbDef{exn=varSymbol ident,
-					edef=qid varSymbol}])
+eb	: op_op id		([EbGen{exn=(varSymbol id),etype=NONE}])
+	| op_op id OF ty	([EbGen{exn=(varSymbol id),etype=SOME ty}])
+	| op_op id EQUALOP qid	([EbDef{exn=varSymbol id, edef=qid varSymbol}])
 	| eb AND eb		(eb1 @ eb2)
 
 qid_p	: qid			([qid strSymbol])
@@ -540,8 +540,8 @@ ldec	: VAL vb		(ValDec(vb,nil))
 	| EXCEPTION eb		(ExceptionDec eb)
 	| OPEN qid_p		(OpenDec qid_p)
 	| fixity ops		(FixDec{fixity=fixity, ops=ops})
-	| OVERLOAD ident COLON ty AS exp_pa
-				(OvldDec(varSymbol ident,ty,exp_pa))
+	| OVERLOAD id COLON ty AS exp_pa
+				(OvldDec(varSymbol id,ty,exp_pa))
 	| DO exp		(DoDec exp)
 
 exp_pa	: exp			([exp])
@@ -576,20 +576,18 @@ spec	: STRUCTURE strspec	([StrSpec strspec])
 	| EXCEPTION exnspec	([ExceSpec exnspec])
 	| SHARING sharespec	(sharespec)
 	| INCLUDE sign		([IncludeSpec sign])
-	| INCLUDE ident idents	(IncludeSpec(VarSig(FastSymbol.sigSymbol ident))
-				:: idents)
+	| INCLUDE IDA idents	(IncludeSpec(VarSig(FastSymbol.sigSymbol IDA)) :: idents)
 
-idents	: ident			([IncludeSpec(VarSig(FastSymbol.sigSymbol ident))])
-	| ident idents		(IncludeSpec(VarSig(FastSymbol.sigSymbol ident))
-				 :: idents)
+idents	: IDA			([IncludeSpec(VarSig(FastSymbol.sigSymbol IDA))])
+	| IDA idents		(IncludeSpec(VarSig(FastSymbol.sigSymbol IDA)) :: idents)
 
 strspec	: strspec AND strspec	(strspec1 @ strspec2)
-	| ident COLON sign	([(strSymbol ident, sign, NONE)])
-	| ident COLON sign EQUALOP qid
-				([(strSymbol ident, sign, SOME(qid strSymbol))])
+	| IDA COLON sign	([(strSymbol IDA, sign, NONE)])
+	| IDA COLON sign EQUALOP qid
+				([(strSymbol IDA, sign, SOME(qid strSymbol))])
 
 fctspec	: fctspec AND fctspec	(fctspec1 @ fctspec2)
-	| ident fsig		([(fctSymbol ident, fsig)])
+	| IDA fsig		([(fctSymbol IDA, fsig)])
 
 tyspec	: tyspec AND tyspec	(tyspec1 @ tyspec2)
 	| tyvars idtyc		([(tycSymbol idtyc,tyvars,NONE)])
@@ -600,8 +598,8 @@ valspec	: valspec AND valspec	(valspec1 @ valspec2)
 
 
 exnspec : exnspec AND exnspec	(exnspec1 @ exnspec2)
-	| ident			([(varSymbol ident,NONE)])
-	| ident OF ty		([(varSymbol ident,SOME ty)])
+	| id			([(varSymbol id,NONE)])
+	| id OF ty		([(varSymbol id,SOME ty)])
 
 sharespec: sharespec AND sharespec	(sharespec1 @ sharespec2)
 	 | TYPE patheqn	([MarkSpec (ShareTycSpec(patheqn tycSymbol),
@@ -631,16 +629,15 @@ fsigconstraint_op :		(NoSig)
  	| COLONGT IDA		(Opaque(VarFsig (fsigSymbol IDA)))
 
 sigb	: sigb AND sigb		(sigb1 @ sigb2)
-	| IDA EQUALOP sign	([Sigb{name=sigSymbol IDA,def=sign}])
+	| IDA EQUALOP sign	([Sigb{name=sigSymbol IDA, def=sign}])
 
 fsigb	: fsigb AND fsigb	(fsigb1 @ fsigb2)
 	| IDA fparamList EQUALOP sign
 		([Fsigb{name=fsigSymbol IDA,
 			def=BaseFsig{param=fparamList,result=sign}}])
 
-fsig	: COLON IDA	(VarFsig (fsigSymbol IDA))
-	| fparamList COLON sign
-			(BaseFsig{param=fparamList,result=sign})
+fsig	: COLON IDA	        (VarFsig (fsigSymbol IDA))
+	| fparamList COLON sign	(BaseFsig{param=fparamList,result=sign})
 
 str	: qid	((MarkStr(VarStr(qid strSymbol),(qidleft,qidright))))
 	| STRUCT strdecs END
