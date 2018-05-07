@@ -56,7 +56,12 @@ signature CPS =
 	  = cmp of {oper: cmpop, kind: numkind}
 	  | fcmp of {oper: fcmpop, size: int}
 	  | boxed | unboxed | peql | pneq
+(* FIXME: make length part of string equality test
           | streq of int | strneq of int (* streq n is defined on strings of length n *)
+*)
+	  | streq | strneq
+	      (* streq(n,a,b) is defined only if strings a and b have
+		 exactly the same length n>1 *)
 
       (* These all update the store *)
 	datatype setter
