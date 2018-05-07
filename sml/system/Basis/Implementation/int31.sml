@@ -1,10 +1,10 @@
 (* int31.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
- * The following structures must be without signatures so that inlining 
+ * The following structures must be without signatures so that inlining
  * can take place: Bits, Vector, Array, RealArray, Int, Real
- *
  *)
 
 structure Int31Imp : INTEGER =
@@ -41,7 +41,8 @@ structure Int31Imp : INTEGER =
 
     fun sign 0 = 0
       | sign i = if I31.<(i, 0) then ~1 else 1
-    fun sameSign (i, j) = (I31.andb(I31.xorb(i, j), minIntVal) = 0)
+
+    fun sameSign (i,j) = (sign i = sign j)
 
     fun compare (i, j) =
 	  if (I31.<(i, j)) then General.LESS
@@ -56,10 +57,10 @@ structure Int31Imp : INTEGER =
 
     fun scan radix = let
       val scanLarge = NumScan.scanInt radix
-      fun f getc cs = 
+      fun f getc cs =
 	(case scanLarge getc cs
 	  of NONE => NONE
-	   | SOME(i, cs') => 
+	   | SOME(i, cs') =>
 (* this is redundant because Int32.toInt does the check already:
 	     if I32.>(i, 0x3fffffff) orelse I32.<(i, ~0x40000000) then
 	       raise Overflow

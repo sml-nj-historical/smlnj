@@ -6,6 +6,7 @@
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
+
 structure Int64 : INTEGER = struct
 
     type int = Int64.int

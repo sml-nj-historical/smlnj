@@ -73,17 +73,17 @@ structure IntInfImp :> INT_INF = struct
 	      (CoreIntInf.base - x - borrow, 0w1) (* borrow *)
 
         (* convert to ones's complement *)
-        val ones = twos 
+        val ones = twos
 
         fun loop ([], [], _, _, _) = []
-          | loop ([], y :: ys, bx, by, bz)  = 
+          | loop ([], y :: ys, bx, by, bz)  =
               loop1 (0w0, [], y, ys, bx, by, bz)
-          | loop (x :: xs, [], bx, by, bz) = 
+          | loop (x :: xs, [], bx, by, bz) =
               loop1 (x, xs, 0w0, [], bx, by, bz)
-          | loop (x :: xs, y::ys, bx, by, bz) = 
+          | loop (x :: xs, y::ys, bx, by, bz) =
               loop1 (x, xs, y, ys, bx, by, bz)
 
-	and loop1 (x, xs, y, ys, bx, by, bz) = 
+	and loop1 (x, xs, y, ys, bx, by, bz) =
             let (* convert from ones complement *)
                 val (x, bx) = twos (sx, x, bx)
                 val (y, by) = twos (sy, y, by)
@@ -138,7 +138,7 @@ structure IntInfImp :> INT_INF = struct
 	case digits of
 	    [] => "0"
 	  | _ => loop ([], digits, 0w0, 0w0)
-    end			    
+    end
 
     val (decBase, decDigs) = let
 	fun try (b, d) =
@@ -179,7 +179,7 @@ structure IntInfImp :> INT_INF = struct
 	    BI { digits = [], ... } => 0
 	  | BI { negative, ... } => if negative then ~1 else 1
 
-    fun sameSign (i,j) = sign i = sign j
+    fun sameSign (i,j) = (sign i = sign j)
 
     fun notb x = ~(x + abstract (BI { negative = false, digits = [0w1] }))
 
@@ -238,7 +238,7 @@ structure IntInfImp :> INT_INF = struct
 		val { bytes, bits } = shiftAmount w
 		val bits' = CoreIntInf.baseBits - bits
 	      (* drop digits while checking to see is they are all 0w0 (==> pow2)*)
-		fun drop (0w0, allZero, i) = (allZero, i) 
+		fun drop (0w0, allZero, i) = (allZero, i)
 		  | drop (n, allZero, []) = (allZero, [])
 		  | drop (n, allZero, 0w0 :: xs) = drop (n-0w1, allZero, xs)
 		  | drop (n, _, x :: xs) = drop (n-0w1, false, xs)
