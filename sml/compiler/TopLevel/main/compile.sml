@@ -4,15 +4,19 @@
  * All rights reserved.
  *)
 
-functor CompileF(structure M  : CODEGENERATOR
-		 structure CC : CCONFIG
-		 val cproto_conv : string) : COMPILE0 =
-struct
+functor CompileF (
 
-    fun mkCompInfo { source, transform } =
-	CompInfo.mkCompInfo { source = source,
-			      transform = transform,
-			      mkMkStamp = CC.mkMkStamp }
+    structure M  : CODEGENERATOR
+    structure CC : CCONFIG
+    val cproto_conv : string
+
+  ) : COMPILE0 = struct
+
+    fun mkCompInfo { source, transform } = CompInfo.mkCompInfo {
+	    source = source,
+	    transform = transform,
+	    mkMkStamp = CC.mkMkStamp
+	  }
 
     type pickle     = CC.pickle		(* pickled format *)
     type hash       = CC.hash		(* environment hash id *)
