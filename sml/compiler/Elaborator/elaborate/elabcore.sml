@@ -1072,8 +1072,10 @@ let
 	    val (vbs,vars) =
 		foldr forceStrict ([],[]) (zip3(lhsSyms,lhsVars,map #2 exps))
 
-	    val env' = foldl (fn ((s,v),env) => SE.bind(s,B.VALbind v,env)) SE.empty
-			     (ListPair.zip(lhsSyms,vars))
+	    val env' = ListPair.foldl
+		  (fn (s, v, env) => SE.bind(s, B.VALbind v, env))
+		    SE.empty
+		      (lhsSyms, vars)
 
 	    val absyn = LOCALdec(SEQdec[declY,declAppY],VALdec vbs)
 	 in showDec("elabVALREClazy: ",absyn,env');
@@ -1089,8 +1091,8 @@ let
 	    else elabVALRECstrict(rvbs,etvs,env,region)
 	end
 
-    and elabDOdec(exp, env, region) = let
-	  val (exp,ev,updtExp) = elabExp(exp,env,region)
+    and elabDOdec (exp, env, region) = let
+	  val (exp, ev, updtExp) = elabExp(exp, env, region)
 	  fun updt tv = let
 		val localtyvars = diff (ev, tv, error region)
 		val downtyvars = union (localtyvars, tv, error region)
