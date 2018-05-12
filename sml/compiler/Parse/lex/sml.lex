@@ -193,9 +193,6 @@ real=(~?)(({num}{frac}?{exp})|({num}{frac}{exp}?));
 <LCOM>{eol}	=> (SourceMap.newline sourceMap yypos; YYBEGIN INITIAL; continue());
 <LCOM>.		=> (continue());
 <INITIAL>"(*"	=> (YYBEGIN A; stringstart := yypos; comLevel := 1; continue());
-<INITIAL>"*)"	=> (err (yypos,yypos+1) COMPLAIN "unmatched close comment"
-		        nullErrorBody;
-		    continue());
 <INITIAL>\h	=> (err (yypos,yypos) COMPLAIN
 		      (concat[
 			  "non-Ascii character (ord ",
