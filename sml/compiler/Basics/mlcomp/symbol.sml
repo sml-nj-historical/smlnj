@@ -3,21 +3,21 @@
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
 structure Symbol = struct
-  val varInt = 0w0 and sigInt = 0w1 and strInt = 0w2 and fsigInt = 0w3 and 
+  val varInt = 0w0 and sigInt = 0w1 and strInt = 0w2 and fsigInt = 0w3 and
       fctInt = 0w4 and tycInt = 0w5 and labInt = 0w6 and tyvInt = 0w7 and
       fixInt = 0w8
 
   datatype symbol = SYMBOL of word * string
   datatype namespace =
      VALspace | TYCspace | SIGspace | STRspace | FCTspace | FIXspace |
-     LABspace | TYVspace | FSIGspace 
+     LABspace | TYVspace | FSIGspace
 
   fun eq(SYMBOL(a1,b1),SYMBOL(a2,b2)) = a1=a2 andalso b1=b2
   fun symbolGt(SYMBOL(_,s1), SYMBOL(_,s2)) = s1 > s2
   fun symbolCMLt (SYMBOL (a1, s1), SYMBOL (a2, s2)) =
         a1 < a2 orelse a1 = a2 andalso s1 < s2
-  fun compare(SYMBOL(a1,s1),SYMBOL(a2,s2)) = 
-      case Word.compare(a1,a2) 
+  fun compare(SYMBOL(a1,s1),SYMBOL(a2,s2)) =
+      case Word.compare(a1,a2)
        of EQUAL => String.compare(s1,s2)
 	| order => order
 

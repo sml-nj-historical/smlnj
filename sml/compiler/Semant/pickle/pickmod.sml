@@ -1256,20 +1256,18 @@ in
 	    val >> = Word32.>>
 	    infix >>
 	    val w = Word32.fromInt count
-	in
-	    PS.fromBytes
-	      (Word8Vector.fromList
-	       [0w0,0w0,0w0,toByte(w >> 0w24),0w0,0w0,0w0,toByte(w >> 0w16),
-		0w0,0w0,0w0,toByte(w >> 0w8),0w0,0w0,0w0,toByte(w)])
-	end
+	    in
+	      PS.fromBytes
+		(Word8Vector.fromList
+		 [0w0,0w0,0w0,toByte(w >> 0w24),0w0,0w0,0w0,toByte(w >> 0w16),
+		  0w0,0w0,0w0,toByte(w >> 0w8),0w0,0w0,0w0,toByte(w)])
+	    end
         (* next line is an alternative to using Env.consolidate *)
 	val syms = ListMergeSort.uniqueSort symCmp (StaticEnv.symbols senv)
 	fun newAccess i = A.PATH (A.EXTERN hash, i)
-	fun mapbinding (sym, (i, env, lvars)) =
-	    case StaticEnv.look (senv, sym) of
-		B.VALbind (V.VALvar {access=a, prim=z,
-				     path=p, typ= ref t, btvs}) =>
-		(case a of
+	fun mapbinding (sym, (i, env, lvars)) = (case StaticEnv.look (senv, sym)
+	     of B.VALbind(V.VALvar{access, prim=z, path=p, typ= ref t, btvs}) =>
+	          (case access of
 		     A.LVAR k =>
 		     (i+1,
 		      StaticEnv.bind (sym,
@@ -1280,7 +1278,11 @@ in
 						       btvs = btvs}),
 				      env),
 		      k :: lvars)
-		   | _ => bug ("dontPickle 1: " ^ A.prAcc a))
+		   | _ => bug (concat[
+			"dontPickle 1: sym = '", Symbol.symbolToString sym,
+			"', access = ", A.prAcc access
+		      ])
+		  (* end case *))
 	      | B.STRbind (M.STR { sign = s, rlzn = r, access = a, prim =z }) =>
 		(case a of
 		     A.LVAR k =>
@@ -1324,6 +1326,7 @@ in
 		      | _ => bug ("dontPickle 4" ^ A.prAcc a)
 		end
 	      | binding => (i, StaticEnv.bind (sym, binding, env), lvars)
+	    (* end case *))
 	val (_,newenv,lvars) = foldl mapbinding (0, StaticEnv.empty, nil) syms
 	val hasExports = not (List.null lvars)
     in

@@ -1178,7 +1178,7 @@ let
 		     val _ = if List.exists (fn {funsym,...} =>
 					not(S.eq(var,funsym))) clauses
 			     then  error fbregion EM.COMPLAIN
-				     "clauses don't all have same function name"
+				     "clauses do not all have same function name"
 				     EM.nullErrorBody
 			     else ()
 
@@ -1195,7 +1195,7 @@ let
 					(fn {argpats,...} =>
 					      len <> length argpats) rest
 				    then error fbregion EM.COMPLAIN
-				   "clauses don't all have same number of patterns"
+				   "clauses do not all have same number of patterns"
 					  EM.nullErrorBody
 				    else ();
 				    len

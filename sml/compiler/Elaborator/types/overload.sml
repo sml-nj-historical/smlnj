@@ -171,7 +171,7 @@ structure Overload : OVERLOAD =
 		    if TU.numInRange(value, ty)
 		      then ()
 		      else err EM.COMPLAIN (concat[
-			  "literal value ", src, " is too large for type "
+			  "literal '", src, "' is too large for type "
 			])
 			(fn ppstrm => PPType.ppType env ppstrm ty)
 	      val overloadedLits = rev (!overloadedlits)

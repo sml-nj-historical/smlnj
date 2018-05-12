@@ -29,7 +29,7 @@ end (* signature TYPECHECK *)
 structure Typecheck : TYPECHECK =
 struct
 
-local open Array List Types VarCon BasicTypes TypesUtil Unify Absyn
+local open Types VarCon BasicTypes TypesUtil Unify Absyn
 	   ErrorMsg PPUtilNew PPType PPAbsyn
 
   structure SE = StaticEnv
@@ -171,20 +171,23 @@ fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
 	      val spaces = "                                   "
 	      val pad1 = substring(spaces,0,Int.max(0,len2-len1))
 	      val pad2 = substring(spaces,0,Int.max(0,len2-len1))
-	      val m = if m = "" then name1 ^ " and " ^ name2 ^ " don't agree"
+	      val m = if m = ""
+		      then concat[name1, " and ", name2, " do not agree"]
 		      else m   (* but name1 and name2 may be "" ! *)
 	  in if name1="" then ()
              else (PP.newline ppstrm;
-                   PP.string ppstrm (name1 ^ ": " ^ pad1);
+                   PP.string ppstrm (concat[name1, ": ", pad1]);
 	           ppType ppstrm ty1);
 	     if name2="" then ()
 	      else (PP.newline ppstrm;
-                    PP.string ppstrm (name2 ^ ": " ^ pad2);
+                    PP.string ppstrm (concat[name2, ": ", pad2]);
 		    ppType ppstrm ty2);
 	     if kindname="" then ()
-	     else (PP.newline ppstrm; PP.string ppstrm("in "^kindname^":");
-		   PP.break ppstrm {nsp=1,offset=2};
-                   kind ppstrm (phrase,!printDepth));
+	     else (
+		PP.newline ppstrm;
+		PP.string ppstrm(concat["in ", kindname, ":"]);
+		PP.break ppstrm {nsp=1,offset=2};
+		kind ppstrm (phrase,!printDepth));
              ppModeErrorMsg ppstrm mode
 	 end));
        false)
@@ -437,7 +440,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
            let val (p1, ty1) = patType(p1, depth, region)
   	       val (p2, ty2) = patType(p2, depth, region)
 	    in unifyErr{ty1=ty1,ty2=ty2,name1="expected",name2="found",
-			message="or-patterns don't agree",region=region,
+			message="or-patterns do not agree",region=region,
 			kind=ppPat,kindname="pattern",phrase=pat};
 	       (ORpat(p1, p2), MARKty(ty1, region))
 	   end
@@ -460,7 +463,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
             in (npat,MARKty(applyType(ty2,argty), region))
 	       handle Unify(mode) =>
 		(err region COMPLAIN
-                  (message("constructor and argument don't agree in pattern",mode))
+                  (message("constructor and argument do not agree in pattern",mode))
 		  (fn ppstrm =>
 		   (PPType.resetPPType();
 		    PP.newline ppstrm;
@@ -475,7 +478,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
        | CONSTRAINTpat(pat',ty) =>
 	   let val (npat,patTy) = patType(pat',depth,region)
 	    in if unifyErr{ty1=patTy,name1="pattern",ty2=ty,name2="constraint",
-			   message="pattern and constraint don't agree",
+			   message="pattern and constraint do not agree",
 			   region=region,kind=ppPat,kindname="pattern",phrase=pat}
 		then (CONSTRAINTpat(npat,MARKty(ty, region)),
 					(MARKty(ty, region)))
@@ -491,7 +494,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
 	       | (cpat as CONSTRAINTpat(VARpat(VALvar{typ,...}),ty)) =>
 		 let val (npat,patTy) = patType(pat',depth,region)
 		  in if unifyErr{ty1=patTy,name1="pattern",ty2=ty,name2="constraint",
-				 message="pattern and constraint don't agree",
+				 message="pattern and constraint do not agree",
 				 region=region,kind=ppPat,kindname="pattern",phrase=pat}
 		     then (typ := ty; (LAYEREDpat(cpat,npat),MARKty(ty, region)))
 		     else (pat,WILDCARDty)
@@ -602,7 +605,7 @@ in
 		in PPType.resetPPType();
 		   if isArrowType(reducedRatorTy)
 		   then (err region COMPLAIN
-			  (message("operator and operand don't agree",mode))
+			  (message("operator and operand do not agree",mode))
 			  (fn ppstrm =>
 			   (PP.newline ppstrm;
 			    PP.string ppstrm "operator domain: ";
@@ -652,7 +655,7 @@ in
 			     phrase=exp}
 		     then unifyErr{ty1=ety, name1="body",
 				   ty2=range(prune hty), name2="handler range",
-				   message="expression and handler don't agree",
+				   message="expression and handler do not agree",
 				   region=region,
 				   kind=ppExp,kindname="expression",phrase=exp}
 		     else false;
@@ -680,7 +683,7 @@ in
 	       (if isMatch then
 		    unifyErr{ty1=domain rty, name1="rule domain",
 			     ty2=ety, name2="object",
-			     message="case object and rules don't agree",
+			     message="case object and rules do not agree",
 			     region=region,kind=ppExp,kindname="expression",phrase=exp}
                 else
                  let val decl = case rules
@@ -689,7 +692,7 @@ in
                                   | _ => bug "unexpected rule list 456"
 		  in unifyErr{ty1=domain rty, name1="pattern",
 			      ty2=ety, name2="expression",
-			      message="pattern and expression in val dec don't agree",
+			      message="pattern and expression in val dec do not agree",
 			      region=region,kind=ppVB,kindname="declaration",
 			      phrase=decl}
                  end;
@@ -763,7 +766,7 @@ and matchType(l,occ,region) =
 		   let val (rule1,argt',rty') = ruleType(rule',occ,region)
 		    in unifyErr{ty1=rty,ty2=rty', name1="earlier rule(s)",
 				name2="this rule",
-				message="types of rules don't agree",
+				message="types of rules do not agree",
 				region=region,
 				kind=ppRule,kindname="rule",phrase=rule'};
 		       rule1
@@ -822,7 +825,7 @@ and decType0(decl,occ,tdepth,region) : dec =
 				  (unifyErr{ty1=a,name1="this clause",
 				    ty2=funty,name2="previous clauses",
 				    message="parameter or result constraints\
-			                     \ of clauses don't agree",
+			                     \ of clauses do not agree",
 					   region=region,kind=ppRVB,
 					   kindname="declaration", phrase=rvb};
                                   ())
