@@ -56,11 +56,12 @@ val quotedBogusString = "'BOGUS"
     | RBRACKET | RPAREN | ORELSE | ANDALSO | FUNSIG | VECTORSTART | BEGINQ
     | ENDQ of string | OBJL of string | AQID of FastSymbol.raw_symbol
 
-%nonterm ident of FastSymbol.raw_symbol
-       | id of FastSymbol.raw_symbol
+%nonterm ident of FastSymbol.raw_symbol		(* includes '*' and '=' *)
+       | id of FastSymbol.raw_symbol		(* includes '*' *)
        | idtyc of FastSymbol.raw_symbol
        | int of string * IntInf.int
        | op_op of unit
+       | qident of (FastSymbol.raw_symbol -> symbol) -> symbol list
        | qid of (FastSymbol.raw_symbol -> symbol) -> symbol list
        | selector of symbol
        | tycon of symbol list
@@ -212,11 +213,14 @@ op_op	: OP		(error (OPleft,OPright) WARN "unnecessary `op'"
 			       nullErrorBody)
 	| 		()
 
-qid	: IDA DOT qid	(fn kind => strSymbol IDA :: qid kind)
-	| ident		(fn kind => [kind ident])
+qid	: IDA DOT qid		(fn kind => strSymbol IDA :: qid kind)
+	| id			(fn kind => [kind id])
 
-selector: id		(labSymbol id)
-	| INT		(Symbol.labSymbol(IntInf.toString(#2 INT)))
+qident	: IDA DOT qident	(fn kind => strSymbol IDA :: qident kind)
+	| ident			(fn kind => [kind ident])
+
+selector: id			(labSymbol id)
+	| INT			(Symbol.labSymbol(IntInf.toString(#2 INT)))
 
 tycon   : IDA DOT tycon		(strSymbol IDA :: tycon)
 	| idtyc			([tycSymbol idtyc])
@@ -304,7 +308,8 @@ app_exp	: aexp	        ([{item=markexp(aexp,aexpleft,aexpright),
 			 end)
 
  aexp	: OP ident		(VarExp [varSymbol ident])
-	| IDA DOT qid		(VarExp (strSymbol IDA :: qid varSymbol))
+	| OP IDA DOT qident	(VarExp (strSymbol IDA :: qident varSymbol))
+	| IDA DOT qident	(VarExp (strSymbol IDA :: qident varSymbol))
 	| int			(IntExp int)
 	| WORD			(WordExp WORD)
 	| REAL			(RealExp REAL)
@@ -370,7 +375,8 @@ apat	: apat'		        ({item=markpat(apat',apat'left,apat'right),
 				  region=(LPARENleft,RPARENright),
 				  fixity=NONE})
 
-apat'	: OP ident		(VarPat [varSymbol ident])
+apat'	: OP id			(VarPat [varSymbol id])
+	| OP IDA DOT qid	(VarPat (strSymbol IDA :: qid varSymbol))
 	| IDA DOT qid		(VarPat (strSymbol IDA :: qid varSymbol))
 	| int			(IntPat int)
 	| WORD			(WordPat WORD)
