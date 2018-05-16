@@ -143,27 +143,45 @@ structure NumScan : sig
 	  fun getOptSign NONE = NONE
 	    | getOptSign (next as SOME(c, cs)) =
 		if (#wOkay p)
-		  then getOpt0 (false, SOME(c, cs))
-		else if (c = plusCode)
-		  then getOpt0 (false, getNext cs)
+		  then getOpt0 (false, SOME(c, cs)) (* no sign for words *)
 		else if (c = minusCode)
 		  then getOpt0 (true, getNext cs)
+		else if (c = plusCode)
+		  then getOpt0 (false, getNext cs)
 		  else getOpt0 (false, next)
 	  and getOpt0 (neg, NONE) = NONE
-	    | getOpt0 (neg, SOME(c, cs)) =
-		if ((c = 0w0) andalso ((#wOkay p) orelse (#xOkay p)))
-		  then getOptW (neg, (c, cs), getNext cs)
-		  else finish (neg, (c, cs))
+	    | getOpt0 (neg, SOME(c, cs)) = (case (c, #wOkay p, #xOkay p)
+		 of (0w0, true, true) => getOptWX (neg, (c, cs), getNext cs)
+		  | (0w0, true, false) => getOptW (neg, (c, cs), getNext cs)
+		  | (0w0, false, true) => getOptX (neg, (c, cs), getNext cs)
+		  | _ => finish (neg, (c, cs))
+		(* end case *))
+	(* consume an optional "0[wW]?[xX]" prefix having seen "0" *)
+	  and getOptWX (neg, savedCS, NONE) = finish (neg, savedCS)
+	    | getOptWX (neg, savedCS, arg as SOME(c, cs)) =
+		if (c = wCode)
+		  then (case getNext cs
+		     of SOME(c', cs') => if (c' = xCode)
+			  then chkDigit (neg, savedCS, getNext cs')
+			  else finish (neg, savedCS) (* saw "0[wW]" but no "[xX]" *)
+		      | NONE => finish (neg, savedCS)
+		    (* end case *))
+		  else getOptX (neg, savedCS, arg)
+	(* consume an optional "0[wW]" prefix having seen "0" *)
 	  and getOptW (neg, savedCS, NONE) = finish (neg, savedCS)
 	    | getOptW (neg, savedCS, arg as SOME(c, cs)) =
-		if ((c = wCode) andalso (#wOkay p))
-		  then getOptX (neg, savedCS, getNext cs)
-		  else getOptX (neg, savedCS, arg)
+		if (c = wCode)
+		  then chkDigit (neg, savedCS, getNext cs)
+		  else finish (neg, savedCS)
+	(* consume an optional "0[xX]" prefix having seen "0" *)
 	  and getOptX (neg, savedCS, NONE) = finish (neg, savedCS)
 	    | getOptX (neg, savedCS, arg as SOME(c, cs)) =
-		if ((c = xCode) andalso (#xOkay p))
+		if (c = xCode)
 		  then chkDigit (neg, savedCS, getNext cs)
 		  else chkDigit (neg, savedCS, arg)
+	(* check if the character following the prefix is a valid digit; if it
+	 * is, then we consume the prefix, otherwise we reset to savedCS.
+	 *)
 	  and chkDigit (neg, savedCS, NONE) = finish (neg, savedCS)
 	    | chkDigit (neg, savedCS, SOME(c, cs)) =
 		if (#maxDigit p >= c)
@@ -436,13 +454,13 @@ structure NumScan : sig
 					    then SOME(scaleDown(num, exp), cs4)
 					    else SOME(scaleUp(num, exp), cs4)
 					end
-				    | (NONE, _) => SOME(num, cs)
+				    | (NONE, _) => SOME(negate(neg, num), cs)
 				  (* end case *)
 				end
-			    | NONE => SOME(num, cs)
+			    | NONE => SOME(negate(neg, num), cs)
 			  (* end case *))
-			else SOME(num, cs)
-		  | NONE => SOME(num, cs)
+			else SOME(negate(neg, num), cs)
+		  | NONE => SOME(negate(neg, num), cs)
 		(* end case *))
 	  in
 	    case (scanPrefix fltPat getc cs)
@@ -470,6 +488,7 @@ structure NumScan : sig
 			   (* end case *))
 		       | NONE => NONE (* ASSERT: this case can't happen *)
 		   (* end case *))
+	    (* end case *)
 	  end
 
   end;

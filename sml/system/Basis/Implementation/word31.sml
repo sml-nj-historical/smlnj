@@ -80,5 +80,3 @@ structure Word31Imp : WORD =
     fun popCount w = W32PopCount.popCount (W31.toLargeWord w)
 
   end  (* structure Word31 *)
-
-
