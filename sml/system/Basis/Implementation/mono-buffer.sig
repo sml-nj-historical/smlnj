@@ -32,18 +32,25 @@ signature MONO_BUFFER =
   (* get the current contents of the buffer as a vector *)
     val contents : buf -> vector
 
+  (* copy the buffer contents into the destination array *)
     val copy : {src : buf, dst : array, di : int} -> unit
 
+  (* get the length of the buffer contents *)
     val length : buf -> int
 
+  (* get an element of the buffer *)
     val sub : buf * int -> elem
 
+  (* clear the buffer contents (but do not release storage) *)
     val clear : buf -> unit
 
+  (* clear the buffer contents and reduce the storage to the original size *)
     val reset : buf -> unit
 
+  (* increase the buffer's storage capacity by the given amount *)
     val reserve : buf * int -> unit
 
+  (* add content to the end of the buffer *)
     val add1 : buf * elem -> unit
     val addVec : buf * vector -> unit
     val addSlice : buf * slice -> unit
