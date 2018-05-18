@@ -6,7 +6,7 @@
  *
  * which controls the external visibility of the basis library.
  *
- * Copyright (c) 2004 by The Fellowship of SML/NJ
+ * Copyright (c) 2018 by The Fellowship of SML/NJ
  *)
 Group
 	signature ARRAY
@@ -60,6 +60,7 @@ Group
 	signature EITHER	(* proposal 2015-002 *)
 	signature FN		(* proposal 2015-005 *)
 	signature REF		(* proposal 2015-007 *)
+	signature MONO_BUFFER	(* proposal 2018-001 *)
 
       (* old versions of basis signatures from the 2004 published spec *)
 	signature ARRAY_2004
@@ -175,6 +176,8 @@ Group
 	structure Either	(* proposal 2015-002 *)
 	structure Fn		(* proposal 2015-005 *)
 	structure Ref		(* proposal 2015-007 *)
+	structure CharBuffer	(* proposal 2018-001 *)
+	structure Word8Buffer	(* proposal 2018-001 *)
 
 	functor PrimIO
 
@@ -367,6 +370,7 @@ is
 	mono-array.sig
 	mono-array-slice.sig
 	mono-array2.sig
+	mono-buffer.sig
 
 	real64-vector.sml
 	real64-vector-slice.sml
@@ -377,6 +381,7 @@ is
 	char-array-slice.sml
 	char-vector.sml
 	char-vector-slice.sml
+	char-buffer.sml
 	array.sml
 	array-slice.sml
 	array2.sml
@@ -406,6 +411,7 @@ is
 	word8-vector-slice.sml
 	word8-array.sml
 	word8-array-slice.sml
+	word8-buffer.sml
 	time.sml
 	internal-timer.sml
 	timer.sml

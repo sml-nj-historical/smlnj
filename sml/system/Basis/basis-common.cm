@@ -5,7 +5,7 @@
  * in 2004).  It is included in the base/system/Basis/basis.cm file, but is
  * also used to implement the libraries in the old-basis package (base/old-basis).
  *
- * Copyright (c) 2015 by The Fellowship of SML/NJ
+ * Copyright (c) 2018 by The Fellowship of SML/NJ
  *)
 
 (primitive)
@@ -61,6 +61,7 @@ Library
 	signature EITHER	(* proposal 2015-002 *)
 	signature FN		(* proposal 2015-005 *)
 	signature REF		(* proposal 2015-007 *)
+	signature MONO_BUFFER	(* proposal 2018-001 *)
 
       (* backward compatible signatures *)
 	signature ARRAY_2004
@@ -170,6 +171,8 @@ Library
 	structure Either	(* proposal 2015-002 *)
 	structure Fn		(* proposal 2015-005 *)
 	structure Ref		(* proposal 2015-007 *)
+	structure CharBuffer	(* proposal 2018-001 *)
+	structure Word8Buffer	(* proposal 2018-001 *)
 
 	structure SML90
 
