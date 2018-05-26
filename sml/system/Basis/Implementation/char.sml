@@ -1,13 +1,16 @@
 (* char.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 structure Char : sig
+
     include CHAR
+
+  (* internal scanning function for C-style escape sequences *)
     val scanC : (char, 'a) StringCvt.reader -> (char, 'a) StringCvt.reader
-	(* internal scanning function for C-style escape sequences *)
+
   end = struct
 
     structure C = InlineT.Char
@@ -315,7 +318,6 @@ structure Char : sig
       | toCString #"\\" = "\\\\"
       | toCString #"?" = "\\?"
       | toCString #"'" = "\\'"
-      | toCString #"\000" = "\\0"
       | toCString c = if (isPrint c)
 	  then InlineT.PolyVector.sub (PreString.chars, ord c)
 	  else let
@@ -330,5 +332,3 @@ structure Char : sig
 	    end
 
   end (* Char *)
-
-
