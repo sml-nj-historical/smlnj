@@ -114,7 +114,10 @@ hexnum={xdigit}("_"*{xdigit})*;
 frac="."{num};
 exp=[eE](~?){num};
 real=(~?)(({num}{frac}?{exp})|({num}{frac}{exp}?));
+bad_escape="\\"[\000-\008\011\012\014-\031 !#$%&'()*+,\-./:;<=>?@A-Z\[\]_`c-eg-mo-qsuw-z{}|~\127];
+
 %%
+
 <INITIAL>{ws}	=> (continue());
 <INITIAL>{eol}	=> (SourceMap.newline sourceMap yypos; continue());
 <INITIAL>"_overload" => (if !ParserControl.overloadKW then
@@ -279,10 +282,8 @@ real=(~?)(({num}{frac}?{exp})|({num}{frac}{exp}?));
 			else addChar(charlist, Char.chr x);
 		      continue()
 		    end);
-<S>\\		=> (err (yypos,yypos+1) COMPLAIN "illegal string escape"
-		        nullErrorBody;
+<S>{bad_escape}	=> (err (yypos,yypos+1) COMPLAIN "illegal string escape" nullErrorBody;
 		    continue());
-
 
 <S>[\000-\031]  => (err (yypos,yypos+1) COMPLAIN "illegal non-printing character in string" nullErrorBody;
                     continue());

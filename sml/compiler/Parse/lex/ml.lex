@@ -66,6 +66,8 @@ exp=[eE](~?){num};
 real=(~?)(({num}{frac}?{exp})|({num}{frac}{exp}?));
 xdigit=[0-9a-fA-F];
 hexnum={xdigit}+;
+bad_escape="\\"[\000-\008\011\012\014-\031 !#$%&'()*+,\-./:;<=>?@A-Z\[\]_`c-eg-mo-qsuw-z{}|~\127];
+
 %%
 <INITIAL>{ws}	=> (continue());
 <INITIAL>{eol}	=> (SourceMap.newline sourceMap yypos; continue());
@@ -218,8 +220,7 @@ hexnum={xdigit}+;
 			else addChar(charlist, Char.chr x);
 		      continue()
 		    end);
-<S>\\		=> (err (yypos,yypos+1) COMPLAIN "illegal string escape"
-		        nullErrorBody;
+<S>{bad_escape}	=> (err (yypos,yypos+1) COMPLAIN "illegal string escape" nullErrorBody;
 		    continue());
 
 
