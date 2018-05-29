@@ -9,10 +9,7 @@ structure FLINT : FLINT =
 
     structure A  = Access   (* should go away soon *)
     structure LD = LtyDef
-    structure LB = LtyBasic
     structure LV = LambdaVar
-    structure PO = Primop
-    structure S  = Symbol
 
     type tkind = LD.tkind
     type tyc = LD.tyc
@@ -67,7 +64,7 @@ structure FLINT : FLINT =
    * corresponding conrep, and the flint type lty (which must be an
    * arrow type).
    *)
-    type dcon = S.symbol * A.conrep * lty
+    type dcon = Symbol.symbol * A.conrep * lty
 
   (*
    * con: used to specify all possible switching statements. Efficient switch
@@ -116,7 +113,7 @@ structure FLINT : FLINT =
     withtype fundec = fkind * lvar * (lvar * lty) list * lexp
     and tfundec = tfkind * lvar * (tvar * tkind) list * lexp
     and dict = {default: lvar, table: (tyc list * lvar) list}
-    and primop = dict option * PO.primop * lty * tyc list
+    and primop = dict option * Primop.primop * lty * tyc list
 	    (* Invariant: primop's lty is always fully closed *)
 
     type prog = fundec  (* was "lvar * lty * lexp" *)

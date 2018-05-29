@@ -34,6 +34,7 @@ struct
       r
   end
 
+  val debugging = flag ("debugging", "general match compiler debugging", false)
   val printArgs = flag ("print-args", "arguments print mode", false)
   val printRet = flag ("print-ret", "return print mode", false)
   val bindNoVariableWarn =

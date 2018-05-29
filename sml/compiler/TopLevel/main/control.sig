@@ -4,6 +4,7 @@
 (* match compiler controls *)
 signature MCCONTROL =
 sig
+  val debugging : bool ref
   val printArgs : bool ref
   val printRet : bool ref
   val bindNoVariableWarn : bool ref

@@ -1457,21 +1457,21 @@ and mkFctbs (fbs, d) =
  *                                                                         *
  ***************************************************************************)
 and mkDec (dec, d) =
-  let fun g (VALdec vbs) = mkVBs(vbs, d)
-        | g (VALRECdec rvbs) = mkRVBs(rvbs, d)
-	| g (DOdec exp) = (fn body => LET(mkv(), mkExp(exp, d), body))
-        | g (ABSTYPEdec{body,...}) = g body
-        | g (EXCEPTIONdec ebs) = mkEBs(ebs, d)
-        | g (STRdec sbs) = mkStrbs(sbs, d)
-        | g (ABSdec sbs) = mkStrbs(sbs, d)
-        | g (FCTdec fbs) = mkFctbs(fbs, d)
-        | g (LOCALdec(ld, vd)) = (g ld) o (g vd)
-        | g (SEQdec ds) =  foldr (op o) ident (map g ds)
-        | g (MARKdec(x, reg)) =
-              let val f = withRegion reg g x
+  let fun mkDec0 (VALdec vbs) = mkVBs(vbs, d)
+        | mkDec0 (VALRECdec rvbs) = mkRVBs(rvbs, d)
+	| mkDec0 (DOdec exp) = (fn body => LET(mkv(), mkExp(exp, d), body))
+        | mkDec0 (ABSTYPEdec{body,...}) = mkDec0 body
+        | mkDec0 (EXCEPTIONdec ebs) = mkEBs(ebs, d)
+        | mkDec0 (STRdec sbs) = mkStrbs(sbs, d)
+        | mkDec0 (ABSdec sbs) = mkStrbs(sbs, d)
+        | mkDec0 (FCTdec fbs) = mkFctbs(fbs, d)
+        | mkDec0 (LOCALdec(ld, vd)) = (mkDec0 ld) o (mkDec0 vd)
+        | mkDec0 (SEQdec ds) =  foldr (op o) ident (map mkDec0 ds)
+        | mkDec0 (MARKdec(x, reg)) =
+              let val f = withRegion reg mkDec0 x
                in fn y => withRegion reg f y
               end
-        | g (OPENdec xs) =
+        | mkDec0 (OPENdec xs) =
               let (* special hack to make the import tree simpler *)
                   fun mkos (_, s as M.STR { access = acc, ... }) =
                       if extern acc then
@@ -1482,30 +1482,30 @@ and mkDec (dec, d) =
                     | mkos _ = ()
                in app mkos xs; ident
               end
-        | g _ = ident
-   in g dec
+        | mkDec0 _ = ident
+   in mkDec0 dec
   end
 
 and mkExp (exp, d) =
   let val tTyc = toTyc d
       val tLty = toLty d
 
-      fun mkRules xs = map (fn (RULE(p, e)) => (fillPat(p, d), g e)) xs
+      fun mkRules xs = map (fn (RULE(p, e)) => (fillPat(p, d), mkExp0 e)) xs
 
-      and g (VARexp (ref v, ts)) =
+      and mkExp0 (VARexp (ref v, ts)) =
             (debugmsg ">>mkExp VARexp";
 	     mkVE(v, map TP.VARty ts, d))
-        | g (CONexp (dc, ts)) =
+        | mkExp0 (CONexp (dc, ts)) =
 	  (let val _ = debugmsg ">>mkExp CONexp: "
 	       val c = mkCE(dc, ts, NONE, d)
 	       val _ = if !debugging then ppLexp c else ()
 	   in c end)
-        | g (APPexp (CONexp(dc, ts), e2)) =
+        | mkExp0 (APPexp (CONexp(dc, ts), e2)) =
 	  (let val _ = debugmsg ">>mkExp APPexp: "
-	       val c = mkCE(dc, ts, SOME(g e2), d)
+	       val c = mkCE(dc, ts, SOME(mkExp0 e2), d)
 	       val _ = if !debugging then ppLexp c else ()
 	   in c end)
-        | g (NUMexp(src, {ival, ty})) = (
+        | mkExp0 (NUMexp(src, {ival, ty})) = (
 	    debugmsg ">>mkExp NUMexp";
 (* 64BIT: need extra cases etc. *)
 	    if TU.equalType (ty, BT.intTy) then INT{ival = ival, ty = Tgt.defaultIntSz}
@@ -1529,62 +1529,62 @@ and mkExp (exp, d) =
 		end
 	      else (ppType ty; bug "translate NUMexp"))
 (* REAL32: handle 32-bit reals *)
-        | g (REALexp(_, {rval, ty})) = REAL{rval = rval, ty = Tgt.defaultRealSz}
-        | g (STRINGexp s) = STRING s
+        | mkExp0 (REALexp(_, {rval, ty})) = REAL{rval = rval, ty = Tgt.defaultRealSz}
+        | mkExp0 (STRINGexp s) = STRING s
 (* QUESTION: do we want to map characters to word8? *)
 (** NOTE: the following won't work for cross compiling to multi-byte characters **)
-        | g (CHARexp s) = INT{
+        | mkExp0 (CHARexp s) = INT{
 	      ival = IntInf.fromInt(Char.ord(String.sub(s, 0))),
 	      ty = Tgt.defaultIntSz
 	    }
-        | g (RECORDexp []) = unitLexp
-        | g (RECORDexp xs) =
-             if sorted xs then RECORD (map (fn (_,e) => g e) xs)
-             else let val vars = map (fn (l,e) => (l,(g e, mkv()))) xs
+        | mkExp0 (RECORDexp []) = unitLexp
+        | mkExp0 (RECORDexp xs) =
+             if sorted xs then RECORD (map (fn (_,e) => mkExp0 e) xs)
+             else let val vars = map (fn (l,e) => (l,(mkExp0 e, mkv()))) xs
                       fun bind ((_,(e,v)),x) = LET(v,e,x)
                       val bexp = map (fn (_,(_,v)) => VAR v) (sortrec vars)
                    in foldr bind (RECORD bexp) vars
                   end
 
-        | g (SELECTexp (LABEL{number=i,...}, e)) = SELECT(i, g e)
+        | mkExp0 (SELECTexp (LABEL{number=i,...}, e)) = SELECT(i, mkExp0 e)
 
-        | g (VECTORexp ([], ty)) =
+        | mkExp0 (VECTORexp ([], ty)) =
              TAPP(coreAcc "vector0", [tTyc ty])
-        | g (VECTORexp (xs, ty)) =
+        | mkExp0 (VECTORexp (xs, ty)) =
              let val tc = tTyc ty
-                 val vars = map (fn e => (g e, mkv())) xs
+                 val vars = map (fn e => (mkExp0 e, mkv())) xs
                  fun bind ((e,v),x) = LET(v, e, x)
                  val bexp = map (fn (_,v) => VAR v) vars
               in foldr bind (VECTOR (bexp, tc)) vars
              end
 
-        | g (SEQexp [e]) = g e
-        | g (SEQexp (e::r)) = LET(mkv(), g e, g (SEQexp r))
+        | mkExp0 (SEQexp [e]) = mkExp0 e
+        | mkExp0 (SEQexp (e::r)) = LET(mkv(), mkExp0 e, mkExp0 (SEQexp r))
 
-        | g (APPexp (e1, e2)) = APP(g e1, g e2)
-        | g (MARKexp (e, reg)) = withRegion reg g e
-        | g (CONSTRAINTexp (e,_)) = g e
+        | mkExp0 (APPexp (e1, e2)) = APP(mkExp0 e1, mkExp0 e2)
+        | mkExp0 (MARKexp (e, reg)) = withRegion reg mkExp0 e
+        | mkExp0 (CONSTRAINTexp (e,_)) = mkExp0 e
 
-        | g (RAISEexp (e, ty)) = mkRaise(g e, tLty ty)
-        | g (HANDLEexp (e, (l, ty))) =
+        | mkExp0 (RAISEexp (e, ty)) = mkRaise(mkExp0 e, tLty ty)
+        | mkExp0 (HANDLEexp (e, (l, ty))) =
              let val rootv = mkv()
                  fun f x = FN(rootv, tLty ty, x)
                  val l' = mkRules l
-              in HANDLE(g e, MC.handCompile(env, l', f,
+              in HANDLE(mkExp0 e, MC.handCompile(env, l', f,
                                             rootv, toTcLt d, complain,
 					    genintinfswitch))
              end
 
-        | g (FNexp (l, ty)) =
+        | mkExp0 (FNexp (l, ty)) =
              let val rootv = mkv()
                  fun f x = FN(rootv, tLty ty, x)
               in MC.matchCompile (env, mkRules l, f, rootv, toTcLt d,
 				  complain, genintinfswitch)
              end
 
-        | g (CASEexp (ee, l, isMatch)) =
+        | mkExp0 (CASEexp (ee, l, isMatch)) =
              let val rootv = mkv()
-                 val ee' = g ee
+                 val ee' = mkExp0 ee
                  fun f x = LET(rootv, ee', x)
                  val l' = mkRules l
               in if isMatch
@@ -1594,34 +1594,34 @@ and mkExp (exp, d) =
 				      complain, genintinfswitch)
              end
 
-	| g (IFexp { test, thenCase, elseCase }) =
-	    COND (g test, g thenCase, g elseCase)
+	| mkExp0 (IFexp { test, thenCase, elseCase }) =
+	    COND (mkExp0 test, mkExp0 thenCase, mkExp0 elseCase)
 
-	| g (ANDALSOexp (e1, e2)) =
-	    COND (g e1, g e2, falseLexp)
+	| mkExp0 (ANDALSOexp (e1, e2)) =
+	    COND (mkExp0 e1, mkExp0 e2, falseLexp)
 
-	| g (ORELSEexp (e1, e2)) =
-	    COND (g e1, trueLexp, g e2)
+	| mkExp0 (ORELSEexp (e1, e2)) =
+	    COND (mkExp0 e1, trueLexp, mkExp0 e2)
 
-	| g (WHILEexp { test, expr }) =
+	| mkExp0 (WHILEexp { test, expr }) =
 	    let val fv = mkv ()
 		val body =
 		    FN (mkv (), lt_unit,
-			COND (g test,
-			      LET (mkv (), g expr, APP (VAR fv, unitLexp)),
+			COND (mkExp0 test,
+			      LET (mkv (), mkExp0 expr, APP (VAR fv, unitLexp)),
 			      unitLexp))
 	    in
 		FIX ([fv], [lt_u_u], [body], APP (VAR fv, unitLexp))
 	    end
 
-        | g (LETexp (dc, e)) = mkDec (dc, d) (g e)
+        | mkExp0 (LETexp (dc, e)) = mkDec (dc, d) (mkExp0 e)
 
-        | g e =
+        | mkExp0 e =
              EM.impossibleWithBody "untranslateable expression"
               (fn ppstrm => (PP.string ppstrm " expression: ";
                             PPAbsyn.ppExp (env,NONE) ppstrm (e, !ppDepth)))
 
-   in g exp
+   in mkExp0 exp
   end
 
 and transIntInf d s =

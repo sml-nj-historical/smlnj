@@ -69,7 +69,7 @@ fun makeOpenDecls (str, spath) =
 			 :: dl
 		      (* here is the source of bug 788.  If name is bound
                          to a constructor in the top level environment,
-			 then this will not have the desired affect of
+			 then this will not have the desired effect of
 			 rebinding name, but will probably result in a
 			 type error. Possible fix would be to narrow down
 			 the static environment. *)

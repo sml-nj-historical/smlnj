@@ -363,6 +363,8 @@ val default_tvprop = false
 fun mkPolySign 0 = []
   | mkPolySign n = default_tvprop :: mkPolySign(n-1)
 
+fun dconName(DATACON{name,...}) = name
+
 fun dconTyc(DATACON{typ,const,name,...}) =
     let (* val _ = say "*** the screwed datacon ***"
            val _ = say (S.name(name))

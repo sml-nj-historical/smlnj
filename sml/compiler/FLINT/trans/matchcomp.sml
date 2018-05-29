@@ -57,15 +57,20 @@ local structure DA = Access
 
 in
 
+(* utility functions for managing rule lists (type rules) *)
 val intersect=SortedList.intersect
 val union = SortedList.merge
 val setDifference = SortedList.difference
-fun isthere(i,set) = SortedList.member set i
+fun member(i,set) = SortedList.member set i
 
+val debugging = Control.MC.debugging
 fun bug s = EM.impossible ("MatchComp: " ^ s)
 val say = Control.Print.say
-val pd = ref 20
-fun ppLexp le = PP.with_default_pp(fn ppstrm => MP.ppLexp (!pd) ppstrm le)
+val pd = Control.Print.printDepth
+fun ppLexp le =
+    PP.with_default_pp(fn ppstrm => MP.ppLexp (!pd) ppstrm le)
+fun ppDectree dt =
+    PP.with_default_pp(fn ppstrm => PPMatchComp.ppDectree (!pd) ppstrm dt)
 
 type toTcLt = (ty -> LT.tyc) * (ty -> LT.lty)
 
@@ -73,6 +78,10 @@ type genintinfswitch =
      PLambda.lexp * (IntInf.int * PLambda.lexp) list * PLambda.lexp
      -> PLambda.lexp
 
+type matchRepTy = ((path * pat) list * path list * lvar) list
+(* type of matchRep defined in doMatchCompile, previously also referred to as ruleDesc *)
+type matchRepsTy = (matchRepTy * (lvar * PLambda.lexp)) list
+							 
 (*
  * MAJOR CLEANUP REQUIRED ! The function mkv is currently directly taken
  * from the LambdaVar module; I think it should be taken from the
@@ -99,7 +108,6 @@ fun toDconLty toLty ty =
 (* test for 64-bit int/word types, which are represented as pairs of 32-bit words *)
 fun isInt64 ty = TU.equalType(ty, BT.int64Ty)
 fun isWord64 ty = TU.equalType(ty, BT.word64Ty)
-
 
 fun numCon (v, ty, msg) = let
       fun mkWORD sz = WORDpcon{ival = v, ty = sz}
@@ -130,29 +138,8 @@ fun intCon n = INTpcon{ival = IntInf.fromInt n, ty = Target.defaultIntSz}
 fun charCon s = intCon (Char.ord (String.sub (s, 0)))
 
 (**************************************************************************)
-type ruleno = int   (* the number identifying a rule *)
-type rules = ruleno list  (* a list (set) of rule numbers *)
-(* Which of the int list type in the andor and decision definitions
- * are rules? *)
 
-datatype andor
-  = AND of {bindings : (int * var) list,
-            subtrees : andor list,
-            constraints : (dconinfo * int list * andor option) list}
-  | CASE of {bindings : (int * var) list,
-             sign : DA.consig,
-             cases : (pcon * int list * andor list) list,
-             constraints : (dconinfo * int list * andor option) list}
-  | LEAF of {bindings : (int * var) list,
-             constraints : (dconinfo * int list * andor option) list}
-
-datatype decision
-  = CASEDEC of path * DA.consig *
-               (pcon * int list * decision list) list * int list
-  | ABSCONDEC of path * dconinfo * int list * decision list * int list
-  | BINDDEC of path * int list
-
-fun allConses(hds, tls) =
+fun allConses (hds, tls) =
   List.concat (map (fn hd => (map (fn tl => hd::tl) tls)) hds)
 
 fun orExpand (ORpat(pat1,pat2)) =
@@ -172,11 +159,11 @@ fun orExpand (ORpat(pat1,pat2)) =
   | orExpand pat =
       [pat]
 
-fun lookupVar (v as VALvar{path=p1,...},
-               (VALvar{path=p2,...}, value)::rest) =
-       if SymPath.equal(p1,p2) then value else lookupVar(v, rest)
-  | lookupVar (VALvar _, []) = bug "unbound 18"
-  | lookupVar _ = bug "[MC.lookupVar]"
+(* lookupVar : (valvar * value) list -> valvar -> value *)
+fun lookupVar ((VALvar{path=p2,...}, value)::rest) (v as VALvar{path=p1,...}) =
+       if SymPath.equal(p1,p2) then value else lookupVar rest v
+  | lookupVar [] _ = bug "lookupVar unbound"
+  | lookupVar _ _ = bug "lookupVar unexpected arg"
 
 fun boundVariables (VARpat v) = [v]
   | boundVariables (CONSTRAINTpat(pat,_)) = boundVariables pat
@@ -208,13 +195,15 @@ fun patternBindings (VARpat v, path) = [(v, path)]
                 (patternBindings(pat,VPIPATH(n,t,path))) @ (doGen(n+1,rest))
        in doGen(0, pats)
       end
-  | patternBindings (ORpat _, _) = bug "Unexpected OR pattern"
-  | patternBindings (MARKpat _, path) = bug "MARKpat"
+  | patternBindings (ORpat _, _) = bug "patternBindings - unexpected OR pattern"
+  | patternBindings (MARKpat _, path) = bug "patternBindings - MARKpat"
   | patternBindings _ = nil
 
 fun vartolvar (VALvar{access=DA.LVAR v, typ,...}, toLty) = (v, toLty (!typ))
-  | vartolvar _ = bug "bug variable in mc.sml"
+  | vartolvar _ = bug "vartolvar - bad variable"
 
+(* preProcessPat : toLtyTy -> Absyn.pat * Plambda.lexp    (* a rule *)
+ *                         -> matchRepTy * (lvar * lexp) *)
 fun preProcessPat toLty (pat, rhs) =
   let val pat = AbsynUtil.stripPatMarks pat
       val bindings = boundVariables pat
@@ -244,10 +233,9 @@ fun preProcessPat toLty (pat, rhs) =
             let val newlist = [(ROOTPATH, pat)]
 		val pathenv = patternBindings(pat, ROOTPATH)
                 val bindingPaths =
-		    map (fn v => lookupVar(v,pathenv)) bindings
+		    map (lookupVar pathenv) bindings
              in (newlist, bindingPaths, fname)::(expand rest)
-            end handle CANT_MATCH =>
-                  ([(ROOTPATH, NOpat)], nil, fname)::(expand rest)
+            end
    in (expand pats, (fname, rhsFun))
   end
 
@@ -261,36 +249,36 @@ fun makeAndor (matchRep,err) = let
       | addBinding (v, rule, LEAF{bindings, constraints}) =
 	  LEAF{bindings=(rule,v)::bindings, constraints=constraints}
 
-    fun addAConstraint(k, NONE, rule, nil) = [(k, [rule], NONE)]
-      | addAConstraint(k, SOME pat, rule, nil) =
+    fun addAConstraint (k, NONE, rule, nil) = [(k, [rule], NONE)]
+      | addAConstraint (k, SOME pat, rule, nil) =
 	  [(k, [rule], SOME(genAndor(pat, rule)))]
-      | addAConstraint(k, patopt as SOME pat, rule,
+      | addAConstraint (k, patopt as SOME pat, rule,
 		       (constr as (k', rules, SOME subtree))::rest) =
 	  if conEq'(k, k') then
 	    (k, rule::rules, SOME(mergeAndor(pat, subtree, rule)))::rest
 	  else
 	    constr::(addAConstraint(k, patopt, rule, rest))
-      | addAConstraint(k, NONE, rule, (constr as (k', rules, NONE))::rest) =
+      | addAConstraint (k, NONE, rule, (constr as (k', rules, NONE))::rest) =
 	  if conEq'(k, k') then (k, rule::rules, NONE)::rest
 	  else constr::(addAConstraint(k, NONE, rule, rest))
-      | addAConstraint(k, patopt, rule, (constr as (k', rules, _))::rest) =
-	      if conEq'(k, k') then bug "arity conflict"
+      | addAConstraint (k, patopt, rule, (constr as (k', rules, _))::rest) =
+	      if conEq'(k, k') then bug "addAConstraint - arity conflict"
 	  else constr::(addAConstraint(k, patopt, rule, rest))
 
-    and addConstraint(k, patopt, rule, AND{bindings, subtrees, constraints}) =
+    and addConstraint (k, patopt, rule, AND{bindings, subtrees, constraints}) =
 	  AND{bindings=bindings, subtrees=subtrees,
 	      constraints=addAConstraint(k, patopt, rule, constraints)}
-      | addConstraint(k, patopt, rule, CASE{bindings, sign, cases,
+      | addConstraint (k, patopt, rule, CASE{bindings, sign, cases,
 					    constraints}) =
 	  CASE{bindings=bindings, cases=cases, sign = sign,
 	       constraints=addAConstraint(k, patopt, rule, constraints)}
-      | addConstraint(k, patopt, rule, LEAF{bindings, constraints}) =
+      | addConstraint (k, patopt, rule, LEAF{bindings, constraints}) =
 	  LEAF{bindings=bindings,
 	       constraints=addAConstraint(k, patopt, rule, constraints)}
 
     and genAndor (VARpat v, rule) =
 	  LEAF {bindings = [(rule, v)], constraints = nil}
-      | genAndor (WILDpat, rule) =
+      | genAndor (WILDpat, _) =
 	  LEAF {bindings = nil, constraints = nil}
       | genAndor (CONSTRAINTpat(pat, _), rule) =  genAndor(pat, rule)
       | genAndor (LAYEREDpat(CONSTRAINTpat(lpat,_), bpat), rule) =
@@ -339,7 +327,7 @@ fun makeAndor (matchRep,err) = let
 	  CASE {bindings = nil, constraints = nil, sign = signOfCon k,
 		cases = [(DATApcon(k,t), [rule], [genAndor(pat, rule)])]}
       | genAndor _ =
-	  bug "genandor applied to inapplicable pattern"
+	  bug "genandor - unexpected pat arg"
 
     (* simulate 64-bit words and ints as pairs of 32-bit words *)
     and genAndor64 ((hi, lo), rule) = let
@@ -348,7 +336,7 @@ fun makeAndor (matchRep,err) = let
 	    genAndor (AbsynUtil.TUPLEpat [p32 hi, p32 lo], rule)
 	  end
 
-    and multiGen(nil, rule) = nil
+    and multiGen (nil, rule) = nil
       | multiGen(pat::rest, rule) = (genAndor(pat,rule))::multiGen((rest,rule))
 
     and mergeAndor (VARpat v, andor, rule) = addBinding (v, rule, andor)
@@ -378,7 +366,7 @@ fun makeAndor (matchRep,err) = let
 	      | AND{bindings=nil, constraints=nil, subtrees} =>
 		  AND{bindings=bindings, constraints=constraints,
 		      subtrees=subtrees}
-	      | _ => bug "genAndor returned bogusly")
+	      | _ => bug "mergeAndor - genAndor returned bogusly")
       | mergeAndor (NUMpat(_, {ival, ty}), c as CASE{bindings, cases, constraints, sign}, rule) =
 	  if isInt64 ty then mergeAndor64 (LN.int64 ival, c, rule)
 	  else if isWord64 ty then mergeAndor64 (LN.word64 ival, c, rule)
@@ -393,7 +381,7 @@ fun makeAndor (matchRep,err) = let
       | mergeAndor (NUMpat(_, {ival, ty}), c as AND _, rule) =
 	  if isInt64 ty then mergeAndor64 (LN.int64 ival, c, rule)
 	  else if isWord64 ty then mergeAndor64 (LN.word64 ival, c, rule)
-	  else bug "bad pattern merge: NUMpat AND (not 64)"
+	  else bug "mergeAndor - bad pattern merge: NUMpat AND (not 64)"
       | mergeAndor (STRINGpat s, CASE{bindings, cases, constraints,sign}, rule) =
 	  CASE {bindings = bindings, constraints = constraints, sign=sign,
 		cases = addACase(STRINGpcon s, nil, rule, cases)}
@@ -424,11 +412,11 @@ fun makeAndor (matchRep,err) = let
 	  CASE {bindings=bindings, constraints=constraints, sign=sign,
 		cases=addACase(DATApcon(k,t), [pat], rule, cases)}
       | mergeAndor (CONpat(k,t), AND{bindings, constraints, subtrees}, rule) =
-	  bug "concrete constructor can't match record"
+	  bug "mergeAndor - concrete constructor can't match record"
       | mergeAndor (APPpat(k,t,pat), AND{bindings,subtrees,constraints}, rule) =
-	  bug "concrete constructor application can't match record"
+	  bug "mergeAndor - concrete constructor application can't match record"
       | mergeAndor _ =
-	  bug "bad pattern merge"
+	  bug "mergeAndor - unexpected arg"
 
     (* simulate 64-bit words and ints as pairs of 32-bit words *)
     and mergeAndor64 ((hi, lo), c, rule) = let
@@ -449,31 +437,29 @@ fun makeAndor (matchRep,err) = let
     and multiMerge (nil, nil, rule) = nil
       | multiMerge (pat::pats, subtree::subtrees, rule) =
 	 (mergeAndor(pat, subtree, rule))::(multiMerge(pats, subtrees, rule))
-      | multiMerge _ = bug "list length mismatch in multiMerge"
+      | multiMerge _ = bug "multiMerge - list length mismatch"
 
 
-    fun mergePatWithAndorList(path, pat, nil, n) =
+    fun mergePatWithAndorList (path, pat, nil, n) =
 	  [(path, genAndor(pat, n))]
       | mergePatWithAndorList(path, pat, (path',andor)::rest, n) =
 	  if pathEq(path, path') then (path, mergeAndor(pat, andor, n))::rest
 	  else (path',andor)::(mergePatWithAndorList(path, pat, rest, n))
 
-    fun genAndorList (nil, n) = bug "no patterns (gen)"
+    fun genAndorList (nil, n) = bug "genAndorList - no patterns"
       | genAndorList ([(path, pat)], n) = [(path, genAndor(pat, n))]
       | genAndorList ((path, pat)::rest, n) =
-	      mergePatWithAndorList(path, pat, genAndorList(rest, n), n)
+	  mergePatWithAndorList(path, pat, genAndorList(rest, n), n)
 
-    fun mergeAndorList (nil, aol, n) = bug "no patterns (merge)"
+    fun mergeAndorList (nil, aol, n) = bug "mergeAndorList - no patterns"
       | mergeAndorList ([(path, pat)], aol, n) =
 	  mergePatWithAndorList(path, pat, aol, n)
       | mergeAndorList ((path, pat)::rest, aol, n) =
-	      mergePatWithAndorList(path, pat, mergeAndorList(rest, aol, n), n)
+	  mergePatWithAndorList(path, pat, mergeAndorList(rest, aol, n), n)
 
-    fun makeAndor' (nil, n) = bug "no rules (makeAndor')"
+    fun makeAndor' (nil, n) = bug "makeAndor' - no rules"
       | makeAndor' ([(pats, _, _)], n) =
 	  genAndorList (pats, n)
-      | makeAndor' (([(_, NOpat)], env, bindings)::rest, n) =
-	  makeAndor'(rest, n+1)
       | makeAndor' ((pats, env, bindings)::rest, n) =
 	  mergeAndorList(pats, makeAndor'(rest, n+1), n)
 
@@ -485,12 +471,12 @@ fun addABinding (path, rule, nil) = [BINDDEC(path, [rule])]
   | addABinding (path, rule, (bind as BINDDEC(path', rules))::rest) =
       if pathEq(path, path') then BINDDEC(path, rule::rules)::rest
       else bind::(addABinding(path, rule, rest))
-  | addABinding _ = bug "non BINDDEC in binding list"
+  | addABinding _ = bug "addABinding - non BINDDEC in binding list"
 
-(* flattenBindings : (ruleno * ?) list * path * ruleno list -> decision list *)
+(* flattenBindings : (ruleno * var) list * path * ruleno list -> decision list *)
 fun flattenBindings (nil, path, active) = nil
   | flattenBindings (((rule, v)::rest), path, active) =
-      if isthere(rule, active) then
+      if member(rule, active) then
 	addABinding(path, rule, flattenBindings(rest, path,active))
       else
 	flattenBindings(rest, path, active)
@@ -555,9 +541,9 @@ and flattenACase ((VLENpcon(n, t), rules, subtrees), path, active, defaults) = l
   | flattenACase ((constant,rules,nil),path,active,defaults) =
       (constant, intersect(rules, active), nil)
   | flattenACase _ =
-      bug "illegal subpattern in a case"
+      bug "flattenACase - unexpected arg"
 
-and flattenCases(cases, path, active,sign) =
+and flattenCases (cases, path, active,sign) =
   let fun calcDefaults (nil, active) = active
 	| calcDefaults ((_,rules,_)::rest, active)  =
 	    calcDefaults(rest, setDifference(active, rules))
@@ -568,26 +554,34 @@ and flattenCases(cases, path, active,sign) =
 	     :: (doit(rest)))
    in case cases
        of (VLENpcon (_,t), _, _)::_ =>
-	     CASEDEC(VLENPATH(path, t), sign, doit cases, defaults)
+	     CASEDEC(VLENPATH(t, path), sign, doit cases, defaults)
 	| cases => CASEDEC(path, sign, doit cases, defaults)
   end
 
 fun bindings (n, l) = case (List.nth(l, n)) of (_,_,x) => x
 
+(* pathConstraints : path -> path list *)
 fun pathConstraints (RECORDPATH paths) =
           List.concat (map pathConstraints paths)
   | pathConstraints path = [path]
 
-fun flattenAndors(nil, allrules) = nil
-  | flattenAndors((path, andor)::rest, allrules) =
+(* flattenAndors : (path * andor) list * rules -> (path list * decision list) list *)
+fun flattenAndors (nil, allrules) = nil
+  | flattenAndors ((path, andor)::rest, allrules) =
       (pathConstraints path, flattenAndor(andor, path, allrules))
         :: (flattenAndors(rest, allrules))
 
-fun removePath(path, path1::rest) =
+(* removePath : path * path list -> path list *)
+fun removePath (path, path1::rest) =
       if pathEq(path, path1) then rest
       else path1::(removePath(path, rest))
   | removePath (path, nil) = nil
 
+(* fireConstraint : path
+ *                  * (path list * decision list) list  
+ *                  * decision list                        -- ready list
+ *                  * (path list * decision list) list     -- delayed list
+ *                  -> decision list * (path list * decision list) list *)
 fun fireConstraint (path, (needPaths, decisions)::rest, ready, delayed) =
       (case removePath(path, needPaths)
          of nil => fireConstraint(path, rest, decisions@ready, delayed)
@@ -595,22 +589,18 @@ fun fireConstraint (path, (needPaths, decisions)::rest, ready, delayed) =
   | fireConstraint (path, nil, ready, delayed) =
       (ready, delayed)
 
-fun mkAllRules (nil,_) = nil
-  | mkAllRules(([(ROOTPATH, NOpat)],_,_)::b, n) = (mkAllRules(b, n + 1))
-  | mkAllRules(_::b, n) = n::(mkAllRules(b, n + 1))
-
 exception PickBest
 
-fun relevent (CASEDEC(_,_,_,defaults), rulenum) =
-      not (isthere(rulenum, defaults))
-  | relevent (ABSCONDEC (_,_,_,_,defaults), rulenum) =
-      not (isthere(rulenum, defaults))
-  | relevent (BINDDEC _, _) =
-      bug "BINDDEC not fired"
+fun relevant (CASEDEC(_,_,_,defaults), rulenum) =
+      not (member(rulenum, defaults))
+  | relevant (ABSCONDEC (_,_,_,_,defaults), rulenum) =
+      not (member(rulenum, defaults))
+  | relevant (BINDDEC _, _) =
+      bug "relevant - unexpected BINDDEC arg"
 
 fun metric (CASEDEC(_,_,cases, defaults)) = (length defaults, length cases)
   | metric (ABSCONDEC (_,_,_,_,defaults)) = (length defaults, 2)
-  | metric (BINDDEC _) = bug "BINDDEC not fired (metric)"
+  | metric (BINDDEC _) = bug "metric - unexpected BINDDEC arg"
 
 fun metricBetter((a:int,b:int),(c,d)) = a < c orelse (a = c andalso b < d)
 
@@ -620,12 +610,12 @@ fun doPickBest(nil, _, _, _, NONE) = raise PickBest
   | doPickBest((CASEDEC(_, DA.CSIG(1,0), _, _))::rest, _, n, _, _) = n
   | doPickBest((CASEDEC(_, DA.CSIG(0,1), _, _))::rest, _, n, _, _) = n
   | doPickBest(aCase::rest, active as act1::_, n, NONE, NONE) =
-	  if relevent (aCase, act1) then
+	  if relevant (aCase, act1) then
 	    doPickBest(rest, active, n + 1, SOME(metric aCase), SOME n)
 	  else
 	    doPickBest(rest, active, n + 1, NONE, NONE)
   | doPickBest(aCase::rest, active as act1::_, n, SOME m, SOME i) =
-	  if relevent (aCase, act1) then
+	  if relevant (aCase, act1) then
 	    let val myMetric = metric aCase
 	    in
 	      if metricBetter(myMetric, m) then
@@ -635,18 +625,19 @@ fun doPickBest(nil, _, _, _, NONE) = raise PickBest
         end
 	  else
 	    doPickBest(rest, active, n + 1, SOME m, SOME i)
-  | doPickBest _ = bug "bug situation in doPickBest"
+  | doPickBest _ = bug "doPickBest - unexpected arg"
 
+(* pickBest : decision list * rules -> ruleno *)
 fun pickBest (l, active) = doPickBest(l, active, 0, NONE, NONE)
 
+(* extractNth : int * 'a list -> 'a * 'a list *)
 fun extractNth(0, a::b) = (a, b)
   | extractNth(n, a::b) =
       let val (c,d) = extractNth(n - 1, b) in (c, a::d) end
-  | extractNth _ = bug "extractNth called with too big n"
+  | extractNth _ = bug "extractNth - n too big"
 
-fun filter (f, nil) = nil |
-    filter (f, a::b) = if f a then a::(filter(f,b)) else filter(f,b)
-
+(* genDecisionTree : (decision list * (path list * decision list) list) * rules
+ *                   -> dectree *)
 fun genDecisionTree((decisions, delayed), active as active1::_) =
       ((case extractNth(pickBest(decisions, active), decisions)
          of (BINDDEC(path, _), rest) =>
@@ -661,7 +652,7 @@ fun genDecisionTree((decisions, delayed), active as active1::_) =
 *)
           | (CASEDEC(path, sign, cases, defaults), rest) =>
              let fun isActive(_,rules,_) = intersect(rules, active) <> []
-                 val activeCases = filter(isActive, cases)
+                 val activeCases = List.filter isActive cases
                  val caseTrees =
                    gencases(activeCases, rest, delayed, defaults, active)
                  val defActive = intersect(active, defaults)
@@ -682,7 +673,7 @@ fun genDecisionTree((decisions, delayed), active as active1::_) =
 	         else ABSTEST0(path, con, yesTree, defTree)
              end)
        handle PickBest => (RHS active1))
-  | genDecisionTree (_,nil) = bug "nothing active"
+  | genDecisionTree (_,nil) = bug "genDecisionTree - nil active"
 
 and gencases (nil, decs, delayed, defaults, active) = nil
   | gencases ((pcon,rules,guarded)::rest,decs,delayed,defaults,active)=
@@ -727,10 +718,13 @@ fun bindPrint (env,(pat,_)::_) ppstrm =
       (PP.newline ppstrm; PP.string ppstrm "        ";
        PPAbsyn.ppPat env ppstrm (pat,!printDepth);
        PP.string ppstrm " = ...")
-  | bindPrint _ _ = bug "bindPrint in mc"
+  | bindPrint _ _ = bug "bindPrint -- unexpected args"
 
 end (* local printutil *)
 
+(* rulesUsed : dectree -> rules
+ *  returns all rules used in the dectree, maintaining ordering
+ *  (because union operation does) *)
 fun rulesUsed (RHS n) = [n]
   | rulesUsed (BIND(_, dt)) = rulesUsed dt
   | rulesUsed (CASETEST(_, _, cases, NONE)) =
@@ -742,22 +736,30 @@ fun rulesUsed (RHS n) = [n]
   | rulesUsed (ABSTEST1(_, _, yes, no)) =
       union(rulesUsed yes, rulesUsed no)
 
-fun fixupUnused(nil, _, _, _, out) = out
-  | fixupUnused(unused, (nil, _)::rest, n, m, out) =
-      fixupUnused(unused, rest, n, m + 1, out)
-  | fixupUnused(unused::urest, (rule::rules, x)::mrest, n, m, nil) =
-      if unused = n then
-       fixupUnused(urest, (rules, x)::mrest, n + 1, m, [m])
-      else
-       fixupUnused(unused::urest, (rules, x)::mrest, n + 1, m, nil)
-  | fixupUnused(unused::urest, (rule::rules, z)::mrest, n, m, x::y) =
-      if unused = n then
-       (if m <> x then
-          fixupUnused(urest, (rules, z)::mrest, n + 1, m, m::x::y)
-        else fixupUnused(urest, (rules, z)::mrest, n + 1, m, x::y))
-      else fixupUnused(unused::urest, (rules, z)::mrest, n + 1, m, x::y)
-  | fixupUnused _ = bug "bad fixup"
+(* fixupUnused : rules * matchRepsTy -> rules *)
+(* this code is buggy - the elements of mr aren't what it thinks they are *)
+fun fixupUnused (unused: rules, mr: matchRepsTy) =
+    let fun fixup (nil, _, _, _, out) = out
+	  | fixup (unused, (nil, _)::rest, n, m, out) =
+	    fixup (unused, rest, n, m + 1, out)
+	  | fixup (unused::urest, (rule::rules, x)::mrest, n, m, nil) =
+	    if unused = n then
+		fixup(urest, (rules, x)::mrest, n + 1, m, [m])
+	    else
+		fixup(unused::urest, (rules, x)::mrest, n + 1, m, nil)
+	  | fixup (unused::urest, (rule::rules, z)::mrest, n, m, x::y) =
+	    if unused = n then
+		(if m <> x then
+		     fixup(urest, (rules, z)::mrest, n + 1, m, m::x::y)
+		 else fixup(urest, (rules, z)::mrest, n + 1, m, x::y))
+	    else fixup(unused::urest, (rules, z)::mrest, n + 1, m, x::y)
+	  | fixup _ = bug "fixup - unexpected arg"
+    in rev(fixup(unused, mr, 0, 0, nil))
+    end
 
+(* redundant : rules * ruleno -> bool
+ *  true if rules contains a member not equal to ruleno
+ *  i.e. false only if rules = [ruleno]  ??? looks bogus *)
 fun redundant (nil, n: int) = false
   | redundant (a::b, n) = a <> n orelse redundant (b, n)
 
@@ -767,41 +769,79 @@ fun complement(n, m, a::b) =
   | complement(n, m, nil) =
       if n < m then n::(complement(n + 1, m, nil)) else nil
 
-fun dividePathList(pred, nil, accyes, accno) = (accyes, accno)
-  | dividePathList(pred, path::rest, accyes, accno) =
-      if pred path then dividePathList(pred, rest, path::accyes, accno)
-      else dividePathList(pred, rest, accyes, path::accno)
+type pathList = path list
+(* conjectured invariant: a pathList has no duplicate members *)
+(* question: does the order of paths in a path list matter? Apparently not. *)
+		     
+type pathSet = (int * pathList) list
+(* terminology: the int component of a pathSet member is called its index.
+ * invariant?: index represents common "depth" of paths in pathList, or
+ *    in other words, all paths in the pathList have metric = index
+ * invariant: indexes occur in (strictly?) ascending order
+ * invariant?: no duplicate indexes
+ *)
 
-fun addPathToPathList (path, path1::rest) =
-      if pathEq(path, path1) then path1::rest
+(* dividePathList: (path -> bool) * pathList * pathList * pathList
+ *                  -> pathList * pathList
+ *   divide path list into a pair of a list of paths satisfying pred and 
+ *   a list of paths not satisfying pred. *)
+fun dividePathList (pred, paths) =
+    let fun divide(pred, nil, accyes, accno) = (accyes, accno)
+	  | divide(pred, path::rest, accyes, accno) =
+	    if pred path then divide(pred, rest, path::accyes, accno)
+	    else divide(pred, rest, accyes, path::accno)
+    in  divide(pred, paths, nil, nil)
+    end
+
+(* addPathToPathList : path * pathList -> pathList
+ *  add path to the end of pathList if is not already in pathList *)
+fun addPathToPathList (path, paths as path1::rest) =
+      if pathEq(path, path1) then paths
       else path1::(addPathToPathList(path, rest))
   | addPathToPathList (path, nil) = [path]
 
+(* unitePathLists : pathList * pathList -> pathList
+ *  merge two pathLists, suppressing duplicate paths; the new members of
+ *  the first pathlist are added to the end of the 2nd pathList in reverse
+ *  order *)
 fun unitePathLists(paths1, nil) = paths1
   | unitePathLists(nil, paths2) = paths2
   | unitePathLists(path1::rest1, paths2) =
       addPathToPathList(path1, unitePathLists(rest1, paths2))
 
-fun onPathList (path1, nil) = false
-  | onPathList (path1, path2::rest) =
-      pathEq(path1, path2) orelse onPathList(path1, rest)
+(* inPathList : path * pathList -> bool
+ *  path is equal (pathEq) to a member of pathList *)
+fun inPathList (path1, nil) = false
+  | inPathList (path1, path2::rest) =
+      pathEq(path1, path2) orelse inPathList(path1, rest)
 
+(* intersectPathLists : pathList * pathList -> pathList
+ *  produces pathList containing members of first pathList that
+ *  also occur in the second pathList *)
 fun intersectPathLists(paths1, nil) = nil
   | intersectPathLists(nil, paths2) = nil
   | intersectPathLists(path1::rest1, paths2) =
-      if onPathList(path1,paths2) then
+      if inPathList(path1,paths2) then
         path1::(intersectPathLists(rest1, paths2))
       else
         intersectPathLists(rest1, paths2)
 
+(* differencPathLists: pathList * pathList -> pathList
+ *  sublist of first pathList containing paths that do not occur
+ *  in second pathList *)
 fun differencePathLists(paths1, nil) = paths1
   | differencePathLists(nil, paths2) = nil
   | differencePathLists(path1::rest1, paths2) =
-      if onPathList(path1,paths2) then
+      if inPathList(path1,paths2) then
         differencePathLists(rest1, paths2)
       else
         path1::(differencePathLists(rest1, paths2))
 
+(* intersectPathsets : pathSet * pathSet -> pathSet
+ *   intersection pathSet contains only elements with a common
+ *   index, with the corresponding pathList being the intersection
+ *   of the respective pathLists
+ *)
 fun intersectPathsets(pathset1, nil) = nil
   | intersectPathsets(nil, pathset2) = nil
   | intersectPathsets(pathset1 as (n1:int, paths1)::rest1,
@@ -815,6 +855,9 @@ fun intersectPathsets(pathset1, nil) = nil
       else
         intersectPathsets(pathset1, rest2)
 
+(* unitePathsets : pathSet * pathSet -> pathSet 
+ *  merge two pathSets, consolidating elements with same index
+ *  by taking union of corresponding pathLists *)
 fun unitePathsets(pathset1, nil) = pathset1
   | unitePathsets(nil, pathset2) = pathset2
   | unitePathsets(pathset1 as (n1:int, paths1)::rest1,
@@ -827,9 +870,15 @@ fun unitePathsets(pathset1, nil) = pathset1
       else
         (n2, paths2)::(unitePathsets(pathset1, rest2))
 
-fun differencePathsets(pathset1, nil) = pathset1
+(* differencePathsets : pathSet * pathSet -> pathSet
+ *  to form the result pathSet:
+ *  for each element (n, pl) of pathSet 1, if there is a corresponding
+ *  element (n, pl') of pathSet 2 and pl_new = pl - pl' is not nil,
+ *  retain the modified element (n, pl_new), otherwise drop the element.
+*)
+fun differencePathsets(pathset1: pathSet, nil: pathSet) = pathset1
   | differencePathsets(nil, pathset2) = nil
-  | differencePathsets(pathset1 as (n1:int, paths1)::rest1,
+  | differencePathsets(pathset1 as (n1, paths1)::rest1,
                        pathset2 as (n2, paths2)::rest2) =
       if n1 = n2 then
         case differencePathLists(paths1, paths2)
@@ -840,28 +889,26 @@ fun differencePathsets(pathset1, nil) = pathset1
       else
         differencePathsets(pathset1, rest2)
 
-fun doPathsetMember(path, metric, (n:int, paths)::rest) =
-      (n < metric andalso doPathsetMember(path, metric, rest))
-        orelse (n = metric andalso onPathList(path, paths))
-  | doPathsetMember(path, metric, nil) = false
-
-fun doAddElementToPathset(path, metric, nil) = [(metric, [path])]
-  | doAddElementToPathset(path, metric, (n:int, paths)::rest) =
-      if n = metric then (n, addPathToPathList(path, paths))::rest
-      else if n < metric then
-        (n,paths)::(doAddElementToPathset(path, metric, rest))
-      else (metric, [path])::(n, paths)::rest
-
+(* dividePathset : (path -> bool) * pathset -> pathset * pathset
+ *  form two pathSets by splitting pathSet elements into two elements
+ *  having pathLists that satisfy or don't satisfy the predicate,
+ *  dropping new elements if their pathList in nil.  So either or
+ *  both of the result pathSets may have fewer elements than the original *)
 fun dividePathset(pred, nil) = (nil, nil)
-  | dividePathset(pred, (n, pathlist)::rest) =
+  | dividePathset(pred, (n, paths)::rest) =
       let val (yesSet, noSet) = dividePathset(pred, rest)
-      in case dividePathList(pred, pathlist, nil, nil)
-           of (nil, nil) => bug "paths dissappeared during divide"
+      in case dividePathList(pred, paths)
+           of (nil, nil) => bug "diviePathset - both empty"
             | (nil, no) => (yesSet, (n,no)::noSet)
             | (yes, nil) => ((n, yes)::yesSet, noSet)
             | (yes, no) => ((n, yes)::yesSet, (n,no)::noSet)
       end
 
+(* pathDepends : path -> path -> bool
+ *  is path 1 a "suffix" of path 2  -- need to define "suffix" of a path,
+ *  which seems clear when path is "linear" (no RECORDPATH constructor)
+ *  in the case where path 2 is a RECORDPATH, path 1 is either equal to
+ *  path 2 or is a suffix of one of its component paths *)
 fun pathDepends path1 ROOTPATH = pathEq(path1, ROOTPATH)
   | pathDepends path1 (path2 as RECORDPATH paths) =
       foldl (fn (a, b) => (pathDepends path1 a) orelse b)
@@ -872,9 +919,12 @@ fun pathDepends path1 ROOTPATH = pathEq(path1, ROOTPATH)
       pathEq(path1, path2) orelse pathDepends path1 subpath
   | pathDepends path1 (path2 as DELTAPATH(_,subpath)) =
       pathEq(path1, path2) orelse pathDepends path1 subpath
-  | pathDepends path1 (path2 as (VLENPATH (subpath, _))) =
+  | pathDepends path1 (path2 as (VLENPATH (_, subpath))) =
       pathEq(path1, path2) orelse pathDepends path1 subpath
 
+(* pathMetric : path -> int
+ *  for linear paths, the "length" or "depth" - 1  (ROOTPATH ~ nil)
+ *  for RECORDPATH, the sum of the metrics for component paths plus 1 *)
 fun pathMetric (ROOTPATH) = 0
   | pathMetric (RECORDPATH paths) =
       foldr (fn (a, b) => pathMetric a + b) 1 paths
@@ -884,41 +934,62 @@ fun pathMetric (ROOTPATH) = 0
       1 + pathMetric subpath
   | pathMetric (DELTAPATH(_,subpath)) =
       1 + pathMetric subpath
-  | pathMetric (VLENPATH (subpath, _)) =
+  | pathMetric (VLENPATH (_, subpath)) =
       1 + pathMetric subpath
 
-fun pathsetMember path pathset =
-      doPathsetMember(path, pathMetric path, pathset)
+(* addPathToPathset : path * pathSet -> pathSet
+ *  add, nonredundantly, path to the pathSet element whose index
+ *  matches the path metric of path, adding a new element if no index
+ *  matches the path metric
+ *)
+fun addPathToPathset (path, pathset) =
+    let fun add(path, metric, nil) = [(metric, [path])]
+	  | add(path, metric, (n:int, paths)::rest) =
+	    if n = metric then (n, addPathToPathList(path, paths))::rest
+	    else if n < metric then
+		(n,paths) :: add(path, metric, rest)
+	    else (metric, [path])::(n, paths)::rest
+    in add (path, pathMetric path, pathset)
+    end
 
-fun addPathToPathset(path, pathset) =
-      doAddElementToPathset(path, pathMetric path, pathset)
 
+(* wrapBindings : pathSet * dectree -> dectree
+ *   wrap the dectree in BINDs, for all the paths in pathSet, first outermost *)
+fun wrapBindings (nil, rhs) = rhs
+  | wrapBindings ((_,paths)::rest, rhs) =
+    let fun bind(nil, rhs) = rhs
+          | bind(path::rest, rhs) = BIND(path, bind(rest, rhs))
+     in bind(paths, wrapBindings(rest, rhs))
+    end
 
-fun doDoBindings(nil, rhs) = rhs
-  | doDoBindings(path::rest, rhs) = BIND(path, doDoBindings(rest, rhs))
-
-fun doBindings (nil, rhs) = rhs
-  | doBindings ((n,paths)::morepaths, rhs) =
-         doDoBindings(paths, doBindings(morepaths, rhs))
-
-fun subPaths (ROOTPATH) = [(0, [ROOTPATH])]
+(* subPaths : path -> pathSet
+ *  deconstruct a path into a pathSet
+ *  only nontrivial case is RECORDPATH, where the pathSets for component paths
+ *  have to be merged using unitePathSets *)
+fun subPaths ROOTPATH = [(0, [ROOTPATH])]
   | subPaths (path as RECORDPATH paths) =
-         foldr unitePathsets [(pathMetric path, [path])] (map subPaths paths)
-  | subPaths (path as (VLENPATH (subpath, _))) =
-         (subPaths subpath)@[(pathMetric path, [path])]
-  | subPaths (path as VPIPATH (n,_,subpath)) =
-         (subPaths subpath)@[(pathMetric path, [path])]
-  | subPaths (path as PIPATH (n, subpath)) =
-         (subPaths subpath)@[(pathMetric path, [path])]
+      foldr unitePathsets [(pathMetric path, [path])] (map subPaths paths)
+  | subPaths (path as (VLENPATH (_, subpath))) =
+      (subPaths subpath)@[(pathMetric path, [path])]
+  | subPaths (path as VPIPATH (_,_,subpath)) =
+      (subPaths subpath)@[(pathMetric path, [path])]
+  | subPaths (path as PIPATH (_,subpath)) =
+      (subPaths subpath)@[(pathMetric path, [path])]
   | subPaths (path as DELTAPATH (_,subpath)) =
-         (subPaths subpath)@[(pathMetric path, [path])]
+      (subPaths subpath)@[(pathMetric path, [path])]
 
-fun rhsbindings (n, ruleDesc) =
-     let val (_, paths, _) = List.nth(ruleDesc, n)
+(* rhsbindings : int * matchRepTy -> pathSet
+ *  select the nth rule description, then select its pathList (2nd) component
+ *  translate each path into a pathSet, and merge the pathSets
+ *)
+fun rhsbindings (n, matchRep) =
+     let val (_, paths, _) = List.nth(matchRep, n)
       in foldr unitePathsets [] (map subPaths paths)
      end
 
-fun pass1cases((pcon,subtree)::rest, envin, SOME envout, rhs, path) =
+(* pass1cases : (pcon * dectree) list * pathSet * pathSet option * matchRepTy * path
+ *              -> (pcon * dectree) list * pathSet *)           
+fun pass1cases ((pcon,subtree)::rest, envin, SOME envout, rhs, path) =
         let val (subtree', myEnvout) = pass1(subtree, envin, rhs)
             val (mustBindHere, otherBindings) =
                   dividePathset(pathDepends(DELTAPATH(pcon,path)),myEnvout)
@@ -927,10 +998,10 @@ fun pass1cases((pcon,subtree)::rest, envin, SOME envout, rhs, path) =
                   pass1cases(rest, envin, SOME envoutSoFar, rhs, path)
             val iBind2 = differencePathsets(otherBindings, envout')
             val subtree'' =
-                  doBindings(unitePathsets(mustBindHere, iBind2), subtree')
+                  wrapBindings(unitePathsets(mustBindHere, iBind2), subtree')
          in ((pcon,subtree'')::rest', envout')
         end
-  | pass1cases((pcon,subtree)::rest, envin, NONE, rhs, path) =
+  | pass1cases ((pcon,subtree)::rest, envin, NONE, rhs, path) =
         let val (subtree', myEnvout) = pass1(subtree, envin, rhs)
             val (mustBindHere, otherBindings) =
                   dividePathset(pathDepends(DELTAPATH(pcon,path)),myEnvout)
@@ -938,13 +1009,14 @@ fun pass1cases((pcon,subtree)::rest, envin, SOME envout, rhs, path) =
                   pass1cases(rest, envin, SOME otherBindings, rhs, path)
             val iBind2 = differencePathsets(otherBindings, envout')
             val subtree'' =
-                  doBindings(unitePathsets(mustBindHere, iBind2), subtree')
+                  wrapBindings(unitePathsets(mustBindHere, iBind2), subtree')
          in ((pcon,subtree'')::rest', envout')
         end
-  | pass1cases(nil, envin, SOME envout, rhs, path) =
+  | pass1cases (nil, envin, SOME envout, rhs, path) =
         (nil, unitePathsets(envin, envout))
-  | pass1cases(nil, envin, NONE, rhs, path) = bug "pass1cases bad"
+  | pass1cases (nil, envin, NONE, rhs, path) = bug "pass1cases - unexpected arg"
 
+(* pass1 : dectree * pathSet * matchRepTy -> dectree * pathSet *)
 and pass1(RHS n, envin, rhs) = (RHS n, rhsbindings(n, rhs))
   | pass1(CASETEST(path, sign, cases, NONE), envin, rhs) =
         let val (cases', envout') =
@@ -958,7 +1030,7 @@ and pass1(RHS n, envin, rhs) = (RHS n, rhsbindings(n, rhs))
             val (cases', envout') =
               pass1cases(cases, newenv, SOME subEnvout, rhs, path)
             val subbindings = differencePathsets(subEnvout, envout')
-            val subtree'' = doBindings(subbindings, subtree')
+            val subtree'' = wrapBindings(subbindings, subtree')
          in (CASETEST(path, sign, cases', SOME subtree''), envout')
         end
   | pass1 (ABSTEST0(path, con, subtree1, subtree2), envin, rhs) =
@@ -969,8 +1041,8 @@ and pass1(RHS n, envin, rhs) = (RHS n, rhsbindings(n, rhs))
               unitePathsets(newenv,intersectPathsets(subEnvout1,subEnvout2))
             val bind1 = differencePathsets(subEnvout1, envout)
             val bind2 = differencePathsets(subEnvout2, envout)
-            val subtree1'' = doBindings(bind1, subtree1')
-            val subtree2'' = doBindings(bind2, subtree2')
+            val subtree1'' = wrapBindings(bind1, subtree1')
+            val subtree2'' = wrapBindings(bind2, subtree2')
          in (ABSTEST0(path, con, subtree1'', subtree2''), envout)
         end
   | pass1 (ABSTEST1(path, con, subtree1, subtree2), envin, rhs) =
@@ -985,16 +1057,17 @@ and pass1(RHS n, envin, rhs) = (RHS n, rhsbindings(n, rhs))
                                 intersectPathsets(subEnvout1,subEnvout2))
             val bind1 = differencePathsets(subEnvout1, envout)
             val bind2 = differencePathsets(subEnvout2, envout)
-            val subtree1'' = doBindings(bind1, subtree1')
-            val subtree2'' = doBindings(bind2, subtree2')
+            val subtree1'' = wrapBindings(bind1, subtree1')
+            val subtree2'' = wrapBindings(bind2, subtree2')
          in (ABSTEST1(path, con, subtree1'', subtree2''), envout)
         end
-  | pass1 _ = bug "pass1 bad"
+  | pass1 _ = bug "pass1 - unexpected arg"
 
 
-(*
- * Given a decision tree for a match, a list of ?? and the name of the
- * variable bound to the value to be matched, produce code for the match.
+(* generate : dectree * matchRepTy * lvar * (toTycTy * toLtyTy) * giisTy 
+ *            -> codeTy
+ * Given a decision tree for a match, a matchRep list and the lvar
+ * bound to the value to be matched, produce code for the match.
  *)
 fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
   let val (subtree, envout) = pass1(dt, [(0, [ROOTPATH])], matchRep)
@@ -1022,7 +1095,7 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
 		    INT{ival = IntInf.fromInt n, ty = Target.defaultIntSz}
 		  ])
             end
-        | genpath (VLENPATH (path, t), env) =
+        | genpath (VLENPATH (t, path), env) =
             let val tc = toTyc t
                 val lt_len = LT.ltc_poly([LT.tkc_mono],
                                  [LT.ltc_parrow(LT.ltc_tv 0, LT.ltc_int)])
@@ -1032,7 +1105,7 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
             end
         | genpath (ROOTPATH, env) = VAR(lookupPath(ROOTPATH, env))
 
-      fun genswitch(sv, sign, [(DATAcon((_, DA.REF, lt), ts, x), e)], NONE) =
+      fun genswitch (sv, sign, [(DATAcon((_, DA.REF, lt), ts, x), e)], NONE) =
             LET(x, APP (PRIM (Primop.DEREF, LT.lt_swap lt, ts), sv), e)
         | genswitch(sv, sign, [(DATAcon((_, DA.SUSP(SOME(_, DA.LVAR f)), lt),
                                         ts, x), e)], NONE) =
@@ -1041,16 +1114,16 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
             end
 	| genswitch (sv, sign, cases as ((INTcon{ty=0, ...}, _) :: _), default) =
 	    let fun strip (INTcon{ty=0, ival}, e) = (ival, e)
-		  | strip _ = bug "genswitch: INTINFcon"
+		  | strip _ = bug "genswitch - INTINFcon"
 	    in
 		case default of
-		    NONE => bug "no default in switch on IntInf"
+		    NONE => bug "getswitch - no default in switch on IntInf"
 		  | SOME d => giis (sv, map strip cases, d)
 	    end
         | genswitch x = SWITCH x
 
-      fun pass2rhs (n, env, ruleDesc) =
-        (case List.nth(ruleDesc, n)
+      fun pass2rhs (n, env, matchRep) =
+        (case List.nth(matchRep, n)
           of (_, [path], fname) => APP(VAR fname, VAR(lookupPath(path, env)))
            | (_, paths, fname) =>
                APP(VAR fname,
@@ -1066,7 +1139,7 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
              in LET(newvar, genpath(path, env), subcode)
             end
         | pass2 (CASETEST(path, sign, [], NONE), _, _) =
-            bug "unexpected empty cases in matchcomp"
+            bug "pass2 - empty cases"
         | pass2 (CASETEST(path, sign, [], SOME subtree), env, rhs) =
             pass2(subtree,env,rhs)
         | pass2 (CASETEST(path, sign, cases, dft), env, rhs) =
@@ -1092,7 +1165,7 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
             abstest1(path, con, pass2(yes,env,rhs), pass2(no,env,rhs))
         | pass2 (RHS n, env, rhs) = pass2rhs(n, env, rhs)
 
-      and pass2cases(path, nil, env, rhs) = nil
+      and pass2cases (path, nil, env, rhs) = nil
         | pass2cases(path, (pcon,subtree)::rest, env, rhs) =
             let (** always implicitly bind a new variable at each branch. *)
                 val (ncon, nenv) = pconToCon(pcon, path, env)
@@ -1100,7 +1173,9 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
              in res::(pass2cases(path, rest, env, rhs))
             end
 
-      and pconToCon(pcon, path, env) = (case pcon
+      (* pconToCon : pcon * path * (path * lvar) list -> lexp * (path * lvar) list *)
+      and pconToCon (pcon, path, env) =
+	  (case pcon
 	     of DATApcon (dc, ts) =>
 		  let val newvar = mkv()
 		      val nts = map (toTyc o TP.VARty) ts
@@ -1113,26 +1188,31 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
 	      | STRINGpcon s => (STRINGcon s, env)
 	    (* end case *))
 
-   in case doBindings(envout, subtree)
+   in case wrapBindings(envout, subtree)
        of BIND(ROOTPATH, subtree') =>
             pass2(subtree', [(ROOTPATH, rootVar)], matchRep)
         | _ => pass2(subtree, [], matchRep)
   end
 
-fun doMatchCompile(rules, finish, rootvar, toTcLt as (_, toLty), err, giis) =
-  let val lastRule = length rules - 1
-      val matchReps = map (preProcessPat toLty) rules
+(* doMatchCompile : (pat * exp) list * (lexp -> lexp?) * lvar * toLcLtTy * errTy * giisTy
+                    -> lexp * rules * bool * bool ? *)
+fun doMatchCompile(absyn_rules, finish, rootvar, toTcLt as (_, toLty), err, giis) =
+  let val lastRule = length absyn_rules - 1
+      val matchReps = map (preProcessPat toLty) absyn_rules
       val (matchRep,rhsRep) =
-        foldr (fn ((a,b),(c,d)) => (a@c,b::d)) ([], []) matchReps
-
-      val allRules = mkAllRules(matchRep,0)
+          foldr (fn ((a,b),(c,d)) => (a@c,b::d)) ([], []) matchReps
+      val allRules = List.tabulate(length matchRep, fn x => x);
+          (* length matchRep can be > length absyn_rules if OR pats are expanded
+           * (by orExpand in preProcessPat) *)
       val flattened = flattenAndors(makeAndor(matchRep,err),allRules)
       val ready = fireConstraint(ROOTPATH,flattened,nil,nil)
       val dt = genDecisionTree(ready,allRules)
+      val _ = PPMatchComp.debugPrint debugging
+	       ("#dectree#", fn ppstrm => fn dt => PPMatchComp.ppDectree (!pd) ppstrm dt, dt)
       val numRules = length matchRep
       val rawUnusedRules = complement(0,numRules,rulesUsed dt)
-      val unusedRules = rev(fixupUnused(rawUnusedRules,matchReps,0,0,nil))
-      val exhaustive = isthere(lastRule,unusedRules)
+      val unusedRules = fixupUnused(rawUnusedRules,matchReps)
+      val exhaustive = member(lastRule,unusedRules)
       val redundantF = redundant(unusedRules, lastRule)
 
       fun g((fname, fbody), body) = LET(fname, fbody, body)
@@ -1141,7 +1221,9 @@ fun doMatchCompile(rules, finish, rootvar, toTcLt as (_, toLty), err, giis) =
    in (finish(code), unusedRules, redundantF, exhaustive)
   end
 
-(*
+(* type as_match = (Absyn.pat * Absyn.exp) list *)
+
+(* noVarsIn : as_match -> bool
  * Test pat, the guard pattern of the first match rule of a match,
  * for the occurence of variables (including layering variables)
  * or wildcards.  Return true if any are present, false otherwise.
@@ -1158,7 +1240,7 @@ fun noVarsIn ((pat,_)::_) =
             | var _ = false
        in not(var pat)
       end
-  | noVarsIn _ = bug "noVarsIn in mc"
+  | noVarsIn _ = bug "noVarsIn - unexpected arg"
 
 
 (*
@@ -1204,7 +1286,7 @@ in
  * to the let binding itself, while the second is a default rule
  * (usually "_ => raise Bind") added, e.g. in the function mkVBs in
  * translate.sml, or by applying ElabUtil.completeMatch.
- * Thus the itself match will always be exhaustive, but the case where the
+ * Thus the match itself will always be exhaustive, but the case where the
  * let binding per se is nonexhaustive will still be detected by doMatchCompile
  * (see the comment above), and if the control flag Control.MC.bindNonExhaustiveWarn
  * is set then a nonexhaustive binding warning is printed. If the control
@@ -1217,7 +1299,7 @@ in
  *)
 fun bindCompile (env, rules, finish, rootv, toTcLt, err, giis) =
   let val _ =
-        if !printArgs then (say "MC called with:"; MP.ppMatch env rules)
+        if !printArgs then (say "BC called with:"; MP.ppMatch env rules)
         else ()
       val (code, _, _, exhaustive) =
         doMatchCompile(rules, finish, rootv, toTcLt, err, giis)
@@ -1252,7 +1334,7 @@ fun bindCompile (env, rules, finish, rootv, toTcLt, err, giis) =
  *)
 fun handCompile (env, rules, finish, rootv, toTcLt, err, giis) =
   let val _ =
-        if !printArgs then (say "MC called with: "; MP.ppMatch env rules)
+        if !printArgs then (say "HC called with: "; MP.ppMatch env rules)
         else ()
       val (code, unused, redundant, _) =
         doMatchCompile(rules, finish, rootv, toTcLt, err, giis)

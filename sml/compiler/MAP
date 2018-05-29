@@ -251,6 +251,9 @@ Basic datastructures used in elaboration (including type checking)
     access.sig/sml
       dynamic access paths
       defs: ACCESS, Access : ACCESS
+    debindex.sig/sml [FLINT, moved from Elaborator/basics]
+      FLINT book-keeping (move back to FLINT)
+      defs: DEB_INDEX, DebIndex : DEB_INDEX
     env.sig/sml
       generic environments, mapping symbols to unspecified binding type
       defs: ENV, Env: ENV, INTSTRMAPV
@@ -377,9 +380,6 @@ Elaborator/
     conrep.sml
       inferring conreps for data constructors
       defs: CONREP, ConRep: CONREP
-    debindex.sig/sml [FLINT]
-      FLINT book-keeping (move back to FLINT)
-      defs: DEB_INDEX, DebIndex : DEB_INDEX
     ptnum.sml
       prim type numbers, augmenting ElabData/basics/core-ptnum.sml with
       implementation dependent types

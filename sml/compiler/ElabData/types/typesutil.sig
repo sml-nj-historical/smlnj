@@ -49,6 +49,7 @@ sig
   val typeArgs : int -> Types.ty list
   val mkPolySign : int -> Types.polysign
 
+  val dconName : Types.datacon -> Symbol.symbol
   val dconTyc : Types.datacon -> Types.tycon
   val dconType : Types.tycon * Types.ty option  -> Types.ty
 

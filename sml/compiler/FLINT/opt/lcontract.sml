@@ -24,7 +24,6 @@ in
 fun bug s = ErrorMsg.impossible ("LContract: "^s)
 val say = Control_Print.say
 val ident = fn x => x
-fun all p (a::r) = p a andalso all p r | all p nil = true
 
 fun isDiffs (vs, us) =
   let fun h (VAR x) = List.all (fn y => (y<>x)) vs
