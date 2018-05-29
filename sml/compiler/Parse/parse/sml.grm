@@ -1,6 +1,6 @@
 (* sml.grm
  *
- * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * This version of the parser supports the following Successor ML syntactic extensions.
@@ -74,78 +74,79 @@ val quotedBogusString = "'BOGUS"
        | match of rule list
        | match' of rule list
        | rule of rule
-       | elabel of  (symbol * exp)
-       | elabels of  (symbol * exp) list
-       | exp_ps of  exp list
-       | exp of  exp
-       | app_exp of  exp fixitem list
-       | aexp of  exp
-       | exp_list of  exp list
-       | exp_2c  of  exp list
-       | quote of  exp list
-       | ot_list of  exp list
+       | elabel of (symbol * exp)
+       | elabels of (symbol * exp) list
+       | exp_ps of exp list
+       | exp of exp
+       | app_exp of exp fixitem list
+       | aexp of exp
+       | exp_list of exp list
+       | exp_2c  of exp list
+       | quote of exp list
+       | ot_list of exp list
        | pat of pat
        | apat of pat fixitem
-       | apat' of  pat
-       | plabel of  (symbol * pat)
-       | plabels of  ((symbol * pat) list * bool)
-       | pat_2c of  pat list
-       | pat_list of  pat list
-       | or_pat_list of  pat list
-       | vb of  vb list
+       | apat' of pat
+       | plabel of (symbol * pat)
+       | plabels of ((symbol * pat) list * bool)
+       | pat_2c of pat list
+       | pat_list of pat list
+       | or_pat_list of pat list
+       | vb of vb list
        | constraint of ty option
-       | rvb of  rvb list
-       | fb' of  clause list
-       | fb of  fb list
+       | rvb of rvb list
+       | rpat of (bool * exp) -> rvb
+       | fb' of clause list
+       | fb of fb list
        | apats of pat fixitem list
-       | clause of  clause
+       | clause of clause
        | tb of tb list
        | tyvars of tyvar list
        | tyvarseq of tyvar list
        | tyvar_pc of tyvar list
-       | db of  db
-       | dbs of  db list
+       | db of db
+       | dbs of db list
        | dtrepl of symbol * path
        | constrs of (symbol * ty option) list
        | constrs' of (symbol * ty option) list
-       | constr of  symbol * ty option
-       | eb of  eb list
+       | constr of symbol * ty option
+       | eb of eb list
        | qid_p of Symbol.symbol list list
        | fixity of fixity
        | ldec of dec
-       | exp_pa of   exp list
-       | ldecs of  dec
+       | exp_pa of  exp list
+       | ldecs of dec
        | ops of symbol list
-       | spec_s of  spec list
-       | spec of  spec list
+       | spec_s of spec list
+       | spec of spec list
        | idents of spec list
-       | strspec of  (symbol * sigexp * path option) list
-       | fctspec of  (symbol * fsigexp) list
-       | tyspec of  (symbol * tyvar list * ty option) list
+       | strspec of (symbol * sigexp * path option) list
+       | fctspec of (symbol * fsigexp) list
+       | tyspec of (symbol * tyvar list * ty option) list
        | valspec of (symbol * ty) list
        | exnspec of (symbol * ty option) list
        | sharespec of spec list
        | patheqn of (FastSymbol.raw_symbol ->symbol) -> symbol list list
        | whspec of wherespec list
-       | sign of  sigexp
-       | sigconstraint_op of  sigexp sigConst
+       | sign of sigexp
+       | sigconstraint_op of sigexp sigConst
        | fsigconstraint_op of fsigexp sigConst
-       | sigb of  sigb list
-       | fsigb of  fsigb list
-       | fsig of  fsigexp
-       | str of  strexp
-       | arg_fct of  (strexp * bool) list
-       | strdec of  dec
-       | strdecs of  dec
-       | sdec of  dec
-       | sdecs of  dec
-       | sdecs' of  dec
-       | strb of  strb list
-       | fparam of  symbol option * sigexp
-       | fparamList of  (symbol option * sigexp) list
-       | fctb of  fctb list
+       | sigb of sigb list
+       | fsigb of fsigb list
+       | fsig of fsigexp
+       | str of strexp
+       | arg_fct of (strexp * bool) list
+       | strdec of dec
+       | strdecs of dec
+       | sdec of dec
+       | sdecs of dec
+       | sdecs' of dec
+       | strb of strb list
+       | fparam of symbol option * sigexp
+       | fparamList of (symbol option * sigexp) list
+       | fctb of fctb list
        | fct_exp of fsigexp sigConst -> fctexp
-       | interdec of  dec
+       | interdec of dec
 
 %verbose
 %pos int
@@ -428,31 +429,25 @@ vb	: vb AND vb		(vb1 @ vb2)
 constraint :	 		(NONE)
 	   | COLON ty	 	(SOME ty)
 
-rvb	: id constraint EQUALOP exp
-			  (let val (v,f) = var'n'fix id
-	                   in [MarkRvb(Rvb{var=v,fixity=SOME(f,(idleft,idright)),
-					   resultty=constraint,
-			                   exp=exp,lazyp=false},
-                                       (idleft,expright))]
-                           end)
-	| OP id constraint EQUALOP exp
-			  ([MarkRvb(Rvb{var=varSymbol id,fixity=NONE,
-				        resultty=constraint,
-			                exp=exp,lazyp=false},
-				    (OPleft,expright))])
-	| rvb AND rvb     (rvb1 @ rvb2)
-        | LAZY id constraint EQUALOP exp
-                          (let val (v,f) = var'n'fix id
-                           in [MarkRvb(Rvb{var=v,fixity=SOME(f,(idleft,idright)),
-                                           resultty=constraint,
-                                           exp=exp,lazyp=true},
-                                       (idleft,expright))]
-                           end)
-        | LAZY OP id constraint EQUALOP exp
-                          ([MarkRvb(Rvb{var=varSymbol id,fixity=NONE,
-                                        resultty=constraint,
-                                        exp=exp,lazyp=true},
-				    (OPleft,expright))])
+rvb	: rvb AND rvb		(rvb1 @ rvb2)
+	| rpat EQUALOP exp	([MarkRvb(rpat (false, exp), (rpatleft, expright))])
+	| LAZY rpat EQUALOP exp	([MarkRvb(rpat (true, exp), (LAZYleft, expright))])
+
+rpat	: LPAREN rpat RPAREN	(rpat)
+	| id constraint		(fn (lazy, exp) => let
+				  val (v,f) = var'n'fix id
+	                	  in
+				    Rvb{
+				        var = v, fixity = SOME(f, (idleft, idright)),
+				        resultty = constraint,
+				        exp = exp, lazyp = lazy
+				      }
+				  end)
+	| OP id constraint	(fn (lazy, exp) => Rvb{
+				    var = varSymbol id, fixity = NONE,
+				    resultty = constraint,
+				    exp = exp, lazyp = lazy
+				  })
 
 
 fb'	: clause		([clause])
