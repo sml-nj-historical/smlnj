@@ -522,7 +522,7 @@ extern void SetFSR();
 #    define INTO_OPCODE		0xce	/* the 'into' instruction is a single */
 					/* instruction that signals Overflow */
 /* NOTE: In 10.6, Apple finally got it right, but earlier versions either used the
- * FPE_FLT* codes are set the code to zero.
+ * FPE_FLT* codes or set the code to zero.
  */
 #    define INT_DIVZERO(s, c)	(((s) == SIGFPE) && (((c) == FPE_INTDIV) || ((c) == FPE_FLTDIV)))
 #    define INT_OVFLW(s, c)	(((s) == SIGFPE) && (((c) == FPE_INTOVF) || ((c) == FPE_FLTOVF)))
