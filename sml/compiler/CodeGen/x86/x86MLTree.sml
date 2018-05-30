@@ -1,10 +1,14 @@
+(* x86MLTree.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
 (* MLTree specialization *)
-structure X86MLTree = 
+structure X86MLTree =
   MLTreeF(structure Constant = SMLNJConstant
           structure Region=CPSRegions
 	  structure Extension=X86_SMLNJMLTreeExt)
-
 
 structure X86MLTreeEval =
     MLTreeEval
@@ -12,15 +16,15 @@ structure X86MLTreeEval =
 	fun eq _ _ =  false
         val eqRext = eq		val eqFext = eq
         val eqCCext = eq	val eqSext = eq)
-					    
-structure X86MLTreeHash = 
+
+structure X86MLTreeHash =
     MLTreeHash
        (structure T = X86MLTree
         fun h _ _ = 0w0
         val hashRext = h	val hashFext = h
         val hashCCext = h       val hashSext = h)
 
-structure X86GasPseudoOps = 
+structure X86GasPseudoOps =
    X86GasPseudoOps(structure T=X86MLTree
 		   structure MLTreeEval=X86MLTreeEval)
 
@@ -28,10 +32,10 @@ structure X86ClientPseudoOps =
    SMLNJPseudoOps(structure Asm=X86GasPseudoOps)
 
 structure X86PseudoOps = PseudoOps(structure Client = X86ClientPseudoOps)
-	      
+
 structure X86Stream = InstructionStream(X86PseudoOps)
 
-structure X86MLTreeStream = 
+structure X86MLTreeStream =
     MLTreeStream
       (structure T = X86MLTree
        structure S = X86Stream)
@@ -42,7 +46,7 @@ structure X86Instr = X86Instr(X86MLTree)
 
 structure X86MemRegs = X86MemRegs(X86Instr)
 
-structure X86Props = 
+structure X86Props =
     X86Props
        (structure Instr=X86Instr
 	structure MLTreeHash = X86MLTreeHash
@@ -62,7 +66,7 @@ structure X86AsmEmitter=
 
 
 (* Machine code emitter *)
-structure X86MCEmitter = 
+structure X86MCEmitter =
   X86MCEmitter(structure Instr=X86Instr
 	       structure Shuffle=X86Shuffle
 	       structure AsmEmitter=X86AsmEmitter
@@ -71,11 +75,11 @@ structure X86MCEmitter =
 	       val memRegBase=SOME(X86Instr.C.esp))
 
 (* Flowgraph data structure specialized to X86 instructions *)
-structure X86CFG = 
+structure X86CFG =
   ControlFlowGraph
      (structure I = X86Instr
       structure PseudoOps = X86PseudoOps
       structure GraphImpl = DirectedGraph
       structure InsnProps = X86Props
       structure Asm = X86AsmEmitter)
-  
+

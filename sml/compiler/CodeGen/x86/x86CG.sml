@@ -37,36 +37,36 @@ functor X86CG (structure CCallParams: sig val frameAlign : int
 	val frameAlign = CCallParams.frameAlign
 	val returnSmallStructsInRegs = CCallParams.returnSmallStructsInRegs)
 
-    structure OmitFramePtr = 
-      X86OmitFramePointer(structure I=X86Instr  
+    structure OmitFramePtr =
+      X86OmitFramePointer(structure I=X86Instr
 			  structure MemRegs=X86MemRegs
 			  structure CFG=X86CFG
 			  val memRegBase = SOME(X86CpsRegs.vfp))
 
-    val spill = CPSRegions.spill 
-    val stack = CPSRegions.stack 
+    val spill = CPSRegions.spill
+    val stack = CPSRegions.stack
 
     fun error msg = MLRiscErrorMsg.error("X86CG",msg)
 
     fun base() = (* XXXX *)
-      if !ClusterAnnotation.useVfp then X86CpsRegs.vfp else I.C.esp 
+      if !ClusterAnnotation.useVfp then X86CpsRegs.vfp else I.C.esp
 
 
     structure MLTreeComp=
        X86(structure X86Instr=X86Instr
 	   structure MLTreeUtils = MLTreeUtils
                (structure T = X86MLTree
-                fun hashSext  _ _ = 0w0 
+                fun hashSext  _ _ = 0w0
                 fun hashRext  _ _ = 0w0
-                fun hashFext  _ _ = 0w0 
+                fun hashFext  _ _ = 0w0
                 fun hashCCext _ _ = 0w0
-             
+
                 (* Equality extensions *)
                 fun eqSext  _ _ = false
                 fun eqRext  _ _ = false
                 fun eqFext  _ _ = false
                 fun eqCCext _ _ = false
-             
+
                 (* Pretty printing extensions *)
                 fun showSext  _ _ = ""
                 fun showRext  _ _ = ""
@@ -79,29 +79,29 @@ functor X86CG (structure CCallParams: sig val frameAlign : int
 		structure CFG = X86CFG
 		structure TS = X86MLTreeStream
 		val fast_fp = fast_floating_point
-               ) 
+               )
 	   structure MLTreeStream = X86MLTreeStream
            datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
            val arch = ref Pentium (* Lowest common denominator *)
-           fun cvti2f{src,ty,an} = let (* ty is always 32 for SML/NJ *)
-	     val tempMem = I.Displace{base=base(), disp=I.Immed 304, mem=stack}
-           in
-               {instrs  = [I.move{mvOp=I.MOVL, src=src, dst=tempMem}],
-                tempMem = tempMem,
-                cleanup = []
-               }
-           end
+           fun cvti2f{src,ty,an} = let (* ty is always 32 for SML/NJ *)  (* 64BIT: FIXME *)
+(* QUESTION: should "304" be X86Runtime.fpTempMemOff, which is 376? *)
+	       val tempMem = I.Displace{base=base(), disp=I.Immed 304, mem=stack}
+	       in {
+		 instrs  = [I.move{mvOp=I.MOVL, src=src, dst=tempMem}],
+		 tempMem = tempMem,
+		 cleanup = []
+	       } end
            val fast_floating_point = fast_floating_point
           )
 
-    structure Jumps = 
+    structure Jumps =
        X86Jumps(structure Instr=X86Instr
                 structure AsmEmitter=X86AsmEmitter
-		structure Eval=X86MLTreeEval 
+		structure Eval=X86MLTreeEval
                 structure Shuffle=X86Shuffle
                 structure MCEmitter=X86MCEmitter)
-   
-    structure BackPatch = 
+
+    structure BackPatch =
        BackPatch(structure Jumps=Jumps
                  structure Emitter=X86MCEmitter
                  structure Props=InsnProps
@@ -109,7 +109,7 @@ functor X86CG (structure CCallParams: sig val frameAlign : int
                  structure Asm=X86AsmEmitter
                  structure CodeString=CodeString)
 
-    structure RA = 
+    structure RA =
       X86RA
       (structure I         = X86Instr
        structure CB	   = CellsBasis
@@ -128,48 +128,48 @@ functor X86CG (structure CCallParams: sig val frameAlign : int
        val fast_floating_point = fast_floating_point
 
        val toInt32 = Int32.fromInt
-       fun cacheOffset r = I.Immed(toInt32(X86Runtime.vregStart + 
+       fun cacheOffset r = I.Immed(toInt32(X86Runtime.vregStart +
                                 Word.toIntX(Word.<<(Word.fromInt(r-8),0w2))))
-       fun cacheFPOffset f = I.Immed(toInt32(X86Runtime.vFpStart + 
+       fun cacheFPOffset f = I.Immed(toInt32(X86Runtime.vFpStart +
                                 Word.toIntX(Word.<<(Word.fromInt(f-40),0w3))))
 
        datatype raPhase = SPILL_PROPAGATION | SPILL_COLORING
        datatype spillOperandKind = SPILL_LOC | CONST_VAL
 
-       structure Int =  
+       structure Int =
        struct
           val avail     = R.availR
           val dedicated = R.dedicatedR
           val memRegs   = C.Regs CB.GP {from=8,to=31,step=1}
           val phases    = [SPILL_PROPAGATION,SPILL_COLORING]
 
-          (* We try to make unused memregs available for spilling 
+          (* We try to make unused memregs available for spilling
            * This is necessary because of the stupid SML code generator
            * doesn't keep track of which are being used.
            *)
-          fun spillInit(RAGraph.GRAPH{nodes, ...}) = 
+          fun spillInit(RAGraph.GRAPH{nodes, ...}) =
           let val lookup = IntHashTable.lookup nodes
               fun find(r, free) =
                   if r >= 10 then (* note, %8 and %9 are reserved! *)
-                     let val free = 
+                     let val free =
                              case lookup r of
-                               RAGraph.NODE{uses=ref [], defs=ref [], ...} => 
+                               RAGraph.NODE{uses=ref [], defs=ref [], ...} =>
                                   cacheOffset r::free
                              | _ => free
                      in  find(r-1, free) end
-                  else 
+                  else
                      free
               val free = find(31 (* X86Runtime.numVregs+8-1 *), [])
           in  X86StackSpills.setAvailableOffsets free
-          end 
- 
+          end
+
           val getRegLoc' = X86StackSpills.getRegLoc
- 
-          fun spillLoc{info, an, cell, id} = 
+
+          fun spillLoc{info, an, cell, id} =
               {opnd=I.Displace{base=base(), disp=getRegLoc' id, mem=spill},
                kind=SPILL_LOC
               }
- 
+
        end
 
        structure Float =
@@ -179,22 +179,22 @@ functor X86CG (structure CCallParams: sig val frameAlign : int
           val memRegs   = []
           val phases    = [SPILL_PROPAGATION]
 
-          fun spillInit(RAGraph.GRAPH{nodes, ...}) = 
+          fun spillInit(RAGraph.GRAPH{nodes, ...}) =
               if !fast_floating_point then
               let val lookup = IntHashTable.lookup nodes
                  fun find(r, free) =
-                     if r >= 32+8 then 
-                        let val free = 
+                     if r >= 32+8 then
+                        let val free =
                                 case lookup r of
                                   RAGraph.NODE{uses=ref [], defs=ref [],...} =>
                                      cacheFPOffset r::free
                                 | _ => free
                         in  find(r-1, free) end
-                     else 
+                     else
                         free
                  val free = find(63, [])
               in X86StackSpills.setAvailableFPOffsets free
-              end 
+              end
               else ()
 
           fun spillLoc(S, an, loc) =
