@@ -1,6 +1,6 @@
 (* date.sml
  *
- * COPYRIGHT (c) 2015 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * The SML Basis Library Date module.  This code is partially based on
@@ -56,8 +56,6 @@ structure Date : DATE =
   (* note: mkTime assumes the tm structure passed to it reflects
    * the local time zone
    *)
-    val ascTime : tm -> string
-	  = wrap (CInterface.c_function "SMLNJ-Date" "ascTime")
     val localTime' : Int32.int -> tm
 	  = wrap (CInterface.c_function "SMLNJ-Date" "localTime")
     val gmTime' : Int32.int -> tm
@@ -99,7 +97,7 @@ structure Date : DATE =
 
   (* the run-time system indexes the year off this *)
     val baseYear = 1900
-	
+
     datatype weekday = Mon | Tue | Wed | Thu | Fri | Sat | Sun
 
     datatype month
@@ -121,7 +119,7 @@ structure Date : DATE =
 
   (* tables for mapping integers to days/months *)
     val dayTbl = #[Sun, Mon, Tue, Wed, Thu, Fri, Sat]
-    val monthTbl = #[Jan, Feb, Mar, Apr, May, Jun, Jul, 
+    val monthTbl = #[Jan, Feb, Mar, Apr, May, Jun, Jul,
 		     Aug, Sep, Oct, Nov, Dec]
 
     fun dayToInt Sun = 0
@@ -400,8 +398,6 @@ structure Date : DATE =
 
   (***** String conversions *****)
 
-    fun toString d = ascTime (date2tm d)
-
   (* the size of the runtime system character buffer, not including space for the '\0' *)
     val fmtBuf = 512-1
     fun fmt fmtStr = let
@@ -479,6 +475,13 @@ structure Date : DATE =
 	  in
 	    fn d => let val tm = date2tm d in String.concat(List.map (fn f => f tm) fmtFns) end
 	  end
+
+(* This version doesn't print the leading "0" on days of the month < 10
+    val ascTime : tm -> string
+	  = wrap (CInterface.c_function "SMLNJ-Date" "ascTime")
+    fun toString d = ascTime (date2tm d)
+*)
+    val toString = fmt "%a %b %d %H:%M:%S %Y"
 
   (* Date scanner *)
     fun scan getc s = let
