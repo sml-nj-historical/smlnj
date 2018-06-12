@@ -7,7 +7,7 @@
  * represented as triples with names, types, and the actual primop (datatype primop
  * defined in ElabData/prim/primop.sml).  The type primop_bind is abstract.
  *
- * See compiler/Semant/prim/primop-bindings for the list of bindings.
+ * See compiler/Semant/prim/primop-bindings.sml for the list of bindings.
  *)
 
 structure PrimopBind :> sig
