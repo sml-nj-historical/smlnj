@@ -155,7 +155,6 @@ signature CPS =
       | NUM of intty IntConst.t
       | REAL of int RealConst.t
       | STRING of string
-      | OBJECT of Unsafe.Object.object
       | VOID
 
     datatype accesspath

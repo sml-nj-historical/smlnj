@@ -37,7 +37,6 @@ fun value2str (VAR v) = LV.lvarName v
 	"(R", Int.toString ty, ")", RealLit.toString rval
       ]
   | value2str (STRING s) = concat["\"", String.toString s, "\""]
-  | value2str (OBJECT _) = "(object)"
   | value2str (VOID) = "(void)"
 
 fun numkindName (P.INT bits) = "i" ^ Int.toString bits
