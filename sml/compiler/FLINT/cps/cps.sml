@@ -104,7 +104,6 @@ structure P = struct
       | getseqdata | recsubscript | raw64subscript | newarray0
       | rawrecord of record_kind option
          (* allocate uninitialized words from the heap *)
-      | condmove of branch
 
     local
       fun ioper (op > : cmpop)  = (op <= : cmpop)

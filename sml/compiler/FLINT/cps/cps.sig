@@ -107,7 +107,6 @@ signature CPS =
 	       (* allocate uninitialized words from the heap; optionally
 		* initialize the tag.
 		*)
-	  | condmove of branch (* conditional move *)
 
 	val opp : branch -> branch
 

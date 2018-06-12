@@ -614,15 +614,16 @@ struct
           * Note: We have accounted for the extra space this eats up in
           *    limit.sml
           *)
-
-          fun updtHeapPtr(hp) =
-          let fun advBy hp =
-               (advancedHP := !advancedHP + hp;
-                emit(M.MV(pty, allocptrR, M.ADD(addrTy, C.allocptr, LI' hp))))
-          in  if hp = 0 then ()
-              else if Word.andb(Word.fromInt hp, Word.fromInt ws) <> 0w0 then advBy(hp+ws)
-              else advBy(hp)
-          end
+          fun updtHeapPtr 0 = ()
+            | updtHeapPtr hp = let
+		fun advBy hp = (
+		      advancedHP := !advancedHP + hp;
+		      emit(M.MV(pty, allocptrR, M.ADD(addrTy, C.allocptr, LI' hp))))
+		in
+		  if Word.andb(Word.fromInt hp, Word.fromInt ws) <> 0w0
+		    then advBy(hp+ws)
+		    else advBy hp
+		end
 
           fun testLimit hp =
           let fun assignCC(M.CC(_, cc), v) = emit(M.CCMV(cc, v))
@@ -1240,47 +1241,6 @@ raise ex)
                   genlab(false_lab, no, hp)
               end
 
-              (* conditional move *)
-          and condmove(oper, args, x, t, e, hp) =
-              let  fun signed(oper, v, w) =
-                       M.CMP(32, signedCmp oper, regbind v, regbind w)
-                   fun unsigned(oper, v, w) =
-                       M.CMP(32, unsignedCmp oper, regbind v, regbind w)
-                   fun equal(v, w) =
-                       M.CMP(32, M.EQ, regbind v, regbind w)
-                   fun notequal(v, w) =
-                       M.CMP(32, M.NE, regbind v, regbind w)
-                   fun unboxed x =
-                       M.CMP(32, M.NE, M.ANDB(ity, regbind x, one), zero)
-                   fun boxed x =
-                       M.CMP(32, M.EQ, M.ANDB(ity, regbind x, one), zero)
-                   val (cmp, a, b) =
-                   case (oper, args) of
-                     (P.cmp{oper, kind=P.INT 31},[v,w,a,b]) =>
-                       (signed(oper,v,w), a, b)
-                   | (P.cmp{oper, kind=P.UINT 31},[v,w,a,b]) =>
-                       (unsigned(oper,v,w), a, b)
-                   | (P.cmp{oper, kind=P.INT 32},[v,w,a,b]) =>
-                       (signed(oper,v,w), a, b)
-                   | (P.cmp{oper, kind=P.UINT 32},[v,w,a,b]) =>
-                       (unsigned(oper,v,w), a, b)
-                   | (P.fcmp{oper, size=64},[v,w,a,b]) =>
-                       (real64Cmp(oper,v,w), a, b)
-                   | (P.peql,[v,w,a,b]) => (equal(v,w), a, b)
-                   | (P.pneq,[v,w,a,b]) => (notequal(v, w), a, b)
-                   | (P.boxed,[v,a,b]) => (boxed v, a, b)
-                   | (P.unboxed,[v,a,b]) => (unboxed v, a, b)
-                   | _ => error "condmove"
-              in  case t of
-(* REAL32: FIXME *)
-                     FLTt 64 =>
-                       computef64(x,
-                          M.FCOND(64, cmp, fregbind a, fregbind b), e, hp)
-                   | _    =>
-                       defWithCty(t, x, M.COND(32, cmp, regbind a, regbind b),
-                                  e, hp)
-              end
-
           and arith(gc, oper, v, w, x, e, hp) =
                def(gc, x, oper(ity, regbind v, regbind w), e, hp)
 
@@ -1812,9 +1772,6 @@ raise ex)
 		(* assign the address to x *)
 		  treeifyAlloc(x, hp+ws, e, hp+(IntInf.toInt len)*ws+ws)
 		end
-
-            | gen (PURE(P.condmove cmp, vw, x, t, e), hp) =
-                condmove(cmp, vw, x, t, e, hp)
 
             (*** ARITH ***)
             | gen (ARITH(P.arith{kind=P.INT 31, oper=P.~}, [v], x, _, e), hp) =

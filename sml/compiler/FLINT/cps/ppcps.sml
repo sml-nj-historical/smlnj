@@ -162,7 +162,6 @@ fun pureName P.length = "length"
   | pureName P.newarray0 = "newarray0"
   | pureName (P.rawrecord rk) =
     "rawrecord_"^getOpt(Option.map rkstring rk, "notag")
-  | pureName (P.condmove b) = "condmove "^branchName b
 
 and rkstring rk = (case rk
         of RK_VECTOR => "RK_VECTOR"
