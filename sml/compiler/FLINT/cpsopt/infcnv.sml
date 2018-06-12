@@ -13,6 +13,7 @@ structure InfCnv : sig
 
     val elim : { function : CPS.function,
 		 mkKvar : unit -> LambdaVar.lvar,     (* new cont var. *)
+(* 64BIT: FIXME *)
 		 mkI32var : unit -> LambdaVar.lvar }  (* new int32 var. *)
 	       -> CPS.function
 
