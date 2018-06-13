@@ -158,7 +158,7 @@ fun equivType(ty,ty') =
 val boolty = LT.ltc_bool
 fun eqLty lt = LT.ltc_parrow(LT.ltc_tuple [lt, lt], boolty)
 val inteqty = eqLty (LT.ltc_int)
-val int32eqty = eqLty (LT.ltc_int32)
+val int32eqty = eqLty (LT.ltc_num 32) (* 64BIT: FIXME *)
 val booleqty = eqLty (LT.ltc_bool)
 val realeqty = eqLty (LT.ltc_real)
 

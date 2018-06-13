@@ -25,9 +25,8 @@ structure PrimTyc :> PRIM_TYC =
    *)
 
     datatype primtyc
-      = PT_INT31                        (* 31-bit integer *)
-      | PT_INT32                        (* 32-bit integer *)
-      | PT_REAL                         (* 64-bit real *)
+      = PT_NUM of int                   (* integer (0 for IntInf.int) *)
+      | PT_REAL of int                  (* reals *)
       | PT_STRING                       (* string type; always a pointer *)
       | PT_EXN                          (* exception type *)
       | PT_ARRAY                        (* the polymorphic array tyc *)
@@ -41,16 +40,15 @@ structure PrimTyc :> PRIM_TYC =
       | PT_BARRAY
       | PT_RARRAY
       | PT_SLOCK
-      | PT_INTINF			(* IntInf.int *)
     (* internal use only *)
       | PT_ETAG
       | PT_VOID
 
   (** printing out the primitive type constructor *)
     fun pt_print ptyc = (case ptyc
-	   of PT_INT31  => "I31"
-	    | PT_INT32  => "I32"
-	    | PT_REAL   => "F64"
+	   of PT_NUM 0  => "INF"
+	    | PT_NUM n  => "I" ^ Int.toString n
+	    | PT_REAL n => "F" ^ Int.toString n
 	    | PT_STRING => "STR"
 	    | PT_EXN    => "EXN"
 	    | PT_ARRAY  => "ARR"
@@ -64,14 +62,13 @@ structure PrimTyc :> PRIM_TYC =
 	    | PT_BARRAY => "BARR"
 	    | PT_RARRAY => "RARR"
 	    | PT_SLOCK  => "SLCK"
-	    | PT_INTINF => "INF"
 	    | PT_ETAG   => "ETG"
 	    | PT_VOID   => "VOID"
 	  (* end case *))
 
-    val ptc_int31  = PT_INT31
-    val ptc_int32  = PT_INT32
-    val ptc_real   = PT_REAL
+    val ptc_int    = PT_NUM Target.defaultIntSz
+    fun ptc_num n  = PT_NUM n
+    val ptc_real   = PT_REAL Target.defaultRealSz
     val ptc_string = PT_STRING
     val ptc_exn    = PT_EXN
 
@@ -94,9 +91,8 @@ structure PrimTyc :> PRIM_TYC =
 
   (** get the arity of a particular primitive tycon *)
     fun pt_arity ptyc = (case ptyc
-	   of PT_INT31 =>  0
-	    | PT_INT32 =>  0
-	    | PT_REAL =>   0
+	   of PT_NUM _ =>  0
+	    | PT_REAL _ => 0
 	    | PT_STRING => 0
 	    | PT_EXN =>    0
 	    | PT_ARRAY =>  1
@@ -110,57 +106,70 @@ structure PrimTyc :> PRIM_TYC =
 	    | PT_BARRAY => 0
 	    | PT_RARRAY => 0
 	    | PT_SLOCK =>  0
-	    | PT_INTINF => 0
 	    | PT_ETAG =>   1
 	    | PT_VOID =>   0
 	  (* end case *))
 
+    val numBaseCode = 17
+
   (** each primitive type constructor is equipped with a key *)
     fun pt_toint ptyc = (case ptyc
-	   of PT_INT31 =>  0
-	    | PT_INT32 =>  1
-	    | PT_REAL =>   2
-	    | PT_STRING => 3
-	    | PT_EXN =>    4
-	    | PT_ARRAY =>  5
-	    | PT_VECTOR => 6
-	    | PT_REF =>    7
-	    | PT_CONT =>   8
-	    | PT_CCONT =>  9
-	    | PT_ARROW =>  10
-	    | PT_OBJ =>    11
-	    | PT_CFUN =>   12
-	    | PT_BARRAY => 13
-	    | PT_RARRAY => 14
-	    | PT_SLOCK =>  15
-	    | PT_INTINF => 16
-	    | PT_ETAG =>   17
-	    | PT_VOID =>   18
+	   of PT_NUM n => numBaseCode + n
+	    | PT_REAL 32 => 0
+	    | PT_REAL 64 => 1
+	    | PT_STRING => 2
+	    | PT_EXN =>    3
+	    | PT_ARRAY =>  4
+	    | PT_VECTOR => 5
+	    | PT_REF =>    6
+	    | PT_CONT =>   7
+	    | PT_CCONT =>  8
+	    | PT_ARROW =>  9
+	    | PT_OBJ =>    10
+	    | PT_CFUN =>   11
+	    | PT_BARRAY => 12
+	    | PT_RARRAY => 13
+	    | PT_SLOCK =>  14
+	    | PT_ETAG =>   15
+	    | PT_VOID =>   16	(* must be = numBaseCode-1 *)
+	    | _ => bug("bogus ptyc: " ^ pt_print ptyc)
 	  (* end case *))
 
     local
+    (* must have numBaseCode elements *)
       val ptycvec = #[
-	      PT_INT31, PT_INT32, PT_REAL, PT_STRING, PT_EXN, PT_ARRAY, PT_VECTOR, PT_REF,
+	      PT_REAL 32, PT_REAL 64, PT_STRING, PT_EXN, PT_ARRAY, PT_VECTOR, PT_REF,
 	      PT_CONT, PT_CCONT, PT_ARROW, PT_OBJ, PT_CFUN, PT_BARRAY, PT_RARRAY,
-	      PT_SLOCK, PT_INTINF, PT_ETAG, PT_VOID
+	      PT_SLOCK, PT_ETAG, PT_VOID
 	    ]
     in
-    fun pt_fromint k =
-	(Vector.sub (ptycvec, k)
-	 handle Subscript => bug(concat["unexpected integer ", Int.toString k, " in pt_fromint"]))
+    fun pt_fromint k = if (k < numBaseCode)
+	  then Vector.sub (ptycvec, k)
+	  else PT_NUM(k - numBaseCode)
     end
 
     fun pt_eq (ptyc1: primtyc, ptyc2: primtyc) = (ptyc1 = ptyc2)
 
+    fun numPrimTyc 0 = raise Fail "numPrimTyc 0"
+      | numPrimTyc n = PT_NUM n
+    fun realPrimTyc 32 = PT_REAL 32
+      | realPrimTyc 64 = PT_REAL 64
+
+    fun numSize (PT_NUM sz) = SOME sz
+      | numSize _ = NONE
+
+    fun realSize (PT_REAL sz) = SOME sz
+      | realSize _ = NONE
+
   (* mapping from Types.tycon to primtycs *)
     val primTycons = [
-	    (BT.charTycon, PT_INT31),
-	    (BT.intTycon, PT_INT31),
-	    (BT.wordTycon, PT_INT31),
-	    (BT.word8Tycon, PT_INT31),
-	    (BT.int32Tycon, PT_INT32),
-	    (BT.word32Tycon, PT_INT32),
-	    (BT.realTycon, PT_REAL),
+	    (BT.charTycon, PT_NUM Target.defaultIntSz),
+	    (BT.intTycon, PT_NUM Target.defaultIntSz),
+	    (BT.wordTycon, PT_NUM Target.defaultIntSz),
+	    (BT.word8Tycon, PT_NUM Target.defaultIntSz),
+	    (BT.int32Tycon, PT_NUM 32),
+	    (BT.word32Tycon, PT_NUM 32),
+	    (BT.realTycon, PT_REAL 64),
 	    (BT.stringTycon, PT_STRING),
 	    (BT.exnTycon, PT_EXN),
 	    (BT.arrayTycon, PT_ARRAY),
@@ -174,7 +183,7 @@ structure PrimTyc :> PRIM_TYC =
 	    (BT.word8arrayTycon, PT_BARRAY),
 	    (BT.real64arrayTycon, PT_RARRAY),
 	    (BT.spin_lockTycon, PT_SLOCK),
-	    (BT.intinfTycon, PT_INTINF)
+	    (BT.intinfTycon, PT_NUM 0)
 	  ]
 
     fun pt_fromtyc tyc = let
@@ -189,7 +198,8 @@ structure PrimTyc :> PRIM_TYC =
 	  end
 
   (** check the boxity of values of each prim tyc *)
-    fun unboxed (PT_INT32 | PT_REAL) = true
+    fun unboxed (PT_NUM n) = (n > Target.defaultIntSz)
+      | unboxed (PT_REAL _) = true
       | unboxed _ = false
 
 (* appears to be unused
@@ -198,10 +208,11 @@ structure PrimTyc :> PRIM_TYC =
       | bxupd _ = true
 *)
 
-    fun ubxupd PT_INT31 = true
+    fun ubxupd (PT_NUM n) = (n = Target.defaultIntSz)
       | ubxupd _ = false
 
-    fun isvoid (PT_INT31 | PT_INT32 | PT_REAL | PT_STRING) = false
+    fun isvoid (PT_NUM 0) = true
+      | isvoid (PT_NUM _ | PT_REAL _ | PT_STRING) = false
       | isvoid _ = true
 
   end (* structure PrimTyc *)

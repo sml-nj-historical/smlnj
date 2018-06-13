@@ -276,9 +276,7 @@ local
   structure LT = LtyExtern
   val tc_real = LT.tcc_real (* REAL32: this code assumes only one float type *)
   val lt_real = LT.ltc_real
-  val ptc_int = if Target.is64
-	then raise Fail "need ptc_int63"  (* 64BIT: need ptc_int63 or ptc_int for tagged int *)
-	else PT.ptc_int31
+  val ptc_int = PT.ptc_int
 in
 
 (* REAL32: this code assumes only one float type *)
@@ -295,18 +293,14 @@ fun rtyc (f, []) = RPT 0
       end
 
 fun ctyc tc = LT.tcw_prim (tc,
-      fn pt =>
-	if PT.pt_eq(pt, ptc_int) then NUMt{sz=Target.defaultIntSz, tag=true}
-	else if PT.pt_eq(pt, PT.ptc_int32) then NUMt{sz=32, tag=false}
-(* 64BIT:
-        else if PT.pt_eq(pt, PT.ptc_int64) then INTt 64
-*)
-(* REAL32: uncomment for Real32 support
-        else if PT.pt_eq(pt, PT.ptc_real32) then FLTt 32
-        else if PT.pt_eq(pt, PT.ptc_real64) then FLTt 64
-*)
-        else if PT.pt_eq(pt, PT.ptc_real) then FLTt Target.defaultRealSz
-        else BOGt,
+      fn pt => (case PT.numSize pt
+	   of SOME 0 => BOGt
+            | SOME sz => NUMt{sz = sz, tag = (Target.defaultIntSz = sz)}
+	    | NONE => (case PT.realSize pt
+		 of SOME sz => FLTt sz
+		  | NONE => BOGt
+		(* end case *))
+	  (* end case *)),
       fn tc => LT.tcw_tuple (tc,
 	  fn ts => PTRt(rtyc(tcflt, ts)),
           fn tc =>

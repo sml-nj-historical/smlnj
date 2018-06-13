@@ -291,39 +291,8 @@ and tovalue (venv,d,lexp,cont) = let
       val v = (case lexp
             (* for simple values, it's trivial *)
 	     of L.VAR v => cont(F.VAR v, LT.ltLookup(venv, v, d))
-(* 64BIT: will need to check for ty=64 and possibly other cases *)
-	      | L.INT(i as {ival, ty=32}) => cont(F.INT i, LT.ltc_int32)
-	      | L.INT i => let
-		  fun mkINT i = L.INT{ival = i, ty = Target.defaultIntSz}
-		  in
-		  (* downstream we need to be able to represent i+i+2 as an int, which
-		   * means that we need ~0x20000000 <= i < 0x20000000-1.
-		   *)
-		    if (#ival i < ~0x20000000) orelse (0x1fffffff <= #ival i)
-		      then let
-			val _ = debugmsg "toValue INT Overflow"
-			val x1 = (#ival i) div 2
-			val x2 = (#ival i) - x1
-			val ne = L.APP(iadd_prim, L.RECORD [mkINT x1, mkINT x2])
-			in
-			  tovalue(venv, d, ne, cont)
-			end
-		      else cont(F.INT i, LT.ltc_int)
-		  end
-	      | L.WORD(w as {ival, ty=32}) => cont(F.WORD w, LT.ltc_int32)
-	      | L.WORD w => let
-		  fun mkWORD i = L.WORD{ival = i, ty = Target.defaultIntSz}
-		  in
-		    if #ival w < 0x1fffffff
-		      then cont(F.WORD w, LT.ltc_int)
-		      else let
-			val x1 = (#ival w) div 2
-			val x2 = (#ival w) - x1
-			val ne = L.APP(uadd_prim, L.RECORD [mkWORD x1, mkWORD x2])
-			in
-			  tovalue(venv, d, ne, cont)
-			end
-		  end
+	      | L.INT i => cont(F.INT i, LT.ltc_num(#ty i))
+	      | L.WORD w => cont(F.WORD w, LT.ltc_num(#ty w))
 (* REAL32: *)
 	      | L.REAL x => cont(F.REAL x, LT.ltc_real)
 	      | L.STRING s => cont(F.STRING s, LT.ltc_string)

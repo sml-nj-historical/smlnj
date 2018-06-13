@@ -63,9 +63,9 @@ fun eqLty lt  = LT.ltc_arrow(LT.ffc_rrflint, [lt, lt], [LT.ltc_bool])
 fun eqTy tc   = eqLty(LT.ltc_tyc tc)
 
 val inteqty   = eqLty (LT.ltc_int)
-val int32eqty = eqLty (LT.ltc_int32)
+val int32eqty = eqLty (LT.ltc_num 32)	(* 64BIT: FIXME *)
 val booleqty  = eqLty (LT.ltc_bool)
-val realeqty  = eqLty (LT.ltc_real)
+val realeqty  = eqLty (LT.ltc_real)	(* REAL32: FIXME *)
 
 (****************************************************************************
  *              equal --- the equality function generator                   *
@@ -110,7 +110,8 @@ fun equal (peqv, seqv) = let
 		       end
 	else if tcEqv(tc,LT.tcc_int) then
 	    BRANCH((NONE, PO.IEQL, inteqty, []), [x,y], te, fe)
-	else if tcEqv(tc,LT.tcc_int32) then
+(* 64BIT: FIXME *)
+	else if tcEqv(tc,LT.tcc_num 32) then
 	    BRANCH((NONE, PO.IEQL, int32eqty, []), [x,y], te, fe)
 	else if tcEqv(tc,LT.tcc_bool) then
 	    BRANCH((NONE, PO.IEQL, booleqty, []), [x,y], te, fe)

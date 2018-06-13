@@ -552,7 +552,7 @@ val lt_tyc = LT.ltc_tyc
 val lt_arw = LT.ltc_parrow
 val lt_tup = LT.ltc_tuple
 val lt_int = LT.ltc_int
-val lt_int32 = LT.ltc_int32
+val lt_int32 = LT.ltc_num 32	(* 64BIT: FIXME *)
 val lt_bool = LT.ltc_bool
 val lt_unit = LT.ltc_unit
 
@@ -603,10 +603,7 @@ fun lshiftOp k = PO.ARITH{oper=PO.LSHIFT,  overflow=false, kind=k}
 
 fun lword0 (PO.UINT sz) = WORD{ival = 0, ty = sz}
 
-fun baselt (PO.UINT 32) = lt_int32
-  | baselt (PO.UINT sz) = if (sz = Tgt.defaultIntSz)
-      then lt_int
-      else bug "unexpected case in baselt"
+fun baselt (PO.UINT sz) = LT.ltc_num sz
 
 fun shiftTy k =
   let val elem = baselt k
@@ -639,10 +636,8 @@ fun inlineShift(shiftOp, kind, clear) =
 fun inlops nk = let
 (* 64BIT: REAL64: type will depend on size *)
     val (lt_arg, zero, overflow) = (case nk
-	   of PO.INT 32 => (LT.ltc_int32, INT{ival = 0, ty = 32}, true)
-	    | PO.INT sz => (LT.ltc_int, INT{ival = 0, ty = sz}, true)
-	    | PO.UINT 32 => (LT.ltc_int32, WORD{ival = 0, ty = 32}, false)
-	    | PO.UINT sz => (LT.ltc_int, WORD{ival = 0, ty = sz}, false)
+	   of PO.INT sz => (LT.ltc_num sz, INT{ival = 0, ty = sz}, true)
+	    | PO.UINT sz => (LT.ltc_num sz, WORD{ival = 0, ty = sz}, false)
 	    | PO.FLOAT sz => (LT.ltc_real, REAL{rval = RealLit.zero false, ty = sz}, false)
 	  (* end case *))
     val lt_argpair = lt_tup [lt_arg, lt_arg]
@@ -725,8 +720,8 @@ fun inlToInfPrec (opname: string, coerceFnName: string, primop, primoplt) =
     	val extra_arg_lt =
             if coerceFnName = "finToInf" then
               LT.ltc_arrow(LT.ffc_var(true,false),
-                           [LT.ltc_int32 ,LT.ltc_bool], [res_lt])
-            else LT.ltc_parrow(LT.ltc_int32, res_lt)
+                           [lt_int32 ,LT.ltc_bool], [res_lt])
+            else LT.ltc_parrow(lt_int32, res_lt)
         val new_arg_lt = LT.ltc_tuple [orig_arg_lt, extra_arg_lt]
         val new_lt = LT.ltc_parrow (new_arg_lt, res_lt )
         val x = mkv ()
@@ -743,7 +738,7 @@ fun inlFromInfPrec (opname, coerceFnName, primop, primoplt) =
 	    	(_, [a], [r]) => (a, r)
 	  	| _ => bug ("unexpected type of " ^ opname)
     	val extra_arg_lt =
-		LT.ltc_parrow (orig_arg_lt, LT.ltc_int32)
+		LT.ltc_parrow (orig_arg_lt, lt_int32)
         val new_arg_lt = LT.ltc_tuple [orig_arg_lt, extra_arg_lt]
         val new_lt = LT.ltc_parrow (new_arg_lt, res_lt )
         val x = mkv ()
@@ -760,15 +755,15 @@ fun inl_infPrec (opname, coerceFnName, primop, primoplt, is_from_inf) = let
 	    (_, [a], [r]) => (a, r)
 	  | _ => bug ("unexpected type of " ^ opname)
     val extra_arg_lt =
-	LT.ltc_parrow (if is_from_inf then (orig_arg_lt, LT.ltc_int32)
-		       else (LT.ltc_int32, res_lt (* orig_arg_lt *) ))
+	LT.ltc_parrow (if is_from_inf then (orig_arg_lt, lt_int32)
+		       else (lt_int32, res_lt (* orig_arg_lt *) ))
     val new_arg_lt = LT.ltc_tuple [orig_arg_lt, extra_arg_lt]
     val new_lt = LT.ltc_parrow (new_arg_lt, res_lt )
     val x = mkv ()
     (** Begin DEBUG edits *)
     val y = mkv ()
     val coreOcc = (if coerceFnName = "finToInf" then
-			FN(y, LT.ltc_int32 (** Where should this type come from *),
+			FN(y, lt_int32 (** Where should this type come from *),
 			   APP(coreAcc coerceFnName, RECORD [VAR y,
 				falseLexp
 				(** Apply to CoreBasicType falseDcon ...  *) ]))

@@ -37,8 +37,8 @@ val ffc_fspec  : fflag * (bool * bool) -> fflag
 val ffd_fspec  : fflag -> bool * bool
 
 (** primitive lambda tycs *)
-val tcc_int    : tyc
-val tcc_int32  : tyc
+val tcc_int    : tyc		(* default tagged int type *)
+val tcc_num    : int -> tyc	(* int type of given size *)
 val tcc_real   : tyc
 val tcc_string : tyc
 val tcc_exn    : tyc
@@ -54,8 +54,7 @@ val tcc_etag   : tyc -> tyc
 
 (** primitive lambda ltys *)
 val ltc_int    : lty
-val ltc_int32  : lty
-(* 64BIT: need ltc_int64 *)
+val ltc_num    : int -> lty
 val ltc_real   : lty	(* REAL32: need ltc_real32/ltc_real64 *)
 val ltc_string : lty
 val ltc_exn    : lty

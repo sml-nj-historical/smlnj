@@ -51,10 +51,8 @@ fun recover (fdec, postRep) =
       val addv = IntHashTable.insert ltyTable
       fun addvs vts = app addv vts
       fun getlty (VAR v) = get v
-(* 64BIT: need additional cases *)
-        | getlty (INT{ty=32, ...}) = LT.ltc_int32
-        | getlty (WORD{ty=32, ...}) = LT.ltc_int32
-        | getlty (INT _ | WORD _) = LT.ltc_int
+        | getlty (INT{ty, ...}) = LT.ltc_num ty
+        | getlty (WORD{ty, ...}) = LT.ltc_num ty
         | getlty (REAL _) = LT.ltc_real
         | getlty (STRING _) = LT.ltc_string
 

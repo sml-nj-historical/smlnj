@@ -2,12 +2,12 @@
 (* cpsopt.sml *)
 
 signature CPSOPT = sig
-    val reduce : (CPS.function * Unsafe.Object.object option * bool) 
+    val reduce : (CPS.function * Unsafe.Object.object option * bool)
 	         -> CPS.function
 end (* signature CPSOPT *)
 
 functor CPSopt(MachSpec: MACH_SPEC) : CPSOPT = struct
- 
+
 structure CG = Control.CG
 structure Eta = Eta
 structure Contract = Contract(MachSpec)
@@ -21,10 +21,10 @@ val say = Control.Print.say
 (** obsolete table: used by cpsopt as a dummy template *)
 exception ZZZ
 val dummyTable : FLINT.lty IntHashTable.hash_table =
-    IntHashTable.mkTable(32, ZZZ) 
+    IntHashTable.mkTable(32, ZZZ)
 
 (** the main function reduce *)
-fun reduce (function, _, afterClosure) = 
+fun reduce (function, _, afterClosure) =
 (* NOTE: The third argument to reduce is currently ignored.
    It used to be used for reopening closures. *)
 let
@@ -38,14 +38,14 @@ fun click (s:string) = (debugprint s; clicked := !clicked+1)
 
 val cpssize = ref 0
 
-val prC = 
+val prC =
   let fun prGen (flag,printE) s e =
-        if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e; e) 
+        if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e; e)
         else e
    in prGen (Control.CG.printit, PPCps.printcps0)
   end
 
-fun contract last f = 
+fun contract last f =
   let val f' = (clicked := 0;
 		Contract.contract{function=f,table=table,click=click,
 				  last=last,size=cpssize})
@@ -55,7 +55,7 @@ fun contract last f =
   end
 
 (* dropargs are turned off in first_contract to ban unsafe eta reduction *)
-fun first_contract f =  
+fun first_contract f =
   let val dpargs = !CG.dropargs
       val f' = (clicked := 0; CG.dropargs := false;
 		Contract.contract{function=f,table=table,click=click,
@@ -67,7 +67,7 @@ fun first_contract f =
   end
 
 (* in the last contract phase, certain contractions are prohibited *)
-fun last_contract f = 
+fun last_contract f =
   let val f' = (clicked := 0;
 		Contract.contract{function=f,table=table,click=click,
 				  last=true,size=cpssize})
@@ -123,7 +123,7 @@ fun eta f =
        f'
    end)
 
-fun uncurry f = if afterClosure then f else 
+fun uncurry f = if afterClosure then f else
   (clicked := 0;
    if not(!CG.uncurry) then f else
    let val f' = Uncurry.etasplit{function=f,table=table,click=click}
@@ -143,19 +143,19 @@ fun etasplit f =
 
 fun lambdaprop x = x
        (* if !CG.lambdaprop then (debugprint "\nLambdaprop:"; CfUse.hoist x)
-       	                    else x *) 
+       	                    else x *)
 
 val bodysize = !CG.bodysize
 val rounds = !CG.rounds
 val reducemore = !CG.reducemore
 
-(* 
- * Note the parameter k starts at rounds..0 
+(*
+ * Note the parameter k starts at rounds..0
  *)
 fun linear_decrease k = (bodysize * k) div rounds
 (*** NOT USED ***
 fun double_linear k = (bodysize*2*k div rounds) - bodysize
-fun cosine_decrease k = 
+fun cosine_decrease k =
        Real.trunc(real bodysize * (Math.cos(1.5708*(1.0 - real k / real rounds))))
 ***)
 
@@ -163,7 +163,7 @@ fun cosine_decrease k =
 (* This function is just hacked up and should be tuned someday *)
 fun cycle(0,true,func) = func
   | cycle(0,false,func) = unroll func
-  | cycle(k,unrolled,func) = 
+  | cycle(k,unrolled,func) =
        let val func = lambdaprop func
            val (c,func) =
 	       if !CG.betaexpand orelse !CG.flattenargs
@@ -208,11 +208,12 @@ in  (if rounds < 0 then function
 	  in
 	      IC.elim { function = optimized,
 			mkKvar = LambdaVar.mkLvar,
+(* 64BIT: FIXME *)
 			mkI32var =
 			  fn () => let val v = LambdaVar.mkLvar ()
 				   in
 				       IntHashTable.insert
-					   table (v, LtyExtern.ltc_int32);
+					   table (v, LtyExtern.ltc_num 32);
 				       v
 				   end }
           end)

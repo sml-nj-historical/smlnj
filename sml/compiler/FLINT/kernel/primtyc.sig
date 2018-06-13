@@ -10,11 +10,8 @@ signature PRIM_TYC =
     eqtype primtyc
 
   (** the primitive type constructors *)
-    val ptc_int31  : primtyc	(* 64BIT: should this be ptc_int, or should we add ptc_int63? *)
-    val ptc_int32  : primtyc
-(* 64BIT:
-    val ptc_int64  : primtyc
-*)
+    val ptc_int    : primtyc	(* default tagged integer type *)
+    val ptc_num    : int -> primtyc
     val ptc_real   : primtyc
 (* REAL32:
     val ptc_real32 : primtyc
@@ -60,6 +57,13 @@ signature PRIM_TYC =
 
   (** equality of primtycs *)
     val pt_eq : primtyc * primtyc -> bool
+
+  (** primitive real types *)
+    val realPrimTyc : int -> primtyc
+
+  (** extract size of number/real type (or NONE) *)
+    val numSize : primtyc -> int option
+    val realSize : primtyc -> int option
 
   (** check the boxity of values of each prim tyc *)
     val unboxed : primtyc -> bool

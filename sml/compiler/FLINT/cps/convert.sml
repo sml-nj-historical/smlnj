@@ -114,7 +114,8 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	    | g (FLTt _ ::_, _, _, _) = raise Fail "unsupported FLTt size" (* REAL32: FIXME *)
 	    | g (NUMt{sz=32, tag=false}::r,u::z,l,h) =
 		mkfn(fn v => g(r, z, (VAR v,OFFp 0)::l, fn ce => h(wrapi32(u,v,ce))))
-	    | g (NUMt{tag=false, ...} ::_, _, _, _) = raise Fail "unsupported NUMt size" (* 64BIT: FIXME *)
+	    | g (NUMt{tag=false, sz} ::_, _, _, _) =
+		  raise Fail("unsupported NUMt size = " ^ Int.toString sz) (* 64BIT: FIXME *)
 	    | g (_::r,u::z,l,h) = g(r, z, (u,OFFp0)::l, h)
 	    | g ([],[],l,h) = (rev l, h)
 	    | g _ = bug "unexpected in recordNM in convert"
