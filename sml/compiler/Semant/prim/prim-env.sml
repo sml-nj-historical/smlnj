@@ -53,17 +53,18 @@ structure PrimEnv : PRIM_ENV =
 	    ("ref", BT.refTycon),
 	    ("unit", BT.unitTycon),
 	    ("int", BT.intTycon),
-(* int31? *)
+(* 64BIT: int31? *)
 	    ("int32", BT.int32Tycon),
-(* int63? *)
+(* 64BIT: int63? *)
 	    ("int64", BT.int64Tycon),
 	    ("intinf", BT.intinfTycon),
 	    ("real", BT.realTycon),
+(* REAL32: real32 / real64 *)
 	    ("word", BT.wordTycon),
 	    ("word8", BT.word8Tycon),
-(* word31? *)
+(* 64BIT: word31? *)
 	    ("word32", BT.word32Tycon),
-(* word63? *)
+(* 64BIT: word63? *)
 	    ("word64", BT.word64Tycon),
 	    ("cont", BT.contTycon),
 	    ("control_cont", BT.ccontTycon),
@@ -72,7 +73,7 @@ structure PrimEnv : PRIM_ENV =
 	    ("object", BT.objectTycon),
 	    ("c_function", BT.c_functionTycon),
 	    ("word8array", BT.word8arrayTycon),
-(* real32array *)
+(* REAL32: real32array *)
 	    ("real64array", BT.real64arrayTycon),
 	    ("spin_lock", BT.spin_lockTycon),
 	    ("string", BT.stringTycon),
