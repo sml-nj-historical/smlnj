@@ -42,7 +42,7 @@ local
   fun inc (ri as ref i) = ri := i+1
 
 (* tagged int value *)
-fun tagInt i = NUM{ival = IntInf.fromInt i, ty = {sz = 31, tag = true}} (* 64BIT: FIXME *)
+fun tagInt i = NUM{ival = IntInf.fromInt i, ty = {sz = Target.defaultIntSz, tag = true}}
 
 (* there is a bug in "CLOSURE SHARING VIA THINNING" where the code is
  * sensitive to the sorting of equal items.  Specifically, the code works
@@ -1245,7 +1245,6 @@ val maxfpregs = MachSpec.numFloatRegs - 2  (* need 1 or 2 temps *)
 val numCSgpregs = MachSpec.numCalleeSaves
 val numCSfpregs = MachSpec.numFloatCalleeSaves
 val unboxedfloat = MachSpec.unboxedFloats
-val untaggedint = MachSpec.untaggedInt
 
 (* check the validity of the callee-save configurations *)
 val (numCSgpregs,numCSfpregs) =
@@ -1267,25 +1266,9 @@ val isFlt = if unboxedfloat then
             else (fn _ => false)
 fun isFlt3 (v,_,_) = isFlt v
 
-(* check if a variable is of boxed type --- no longer used! *)
-(*
-val isBoxed3 =
-  if untaggedint then
-    (fn (v,_,_) =>
-       (case (get_cty v)
-         of FLTt _ => bug "isBoxed never applied to floats in closure.sml"
-          | TINTt => false
-          | _ => true))
-  else
-    (fn (v,_,_) =>
-       ((case (get_cty v)
-          of INTt 32 => false
-           | _ => true) handle _ => true))
-*)
-
-(* check if a variable is an int32 *)
-fun isInt32 (v,_,_) = (case get_cty v
-       of NUMt{sz=32, tag=false} => true  (* 64BIT: FIXME *)
+(* check if a variable is an untagged int type *)
+fun isUntaggedInt (v,_,_) = (case get_cty v
+       of NUMt{tag, ...} => not tag
         | _ => false
       (* end case *))
 
@@ -1700,8 +1683,8 @@ val (gpspill,fpspill,fpbase) =
 (* INT32: here is a place to filter out all the variables with INT32 types,
    they have to be put into closure (gpspill), because by default, callee-save
    registers always contain pointer values. *)
-val (i32gpcallee, gpcallee) = partition isInt32 gpcallee
-val (i32gpFree, gpFree) = partition isInt32 gpFree
+val (utgpcallee, gpcallee) = partition isUntaggedInt gpcallee
+val (utgpFree, gpFree) = partition isUntaggedInt gpFree
 
 (* collect all the FP free variables and build a closure if necessary *)
 val allfpFree = mergeV(fpspill,fpFree)
@@ -1727,13 +1710,13 @@ val (gpspill,gpFree,fpcInfo) = case allfpFree
 (* by convention: gpspill must not contain any int32 variables ! *)
 val gpcallee = mergeV(gpspill,gpcallee)
 
-val (gpcallee,fpcInfo) = case (i32gpcallee, fpcInfo)
+val (gpcallee,fpcInfo) = case (utgpcallee, fpcInfo)
   of ([],_) => (gpcallee,fpcInfo)
    | ((_,m,n)::r,NONE) =>
        let fun h((_,x,y),(i,j)) = (Int.min(x,i),Int.max(y,j))
            val (m,n) =  foldr h (m,n) r
            val cname = closureLvar()
-        in (mergeV([(cname,m,n)],gpcallee), SOME(cname,i32gpcallee))
+        in (mergeV([(cname,m,n)],gpcallee), SOME(cname,utgpcallee))
        end
    | (vs, SOME(cname, ufree)) => (gpcallee, SOME(cname, mergeV(vs, ufree)))
 (*
@@ -1780,7 +1763,7 @@ val (gpspill,gpbase) =
 (* assumption: gpspill does not contain any Int32s; they can should
                not be put into gpcallee anyway. *)
 val allgpFree = mergeV(gpspill,gpFree)
-val unboxedFree = i32gpFree
+val unboxedFree = utgpFree
 
 (* filter out all unboxed-values *)
 (* INT32: here is the place to filter out all 32-bit integers,
@@ -1805,7 +1788,7 @@ val (allgpFree,fpcInfo) =
 val (fphdr,env,nframes) =
       case fpcInfo
         of NONE => (fn ce => ce,initEnv,[])
-         | SOME(c,a) => let val (int32a,a) = partition isInt32 a
+         | SOME(c,a) => let val (int32a,a) = partition isUntaggedInt a
                          in closureUnboxed(c,int32a,a,fixKind,initEnv)
                         end
 

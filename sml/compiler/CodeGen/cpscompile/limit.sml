@@ -61,7 +61,7 @@ fun path escapes fl =
         | g(d, PURE(P.pure_arith{kind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)
         | g(d, PURE(P.real{tokind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)
         | g(d, PURE(P.fwrap,_,_,_,e)) = g(d+4, e)
-        | g(d, PURE(P.iwrap,_,_,_,e)) = g(d+2, e)
+        | g(d, PURE(P.iwrap,_,_,_,e)) = error "unexpected iwrap"
         | g(d, PURE(P.i32wrap,_,_,_,e)) = g(d+2, e)
 	| g(d, PURE(P.newarray0,_,_,_,e)) = g(d+5, e)
 	| g(d, PURE(P.makeref, _, _, _, e)) = g(d+2, e)

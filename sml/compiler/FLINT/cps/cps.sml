@@ -100,7 +100,9 @@ structure P = struct
       | real of {fromkind: numkind, tokind: numkind}
       | subscriptv
       | gettag | mkspecial | wrap | unwrap | cast | getcon | getexn
-      | fwrap | funwrap | iwrap | iunwrap | i32wrap | i32unwrap
+      | fwrap | funwrap
+      | iwrap | iunwrap		(* fake wrapping of tagged integers *)
+      | i32wrap | i32unwrap	(* 64BIT: FIXME *)
       | getseqdata | recsubscript | raw64subscript | newarray0
       | rawrecord of record_kind option
          (* allocate uninitialized words from the heap *)

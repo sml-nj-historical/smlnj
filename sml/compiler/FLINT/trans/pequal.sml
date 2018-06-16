@@ -204,7 +204,7 @@ fun prim(p, lt) = PRIM(p, lt, [])
 
 fun atomeq (tyc, ty) =
   if TU.equalTycon(tyc,BT.intTycon) then prim(PO.IEQL,inteqty)
-  else if TU.equalTycon(tyc,BT.int32Tycon) then prim(PO.IEQL,int32eqty)
+  else if TU.equalTycon(tyc,BT.int32Tycon) then prim(PO.IEQL,int32eqty) (* 64BIT: FIXME *)
   else if TU.equalTycon(tyc,BT.wordTycon) then prim(PO.IEQL,inteqty)
   else if TU.equalTycon(tyc,BT.word8Tycon) then prim(PO.IEQL,inteqty)
   else if TU.equalTycon(tyc,BT.charTycon) then prim(PO.IEQL,inteqty)

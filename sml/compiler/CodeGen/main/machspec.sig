@@ -32,7 +32,6 @@ signature MACH_SPEC =
     val numFloatArgRegs : int	(* the number of FP registers used for args. *)
     val numCalleeSaves : int
     val numFloatCalleeSaves : int
-    val untaggedInt : bool      (* represent all integers without tags *)
 
   (* machine representations *)
     type value_tag = {

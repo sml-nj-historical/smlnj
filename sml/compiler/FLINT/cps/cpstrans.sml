@@ -25,7 +25,6 @@ val mkv = LV.mkLvar
 fun cpstrans fe = let
 
 val unboxedfloat = MachSpec.unboxedFloats
-val untaggedint = MachSpec.untaggedInt
 
 exception CPSSUBST
 val M : value IntHashTable.hash_table = IntHashTable.mkTable(32,CPSSUBST)
@@ -44,53 +43,6 @@ fun grabty (VAR v) = ((getty v) handle _ => BOGt)
 
 fun select(i,u,x,ct,ce) = SELECT(i,u,x,ct,ce)
 fun record(k,ul,w,ce) = RECORD(k,ul,w,ce)
-
-(* wrappers around floats and ints are now dealt with in the convert phase *)
-(***>>
-fun unwrapfloat(u,x,ce) = PURE(P.funwrap,[u],x,FLTt,ce)
-fun wrapfloat(u,x,ce) = PURE(P.fwrap,[u],x,BOGt,ce)
-fun unwrapint(u,x,ce) = PURE(P.iunwrap,[u],x,INTt,ce)
-fun wrapint(u,x,ce) = PURE(P.iwrap,[u],x,BOGt,ce)
-fun unwrapint32(u,x,ce) = PURE(P.i32unwrap,[u],x,INT32t,ce)
-fun wrapint32(u,x,ce) = PURE(P.i32wrap,[u],x,BOGt,ce)
-
-fun select(i,u,x,ct,ce) =
-  case (ct,unboxedfloat,untaggedint)
-   of (FLTt,true,_) => let val v = mkv()
-                        in SELECT(i,u,v,BOGt,unwrapfloat(VAR v,x,ce))
-                       end
-    | (INTt,_,true) => let val v = mkv()
-                        in SELECT(i,u,v,BOGt,unwrapint(VAR v,x,ce))
-                       end
-    | (INT32t,_,_)  => let val v = mkv()
-                        in SELECT(i,u,v,BOGt,unwrapint32(VAR v,x,ce))
-                       end
-    | _ => SELECT(i,u,x,ct,ce)
-
-fun record(k,ul,w,ce) =
-  let fun h((FLTt,u),(l,h)) =
-             if unboxedfloat then
-              (let val v = mkv()
-                in ((VAR v,OFFp 0)::l, fn ce => wrapfloat(#1 u,v,h(ce)))
-               end)
-             else (u::l,h)
-        | h((INTt,u),(l,h)) =
-             if untaggedint then
-              (let val v = mkv()
-                in ((VAR v,OFFp 0)::l, fn ce => wrapint(#1 u,v,h(ce)))
-               end)
-             else (u::l,h)
-        | h((INT32t,u),(l,h)) =
-             let val v = mkv()
-	     in ((VAR v,OFFp 0)::l, fn ce => wrapint32(#1 u,v,h(ce)))
-	     end
-        | h((_,u),(l,h)) = (u::l,h)
-
-      val info = map (fn (u as (v,_)) => (grabty v,u)) ul
-      val (nul,header) = fold h info ([], ident)
-   in header(RECORD(k,nul,w,ce))
-  end
-<<***)
 
 
 (**************************************************************************
@@ -251,22 +203,12 @@ fun cexptrans(ce) =
           if unboxedfloat
           then (addty(w,t); PURE(P.funwrap,[vtrans u],w,t,cexptrans ce))
           else (addvl(w,vtrans u); cexptrans ce)
-    | PURE(P.iwrap,[u],w,t,ce) =>
-          if untaggedint
-          then (addty(w,t); PURE(P.iwrap,[vtrans u],w,t,cexptrans ce))
-          else (addvl(w,vtrans u); cexptrans ce)
-    | PURE(P.iunwrap,[u],w,t,ce) =>
-          if untaggedint
-          then (addty(w,t); PURE(P.iunwrap,[vtrans u],w,t,cexptrans ce))
-          else (addvl(w,vtrans u); cexptrans ce)
+    | PURE(P.iwrap,[u],w,t,ce) => (addvl(w,vtrans u); cexptrans ce)
+    | PURE(P.iunwrap,[u],w,t,ce) => (addvl(w,vtrans u); cexptrans ce)
     | PURE(P.i32wrap,[u],w,t,ce) =>
 	      (addty(w,t); PURE(P.i32wrap,[vtrans u],w,t,cexptrans ce))
     | PURE(P.i32unwrap,[u],w,t,ce) =>
 	      (addty(w,t); PURE(P.i32unwrap,[vtrans u],w,t,cexptrans ce))
-(*
-    | PURE(P.cast,[u],w,_,ce) =>
-          (addvl(w,vtrans u); cexptrans ce)
-*)
     | PURE(P.getcon,[u],w,t,ce) =>
           (addty(w,t); select(0,vtrans u,w,t,cexptrans ce))
     | PURE(P.getexn,[u],w,t,ce) =>

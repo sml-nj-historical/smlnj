@@ -249,7 +249,7 @@ struct
 
       fun markPure(p,w) =
           case p of
-            (* these pure operators actually allocates storage! *)
+            (* these pure operators actually allocate storage! *)
             (P.fwrap | P.iwrap | P.i32wrap | P.newarray0 |
              P.makeref | P.mkspecial | P.rawrecord _
             ) => markrec(w, 0)

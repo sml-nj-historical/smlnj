@@ -99,7 +99,7 @@ fun equal (peqv, seqv) = let
             end
 
     in
-	if LT.tcp_tuple tc then
+	if LT.tcp_tuple tc then (
 	    case fe of (APP _ | RET _) =>
 		       eq_tuple(0, d, LT.tcd_tuple tc, te, fe)
 		     | _ =>
@@ -107,10 +107,12 @@ fun equal (peqv, seqv) = let
 		       in FIX([(fkfun, f, [], fe)],
 			      eq_tuple(0, d, LT.tcd_tuple tc,
 				       te, APP(VAR f, [])))
-		       end
+		       end)
+(* 64BIT: the next two cases could be merged into one that would be int-size indenpendent
+ * using a lifted version of the PrimTyc.numSize function.
+ *)
 	else if tcEqv(tc,LT.tcc_int) then
 	    BRANCH((NONE, PO.IEQL, inteqty, []), [x,y], te, fe)
-(* 64BIT: FIXME *)
 	else if tcEqv(tc,LT.tcc_num 32) then
 	    BRANCH((NONE, PO.IEQL, int32eqty, []), [x,y], te, fe)
 	else if tcEqv(tc,LT.tcc_bool) then

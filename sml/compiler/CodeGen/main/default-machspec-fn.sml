@@ -33,11 +33,10 @@ functor DefaultMachSpecFn (Sizes : sig
     val numFloatArgRegs = 0
     val numCalleeSaves = 3
     val numFloatCalleeSaves = 0
-    val untaggedInt = false
 
     type value_tag = {
 	tagbits : int,
-	tagval : int	
+	tagval : int
       }
 
     val intTag = {tagbits=1, tagval=1}

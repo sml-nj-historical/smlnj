@@ -200,7 +200,7 @@ fun check phase envs lexp = let
 	  handle ltUnbound =>
 	      errMsg (le, "Unbound Lvar " ^ LV.lvarName lv, LT.ltc_void)
       fun typeofVal (VAR lv) = typeofVar lv
-(* 64BIT: REAL64: need more cases *)
+(* REAL64: need more cases *)
 	| typeofVal (INT{ty, ...}) = LT.ltc_num ty
 	| typeofVal (WORD{ty, ...}) = LT.ltc_num ty
         | typeofVal (REAL _) = LT.ltc_real

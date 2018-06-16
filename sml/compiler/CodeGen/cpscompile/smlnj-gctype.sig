@@ -30,8 +30,8 @@ signature SMLGCTYPE =
     (*
      * Primitive types
      *)
-    val I31      : gctype  (* tagged integers *)
-    val I32      : gctype  (* untagged integers *)
+    val I31      : gctype  (* tagged integers *)	(* 64BIT: FIXME *)
+    val I32      : gctype  (* untagged integers *)	(* 64BIT: FIXME *)
 
     val REAL64   : gctype  (* unboxed real *)
     val REAL32   : gctype  (* unused *)
