@@ -263,23 +263,28 @@ fun unifyTy(type1, type2, reg1, reg2) =
 	       instTyvar(var1, type2, reg1, reg2)
 	   | (type1, VARty var2) =>       (* type1 may be WILDCARDty *)
 	       instTyvar(var2, type1, reg2, reg1)
+(*
 	   | (CONty(tycon1,args1), CONty(tycon2,args2)) =>
+*)
+	   | (CONty(ERRORtyc, _), _) => ()
+	   | (_, CONty(ERRORtyc, _)) => ()
+	   | (ty1 as CONty(tycon1,args1), ty2 as CONty(tycon2,args2)) =>
 	       if TU.eqTycon(tycon1,tycon2) then
-		   (* Because tycons are equal, they must have the
+		   (* Because tycons are equal (and not ERRORtyc), they must have the
 		      same arity and strictness signatures. Thus lengths of args1 and
 		      args2 are the same. Type abbrev. strictness
 		      optimization. If tycons equal, then only check
-		      strict arguments. [GK 4/28/07] *)
+		      strict arguments. [GK 4/28/07]
+		    *)
 		   (case tycon1
 		     of DEFtyc{strict, ...} =>
-			let fun unifyArgs([],[],[]) = ()
-			      | unifyArgs(true::ss, ty1::tys1, ty2::tys2) =
+			let fun unifyArgs ([],[],[]) = ()
+			      | unifyArgs (true::ss, ty1::tys1, ty2::tys2) =
 				(unifyTy(ty1,ty2,reg1,reg2); unifyArgs(ss,tys1,tys2))
-			      | unifyArgs(false::ss, _::tys1, _::tys2) =
+			      | unifyArgs (false::ss, _::tys1, _::tys2) =
 				unifyArgs(ss,tys1,tys2)
-			      | unifyArgs _ =
-				  bug "unifyTy: arg ty lists wrong length"
-			in unifyArgs(strict,args1,args2)
+			      | unifyArgs _ = bug "unifyTy: arg ty lists wrong length"
+			in unifyArgs (strict, args1, args2)
 			end
 		      | _ => ListPair.app (fn (t1,t2) => unifyTy(t1,t2,reg1,reg2))
 					  (args1,args2))
