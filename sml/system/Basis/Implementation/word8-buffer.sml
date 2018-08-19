@@ -122,11 +122,11 @@ structure Word8Buffer :> MONO_BUFFER
 
     fun add1 (BUF{content, len as ref n, ...}, elem) =
 	  if (n < maxLen)
-	    then raise Subscript
-	    else (
+	    then (
 	      ensureCapacity(content, n, 1);
 	      A.update(!content, n, elem);
 	      len := n ++ 1)
+	    else raise Subscript
 
     fun addVec (BUF{content, len as ref n, ...}, src) = let
 	  val srcLen = V.length src
