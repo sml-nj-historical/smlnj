@@ -22,7 +22,8 @@ The devices directory has some sample output devices (including one for
 generating layouts in HTML).  Someday, the examples directory will have
 some example pretty-printers; for now, you can look in the tests directory.
 
-	John Reppy
-	Bell Labs, Lucent Technologies
-	jhr@research.bell-labs.com
+For reference, the current OCaml implementation is available at
+
+	https://github.com/ocaml/ocaml/blob/trunk/stdlib/format.mli
+	https://github.com/ocaml/ocaml/blob/trunk/stdlib/format.ml
 

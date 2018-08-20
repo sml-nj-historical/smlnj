@@ -5,6 +5,18 @@ correspond to SML/NJ releases.
 SML/NJ 110.83
 -------------------
 
+[2018-08-20]
+	Added a pretty printer (SExpPP) to the SExp library.  The SExpPrinter
+	module does not layout the text with line breaks, which makes it hard
+	to read.
+
+[2018-08-20]
+	Added some documentation to the PP_STREAM signature.
+
+--------------------------------------------------------------------------------
+SML/NJ 110.83
+-------------------
+
 No changes.
 
 --------------------------------------------------------------------------------

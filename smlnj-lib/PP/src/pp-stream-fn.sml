@@ -65,7 +65,8 @@ functor PPStreamFn (
 					(* into the queue. *)
 	queue : pp_queue_elem Q.queue,	(* the queue of pending tokens *)
 	fmtStk				(* stack of information about currently *)
-	  : (box_type * int) list ref,	(* active blocks *)
+	  : (box_type * int) list ref,	(* active blocks.  The int is the indentation *)
+					(* of the block *)
 	scanStk
 	  : (int * pp_queue_elem) list ref,
 	styleStk : style list ref
