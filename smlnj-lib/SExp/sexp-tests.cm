@@ -12,13 +12,17 @@ Library
   structure SExpParser
   structure SExpPrinter
   structure SExpTests
+  structure TestPP
 
 is
 
   $/basis.cm
   $/smlnj-lib.cm
+  $/pp-lib.cm
   $/ml-lpt-lib.cm
 
   sexp-lib.cm
 
   sexp-tests.sml
+  test-pp.sml
+

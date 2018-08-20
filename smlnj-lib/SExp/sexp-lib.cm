@@ -10,16 +10,19 @@ Library
 
   structure SExp
   structure SExpParser
+  structure SExpPP
   structure SExpPrinter
 
 is
 
   $/basis.cm
   $/smlnj-lib.cm
+  $/pp-lib.cm
   $/ml-lpt-lib.cm
 
   sexp.lex : ml-ulex
   sexp.sml
   sexp-parser.sml
+  sexp-pp.sml
   sexp-printer.sml
   sexp-tokens.sml

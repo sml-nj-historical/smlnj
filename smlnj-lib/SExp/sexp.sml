@@ -21,7 +21,7 @@ structure SExp =
       | STRING of string
 
     fun same (SYMBOL a, SYMBOL b) = Atom.same (a, b)
-      | same (LIST a, LIST b) = ListPair.all same (a, b)
+      | same (LIST a, LIST b) = ListPair.allEq same (a, b)
       | same (BOOL a, BOOL b) = (a = b)
       | same (INT a, INT b) = (a = b)
       | same (FLOAT a, FLOAT b) = Real.==(a, b)

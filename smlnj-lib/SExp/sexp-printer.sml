@@ -5,7 +5,8 @@
  *
  * Author: Damon Wang (with modifications by John Reppy)
  *
- * A printer for SExp values.
+ * A printer for SExp values.  This printer does not introduce any line
+ * breaks.  For output that is more readable, use the SExpPP module.
  *)
 
 structure SExpPrinter : sig

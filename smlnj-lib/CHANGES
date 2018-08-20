@@ -9,6 +9,8 @@ SML/NJ 110.83
 	Added a pretty printer (SExpPP) to the SExp library.  The SExpPrinter
 	module does not layout the text with line breaks, which makes it hard
 	to read.
+	Also fixed a bug in the SExp.same function (lists of different lengths
+	would compare equal if the shorter list was a prefix of the longer list)
 
 [2018-08-20]
 	Added some documentation to the PP_STREAM signature.

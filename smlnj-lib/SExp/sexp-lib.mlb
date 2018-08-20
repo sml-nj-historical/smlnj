@@ -15,9 +15,8 @@ local
 
   $(SML_LIB)/basis/basis.mlb
   $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
-(* I don't know what the path to this library will be
-  ??/ml-lpt-lib/ml-lpt-lib.mlb
-*)
+  $(SML_LIB)/smlnj-lib/PP/pp-lib.mlb
+  $(SML_LIB)/mllpt-lib/mllpt-lib.mlb
 
   ann
     "nonexhaustiveMatch warn" "redundantMatch warn"
@@ -31,6 +30,7 @@ local
 (*    sexp-stream-parser.sml *)
     sexp-parser.sml
 (*    sexp-stream-printer.sml *)
+    sexp-pp.sml
     sexp-printer.sml
 
   end
@@ -40,10 +40,11 @@ in
 (* DOM-style API (tree based) *)
   structure SExp
   structure SExpParser
+  structure SExpPP
   structure SExpPrinter
 
 (* SAX-style API (event based) *)
-(*
+(* TODO
   structure SExpStreamParser
   structure SExpStreamPrinter
 *)
