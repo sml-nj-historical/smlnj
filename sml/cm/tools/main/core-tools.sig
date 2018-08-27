@@ -20,7 +20,7 @@ signature CORETOOLS = sig
      * this member in its .cm-file.  Most tools will want to work on
      * native pathname syntax (function "outdated" -- see below -- depends
      * on native syntax!).  In these cases the tool should first convert
-     * the name to a srcpath and then get the native string back by 
+     * the name to a srcpath and then get the native string back by
      * applying "nativeSpec". *)
     type srcpath
     type presrcpath
@@ -86,7 +86,7 @@ signature CORETOOLS = sig
 	 { save'restore: unit -> unit -> unit,
 	   set: unit -> unit }
 
-    type smlparams = 
+    type smlparams =
 	 { share: Sharing.request,
 	   setup: setup,
 	   split: splitting,
@@ -148,11 +148,14 @@ signature CORETOOLS = sig
     (* make a classifier which looks for a specific file name suffix *)
     val stdSfxClassifier : { sfx: string , class: class } -> classifier
 
-    (* two standard ways of dealing with filename extensions...
+    (* three ways of dealing with filename extensions...
      * (Tool options can be calculated from the options that we have.) *)
-    datatype extensionStyle =
-	EXTEND of (string * class option * tooloptcvt) list
-      | REPLACE of string list * (string * class option * tooloptcvt) list
+    datatype extensionStyle
+      = EXTEND of (string * class option * tooloptcvt) list
+      | REPLACE of string list * replacement list
+      | RENAME of string list * (string -> replacement list)
+
+    withtype replacement = string * class option * tooloptcvt
 
     (* perform filename extension *)
     val extend : extensionStyle ->
