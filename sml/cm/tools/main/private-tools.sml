@@ -49,7 +49,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 	 { save'restore: unit -> unit -> unit,
 	   set: unit -> unit }
 
-    type smlparams = 
+    type smlparams =
 	 { share: Sharing.request,
 	   setup: setup,
 	   split: splitting,
@@ -183,24 +183,44 @@ structure PrivateTools : PRIVATETOOLS = struct
 			     cleanup = fn _ => () }
     end
 
-    datatype extensionStyle =
-	EXTEND of (string * class option * tooloptcvt) list
-      | REPLACE of string list * (string * class option * tooloptcvt) list
+    datatype extensionStyle
+      = EXTEND of (string * class option * tooloptcvt) list
+      | REPLACE of string list * replacement list
+      | RENAME of string list * (string -> replacement list)
 
+    withtype replacement = string * class option * tooloptcvt
+
+    local
+      val splitBE = OS.Path.splitBaseExt
+      val joinBE = OS.Path.joinBaseExt
+      fun extInList (ext : string, l) = List.exists (fn e => (e = ext)) l
+    in
     fun extend (EXTEND l) (f, too) =
-	map (fn (s, co, toc) => (concat [f, ".", s], co, toc too)) l
+	  map (fn (s, co, toc) => (joinBE { base = f, ext = SOME s }, co, toc too)) l
       | extend (REPLACE (ol, nl)) (f, too) = let
-	    val { base, ext } = OS.Path.splitBaseExt f
-	    fun join b (e, co, toc) =
-		(OS.Path.joinBaseExt { base = b, ext = SOME e }, co, toc too)
-	    fun gen b = map (join b) nl
-	    fun sameExt (e1: string) (e2: string) = e1 = e2
-	in
-	    case ext of
-		NONE => gen base
-	      | SOME e =>
-		    if List.exists (sameExt e) ol then gen base else gen f
-	end
+	  val { base, ext } = splitBE f
+	  fun join b (e, co, toc) = (joinBE { base = b, ext = SOME e }, co, toc too)
+	  fun gen b = map (join b) nl
+	  in
+	    case ext
+	     of NONE => gen base
+	      | SOME e => if extInList(e, ol) then gen base else gen f
+	  end
+      | extend (RENAME(ol, genFn)) (f, too) = let
+	  val { base, ext } = splitBE f
+	(* generate a replacement for base `b` using generator function `f` *)
+	  fun gen b = let
+		fun gen' (f, co, toc) = (f, co, toc too)
+		in
+		  List.map gen' (genFn b)
+		end
+	  in
+	    case ext
+	     of NONE => gen base
+	      | SOME e => if extInList(e, ol) then gen base else gen f
+	    (* end case *)
+	  end
+    end (* local *)
 
     local
 	fun timex f =
@@ -233,7 +253,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 	end
 
 	fun targetsExist l = List.all (#2 o timex) l
-    end
+    end (* local *)
 
     val openTextOut = AutoDir.openTextOut
     val makeDirs = AutoDir.makeDirs

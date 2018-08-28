@@ -1,9 +1,10 @@
 (* installer-util.sml
  *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Utility routines used both by the main installer
  * and the library installer
- *
- * (C) 2007 The Fellowship of SML/NJ
  *
  * author: Matthias Blume
  *)
@@ -17,11 +18,19 @@ structure InstallerUtil : sig
 				 heap_suffix : string,
 				 isUnix : bool }
 
+  (* filesystem path concatenation *)
     val pconcat : string list -> string
 
+  (* does a file exist? *)
     val fexists : string -> bool
+
+  (* remove a file *)
     val rmfile : string -> unit
+
+  (* make a directory (including parent, parent's parent, ...) *)
     val mkdir : string -> unit
+
+  (* rename a file; will work across different file systems *)
     val rename : { old : string, new : string } -> unit
 
 end = struct
