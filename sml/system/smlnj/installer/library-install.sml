@@ -1,11 +1,15 @@
 (* library-install.sml
- *    Installer routine for additional libraries.
  *
- * (C) 2007 The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Installer routine for additional libraries.
  *
  * author: Matthias Blume
  *)
-structure LibraryInstall : sig end = struct
+
+structure LibraryInstall : sig end =
+  struct
 
     structure U = InstallerUtil
     structure P = OS.Path
@@ -70,4 +74,5 @@ structure LibraryInstall : sig end = struct
 
     (* run the installer *)
     val _ = OS.Process.exit (doit (CommandLine.arguments ()))
-end
+
+  end
