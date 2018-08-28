@@ -1,5 +1,7 @@
 #!/bin/sh
 #
+# Copyright (c) 2018 The Fellowship of SML/NJ (https://smlnj.org)
+#
 # build script for ml-burg under the new runtime system.
 #
 # options:
