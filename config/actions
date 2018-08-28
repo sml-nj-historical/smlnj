@@ -3,7 +3,7 @@
 # See base/system/smlnj/installer/generic-install.sml for how this file
 # is to be interpreted.
 #
-# (C) 2006-2015 The Fellowship of SML/NJ
+# (C) 2006-2018 The Fellowship of SML/NJ
 #
 # Each action is on a single line and has one of the following forms:
 #
@@ -15,6 +15,7 @@
 #	<module> libanchor <a> <p>
 #	<module> prog ...
 #	<module> dprog ...
+#	<module> config <d>
 #	<module> src
 #
 # Short explanation:
@@ -56,6 +57,10 @@
 #  <d>: "dir" -- directory relative to installation root where source
 #     tree for this program resides; by default, this is taken to be
 #     identical to the module name
+#
+# "config" (configure a module) has one argument, which is the directory
+#    relative to the installation root where the config.sh (resp. config.bat)
+#    script can be found.
 #
 # "src" (register a source package that needs to be unpacked but requires
 #        no further action)
@@ -199,6 +204,13 @@ ml-antlr-grm-ext   lib 	 grm-ext.cm       grm-ext.cm       ml-lpt/ml-antlr/tool
 
 # support library for ml-ulex and ml-antlr:
 ml-lpt-lib 	   lib 	 ml-lpt-lib.cm ml-lpt-lib.cm ml-lpt/lib
+
+# ASDL generator and support library
+asdl               config asdl
+asdl               dprog  asdlgen - asdl/src/asdlgen
+asdl               lib    asdlgen-tool.cm asdlgen-tool.cm asdl/tool
+asdl               lib    asdl-ext.cm     asdl-ext.cm     asdl/tool
+asdl               lib    asdl-lib.cm     asdl-lib.cm     asdl/src/lib/sml
 
 # bottom-up rewrite code generator generator:
 ml-burg    	   prog

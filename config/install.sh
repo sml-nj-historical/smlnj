@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # Copyright (c) 1994 AT&T Bell Laboratories.
-# Copyright (c) 2014-2016 The Fellowship of SML/NJ
+# Copyright (c) 2014-2018 The Fellowship of SML/NJ
 #
 # Installation script for SML/NJ and related tools.
 #
