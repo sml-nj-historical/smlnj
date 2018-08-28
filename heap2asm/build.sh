@@ -1,18 +1,20 @@
 #!/bin/sh
 #
-# build script for ml-nlffigen
+# Copyright (c) 2018 The Fellowship of SML/NJ (https://smlnj.org)
+#
+# build script for heap2asm.
 #
 # options:
-#   -o image		-- specify the name of the heap image, "ml-nlffigen"
+#   -o image		-- specify the name of the heap image, "ml-lex"
 #			   is the default.
 
 CMD=$0
 
-ROOT="ml-nlffigen"
+ROOT="heap2asm"
 HEAP_IMAGE=""
-TWOUP=`pwd`/../..
-BIN=${INSTALLDIR:-$TWOUP}/bin
-BUILD="$BIN/ml-build"
+ONEUP=`pwd`/..
+BIN=${INSTALLDIR:-$ONEUP}/bin
+BUILD=$BIN/ml-build
 
 #
 # process command-line options
@@ -39,4 +41,4 @@ if [ "$HEAP_IMAGE" = "" ]; then
     HEAP_IMAGE="$ROOT"
 fi
 
-exec "$BUILD" ml-nlffigen.cm Main.main "$HEAP_IMAGE"
+"$BUILD" heap2asm.cm Main.main $HEAP_IMAGE

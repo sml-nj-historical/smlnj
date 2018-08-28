@@ -1,6 +1,8 @@
 #!/bin/sh
 #
-# build script for heap2asm.
+# Copyright (c) 2018 The Fellowship of SML/NJ (https://smlnj.org)
+#
+# build script for ml-lex under the new runtime system.
 #
 # options:
 #   -o image		-- specify the name of the heap image, "ml-lex"
@@ -8,10 +10,10 @@
 
 CMD=$0
 
-ROOT="heap2asm"
+ROOT="ml-lex"
 HEAP_IMAGE=""
-ONEUP=`pwd`/..
-BIN=${INSTALLDIR:-$ONEUP}/bin
+SMLNJROOT=`pwd`/..
+BIN=${INSTALLDIR:-$SMLNJROOT}/bin
 BUILD=$BIN/ml-build
 
 #
@@ -39,4 +41,6 @@ if [ "$HEAP_IMAGE" = "" ]; then
     HEAP_IMAGE="$ROOT"
 fi
 
-"$BUILD" heap2asm.cm Main.main $HEAP_IMAGE
+"$BUILD" ml-lex.cm ExportLexGen.lexGen $HEAP_IMAGE
+
+exit 0

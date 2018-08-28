@@ -1,18 +1,20 @@
 #!/bin/sh
 #
-# build script for ml-yacc under the new runtime system.
+# Copyright (c) 2018 The Fellowship of SML/NJ (https://smlnj.org)
+#
+# build script for ml-nlffigen
 #
 # options:
-#   -o image		-- specify the name of the heap image, "ml-yacc"
+#   -o image		-- specify the name of the heap image, "ml-nlffigen"
 #			   is the default.
 
 CMD=$0
 
-ROOT="ml-yacc"
+ROOT="ml-nlffigen"
 HEAP_IMAGE=""
-SMLNJROOT=`pwd`/..
-BIN=${INSTALLDIR:-$SMLNJROOT}/bin
-BUILD=$BIN/ml-build
+TWOUP=`pwd`/../..
+BIN=${INSTALLDIR:-$TWOUP}/bin
+BUILD="$BIN/ml-build"
 
 #
 # process command-line options
@@ -39,7 +41,4 @@ if [ "$HEAP_IMAGE" = "" ]; then
     HEAP_IMAGE="$ROOT"
 fi
 
-cd src
-"$BUILD" -DNO_ML_YACC -DNO_ML_LEX ml-yacc.cm ExportParseGen.parseGen "$HEAP_IMAGE"
-
-exit 0
+exec "$BUILD" ml-nlffigen.cm Main.main "$HEAP_IMAGE"

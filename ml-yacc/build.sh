@@ -1,14 +1,16 @@
 #!/bin/sh
 #
-# build script for ml-lex under the new runtime system.
+# Copyright (c) 2018 The Fellowship of SML/NJ (https://smlnj.org)
+#
+# build script for ml-yacc under the new runtime system.
 #
 # options:
-#   -o image		-- specify the name of the heap image, "ml-lex"
+#   -o image		-- specify the name of the heap image, "ml-yacc"
 #			   is the default.
 
 CMD=$0
 
-ROOT="ml-lex"
+ROOT="ml-yacc"
 HEAP_IMAGE=""
 SMLNJROOT=`pwd`/..
 BIN=${INSTALLDIR:-$SMLNJROOT}/bin
@@ -39,6 +41,7 @@ if [ "$HEAP_IMAGE" = "" ]; then
     HEAP_IMAGE="$ROOT"
 fi
 
-"$BUILD" ml-lex.cm ExportLexGen.lexGen $HEAP_IMAGE
+cd src
+"$BUILD" -DNO_ML_YACC -DNO_ML_LEX ml-yacc.cm ExportParseGen.parseGen "$HEAP_IMAGE"
 
 exit 0
