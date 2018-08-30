@@ -55,7 +55,7 @@ files.  See section~\ref{sec:classes}.}
 
 \noindent Example:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   Library
       signature BAR
       structure Foo
@@ -66,7 +66,7 @@ files.  See section~\ref{sec:classes}.}
 
       $/basis.cm
       $/smlnj-lib.cm
-\end{verbatim}
+\end{lstlisting}%
 
 This library exports two definitions, one for a structure named {\tt
 Foo} and one for a signature named {\tt BAR}.  The specification for
@@ -88,9 +88,9 @@ load it into a running interactive session by invoking function {\tt
 CM.make}.  If the name of the library's description file is, say, {\tt
 fb.cm}, then one would type
 
-\begin{verbatim}
+\begin{lstlisting}
   CM.make "fb.cm";
-\end{verbatim}
+\end{lstlisting}%
 
 at SML/NJ's interactive prompt.  This will cause CM to
 
@@ -150,12 +150,12 @@ except $f$ itself.  Free occurences of $n$ in $f$ refer to $l$'s
 definition.  This rule makes it possible to easily write code for
 exporting an ``augmented'' version of some module.  Example:
 
-\begin{verbatim}
+\begin{lstlisting}
   structure A = struct (* defines augmented A *)
       open A           (* refers to imported A *)
       fun f x = B.f x + C.g (x + 1)
   end
-\end{verbatim}
+\end{lstlisting}%
 
 Rule~\ref{rule:diamond} may come as a bit of a surprise considering
 that each ML source file can be a member of at most one library (see
@@ -243,13 +243,13 @@ As an example, let us assume that
 {\tt foo-utils.cm} contains the following text:
 
 %note: emacs gets temporarily confused by the single dollar
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   Group (foo-lib.cm)
   is
       set-util.sml
       map-util.sml
       $/basis.cm
-\end{verbatim}
+\end{lstlisting}%
 %$emacs unconfuse
 
 This description defines group {\tt foo-utils.cm} to have the
@@ -271,7 +271,7 @@ its ML source files
 With this, the library description file {\tt foo-lib.cm} could list
 {\tt foo-utils.cm} as one of its members:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   Library
       signature FOO
       structure Foo
@@ -280,7 +280,7 @@ With this, the library description file {\tt foo-lib.cm} could list
       foo.sml
       foo-utils.cm
       $/basis.cm
-\end{verbatim}
+\end{lstlisting}%
 %$emacs unconfuse
 
 No harm is done if {\tt foo-lib.cm} does not actually mention {\tt

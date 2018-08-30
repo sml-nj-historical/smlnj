@@ -15,12 +15,12 @@ linking}, but it is quite simple to achieve the effect by carefully
 arranging some helper libraries and associated stub code.
 
 Consider the following module:
-\begin{verbatim}
+\begin{lstlisting}
   structure F = struct
       fun f (x: int): int =
           G.g x + H.h (2 * x + 1)
   end
-\end{verbatim}
+\end{lstlisting}%
 
 Let us further assume that the implementations of structures {\tt G}
 and {\tt H} are rather large so that it would be worthwhile to avoid
@@ -32,16 +32,16 @@ To achieve this goal, we first define a {\em hook} module which will
 be the place where the actual implementation of our function will be
 registered once it has been loaded.  This hook module is then wrapped
 into a hook library.  Thus, we have {\tt f-hook.cm}:
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   Library
       structure F_Hook
   is
       f-hook.sml
-\end{verbatim}
+\end{lstlisting}%
 
 and {\tt f-hook.sml}:
 
-\begin{verbatim}
+\begin{lstlisting}
   structure F_Hook = struct
       local
           fun placeholder (i: int) : int =
@@ -52,7 +52,7 @@ and {\tt f-hook.sml}:
           fun f x = !r x
       end
   end
-\end{verbatim}
+\end{lstlisting}%
 
 The hook module provides a reference cell into which a function of
 type equal to {\tt F.f} can be installed.  Here we have chosen to hide
@@ -63,7 +63,7 @@ functions are provided to install something into the hook
 With this preparation we can write the implementation module {\tt f-impl.sml}
 in such a way that not only does it provide the actual
 code but also installs itself into the hook:
-\begin{verbatim}
+\begin{lstlisting}
   structure F_Impl = struct
       local
           fun f (x: int): int =
@@ -72,10 +72,10 @@ code but also installs itself into the hook:
           val _ = F_Hook.init f
       end
   end
-\end{verbatim}
+\end{lstlisting}%
 \noindent The implementation module is wrapped into its implementation
 library {\tt f-impl.cm}:
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   Library
       structure F_Impl
   is
@@ -83,13 +83,13 @@ library {\tt f-impl.cm}:
       f-hook.cm
       g.cm       (* imports G *)
       h.cm       (* imports H *)
-\end{verbatim}
+\end{lstlisting}%
 \noindent Note that {\tt f-impl.cm} must mention {\tt f-hook.cm} for
 {\tt f-impl.sml} to be able to access structure {\tt F\_Hook}.
 
 Finally, we replace the original contents of {\tt f.sml} with a stub
 module that defines structure {\tt F}:
-\begin{verbatim}
+\begin{lstlisting}
   structure F = struct
       local
           val initialized = ref false
@@ -101,7 +101,7 @@ module that defines structure {\tt F}:
                F_Hook.f x)
       end
   end
-\end{verbatim}
+\end{lstlisting}%
 \noindent The trick here is to explicitly invoke {\tt CM.make} the
 first time {\tt F.f} is called.  This will then cause {\tt f-impl.cm}
 (and therefore {\tt g.cm} and also {\tt h.cm}) to be loaded and the
@@ -115,14 +115,14 @@ into a library {\tt f.cm} that mentions {\tt f-hook.cm} and {\tt
 F\_Hook.f} and {\tt \$smlnj/cm.cm} is needed because it exports
 {\tt CM.make}:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   Library
       structure F
   is
       f.sml
       f-hook.cm
       $smlnj/cm.cm (* or $smlnj/cm/full.cm *)
-\end{verbatim}
+\end{lstlisting}%
 
 \noindent{\bf Beware!}  This solution makes use of {\tt \$smlnj/cm.cm}
 which in turn requires the SML/NJ compiler to be present.  Therefore,

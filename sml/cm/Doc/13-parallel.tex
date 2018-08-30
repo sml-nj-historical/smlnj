@@ -16,7 +16,7 @@ To perform parallel compilations, one must attach {\em compile
 servers} to the currently running CM session.  This is done using
 function {\tt CM.Server.start}, which has the following type:
 
-\begin{verbatim}
+\begin{lstlisting}
   structure Server : sig
       type server
       val start : { name: string,
@@ -24,7 +24,7 @@ function {\tt CM.Server.start}, which has the following type:
                     pathtrans: (string -> string) option,
                     pref: int } -> server option
   end
-\end{verbatim}
+\end{lstlisting}%
 
 Here, {\tt name} is an arbitrary string that is used by CM when
 issuing diagnostic messages concerning the server\footnote{Therefore,
@@ -37,11 +37,11 @@ sml} with a single command-line argument of {\tt @CMslave}.  For
 example, if you have installed in /path/to/smlnj/bin/sml, then a
 server process on the local machine could be started by
 
-\begin{verbatim}
+\begin{lstlisting}
   CM.Server.start { name = "A", pathtrans = NONE, pref = 0,
                     cmd = ("/path/to/smlnj/bin/sml",
                            ["@CMslave"]) };
-\end{verbatim}
+\end{lstlisting}%
 
 To run a process on a remote machine, e.g., ``thatmachine'', as
 compute server, one can use ``rsh''.\footnote{On certain systems it
@@ -52,14 +52,14 @@ Unix.execute} (and therefore {\tt CM.Server.start}) does not perform
 a {\tt PATH} search. The remote machine
 must share the file system with the local machine, for example via NFS.
 
-\begin{verbatim}
+\begin{lstlisting}
   CM.Server.start { name = "thatmachine",
                     pathtrans = NONE, pref = 0,
                     cmd = ("/usr/ucb/rsh",
                            ["thatmachine",
                             "/path/to/smlnj/bin/sml",
                             "@CMslave"]) };
-\end{verbatim}
+\end{lstlisting}%
 
 You can start as many servers as you want, but they all must have
 different names.  If you attach any servers at all, then you should

@@ -88,7 +88,7 @@ the named symbol.
 
 \noindent Example:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   Library
       structure Foo
   #if defined(structure Bar)
@@ -105,7 +105,7 @@ the named symbol.
   #else
       no-bar-so-far.sml
   #endif
-\end{verbatim}
+\end{lstlisting}%
 
 Here, the file {\tt bar-client.sml} gets included if {\tt
 SMLNJ\_VERSION} is greater than 110 and {\tt new-foo.sml} exports a

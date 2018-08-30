@@ -24,10 +24,10 @@ Here is a description of all members:
 Two main activities when using CM are to compile ML source code and to
 build stable libraries:
 
-\begin{verbatim}
+\begin{lstlisting}
   val recomp : string -> bool
   val stabilize : bool -> string -> bool
-\end{verbatim}
+\end{lstlisting}%
 
 {\tt CM.recomp} takes the name of a program's ``root'' description
 file and compiles or recompiles all ML source files that are necessary
@@ -60,10 +60,10 @@ creation and initialization code) of each compilation unit.  The
 resulting bindings can then be registered at the interactive top
 level.
 
-\begin{verbatim}
+\begin{lstlisting}
   val make : string -> bool
   val autoload : string -> bool
-\end{verbatim}
+\end{lstlisting}%
 
 {\tt CM.make} first acts like {\tt CM.recomp}.  If the
 (re-)compilation is successful, then it proceeds by linking all
@@ -106,7 +106,7 @@ set}.
 Controllers are members of {\tt CM.Control}, a sub-structure of
 structure {\tt CM}.
 
-\begin{verbatim}
+\begin{lstlisting}
   type 'a controller = { get: unit -> 'a, set: 'a -> unit }
   structure Control : sig
     val verbose : bool controller
@@ -117,7 +117,7 @@ structure {\tt CM}.
     val conserve_memory : bool controller
     val generate_index : bool controller
   end
-\end{verbatim}
+\end{lstlisting}%
 
 {\tt CM.Control.verbose} can be used to turn off CM's progress
 messages.  The default is {\em true} and can be overriden at startup
@@ -178,12 +178,12 @@ Structure {\tt CM} also provides functions to explicitly manipulate
 the path anchor configuration.  These functions are members of
 structure {\tt CM.Anchor}.
 
-\begin{verbatim}
+\begin{lstlisting}
   structure Anchor : sig
     val anchor : string -> string option controller
     val reset : unit -> unit
   end
-\end{verbatim}
+\end{lstlisting}%
 
 {\tt CM.Anchor.anchor} returns a pair of {\tt get} and {\tt set}
 functions that can be used to query and modify the status of the named
@@ -207,9 +207,9 @@ Section~\ref{sec:cmvars}).  Some of these variables are predefined,
 but the user can add new ones and alter or remove those that already
 exist.
 
-\begin{verbatim}
+\begin{lstlisting}
   val symval : string -> int option controller
-\end{verbatim}
+\end{lstlisting}%
 
 Function {\tt CM.symval} returns a {\tt get}-{\tt set}-pair for the
 symbol whose name string was specified as the argument.  Note that the
@@ -217,11 +217,11 @@ symbol whose name string was specified as the argument.  Note that the
 of {\tt NONE} means that the variable is not defined.
 
 \noindent Examples:
-\begin{verbatim}
+\begin{lstlisting}
   #get (CM.symval "X") ();       (* query value of X *)
   #set (CM.symval "Y") (SOME 1); (* set Y to 1 *)
   #set (CM.symval "Z") NONE;     (* remove definition for Z *)
-\end{verbatim}
+\end{lstlisting}%
 
 Some care is necessary as {\tt CM.symval} does not check whether the
 syntax of the argument string is valid.  (However, the worst thing
@@ -238,7 +238,7 @@ libraries that it has encountered during an ongoing interactive
 session.  The {\tt CM.Library} sub-structure of structure {\tt CM}
 provides access to this registry.
 
-\begin{verbatim}
+\begin{lstlisting}
   structure Library : sig
     type lib
     val known : unit -> lib list
@@ -247,7 +247,7 @@ provides access to this registry.
     val dismiss : lib -> unit
     val unshare : lib -> unit
   end
-\end{verbatim}
+\end{lstlisting}%
 
 {\tt CM.Library.known}, when called, produces a list of currently
 known stable libraries.  Each such library is represented by an
@@ -300,13 +300,13 @@ necessary to intervene expliticly.
 Access to CM's internal state is facilitated by members of the {\tt
 CM.State} structure.
 
-\begin{verbatim}
+\begin{lstlisting}
   structure State : sig
     val pending : unit -> string list
     val synchronize : unit -> unit
     val reset : unit -> unit
   end
-\end{verbatim}
+\end{lstlisting}%
 
 {\tt CM.State.pending} produces a list of strings, each string naming
 one of the symbols that are currently registered (i.e., ``virtually
@@ -334,7 +334,7 @@ Sub-structure {\tt CM.Server} provides access to and manipulation of
 compile servers.  Each attached server is represented by a value of
 type {\tt CM.Server.server}.
 
-\begin{verbatim}
+\begin{lstlisting}
   structure Server : sig
     type server
     val start : { name: string,
@@ -345,7 +345,7 @@ type {\tt CM.Server.server}.
     val kill : server -> unit
     val name : server -> string
   end
-\end{verbatim}
+\end{lstlisting}%
 
 CM is put into ``parallel'' mode by attaching at least one compile
 server.  Compile servers are attached using invocations of {\tt
@@ -378,9 +378,9 @@ main purpose is to subsequently be able to access the library from
 interactively entered code, one can instruct CM to load libraries
 ``for effect''.
 
-\begin{verbatim}
+\begin{lstlisting}
   val load_plugin : string -> bool
-\end{verbatim}
+\end{lstlisting}%
 
 Function {\tt CM.load\_plugin} acts exactly like {\tt CM.make} except
 that even in the case of success no new symbols will be bound in the
@@ -412,11 +412,11 @@ existing binfiles or members of existing stable libraries.  CM must
 prepare those binfiles or libraries together with a list that
 describes them to the runtime system.
 
-\begin{verbatim}
+\begin{lstlisting}
   val mk_standalone : bool option ->
                       { project: string, wrapper: string, target: string } ->
                       string list option
-\end{verbatim}
+\end{lstlisting}%
 
 Here, {\tt project} and {\tt wrapper} name description files and {\tt
 target} is the name of a heap image---with or without the usual
@@ -478,12 +478,12 @@ system.  For this reason, {\tt CM.sources} accepts an optional pair of
 strings that then will be used in place of the architecture- and
 OS-specific part of these names.
 
-\begin{verbatim}
+\begin{lstlisting}
   val sources :
     { arch: string, os: string } option ->
     string ->
     { file: string, class: string, derived: bool } list option
-\end{verbatim}
+\end{lstlisting}%
 
 In case there was some error analyzing the specified library or group,
 {\tt CM.sources} returns {\tt NONE}.  Otherwise the result is a list
@@ -498,11 +498,11 @@ To generate dependency information usable by Unix' {\tt make} command,
 one would be interested in all files that were not derived by some
 tool application.  Moreover, one would probably like to use shell
 variables instead of concrete architecture- and OS-names:
-\begin{verbatim}
+\begin{lstlisting}
   Option.map (List.filter (not o #derived))
     (CM.sources (SOME { arch = "$ARCH", os = "$OPSYS" })
          "foo.cm");
-\end{verbatim}
+\end{lstlisting}%
 A call of {\tt CM.sources} similar to the one shown here is used by
 the auxiliary script {\tt ml-makedepend} (see
 Section~\ref{sec:makedepend}).
@@ -511,10 +511,10 @@ To find all {\tt noweb} sources (see Section~\ref{sec:builtin-tools:noweb}),
 e.g., to be able to run the document preparation program {\tt noweave}
 on them, one can simply look for entries of the {\tt noweb} class.
 Here, one would probably want to include derived sources:
-\begin{verbatim}
+\begin{lstlisting}
   Option.map (List.filter (fn x => #class x = "noweb"))
     (CM.sources NONE "foo.cm");
-\end{verbatim}
+\end{lstlisting}%
 \end{description}
 
 \subsection{The autoloader}

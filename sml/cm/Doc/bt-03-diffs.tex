@@ -187,16 +187,16 @@ library & structure & architecture & OS & {\it arch} & {\it os} \\
 As an example, consider targeting a Sparc/Unix system.  The first step
 is to load the library that exports the corresponding cross-compiler:
 
-\begin{verbatim}
+\begin{lstlisting}
   CM.autoload "$smlnj/cmb/sparc-unix.cm";
-\end{verbatim}
+\end{lstlisting}%
 % $
 
-Once this is done, run the equivalent of {\tt CMB.make}:
+Once this is done, run the equivalent of \lstinline@CMB.make@:
 
-\begin{verbatim}
+\begin{lstlisting}
   SparcUnixCMB.make ();
-\end{verbatim}
+\end{lstlisting}%
 
 This will recompile the compiler, producing object code for a Sparc.
 Binfiles will be stored under {\tt sml.bin.sparc-unix} and stable

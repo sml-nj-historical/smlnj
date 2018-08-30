@@ -39,9 +39,9 @@ elaboration---determining its set of exported symbols---may require
 section~\ref{sec:toolparam}).  When tool parameters are necessary,
 they are given within an extra pair of parentheses following the name
 $l$.  Example:
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   library(foo/bar.cm (bind:(anchor:x value:y)))
-\end{verbatim}
+\end{lstlisting}%
 \noindent If $l$ is a member of the current description, then CM will
 re-use the earlier elaboration result.  Tool parameters within the
 export set specification are neither necessary nor permitted in this case.

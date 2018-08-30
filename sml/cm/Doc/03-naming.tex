@@ -105,11 +105,11 @@ Section~\ref{sec:toolparam}), a new binding is specified as a pair of
 anchor name and anchor value.  The value has the form of another path
 name (standard or native). Example:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   a.cm (bind:(anchor:lib value:$mystuff/a-lib)
         bind:(anchor:support value:$lib)
         bind:(anchor:utils value:/home/bob/stuff/ML/utils))
-\end{verbatim}
+\end{lstlisting}%
 
 As shown in this example, it is perfectly legal for the specification
 of the value to involve the use of another anchor.  That anchor will
@@ -217,10 +217,10 @@ The correct solution is to add {\tt bind:}-directives where you {\em
 use} {\tt A.cm} and {\tt B.cm} in your own description file {\tt P.cm}.
 For example, you could write there:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   A.cm (bind:(anchor:H value:$AH))
   B.cm (bind:(anchor:H value:$BH))
-\end{verbatim}
+\end{lstlisting}%
 
 With this, the two uses of anchor {\tt \$H} will occur in different
 {\em local} anchor environments.  In the example as shown, the first

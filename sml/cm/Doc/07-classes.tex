@@ -101,13 +101,13 @@ For example, if one wishes to disable warning messages for a specific
 source file {\tt poorlywritten.sml} (but not for others), then one
 could write:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   poorlywritten.sml (setup:(pre: "local open Compiler.Control\n\
                                  \   in val w = !printWarnings before\n\
                                  \              printWarnings := false\n\
                                  \  end;"
                             post:"Compiler.Control.printWarnings := w;"))
-\end{verbatim}
+\end{lstlisting}%
 
 \noindent Note that neither the pre- nor the post-section will be
 executed if the ML file does not need to be compiled.
@@ -166,10 +166,10 @@ too new. (See section~\ref{sec:versions} for more on this topic.)
 
 Example:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   euler.cm (version:2.71828)
   pi.cm    (version:3.14159)
-\end{verbatim}
+\end{lstlisting}%
 
 Normally, CM looks for stable library files in directory
 {\tt CM/}{\it arch}{\tt -}{\it os} (see section~\ref{sec:files}).
@@ -203,10 +203,10 @@ mandatory parameter which is either simply a class name or the same
 class name labeled by {\tt class}.  Thus, the following two lines are
 equivalent:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
 ml : suffix (sml)
 ml : suffix (class:sml)
-\end{verbatim}
+\end{lstlisting}%
 
 There are no recognized filename suffixes for these two classes.
 
@@ -227,10 +227,10 @@ Example\footnote{Since the generated {\tt .sig}-file contains nothing
 more than an ML signature definition, it is typically not very useful
 to pass any options to it.}:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   lang.grm (sigoptions:(setup:(pre:"print \"compiling lang.grm.sig\\n\";"))
             smloptions:(private))
-\end{verbatim}
+\end{lstlisting}%
 
 The tool invokes the {\tt ml-yacc} command if the targets are
 ``outdated''.  A target is outdated if it is missing or older than the
@@ -283,10 +283,10 @@ class specification.
 
 Consider the following example:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   foo.pp : shell (target:foo.sml options:(shared)
                         /lib/cpp -P -Dbar=baz %s %t)
-\end{verbatim}
+\end{lstlisting}%
 
 This member specification says that file {\tt foo.sml} can be obtained
 from {\tt foo.pp} by running it through the C preprocessor {\tt cpp}.
@@ -304,10 +304,10 @@ In the specification one can swap the positions of source and target
 (i.e., let the member name be the target) by using a {\tt source}
 parameter:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   foo.sml : shell (source:foo.pp options:shared
                          /lib/cpp -P -Dbar=baz %s %t)
-\end{verbatim}
+\end{lstlisting}%
 
 Exactly one of the {\tt source} and {\tt target} parameters must be
 specified; the other one is taken to be the member name itself.  The
@@ -322,20 +322,20 @@ is supposed to be in the root directory on volume {\tt D:},
 then one must use native syntax to write it.  One way of doing this
 would be:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   "D:\\foo.sml" : shell (source : foo.pp options : shared
                                cpp -P -Dbar=baz %s %t)
-\end{verbatim}
+\end{lstlisting}%
 
 \noindent As a result, {\tt foo.sml} is interpreted using native
 syntax while {\tt foo.pp} uses standard conventions (although in this
 case it does not make a difference).  Had we used the {\tt target}
 version from above, one would have to write:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   foo.pp : shell (target : "D:\\foo.sml" options : shared
                                  cpp -P -Dbar=baz %s %t)
-\end{verbatim}
+\end{lstlisting}%
 
 The shell tool invokes its command whenever the target is outdated
 with respect to the source.
@@ -360,15 +360,15 @@ last command line argument.
 
 Example:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   bar-grm : make (class:mlyacc -f bar-grm.mk)
-\end{verbatim}
+\end{lstlisting}%
 
 Here, file {\tt bar-grm} is generated (and kept up-to-date) by
 invoking the command:
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   make -f bar-grm.mk bar-grm
-\end{verbatim}
+\end{lstlisting}%
 \noindent The target file is then treated as input for {\tt ml-yacc}.
 
 Cascading Shell- and Make-tools is easily possible.  Here is an
@@ -376,11 +376,11 @@ example that first uses Make to build {\tt bar.pp} and then filters
 the contens of {\tt bar.pp} through the C preprocessor to arrive at
 {\tt bar.sml}:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   bar.pp : make (class:shell
                      options:(target:bar.sml cpp -Dbar=baz %s %t)
                  -f bar-pp.mk)
-\end{verbatim}
+\end{lstlisting}%
 
 \subsubsection{Noweb}
 \label{sec:builtin-tools:noweb}
@@ -410,11 +410,11 @@ line option of {\tt notangle}
 
 Example:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   project.nw (target:(name:main.sml options:(private))
               target:(name:grammar class:mlyacc)
               target:(name:parse.sml))
-\end{verbatim}
+\end{lstlisting}%
 
 In place of the sub-option list there can be a single string option
 which will be used for {\tt name} or even an unnamed parameter (i.e.,
@@ -425,12 +425,12 @@ as {\tt .sml}.
 
 The following four examples are all equivalent:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   foo.nw (target:(name:foo.sig) target:(name:foo.sml))
   foo.nw (target:foo.sig target:foo.sml)
   foo.nw (foo.sig foo.sml)
   foo.nw
-\end{verbatim}
+\end{lstlisting}%
 
 If {\tt lineformat} is missing, then a default based on the target
 class is used.  Currently only the {\tt sml} and {\tt cm} classes are
@@ -438,10 +438,10 @@ known to CM; other classes can be added or removed by using the {\tt
 NowebTool.lineNumbering} controller function exported from library
 {\tt \$/noweb-tool.cm}:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   val lineNumbering: string -> { get: unit -> string option,
                                  set: string option -> unit }
-\end{verbatim}
+\end{lstlisting}%
 
 The {\tt noweb} class accepts two other parameter besides {\tt
 target}:
@@ -466,30 +466,30 @@ name of the witness file.
 
 Example:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   foo.nw (subdir:NOWEBFILES
           witness:foo.wtn
           target:(name:main.sml))
-\end{verbatim}
+\end{lstlisting}%
 
 Here, the files named {\tt main.sml} and {\tt foo.wtn} will be
 created as
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   NOWEBFILES/main.sml
   NOWEBFILES/foo.wtn
-\end{verbatim}
+\end{lstlisting}%
 \noindent while without the {\tt subdir}-option it would have been
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   NW/main.sml
   NW/foo.wtn
-\end{verbatim}
+\end{lstlisting}%
 \noindent To avoid the creation of such a sub-directory, one can use
 the {\em current arc} ``{\bf .}'' and write:
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   foo.nw (subdir:.
           witness:foo.wtn
           target:(name:main.sml))
-\end{verbatim}
+\end{lstlisting}%
 
 \subsubsection{Dir}
 \label{sec:builtin-tools:dir}
@@ -510,27 +510,27 @@ options have to be specified.
 
 For example, writing
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
 Group is
   long/directory/name : dir (a.sml b/c.sml d.sml)
-\end{verbatim}
+\end{lstlisting}%
 
 is equivalent to the following verbose description:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
 Group is
   long/directory/name/a.sml
   long/directory/name/b/c.sml
   long/directory/name/d.sml
-\end{verbatim}
+\end{lstlisting}%
 
 Since CM automatically classifies directory names as members of class
 {\tt dir}, the example can be further simplified:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
 Group is
   long/directory/name (a.sml b/c.sml d.sml)
-\end{verbatim}
+\end{lstlisting}%
 
 Options for class {\tt dir} consist of a list of items, each item
 having one of two possible forms:
@@ -549,33 +549,33 @@ Members $m$ must always be specified using {\em relative} path names.
 
 For example, the description
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
 Group is
   alpha/a.sml (private)
   alpha/b.ml : sml (shared)
   alpha/c.cm
   beta/d.sml
   beta/e.sml
-\end{verbatim}
+\end{lstlisting}%
 
 can be simplified as:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
 Group is
   alpha (member:(a.sml options:private)
          member:(b.ml class:sml options:shared)
          c.cm)
   beta (d.sml e.sml)
-\end{verbatim}
+\end{lstlisting}%
 
 \paragraph{Directory scanning:}
 Another use of the Dir tool, indicated by the absence of tool options,
 is to include all ML code in a given directory ``whole-sale style''.
 For example, a member of the form
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
   projects/ml/foo : dir
-\end{verbatim}
+\end{lstlisting}%
 
 lets CM scan the contents of directory {\tt projects/ml/foo} and
 proceed as if a list of all discovered ML files had been written
@@ -587,9 +587,9 @@ As before, the example could be further simplified by omitting the
 class name.  Thus, a very quick way of putting together a small
 project is to use a generic description file of the form:
 
-\begin{verbatim}
+\begin{lstlisting}[language=CM]
 Group is $/basis.cm .
-\end{verbatim}
+\end{lstlisting}%
 % $
 
 As usual, the dot denotes the current directory.  Therefore, CM will
