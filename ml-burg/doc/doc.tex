@@ -1,12 +1,17 @@
 % Documentation for mlburg
 
-\documentstyle[code,epsf]{article}
+\documentclass[11pt]{article}
+
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{code}
+
 \begin{document}
 \parskip 10pt
 \parindent 0in
 
-\def\mlburg{ML-Burg}
-\def\burmgen{\cd{BurmGen}}
+\newcommand{\mlburg}{ML-Burg}
+\newcommand{\burmgen}{\cd{BurmGen}}
 \newcommand{\figureRef}[1]{\mbox{Figure\ \ref{#1}}}
 
 
@@ -18,7 +23,7 @@ Florent Guillaume		&  Lal George			\\
  \'Ecole Normale Sup\'erieure	&  Room 2A-426			\\
  45, rue d'Ulm			&  AT\&T Bell Laboratories	\\
  75005 Paris, France		&  Murray Hill, NJ 07922	\\
-\verb|Florent.Guillaume@ens.fr| &  \verb|george@research.att.com|
+\url{Florent.Guillaume@ens.fr} &  \url{george@research.att.com}
 \end{tabular}}
 \date{June 23, 1993}
 \maketitle
@@ -411,13 +416,9 @@ executing:
 is shown in \figureRef{ex:output}.
 
 \begin{figure}
-
-\hspace*{\fill}
-\hbox{
- \def\epsfsize#1#2{0.8#1}
- \epsfbox{tree.ps}
-}
-\hspace*{\fill}
+  \begin{center}
+    \includegraphics[width=3in]{tree}
+  \end{center}%
 
 \vskip 1in
 
