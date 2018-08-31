@@ -1,8 +1,8 @@
 %!TEX root = manual.tex
 %
 
-\section{The {\tt sml} command line}
-\label{sec:cmdline}
+\chapter{The {\tt sml} command line}
+\label{chap:cmdline}
 
 The SML/NJ interactive system---including CM---is started from the
 operating system shell by invoking the command {\tt sml}.
@@ -13,7 +13,7 @@ CM accepts {\em file names}, {\em mode switching flags}, {\em
 preprocessor definitions}, and {\em control parameters} as arguments.
 All these arguments are processed one-by-one from left to right.
 
-\subsection{File arguments}
+\section{File arguments}
 
 Names of ML source files and CM description files can appear as
 arguments in any order.
@@ -33,7 +33,7 @@ or {\tt CM.make}---depending on which {\em mode switching flag} ({\tt
 {\tt CM.autoload}).
 \end{description}
 
-\subsection{Mode-switching flags}
+\section{Mode-switching flags}
 
 By default, CM description files are loaded via {\tt CM.autoload}.  By
 specifying {\tt -m} somewhere on the command line one can force the
@@ -45,7 +45,7 @@ be in effect up to the next occurrence of another {\tt -m}.
 Mode-switching flags can be specified arbitrarily often on the same
 command line.
 
-\subsection{Defining and undefining CM preprocessor symbols}
+\section{Defining and undefining CM preprocessor symbols}
 \label{sec:cmdline:defundef}
 
 The following options for defining and undefining CM preprocessor
@@ -60,7 +60,7 @@ in the interactive system.
 \item[{\tt -U$v$}] acts like {\tt (\#set (CM.symval "$v$") NONE)}.
 \end{description}
 
-\subsection{Control Parameters}
+\section{Control Parameters}
 
 There are three kinds of control parameters:
 

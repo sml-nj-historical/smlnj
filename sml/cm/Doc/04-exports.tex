@@ -1,8 +1,8 @@
 %!TEX root = manual.tex
 %
 
-\section{Export lists}
-\label{sec:exportcalculus}
+\chapter{Export lists}
+\label{chap:exportcalculus}
 
 In the simplest case, the export list is given as a sequence of SML
 symbol names such as shown in earlier examples.  But for more
@@ -23,7 +23,7 @@ $\mbox{\tt (} s_1 \ldots s_n \mbox{)}$
 that the given library or group consists of, written as
 $\mbox{\tt source(}f\mbox{)}$
 \item the top-level defined symbols of all constituent SML source
-files that are not marked {\em local} (see section~\ref{sec:toolparam:sml}),
+files that are not marked {\em local} (see \secref{sec:toolparam:sml}),
 written as {\tt source(-)}
 \item the exported symbols of one of the subgroups $g$, written as
 $\mbox{\tt group(}g\mbox{)}$
@@ -36,7 +36,7 @@ files, $l$ may or may not be listed as one of the members in the
 current description.  For the case that $l$ is not a member, its
 elaboration---determining its set of exported symbols---may require
 {\em tool parameters} to be specified (see
-section~\ref{sec:toolparam}).  When tool parameters are necessary,
+\secref{sec:toolparam}).  When tool parameters are necessary,
 they are given within an extra pair of parentheses following the name
 $l$.  Example:
 \begin{lstlisting}[language=CM]
@@ -52,7 +52,7 @@ export set specification are neither necessary nor permitted in this case.
 \begin{itemize}\setlength{\itemsep}{0pt}
 \item Intersection has higher precedence than set difference.
 \item Conditional compilation constructs (see
-section~\ref{sec:preproc}) may be used within set union
+\chapref{chap:preproc}) may be used within set union
 costructs---both the parenthesized variety and at top level.
 \end{itemize}
 
@@ -61,6 +61,6 @@ libraries.  A proxy library $A$ is a library with a single member
 which is another library $B$ so that the export lists of $A$ and $B$
 coincide.  Proxy libraries are mainly used for the purpose of managing
 anchor names and anchor environments (see
-Section~\ref{sec:anchor:env}).  Using the $\mbox{\tt
+\secref{sec:anchor:env}).  Using the $\mbox{\tt
 library(}l\mbox{)}$ construct one can avoid the cumbersome repetition
 of lengthy explicit export lists and, thus, improve maintainability.

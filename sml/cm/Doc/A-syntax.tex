@@ -1,8 +1,8 @@
-% -*- latex -*-
+%!TEX root = manual.tex
+%
+\chapter{CM description file syntax}
 
-\section{CM description file syntax}
-
-\subsection{Lexical Analysis}
+\section{Lexical Analysis}
 
 The CM parser employs a context-sensitive scanner.  In many cases this
 avoids the need for ``escape characters'' or other lexical devices
@@ -81,7 +81,7 @@ that lexically constitute standard path names are usually---but not
 always---interpreted as file names. Sometimes they are simply taken as
 literal strings.  When they act as file names, they will be
 interpreted according to CM's {\em standard syntax} (see
-Section~\ref{sec:basicrules}).  (Member class names, names of
+\secref{sec:basicrules}).  (Member class names, names of
 privileges, and many tool optios are also specified as standard path
 names even though in these cases no actual file is being named.)
 \item[Native path names (\nt{ntvpn}):] A token that has the form of an
@@ -95,7 +95,7 @@ everywhere except within ``preprocessor'' lines. Parentheses {\bf ()}
 are recognized everywhere.
 \end{description}
 
-\subsection{EBNF for preprocessor expressions}
+\section{EBNF for preprocessor expressions}
 
 \noindent{\em Lexical conventions:}\/ Syntax definitions use {\em
 Extended Backus-Naur Form} (EBNF).  This means that vertical bars
@@ -128,7 +128,7 @@ preprocessor expressions (\nt{ppexp}):
 \nt{ppexp} &\ar& \nt{bdisj}
 \end{tabular}
 
-\subsection{EBNF for tool options}
+\section{EBNF for tool options}
 
 The following set of rules defines the syntax for tool options
 (\nt{toolopts}):
@@ -138,7 +138,7 @@ The following set of rules defines the syntax for tool options
 \nt{toolopts} &\ar& \{ \nt{pathname} [\tl{:} (\tl{(} \nt{toolopts} \tl{)} \vb \nt{pathname})] \}
 \end{tabular}
 
-\subsection{EBNF for export lists}
+\section{EBNF for export lists}
 
 The following set of rules defines the syntax for export lists (\nt{elst}):
 
@@ -161,7 +161,7 @@ The following set of rules defines the syntax for export lists (\nt{elst}):
 \nt{elst}          &\ar& \nt{export} \{ \nt{export} \} \\
 \end{tabular}
 
-\subsection{EBNF for member lists}
+\section{EBNF for member lists}
 
 The following set of rules defines the syntax for member lists (\nt{members}):
 
@@ -170,16 +170,16 @@ The following set of rules defines the syntax for member lists (\nt{members}):
 \nt{member}         &\ar& \nt{pathname} [\tl{:} \nt{class}] [\tl{(} \nt{toolopts} \tl{)}] \\
 \nt{guardedmembers} &\ar& \nt{members} (\tl{\#endif} \vb \tl{\#else} \nt{members} \tl{\#endif} \vb \tl{\#elif} \nt{ppexp} \nt{guardedmembers}) \\
 \nt{members}        &\ar& \{ (\nt{member} \vb \tl{\#if} \nt{ppexp}
-\nt{guardedmembers} \vb \tl{\#error} \nt{restline}) \} 
+\nt{guardedmembers} \vb \tl{\#error} \nt{restline}) \}
 \end{tabular}
 
-\subsection{EBNF for library descriptions}
+\section{EBNF for library descriptions}
 
 The following set of rules defines the syntax for library descriptions
 (\nt{library}).  Notice that although the syntax used for \nt{version}
 is the same as that for \nt{stdpn}, actual version strings will
 undergo further analysis according to the rules given in
-section~\ref{sec:versions}:
+\chapref{chap:versions}:
 
 \begin{tabular}{rcl}
 \nt{version}   &\ar& \nt{stdpn} \\
@@ -188,7 +188,7 @@ section~\ref{sec:versions}:
 \nt{library}  &\ar& [\nt{lprivspec}] \nt{libkw} [[\tl{(} \nt{version} \tl{)}] \nt{elst}] (\tl{is} \vb \tl{IS}) \nt{members}
 \end{tabular}
 
-\subsection{EBNF for library component descriptions (group descriptions)}
+\section{EBNF for library component descriptions (group descriptions)}
 
 The main differences between group- and library-syntax can be
 summarized as follows:

@@ -1,13 +1,13 @@
 %!TEX root = manual.tex
 %
 
-\section{Auxiliary scripts}
+\chapter{Auxiliary scripts}
 
-\subsection{Building stand-alone programs}
-\label{sec:mlbuild}
+\section{Building stand-alone programs}
+\label{chap:mlbuild}
 
 The programmer should normally have no need to invoke {\tt
-CM.mk\_standalone} (see Section~\ref{sec:mlbuild:support}) directly.
+CM.mk\_standalone} (see \secref{sec:mlbuild:support}) directly.
 Instead, SML/NJ provides a command {\tt ml-build} which does all the
 work.  To be able to use {\tt ml-build}, one must implement a library
 exporting a structure that has some function suitable to be an
@@ -28,7 +28,7 @@ message indicating that everything is up-to-date.
 
 As in the case of {\tt sml}, it is possible to define or undefine
 preprocessor symbols using {\tt -D} or {\tt -U} options (see
-Section~\ref{sec:cmdline:defundef}).  These options must be specified
+\secref{sec:cmdline:defundef}).  These options must be specified
 before the three regular arguments.  Thus, the full command line
 syntax is:
 
@@ -36,7 +36,7 @@ syntax is:
   ml-build [DU-options] myproglib.cm MyProg.main myprog
 \end{verbatim}
 
-\subsubsection{Bootstrapping: How {\tt ml-build} works}
+\subsection{Bootstrapping: How {\tt ml-build} works}
 
 Internally, {\tt ml-build} generates a temporary wrapper library
 containing a single call of {\tt SMLofNJ.exportFn} as part of the
@@ -56,19 +56,19 @@ of using the wrapper library from above) to contain a call of {\tt
 SMLofNJ.exportFn}, initialization of this module causes the program's
 heap image to be written and the bootstrap procedure to terminate.
 
-\subsection{Generating dependencies for {\tt make}}
+\section{Generating dependencies for {\tt make}}
 \label{sec:makedepend}
 
 When ML programs are used as parts of larger projects, it can become
 necessary to use CM (or, e.g., {\tt ml-build} as described in
-Section~\ref{sec:mlbuild}) in a traditional makefile for Unix' {\bf
+\chapref{chap:mlbuild}) in a traditional makefile for Unix' {\bf
 make}.  To avoid repeated invocations, the dependency information that
 CM normally manages internally must be described externally so that
 {\bf make} can process it.
 
 For this purpose, it is possible to let CM's dependency analyzer
 generate a list of files that a given ML program depends on (see
-Section~\ref{sec:makedepend:support}).  The {\tt ml-makedepend}
+\secref{sec:makedepend:support}).  The {\tt ml-makedepend}
 scripts conveniently wraps this functionality in such a way that it
 resembles the familiar {\bf makedepend} facility found on many Unix
 installations for the use by C projects.
@@ -112,8 +112,8 @@ In cases where the programmer prefers other strings to be used in
 place of {\tt \$(ARCH)} or {\tt \$(OPSYS)} (or both) one can specify
 those strings using the {\tt -a} and {\tt -o} options, respectively.
 
-Like {\tt ml-build} (Section~\ref{sec:mlbuild}) and {\tt sml}
-(Section~\ref{sec:cmdline:defundef}), the {\tt ml-makedepend} command
+Like {\tt ml-build} (\chapref{chap:mlbuild}) and {\tt sml}
+(\secref{sec:cmdline:defundef}), the {\tt ml-makedepend} command
 also accepts {\tt -D} and {\tt -U} command line options.
 
 Thus, the full command line syntax for {\tt ml-makedepend} is:

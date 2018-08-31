@@ -1,8 +1,8 @@
 %!TEX root = manual.tex
 %
 
-\section{Files}
-\label{sec:files}
+\chapter{Files}
+\label{chap:files}
 
 CM uses three kinds of files to store derived information during and
 between sessions:
@@ -43,7 +43,7 @@ where {\it arch} is a string indicating the type of the current
 CPU architecture and {\it os} a string denoting the current operating
 system type.
 
-As explained in Section~\ref{sec:stable}, library files are a bit of
+As explained in \secref{sec:stable}, library files are a bit of
 an exception in the sense that they do not require any source files or
 any other derived files of the same library to exist.  As a
 consequence, the location of such a library file should be described
@@ -53,14 +53,14 @@ precludes the CM description file from actually existing, but in the
 presence of a corresponding library file CM will not take any notice
 of that.)
 
-{\em Note:} As discussed in section~\ref{sec:toolparam:cm}, CM sometimes
+{\em Note:} As discussed in \secref{sec:toolparam:cm}, CM sometimes
 looks for library files in {\tt CM/}{\it version}{\tt /}{\it arch}{\tt
 -}{\it os}.  However, library files are never {\em created} there by
 CM.  If several versions of the same library are to be provided, an
 administrator must arrange the directory hierarchy accordingly ``by
 hand''.
 
-\subsection{Time stamps}
+\section{Time stamps}
 
 For skeleton files and binfiles, CM uses file system time stamps
 (i.e., modification time) to determine whether a file has become
@@ -74,13 +74,13 @@ different versions of the same source file have exactly the same time
 stamp}
 
 CM also uses time stamps to decide whether tools such as ML-Yacc or
-ML-Lex need to be run (see Section~\ref{sec:classes}).  However, the
+ML-Lex need to be run (see \chapref{chap:classes}).  However, the
 difference is that a file is considered outdated if it is older than
 its source.  Some care on the programmers side is necessary since this
 scheme does not allow CM to detect the situation where a source file
 gets replaced by an older version of itself.
 
-\subsection{Index files}
+\section{Index files}
 \label{sec:indexfiles}
 
 CM can optionally generate a human-readable index file for each
@@ -88,7 +88,7 @@ description file.  An index files alphabetically lists all symbols
 defined or imported within the given library or library component.
 Index-file generation is normally disabled.  To enable it, {\tt
 CM.Control.generate\_index} must be set to true (see
-section~\ref{sec:api}).
+\secref{sec:api}).
 
 With index-file generation enabled, index files will be written for
 all description files involved every time CM performs a dependency

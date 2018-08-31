@@ -1,15 +1,15 @@
 %!TEX root = manual.tex
 %
 
-\section{Extending the tool set}
-\label{sec:moretools}
+\chapter{Extending the tool set}
+\label{chap:moretools}
 
 CM's tool set is extensible: new tools can be added by writing a few
 lines of ML code.  The necessary hooks for this are provided by a
 structure {\tt Tools} which is exported by the {\tt \$smlnj/cm/tools.cm}
 library.
 
-\subsection{Adding simple shell-command tools}
+\section{Adding simple shell-command tools}
 \label{sec:addshellclass}
 
 If the tool is implemented as a ``typical'' shell command, then all
@@ -47,7 +47,7 @@ level after loading library {\tt \$smlnj/cm/tools.cm}.
 In our example, the shell command name for our tool is {\tt
 new-ml-yacc}.  When looking for this command in the filesystem, CM
 first tries to treat it as a path anchor (see
-section~\ref{sec:anchor:env}).  For example, suppose {\tt new-ml-yacc} is
+\secref{sec:anchor:env}).  For example, suppose {\tt new-ml-yacc} is
 mapped to {\tt /bin}.  In this case the command to be
 invoked would be {\tt /bin/new-ml-yacc}.  If path anchor resolution
 fails, then the command name will be used as-is.  Normally this
@@ -77,14 +77,14 @@ tool for it.  The arguments must be specified as follows:
         extensionStyle} entry; if $n$ is $0$ (or missing), then all
         targets---separated by single spaces---are inserted;
         if $n$ is not in the range between $0$ and the number of available
-        targets, then {\bf \%$n$t} expands into itself) 
+        targets, then {\bf \%$n$t} expands into itself)
       \item[\%$n$o] the $n$-th tool parameter; \\
         (named sub-option parameters are ignored;
         $n$ is specified as a decimal number, counting starts at $1$;
         if $n$ is $0$ (or missing), then all options---separated by single
         spaces---are inserted;
         if $n$ is not in the range between $0$ and the number of available
-        options, then {\bf \%$n$o} expands into itself) 
+        options, then {\bf \%$n$o} expands into itself)
       \item[\%$x$] the character $x$ (where $x$ is neither {\bf c}, nor
         {\bf s}, {\bf t}, or {\bf o})
       \end{description}%
@@ -101,7 +101,7 @@ tool for it.  The arguments must be specified as follows:
         list $l$ consists of triplets where the first component specifies the
         suffix string, the second component optionally specifies the
         member class name of the corresponding derived file, and the
-        third component is a function to calculate tool options for the 
+        third component is a function to calculate tool options for the
         target from those of the source. (Argument and result type of these
         functions is {\tt Tools.toolopts option}.)
       \item
@@ -119,7 +119,7 @@ tool for it.  The arguments must be specified as follows:
         ``\lstinline[mathescape=true]!Tools.RENAME($l$, $\mathit{gen}$)!'' uses the
         function $\mathit{gen}$ to generate a list of output filenames from the
         base input filename.
-        
+
         Note: the \lstinline!RENAME! extension style was added in SML/NJ Version 110.84.
     \end{enumerate}
   \item[dflopts] a list of tool options which is used for
@@ -131,15 +131,15 @@ tool for it.  The arguments must be specified as follows:
 
 Examples for the {\tt EXTEND} expansion style are tools such as
 ML-Yacc and ML-Lex, while others, e.g., ML-Burg, use the {\tt REPLACE}
-style (see section~\ref{sec:builtin-tools}).
+style (see \secref{sec:builtin-tools}).
 
-\subsection{Adding other classes}
+\section{Adding other classes}
 
 Adding a new class whose behavior is not covered by the mechanism
-described in section~\ref{sec:addshellclass} is not complicated
+described in \secref{sec:addshellclass} is not complicated
 either, but it requires a bit more code.
 
-\subsubsection{Filename abstractions}
+\subsection{Filename abstractions}
 
 CM represents filenames as something that could be called a {\em
 filename closure}.  Essentially, what this means is that not only a
@@ -219,7 +219,7 @@ context with the old one.
 
 The list of strings must contain simple pathname arcs.
 
-\subsubsection{Adding a class and its rule}
+\subsection{Adding a class and its rule}
 
 The interface to add arbitrary classes is the routine {\tt
 Tools.registerClass}:
@@ -365,13 +365,13 @@ care of the rest.  At this point we will therefore not dwell on
 explanations for the types of these two fields.
 
 The {\tt sources} field is used to implement {\tt CM.sources} (see
-section~\ref{sec:makedepend:support}).  Therefore, the rule should
+\secref{sec:makedepend:support}).  Therefore, the rule should
 include here every file that it consumes if its implementer wishes to
 have it reported by {\tt CM.sources}.  (Do not include source files
 that are {\em produced} by the rule because those will be reported by
 subsequent rules.)
 
-\subsubsection{Reporting errors from tools}
+\subsection{Reporting errors from tools}
 
 When a rule encounters an error, it should raise the following
 exception, setting {\tt tool} to a string describing the current tool
@@ -382,7 +382,7 @@ error:
   exception ToolError of { tool: string, msg: string }
 \end{lstlisting}%
 
-\subsubsection{Adding a classifier}
+\subsection{Adding a classifier}
 
 A classifier is a mechanism that enables CM to infer a member's class
 from its name.  Classifiers are invoked if no explicit class was
@@ -439,7 +439,7 @@ Tools.registerClassifier}:
   val registerClassifier : classifier -> unit
 \end{lstlisting}%
 
-\subsubsection{Miscellaneous}
+\subsection{Miscellaneous}
 
 Structure {\tt Tools} also provides a number of other types and
 functions with the purpose of making it easier to write rule
@@ -447,7 +447,7 @@ functions.
 
 \noindent{\bf Filename extension:} Many tools derive the names of
 their targets from the name of their source.  As discussed in
-section~\ref{sec:addshellclass}, CM provides some support for this via
+\secref{sec:addshellclass}, CM provides some support for this via
 values of type {\tt extensionStyle}:
 
 \begin{lstlisting}
@@ -480,7 +480,7 @@ the tool, $l$ is the list of targets (as native file names),
 and $s$ is the source (also as a native file name).
 
 An alternative way of checking for outdated sources (in the style of
-the Noweb-tool; see section~\ref{sec:builtin-tools:noweb}) is the
+the Noweb-tool; see \secref{sec:builtin-tools:noweb}) is the
 following:
 
 \begin{lstlisting}
@@ -537,7 +537,7 @@ of these strings to the compiler's standard control output stream
 (i.e., usually {\tt TextIO.stdOut}).  The difference between {\tt say}
 and {\tt vsay} is that the former works unconditionally while the
 latter is controlled by {\tt CM.Control.verbose} (see
-section~\ref{sec:registers}).
+\secref{sec:registers}).
 
 \noindent{\bf Anchor-configurable strings:} Mainly for the purpose of
 implementing anchor-configurable names for auxiliary shell commands
@@ -550,10 +550,10 @@ implementing anchor-configurable names for auxiliary shell commands
 If $m$ is a path anchor that points to $d$, then {\tt (mkCmdName $m$)}
 returns $d${\tt /}$m$; otherwise it returns $m$.
 
-\subsection{Plug-in Tools}
+\section{Plug-in Tools}
 \label{sec:plugintools}
 
-\subsubsection{Automatically loaded, global plug-in tools}
+\subsection{Automatically loaded, global plug-in tools}
 
 If CM encounters a member class name $c$ that it does not know about,
 then it tries to load a plugin module named {\tt \$/}$c${\tt
@@ -571,11 +571,11 @@ In other words, description files {\tt \$/}$c${\tt -tool.cm} and {\tt
 \$/}$s${\tt -ext.cm} that correspond to general-purpose tools should
 be registered either by modifying the global or the local path
 configuration file or by directly invoking functon {\tt
-CM.Anchor.anchor} (see section~\ref{sec:api:anchors}).  Actual
+CM.Anchor.anchor} (see \secref{sec:api:anchors}).  Actual
 description files for the tools' implementations can then be placed in
 arbitrary locations.
 
-\subsubsection{Explicitly loaded, local plug-in tools}
+\subsection{Explicitly loaded, local plug-in tools}
 \label{sec:localtools}
 
 Some projects might want to use their own special-purpose tools for
@@ -619,7 +619,7 @@ complete.}
 Local tool classes and suffixes temporarily override any equally-named
 global classes or suffixes, respectively.
 
-\subsubsection{Locally declared suffixes}
+\subsection{Locally declared suffixes}
 \label{sec:localsuffixes}
 
 It is sometimes convenient to locally add another recognized filename

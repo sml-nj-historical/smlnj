@@ -1,10 +1,10 @@
-% -*- latex -*-
-
-\section{Available libraries}
+%!TEX root = manual.tex
+%
+\chapter{Available libraries}
 
 Compiler and interactive system of SML/NJ consist of several hundred
 individual compilation units.  Like modules of application programs,
-these compilation units are also organized using CM libraries.  
+these compilation units are also organized using CM libraries.
 
 Some of the libraries that make up SML/NJ are actually the same ones
 that application programmers are likely to use, others exist for
@@ -13,7 +13,7 @@ for the CM ``tools'' subsystem---that will be automatically loaded on
 demand, and libraries such as {\tt \$smlnj/cmb.cm} can be used to
 obtain access to functionality that by default is not present.
 
-\subsection{Libraries for general programming}
+\section{Libraries for general programming}
 
 Libraries listed in the following table provide a broad palette of
 general-purpose programming tools\footnote{Recall that anchored paths
@@ -56,7 +56,7 @@ optional & no \\
 \end{center}
 \end{small}
 
-\subsection{Libraries for controlling SML/NJ's operation}
+\section{Libraries for controlling SML/NJ's operation}
 
 The following table lists those libraries that provide access to the
 so-called {\em visible compiler} infrastructure and to the compilation
@@ -115,7 +115,7 @@ on demand \\
 \end{center}
 \end{small}
 
-\subsection{Libraries for SML/NJ compiler hackers}
+\section{Libraries for SML/NJ compiler hackers}
 
 The following table lists libraries that provide access to the SML/NJ
 {\em bootstrap compiler}.  The bootstrap compiler is a derivative of
@@ -180,7 +180,7 @@ dependency graphs & optional & no
 \end{center}
 \end{small}
 
-\subsection{Internal libraries}
+\section{Internal libraries}
 
 For completeness, here is the list of other libraries that are part of
 SML/NJ's implementation:
@@ -192,7 +192,7 @@ name & description & installed & loaded \\
 \hline\hline
 {\tt \$SMLNJ-MLRISC/Lib.cm} & utility library for MLRISC backend & always &
 no \\
-\hline 
+\hline
 {\tt \$SMLNJ-MLRISC/Control.cm} & control facilities for MLRISC backend &
 always & no \\
 \hline
@@ -214,7 +214,7 @@ mltree data structures & always & no \\
 {\tt \$SMLNJ-MLRISC/PPC.cm} & PowerPC-specific MLRISC backend & always & no \\
 \hline
 {\tt \$SMLNJ-MLRISC/SPARC.cm} & Sparc-specific MLRISC backend & always & no \\
-\hline 
+\hline
 {\tt \$SMLNJ-MLRISC/IA32.cm} & IA32-specific MLRISC backend & always & no \\
 \hline\hline
 {\tt \$/pickle-lib.cm} & utility library for compiler and CM & always & no \\
@@ -247,7 +247,7 @@ CMB} & always & no \\
 ``source path'' abstraction used by the compilation manager & always &
 no \\
 \hline
-{\tt \$smlnj/internal/cm-lib.cm} & implementation of CM 
+{\tt \$smlnj/internal/cm-lib.cm} & implementation of CM
 (not yet specialized to specific backends) & always & no \\
 \hline
 {\tt \$smlnj/internal/cm0.cm} & specialization of compilation manager

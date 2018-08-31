@@ -1,8 +1,8 @@
-% -*- latex -*-
+%!TEX root = manual.tex
+%
+\chapter{Exports of library \texttt{\$smlnj/cm/tools.cm}}
 
-\section{Exports of library {\tt \$smlnj/cm/tools.cm}}
-
-As described in section~\ref{sec:moretools}, it is possible to extend
+As described in \chapref{chap:moretools}, it is possible to extend
 CM's set of available tools using the programming interface provided
 by {\tt structure Tools}.  This structure---together with its
 corresponding {\tt signature TOOLS}---is exported by library {\tt
@@ -10,7 +10,7 @@ corresponding {\tt signature TOOLS}---is exported by library {\tt
 Sharing}, {\tt structure Version}, and a corresponding {\tt signature
 VERSION}.
 
-\subsection{The public signature of {\tt structure Tools}}
+\section{The public signature of {\tt structure Tools}}
 
 \begin{lstlisting}
   signature TOOLS = sig
@@ -107,7 +107,7 @@ VERSION}.
   structure Tools :> TOOLS
 \end{lstlisting}%
 
-\subsection{The public signature of {\tt structure Version}}
+\section{The public signature of {\tt structure Version}}
 
 \begin{lstlisting}
   signature VERSION = sig
@@ -126,7 +126,7 @@ VERSION}.
   structure Version :> VERSION
 \end{lstlisting}%
 
-\subsection{The public signature of {\tt structure Sharing}}
+\section{The public signature of {\tt structure Sharing}}
 
 \begin{lstlisting}
   structure Sharing : sig

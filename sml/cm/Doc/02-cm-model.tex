@@ -1,11 +1,11 @@
 %!TEX root = manual.tex
 %
 
-\section{The CM model}
+\chapter{The CM model}
 
-\subsection{Basic philosophy}
+\section{Basic philosophy}
 
-The venerable {\bf make} of Unix~\cite{feldman79} is {\em
+The venerable \CMD{make} of Unix~\cite{feldman79} is {\em
 target-oriented}\/: one starts with a main goal (target) and applies
 production rules (with associated actions such as invoking a compiler)
 until no more rules are applicable. The leaves of the resulting
@@ -41,17 +41,17 @@ CM; projects that are not well-formed will cause error messages.
 (Well-formedness is {\em defined} to enforce a unique definition-use
 relation for ML definitions~\cite{blume:depend99}.)
 
-\subsection{Description files}
+\section{Description files}
 
 Technically, a CM library is a (possibly empty) collection of ML
 source files and may also contain references to other libraries.  Each
 library comes with an export interface which specifies the set of all
 toplevel-defined symbols of the library that shall be exported to its
-clients (see section~\ref{sec:exportcalculus}).  A library is
+clients (see \chapref{chap:exportcalculus}).  A library is
 described by the contents of its {\em description file}.\footnote{The
 description file may also contain references to input files for {\em
 tools} like {\tt ml-lex} or {\tt ml-yacc} that produce ML source
-files.  See section~\ref{sec:classes}.}
+files.  See \chapref{chap:classes}.}
 
 \noindent Example:
 
@@ -81,7 +81,7 @@ want to list it in their own description file(s).  The other library
 in this example ({\tt \$/smlnj-lib.cm}) is a library of data
 structures and algorithms that comes bundled with SML/NJ.
 
-\subsection{Invoking CM}
+\section{Invoking CM}
 
 Once a library has been set up as shown in the example above, one can
 load it into a running interactive session by invoking function {\tt
@@ -119,7 +119,7 @@ the same as the compilation environment that was in effect when the
 binfile was produced.
 \end{itemize}
 
-\subsection{Members of a library}
+\section{Members of a library}
 
 Members of a library do not have to be listed in any particular order
 since CM will automatically calculate the dependency graph.  Some
@@ -131,7 +131,7 @@ work:
 words, there can be no top-level type-, value-, or infix-definitions.
 \item For a given symbol, there can be at most one ML source file per
 library (or---more correctly---one file per library component; see
-Section~\ref{sec:groups}) that defines the symbol at top level.
+\secref{sec:groups}) that defines the symbol at top level.
 \item If more than one of the listed libraries or components is
 exporting the same symbol, then the definition (i.e., the ML source
 file that actually defines the symbol) must be identical in all cases.
@@ -159,7 +159,7 @@ exporting an ``augmented'' version of some module.  Example:
 
 Rule~\ref{rule:diamond} may come as a bit of a surprise considering
 that each ML source file can be a member of at most one library (see
-section~\ref{sec:multioccur}).  However, it is indeed possible for two
+\secref{sec:multioccur}).  However, it is indeed possible for two
 libraries to (re-)export the ``same'' definition provided they both
 import that definition from a third library.  For example, let us
 assume that {\tt a.cm} exports a structure {\tt X} which was defined
@@ -170,11 +170,11 @@ import from both {\tt b.cm} and {\tt c.cm}.
 
 The full syntax for library description files also includes provisions
 for a simple ``conditional compilation'' facility (see
-Section~\ref{sec:preproc}), for access control (see
-Section~\ref{sec:access}), and it accepts ML-style nestable comments
+\chapref{chap:preproc}), for access control (see
+\chapref{chap:access}), and it accepts ML-style nestable comments
 delimited by \verb|(*| and \verb|*)|.
 
-\subsection{Name visibility}
+\section{Name visibility}
 
 In general, all definitions exported from members (i.e., ML source
 files, sublibraries, and components) of a library are visible in all
@@ -184,13 +184,13 @@ Here, ``exported'' means either a top-level definition within an ML
 source file or a definition listed in a sublibrary's export list.
 
 If a library is structured into library components using {\em groups}
-(see Section~\ref{sec:groups}), then---as far as name visibility is
+(see \secref{sec:groups}), then---as far as name visibility is
 concerned---each component (group) is treated like a separate library.
 
 Cyclic dependencies among libraries, library components, or ML source
 files within a library are detected and flagged as errors.
 
-\subsection{Library components (groups)}
+\section{Library components (groups)}
 \label{sec:groups}
 
 CM's group model eliminates a whole class of potential naming problems
@@ -212,7 +212,7 @@ like name resolution for entire libraries, but grouping is entirely
 internal to each library.
 
 When a library is {\em stabilized} (via {\tt CM.stabilize} -- see
-Section~\ref{sec:stable}), the entire library is compiled to a single
+\secref{sec:stable}), the entire library is compiled to a single
 file (hence groups do not result in separate stable files).
 
 During development, each group has its own description file which will
@@ -229,14 +229,14 @@ a default export list: all exports from ML source files plus all
 exports from subcomponents of the component. from other libraries will
 not be re-exported in this case.\footnote{This default can be spelled
 out as {\tt source(-) group(-)}.  See
-section~\ref{sec:exportcalculus}.}  (Notice that an export list that
+\chapref{chap:exportcalculus}.}  (Notice that an export list that
 is not {\em syntactically} empty but which effectively contains zero
 symbols because of conditional compilation---see
-Section~\ref{sec:preproc}---does not count as being ``left empty'' in
+\chapref{chap:preproc}---does not count as being ``left empty'' in
 the above sense.  Instead, the result would be an almost certainly
 useless component with truly no exports.)
 \item There are some small restrictions on access control
-specifications (see Section~\ref{sec:access}).
+specifications (see \chapref{chap:access}).
 \end{itemize}
 
 As an example, let us assume that
@@ -290,7 +290,7 @@ of {\tt foo-lib.cm}.  The other possibility is that it is not
 mentioned at all (in which case CM would never know about it, so it
 cannot complain).
 
-\subsection{Multiple occurences of the same member}
+\section{Multiple occurences of the same member}
 \label{sec:multioccur}
 
 The following rules apply to multiple occurences of the same ML source
@@ -311,18 +311,18 @@ source file is to be referred to by multiple clients, it must first be
 same library---a group).
 \end{itemize}
 
-\subsection{Stable libraries}
+\section{Stable libraries}
 \label{sec:stable}
 
 CM distinguishes between libraries that are {\em under development}
 and libraries that are {\em stable}.  A stable library is created by a
-call of {\tt CM.stabilize} (see Section~\ref{sec:api:compiling}).
+call of {\tt CM.stabilize} (see \secref{sec:api:compiling}).
 
 Access to stable libraries is subject to less internal
 consistency-checking and touches far fewer file-system
 objects. Therefore, it is typically more efficient.  Stable libraries
 play an additional semantic role in the context of access control (see
-Section~\ref{sec:access}).
+\chapref{chap:access}).
 
 From the client program's point of view, using a stable library is
 completely transparent.  When referring to a library---regardless of
@@ -334,7 +334,7 @@ library's actual description file does not have to physically exists
 (even though its name is used by CM to find the corresponding stable
 file).
 
-\subsection{Top-level groups}
+\section{Top-level groups}
 
 Mainly to facilitate some superficial backward-compatibility, CM also
 allows groups to appear at top level, i.e., outside of any library.

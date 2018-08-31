@@ -1,8 +1,8 @@
 %!TEX root = manual.tex
 %
 
-\section{Version numbers}
-\label{sec:versions}
+\chapter{Version numbers}
+\label{chap:versions}
 
 A CM library can carry a version number.  Version numbers are
 specified in parentheses after the keyword {\tt Library} as non-empty
@@ -15,17 +15,17 @@ dot-separated sequences of non-negative integers.  Example:
       sqrt2.sml
 \end{lstlisting}%
 
-\subsection{How versions are compared}
+\section{How versions are compared}
 
 Version numbers are compared lexicographically, dot-separated
 component by dot-separated component, from left to right.  The
 components themselves are compared numerically.
 
-\subsection{Version checking}
+\section{Version checking}
 
 An importing library or library component can specify which version of
 the imported library it would like to see.  See the discussion is
-section~\ref{sec:toolparam:cm} for how this is done.  Where a version
+\secref{sec:toolparam:cm} for how this is done.  Where a version
 number is requested, an error is signalled if one of the following is
 true:
 

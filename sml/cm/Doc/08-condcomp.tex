@@ -1,8 +1,8 @@
 %!TEX root = manual.tex
 %
 
-\section{Conditional compilation}
-\label{sec:preproc}
+\chapter{Conditional compilation}
+\label{chap:preproc}
 
 In its description files, CM offers a simple conditional compilation
 facility inspired by the preprocessor for the C language~\cite{k&r2}.
@@ -32,7 +32,7 @@ can be formed from other arithmetic expressions using operators {\tt
 Any expression (arithmetic or boolean) can be surrounded by
 parentheses to enforce precedence.
 
-\subsection{CM variables}
+\section{CM variables}
 \label{sec:cmvars}
 
 CM provides a number of ``variables'' (names that stand for certain
@@ -72,7 +72,7 @@ version number (i.e., the number after the first dot).
 Using the {\tt CM.symval} interface one can define additional
 variables or modify existing ones.
 
-\subsection{Querying exported definitions}
+\section{Querying exported definitions}
 
 An expression of the form {\tt defined}($n$ $s$), where $s$ is an ML
 symbol and $n$ is an ML namespace specifier, is a boolean expression
@@ -117,7 +117,7 @@ Bar} could also be defined by {\tt no-bar-so-far.sml} in
 which case it would get exported regardless of the outcome of the
 other {\tt defined} test.)
 
-\subsection{Explicit errors}
+\section{Explicit errors}
 
 A pseudo-member of the form {\tt \#error $\ldots$}, which---like other
 {\tt \#}-items---starts in the first column and extends to the end of

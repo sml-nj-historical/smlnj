@@ -1,14 +1,14 @@
 %!TEX root = manual.tex
 %
 
-\section{Naming objects in the file system}
+\chapter{Naming objects in the file system}
 
-\subsection{Motivation}
+\section{Motivation}
 
 The main difficulty with file naming lies in the fact that files or
 even whole directories may move after CM has already partially (but
 not fully) processed them.  For example, this happens when the {\em
-autoloader} (see Section~\ref{sec:autoload}) has been invoked and the
+autoloader} (see \secref{sec:autoload}) has been invoked and the
 session (including CM's internal state) is then frozen (i.e., saved to
 a file) via {\tt SMLofNJ.exportML}.
 
@@ -20,7 +20,7 @@ anchors always takes place as late as possible, and CM will re-evaluate
 path anchors as this becomes necessary due to changes to their
 configuration.
 
-\subsection{Basic rules}
+\section{Basic rules}
 \label{sec:basicrules}
 
 CM uses its own ``standard'' syntax for pathnames which for the most
@@ -55,7 +55,7 @@ description file.
 usually as an argument to one of CM's interface functions, will be
 resolved in the OS-specific manner, i.e., relative to the current
 working directory.  However, notice that some of CM's operations (see
-section~\ref{sec:autoload}---autoload) will be executed lazily and,
+\secref{sec:autoload}---autoload) will be executed lazily and,
 thus, can occur interleaved with arbitary other operations---including
 changes of the working directory.  This is handled by CM in such a way
 that it appears as if all path derived from an interactive relative
@@ -77,7 +77,7 @@ $a$ coincides with the first arc of $p$ can be abbreviated as {\tt
 \$/}$p$.
 \end{description}
 
-\subsection{Anchor environments}
+\section{Anchor environments}
 \label{sec:anchor:env}
 
 Anchor names are resolved in the {\em anchor environment} that is in
@@ -88,7 +88,7 @@ Conceptually, the root environments is a fixed mapping that binds
 every possible anchor to a mutable location.  The location can store a
 native directory name or can be marked ``undefined''.  Most locations
 initially start out undefined.  The contents of each location is
-configurable (see Section~\ref{sec:anchor:config}).
+configurable (see \secref{sec:anchor:config}).
 
 At the time a CM description file $a${\tt .cm} refers to another
 library's or library component's description file $b${\tt .cm}, it can
@@ -101,7 +101,7 @@ explanation of the root environment}, then the old binding is being
 hidden.  The effect is scoping for anchor names.
 
 Using CM's {\em tool parameter} mechanism (see
-Section~\ref{sec:toolparam}), a new binding is specified as a pair of
+\secref{sec:toolparam}), a new binding is specified as a pair of
 anchor name and anchor value.  The value has the form of another path
 name (standard or native). Example:
 
@@ -131,7 +131,7 @@ one arc after the anchor does not apply here. This makes it possible
 to ``rename'' anchors, or, to put it more precisely, for one anchor
 name to be established as an ``alias'' for another anchor name.
 
-\subsection{Anchor configuration}
+\section{Anchor configuration}
 \label{sec:anchor:config}
 
 Anchor configuration is concerned with the values that are stored in
@@ -140,7 +140,7 @@ initialized by reading two configuration files: an
 installation-specific one and a user-specific one.  After that, the
 contents of root locations can be maintained using CM's interface
 functions {\tt CM.Anchor.anchor} and {\tt CM.Anchor.reset} (see
-Section~\ref{sec:api:anchors}).
+\secref{sec:api:anchors}).
 
 Although there is a hard-wired default for the installation-specific
 configuration file\footnote{which happens to be {\tt
@@ -181,7 +181,7 @@ configuration file.
 but will otherwise be ignored.
 \end{itemize}
 
-\subsection{When to use anchor environments}
+\section{When to use anchor environments}
 
 The following sample scenario for using anchor environments will
 provide some background on the reasons that led to the inclusion of
@@ -240,4 +240,4 @@ anchored names and provide (different) bindings for these names using
 
 A good way of encapsulating the construction of the required local
 anchor environment for a library is to create a {\em proxy} for it
-(see Section~\ref{sec:exportcalculus}).
+(see \chapref{chap:exportcalculus}).

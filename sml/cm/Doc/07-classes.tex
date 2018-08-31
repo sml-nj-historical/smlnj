@@ -1,8 +1,8 @@
 %!TEX root = manual.tex
 %
 
-\section{Member classes and tools}
-\label{sec:classes}
+\chapter{Member classes and tools}
+\label{chap:classes}
 
 Most members of groups and libraries are either plain ML files or
 other description files.  However, it is possible to incorporate other
@@ -43,10 +43,10 @@ that refer to facilities internal to CM:
 \item[{\tt tool}] is the class of {\em plugin tools}.  Its purpose is
 to trigger the loading of an auxiliary plugin module---usually with the
 purpose of extending the set of tool classes that CM understands.
-See section~\ref{sec:plugintools} for more information.
+See \secref{sec:plugintools} for more information.
 \item[{\tt suffix}] is a class similar to {\tt tool}.  Its purpose is
 to declare additional filename suffixes and their associated classes.
-See section~\ref{sec:plugintools}.
+See \secref{sec:plugintools}.
 \end{description}
 
 By default, CM automatically classifies files with a {\tt .sml}
@@ -54,7 +54,7 @@ suffix, a {\tt .sig} suffix, or a {\tt .fun} suffix as ML-source, file
 names ending in {\tt .cm} as CM descriptions.  Failure to classify a
 member will be reported as an error.
 
-\subsection{Tool parameters}
+\section{Tool parameters}
 \label{sec:toolparam}
 
 In many cases the name of the member that caused a rule to be invoked
@@ -76,12 +76,12 @@ string followed by a colon {\bf :} and a parenthesized list of other
 tool options.  If the list contains precisely one element, then its
 parentheses may be omitted.
 
-\subsubsection{Parameters for class {\tt sml}}
+\subsection{Parameters for class {\tt sml}}
 \label{sec:toolparam:sml}
 
 The {\tt sml} class accepts four optional parameters.  One is the {\em
 sharing annotation} that was explained earlier (see
-Section~\ref{sec:sharing}).  The sharing annotation must be one of the
+\secref{sec:sharing}).  The sharing annotation must be one of the
 two strings {\tt shared} and {\tt private}.  If {\tt shared} is
 specified, then dynamic state created by the compilation unit at
 link-time must be shared across invocations of {\tt CM.make} or {\tt
@@ -153,16 +153,16 @@ engine.
 Finally, the last possible parameter for class {\tt sml} is the string
 {\tt local}.  A file marked {\tt local} will be ignored when
 calculating the symbol set for an occurence of {\tt source(-)} within
-the export list (see section~\ref{sec:exportcalculus}).
+the export list (see \chapref{chap:exportcalculus}).
 
-\subsubsection{Parameters for class {\tt cm}}
+\subsection{Parameters for class {\tt cm}}
 \label{sec:toolparam:cm}
 
 The {\tt cm} class understands two kinds of parameters.  The first is
 a named parameter labeled by the string {\tt version}.  It must have
 the format of a version number.  CM will interpret this as a version
 request, thereby insuring that the imported library is not too old or
-too new. (See section~\ref{sec:versions} for more on this topic.)
+too new. (See \chapref{chap:versions} for more on this topic.)
 
 Example:
 
@@ -172,7 +172,7 @@ Example:
 \end{lstlisting}%
 
 Normally, CM looks for stable library files in directory
-{\tt CM/}{\it arch}{\tt -}{\it os} (see section~\ref{sec:files}).
+{\tt CM/}{\it arch}{\tt -}{\it os} (see \chapref{chap:files}).
 However, if an explicit version has been requested, it will first try
 directory {\tt CM/}{\it version}{\tt /}{\it arch}{\tt -}{\it os}
 before looking at the default location.  This way it is possible to
@@ -183,22 +183,22 @@ multiple versions of the same library in one session.  The
 disambiguating rule is that the version that gets loaded first
 ``wins''; subsequent attempts to load different versions result in
 warnings or errors.  (See the discussion of {\tt CM.unshare} in
-section~\ref{sec:libreg} for how to to circumvent this restriction.)
+\secref{sec:libreg} for how to to circumvent this restriction.)
 
 The second kind of parameter understood by {\tt cm} is a named
 parameter labeled by the string {\tt bind} (see
-Section~\ref{sec:anchor:env}).  It can occur arbitrarily many times
+\secref{sec:anchor:env}).  It can occur arbitrarily many times
 and each occurence must be a suboption-list of the form {\tt
 (anchor:$a$ value:$v$)}.  The set of {\tt bind}-parameters augments
 the current anchor environment to form the environment that is used
 while processing the contents of the named CM description file.
 
-\subsubsection{Parameters for classes {\tt tool} and {\tt suffix}}
+\subsection{Parameters for classes {\tt tool} and {\tt suffix}}
 
-Class {\tt tool} (see the discussion is section~\ref{sec:localtools})
+Class {\tt tool} (see the discussion is \secref{sec:localtools})
 does not accept any parameters.
 
-Class {\tt suffix} (see section~\ref{sec:localsuffixes}) takes one
+Class {\tt suffix} (see \secref{sec:localsuffixes}) takes one
 mandatory parameter which is either simply a class name or the same
 class name labeled by {\tt class}.  Thus, the following two lines are
 equivalent:
@@ -210,17 +210,60 @@ ml : suffix (class:sml)
 
 There are no recognized filename suffixes for these two classes.
 
-\subsection{Built-in tools}
+\section{Built-in tools}
 \label{sec:builtin-tools}
 
-\subsubsection{ML-Yacc}
+\subsection{Program generators}
 
-The ML-Yacc tool is responsible for files that are input to the
-ML-Yacc parser generator.  Its class name is {\tt mlyacc}.  Recognized
-file name suffixes are {\tt .grm} and {\tt .y}.  For a source file
-$f$, the tool produces two targets $f${\tt .sig} and $f${\tt .sml},
-both of which are always treated as ML source files.  The {\tt mlyacc}
-class accepts two optional tool parameters labeled {\tt sigoptions}
+Ths SML/NJ installation includes a number of program generators that
+come with CM tools.
+These are summarized in the following table, which lists the tool name, its class,
+the file suffixes that are mapped to the tool, and a description of the tool.
+\begin{center}\small
+  \begin{tabular}{ccccp{3in}}
+    \textbf{Name} & \textbf{Class} & \textbf{Suffixes} & \textbf{Options?} & \textbf{Description} \\ \hline
+    ASDLGen & \texttt{asdlgen} & \texttt{.asdl} & no
+      & Source file is an ASDL specification that should be processed by the \CMD{asdlgen}
+        command to produce type definitions and pickling code.
+    \\[0.5em]
+    ML-Antlr & \texttt{ml-antlr} & \texttt{.grm} (see below) & no
+      & Source file is
+    \\[0.5em]
+    ML-Burg & \texttt{ml-burg} & \texttt{.burg} & no
+      & Source file is a specification file for the \CMD{ml-burg}
+        code-generater generator~\cite{mlburg93}.
+    \\[0.5em]
+    ML-Lex & \texttt{mllex} & \texttt{.lex} and \texttt{.l} & no
+      & Source file is  a lexer-specification that should be processed with the
+        \CMD{ml-ulex} parser generator tool run with the \texttt{--ml-lex-mode}
+        command-line flag.
+    \\[0.5em]
+    ML-ULex & \texttt{ml-ulex} & \texttt{.lex} (see below) & no
+      & Source file is a lexer-specification that should be processed with the
+        \CMD{ml-ulex} parser generator tool.
+    \\[0.5em]
+    ML-Yacc & \texttt{mlyacc} & \texttt{.grm} and \texttt{.y} & yes
+      & Source file is a grammar file that should be processed with the
+        \CMD{ml-yacc} parser generator tool.
+    \\
+    \hline
+  \end{tabular}%
+\end{center}%
+
+These tools invoke the corresponding command if the target is outdated.
+Unless anchored using the path anchor mechanism (see
+\secref{sec:anchor:env}), the command is located
+using the operating system's path search mechanism (\eg{}, the {\tt
+\$PATH} environment variable).
+
+The suffixes for the ML-Antlr and ML-ULex tools are in conflict with those of the
+ML-Yacc and ML-Lex tools (resp.).  In the default installation of SML/NJ, the \texttt{.grm}
+suffix is mapped to ML-Yacc and the \texttt{.lex} suffix is mapped to ML-Lex.
+It is possible to change this behavior by editing the \texttt{config/targets} file
+prior to installation.
+
+As noted in the above table, the {\tt mlyacc} class accepts two optional
+tool parameters labeled {\tt sigoptions}
 and {\tt smloptions}.  They specify tool options to be passed on to
 the generated {\tt .sig}- and {\tt .sml}-files, respectively.
 Example\footnote{Since the generated {\tt .sig}-file contains nothing
@@ -232,44 +275,7 @@ to pass any options to it.}:
             smloptions:(private))
 \end{lstlisting}%
 
-The tool invokes the {\tt ml-yacc} command if the targets are
-``outdated''.  A target is outdated if it is missing or older than the
-source.  Unless anchored using the path anchor mechanism (see
-Section~\ref{sec:anchor:env}), the command {\tt ml-yacc} will be located
-using the operating system's path search mechanism (e.g., the {\tt
-\$PATH} environment variable).
-
-\subsubsection{ML-Lex}
-
-The ML-Lex tool governs files that are input to the ML-Lex lexical
-analyzer generator~\cite{appel89:lex}.  Its class name is {\tt mllex}.
-Recognized file name suffixes are {\tt .lex} and {\tt .l}.  For a
-source file $f$, the tool produces one targets $f${\tt .sml} which
-will always be treated as ML source code.  Tool parameters are passed
-on without change to that file.
-
-The tool invokes the {\tt ml-lex} command if the target is outdated
-(just like in the case of ML-Yacc).  Unless anchored using the path
-anchor mechanism (see Section~\ref{sec:anchor:env}), the command {\tt
-ml-lex} will be located using the operating system's path search
-mechanism (e.g., the {\tt \$PATH} environment variable).
-
-\subsubsection{ML-Burg}
-
-The ML-Burg tool deals with files that are input to the ML-Burg
-code-generater generator~\cite{mlburg93}.  Its class name is {\tt
-mlburg}.  The only recognized file name suffix is {\tt .burg}.  For a
-source file $f${\tt .burg}, the tool produces one targets $f${\tt
-.sml} which will always be treated as ML source code.  Any tool
-parameters are passed on without change to the target.
-
-The tool invokes the {\tt ml-burg} command if the target is outdated.
-Unless anchored using the path anchor mechanism (see
-Section~\ref{sec:anchor:env}), the command {\tt ml-lex} will be located
-using the operating system's path search mechanism (e.g., the {\tt
-\$PATH} environment variable).
-
-\subsubsection{Shell}
+\subsection{Shell}
 
 The Shell tool can be used to specify arbitrary shell commands to be
 invoked on behalf of a given file.  The name of the class is {\tt
@@ -340,7 +346,7 @@ version from above, one would have to write:
 The shell tool invokes its command whenever the target is outdated
 with respect to the source.
 
-\subsubsection{Make}
+\subsection{Make}
 
 The Make tool (class {\tt make}) can (almost) be seen as a specialized
 version of the Shell tool.  It has no source and one target (the
@@ -351,7 +357,7 @@ tool, it is possible to specify target class and parameters using the
 The tool invokes the shell command {\tt make} on the target.  Unless
 anchored using the path anchor mechanism~\ref{sec:anchor:env}, the
 command will be located using the operating system's path search
-mechanism (e.g., the {\tt \$PATH} environment variable).
+mechanism (\eg{}, the {\tt \$PATH} environment variable).
 
 Any parameters other than the {\tt class} and {\tt options}
 specifications must be plain strings and are given as additional
@@ -382,7 +388,7 @@ the contens of {\tt bar.pp} through the C preprocessor to arrive at
                  -f bar-pp.mk)
 \end{lstlisting}%
 
-\subsubsection{Noweb}
+\subsection{Noweb}
 \label{sec:builtin-tools:noweb}
 
 The {\tt noweb} class handles sources written for Ramsey's {\it noweb}
@@ -491,7 +497,7 @@ the {\em current arc} ``{\bf .}'' and write:
           target:(name:main.sml))
 \end{lstlisting}%
 
-\subsubsection{Dir}
+\subsection{Dir}
 \label{sec:builtin-tools:dir}
 
 Using the Dir tool one can use directory names in description files.

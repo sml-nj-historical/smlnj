@@ -1,8 +1,8 @@
 %!TEX root = manual.tex
 %
 
-\section{Parallel and distributed compilation}
-\label{sec:parmake}
+\chapter{Parallel and distributed compilation}
+\label{chap:parmake}
 
 To speed up recompilation of large projects with many ML source files,
 CM can exploit parallelism that is inherent in the dependency graph.
@@ -92,7 +92,7 @@ translate local path names to their remote counterparts.  This can be
 a bit tricky to get right, especially if the machines use automounters
 or similar devices.  The {\tt pathtrans} functions consumes and
 produces names in CM's internal ``protocol encoding'' (see
-Section~\ref{sec:pathencode}).
+\secref{sec:pathencode}).
 
 Once servers have been attached, one can invoke functions like
 {\tt CM.recomp}, {\tt CM.make}, and {\tt CM.stabilize}.  They should
@@ -105,7 +105,7 @@ This is because the interrupt-handling code will wait for the servers
 to finish what they are currently doing and bring them back to an
 ``idle'' state first.
 
-\subsection{Pathname protocol encoding}
+\section{Pathname protocol encoding}
 \label{sec:pathencode}
 
 A path encoded by CM's master-slave protocol encoding does not only
@@ -158,7 +158,7 @@ arcs that precede colon-sign {\bf :} are enclosed within parentheses
 to emphasize that they are ``not really there''.  The same form is
 also used by {\tt CM.Library.descr}.
 
-\subsection{Parallel bootstrap compilation}
+\section{Parallel bootstrap compilation}
 
 The bootstrap compiler\footnote{otherwise not mentioned in this
 document} with its main function {\tt CMB.make} and the corresponding

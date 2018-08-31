@@ -1,15 +1,18 @@
-% -*- latex -*-
-
-\section{Listing of all CM-specific environment variables}
+%!TEX root = manual.tex
+%
+\chapter{Listing of all CM-specific environment variables}
 
 Most control parameters that affect CM's operation can be adjusted
 using environment variables $v_s$ at startup time, i.e, when the {\tt
 sml} command is invoked.  Each such parameter has a default setting.
 Default settings are determined at bootstrap time, i.e., the time when
 the heap image for SML/NJ's interactive system is
-built.\footnote{Normally this is the same as installation time, but
-for SML/NJ compiler hackers there is also a {\tt makeml} script for
-the purpose of bootstrapping.}  At bootstrap time, it is possible to
+built.\footnote{
+  Normally this is the same as installation time, but
+  for SML/NJ compiler hackers there is also a {\tt makeml} script for
+  the purpose of bootstrapping.
+}
+At bootstrap time, it is possible to
 adjust defaults by using a set of environment variables $v_b$.  In the
 current version of CM it is always the case that $v_s = v_b$.  (In
 older versions this was not the case.) If neither $v_s$ nor $v_b$ were
@@ -68,4 +71,4 @@ The default for the ``local'' path configuration file is {\tt
 (given by the environment variable {\tt \$HOME}).
 
 Control parameters can also be set using command-line parameters (see
-section~\ref{sec:cmdline}).
+\chapref{chap:cmdline}).

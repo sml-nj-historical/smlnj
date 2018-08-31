@@ -13,11 +13,6 @@ Andrew~W. Appel and David~B. MacQueen.
 \newblock In {\em Proc. {SIGPLAN} '94 Symp. on Prog. Language Design and
   Implementation}, pages 13--23. ACM Press, June 1994.
 
-\bibitem[AMT89]{appel89:lex}
-Andrew~W. Appel, James~S. Mattson, and David~R. Tarditi.
-\newblock {\em A lexical analyzer generator for {Standard ML}}, December 1989.
-\newblock Available from \url{http://smlnj.org}.
-
 \bibitem[ATW94]{tichy94}
 Rolf Adams, Walter Tichy, and Annette Weinert.
 \newblock The cost of selective recompilation and environment processing.
