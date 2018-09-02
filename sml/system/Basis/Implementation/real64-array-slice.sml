@@ -1,23 +1,24 @@
-(*  real64-array-slice.sml
+(* real64-array-slice.sml
  *
- * Copyright (c) 2003 by The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
+
 structure Real64ArraySlice : MONO_ARRAY_SLICE
 			     where type elem = real
 			     where type array = Real64Array.array
 			     where type vector = Real64Vector.vector
 			     where type vector_slice = Real64VectorSlice.slice
-= struct
+  = struct
 
     type elem = real
     type array = Real64Array.array
     type vector = Real64Vector.vector
     type vector_slice = Real64VectorSlice.slice
 
-    datatype slice =
-	     SL of { base : array, start : int, stop : int }
+    datatype slice = SL of { base : array, start : int, stop : int }
 
     (* fast add/subtract avoiding the overflow test *)
     infix -- ++
@@ -29,7 +30,9 @@ structure Real64ArraySlice : MONO_ARRAY_SLICE
     val usub = InlineT.Real64Array.sub
     val uupd = InlineT.Real64Array.update
     val vusub = InlineT.Real64Vector.sub
-    (* val vuupd = InlineT.Word8Vector.update *)
+(* if Real64Vectors were implemented correctly
+    val vuupd = InlineT.Real64Vector.update
+*)
     val alength = InlineT.Real64Array.length
     val vlength = InlineT.Real64Vector.length
 
@@ -231,6 +234,59 @@ structure Real64ArraySlice : MONO_ARRAY_SLICE
 	col (s1, s2)
     end
 
-    (* FIXME: this is inefficient (going through intermediate list) *)
+  (* FIXME: this is inefficient (going through intermediate list) *)
     fun vector sl = Real64Vector.fromList (foldr op :: [] sl)
-end
+
+  (* added for Basis Library proposal 2018-002 *)
+
+    fun triml n (SL{base, start, stop}) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val start = start ++ n
+	    in
+	      if (start < stop)
+		then SL{base=base, start=start, stop=stop}
+		else SL{base=base, start=stop, stop=stop}
+	    end
+
+    fun trimr n (SL{base, start, stop}) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val stop = stop -- n
+	    in
+	      if (start < stop)
+		then SL{base=base, start=start, stop=stop}
+		else SL{base=base, start=start, stop=start}
+	    end
+
+    fun splitAt (SL{base, start, stop}, i) = let
+	  val start' = start ++ i
+	  in
+	    if (i < 0) orelse (stop < start')
+	      then raise Subscript
+	      else let
+		val s1 = SL{base=base, start=start, stop=start' -- 1}
+		val s2 = SL{base=base, start=start', stop=stop}
+		in
+		  (s1, s2)
+		end
+	  end
+
+    val vector0 = Real64Vector.fromList[]
+
+    fun getVec (slice, 0) = SOME(Assembly.vector0, slice)
+      | getVec (SL{base, start, stop}, n) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val start' = start ++ n
+	    fun mkVec (i, items) =
+	          if i < start
+		    then Real64Vector.fromList items
+		    else mkVec (i -- 1, usub (base, i) :: items)
+	    in
+	      if (start' <= stop)
+		then SOME(mkVec(start' -- 1, []), SL{base=base, start=start', stop=stop})
+		else NONE
+	    end
+
+  end

@@ -1,15 +1,17 @@
-(*  array-slice.sml
+(* array-slice.sml
  *
- * Copyright (c) 2003 by The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
-structure ArraySlice : ARRAY_SLICE = struct
 
-    datatype 'a slice =
-	     SL of { base : 'a Array.array, start : int, stop : int }
+structure ArraySlice : ARRAY_SLICE =
+  struct
 
-    (* fast add/subtract avoiding the overflow test *)
+    datatype 'a slice = SL of { base : 'a Array.array, start : int, stop : int }
+
+  (* fast add/subtract avoiding the overflow test *)
     infix -- ++
     fun x -- y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x -
 					     InlineT.Word31.copyf_int31 y)
@@ -220,9 +222,60 @@ structure ArraySlice : ARRAY_SLICE = struct
 	col (s1, s2)
     end
 
-    (* FIXME: this is inefficient (going through intermediate list) *)
-    fun vector sl =
-	case length sl of
-	    0 => Assembly.vector0
-	  | len => Assembly.A.create_v (len, foldr op :: [] sl)
+  (* FIXME: this is inefficient (going through intermediate list) *)
+    fun vector sl = (case length sl
+	   of 0 => Assembly.vector0
+	    | len => Assembly.A.create_v (len, foldr op :: [] sl)
+	  (* end case *))
+
+  (* added for Basis Library proposal 2018-002 *)
+
+    fun triml n (SL{base, start, stop}) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val start = start ++ n
+	    in
+	      if (start < stop)
+		then SL{base=base, start=start, stop=stop}
+		else SL{base=base, start=stop, stop=stop}
+	    end
+
+    fun trimr n (SL{base, start, stop}) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val stop = stop -- n
+	    in
+	      if (start < stop)
+		then SL{base=base, start=start, stop=stop}
+		else SL{base=base, start=start, stop=start}
+	    end
+
+    fun splitAt (SL{base, start, stop}, i) = let
+	  val start' = start ++ i
+	  in
+	    if (i < 0) orelse (stop < start')
+	      then raise Subscript
+	      else let
+		val s1 = SL{base=base, start=start, stop=start' -- 1}
+		val s2 = SL{base=base, start=start', stop=stop}
+		in
+		  (s1, s2)
+		end
+	  end
+
+    fun getVec (slice, 0) = SOME(Assembly.vector0, slice)
+      | getVec (SL{base, start, stop}, n) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val start' = start ++ n
+	    fun mkVec (i, items) =
+	          if i < start
+		    then Assembly.A.create_v (n, items)
+		    else mkVec (i -- 1, usub (base, i) :: items)
+	    in
+	      if (start' <= stop)
+		then SOME(mkVec(start' -- 1, []), SL{base=base, start=start', stop=stop})
+		else NONE
+	    end
+
 end

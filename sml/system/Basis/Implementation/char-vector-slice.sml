@@ -1,14 +1,16 @@
-(*  char-vector-slice.sml
+(* char-vector-slice.sml
  *
- * Copyright (c) 2003 by The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
+
 structure CharVectorSlice :> MONO_VECTOR_SLICE
 				 where type elem = char
 				 where type vector = CharVector.vector
 				 where type slice = Substring.substring
-= struct
+  = struct
 
     (* fast add/subtract avoiding the overflow test *)
     infix -- ++
@@ -24,6 +26,7 @@ structure CharVectorSlice :> MONO_VECTOR_SLICE
     type slice = SS.substring
 
     val usub = InlineT.CharVector.sub
+    val vuupd = InlineT.CharVector.update
     val vlength = InlineT.CharVector.length
 
     val length = SS.size
@@ -53,72 +56,121 @@ structure CharVectorSlice :> MONO_VECTOR_SLICE
     val collate = SS.collate
 
     fun foldli f init vs = let
-	val (base, start, len) = SS.base vs
-	val stop = start ++ len
-	fun fold (i, a) =
-	    if i >= stop then a
-	    else fold (i ++ 1, f (i -- start, usub (base, i), a))
-    in
-	fold (start, init)
-    end
+	  val (base, start, len) = SS.base vs
+	  val stop = start ++ len
+	  fun fold (i, a) =
+	      if i >= stop then a
+	      else fold (i ++ 1, f (i -- start, usub (base, i), a))
+	  in
+	    fold (start, init)
+	  end
 
     fun foldri f init vs = let
-	val (base, start, len) = SS.base vs
-	val stop = start ++ len
-	fun fold (i, a) =
-	    if i < start then a
-	    else fold (i -- 1, f (i -- start, usub (base, i), a))
-    in
-	fold (stop -- 1, init)
-    end
+	  val (base, start, len) = SS.base vs
+	  val stop = start ++ len
+	  fun fold (i, a) =
+	      if i < start then a
+	      else fold (i -- 1, f (i -- start, usub (base, i), a))
+	  in
+	    fold (stop -- 1, init)
+	  end
 
-    fun mapi f sl =
-	CharVector.fromList
-	    (rev (foldli (fn (i, x, a) => f (i, x) :: a) [] sl))
+    fun map f sl = (case SS.base sl
+	   of (_, _, 0) => ""
+	    | (base, start, len) => let
+		val v = Assembly.A.create_s len
+		fun mapf i = if (i < len)
+		      then (
+			vuupd(v, i, f(usub(base, start ++ i)));
+			mapf (i ++ 1))
+		      else v
+		in
+		  mapf 0
+		end
+	  (* end case *))
 
-    fun map f sl =
-	CharVector.fromList
-	    (rev (foldl (fn (x, a) => f x :: a) [] sl))
+    fun mapi f sl = (case SS.base sl
+	   of (_, _, 0) => ""
+	    | (base, start, len) => let
+		val v = Assembly.A.create_s len
+		fun mapf i = if (i < len)
+		      then (
+			vuupd(v, i, f(i, usub(base, start ++ i)));
+			mapf (i ++ 1))
+		      else v
+		in
+		  mapf 0
+		end
+	  (* end case *))
 
     fun findi p vs = let
-	val (base, start, len) = SS.base vs
-	val stop = start ++ len
-	fun fnd i =
-	    if i >= stop then NONE
-	    else let val x = usub (base, i)
-		 in
+	  val (base, start, len) = SS.base vs
+	  val stop = start ++ len
+	  fun fnd i =
+	      if i >= stop then NONE
+	      else let val x = usub (base, i)
+		   in
 		     if p (i, x) then SOME (i -- start, x) else fnd (i ++ 1)
-		 end
-    in
-	fnd start
-    end
+		   end
+	  in
+	    fnd start
+	  end
 
     fun find p vs = let
-	val (base, start, len) = SS.base vs
-	val stop = start ++ len
-	fun fnd i =
-	    if i >= stop then NONE
-	    else let val x = usub (base, i)
-		 in
+	  val (base, start, len) = SS.base vs
+	  val stop = start ++ len
+	  fun fnd i =
+	      if i >= stop then NONE
+	      else let val x = usub (base, i)
+		   in
 		     if p x then SOME x else fnd (i ++ 1)
-		 end
-    in
-	fnd start
-    end
+		   end
+	  in
+	    fnd start
+	  end
 
     fun exists p vs = let
-	val (base, start, len) = SS.base vs
-	val stop = start ++ len
-	fun ex i = i < stop andalso (p (usub (base, i)) orelse ex (i ++ 1))
-    in
-	ex start
-    end
+	  val (base, start, len) = SS.base vs
+	  val stop = start ++ len
+	  fun ex i = i < stop andalso (p (usub (base, i)) orelse ex (i ++ 1))
+	  in
+	    ex start
+	  end
 
     fun all p vs = let
-	val (base, start, len) = SS.base vs
-	val stop = start ++ len
-	fun al i = i >= stop orelse (p (usub (base, i)) andalso al (i ++ 1))
-    in
-	al start
-    end
-end
+	  val (base, start, len) = SS.base vs
+	  val stop = start ++ len
+	  fun al i = i >= stop orelse (p (usub (base, i)) andalso al (i ++ 1))
+	  in
+	    al start
+	  end
+
+  (* added for Basis Library proposal 2018-002 *)
+
+    val triml = SS.triml
+    val trimr = SS.trimr
+    val splitAt = SS.splitAt
+
+    fun getVec (slice, 0) = SOME("", slice)
+      | getVec (slice, n) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val (base, start, len) = SS.base slice
+	    val start' = start ++ n
+	    fun mkVec () = let
+		  val vec = Assembly.A.create_s n
+		  fun copy i = if (i < n)
+			then (
+			  vuupd(vec, i, usub(base, start ++ i));
+			  copy (i ++ 1))
+			else vec
+		  in
+		    copy 0
+		  end
+	    in
+	      if (n <= len)
+		then SOME(mkVec(), SS.extract(base, start', NONE))
+		else NONE
+	    end
+
+  end

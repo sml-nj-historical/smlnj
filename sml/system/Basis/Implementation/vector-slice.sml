@@ -1,13 +1,15 @@
-(*  vector-slice.sml
+(* vector-slice.sml
  *
- * Copyright (c) 2003 by The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
-structure VectorSlice :> VECTOR_SLICE = struct
 
-    datatype 'a slice =
-	     SL of { base : 'a Vector.vector, start : int, stop : int }
+structure VectorSlice :> VECTOR_SLICE =
+  struct
+
+    datatype 'a slice = SL of { base : 'a Vector.vector, start : int, stop : int }
 
     (* fast add/subtract avoiding the overflow test *)
     infix -- ++
@@ -40,7 +42,7 @@ structure VectorSlice :> VECTOR_SLICE = struct
 	     stop =
 	       case olen of
 		   NONE => vl
-		 | SOME len => 
+		 | SOME len =>
 		     let val stop = start ++ len
 		     in if stop < start orelse vl < stop then raise Subscript
 			else stop
@@ -176,4 +178,55 @@ structure VectorSlice :> VECTOR_SLICE = struct
     in
 	col (s1, s2)
     end
-end
+
+  (* added for Basis Library proposal 2018-002 *)
+
+    fun triml n (SL{base, start, stop}) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val start = start ++ n
+	    in
+	      if (start < stop)
+		then SL{base=base, start=start, stop=stop}
+		else SL{base=base, start=stop, stop=stop}
+	    end
+
+    fun trimr n (SL{base, start, stop}) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val stop = stop -- n
+	    in
+	      if (start < stop)
+		then SL{base=base, start=start, stop=stop}
+		else SL{base=base, start=start, stop=start}
+	    end
+
+    fun splitAt (SL{base, start, stop}, i) = let
+	  val start' = start ++ i
+	  in
+	    if (i < 0) orelse (stop < start')
+	      then raise Subscript
+	      else let
+		val s1 = SL{base=base, start=start, stop=start' -- 1}
+		val s2 = SL{base=base, start=start', stop=stop}
+		in
+		  (s1, s2)
+		end
+	  end
+
+    fun getVec (slice, 0) = SOME(Assembly.vector0, slice)
+      | getVec (SL{base, start, stop}, n) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val start' = start ++ n
+	    fun mkVec (i, items) =
+	          if i < start
+		    then Assembly.A.create_v (n, items)
+		    else mkVec (i -- 1, usub (base, i) :: items)
+	    in
+	      if (start' <= stop)
+		then SOME(mkVec(start' -- 1, []), SL{base=base, start=start', stop=stop})
+		else NONE
+	    end
+
+  end

@@ -1,13 +1,15 @@
-(*  word8-vector-slice.sml
+(* word8-vector-slice.sml
  *
- * Copyright (c) 2003 by The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
+
 structure Word8VectorSlice :> MONO_VECTOR_SLICE
 				 where type elem = Word8.word
 				 where type vector = Word8Vector.vector
-= struct
+  = struct
 
     (* fast add/subtract avoiding the overflow test *)
     infix -- ++
@@ -19,11 +21,17 @@ structure Word8VectorSlice :> MONO_VECTOR_SLICE
     type elem = Word8.word
     type vector = Word8Vector.vector
 
-    datatype slice =
-	     SL of { base : vector, start : int, stop : int }
+    datatype slice = SL of { base : vector, start : int, stop : int }
 
     val usub = InlineT.Word8Vector.sub
+    val vuupd = InlineT.Word8Vector.update
     val vlength = InlineT.Word8Vector.length
+
+  (* empty vector *)
+    val vector0 : vector = InlineT.cast ""
+
+  (* create an uninitialized vector of known length *)
+    val create : int -> vector = InlineT.cast Assembly.A.create_s
 
     fun length (SL { start, stop, ... }) = stop -- start
 
@@ -45,7 +53,7 @@ structure Word8VectorSlice :> MONO_VECTOR_SLICE
 	     stop =
 	       case olen of
 		   NONE => vl
-		 | SOME len => 
+		 | SOME len =>
 		     let val stop = start ++ len
 		     in if stop < start orelse vl < stop then raise Subscript
 			else stop
@@ -183,4 +191,61 @@ structure Word8VectorSlice :> MONO_VECTOR_SLICE
     in
 	col (s1, s2)
     end
-end
+
+  (* added for Basis Library proposal 2018-002 *)
+
+    fun triml n (SL{base, start, stop}) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val start = start ++ n
+	    in
+	      if (start < stop)
+		then SL{base=base, start=start, stop=stop}
+		else SL{base=base, start=stop, stop=stop}
+	    end
+
+    fun trimr n (SL{base, start, stop}) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val stop = stop -- n
+	    in
+	      if (start < stop)
+		then SL{base=base, start=start, stop=stop}
+		else SL{base=base, start=start, stop=start}
+	    end
+
+    fun splitAt (SL{base, start, stop}, i) = let
+	  val start' = start ++ i
+	  in
+	    if (i < 0) orelse (stop < start')
+	      then raise Subscript
+	      else let
+		val s1 = SL{base=base, start=start, stop=start' -- 1}
+		val s2 = SL{base=base, start=start', stop=stop}
+		in
+		  (s1, s2)
+		end
+	  end
+
+    fun getVec (slice, 0) = SOME(vector0, slice)
+      | getVec (SL{base, start, stop}, n) = if (n < 0)
+	  then raise Subscript
+	  else let
+	    val start' = start ++ n
+	    fun mkVec () = let
+		  val vec = create n
+		  fun copy i = if (i < n)
+			then (
+			  InlineT.Word8Vector.update(vec, i, usub(base, start ++ i));
+			  copy (i ++ 1))
+			else vec
+		  in
+		    copy 0
+		  end
+	    in
+	      if (start' <= stop)
+		then SOME(mkVec(), SL{base=base, start=start', stop=stop})
+		else NONE
+	    end
+
+  end
