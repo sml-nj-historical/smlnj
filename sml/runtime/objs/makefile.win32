@@ -1,4 +1,7 @@
-# COPYRIGHT(c) 1996 Bell Laboratories, Lucent Technologies
+# makefile.win32
+#
+# COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+# All rights reserved.
 #
 # this is the win32-specific main makefile for the SML/NJ runtime system
 # To actually build the runtime, use the command
@@ -16,7 +19,7 @@ CPP =		cl /E /EP
 LD_LIBS =
 AS =		ml /Cx /Zd /Zi /Fr
 AR =		lib
-ARFLAGS =	
+ARFLAGS =
 RANLIB =	lib
 
 #
@@ -44,7 +47,7 @@ BC_DIR =	$(ROOT_DIR)\bytecode
 CLIB_DIR =	$(ROOT_DIR)\c-libs
 CONFIG_DIR =	$(ROOT_DIR)\config
 
-CFLAGS = 	
+CFLAGS =
 
 INCLUDES =	/I$(OBJS_DIR) /I$(INC_DIR) /I$(MACH_DIR)
 GC_INCLUDES =	$(INCLUDES) /I$(GC_DIR)
@@ -77,7 +80,7 @@ CLIBS =		$(XCLIBS) \
 		$(CLIB_DIR)\smlnj-math\libsmlnj-math.lib
 
 #
-# The mem-win32 version is the default (and currently only) 
+# The mem-win32 version is the default (and currently only)
 # memory subsystem for win32
 #
 LIBMEM_OBJS =	mem-win32.obj
@@ -114,21 +117,21 @@ clean:
 		system-signals.h \
 		*.obj prim.s primops.s \
 		*.sbr *.pdb
-	cd $(MEM_DIR) 
-	$(MAKE) MAKE="$(MAKE)" clean
-	
-	cd $(CLIB_DIR) 
+	cd $(MEM_DIR)
 	$(MAKE) MAKE="$(MAKE)" clean
 
-	cd $(GC_DIR) 
+	cd $(CLIB_DIR)
 	$(MAKE) MAKE="$(MAKE)" clean
 
-	cd $(MP_DIR) 
+	cd $(GC_DIR)
+	$(MAKE) MAKE="$(MAKE)" clean
+
+	cd $(MP_DIR)
 	$(MAKE) MAKE="$(MAKE)" clean
 
 
 $(RUNTIME):	$(VERSION) main.obj $(OBJS) $(ALL_LIBS)
-	$(CC) /Fe$(RUNTIME) $(CFLAGS) $(LDFLAGS) main.obj $(OBJS) $(ALL_LIBS) $(LD_LIBS) wsock32.lib netapi32.lib advapi32.lib user32.lib shlwapi.lib shell32.lib 
+	$(CC) /Fe$(RUNTIME) $(CFLAGS) $(LDFLAGS) main.obj $(OBJS) $(ALL_LIBS) $(LD_LIBS) wsock32.lib netapi32.lib advapi32.lib user32.lib shlwapi.lib shell32.lib
 
 $(VERSION):
 		($(MAKE) MAKE="$(MAKE)" clean)
@@ -284,7 +287,7 @@ prim.obj:	$(MACH_DIR)\$(TARGET).prim.masm \
 		mlstate-offsets.h
 	$(CPP) /D_ASM_ $(DEFS) /I$(BC_DIR) /I$(MACH_DIR) $(INCLUDES) /Tc$(MACH_DIR)\$(TARGET).prim.masm > prim.s
 	$(AS) /c prim.s
-	
+
 
 $(MACH_DIR)\BYTECODE.prim.asm: bc-instr-def.h $(BC_DIR)\bc-instrs.h $(BC_DIR)\bc.h
 
@@ -358,7 +361,7 @@ $(MEM_DIR)\libmem.lib:	FORCE
 # C functions library
 #
 $(CLIB_DIR)\libcfuns.lib:	FORCE
-	cd $(CLIB_DIR) 
+	cd $(CLIB_DIR)
 	$(MAKE) $(MK_ARGS) libcfuns.lib
 	cd $(MAKEDIR)
 
@@ -461,7 +464,7 @@ $(CLIB_DIR)\win32-process\libwin32-process.lib: FORCE
 	cd $(MAKEDIR)
 
 $(CLIB_DIR)\smlnj-runtime\libsmlnj-runt.lib: FORCE
-	cd $(CLIB_DIR)\smlnj-runtime 
+	cd $(CLIB_DIR)\smlnj-runtime
 	$(MAKE) $(LIB_MK_ARGS) libsmlnj-runt.lib
 	cd $(MAKEDIR)
 
@@ -501,12 +504,12 @@ $(CLIB_DIR)\smlnj-math\libsmlnj-math.lib: FORCE
 	cd $(MAKEDIR)
 
 $(CLIB_DIR)\smlnj-ccalls\libsmlnj-ccalls.lib: FORCE
-	cd $(CLIB_DIR)\smlnj-ccalls 
+	cd $(CLIB_DIR)\smlnj-ccalls
 	$(MAKE) $(LIB_MK_ARGS) libsmlnj-ccalls.lib
 	cd $(MAKEDIR)
 
 #$(CLIB_DIR)\smlnj-mp\libsmlnj-mp.lib: FORCE
-#	cd $(CLIB_DIR)\smlnj-mp 
+#	cd $(CLIB_DIR)\smlnj-mp
 #	$(MAKE) $(LIB_MK_ARGS) libsmlnj-mp.lib
 #	cd $(MAKEDIR)
 
