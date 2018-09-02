@@ -1,8 +1,10 @@
-(*  vector-slice.sig
+(* vector-slice.sig
  *
- * Copyright (c) 2003 by The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
-signature VECTOR_SLICE = sig
+
+signature VECTOR_SLICE_2004 = sig
 
     type 'a slice
 
@@ -37,3 +39,17 @@ signature VECTOR_SLICE = sig
     val collate: ('a * 'a -> order) -> 'a slice * 'a slice -> order
 
 end
+
+(* includes Basis Library proposal 2018-002 *)
+signature VECTOR_SLICE_2018 =
+  sig
+    include VECTOR_SLICE_2004
+
+    val triml : int -> 'a slice -> 'a slice
+    val trimr : int -> 'a slice -> 'a slice
+    val splitAt : 'a slice * int -> 'a slice * 'a slice
+    val getVec : 'a slice * int -> ('a vector * 'a slice) option
+
+  end
+
+signature VECTOR_SLICE = VECTOR_SLICE_2018

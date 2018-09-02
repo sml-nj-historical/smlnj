@@ -8,6 +8,7 @@
  *
  * Copyright (c) 2018 by The Fellowship of SML/NJ
  *)
+
 Group
 	signature ARRAY
 	signature ARRAY_SLICE
@@ -64,14 +65,18 @@ Group
 
       (* old versions of basis signatures from the 2004 published spec *)
 	signature ARRAY_2004
+	signature ARRAY_SLICE_2004
 	signature LIST_2004
 	signature LIST_PAIR_2004
 	signature MONO_ARRAY_2004
+	signature MONO_ARRAY_SLICE_2004
 	signature MONO_VECTOR_2004
+	signature MONO_VECTOR_SLICE_2004
 	signature OPTION_2004
 	signature STRING_2004
 	signature TEXT_2004
 	signature VECTOR_2004
+	signature VECTOR_SLICE_2004
 	signature WORD_2004
 
       (* basis signatures with extensions from proposal 2015-003 added *)
@@ -82,11 +87,18 @@ Group
 	signature MONO_VECTOR_2015
 	signature OPTION_2015
 	signature STRING_2015
-	signature TEXT_2015
+	(* signature TEXT_2015 *) (* superseded by TEXT_2018 *)
 	signature VECTOR_2015
 
       (* basis signatures with extensions from proposal 2016-001 added *)
 	signature WORD_2016
+
+      (* basis signatures with extensions from proposal 2018-002 added *)
+	signature ARRAY_SLICE_2018
+	signature MONO_ARRAY_SLICE_2018
+	signature MONO_VECTOR_SLICE_2018
+	signature TEXT_2018
+	signature VECTOR_SLICE_2018
 
       (* backward compatibility with the SML'90 version of the basis *)
 	signature SML90

@@ -1,8 +1,10 @@
 (* mono-vector-slice.sig
  *
- * Copyright (c) 2003 by The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
-signature MONO_VECTOR_SLICE = sig
+
+signature MONO_VECTOR_SLICE_2004 = sig
 
     type elem
     type vector
@@ -38,3 +40,17 @@ signature MONO_VECTOR_SLICE = sig
     val all    : (elem -> bool) -> slice -> bool
     val collate: (elem * elem -> order) -> slice * slice -> order
 end
+
+(* includes Basis Library proposal 2018-002 *)
+signature MONO_VECTOR_SLICE_2018 =
+  sig
+    include MONO_VECTOR_SLICE_2004
+
+    val triml : int -> slice -> slice
+    val trimr : int -> slice -> slice
+    val splitAt : slice * int -> slice * slice
+    val getVec : slice * int -> (vector * slice) option
+
+  end
+
+signature MONO_VECTOR_SLICE = MONO_VECTOR_SLICE_2018

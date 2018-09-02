@@ -65,14 +65,18 @@ Library
 
       (* backward compatible signatures *)
 	signature ARRAY_2004
+	signature ARRAY_SLICE_2004
 	signature LIST_2004
 	signature LIST_PAIR_2004
 	signature MONO_ARRAY_2004
+	signature MONO_ARRAY_SLICE_2004
 	signature MONO_VECTOR_2004
+	signature MONO_VECTOR_SLICE_2004
 	signature OPTION_2004
 	signature STRING_2004
 	signature TEXT_2004
 	signature VECTOR_2004
+	signature VECTOR_SLICE_2004
 	signature WORD_2004
 
 	signature SML90
