@@ -13,6 +13,7 @@ compiler		../compiler
 SMLNJ-BASIS		../system/Basis
 SMLNJ-LIB		../../smlnj-lib
 SMLNJ-ML-YACC-LIB	../../ml-yacc/lib
+SMLNJ-ASDL-LIB		../../asdl/src/lib/sml
 smlnj-tdp		../../trace-debug-profile
 
 mlyacc-tool.cm		../../ml-yacc/tool
