@@ -27,7 +27,7 @@ structure WinInstall : sig end =
 	    I.proc {
 		smlnjroot = home,
 		installdir = home,
-	 	configcmd = "config.bat " ^ installdir,
+	 	configcmd = "config.bat " ^ home,
 		buildcmd = "build.bat",
 		unpack = NONE,
 		instcmd = fn target => copy {
