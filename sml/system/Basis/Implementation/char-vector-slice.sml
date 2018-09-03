@@ -2,8 +2,6 @@
  *
  * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
- *
- * Author: Matthias Blume (blume@tti-c.org)
  *)
 
 structure CharVectorSlice :> MONO_VECTOR_SLICE
@@ -12,23 +10,25 @@ structure CharVectorSlice :> MONO_VECTOR_SLICE
 				 where type slice = Substring.substring
   = struct
 
-    (* fast add/subtract avoiding the overflow test *)
-    infix -- ++
-    fun x -- y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x -
-					     InlineT.Word31.copyf_int31 y)
-    fun x ++ y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x +
-					     InlineT.Word31.copyf_int31 y)
-
     structure SS = Substring
 
     type elem = char
     type vector = CharVector.vector
     type slice = SS.substring
 
+  (* fast add/subtract avoiding the overflow test *)
+    infix 6 -- ++
+    fun x -- y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x -
+					     InlineT.Word31.copyf_int31 y)
+    fun x ++ y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x +
+					     InlineT.Word31.copyf_int31 y)
+
+  (* unchecked vector access functions *)
     val usub = InlineT.CharVector.sub
     val vuupd = InlineT.CharVector.update
     val vlength = InlineT.CharVector.length
 
+  (* inherit operations from Substring *)
     val length = SS.size
     val sub = SS.sub
     val full = SS.full
@@ -38,41 +38,37 @@ structure CharVectorSlice :> MONO_VECTOR_SLICE
     val vector = SS.string
     val isEmpty = SS.isEmpty
     val getItem = SS.getc
-
-    fun appi f vs = let
-	val (base, start, len) = SS.base vs
-	val stop = start ++ len
-	fun app i =
-	    if i >= stop then ()
-	    else (f (i -- start, usub (base, i)); app (i ++ 1))
-    in
-	app start
-    end
-
     val app = SS.app
     val foldl = SS.foldl
     val foldr = SS.foldr
     val concat = SS.concat
     val collate = SS.collate
 
+    fun appi f vs = let
+	  val (base, start, len) = SS.base vs
+	  fun appf i = if (i < len)
+		then (f (i, usub (base, start ++ i)); appf (i ++ 1))
+		else ()
+	  in
+	    appf 0
+	  end
+
     fun foldli f init vs = let
 	  val (base, start, len) = SS.base vs
-	  val stop = start ++ len
-	  fun fold (i, a) =
-	      if i >= stop then a
-	      else fold (i ++ 1, f (i -- start, usub (base, i), a))
+	  fun fold (i, acc) = if (i < len)
+		then fold (i ++ 1, f (i, usub (base, start ++ i), acc))
+		else acc
 	  in
-	    fold (start, init)
+	    fold (0, init)
 	  end
 
     fun foldri f init vs = let
 	  val (base, start, len) = SS.base vs
-	  val stop = start ++ len
-	  fun fold (i, a) =
-	      if i < start then a
-	      else fold (i -- 1, f (i -- start, usub (base, i), a))
+	  fun fold (i, acc) = if (0 <= i)
+		then fold (i -- 1, f (i, usub (base, start ++ i), acc))
+		else acc
 	  in
-	    fold (stop -- 1, init)
+	    fold (len -- 1, init)
 	  end
 
     fun map f sl = (case SS.base sl
@@ -103,46 +99,47 @@ structure CharVectorSlice :> MONO_VECTOR_SLICE
 		end
 	  (* end case *))
 
-    fun findi p vs = let
+    fun findi pred vs = let
+	  val (base, start, len) = SS.base vs
+	  fun fnd i = if (i < len)
+		then let
+		  val x = usub (base, start ++ i)
+		  in
+		    if pred(i, x) then SOME(i, x) else fnd (i ++ 1)
+		  end
+		else NONE
+	  in
+	    fnd 0
+	  end
+
+    fun find pred vs = let
 	  val (base, start, len) = SS.base vs
 	  val stop = start ++ len
-	  fun fnd i =
-	      if i >= stop then NONE
-	      else let val x = usub (base, i)
-		   in
-		     if p (i, x) then SOME (i -- start, x) else fnd (i ++ 1)
-		   end
+	  fun fnd i = if (i < stop)
+		then let
+		  val x = usub (base, i)
+		  in
+		    if pred x then SOME x else fnd (i ++ 1)
+		  end
+		else NONE
 	  in
 	    fnd start
 	  end
 
-    fun find p vs = let
+    fun exists pred vs = let
 	  val (base, start, len) = SS.base vs
 	  val stop = start ++ len
-	  fun fnd i =
-	      if i >= stop then NONE
-	      else let val x = usub (base, i)
-		   in
-		     if p x then SOME x else fnd (i ++ 1)
-		   end
-	  in
-	    fnd start
-	  end
-
-    fun exists p vs = let
-	  val (base, start, len) = SS.base vs
-	  val stop = start ++ len
-	  fun ex i = i < stop andalso (p (usub (base, i)) orelse ex (i ++ 1))
+	  fun ex i = (i < stop) andalso (pred (usub (base, i)) orelse ex (i ++ 1))
 	  in
 	    ex start
 	  end
 
-    fun all p vs = let
+    fun all pred vs = let
 	  val (base, start, len) = SS.base vs
 	  val stop = start ++ len
-	  fun al i = i >= stop orelse (p (usub (base, i)) andalso al (i ++ 1))
+	  fun ex i = (i < stop) andalso (pred (usub (base, i)) orelse ex (i ++ 1))
 	  in
-	    al start
+	    ex start
 	  end
 
   (* added for Basis Library proposal 2018-002 *)

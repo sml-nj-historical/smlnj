@@ -2,8 +2,6 @@
  *
  * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
- *
- * Author: Matthias Blume (blume@tti-c.org)
  *)
 
 structure Real64ArraySlice : MONO_ARRAY_SLICE
@@ -18,275 +16,333 @@ structure Real64ArraySlice : MONO_ARRAY_SLICE
     type vector = Real64Vector.vector
     type vector_slice = Real64VectorSlice.slice
 
-    datatype slice = SL of { base : array, start : int, stop : int }
+  (* `SL(base, start, len)` with the invariant that
+   *	0 <= start <= start+len <= length base
+   *)
+    datatype slice = SL of (array * int * int)
 
-    (* fast add/subtract avoiding the overflow test *)
-    infix -- ++
+  (* fast add/subtract avoiding the overflow test *)
+    infix 6 -- ++
     fun x -- y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x -
 					     InlineT.Word31.copyf_int31 y)
     fun x ++ y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x +
 					     InlineT.Word31.copyf_int31 y)
 
+  (* unchecked array/vector access functions *)
     val usub = InlineT.Real64Array.sub
     val uupd = InlineT.Real64Array.update
     val vusub = InlineT.Real64Vector.sub
-(* if Real64Vectors were implemented correctly
+(* if Real64Vectors were implemented correctly, we could use this
     val vuupd = InlineT.Real64Vector.update
 *)
     val alength = InlineT.Real64Array.length
     val vlength = InlineT.Real64Vector.length
 
-    fun length (SL { start, stop, ... }) = stop -- start
+  (* empty vector *)
+    val vector0 : vector = Assembly.vector0
 
-    fun sub (SL { base, start, stop }, i) = let
-	val i' = start + i
-    in
-	if i' < start orelse i' >= stop then raise Subscript
-	else usub (base, i')
-    end
+    fun length (SL(_, _, len)) = len
 
-    fun update (SL { base, start, stop }, i, x) = let
-	val i' = start + i
-    in
-	if i' < start orelse i' >= stop then raise Subscript
-	else uupd (base, i', x)
-    end
+    fun sub (SL(base, start, len), i) =
+	(* check that 0 <= i < len *)
+	  if InlineT.DfltInt.geu(i, len)
+	    then raise Subscript
+	    else usub (base, start ++ i)
 
-    fun full arr = SL { base = arr, start = 0, stop = alength arr }
+    fun update (SL(base, start, len), i, x) =
+	  if InlineT.DfltInt.geu(i, len)
+	    then raise Subscript
+	    else uupd (base, start ++ i, x)
+
+    fun full arr = SL(arr, 0, alength arr)
+
+    fun base (SL arg) = arg
+
+    fun isEmpty (SL(_, _, 0)) = true
+      | isEmpty _ = false
 
     fun slice (arr, start, olen) = let
-	val al = alength arr
-    in
-	SL { base = arr,
-	     start = if start < 0 orelse al < start then raise Subscript
-		     else start,
-	     stop =
-	       case olen of
-		   NONE => al
-		 | SOME len =>
-		     let val stop = start ++ len
-		     in if stop < start orelse al < stop then raise Subscript
-			else stop
-		     end }
-    end
-
-    fun subslice (SL { base, start, stop }, i, olen) = let
-	val start' = if i < 0 orelse stop < i then raise Subscript
-		     else start ++ i
-	val stop' =
-	    case olen of
-		NONE => stop
-	      | SOME len =>
-		  let val stop' = start' ++ len
-		  in if stop' < start' orelse stop < stop' then raise Subscript
-		     else stop'
-		  end
-    in
-	SL { base = base, start = start', stop = stop' }
-    end
-
-    fun base (SL { base, start, stop }) = (base, start, stop -- start)
-
-    fun copy { src = SL { base, start, stop }, dst, di } = let
-	val sl = stop -- start
-	val de = sl + di
-	fun copyDn (s, d) =
-	    if s < start then () else (uupd (dst, d, usub (base, s));
-				       copyDn (s -- 1, d -- 1))
-	fun copyUp (s, d) =
-	    if s >= stop then () else (uupd (dst, d, usub (base, s));
-				       copyUp (s ++ 1, d ++ 1))
-    in
-	if di < 0 orelse de > alength dst then raise Subscript
-	else if di >= start then copyDn (stop -- 1, de -- 1)
-	else copyUp (start, di)
-    end
-
-    fun copyVec { src = vsl, dst, di } = let
-	val (base, start, vlen) = Real64VectorSlice.base vsl
-	val de = di + vlen
-	fun copyUp (s, d) =
-	    if d >= de then () else (uupd (dst, d, vusub (base, s));
-				     copyUp (s ++ 1, d ++ 1))
-    in
-	if di < 0 orelse de > alength dst then raise Subscript
-	(* assuming vector and array are disjoint *)
-	else copyUp (start, di)
-    end
-
-    fun isEmpty (SL { start, stop, ... }) = start = stop
-
-    fun getItem (SL { base, start, stop }) =
-	if start >= stop then NONE
-	else SOME (usub (base, start),
-		   SL { base = base, start = start ++ 1, stop = stop })
-
-    fun appi f (SL { base, start, stop }) = let
-	fun app i =
-	    if i >= stop then ()
-	    else (f (i -- start, usub (base, i)); app (i ++ 1))
-    in
-	app start
-    end
-
-    fun app f (SL { base, start, stop }) = let
-	fun app i =
-	    if i >= stop then ()
-	    else (f (usub (base, i)); app (i ++ 1))
-    in
-	app start
-    end
-
-    fun modifyi f (SL { base, start, stop }) = let
-	fun mdf i =
-	    if i >= stop then ()
-	    else (uupd (base, i, f (i -- start, usub (base, i))); mdf (i ++ 1))
-    in
-	mdf start
-    end
-
-    fun modify f (SL { base, start, stop }) = let
-	fun mdf i =
-	    if i >= stop then ()
-	    else (uupd (base, i, f (usub (base, i))); mdf (i ++ 1))
-    in
-	mdf start
-    end
-
-    fun foldli f init (SL { base, start, stop }) = let
-	fun fold (i, a) =
-	    if i >= stop then a
-	    else fold (i ++ 1, f (i -- start, usub (base, i), a))
-    in
-	fold (start, init)
-    end
-
-    fun foldl f init (SL { base, start, stop }) = let
-	fun fold (i, a) =
-	    if i >= stop then a
-	    else fold (i ++ 1, f (usub (base, i), a))
-    in
-	fold (start, init)
-    end
-
-    fun foldri f init (SL { base, start, stop }) = let
-	fun fold (i, a) =
-	    if i < start then a
-	    else fold (i -- 1, f (i -- start, usub (base, i), a))
-    in
-	fold (stop -- 1, init)
-    end
-
-    fun foldr f init (SL { base, start, stop }) = let
-	fun fold (i, a) =
-	    if i < start then a else fold (i -- 1, f (usub (base, i), a))
-    in
-	fold (stop -- 1, init)
-    end
-
-    fun findi p (SL { base, start, stop }) = let
-	fun fnd i =
-	    if i >= stop then NONE
-	    else let val x = usub (base, i)
-		 in
-		     if p (i, x) then SOME (i -- start, x) else fnd (i ++ 1)
-		 end
-    in
-	fnd start
-    end
-
-    fun find p (SL { base, start, stop }) = let
-	fun fnd i =
-	    if i >= stop then NONE
-	    else let val x = usub (base, i)
-		 in
-		     if p x then SOME x else fnd (i ++ 1)
-		 end
-    in
-	fnd start
-    end
-
-    fun exists p (SL { base, start, stop }) = let
-	fun ex i =
-	    i < stop andalso (p (usub (base, i)) orelse ex (i ++ 1))
-    in
-	ex start
-    end
-
-    fun all p (SL { base, start, stop }) = let
-	fun al i =
-	    i >= stop orelse (p (usub (base, i)) andalso al (i ++ 1))
-    in
-	al start
-    end
-
-    fun collate c (SL { base = b1, start = s1, stop = e1 },
-		   SL { base = b2, start = s2, stop = e2 }) = let
-	fun col (i1, i2) =
-	    if i1 >= e1 then
-		if i2 >= e2 then EQUAL
-		else LESS
-	    else if i2 >= e2 then GREATER
-	    else case c (usub (b1, i1), usub (b2, i2)) of
-		     EQUAL => col (i1 ++ 1, i2 ++ 2)
-		   | unequal => unequal
-    in
-	col (s1, s2)
-    end
-
-  (* FIXME: this is inefficient (going through intermediate list) *)
-    fun vector sl = Real64Vector.fromList (foldr op :: [] sl)
-
-  (* added for Basis Library proposal 2018-002 *)
-
-    fun triml n (SL{base, start, stop}) = if (n < 0)
-	  then raise Subscript
-	  else let
-	    val start = start ++ n
-	    in
-	      if (start < stop)
-		then SL{base=base, start=start, stop=stop}
-		else SL{base=base, start=stop, stop=stop}
-	    end
-
-    fun trimr n (SL{base, start, stop}) = if (n < 0)
-	  then raise Subscript
-	  else let
-	    val stop = stop -- n
-	    in
-	      if (start < stop)
-		then SL{base=base, start=start, stop=stop}
-		else SL{base=base, start=start, stop=start}
-	    end
-
-    fun splitAt (SL{base, start, stop}, i) = let
-	  val start' = start ++ i
+	  val al = alength arr
+	(* check that 0 <= start <= length arr *)
+	  val _ = if InlineT.DfltInt.ltu(al, start) then raise Subscript else ()
+	  val avail = al -- start
+	  val len = (case olen
+		 of NONE => avail
+		  | SOME n => if InlineT.DfltInt.ltu(avail, n) (* check: 0 <= n <= avail *)
+		      then raise Subscript
+		      else n
+		(* end case *))
 	  in
-	    if (i < 0) orelse (stop < start')
-	      then raise Subscript
-	      else let
-		val s1 = SL{base=base, start=start, stop=start' -- 1}
-		val s2 = SL{base=base, start=start', stop=stop}
+	    SL(arr, start, len)
+	  end
+
+    fun subslice (SL(base, start, len), i, olen) = let
+	(* check that 0 <= i <= len *)
+	  val _ = if InlineT.DfltInt.ltu(len, i) then raise Subscript else ()
+	  val start' = start ++ i
+	  val avail = len -- i
+	  val len' = (case olen
+		 of NONE => avail
+		  | SOME n => if InlineT.DfltInt.ltu(avail, n) (* check: 0 <= n <= avail *)
+		      then raise Subscript
+		      else n
+		(* end case *))
+	  in
+	    SL(base, start, len')
+	  end
+
+  (* FIXME: this is inefficient *)
+    fun vector (SL(base, start, len)) =
+	  Real64Vector.tabulate (len, fn i => usub (base, start ++ i))
+
+(***** A better implementation once we have the correct Real64Vector representation
+    fun vector (SL(_, _, 0)) = vector0
+      | vector (SL(base, start, len)) = let
+	  val s = create len
+	  fun fill (i, j) = if i >= len
+		then s
+		else (
+		  vuupd (s, i, usub (base, j));
+		  fill (i ++ 1, j ++ 1))
+	  in
+	    fill (0, start)
+	  end
+*****)
+
+    fun copy { src = SL(base, start, len), dst, di } = let
+	(* check that 0 <= di andalso di+len <= length dst *)
+	  val _ = if (di < 0) orelse (di > (alength dst -- len))
+		then raise Subscript
+		else ()
+	  in
+	  (* need to be careful about the direction of copying for the case
+	   * where base = dst!
+	   *)
+	    if (di >= start)
+	      then let (* copy from di+len-1 to di *)
+		fun copy (si, di) = if (si >= start)
+		      then (
+			uupd (dst, di, usub (base, si));
+			copy (si -- 1, di -- 1))
+		      else ()
 		in
-		  (s1, s2)
+		  copy (start ++ len -- 1, di ++ len -- 1)
+		end
+	      else let (* copy from di to di+len-1 to di *)
+		val stop = start ++ len
+		fun copy (si, di) = if (si < stop)
+		      then (
+			uupd (dst, di, usub (base, si));
+			copy  (si ++ 1, di ++ 1))
+		      else ()
+		in
+		  copy (start, di)
 		end
 	  end
 
-    val vector0 = Real64Vector.fromList[]
+    fun copyVec { src = vsl, dst, di } = let
+	  val (base, start, vlen) = Real64VectorSlice.base vsl
+	(* check that 0 <= di andalso di+vlen <= length dst *)
+	  val _ = if (di < 0) orelse (di > (alength dst -- vlen))
+		then raise Subscript
+		else ()
+	  val stop = start ++ vlen
+	  fun copy (si, di) = if (si < stop)
+		then (
+		  uupd (dst, di, vusub (base, si));
+		  copy (si ++ 1, di ++ 1))
+		else ()
+	  in
+	    copy (start, di)
+	  end
 
-    fun getVec (slice, 0) = SOME(Assembly.vector0, slice)
-      | getVec (SL{base, start, stop}, n) = if (n < 0)
-	  then raise Subscript
-	  else let
-	    val start' = start ++ n
-	    fun mkVec (i, items) =
-	          if i < start
-		    then Real64Vector.fromList items
-		    else mkVec (i -- 1, usub (base, i) :: items)
-	    in
-	      if (start' <= stop)
-		then SOME(mkVec(start' -- 1, []), SL{base=base, start=start', stop=stop})
+    fun getItem (SL(_, _, 0)) = NONE
+      | getItem (SL(base, start, len)) =
+	  SOME (usub (base, start), SL(base, start ++ 1, len -- 1))
+
+    fun appi f (SL(base, start, len)) = let
+	  fun appf i = if (i < len)
+		then (f (i, usub (base, start ++ i)); appf (i ++ 1))
+		else ()
+	  in
+	    appf 0
+	  end
+
+    fun app f (SL(base, start, len)) = let
+	  val stop = start ++ len
+	  fun appf i = if (i < stop)
+		then (f (usub (base, i)); appf (i ++ 1))
+		else ()
+	  in
+	    appf start
+	  end
+
+    fun modifyi f (SL(base, start, len)) = let
+	  val stop = start ++ len
+	  fun modifyf i = if (i < stop)
+	        then (
+		  uupd (base, i, f (i -- start, usub (base, i)));
+		  modifyf (i ++ 1))
+		else ()
+	  in
+	    modifyf start
+	  end
+
+    fun modify f (SL(base, start, len)) = let
+	  val stop = start ++ len
+	  fun modifyf i = if (i < stop)
+	        then (
+		  uupd (base, i, f (usub (base, i)));
+		  modifyf (i ++ 1))
+		else ()
+	  in
+	    modifyf start
+	  end
+
+    fun foldli f init (SL(base, start, len)) = let
+	  fun fold (i, acc) = if (i < len)
+		then fold (i ++ 1, f (i, usub (base, start ++ i), acc))
+		else acc
+	  in
+	    fold (0, init)
+	  end
+
+    fun foldl f init (SL(base, start, len)) = let
+	  val stop = start ++ len
+	  fun fold (i, acc) = if (i < stop)
+		then fold (i ++ 1, f (usub (base, i), acc))
+		else acc
+	  in
+	    fold (start, init)
+	  end
+
+    fun foldri f init (SL(base, start, len)) = let
+	  fun fold (i, acc) = if (0 <= i)
+		then fold (i -- 1, f (i, usub (base, start ++ i), acc))
+		else acc
+	  in
+	    fold (len -- 1, init)
+	  end
+
+    fun foldr f init (SL(base, start, len)) = let
+	  fun fold (i, acc) = if (start <= i)
+		then fold (i -- 1, f (usub (base, i), acc))
+		else acc
+	  in
+	    fold (start ++ len -- 1, init)
+	  end
+
+    fun findi pred (SL(base, start, len)) = let
+	  fun fnd i = if (i < len)
+		then let
+		  val x = usub (base, start ++ i)
+		  in
+		    if pred(i, x) then SOME(i, x) else fnd (i ++ 1)
+		  end
 		else NONE
-	    end
+	  in
+	    fnd 0
+	  end
+
+    fun find pred (SL(base, start, len)) = let
+	  val stop = start ++ len
+	  fun fnd i = if (i < stop)
+		then let
+		  val x = usub (base, i)
+		  in
+		    if pred x then SOME x else fnd (i ++ 1)
+		  end
+		else NONE
+	  in
+	    fnd start
+	  end
+
+    fun exists pred (SL(base, start, len)) = let
+	  val stop = start ++ len
+	  fun ex i = (i < stop) andalso (pred (usub (base, i)) orelse ex (i ++ 1))
+	  in
+	    ex start
+	  end
+
+    fun all pred (SL(base, start, len)) = let
+	  val stop = start ++ len
+	  fun ex i = (i < stop) andalso (pred (usub (base, i)) orelse ex (i ++ 1))
+	  in
+	    ex start
+	  end
+
+    fun collate cmp (SL(b1, s1, l1), SL(b2, s2, l2)) = let
+	  val len = if (l1 < l2) then l1 else l2
+	  fun compare i = if (i < len)
+		  then (case cmp (usub (b1, s1 ++ i), usub (b2, s2 ++ i))
+		     of EQUAL => compare (i ++ 1)
+		      | order => order
+		    (* end case *))
+		else if (l1 < l2)
+		  then LESS
+		else if (l1 = l2)
+		  then EQUAL
+		  else GREATER
+	  in
+	    compare 0
+	  end
+
+  (* added for Basis Library proposal 2018-002 *)
+
+    fun triml n (SL(base, start, len)) = if (n < 0)
+	    then raise Subscript
+	  else if (n < len)
+	    then SL(base, start ++ n, len -- n)
+	    else SL(base, start ++ len, 0)
+
+    fun trimr n (SL(base, start, len)) = if (n < 0)
+	    then raise Subscript
+	  else if (n < len)
+	    then SL(base, start, len -- n)
+	    else SL(base, start, 0)
+
+    fun splitAt (slice as SL(base, start, len), 0) =
+	  (SL(base, start, 0), slice)
+      | splitAt (SL(base, start, len), i) = let
+	(* check that 0 <= i <= len *)
+	  val _ = if InlineT.DfltInt.ltu(len, i) then raise Subscript else ()
+	  in
+	    (SL(base, start, i), SL(base, start ++ i, len -- i))
+	  end
+
+  (* FIXME: this is inefficient (going through intermediate list) *)
+    fun getVec (slice, 0) = SOME(vector0, slice)
+      | getVec (SL(base, start, len), n) = if (n < 0)
+	    then raise Subscript
+	  else if (len < n)
+	    then NONE
+	    else let
+	      val start' = start ++ n
+	      fun mkVec (i, items) =
+		    if i < start
+		      then Real64Vector.fromList items
+		      else mkVec (i -- 1, usub (base, i) :: items)
+	      in
+		SOME(mkVec(start' -- 1, []), SL(base, start', len -- n))
+	      end
+
+(***** A better implementation once we have the correct Real64Vector representation
+    fun getVec (slice, 0) = SOME(vector0, slice)
+      | getVec (SL(base, start, len), n) = if (n < 0)
+	    then raise Subscript
+	  else if (len < n)
+	    then NONE
+	    else let
+	      val vec = create n
+	      fun copy i = if (i < n)
+		    then (
+		      vuupd(vec, i, usub(base, start ++ i));
+		      copy (i ++ 1))
+		    else ()
+	      in
+		copy 0;
+		SOME(vec, SL(base, start ++ n, len -- n))
+	      end
+*****)
 
   end

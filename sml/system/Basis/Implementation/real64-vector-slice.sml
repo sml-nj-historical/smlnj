@@ -18,4 +18,5 @@ structure Real64VectorSlice :> MONO_VECTOR_SLICE
     type elem = real
     type vector = Real64Vector.vector
     type slice = elem VectorSlice.slice
-end
+
+  end
