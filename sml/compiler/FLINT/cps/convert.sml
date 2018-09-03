@@ -99,7 +99,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 
     fun selectNM(i,u,x,ct,ce) = (case ct
 	   of FLTt 64 => mkfn(fn v => SELECT(i,u,v,BOGt,unwrapf64(VAR v,x,ce)))
-	    | FLTt _ => raise Fail "unsupported FLTt size" (* REAL32: FIXME *)
+	    | FLTt n => raise Fail(concat["selectNM: FLTt ", Int.toString n, " is unsupported"]) (* REAL32: FIXME *)
 	    | NUMt{sz=32, tag=false} => mkfn(fn v => SELECT(i,u,v,BOGt,unwrapi32(VAR v,x,ce)))
 	    | NUMt{tag=false, ...} => raise Fail "unsupported NUMt size" (* 64BIT: FIXME *)
 	    | _ => SELECT(i,u,x,ct,ce)
@@ -185,7 +185,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
       | primwrap (NUMt{sz=32, tag=false}) = P.i32wrap
       | primwrap (NUMt _) = raise Fail "unsupported NUMt size" (* 64BIT: *)
       | primwrap (FLTt 64) = P.fwrap
-      | primwrap (FLTt _) = raise Fail "unsupported FLTt size" (* REAL32: *)
+      | primwrap (FLTt n) = raise Fail(concat["primwrap: FLTt ", Int.toString n, " is unsupported"]) (* REAL32: *)
       | primwrap _ = P.wrap
 (*
     fun primwrap(NUMP{sz, ...}) = P.iwrap sz
@@ -198,7 +198,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
       | primunwrap (NUMt{sz=32, tag=false}) = P.i32unwrap
       | primunwrap (NUMt _) = raise Fail "unsupported NUMt size" (* 64BIT: *)
       | primunwrap (FLTt 64) = P.funwrap
-      | primunwrap (FLTt _) = raise Fail "unsupported FLTt size" (* REAL32: *)
+      | primunwrap (FLTt n) = raise Fail(concat["primunwrap: FLTt ", Int.toString n, " is unsupported"]) (* REAL32: *)
       | primunwrap _ = P.unwrap
 
   (* arithop: AP.arithop -> P.arithop *)

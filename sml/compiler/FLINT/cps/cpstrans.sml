@@ -67,7 +67,7 @@ fun argSpill (args, ctys) =
                    h(xs, cts, ngp, nfp-1, x::ovs, ct::ots, gvs, gts, fvs)
                  else
                    h(xs, cts, ngp, nfp, ovs, ots, gvs, gts, x::fvs)
-	      | FLTt _ => raise Fail "unsupported FLTt size" (* REAL32: FIXME *)
+	      | FLTt n => raise Fail(concat["argSpill: FLTt ", Int.toString n, " is unsupported"]) (* REAL32: FIXME *)
               | _ =>
                  if ngp > 0 then
                    h(xs, cts, ngp-1, nfp, x::ovs, ct::ots, gvs, gts, fvs)

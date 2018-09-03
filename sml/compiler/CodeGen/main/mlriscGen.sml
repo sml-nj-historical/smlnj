@@ -126,7 +126,7 @@ struct
     | ctyToAnn (CPS.NUMt{sz=32, tag=false}) = i32
     | ctyToAnn (CPS.NUMt _) = raise Fail "unsupported NUMt size"
     | ctyToAnn (CPS.FLTt 64) = flt
-    | ctyToAnn (CPS.FLTt _) = raise Fail "unsupported FLTt size"
+    | ctyToAnn (CPS.FLTt n) = raise Fail(concat["ctyToAnn: FLTt ", Int.toString n, " is unsupported"])
     | ctyToAnn _ = ptr
 
   (*
@@ -137,7 +137,7 @@ struct
     | kindToGCty(_) = I32
 
   fun ctyToGCty (CPS.FLTt 64) = REAL64
-    | ctyToGCty (CPS.FLTt _) = raise Fail "unsupported FLTt size"
+    | ctyToGCty (CPS.FLTt n) = raise Fail(concat["ctyToGCty: FLTt ", Int.toString n, " is unsupported"])
     | ctyToGCty (CPS.NUMt{sz=31, tag=true}) = I31	(* 64BIT: FIXME *)
     | ctyToGCty (CPS.NUMt{sz=32, tag=false}) = I32
     | ctyToGCty (CPS.NUMt _) = raise Fail "unsupported NUMt size"
@@ -279,9 +279,9 @@ struct
        * We also annotate the gc types of these temporaries.
        *)
       fun known [] = []
-        | known(cty::rest) = (case cty
+        | known (cty::rest) = (case cty
 	     of CPS.FLTt 64 => M.FPR(M.FREG(fty,newFreg REAL64))
-              | CPS.FLTt _ => raise Fail "unsupported FLTt size"  (* REAL32: FIXME *)
+              | CPS.FLTt n => raise Fail(concat["known: FLTt ", Int.toString n, " is unsupported"])  (* REAL32: FIXME *)
               | CPS.NUMt{sz=31, tag=true} => M.GPR(M.REG(ity,newReg I31))
               | CPS.NUMt{sz=32, tag=false} => M.GPR(M.REG(ity,newReg I32))
               | CPS.NUMt _ => raise Fail "unsupported NUMt size"  (* 64BIT: FIXME *)
