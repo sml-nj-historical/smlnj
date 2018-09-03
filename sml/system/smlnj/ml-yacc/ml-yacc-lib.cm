@@ -1,6 +1,6 @@
 (* $smlnj/ml-yacc/ml-yacc-lib.cm
  *
- *   This is a proxy for $SMLNJ-ML-YACC/ml-yacc-lib.cm and represents
+ *   This is a proxy for $SMLNJ-ML-YACC-LIB/ml-yacc-lib.cm and represents
  *   the version of the ML-Yacc library that is internally
  *   used by the implementation of the system itself.
  *
@@ -11,7 +11,7 @@
  *   Copyright (c) 2005 by The Fellowship of SML/NJ
  *
  * author: Matthias Blume (blume@tti-c.org)
- *)     
+ *)
 Library
 	library($SMLNJ-ML-YACC-LIB/ml-yacc-lib.cm)
 is
