@@ -1,0 +1,38 @@
+Organization of FLINT/kernel
+
+primop.sig/sml
+  prim ops
+
+primtyc.sig/sml
+  prim types
+
+lty.sig/sml
+  basic types for plambda types
+  tycI, ltyI -- concrete representations
+  tyc, lty -- hashed representations
+  tycEnv -- type environments for closures (= tyc)
+
+pplty.sml
+  pretty printing plambda types
+  uses: lty.sml
+
+ltykindchk.sml
+  kind checking for types
+  uses: lty.sml
+
+ltykernel.sig/sml
+  normalization and equivalence functions for types
+  uses: lty.sml, pplty.sml
+
+ltybasic.sig/sml
+
+
+ltydef.sig/sml
+
+
+ltydict.sml
+
+
+ltyextern.sig/sml
+
+
