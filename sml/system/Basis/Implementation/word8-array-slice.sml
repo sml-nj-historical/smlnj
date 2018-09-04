@@ -89,7 +89,7 @@ structure Word8ArraySlice :> MONO_ARRAY_SLICE
 		      else n
 		(* end case *))
 	  in
-	    SL(base, start, len')
+	    SL(base, start', len')
 	  end
 
     fun vector (SL(_, _, 0)) = vector0

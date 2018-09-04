@@ -88,7 +88,7 @@ structure Real64ArraySlice : MONO_ARRAY_SLICE
 		      else n
 		(* end case *))
 	  in
-	    SL(base, start, len')
+	    SL(base, start', len')
 	  end
 
   (* FIXME: this is inefficient *)
