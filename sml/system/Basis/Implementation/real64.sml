@@ -22,6 +22,7 @@ structure Real64Imp : REAL =
     fun unordered(x:real,y) = Bool.not(x>y orelse x <= y)
     fun ?= (x, y) = (x == y) orelse unordered(x, y)
 
+(* 64BIT: FIXME *)
     val w31_r = InlineT.Real64.from_int32 o InlineT.Int32.copy_word31
 
     val rbase = w31_r CoreIntInf.base

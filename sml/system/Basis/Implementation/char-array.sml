@@ -11,6 +11,7 @@ structure CharArray : MONO_ARRAY =
 
     (* fast add/subtract avoiding the overflow test *)
     infix -- ++
+(* 64BIT: FIXME *)
     fun x -- y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x -
 					     InlineT.Word31.copyf_int31 y)
     fun x ++ y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x +
@@ -69,7 +70,7 @@ structure CharArray : MONO_ARRAY =
 
     val length      : array -> int		  = InlineT.CharArray.length
     val sub         : (array * int) -> elem	  = InlineT.CharArray.chkSub
-    val update      : (array * int * elem) -> unit 
+    val update      : (array * int * elem) -> unit
                                                = InlineT.CharArray.chkUpdate
 
     fun vector a =

@@ -18,6 +18,7 @@ structure Word8Buffer :> MONO_BUFFER
 
   (* fast add/subtract avoiding the overflow test *)
     infix 6 -- ++
+(* 64BIT: FIXME *)
     fun x -- y = W31.copyt_int31 (W31.copyf_int31 x - W31.copyf_int31 y)
     fun x ++ y = W31.copyt_int31 (W31.copyf_int31 x + W31.copyf_int31 y)
 

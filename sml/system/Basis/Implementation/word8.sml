@@ -8,7 +8,7 @@ structure Word8Imp : WORD =
   struct
 
     structure W8 = InlineT.Word8
-    structure W31 = InlineT.Word31
+    structure W31 = InlineT.Word31	(* 64BIT: FIXME *)
     structure LW = Word32Imp
 
     type word = Word8.word		(* 31 bits *)

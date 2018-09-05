@@ -12,6 +12,7 @@ structure Array : ARRAY =
 
     (* fast add/subtract avoiding the overflow test *)
     infix -- ++
+(* 64BIT: FIXME *)
     fun x -- y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x -
 					     InlineT.Word31.copyf_int31 y)
     fun x ++ y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x +
@@ -22,28 +23,28 @@ structure Array : ARRAY =
     val array : int * 'a -> 'a array = InlineT.PolyArray.array
 (*
     fun array (0, _) = InlineT.PolyArray.newArray0()
-      | array (n, init) = 
-          if InlineT.DfltInt.ltu(maxLen, n) then raise Core.Size 
+      | array (n, init) =
+          if InlineT.DfltInt.ltu(maxLen, n) then raise Core.Size
           else Assembly.A.array (n, init)
 *)
 
     fun fromList [] = InlineT.PolyArray.newArray0()
-      | fromList (l as (first::rest)) = 
+      | fromList (l as (first::rest)) =
           let fun len(_::_::r, i) = len(r, i ++ 2)
                 | len([x], i) = i ++ 1
                 | len([], i) = i
               val n = len(l, 0)
               val a = array(n, first)
               fun fill (i, []) = a
-                | fill (i, x::r) = 
+                | fill (i, x::r) =
                     (InlineT.PolyArray.update(a, i, x); fill(i ++ 1, r))
            in fill(1, rest)
           end
 
     fun tabulate (0, _) = InlineT.PolyArray.newArray0()
-      | tabulate (n, f : int -> 'a) : 'a array = 
+      | tabulate (n, f : int -> 'a) : 'a array =
           let val a = array(n, f 0)
-              fun tab i = 
+              fun tab i =
                 if (i < n) then (InlineT.PolyArray.update(a, i, f i);
 				 tab(i ++ 1))
                 else a
@@ -164,7 +165,7 @@ structure Array : ARRAY =
 
     fun find p arr = let
 	val len = length arr
-	fun fnd i = 
+	fun fnd i =
 	    if i >= len then NONE
 	    else let val x = usub (arr, i)
 		 in

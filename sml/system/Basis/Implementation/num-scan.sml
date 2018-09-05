@@ -37,6 +37,7 @@ structure NumScan : sig
   end = struct
     (* val z = InlineT.Word32.toLargeIntX *)
 
+(* 64BIT: FIXME *)
     structure W = InlineT.Word31
     structure W32 = InlineT.Word32
     structure I = InlineT.Int31

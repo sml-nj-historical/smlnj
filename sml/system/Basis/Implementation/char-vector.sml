@@ -13,6 +13,7 @@ structure CharVector : MONO_VECTOR =
 
     (* fast add/subtract avoiding the overflow test *)
     infix -- ++
+(* 64BIT: FIXME *)
     fun x -- y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x -
 					     InlineT.Word31.copyf_int31 y)
     fun x ++ y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x +
