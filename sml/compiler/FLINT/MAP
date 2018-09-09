@@ -1,5 +1,7 @@
-FLINT/
+FLINT/  (87 files, 75 .sml, 12 .sig)
 --------------
+
+MAP -- this file
 
 kernel/
   FLINT types
@@ -52,6 +54,7 @@ kernel/
 
 
 plambda/
+  plambda expressions; first IR, to which Absyn is translated
 
   plambdatype.sml
     defines PLambdaType as an alias of LtyExtern
@@ -115,21 +118,28 @@ trans/
 
   matchcomp.sml
     main match compiler
-
+    defs: MATCH_COMP, MatchComp: MATCH_COMP
+    
   mccommon.sml
-    match compiler support
+    match compiler support data structures
+    defs: MCCommon
 
   pequal.sml
+    inline equality, with equality for strings, IntInf, and polymorphic types
+    imported from the Core structure in translate.sml
+    defs: PEQUAL, PEqual: PEQUAL
 
 [DELETED: -- unused support for pattern templates
   tempexpn.sml]
 
   transtypes.sml
     translate front-end types to flint types (lty, tyc)
+    defs: TRANSTYPES, TransTypes: TRANSTYPES
 
   translate.sml
     translate absyn to plambda lexp
-
+    defs: TRANSLATE, Translate: TRANSLATE
+    
   literal-to-num.sml
     Conversions from integer/word literals (which are represented as
     arbitrary precision ints) to fixed size. a hack that should be
@@ -137,7 +147,19 @@ trans/
     size numbers
     defs: LITERAL_TO_NUM, LiteralToNum : LITERAL_TO_NUM
 
+flint/
+
+reps/
+
 opt/
+
+lsplit/
+
+cps/
+
+cpsopt/
+
+clos/
 
 main/
 
