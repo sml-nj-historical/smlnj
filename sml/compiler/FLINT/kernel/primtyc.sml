@@ -12,7 +12,7 @@ structure PrimTyc :> PRIM_TYC =
 
   (*
    * This datatype defines the set of primitive type constructors. They
-   * probably don't have to be defined as a datatype. A environment-like
+   * probably don't have to be defined as a datatype. An environment-like
    * thing would serve better. The intermediate language can be thought
    * as a language parameterized by the set of primitive type constructors
    * and primitive functions --- which can be represented by a higher-order
@@ -161,14 +161,22 @@ structure PrimTyc :> PRIM_TYC =
     fun realSize (PT_REAL sz) = SOME sz
       | realSize _ = NONE
 
+  (* return the FLINT primitive type for a given size of int or word.
+   * Note that we use the default tagged integer type to represent any numeric
+   * type of smaller precision.
+   *)
+    fun numPrim n = PT_NUM(Int.max (n, Target.defaultIntSz))
+
   (* mapping from Types.tycon to primtycs *)
     val primTycons = [
-	    (BT.charTycon, PT_NUM Target.defaultIntSz),
+	    (BT.charTycon, numPrim 8),
 	    (BT.intTycon, PT_NUM Target.defaultIntSz),
 	    (BT.wordTycon, PT_NUM Target.defaultIntSz),
-	    (BT.word8Tycon, PT_NUM Target.defaultIntSz),
-	    (BT.int32Tycon, PT_NUM 32),
-	    (BT.word32Tycon, PT_NUM 32),
+	    (BT.word8Tycon, numPrim 8),
+	    (BT.int32Tycon, numPrim 32),
+	    (BT.word32Tycon, numPrim 32),
+	    (BT.int64Tycon, numPrim 64),
+	    (BT.word64Tycon, numPrim 64),
 	    (BT.realTycon, PT_REAL 64),
 	    (BT.stringTycon, PT_STRING),
 	    (BT.exnTycon, PT_EXN),

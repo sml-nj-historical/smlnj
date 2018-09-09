@@ -267,16 +267,6 @@ Basic datastructures used in elaboration (including type checking)
       SymPath and InvPath: direct and inverse symbolic paths (selecting
       module components)
       defs: SYMPATH, INVPATH, CONVERTPATHS, SymPath, InvPath, ConvertPaths
-  [#Deleted
-    ii.sml [FLINT]
-      FLINT related information for inlining (why is this in elaborator?)
-      defs: II
-  #]
-    core-ptnum.sml
-      core prim-type numbers (essentially the same as Elaborator/basics/ptnum.sml
-      except only language-standard types are included)
-      see: Elaborator/basics/ptnum.sml
-      defs: CORE_PRIM_TYC_NUM, CorePrimTycNum
     coresym.sml
       defines the special structure symbol "_Core" used to access certain
       special bindings (e.g Match and Bind exceptions)
@@ -309,11 +299,9 @@ Basic datastructures used in elaboration (including type checking)
     tuples.sml
       fns for constructing tuple and record types
       defs: TUPLES, Tuples: TUPLES
-    core-basictypes.sml
-      building the primitive types and associated values (containing only
-      implementation independent, language-standard basic types?)
-      see: Elaborator/types/basictypes.sml
-      defs: CoreBasicTypes
+    basictypes.sig/sml
+      building the primitive types and associated values
+      defs: BASICTYPES, BasicTypes
 
   ElabData/statenv/
   static environments
@@ -359,6 +347,25 @@ Basic datastructures used in elaboration (including type checking)
       "entity path"?)
       defs: ENT_PATH_CONTEXT, EntPathContext :> ENT_PATH_CONTEXT
 
+  ElabData/prim/
+    cproto.sml
+      An ad-hoc encoding of PrimCTypes.c_proto in ML types.
+      defs: CProto 
+    prim-c-types.sml
+      A representation of C Types for specifying the arguments and results
+      of C function calls.
+      defs: PrimCtypes
+    primop-bind.sml
+      Representation of primop bindings that define the Inline structure.
+      defs: PrimopBind
+    primop-id.sig/sml
+      Front-end representation of information identifying primops in variables
+      and structures
+      defs: PRIMOP_ID, PrimopId
+    primop.sig/sml
+      datatype Primop, defining various primitive operations
+      defs: PRIMOP, Primop
+      
   ElabData/main/
     compinfo.sml
       elaboration context parameter
@@ -374,17 +381,12 @@ Elaborator/
 
   Elaborator/basics/
   some control flags, some representation types, some FLINT stuff
-    elabcontrol.sml
+    elabcontrol.sig/sml
       Elaborator control flags
-      defs: ElabControl
+      defs: ELAB_CONTROL, ElabControl
     conrep.sml
       inferring conreps for data constructors
       defs: CONREP, ConRep: CONREP
-    ptnum.sml
-      prim type numbers, augmenting ElabData/basics/core-ptnum.sml with
-      implementation dependent types
-      see: ElabData/basics/core-ptnum.sml
-      defs: PRIM_TYC_NUM, PrimTycNum: PRIM_TYC_NUM
 
   Elaborator/print/  [should be in ElabData?]
   print utilities and print modules for elaboration data structures
@@ -402,11 +404,6 @@ Elaborator/
 
   Elaborator/types/
   building basic types + typechecking modules
-    basictypes.sig/sml
-      define basic (built-in) types; most are just defined in terms of
-      types from CoreBasicTypes [MOVE to ElabData?]
-      see: ElabData/types/core-basictypes.sml
-      defs: BasicTypes
     eqtypes.sml
       equivalence of types
       defs: EQTYPES, EqTypes: EQTYPES
@@ -419,7 +416,7 @@ Elaborator/
     overload.sml
       overloading resolution
       defs: OVERLOAD, Overload
-    typecheck.sml [FLINT]
+    typecheck.sml [FLINT dirt]
       defines typechecking _functor_ TypecheckFn, taking some FLINT-related
       inlining info as parameters [should make into a structure]
       defs: TYPECHECK, TypecheckFn: _ => TYPECHECK
@@ -687,10 +684,7 @@ types (internal representation of types)
   Unify          (Elaborator/types/unify.sml)
 
  primitive types
-  CorePrimTycNum (ElabData/basics/core-ptnum.sml)
-  PrimTycNum     (Elaborator/basics/ptnum.sml)
-  CoreBasicTypes (ElabData/types/core-basictypes.sml)
-  BasicTypes     (Elaborator/types/basictypes.sig,sml)
+  BasicTypes     (ElabData/types/basictypes.sig,sml)
   PrimEnv        (Semant/statenv/prim.sml)
 
  printing types

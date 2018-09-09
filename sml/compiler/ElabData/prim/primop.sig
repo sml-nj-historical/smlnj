@@ -281,6 +281,10 @@ signature PRIMOP =
     val ILT : primop
     val ILE : primop
     val IGE : primop
+    val UIEQL : primop  (* for UINT kind, may not matter *)
+   
+    val mkIEQL : int -> primop   (* make equality primop for other sizes *)
+    val mkUIEQL : int -> primop  (* and for unsigned (kind = UINT) *)
 
     val prNumkind : numkind -> string
     val prPrimop: primop -> string

@@ -151,19 +151,27 @@ struct
 	CCR64 |				(* passed as real64 *)
 	CCML				(* passed as Unsafe.Object.object *)
 
-  (** default integer arithmetic and comparison operators *)
-    val IADD = ARITH{oper=ADD, overflow=true, kind=INT 31}
-    val ISUB = ARITH{oper=SUB, overflow=true, kind=INT 31}
-    val IMUL = ARITH{oper=MUL, overflow=true, kind=INT 31}
-    val IDIV = ARITH{oper=QUOT, overflow=true, kind=INT 31}
-    val INEG = ARITH{oper=NEG, overflow=true, kind=INT 31}
+    val defaultIntKind = INT Target.defaultIntSz  (* 31 or 63, depending on Target.is64 *)
+    val defaultUIntKind = UINT Target.defaultIntSz  (* 31 or 63, depending on Target.is64 *)
 
-    val IEQL = CMP{oper=EQL, kind=INT 31}
-    val INEQ = CMP{oper=NEQ, kind=INT 31}
-    val IGT = CMP{oper=GT, kind=INT 31}
-    val ILT = CMP{oper=LT, kind=INT 31}
-    val IGE = CMP{oper=GTE, kind=INT 31}
-    val ILE = CMP{oper=LTE, kind=INT 31}
+  (** default integer arithmetic and comparison operators *)
+    val IADD = ARITH{oper=ADD, overflow=true, kind=defaultIntKind}
+    val ISUB = ARITH{oper=SUB, overflow=true, kind=defaultIntKind}
+    val IMUL = ARITH{oper=MUL, overflow=true, kind=defaultIntKind}
+    val IDIV = ARITH{oper=QUOT, overflow=true, kind=defaultIntKind}
+    val INEG = ARITH{oper=NEG, overflow=true, kind=defaultIntKind}
+
+    val IEQL = CMP{oper=EQL, kind=defaultIntKind}
+    val INEQ = CMP{oper=NEQ, kind=defaultIntKind}
+    val IGT  = CMP{oper=GT,  kind=defaultIntKind}
+    val ILT  = CMP{oper=LT,  kind=defaultIntKind}
+    val IGE  = CMP{oper=GTE, kind=defaultIntKind}
+    val ILE  = CMP{oper=LTE, kind=defaultIntKind}
+
+    val UIEQL = CMP{oper=EQL, kind=defaultUIntKind}
+
+    fun mkIEQL size = CMP{oper=EQL, kind=INT size}
+    fun mkUIEQL size = CMP{oper=EQL, kind=UINT size}
 
   (** default floating-point equality operator *)
     val FEQLd = CMP{oper=EQL, kind=FLOAT 64}
