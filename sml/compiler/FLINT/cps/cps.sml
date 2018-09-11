@@ -237,7 +237,7 @@ fun hasRCC(cexp) = let
       end
 
 fun sizeOf (FLTt sz) = sz
-  | sizeOf (NUMt{sz=31, tag=true}) = Target.mlValueSz	(* 64BIT: FIXME *)
+  | sizeOf (NUMt{sz, tag=true}) = Target.mlValueSz
   | sizeOf (NUMt{sz, tag=false}) = sz
   | sizeOf (PTRt _ | FUNt | CNTt) = Target.mlValueSz
 

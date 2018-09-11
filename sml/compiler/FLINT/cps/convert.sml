@@ -304,33 +304,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
    *                  SWITCH OPTIMIZATIONS AND COMPILATIONS                  *
    ***************************************************************************)
 
-    fun do_switch_gen rename = Switch.switch {
-	    E_switchlimit = 4,
-	    E_tagint = tagInt,
-	    E_boxint = fn {ival, ty} => boxInt(ty, ival),
-	  (* NOTE: MLRiscGen does not handle comparisons involving small integer types,
-           * so we promote them to the default tagged integer size.
-           *)
-	    E_ineq   = fn ty => P.cmp{oper=P.neq, kind=P.INT(Int.max(ty, Target.defaultIntSz))},
-	    E_wneq   = fn ty => P.cmp{oper=P.neq, kind=P.UINT(Int.max(ty, Target.defaultIntSz))},
-	    E_pneq   = P.pneq,
-	    E_less   = P.ilt,
-	    E_branch = (fn (cmp,x,y,a,b) => BRANCH(cmp, [x,y], mkv(), a, b)),
-	    E_strneq = (fn (w,str,a,b) => BRANCH(
-				P.strneq,
-				[tagInt'(size str), w, STRING str],
-				mkv(), a, b)),
-	    E_switch = (fn (v,l) => SWITCH(v, mkv(), l)),
-	    E_add    = (fn (x,y,c) =>
-			     mkfn(fn v => ARITH(P.iadd,[x,y],v,tagIntTy,c(VAR v)))),
-	    E_gettag = (fn (x,c) => mkfn(fn v => PURE(P.getcon,[x],v,tagIntTy,c(VAR v)))),
-	    E_getexn = (fn (x,c) => mkfn(fn v => PURE(P.getexn,[x],v,BOGt,c(VAR v)))),
-	    E_length = (fn (x,c) => mkfn(fn v => PURE(P.length,[x],v,tagIntTy,c(VAR v)))),
-	    E_unwrap = (fn (x,c) => mkfn(fn v => PURE(P.unwrap,[x],v,tagIntTy,c(VAR v)))),
-	    E_boxed  = (fn (x,a,b) => BRANCH(P.boxed,[x],mkv(),a,b)),
-	    E_path   = (fn (DA.LVAR v, k) => k(rename v)
-			 | _ =>  bug "unexpected path in convpath")
-	  }
+    fun switchGen rename = Switch.switch { rename = rename }
 
   (***************************************************************************
    *       UTILITY FUNCTIONS FOR DEALING WITH META-LEVEL CONTINUATIONS       *
@@ -426,7 +400,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	     end (* function preventEta *)
 
 	 (* switch optimization *)
-	 val do_switch = do_switch_gen rename
+	 val switch = switchGen rename
 
 	 (* lpvar : F.value -> value *)
 	 fun lpvar (F.VAR v) = rename v
@@ -539,19 +513,21 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	      | F.SWITCH (u, sign, l, d) =>
 		  let val (header,F) = preventEta c
 		      val kont = makmc(fn vl => APP(F, vl), rttys c)
-		      val body =
-			let val df = mkv()
+		      val body = let
+			    val df = mkv()
 			    fun proc (cn as (F.DATAcon(dc, _, v)), e) =
 				  (cn, loop (F.LET([v], F.RET [u], e), kont))
 			      | proc (cn, e) = (cn, loop(e, kont))
-			    val b = do_switch{sign=sign, exp=lpvar u,
-					      cases=map proc l,
-					      default=APP(VAR df, [tagInt 0])}
-			 in case d
-			     of NONE => b
-			      | SOME de => FIX([(CONT, df, [mkv()], [tagIntTy],
-					       loop(de, kont))], b)
-			end
+			    val b = switch {
+				    arg = lpvar u, sign = sign,
+				    cases = map proc l,
+				    default = APP(VAR df, [tagInt 0])
+				  }
+			    in case d
+				 of NONE => b
+				  | SOME de => FIX([(CONT, df, [mkv()], [tagIntTy],
+						   loop(de, kont))], b)
+			    end
 		   in header(body)
 		  end
 	      | F.CON(dc, ts, u, v, e) =>

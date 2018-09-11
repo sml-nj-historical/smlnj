@@ -3,291 +3,362 @@
  * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
- * TODO: use binary search!!!
- * TODO: this code needs a complete rewrite!!!
- *	- better code for words, boxed ints, etc.
- *	- merge E_strneq and E_boxed with E_branch
- *	- switch to directly using CPS types?
- * TODO: we probably don't need both E_ineq and E_wneq, but they are different in CPS.
+ * TODO:
+ *   - we might be able to exploit range information for Word8.word and Int8.int
+ *     types (and Char.char), but it is not clear that we have that much type information
+ *     at this point in the compiler pipeline.
+ *   - if CPS.SWITCH supported boxed int types, we could merge the taggedNumSwitch and
+ *     boxedNumSwitch functions
+ *   - change CPS to replace streql/strneq with a STRCMP three-way branch and then
+ *     implement binary search for strings.
  *)
 
-signature SWITCH =
-  sig
+structure Switch : sig
 
-    val switch: {
-	(* lower-bound on size of E_switch *)
-	  E_switchlimit : int,
-	(* make a tagged integer literal *)
-	  E_tagint : IntInf.int -> 'value,
-	(* make a boxed integer literal of the specified size *)
-	  E_boxint : int IntConst.t -> 'value,
-	(* test integers of the given size for equality *)
-	  E_ineq : int -> 'comparison,
-	(* test unsigned of the given size integers for equality *)
-	  E_wneq : int -> 'comparison,
-	(* test pointers for equality *)
-	  E_pneq : 'comparison,
-	(* tagged integer comparison *)
-	  E_less : 'comparison,
-	(* conditional branch *)
-	  E_branch : 'comparison * 'value * 'value * 'cexp * 'cexp -> 'cexp,
-	(* test a string against a literal value *)
-	  E_strneq : 'value * string * 'cexp * 'cexp -> 'cexp,
-	(* multiway switch on tagged integer values (zero-based) *)
-	  E_switch : 'value * 'cexp list -> 'cexp,
-	(* tagged integer addition *)
-	  E_add : 'value * 'value * ('value -> 'cexp) -> 'cexp,
-	(* get tag value from datatype value *)
-	  E_gettag : 'value * ('value -> 'cexp) -> 'cexp,
-	(* get unique ID (i.e., reference) from exception value *)
-	  E_getexn : 'value * ('value -> 'cexp) -> 'cexp,
-	(* get the length of a string *)
-	  E_length : 'value * ('value -> 'cexp) -> 'cexp,
-	(* unwrap unary constructor *)
-	  E_unwrap : 'value * ('value -> 'cexp) -> 'cexp,
-	(* test if a value is boxed or not *)
-	  E_boxed : 'value * 'cexp * 'cexp -> 'cexp,
-	(* variable renaming *)
-	  E_path : Access.access * ('value -> 'cexp) -> 'cexp
-	} -> {
-	  exp     : 'value,
-	  sign    : Access.consig,
-	  cases   : (FLINT.con * 'cexp) list,
-	  default : 'cexp
-	} -> 'cexp
+    val switch : {
+	  (* variable renaming *)
+	    rename : CPS.lvar -> CPS.value
+	  } -> {
+	    arg     : CPS.value,
+	    sign    : Access.consig,
+	    cases   : (FLINT.con * CPS.cexp) list,
+	    default : CPS.cexp
+	  } -> CPS.cexp
 
-  end
+  end = struct
 
-
-structure Switch : SWITCH =
-  struct
-
-    structure L = FLINT
+    structure F = FLINT
     structure A = Access
 
     fun bug s = ErrorMsg.impossible ("Switch: " ^ s)
 
+  (* make a fresh variable *)
+    val mkv = LambdaVar.mkLvar
+
+  (* make a PURE expression, where `k` is the continuation of the operation *)
+    fun pure (rator, args, ty, k) = let
+	  val x = mkv()
+	  in
+	    CPS.PURE(rator, args, x, ty, k(CPS.VAR x))
+	  end
+
+  (* minimum number of cases required to make a SWITCH (instead of conditional branches) *)
+    val switchLimit = 4
+
+  (* convert to/from IntInf.int *)
     val toII = IntInf.fromInt
     val toI = IntInf.toInt
 
-    fun switch {
-	  E_switchlimit : int,
-	  E_tagint: IntInf.int -> 'value,
-	  E_boxint: int IntConst.t -> 'value,
-	  E_ineq: int -> 'comparison,
-	  E_wneq: int -> 'comparison,
-	  E_pneq: 'comparison,
-	  E_less: 'comparison,
-	  E_branch: 'comparison * 'value * 'value * 'cexp * 'cexp -> 'cexp,
-	  E_strneq: 'value * string * 'cexp * 'cexp -> 'cexp,
-	  E_switch: 'value * 'cexp list -> 'cexp,
-	  E_add : 'value * 'value * ('value->'cexp) -> 'cexp,
-	  E_gettag: 'value * ('value -> 'cexp) -> 'cexp,
-	  E_getexn: 'value * ('value -> 'cexp) -> 'cexp,
-	  E_length: 'value * ('value -> 'cexp) -> 'cexp,
-	  E_unwrap: 'value * ('value -> 'cexp) -> 'cexp,
-	  E_boxed:  'value * 'cexp * 'cexp -> 'cexp,
-	  E_path:  Access.access * ('value->'cexp) -> 'cexp
-	} = let
-	  val neq = E_ineq Target.defaultIntSz
-	  fun int' n = E_tagint(toII n)
-	  fun switch1 (e : 'value, cases : (IntInf.int * 'cexp) list, default : 'cexp, (lo, hi)) =
-		let
-		val delta = 2
-		fun collapse (l as (li,ui,ni,xi)::(lj,uj,nj,xj)::r ) =
-		      if (toII((ni+nj) * delta) > ui-lj)
-			then collapse((lj,ui,ni+nj,xj)::r)
-			else l
-		  | collapse l = l
-		fun f (z, x as (i,_)::r) = f(collapse((i,i,1,x)::z), r)
-		  | f (z, nil) = z
-		fun tackon (stuff as (l,u,n,x)::r) =
-		      if toII(n*delta) > u-l andalso n>E_switchlimit andalso hi>u
-			then tackon((l,u+1,n+1,x@[(u+1,default)])::r)
-			else stuff
-		  | tackon nil = bug "switch.3217"
-		fun separate((z as (l,u,n,x))::r) =
-		      if n<E_switchlimit andalso n>1
-			then let
-			  val ix as (i,_) = List.nth(x, n-1)
-			  in
-			    (i,i,1,[ix])::separate((l,l,n-1,x)::r)
-			  end
-			else z :: separate r
-		  | separate nil = nil
-		val chunks = rev (separate (tackon (f (nil, cases))))
-		fun g (1, (l, h, 1, (i, b)::_)::_, (lo, hi)) =
-		      if lo=i andalso hi=i then b
-		      else E_branch(neq, e, E_tagint i, default, b)
-		  | g (1, (l, h, n, x)::_, (lo, hi)) =
-		      let fun f (0,_,_) = nil
-			    | f (n,i,l as (j,b)::r) =
-				 if i+lo = j then b::f(n-1,i+1,r)
-				 else (default::f(n,i+1,l))
-			    | f _ = bug "switch.987"
-			  val list = f(n,0,x)
-			  val body = if lo=0 then E_switch(e, list)
-				     else E_add(e, E_tagint(~lo), fn v => E_switch(v, list))
-			  val a = if (lo<l) then E_branch(E_less, e, E_tagint l, default, body)
-				  else body
-			  val b = if (hi > h) then E_branch(E_less, E_tagint h, e, default, a)
-				  else a
-		       in b
-		      end
-		  | g (n,cases,(lo,hi)) = let
-			val n2 = n div 2
-			val c2 = List.drop(cases, n2)
-			val (l, r) = (case c2
-			       of (l1,_,_,_)::r1 => (l1,r1)
-				| _ => bug "switch.111"
-			      (* end case *))
-			in
-			  E_branch(E_less, e, E_tagint l,
-			    g(n2, cases, (lo, l-1)),
-			    g(n-n2, c2, (l, hi)))
-			end
-		in
-		  g (List.length chunks, chunks, (lo, hi))
-		end
+  (* default integer type/values *)
+    local
+      val tt = {sz = Target.defaultIntSz, tag = true}
+    in
+    val tagNumTy = CPS.NUMt tt
+    fun tagNum n = CPS.NUM{ival = n, ty = tt}
+    fun boxNumTy sz = CPS.NUMt{sz = sz, tag = false}
+  (* operator numkinds for default tagged ints and words *)
+    val tagIntKind = CPS.P.INT Target.defaultIntSz
+    val tagWordKind = CPS.P.UINT Target.defaultIntSz
+    end
 
-	(* switch for default tagged integer type *)
-	  fun dflt_int_switch (e: 'value, l : (IntInf.int * 'cexp) list, default, inrange) = let
-		val len = List.length l
-		fun ifelse nil = default
-		  | ifelse ((i, b)::r) = E_branch(neq, E_tagint i, e, ifelse r, b)
-		fun ifelseN [(i, b)] = b
-		  | ifelseN ((i, b)::r) = E_branch(neq, E_tagint i, e, ifelseN r, b)
-		  | ifelseN _ = bug "switch.224"
-		val l = ListMergeSort.sort (fn ((i,_), (j,_)) => IntInf.>(i, j)) l
-		in
-		  case (len < E_switchlimit, inrange)
-		   of (true, NONE) => ifelse l
-		    | (true, SOME n) => if n+1=len then ifelseN l else ifelse l
-		    | (false, NONE) => let
-			val (hi, _) = (List.last l handle List.Empty => bug "switch.last132")
-			val (low, r) = (case l
-			       of (low', _)::r' => (low', r')
-				| _ => bug "switch.23"
-			      (* end case *))
-			in
-			  E_branch(E_less, e, E_tagint low, default,
-			    E_branch(E_less, E_tagint hi, e, default,
-			      switch1(e, l, default, (low, hi))))
-			 end
-		    | (false, SOME n) => switch1(e, l, default, (0, IntInf.fromInt n))
-		  (* end case *)
-		end
+  (* sort cases tagged by integers *)
+    val numSort = ListMergeSort.sort (fn ((i, _) : (IntInf.int * CPS.cexp), (j,_)) => (i > j))
 
-	  fun isboxed (L.DATAcon((_,A.CONSTANT _, _),_,_)) = false
-	    | isboxed (L.DATAcon((_,A.LISTNIL,_),_,_)) = false
-	    | isboxed (L.DATAcon((_,rep,_),_,_)) = true
-	    | isboxed (L.STRINGcon s) = true
-	    | isboxed _ = false
+  (* A chunk is a tuple `(lb, ub, n, cases)`, where `lb` is the smallest value
+   * covered by `cases`, `ub` is the largest value covered by `cases`, `n` is
+   * the number of items in the `cases` list, and where `cases` list is a dense
+   * (i.e., no gaps) list of integer-cexp pairs.
+   *)
+    type chunk = (IntInf.int * IntInf.int * int * (IntInf.int * CPS.cexp) list)
 
-	  fun isexn (L.DATAcon((_,A.EXN _,_),_,_)) = true
-	    | isexn _ = false
-
-	  fun exn_switch(w,l,default) =
-	    E_getexn(w, fn u =>
-	       let fun g((L.DATAcon((_,A.EXN p,_),_,_),x)::r) =
-			 E_path(p, fn v => E_branch(E_pneq,u,v, g r, x))
-		     | g nil = default
-		     | g _ = bug "switch.21"
-		in g l
-	       end)
-
-	  fun datacon_switch(w,sign,l: (L.con * 'cexp) list, default) = let
-		fun tag (L.DATAcon((_,A.CONSTANT i,_),_,_)) = toII i
-		  | tag (L.DATAcon((_,A.TAGGED i,_),_,_)) = toII i
-	(*        | tag (L.DATAcon((_,A.TAGGEDREC(i,_),_),_,_)) = i *)
-		  | tag _ = 0
-		fun tag'(c, e) = (tag c, e)
-		val (boxed, unboxed) = List.partition (isboxed o #1) l
-		val b = map tag' boxed and u = map tag' unboxed
-		in
-		  case sign
-		   of A.CSIG (0, n) =>
-			E_unwrap(w, fn w' => dflt_int_switch(w',u,default,SOME(n-1)))
-		    | A.CSIG (n, 0) =>
-			E_gettag(w, fn w' => dflt_int_switch(w',b,default,SOME(n-1)))
-		    | A.CSIG (1, nu) =>
-			E_boxed(w, dflt_int_switch(E_tagint 0, b, default, SOME 0),
-			  E_unwrap(w, fn w' => dflt_int_switch(w',u,default,SOME(nu-1))))
-		    | A.CSIG (nb,nu) =>
-			E_boxed(w,
-			  E_gettag(w, fn w' => dflt_int_switch(w',b,default,SOME(nb-1))),
-			    E_unwrap(w, fn w' => dflt_int_switch(w',u,default,SOME(nu-1))))
-		    | A.CNIL => bug "datacon_switch"
-		  (* end case *)
-		end
-
-	  fun coalesce (l : (string * 'a) list) : (IntInf.int * (string * 'a) list) list = let
-		val l' = ListMergeSort.sort (fn ((s1,_),(s2,_)) => size s1 > size s2) l
-		val s = #1 (List.hd l')
-		fun gather (n, [], current, acc) = (n,current)::acc
-		  | gather (n, (x as (s,a))::rest, current, acc) = let
-		    val s1 = toII(size s)
+  (* group a sorted list of integer cases into a list of chunks. The resulting
+   * chunks will have at least switchLimit items.
+   *)
+    fun groupCases (cases : (IntInf.int * CPS.cexp) list, default) : chunk list = let
+	(* merge a chunk into a list of chunks, where the chunks are ordered in increasing
+	 * range.
+         *)
+	  fun merge (lb, ub, n, cases, []) = [(lb, ub, n, cases)]
+	    | merge (lb, ub, n, cases, chunks as (lb', ub', n', cases')::chunkr) =
+	      (* check if merged chunk will have approx 50% coverage or more *)
+		if (toII(2 * (n + n')) < (ub' - lb))
+		  then (lb, ub, n, cases) :: chunks
+		  else let (* fill in any gap *)
+		    fun fill (i, n, cases) = if (ub < i)
+			  then fill (i - 1, n + 1, (i, default) :: cases)
+			  else (n, cases)
+		    val (n', cases') = fill (lb' - 1, n', cases')
 		    in
-		      if s1 = n then gather(n,rest,x::current,acc)
-		      else gather(s1,rest,[x],(n,current)::acc)
+		      merge (lb, ub', n + n', cases@cases', chunkr)
 		    end
-		in
-		  gather (toII(size s), l', [], [])
-		end
+	(* compute an initial list of chunks, where each chunk has at least 50% coverage
+	 * of its range
+	 *)
+	  val initialChunks = List.foldr
+		(fn (ic, chunks) => merge(#1 ic, #1 ic, 1, [ic], chunks))
+		  [] cases
+	(* split chunks that are too small for a SWITCH into singletons *)
+	  fun separate (chunk as (_, _, n, cases), chunks) =
+		if (n < switchLimit)
+		  then List.foldr
+		    (fn (ic as (i, _), chunks) => (i, i, 1, [ic])::chunks)
+		      chunks
+			cases
+		  else chunk :: chunks
+	  in
+	    List.foldr separate [] initialChunks
+	  end
 
-	  fun string_switch(w,l,default) = let
-		fun strip (L.STRINGcon s, x) = (s,x)
-		  | strip _ = bug "string_switch"
-		val b = map strip l
-		val bylength = coalesce b
-		fun one_len (0, (_,e)::_) = (0, e)
-		  | one_len (len, l) = let
-		      fun try nil = default
-			| try ((s,e)::r) = E_strneq(w, s, try r, e)
+  (* generate a switch for a tagged integer/word type.  If the optRange is `SOME n`, then
+   * the range of possible values is `0..n`.
+   *)
+    fun taggedNumSwitch (_, _, [], default, _) = default
+      | taggedNumSwitch (arg, nk, cases, default, optRange) = let
+	  val nCases = List.length cases
+	(* sort cases *)
+	  val cases = numSort cases
+	(* equality test branch *)
+	  fun ifeq (i, tr, fl) =
+		CPS.BRANCH(CPS.P.cmp{oper=CPS.P.eql, kind=nk}, [arg, tagNum i], mkv(), tr, fl)
+	(* less-than test branch *)
+	  fun ifless (a, b, tr, fl) =
+		CPS.BRANCH(CPS.P.cmp{oper=CPS.P.<, kind=nk}, [a, b], mkv(), tr, fl)
+	(* map cases to CPS.SWITCH, where we know that lo0 <= arg <= hi0 *)
+	  fun switch' (lo0, hi0) = let
+	      (* group cases into dense chunks *)
+		val chunks = groupCases (cases, default)
+	      (* generate switch for chunks, where we know that lo <= arg <= hi *)
+		fun gen (_, [(_, _, _, [(i, act)])], lo, hi) = (* one singleton chunk *)
+		      if (lo = i) andalso (hi = i)
+			then act
+			else ifeq(i, act, default)
+		  | gen (_, [(lb, ub, n, cases)], lo, hi) = let (* one chunk with multiple cases *)
+		    (* project out actions from cases *)
+		      val actions = List.map #2 cases
+		    (* the switch *)
+		      val exp = if (lb = 0)
+			    then CPS.SWITCH(arg, mkv(), actions)
+			    else pure(
+			    (* NOTE: because lb <= arg, this subtraction cannot Overflow *)
+			      CPS.P.pure_arith{oper=CPS.P.-, kind=nk}, [arg, tagNum lb], tagNumTy,
+			      fn arg' => CPS.SWITCH(arg', mkv(), actions))
+		    (* add lower-bound check (if necessary) *)
+		      val exp = if (lo < lb)
+			    then ifless(arg, tagNum lb, default, exp)
+			    else exp
+		    (* add upper-bound check (if necessary) *)
+		      val exp = if (ub < hi)
+			    then ifless(tagNum ub, arg, default, exp)
+			    else exp
 		      in
-			(len,try l)
+			exp
+		      end
+		  | gen (nChunks, chunks, lo, hi) = let (* two or more chunks *)
+		      val m = nChunks div 2
+		      val (c1, midVal, c2) = (case List.splitAt(chunks, m)
+			     of (c1, c2 as (lb, _, _, _)::_) => (c1, lb, c2)
+			      | _ => bug "taggedNumSwitch.switch: split"
+			    (* end case *))
+		    (* INV: case-labels-of(c1) < midVal <= case-labels-of(c2) *)
+		      in
+			ifless(arg, tagNum midVal,
+			  gen (m, c1, lo, midVal-1),
+			  gen (nChunks-m, c2, midVal, hi))
 		      end
 		in
-		  E_length(w ,fn len =>
-		    dflt_int_switch(len, map one_len bylength, default, NONE))
+		  gen (length chunks, chunks, lo0, hi0)
 		end
+	(* map non-exhaustice cases to if-then-else sequence *)
+	  fun ifelseWDefault [] = default
+	    | ifelseWDefault ((i, act)::r) = ifeq(i, act, ifelseWDefault r)
+	(* map exhaustice cases to if-then-else sequence *)
+	  fun ifelse [] = bug "taggedNumSwitch: impossible"
+	    | ifelse [(_, act)] = act
+	    | ifelse ((i, act)::r) = ifeq(i, act, ifelse r)
+	  in
+	    case (nCases < switchLimit, optRange)
+	     of (true, NONE) => ifelseWDefault cases
+	      | (true, SOME n) => if nCases <= n then ifelseWDefault cases else ifelse cases
+	      | (false, NONE) => let
+		  val (lo, hi) = (case cases
+			 of (i, _)::_ => (i, #1(List.last cases))
+			  | [] => bug "taggedNumSwitch: empty cases"
+			(* end case *))
+		  val unsigned = (case nk of CPS.P.UINT _ => true | _ => false)
+		(* switch with upper-bound test *)
+		  val exp = ifless(tagNum hi, arg, default, switch'(lo, hi))
+		(* add lower-bound test, if necessary *)
+		  val exp = if unsigned andalso lo = 0
+			then exp (* no test required *)
+			else ifless(arg, tagNum lo, default, exp)
+		  in
+		    exp
+		  end
+	      | (false, SOME n) => switch' (0, toII n)
+	    (* end case *)
+	  end
 
-	(* switch for non-default integer types *)
-	  fun int_switch(w, (L.INTcon i, e)::r, default) =
-		E_branch(E_ineq(#ty i), w, E_boxint i, int_switch(w, r, default), e)
-	    | int_switch(_, [], default) = default
-	    | int_switch _ = bug "switch.88"
-
-	(* switch for non-default word types *)
-	  fun word_switch(w, (L.WORDcon wval, e)::r, default) =
-		E_branch(E_wneq(#ty wval), w, E_boxint wval, word_switch(w,r,default), e)
-	    | word_switch(_, nil, default) = default
-	    | word_switch _ = bug "switch.89"
-
-	  in fn {cases=[], default, ...} => default
-	      | {exp, sign, cases as (c,_)::_, default} => (case c
-		   of L.INTcon{ival, ty} => let
-			fun un_int (L.INTcon{ival, ...}, e) = (ival, e)
-			  | un_int _ = bug "un_int"
+  (* generate a switch for a boxed integer/word type. *)
+    fun boxedNumSwitch (arg, CPS.NUMt ty, nk, cases, default) = let
+	  fun branch (cmpOp, i, tr, fl) = CPS.BRANCH(
+		CPS.P.cmp{oper=cmpOp, kind=nk}, [arg, CPS.NUM{ival = i, ty = ty}], mkv(),
+		tr,
+		fl)
+	  val cases = numSort cases
+	  fun gen (n, cases) = if (n > 4)
+		then let (* binary search *)
+		  val m = n div 2
+		  val (cases1, (i, act), cases2) = let
+			fun split (0, prefix, ic::r) = (List.rev prefix, ic, r)
+			  | split (n, prefix, ic::r) = split (n-1, ic::prefix, r)
+			  | split _ = bug "bogus split"
 			in
-			  if (ty = Target.defaultIntSz)
-			    then dflt_int_switch(exp, map un_int cases, default, NONE)
-			    else int_switch(exp, cases, default)
+			  split (m, [], cases)
 			end
-		    | L.WORDcon{ival, ty} => let
-			fun un_word (L.WORDcon{ival, ...}, e) = (ival, e)
-			  | un_word _ = bug "un_int"
-			in
-			  if (ty = Target.defaultIntSz)
-			    then dflt_int_switch(exp, map un_word cases, default, NONE)
-			    else word_switch(exp, cases, default)
-			end
-		    | L.STRINGcon _ => string_switch(exp,cases,default)
-		    | L.DATAcon((_,A.EXN _,_),_,_) => exn_switch(exp,cases,default)
-		    | L.DATAcon _ => datacon_switch(exp,sign,cases,default)
-		    | _ => bug "unexpected datacon in genswitch"
-		 (* end case *))
-	  end (* switch *)
+		  in
+		    branch(CPS.P.eql, i,
+		      act,
+		      branch(CPS.P.<, i,
+			gen (m, cases1),
+			gen (n-m-1, cases2)))
+		  end
+		else let (* linear search *)
+		  fun genCase [] = default
+		    | genCase ((i, act)::r) = branch(CPS.P.eql, i, act, genCase r)
+		  in
+		    genCase cases
+		  end
+	  in
+	    gen (List.length cases, cases)
+	  end (* boxedNumSwitch *)
 
-  end (* structure Switch *)
+  (* generate a switch for string patterns *)
+    fun stringSwitch (arg, cases, default : CPS.cexp) = let
+	  fun ifeq (s, tr, fl) = CPS.BRANCH(
+		CPS.P.streq, [tagNum(toII(size s)), arg, CPS.STRING s], mkv(),
+		tr, fl)
+	  fun un_str (F.STRINGcon s, act) = (s, act)
+	    | un_str _ = bug "un_str"
+	(* group cases by length of the string *)
+	  fun coalesce cases = let
+	      (* first sort by length *)
+		val cases' = ListMergeSort.sort (fn ((s1,_),(s2,_)) => size s1 > size s2) cases
+	      (* get length of first string *)
+		val firstLen = size(#1 (List.hd cases'))
+	      (* group strings by length *)
+		fun gather (n, [], current, acc) = (toII n, current) :: acc
+		  | gather (n, (x as (s, a))::rest, current, acc) = let
+		      val n' = size s
+		      in
+			if n' = n
+			  then gather(n, rest, x::current, acc)
+			  else gather(n', rest, [x], (toII n, current)::acc)
+		      end
+		in
+		  gather (size(#1 (List.hd cases')), cases', [], [])
+		end
+	(* generate tests for a given group of strings *)
+	  fun genGrp (0, (_, act)::_) = (0 : IntInf.int, act)
+	    | genGrp (n, cases) = let
+		fun try [] = default
+		  | try ((s, act) :: r) = ifeq(s, act, try r)
+		in
+		  (n, try cases)
+		end
+	(* cases by length *)
+	  val bylength = List.map genGrp (coalesce (List.map un_str cases))
+	  in
+	    pure(CPS.P.length, [arg], tagNumTy,
+	      fn len => taggedNumSwitch(len, tagWordKind, bylength, default, NONE))
+	  end
 
+  (* does a datatype constructor have a boxed representation? *)
+    fun isboxed (F.DATAcon((_,A.CONSTANT _, _),_,_)) = false
+      | isboxed (F.DATAcon((_,A.LISTNIL,_),_,_)) = false
+      | isboxed (F.DATAcon((_,rep,_),_,_)) = true
+      | isboxed _ = bug "isboxed"
+
+  (* generate switch code for a datatype with the given signature *)
+    fun dataconSwitch (arg, sign, cases, default) = let
+	  fun tag (F.DATAcon((_, A.CONSTANT i, _), _, _), act) = (toII i, act)
+	    | tag (F.DATAcon((_, A.TAGGED i, _), _, _), act) = (toII i, act)
+	    | tag (_, act) = (0, act)
+	  val (boxed, unboxed) = List.partition (isboxed o #1) cases
+	  val boxed = List.map tag boxed
+	  val unboxed = List.map tag unboxed
+	  in
+	    case sign
+	     of A.CSIG(0, n) =>
+		  pure(CPS.P.unwrap, [arg], tagNumTy,
+		    fn x => taggedNumSwitch(x, tagWordKind, unboxed, default, SOME(n-1)))
+	      | A.CSIG(n, 0) =>
+		  pure(CPS.P.getcon, [arg], tagNumTy,
+		    fn x => taggedNumSwitch(x, tagWordKind, boxed, default, SOME(n-1)))
+	      | A.CSIG(1, nu) => let
+		(* only one boxed constructor, so get the action for that case *)
+		  val boxedAct = (case boxed
+			 of [] => default
+			  | (_, act)::_ => act
+			(* end case *))
+		  val unboxedAct = (case unboxed
+			 of [] => default
+			  | _ => pure(CPS.P.unwrap, [arg], tagNumTy,
+			      fn x => taggedNumSwitch(x, tagWordKind, unboxed, default, SOME(nu-1)))
+			(* end case *))
+		  in
+		    CPS.BRANCH(CPS.P.boxed, [arg], mkv(), boxedAct, unboxedAct)
+		  end
+	      | A.CSIG(nb, nu) => let
+		  val boxedAct = (case boxed
+			 of [] => default
+			  | _ => pure(CPS.P.getcon, [arg], tagNumTy,
+			      fn x => taggedNumSwitch(x, tagWordKind, boxed, default, SOME(nb-1)))
+			(* end case *))
+		  val unboxedAct = (case unboxed
+			 of [] => default
+			  | _ => pure(CPS.P.unwrap, [arg], tagNumTy,
+			      fn x => taggedNumSwitch(x, tagWordKind, unboxed, default, SOME(nu-1)))
+			(* end case *))
+		  in
+		    CPS.BRANCH(CPS.P.boxed, [arg], mkv(), boxedAct, unboxedAct)
+		  end
+	      | A.CNIL => bug "dataconSwitch"
+	    (* end case *)
+	  end
+
+  (* generate switch code for the given argument and cases *)
+    fun switch {rename} {cases=[], default, ...} = default
+      | switch {rename} {arg, sign, cases as (c, _)::_, default} = (case c
+	   of F.INTcon{ival, ty} => let
+		fun un_int (F.INTcon{ival, ...}, act) = (ival, act)
+		  | un_int _ = bug "un_int"
+		val cases = List.map un_int cases
+		in
+		  if (ty <= Target.defaultIntSz)
+		    then taggedNumSwitch(arg, tagIntKind, cases, default, NONE)
+		    else boxedNumSwitch(arg, boxNumTy ty, CPS.P.INT ty, cases, default)
+		end
+	    | F.WORDcon{ival, ty} => let
+		fun un_word (F.WORDcon{ival, ...}, act) = (ival, act)
+		  | un_word _ = bug "un_int"
+		val cases = List.map un_word cases
+		in
+		  if (ty <= Target.defaultIntSz)
+		    then taggedNumSwitch(arg, tagWordKind, cases, default, NONE)
+		    else boxedNumSwitch(arg, boxNumTy ty, CPS.P.UINT ty, cases, default)
+		end
+	    | F.STRINGcon _ => stringSwitch(arg, cases, default)
+	    | F.DATAcon((_, A.EXN _, _), _, _) => let
+		val x = mkv()
+		fun gen [] = default
+		  | gen ((F.DATAcon((_, A.EXN(A.LVAR p), _), _, _), act)::r) =
+		      CPS.BRANCH(CPS.P.pneq, [CPS.VAR x, rename p], mkv(), gen r, act)
+		  | gen _ = bug "exnSwitch"
+		in
+		  CPS.PURE(CPS.P.getexn, [arg], x, CPS.BOGt, gen cases)
+		end
+	    | F.DATAcon _ => dataconSwitch(arg, sign, cases, default)
+	    | _ => bug "unexpected datacon in switch"
+	  (* end case *))
+
+  end
