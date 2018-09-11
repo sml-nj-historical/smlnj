@@ -552,7 +552,8 @@ val lt_tyc = LT.ltc_tyc
 val lt_arw = LT.ltc_parrow
 val lt_tup = LT.ltc_tuple
 val lt_int = LT.ltc_int
-val lt_int32 = LT.ltc_num 32	(* 64BIT: FIXME *)
+val lt_int32 = LT.ltc_num 32
+val lt_int64 = LT.ltc_num 64	(* 64BIT: currently not used *)
 val lt_bool = LT.ltc_bool
 val lt_unit = LT.ltc_unit
 
@@ -622,7 +623,7 @@ fun inlineShift(shiftOp, kind, clear) =
 
       val argt = lt_tup [baselt(kind), lt_int]
       val cmpShiftAmt =
-	PRIM(PO.CMP{oper=PO.LEU, kind=PO.UINT 31}, lt_icmp, [])
+	  PRIM(PO.CMP{oper=PO.LEU, kind=PO.UINT 31}, lt_icmp, [])
    in FN(p, argt,
          LET(w, SELECT(0, vp),
              LET(cnt, SELECT(1, vp),
@@ -634,7 +635,7 @@ fun inlineShift(shiftOp, kind, clear) =
 
 (* inline operators for numeric types *)
 fun inlops nk = let
-(* 64BIT: REAL64: type will depend on size *)
+(* REAL64: type will depend on size *)
     val (lt_arg, zero, overflow) = (case nk
 	   of PO.INT sz => (LT.ltc_num sz, INT{ival = 0, ty = sz}, true)
 	    | PO.UINT sz => (LT.ltc_num sz, WORD{ival = 0, ty = sz}, false)
@@ -789,74 +790,75 @@ end
    intrinsic PLambda type and type parameters
  *)
 fun transPrim (prim, lt, ts) =
-  let fun g (PO.INLLSHIFT k) = inlineShift(lshiftOp, k, fn _ => lword0(k))
-        | g (PO.INLRSHIFTL k) = inlineShift(rshiftlOp, k, fn _ => lword0(k))
-        | g (PO.INLRSHIFT k) = let (* preserve sign bit with arithmetic rshift *)
-(* 64BIT: 32-bit assumption!!! *)
-            val w31 = WORD{ival = 31, ty = Tgt.defaultIntSz}
-	    fun clear w = APP(PRIM(rshiftOp k, shiftTy k, []), RECORD [w, w31])
-	    in
-	      inlineShift(rshiftOp, k, clear)
-	    end
+    case prim
+      of PO.INLLSHIFT k => inlineShift(lshiftOp, k, fn _ => lword0(k))
+       | PO.INLRSHIFTL k => inlineShift(rshiftlOp, k, fn _ => lword0(k))
+       | PO.INLRSHIFT k =>
+	   let (* preserve sign bit with arithmetic rshift *)
+               val shiftWidth = WORD{ival = Int.toLarge Tgt.defaultIntSz, ty = Tgt.defaultIntSz}
+	       fun clear w = APP(PRIM(rshiftOp k, shiftTy k, []), RECORD [w, shiftWidth])
+	    in inlineShift(rshiftOp, k, clear)
+	   end
 
-	| g (PO.INLMIN nk) = inlminmax (nk, false)
-	| g (PO.INLMAX nk) = inlminmax (nk, true)
-	| g (PO.INLABS nk) = inlabs nk
+       | PO.INLMIN nk => inlminmax (nk, false)
+       | PO.INLMAX nk => inlminmax (nk, true)
+       | PO.INLABS nk => inlabs nk
 
-	| g (po as PO.ARITH { oper = (PO.DIV | PO.QUOT | PO.MOD | PO.REM),
-			      kind = nk as (PO.INT _ | PO.UINT _),
-			      overflow }) =
-	    inldiv (nk, po, lt, ts)
+       | po as PO.ARITH { oper = (PO.DIV | PO.QUOT | PO.MOD | PO.REM),
+			  kind = nk as (PO.INT _ | PO.UINT _),
+			  overflow } =>
+	   inldiv (nk, po, lt, ts)
 
-        | g (PO.INLNOT) =
-              let val x = mkv()
-               in FN(x, lt_bool, COND(VAR x, falseLexp, trueLexp))
-              end
+       | PO.INLNOT =>
+           let val x = mkv()
+            in FN(x, lt_bool, COND(VAR x, falseLexp, trueLexp))
+           end
 
-        | g (PO.INLCOMPOSE) =
-              let val (t1, t2, t3) =
-                    case ts of [a,b,c] => (lt_tyc a, lt_tyc b, lt_tyc c)
-                             | _ => bug "unexpected type for INLCOMPOSE"
+       | PO.INLCOMPOSE =>
+           let val (t1, t2, t3) =
+                   case ts of [a,b,c] => (lt_tyc a, lt_tyc b, lt_tyc c)
+                            | _ => bug "unexpected type for INLCOMPOSE"
 
-                  val argt = lt_tup [lt_arw(t2, t3), lt_arw(t1, t2)]
+               val argt = lt_tup [lt_arw(t2, t3), lt_arw(t1, t2)]
 
-                  val x = mkv() and z = mkv()
-                  val f = mkv() and g = mkv()
-               in FN(z, argt,
-                    LET(f, SELECT(0,VAR z),
+               val x = mkv() and z = mkv()
+               val f = mkv() and g = mkv()
+            in FN(z, argt,
+                  LET(f, SELECT(0,VAR z),
                       LET(g,SELECT(1,VAR z),
-                        FN(x, t1, APP(VAR f,APP(VAR g,VAR x))))))
-              end
-        | g (PO.INLBEFORE) =
-              let val (t1, t2) =
-                    case ts of [a,b] => (lt_tyc a, lt_tyc b)
-                             | _ => bug "unexpected type for INLBEFORE"
-                  val argt = lt_tup [t1, t2]
-                  val x = mkv()
-               in FN(x, argt, SELECT(0,VAR x))
-              end
-	| g (PO.INLIGNORE) =
-	  let val argt =
-		  case ts of [a] => lt_tyc a
-			   | _ => bug "unexpected type for INLIGNORE"
-	  in FN (mkv (), argt, unitLexp)
-	  end
+                          FN(x, t1, APP(VAR f,APP(VAR g,VAR x))))))
+           end
 
-	| g (PO.INLIDENTITY) =
-	  let val argt =
-		  case ts of [a] => lt_tyc a
-			   | _ => bug "unexpected type for INLIDENTITY"
-	      val v = mkv ()
-	  in
-	      FN (v, argt, VAR v)
-	  end
+       | PO.INLBEFORE =>
+           let val (t1, t2) =
+                   case ts of [a,b] => (lt_tyc a, lt_tyc b)
+                            | _ => bug "unexpected type for INLBEFORE"
+               val argt = lt_tup [t1, t2]
+               val x = mkv()
+            in FN(x, argt, SELECT(0,VAR x))
+           end
 
-	| g (PO.CVT64) = let val v = mkv () in FN (v, lt_i32pair, VAR v) end
+       | PO.INLIGNORE =>
+	   let val argt =
+		   case ts of [a] => lt_tyc a
+			    | _ => bug "unexpected type for INLIGNORE"
+	    in FN (mkv (), argt, unitLexp)
+	   end
 
-        | g PO.INLSUBSCRIPTV =
-	    let val oper = PRIM (PO.SUBSCRIPT, lt, ts)
-	    in case coreExn ["Subscript"] of
-		   SOME ssexn =>
+       | PO.INLIDENTITY =>
+	   let val argt =
+		   case ts of [a] => lt_tyc a
+			    | _ => bug "unexpected type for INLIDENTITY"
+	       val v = mkv ()
+	    in FN (v, argt, VAR v)
+	   end
+
+       | PO.CVT64 => let val v = mkv () in FN (v, lt_i32pair, VAR v) end  (* int64 in 32BIT *)
+
+       | PO.INLSUBSCRIPTV =>
+	   let val oper = PRIM (PO.SUBSCRIPT, lt, ts)
+	    in case coreExn ["Subscript"]
+		 of SOME ssexn =>
 		     let val (tc1, t1) =
 			     case ts of [z] => (z, lt_tyc z)
 				      | _ => bug "unexpected ty for INLSUBV"
@@ -879,10 +881,10 @@ fun transPrim (prim, lt, ts) =
 		      oper)
             end
 
-        | g (PO.INLSUBSCRIPT) =
-	    let val oper = PRIM (PO.SUBSCRIPT, lt, ts)
-	    in case coreExn ["Subscript"] of
-		   SOME ssexn =>
+       | PO.INLSUBSCRIPT =>
+	   let val oper = PRIM (PO.SUBSCRIPT, lt, ts)
+	    in case coreExn ["Subscript"]
+		 of SOME ssexn =>
 		     let val (tc1, t1) =
 			     case ts of [z] => (z, lt_tyc z)
 				      | _ => bug "unexpected ty for INLSUB"
@@ -905,12 +907,12 @@ fun transPrim (prim, lt, ts) =
 		      oper)
             end
 
-        | g (PO.NUMSUBSCRIPT{kind,checked=true,immutable}) =
-	    let val oper = PRIM (PO.NUMSUBSCRIPT { kind=kind, checked=false,
-						   immutable=immutable },
-				 lt, ts)
-	    in case coreExn ["Subscript"] of
-		   SOME ssexn =>
+       | PO.NUMSUBSCRIPT{kind,checked=true,immutable} =>
+	   let val oper = PRIM (PO.NUMSUBSCRIPT { kind=kind, checked=false,
+						  immutable=immutable },
+				lt, ts)
+	    in case coreExn ["Subscript"]
+		 of SOME ssexn =>
 		     let val (tc1, t1, t2) =
 			     case ts of [a,b] => (a, lt_tyc a, lt_tyc b)
 				      | _ => bug "unexpected type for NUMSUB"
@@ -931,10 +933,10 @@ fun transPrim (prim, lt, ts) =
 		      oper)
 	    end
 
-        | g (PO.INLUPDATE) =
-            let val oper = PRIM(PO.UPDATE, lt, ts)
-	    in case coreExn ["Subscript"] of
-		   SOME ssexn =>
+       | PO.INLUPDATE =>
+           let val oper = PRIM(PO.UPDATE, lt, ts)
+	    in case coreExn ["Subscript"]
+		 of SOME ssexn =>
 		     let val (tc1, t1) =
 			     case ts of [z] => (z, lt_tyc z)
 				      | _ => bug "unexpected ty for INLSUB"
@@ -961,11 +963,11 @@ fun transPrim (prim, lt, ts) =
 		      oper)
             end
 
-        | g (PO.NUMUPDATE{kind,checked=true}) =
-	    let val oper = PRIM (PO.NUMUPDATE { kind = kind, checked = false },
+       | PO.NUMUPDATE{kind,checked=true} =>
+	   let val oper = PRIM (PO.NUMUPDATE { kind = kind, checked = false },
 				lt, ts)
-	    in case coreExn ["Subscript"] of
-		   SOME ssexn =>
+	    in case coreExn ["Subscript"]
+		 of SOME ssexn =>
 		     let val (tc1, t1, t2) =
 			     case ts of [a,b] => (a, lt_tyc a, lt_tyc b)
 				      | _ => bug "unexpected type for NUMUPDATE"
@@ -990,7 +992,7 @@ fun transPrim (prim, lt, ts) =
             end
 
 (**** ASSIGN(r, x) <> UPDATE(r, 0, x) under new array reps (JHR;1998-10-30)
-        | g (PO.ASSIGN) =
+       | PO.ASSIGN =>
               let val (tc1, t1) = case ts of [z] => (z, lt_tyc z)
                                     | _ => bug "unexpected ty for ASSIGN"
 
@@ -1012,20 +1014,18 @@ fun transPrim (prim, lt, ts) =
 	 * a second argument -- the routine from _Core that
 	 * does the actual conversion to or from IntInf. *)
 
-	| g (p as PO.TEST_INF prec) =
+       | p as PO.TEST_INF prec =>
 	    inlFromInfPrec ("TEST_INF", "testInf", p, lt)
-	| g (p as PO.TRUNC_INF prec) =
+       | p as PO.TRUNC_INF prec =>
 	    inlFromInfPrec ("TRUNC_INF", "truncInf", p, lt)
-	| g (p as PO.EXTEND_INF prec) =
+       | p as PO.EXTEND_INF prec =>
 	    (* inl_infPrec ("EXTEND_INF", "finToInf", p, lt, false) *)
 	    inlToInfPrec("EXTEND_INF", "finToInf", p, lt)
-	| g (p as PO.COPY_INF prec) =
+       | p as PO.COPY_INF prec =>
 	    inlToInfPrec ("COPY", "finToInf", p, lt)
 	(* default handling for all other primops *)
-        | g p = PRIM(p, lt, ts)
-
-   in g prim
-  end (* function transPrim *)
+       | p => PRIM(p, lt, ts)
+  (* function transPrim *)
 
 fun genintinfswitch (sv, cases, default) = let
       val v = mkv ()
@@ -1506,7 +1506,7 @@ and mkExp (exp, d) =
 	    if TU.equalType (ty, BT.intTy) then INT{ival = ival, ty = Tgt.defaultIntSz}
 	    else if TU.equalType (ty, BT.int32Ty) then INT{ival = ival, ty = 32}
 	    else if TU.equalType (ty, BT.intinfTy) then VAR (getII ival)
-	    else if TU.equalType (ty, BT.int64Ty) then let
+	    else if TU.equalType (ty, BT.int64Ty) then let  (* JHR makes this go away *)
 		val (hi, lo) = LN.int64 ival
 		fun mkHalf n = WORD{ival = n, ty = 32}
 		in
@@ -1516,7 +1516,7 @@ and mkExp (exp, d) =
 	  (* NOTE: 8-bit word is promoted to default tagged word representation *)
 	    else if TU.equalType (ty, BT.word8Ty) then WORD{ival = ival, ty = Tgt.defaultIntSz}
 	    else if TU.equalType (ty, BT.word32Ty) then WORD{ival = ival, ty = 32}
-	    else if TU.equalType (ty, BT.word64Ty) then let
+	    else if TU.equalType (ty, BT.word64Ty) then let (* JHR makes this go away *)
 		val (hi, lo) = LN.word64 ival
 		fun mkHalf n = WORD{ival = n, ty = 32}
 		in
