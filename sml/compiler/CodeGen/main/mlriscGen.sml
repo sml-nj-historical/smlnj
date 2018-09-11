@@ -865,7 +865,7 @@ struct
           in  gather(formals, actuals, [], [], [], [], [])
           end
 
-          (* scale-and-add *)
+	(* scale-and-add, where the second argument is a tagged integer *)
           fun scale1 (a, CPS.NUM{ival=0, ...}) = a
             | scale1 (a, CPS.NUM{ival, ...}) = M.ADD(ity, a, LI ival)
             | scale1 (a, i) = M.ADD(ity, a, untagSigned(i))
@@ -878,6 +878,7 @@ struct
             | scale8 (a, CPS.NUM{ival, ...}) = M.ADD(ity, a, LI(ival*8))
             | scale8 (a, i) = M.ADD(ity, a, M.SLL(ity, stripTag(regbind i), two))
 
+	(* scale by the target word size *)
           val scaleWord = (case ws
 		 of 4 => scale4
 		  | 8 => scale8
@@ -1222,6 +1223,7 @@ raise ex)
 
               (* branch if are identical strings v, w of length n *)
           and branchStreq(n, v, w, yes, no, hp) =
+(* 64BIT: don't assume 4-byte words! *)
               let val n' = ((n+3) div 4) * 4
                   val false_lab = newLabel ()
                   val r1 = newReg I32

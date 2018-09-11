@@ -1,14 +1,14 @@
 (* uses a union-find data structure to compute clusters *)
-(* First function in the function list must be the first function 
- * in the first cluster. This is achieved by ensuring that the first  
- * function is mapped to the smallest id in a dense enumeration. 
- * This function id will map to the smallest cluster id. 
+(* First function in the function list must be the first function
+ * in the first cluster. This is achieved by ensuring that the first
+ * function is mapped to the smallest id in a dense enumeration.
+ * This function id will map to the smallest cluster id.
  * The function ids are then iterated in descending order.
  *)
-structure Cluster : 
+structure Cluster :
   sig
      val cluster : CPS.function list -> CPS.function list list
-  end = 
+  end =
 struct
   fun error msg = ErrorMsg.impossible ("Cluster." ^ msg)
 
@@ -19,16 +19,16 @@ struct
     exception FuncId
     val funcToIdTbl : int IntHashTable.hash_table =
 	IntHashTable.mkTable(numOfFuncs, FuncId)
-    val lookup = IntHashTable.lookup funcToIdTbl 
+    val lookup = IntHashTable.lookup funcToIdTbl
 
     (* mapping of ids to functions *)
     val idToFuncTbl = Array.array(numOfFuncs, hd funcs)
     local
       val add = IntHashTable.insert funcToIdTbl
       fun mkFuncIdTbl ([], _) = ()
-	| mkFuncIdTbl ((func as (_,f,_,_,_))::rest, id) = 
-	    (add (f, id);  
-	     Array.update(idToFuncTbl, id, func); 
+	| mkFuncIdTbl ((func as (_,f,_,_,_))::rest, id) =
+	    (add (f, id);
+	     Array.update(idToFuncTbl, id, func);
 	     mkFuncIdTbl(rest, id+1))
     in
       val _ = mkFuncIdTbl(funcs, 0)
@@ -41,7 +41,7 @@ struct
       val v = Array.sub(trees, u)
     in if v = u then u else ascend(v)
     end
- 
+
     fun union(t1, t2) = let
       val r1 = ascend t1
       val r2 = ascend t2
@@ -71,11 +71,11 @@ struct
 	    | calls (CPS.PURE(_,_,_,_,e))     = calls e
 	    | calls (CPS.RCC(_,_,_,_,_,e))  = calls e
 	    | calls (CPS.FIX _)               = error "calls.f:FIX"
-        in 
+        in
 	  calls body; build rest
 	end (* build *)
 
-    (* extract the clusters. 
+    (* extract the clusters.
      * The first func in the funcs list must be the first function
      * in the first cluster.
      *)
@@ -85,13 +85,13 @@ struct
 	val root = ascend(n)
 	val func = Array.sub(idToFuncTbl, n)
 	val cluster = Array.sub(clusters, root)
-      in 
-	Array.update(clusters, root, func::cluster); 
+      in
+	Array.update(clusters, root, func::cluster);
 	collect (n-1)
       end
 
       fun finish(~1, acc) = acc
-	| finish(n, acc) = 
+	| finish(n, acc) =
 	  (case Array.sub(clusters, n)
 	    of [] => finish (n-1, acc)
              | cluster => finish(n-1, cluster::acc)

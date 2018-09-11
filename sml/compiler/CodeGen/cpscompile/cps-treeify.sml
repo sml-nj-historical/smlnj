@@ -5,15 +5,15 @@ signature CPS_TREEIFY = sig
 end
 
 
-structure CpsNoTreeify : CPS_TREEIFY = 
+structure CpsNoTreeify : CPS_TREEIFY =
 struct
-  datatype treeify = TREEIFY | COMPUTE | DEAD 
+  datatype treeify = TREEIFY | COMPUTE | DEAD
   val usage = fn _ => fn _ => COMPUTE
 end
 
 
 
-structure CpsTreeify : CPS_TREEIFY = 
+structure CpsTreeify : CPS_TREEIFY =
 struct
   structure C = CPS
 
@@ -27,7 +27,7 @@ struct
     val useCntTbl : treeify  Intmap.intmap = Intmap.new(32, UseCntTbl)
     val uses = Intmap.mapWithDefault (useCntTbl,DEAD)
     val addCntTbl = Intmap.add useCntTbl
-    fun addUse v = 
+    fun addUse v =
       case uses v
        of DEAD => addCntTbl(v, TREEIFY)
         | TREEIFY => addCntTbl(v, COMPUTE)
@@ -49,8 +49,8 @@ struct
       | cntUsesCps(C.BRANCH(_, vl, _, c1, c2)) =
 	 (addValues vl; cntUsesCps c1; cntUsesCps c2)
       | cntUsesCps(C.SETTER(_, vl, e)) = (addValues vl; cntUsesCps e)
-      | cntUsesCps(C.LOOKER(looker, vl, x, _, e)) = 
-	 (addValues vl; 
+      | cntUsesCps(C.LOOKER(looker, vl, x, _, e)) =
+	 (addValues vl;
 	  (* floating subscript cannot move past a floating update.
 	   * For now subscript operations cannot be treeified.
 	   * This is hacked by making it (falsely) used more than once.
@@ -62,7 +62,7 @@ struct
 	  cntUsesCps e)
       | cntUsesCps(C.ARITH(_, vl, _, _, e)) = (addValues vl; cntUsesCps e)
       | cntUsesCps(C.PURE(_, vl, _, _, e)) = (addValues vl; cntUsesCps e)
-  in 
+  in
     app (fn (_, _, _, _, e) => cntUsesCps e) fl;
     uses
 
