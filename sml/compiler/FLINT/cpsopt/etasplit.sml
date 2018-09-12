@@ -1,7 +1,8 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* cps/etasplit.sml *)
-
-(* 
+(* etasplit.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Perform the eta-split transformation on cps expressions.  The
  * purpose of the eta split transformation is to give two entry points
  * to functions which both escape and which are called at known
@@ -16,50 +17,37 @@
  * continuations that were created for reasons of space complexity (as
  * the join of two branches, for example).  I doubt there are many
  * continuations which both escape and have known calls. (Trevor Jim)
- *
  *)
 
-signature ETASPLIT =
-  sig val etasplit : {function: CPS.function,
-		      table: LtyDef.lty IntHashTable.hash_table,
-		      click: string -> unit} -> CPS.function
+signature ETASPLIT = sig
+
+    val etasplit : {
+	    function : CPS.function,
+	    click : string -> unit
+	  } -> CPS.function
+
   end (* signature ETASPLIT *)
 
 functor EtaSplit(MachSpec : MACH_SPEC) : ETASPLIT =
 struct
 
-local open CPS 
+local open CPS
       structure LV = LambdaVar
 in
 
-fun sameName(x,VAR y) = LV.sameName(x,y) 
+fun sameName(x,VAR y) = LV.sameName(x,y)
   | sameName _ = ()
 
-fun etasplit{function=(fkind,fvar,fargs,ctyl,cexp),
-	     table=typtable,
-	     click} =
+fun etasplit {function=(fkind,fvar,fargs,ctyl,cexp), click} =
 let
 
 val debug = !Control.CG.debugcps (* false *)
 fun debugprint s = if debug then Control.Print.say s else ()
 fun debugflush() = if debug then Control.Print.flush() else ()
-val rep_flag = MachSpec.representations
-val type_flag = (!Control.CG.checkcps1) andalso rep_flag
-
 
 exception SPLIT1
-fun getty v = 
-  if type_flag 
-  then (IntHashTable.lookup typtable v) handle _ =>
-                (Control.Print.say ("SPLIT1: Can't find the variable "^
-                            (Int.toString v)^" in the typtable ***** \n");
-                 raise SPLIT1)
-  else LtyExtern.ltc_void
 
-fun addty(f,t) = if type_flag then IntHashTable.insert typtable (f,t) else ()
-fun copyLvar v = let val x = LV.dupLvar(v)
-                  in (addty(x,getty v); x)
-                 end
+fun copyLvar v = LV.dupLvar(v)
 
 local exception SPLIT2
       val m : value IntHashTable.hash_table = IntHashTable.mkTable(32, SPLIT2)
@@ -90,7 +78,7 @@ end
 (* Get usage information and mark whether or not we will be doing
    any splits. *)
 val found_split = ref false
-val rec pass1 = 
+val rec pass1 =
  fn RECORD(_,vl,_,e) => (app (use o #1) vl; pass1 e)
   | SELECT(_,v,_,_,e) => (use v; pass1 e)
   | OFFSET(_,v,_,e) => (use v; pass1 e)
@@ -118,7 +106,7 @@ val rec pass1 =
 	  if !found_split then () else checksplit l
       end
 
-val rec reduce = 
+val rec reduce =
    fn RECORD(k,vl,w,e) => RECORD(k, vl, w, reduce e)
     | SELECT(i,v,w,t,e) => SELECT(i, v, w, t, reduce e)
     | OFFSET(i,v,w,e) => OFFSET(i, v, w, reduce e)
@@ -130,7 +118,7 @@ val rec reduce =
     | PURE(i,vl,w,t,e) => PURE(i, vl, w, t, reduce e)
     | SETTER(i,vl,e) => SETTER(i, vl, reduce e)
     | RCC(k,l,p,vl,wtl,e) => RCC(k, l, p, vl, wtl, reduce e)
-    | (e as APP(f,vl)) => 
+    | (e as APP(f,vl)) =>
        (case alias f
 	  of NONE => e
 	   | SOME f' => APP(f',vl))

@@ -24,16 +24,10 @@ functor CPSopt (MachSpec: MACH_SPEC) : CPSOPT =
 
     fun say msg = Control.Print.say(String.concat msg)
 
-    (** obsolete table: used by cpsopt as a dummy template *)
-    exception ZZZ
-    val dummyTable : FLINT.lty IntHashTable.hash_table =
-	  IntHashTable.mkTable(256, ZZZ)
-
-(** the main function reduce *)
+  (** the main optimization function *)
 (* NOTE: The third argument to reduce is currently ignored.
    It used to be used for reopening closures. *)
     fun reduce (function, _, afterClosure) = let
-	  val table = dummyTable
 	  val debug = !CG.debugcps (* false *)
 	  fun debugprint s = if debug then say s else ()
 	  fun debugflush() = if debug then Control.Print.flush() else ()
@@ -54,7 +48,7 @@ functor CPSopt (MachSpec: MACH_SPEC) : CPSOPT =
 		val f' = (
 		      clicked := 0;
 		      Contract.contract {
-			  function=f, table=table, click=click, last=last, size=cpssize
+			  function=f, click=click, last=last, size=cpssize
 			})
 		in
 		  debugprint [
@@ -70,7 +64,7 @@ functor CPSopt (MachSpec: MACH_SPEC) : CPSOPT =
 		val f' = (
 		      clicked := 0; CG.dropargs := false;
 		      Contract.contract {
-			  function=f, table=table, click=click, last=false, size=cpssize
+			  function=f, click=click, last=false, size=cpssize
 			})
 		in
 		  debugprint [
@@ -86,7 +80,7 @@ functor CPSopt (MachSpec: MACH_SPEC) : CPSOPT =
 		val f' = (
 		      clicked := 0;
 		      Contract.contract {
-			  function=f, table=table, click=click, last=true, size=cpssize
+			  function=f, click=click, last=true, size=cpssize
 			})
 		in
 		  debugprint [
@@ -103,7 +97,7 @@ functor CPSopt (MachSpec: MACH_SPEC) : CPSOPT =
 		  else let
 		    val f' = Expand.expand{
 			    function=f, click=click, bodysize=n,
-			    afterClosure=afterClosure, table=table,
+			    afterClosure=afterClosure,
 			    unroll=unroll, do_headers=true
 			  }
 		    in
@@ -113,7 +107,7 @@ functor CPSopt (MachSpec: MACH_SPEC) : CPSOPT =
 
 	  fun zeroexpand f = Expand.expand{
 		  function=f, click=click, bodysize=0,
-		  afterClosure=afterClosure, table=table,
+		  afterClosure=afterClosure,
 		  unroll=false, do_headers=false
 		}
 
@@ -122,7 +116,7 @@ functor CPSopt (MachSpec: MACH_SPEC) : CPSOPT =
 		if not(!CG.flattenargs)
 		  then f
 		  else let
-		    val f' = Flatten.flatten{function=f,table=table,click=click}
+		    val f' = Flatten.flatten{function=f, click=click}
 		    in
 		      debugprint["Flatten stats: clicks = ", Int.toString (!clicked), "\n"];
 		      f'
@@ -136,7 +130,7 @@ functor CPSopt (MachSpec: MACH_SPEC) : CPSOPT =
 		end
 
 	  fun expand_flatten_contract (f, n) = let
-		val f1 = expand(f,n,false)
+		val f1 = expand(f, n, false)
 		val c1 = !clicked
 		val f2 = flatten f1
 		val c2 = !clicked
@@ -163,7 +157,7 @@ functor CPSopt (MachSpec: MACH_SPEC) : CPSOPT =
 		  if not(!CG.uncurry)
 		    then f
 		    else let
-		      val f' = Uncurry.etasplit{function=f,table=table,click=click}
+		      val f' = Uncurry.etasplit{function=f, click=click}
 		      in
 			debugprint["Uncurry stats: clicks = ", Int.toString (!clicked), "\n"];
 			f'
@@ -174,7 +168,7 @@ functor CPSopt (MachSpec: MACH_SPEC) : CPSOPT =
 		if not(!CG.etasplit)
 		  then f
 		  else let
-		    val f' = EtaSplit.etasplit{function=f, table=table, click=click}
+		    val f' = EtaSplit.etasplit{function=f, click=click}
 		    in
 		      debugprint["Etasplit stats: clicks = ", Int.toString (!clicked), "\n"];
 		      f'
@@ -218,7 +212,7 @@ functor CPSopt (MachSpec: MACH_SPEC) : CPSOPT =
 		end
 	  fun apply ("first_contract",f) = first_contract f
 	    | apply ("eta",f)            = eta f
-	    | apply ("uncurry",f)	       = uncurry f
+	    | apply ("uncurry",f)	 = uncurry f
 	    | apply ("etasplit",f)       = etasplit f
 	    | apply ("last_contract",f)  = last_contract f
 	    | apply ("cycle_expand",f)   = cycle(rounds, not(!CG.unroll), f)
@@ -242,16 +236,7 @@ functor CPSopt (MachSpec: MACH_SPEC) : CPSOPT =
 (*              val function7 = last_contract function6 *)
 (*              val optimized function7 *)
 		in
-		  IntInfCnv.elim {
-		      function = optimized,
-		      mkKvar = LambdaVar.mkLvar,
-		      mkNumVar = fn sz => let
-			  val v = LambdaVar.mkLvar ()
-			  in
-			    IntHashTable.insert table (v, LtyExtern.ltc_num sz);
-			    v
-			  end
-		    }
+		  IntInfCnv.elim optimized
 		end)
 	    before (debugprint["\n"]; debugflush())
 	  end (* fun reduce *)

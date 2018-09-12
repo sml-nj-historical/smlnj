@@ -1703,8 +1703,7 @@ raise ex)
             | gen (PURE(P.funwrap,[u],w,_,e), hp) = fselect(0,u,w,e,hp)
             | gen (PURE(P.iwrap,[u],w,_,e), _) = error "iwrap not implemented"
             | gen (PURE(P.iunwrap,[u],w,_,e), _) = error "iunwrap not implemented"
-            | gen (PURE(P.i32wrap,[u],w,_,e), hp) =
-                mkI32block([(u, offp0)], w, e, hp)
+            | gen (PURE(P.i32wrap,[u],w,_,e), hp) = mkI32block([(u, offp0)], w, e, hp)	(* 64BIT: FIXME *)
             | gen (PURE(P.i32unwrap,[u],w,_,e), hp) =
                 select(0, u, w, NUMt{sz=32, tag=false}, e, hp)
 

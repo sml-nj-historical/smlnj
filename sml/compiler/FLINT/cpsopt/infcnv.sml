@@ -5,22 +5,20 @@
  *
  * Expand out any remaining occurences of test_inf, trunc_inf, extend_inf,
  * and copy_inf.  These primops carry a second argument which is a
- * function that performs the operation for 32 bit precision.
+ * function that performs the operation for the target-machine's precision
+ * (i.e., 32 or 64 bits).
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
 
 structure IntInfCnv : sig
 
-    val elim : {
-	    function : CPS.function,
-	    mkKvar : unit -> LambdaVar.lvar,	(* new cont var. *)
-	    mkNumVar : int -> LambdaVar.lvar	(* new num variable of the given size var. *)
-	  } -> CPS.function
+    val elim : CPS.function -> CPS.function
 
 end = struct
 
     structure C = CPS
+    structure LV = LambdaVar
 
     val boxNumSz = Target.mlValueSz	(* 32 or 64 *)
 
@@ -29,8 +27,7 @@ end = struct
     val zero = C.NUM{ival = 0, ty={tag = true, sz = Target.defaultIntSz}}
     val one  = C.NUM{ival = 1, ty={tag = true, sz = Target.defaultIntSz}}
 
-    fun elim { function = cfun, mkKvar, mkNumVar } = let
-	  fun boxNumVar () = mkNumVar boxNumSz
+    fun elim cfun = let
 	  fun cexp (C.RECORD (rk, xl, v, e)) =
 		C.RECORD (rk, xl, v, cexp e)
 	    | cexp (C.SELECT (i, x, v, t, e)) =
@@ -51,14 +48,14 @@ end = struct
 		C.LOOKER (l, xl, v, t, cexp e)
 	    | cexp (C.PURE (C.P.copy_inf sz, [x, f], v, t, e)) = if (sz = boxNumSz)
 		then let
-		  val k = mkKvar ()
+		  val k = LV.mkLvar ()
 		  val e' = cexp e
 		  in
 		    C.FIX ([(C.CONT, k, [v], [t], e')], C.APP (f, [C.VAR k, x, zero]))
 		  end
 		else let
-		  val k = mkKvar ()
-		  val v' = boxNumVar ()
+		  val k = LV.mkLvar ()
+		  val v' = LV.mkLvar ()
 		  val e' = cexp e
 		  in
 		    C.FIX ([(C.CONT, k, [v], [t], e')],
@@ -67,14 +64,14 @@ end = struct
 		  end
 	    | cexp (C.PURE (C.P.extend_inf sz, [x, f], v, t, e)) = if (sz = boxNumSz)
 		then let
-		  val k = mkKvar ()
+		  val k = LV.mkLvar ()
 		  val e' = cexp e
 		  in
 		    C.FIX ([(C.CONT, k, [v], [t], e')], C.APP (f, [C.VAR k, x, one]))
 		  end
 		else let
-		  val k = mkKvar ()
-		  val v' = boxNumVar ()
+		  val k = LV.mkLvar ()
+		  val v' = LV.mkLvar ()
 		  val e' = cexp e
 		  in
 		    C.FIX ([(C.CONT, k, [v], [t], e')],
@@ -83,14 +80,14 @@ end = struct
 		  end
 	    | cexp (C.ARITH (C.P.test_inf sz, [x, f], v, t, e)) = if (sz = boxNumSz)
 		then let
-		  val k = mkKvar ()
+		  val k = LV.mkLvar ()
 		  val e' = cexp e
 		  in
 		    C.FIX ([(C.CONT, k, [v], [t], e')], C.APP (f, [C.VAR k, x]))
 		  end
 		else let
-		  val k = mkKvar ()
-		  val v' = boxNumVar ()
+		  val k = LV.mkLvar ()
+		  val v' = LV.mkLvar ()
 		  val e' = cexp e
 		  in
 		    C.FIX ([(C.CONT, k, [v'], [boxNumTy],
@@ -99,14 +96,14 @@ end = struct
 		  end
 	    | cexp (C.PURE (C.P.trunc_inf sz, [x, f], v, t, e)) = if (sz = boxNumSz)
 		then let
-		  val k = mkKvar ()
+		  val k = LV.mkLvar ()
 		  val e' = cexp e
 		  in
 		    C.FIX ([(C.CONT, k, [v], [t], e')], C.APP (f, [C.VAR k, x]))
 		  end
 		else let
-		  val k = mkKvar ()
-		  val v' = boxNumVar ()
+		  val k = LV.mkLvar ()
+		  val v' = LV.mkLvar ()
 		  val e' = cexp e
 		  in
 		    C.FIX ([(C.CONT, k, [v'], [boxNumTy],

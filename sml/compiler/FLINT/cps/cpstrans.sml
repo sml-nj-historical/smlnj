@@ -196,23 +196,23 @@ fun cexptrans(ce) =
                    | _ => ();
            addvl(w,vtrans u); cexptrans ce)
     | PURE(P.fwrap,[u],w,t,ce) =>
-          if unboxedfloat
+	if unboxedfloat
           then (addty(w,t); PURE(P.fwrap,[vtrans u],w,t,cexptrans ce))
           else (addvl(w,vtrans u); cexptrans ce)
     | PURE(P.funwrap,[u],w,t,ce) =>
-          if unboxedfloat
+	if unboxedfloat
           then (addty(w,t); PURE(P.funwrap,[vtrans u],w,t,cexptrans ce))
           else (addvl(w,vtrans u); cexptrans ce)
     | PURE(P.iwrap,[u],w,t,ce) => (addvl(w,vtrans u); cexptrans ce)
     | PURE(P.iunwrap,[u],w,t,ce) => (addvl(w,vtrans u); cexptrans ce)
-    | PURE(P.i32wrap,[u],w,t,ce) =>
-	      (addty(w,t); PURE(P.i32wrap,[vtrans u],w,t,cexptrans ce))
+    | PURE(P.i32wrap,[u],w,t,ce) =>	(* 64BIT: FIXME *)
+	(addty(w,t); PURE(P.i32wrap,[vtrans u],w,t,cexptrans ce))
     | PURE(P.i32unwrap,[u],w,t,ce) =>
-	      (addty(w,t); PURE(P.i32unwrap,[vtrans u],w,t,cexptrans ce))
+	(addty(w,t); PURE(P.i32unwrap,[vtrans u],w,t,cexptrans ce))
     | PURE(P.getcon,[u],w,t,ce) =>
-          (addty(w,t); select(0,vtrans u,w,t,cexptrans ce))
+	(addty(w,t); select(0,vtrans u,w,t,cexptrans ce))
     | PURE(P.getexn,[u],w,t,ce) =>
-          (addty(w,t); select(0,vtrans u,w,t,cexptrans ce))
+	(addty(w,t); select(0,vtrans u,w,t,cexptrans ce))
     | PURE(p,vl,w,t,ce) =>
           (let val _ = addty(w,t)
                val vl' = map vtrans vl

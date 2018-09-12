@@ -83,14 +83,10 @@ sig
   val csehoist : bool ref
   val rangeopt : bool ref
   val icount : bool ref
-  val debugRep : bool ref  
+  val debugRep : bool ref
   val checklty1 : bool ref
   val checklty2 : bool ref
   val checklty3 : bool ref
-  val checkcps1 : bool ref
-  val checkcps2 : bool ref
-  val checkcps3 : bool ref
-  val checkcps  : bool ref
   val flatfblock : bool ref
   val deadup : bool ref
   val pollChecks : bool ref
@@ -105,7 +101,7 @@ sig
 end (* signature CGCONTROL *)
 
 (* main Control structure *)
-signature CONTROL = 
+signature CONTROL =
 sig
   structure Print : PRINTCONTROL
   structure ElabData : ELABDATA_CONTROL

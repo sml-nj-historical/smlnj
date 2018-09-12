@@ -4,11 +4,12 @@
  * All rights reserved.
  *)
 
-signature FLATTEN = sig
-  val flatten : {function: CPS.function,
-                 table: LtyDef.lty IntHashTable.hash_table,
-                 click: string -> unit} -> CPS.function
-end (* signature FLATTEN *)
+signature FLATTEN =
+  sig
+
+    val flatten : {function: CPS.function, click: string -> unit} -> CPS.function
+
+  end (* signature FLATTEN *)
 
 functor Flatten(MachSpec : MACH_SPEC) : FLATTEN =
 struct
@@ -37,7 +38,7 @@ datatype info = FNinfo of {arity: arity list ref,
 	      | RECinfo of int (* number of fields *)
 	      | MISCinfo
 
-fun flatten {function=(fkind,fvar,fargs,ctyl,cexp), table, click} =
+fun flatten {function=(fkind,fvar,fargs,ctyl,cexp), click} =
 let
 
 val clicks = ref 0
@@ -46,68 +47,6 @@ val maxfree = MachSpec.numRegs
 val debug = !Control.CG.debugcps (* false *)
 fun debugprint s = if debug then Control.Print.say(s) else ()
 fun debugflush() = if debug then Control.Print.flush() else ()
-
-val rep_flag = MachSpec.representations
-val type_flag = (!CG.checkcps1) andalso (!CG.checkcps2) andalso rep_flag
-
-val selectLty =
-  (fn (lt,i) => if type_flag then LT.lt_select(lt,i) else LT.ltc_void)
-
-exception NFLATTEN
-fun getty v =
-  if type_flag then
-             (IntHashTable.lookup table v) handle _ =>
-                   (Control.Print.say ("NFLATTEN: Can't find the variable "^
-                            (Int.toString v)^" in the table ***** \n");
-                    raise NFLATTEN)
-  else LT.ltc_void
-
-val addty = if type_flag then IntHashTable.insert table else (fn _ => ())
-fun newty(f,t) = if type_flag then
-		     (ignore (IntHashTable.remove table f) handle _ => ();
-		      addty(f,t))
-                 else ()
-fun mkv(t) = let val v = LV.mkLvar()
-                 val _ = addty(v,t)
-              in v
-             end
-fun grabty u =
-  let fun g (VAR v) = getty v
-        | g (NUM{ty={tag=true, ...}, ...}) = LT.ltc_int
-        | g (REAL _) = LT.ltc_real
-        | g (STRING _) = LT.ltc_void
-        | g (LABEL v) = getty v
-        | g _ = LT.ltc_void (* QUESTION: what about other integer types? *)
-   in if type_flag then g u
-      else LT.ltc_void
-  end
-
-fun argLty [] = LT.ltc_int
-  | argLty [t] =
-      LT.ltw_tuple(t,
-            (fn xs as (_::_) => if (length(xs) < MachSpec.maxRepRegs)
-                        then LT.ltc_tuple [t] else t
-              | _ => t),
-            fn t =>
-               LT.ltw_str(t,
-                  (fn xs as (_::_) => if (length(xs) < MachSpec.maxRepRegs)
-                              then LT.ltc_tuple [t] else t
-                    | _ => t),
-                  fn t => t))
-  | argLty r = LT.ltc_str r (* this is INCORRECT !!!!!!! *)
-
-fun ltc_fun (x, y) =
-  if (LT.ltp_tyc x) andalso (LT.ltp_tyc y) then LT.ltc_parrow(x, y)
-  else LT.ltc_pfct(x, y)
-
-fun mkfnLty(_,_,nil) = bug "mkfnLty in nflatten"
-  | mkfnLty(k,CNTt::_,x::r) =
-      LT.ltw_iscont(x, fn [t2] => (k,ltc_fun(argLty r,t2))
-                        | _ => bug "unexpected mkfnLty",
-             fn [t2] => (k,ltc_fun(argLty r, LT.ltc_tyc t2))
-              | _ => bug "unexpected mkfnLty",
-             fn x => (k, ltc_fun(argLty r,x)))
-  | mkfnLty(k,_,r) = (k, LT.ltc_cont([argLty r]))
 
 (* Note that maxfree has already been reduced by 1 (in CPScomp)
    on most machines to allow for an arithtemp *)
@@ -252,12 +191,10 @@ val rec reduce =
         (case get fv
 	  of FNinfo{arity=ref al,alias=ref(SOME f'),...} =>
 	      let fun loop(COUNT(cnt,_)::r,v::vl,args) =
-		  let val lt = grabty v
-		      fun g(i,args) =
+		  let fun g(i,args) =
 			  if i=cnt then loop(r,vl,args)
-			  else let val tt = selectLty(lt,i)
-				   val z = mkv(tt)
-			       in SELECT(i,v,z,ctype(tt), g(i+1,(VAR z)::args))
+			  else let val z = LV.mkLvar()
+			       in SELECT(i, v, z, BOGt, g(i+1,(VAR z)::args))
 			       end
 		  in  g(0,args)
 		  end
@@ -268,14 +205,10 @@ val rec reduce =
 	   | _ => APP(f,vl))
    | APP(f,vl) => APP(f,vl)
    | FIX(l,e) =>
-      let fun vars(0,_,l,l') = (l,l')
-	    | vars(i,lt,l,l') =
-	        let val tt = selectLty(lt,i-1)
-	        in  vars(i-1,lt,(mkv(tt))::l,(ctype(tt))::l')
-	        end
+      let fun vars (0, l, l') = (l, l')
+	    | vars (i, l, l') = vars(i-1, LV.mkLvar()::l, BOGt::l')
 	  fun newargs(COUNT(j,_) :: r,v::vl,_::cl) =
-		let val lt = getty v
-		    val (new,ncl) = vars(j,lt,nil,nil)
+		let val (new,ncl) = vars(j, nil, nil)
 		    val (vl',cl',bt') = newargs(r,vl,cl)
 		    fun bodytransform body =
 			     RECORD(RK_RECORD,
@@ -292,12 +225,10 @@ val rec reduce =
 	      (case get f
                 of FNinfo{arity=ref al,alias=ref(SOME f'),...} =>
 		    let val (nargs,ncl,bt) = newargs(al,vl,cl)
-			val (fk',lt) = mkfnLty(fk,ncl, map getty nargs)
-			val _ = newty(f',lt)
 			val wl = map LV.dupLvar vl
 		    in
 			(fk,f,wl,cl,APP(VAR f,map VAR wl))::
-			(fk',f',nargs,ncl,bt body) :: process_args rest
+			(fk,f',nargs,ncl,bt body) :: process_args rest
 		    end
 	         | _ => fdef :: process_args rest)
 	    | process_args nil = nil

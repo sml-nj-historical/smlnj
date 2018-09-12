@@ -50,7 +50,7 @@ functor MemDisambiguate(structure Cells: CELLS) : MEM_DISAMBIGUATION = struct
        | C.PURE(P.fwrap, _, _, _, e) => sizeOf(e, hp+frecord(1))
        | C.PURE(P.mkspecial, _, _, _, e) => sizeOf(e, hp+8)
        | C.PURE(P.makeref, _, _, _, e) => sizeOf(e, hp+8)
-       | C.PURE(P.i32wrap, _, _, _, e) => sizeOf(e, hp+record(2))
+       | C.PURE(P.i32wrap, _, _, _, e) => sizeOf(e, hp+record(2))	(* 64BIT: FIXME *)
        | C.PURE(P.newarray0, _, _, _, e) => sizeOf(e, hp+(4*5))
        | C.PURE(_, _, _, _, e) => sizeOf(e, hp)
        | C.ARITH(_, _, _, _, e) => sizeOf(e, hp)
@@ -166,7 +166,7 @@ functor MemDisambiguate(structure Cells: CELLS) : MEM_DISAMBIGUATION = struct
 	 | C.ARITH(_, _, _, _, e) => iter(e, hp)
 	 | C.PURE(P.mkspecial, [i,v], x, _, e) => record([(v, offp0)], x, e)
 	 | C.PURE(P.fwrap, [u], x, _, e) => frecord([(u, offp0)], x, e)
-	 | C.PURE(P.i32wrap, [u], x, _, e) =>
+	 | C.PURE(P.i32wrap, [u], x, _, e) =>		(* 64BIT: FIXME *)
 	     record([(u, offp0),(C.INT 0, offp0)], x, e)
 	 | C.PURE(P.makeref, [v], x, _, e) => let
 	     val uses =

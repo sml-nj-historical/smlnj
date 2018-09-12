@@ -4,14 +4,18 @@
  * All rights reserved.
  *)
 
-signature EXPAND = sig
-  val expand : {function: CPS.function,
-	        bodysize: int,
-		unroll: bool,
-		table: LtyDef.lty IntHashTable.hash_table,
-		afterClosure: bool, do_headers: bool,
-		click: string -> unit} -> CPS.function
-end (* signature EXPAND *)
+signature EXPAND =
+  sig
+    val expand : {
+	    function : CPS.function,
+	    bodysize : int,
+	    unroll : bool,
+	    afterClosure : bool,
+	    do_headers : bool,
+	    click : string -> unit
+	  } -> CPS.function
+
+  end (* signature EXPAND *)
 
 functor Expand (MachSpec : MACH_SPEC) : EXPAND =
 struct
@@ -42,8 +46,7 @@ in
 
  datatype mode = ALL | NO_UNROLL | UNROLL of int | HEADERS
 
-fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
-           afterClosure,table=typtable,do_headers} =
+fun expand {function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,afterClosure,do_headers} =
   let
    val clicked_any = ref false
    val click = fn z => (click z; clicked_any := true)
@@ -66,34 +69,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		 | Const
 		 | Other
 
-   val rep_flag = MachSpec.representations
-   val type_flag = (!Control.CG.checkcps1) andalso
-                   (!Control.CG.checkcps1) andalso rep_flag
-
-   local
-     exception NEXPAND
-     fun getty v =
-       if type_flag
-       then (IntHashTable.lookup typtable v) handle _ =>
-                  (Control.Print.say ("NEXPAND: Can't find the variable "^
-                            (Int.toString v)^" in the typtable ***** \n");
-                   raise NEXPAND)
-       else LtyExtern.ltc_void
-     fun addty(f,t) = IntHashTable.insert typtable (f,t)
-   in
-
-   fun mkv(t) = let val v = LV.mkLvar()
-                    val _ = if type_flag then addty(v,t) else ()
-                in  v
-                end
-
-   fun copyLvar v = let val x = LV.dupLvar(v)
-                        val _ = if type_flag then addty(x,getty v) else ()
-                    in  x
-                    end
-
-   end (* local *)
-
+   fun copyLvar v = LV.dupLvar v
 
  local exception Expand
        val m : info IntHashTable.hash_table = IntHashTable.mkTable(128,Expand)
@@ -602,7 +578,6 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		  val e' = pass2_beta(UNROLL 0,cexp)
 	      in  if !clicked_any
 		      then expand{function=(fkind,fvar,fargs,ctyl,e'),
-				  table=typtable,
 				  bodysize=bodysize,click=click,unroll=unroll,
 				  afterClosure=afterClosure,
 				  do_headers=do_headers}
@@ -616,7 +591,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		  val e' = if do_headers then gamma cexp else cexp
 	      in  if !clicked_any
 		  then expand{function=(fkind,fvar,fargs,ctyl,e'),
-                              table=typtable,bodysize=bodysize,click=click,
+                              bodysize=bodysize,click=click,
                               unroll=unroll,afterClosure=afterClosure,
                               do_headers=false}
 		  else (debugprint(" (non-unroll 1)\n"); debugflush();

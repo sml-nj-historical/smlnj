@@ -39,7 +39,6 @@ Conversion Primops:
 
 signature CONTRACT = sig
   val contract : {function: CPS.function,
-                  table: LtyDef.lty IntHashTable.hash_table,
                   click: string -> unit,
                   last: bool,
                   size: int ref}
@@ -118,8 +117,6 @@ fun checklty s (t1,t2) =  ()
   end
 *)
 
-val isCont = LT.lt_iscont
-
 fun equalUptoAlpha(ce1,ce2) =
   let fun equ pairs =
         let fun same(VAR a, VAR b) =
@@ -189,8 +186,7 @@ datatype info = FNinfo of {args: lvar list,
               | IFIDIOMinfo of {body : (lvar * cexp * cexp) option ref}
 	      | MISCinfo of cty
 
-fun contract {function=(fkind,fvar,fargs,ctyl,cexp),
-              table, click, last, size=cpssize} =
+fun contract {function=(fkind,fvar,fargs,ctyl,cexp), click, last, size=cpssize} =
 (* NOTE: the "last" argument is currently ignored. *)
 let
 
@@ -199,90 +195,6 @@ val CGbetacontract = !Control.CG.betacontract
 val debug = !Control.CG.debugcps (* false *)
 fun debugprint s = if debug then Control.Print.say(s) else ()
 fun debugflush() = if debug then Control.Print.flush() else ()
-
-val rep_flag = MachSpec.representations
-val type_flag = (!CG.checkcps1) andalso (!CG.checkcps2) andalso rep_flag
-
-
-(* It would be nice to get rid of this type stuff one day. *)
-local
-
-exception NCONTRACT
-
-fun valueName (VAR v) = LV.lvarName v
-  | valueName (NUM{ty={sz, ...}, ival}) = concat[
-	"(I", Int.toString sz, ")", IntInf.toString ival
-      ]
-  | valueName (REAL{ty, rval}) = concat["(R", Int.toString ty, ")", RealLit.toString rval]
-  | valueName (STRING s) = concat["<", s, ">"]
-  | valueName _ = "<others>"
-
-fun argLty [] = LT.ltc_int
-  | argLty [t] =
-      LT.ltw_tuple(t,
-            (fn xs as (_::_) => if (length(xs) < MachSpec.maxRepRegs)
-                        then LT.ltc_tuple [t] else t
-              | _ => t),
-            fn t =>
-               LT.ltw_str(t,
-                  (fn xs as (_::_) => if (length(xs) < MachSpec.maxRepRegs)
-                              then LT.ltc_tuple [t] else t
-                    | _ => t),
-                  fn t => t))
-  | argLty r = LT.ltc_str r (* this is INCORRECT !!!!!!! *)
-
-val addty = if type_flag then IntHashTable.insert table else (fn _ => ())
-
-in
-
-(* Only used when dropping args in reduce(FIX) case. *)
-fun getty v =
-  if type_flag then
-             (IntHashTable.lookup table v) handle _ =>
-                   (Control.Print.say ("NCONTRACT: Can't find the variable "^
-                            (Int.toString v)^" in the table ***** \n");
-                    raise NCONTRACT)
-  else LT.ltc_void
-fun grabty u =
-  let fun g (VAR v) = getty v
-        | g (NUM{ty={tag=true, ...}, ...}) = LT.ltc_int
-        | g (REAL _) = LT.ltc_real
-        | g (STRING _) = LT.ltc_void
-        | g (LABEL v) = getty v
-        | g _ = LT.ltc_void
-  in  if type_flag then g u
-      else LT.ltc_void
-  end
-fun newty(f,t) = if type_flag then
-		     (ignore (IntHashTable.remove table f) handle _ => ();
-		      addty(f,t))
-		 else ()
-fun mkv(t) = let val v = LV.mkLvar()
-                 val _ = addty(v,t)
-             in  v
-             end
-
-fun ltc_fun (x, y) =
-  if (LT.ltp_tyc x) andalso (LT.ltp_tyc y) then LT.ltc_parrow(x, y)
-  else LT.ltc_pfct(x, y)
-
-fun mkfnLty(_,_,nil) = bug "mkfnLty in nflatten"
-  | mkfnLty(k,CNTt::_,x::r) =
-      LT.ltw_iscont(x, fn [t2] => (k,ltc_fun(argLty r,t2))
-                        | _ => bug "unexpected mkfnLty",
-             fn [t2] => (k,ltc_fun(argLty r, LT.ltc_tyc t2))
-              | _ => bug "unexpected mkfnLty",
-             fn x => (k, ltc_fun(argLty r,x)))
-  | mkfnLty(k,_,r) = (k, LT.ltc_cont([argLty r]))
-
-(* Only used in newname *)
-fun sameLty(x,u) =
-  let val s = (LV.lvarName(x))^(" *and* "^valueName(u))
-  in  if type_flag then checklty s (getty x,grabty u)
-      else ()
-  end
-
-end (* local *)
 
 local exception UsageMap
 in  val m : {info: info, used : int ref, called : int ref}
@@ -408,8 +320,8 @@ let val rec g1 =
   | ARITH(i,vl,w,_,e) => (app use vl; enterMISC0 w; g1 e)
   | PURE(p as P.iwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
   | PURE(p as P.iunwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
-  | PURE(p as P.i32wrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
-  | PURE(p as P.i32unwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
+  | PURE(p as P.i32wrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)	(* 64BIT: FIXME *)
+  | PURE(p as P.i32unwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)	(* 64BIT: FIXME *)
   | PURE(p as P.fwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
   | PURE(p as P.funwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
   | PURE(i,vl,w,_,e) => (app use vl; enterMISC0 w; g1 e)
@@ -437,7 +349,7 @@ fun newname (vw as (v,w)) =
        | f _ = ()
  in  if deadup then f (ren w) else ();
      rmv v;
-     sameLty vw; sameName vw; IntHashTable.insert m2 vw
+     sameName vw; IntHashTable.insert m2 vw
  end
 
 end (* local *)
@@ -590,11 +502,6 @@ let val rec g' =
 		     in the FIX case below. *)
 		  case z(vl',live)
 		    of nil => [tagInt 0]
-		     | [u] =>
-                         LT.ltw_iscont(grabty u,
-                              fn _ => [u, tagInt 0],
-                              fn _ => [u, tagInt 0],
-                              fn _ => [u])
 		     | vl'' => vl''
 	      end
 	  fun trybeta fv =
@@ -632,38 +539,17 @@ let val rec g' =
 			  fun dropclicks(n) =
 			      if n > 0 then (click "D"; dropclicks(n-1))
 			      else ()
-		      (* The code below may be obsolete.  I think that
-			 we used to distinguish between user functions
-			 and continuations in the closure phase by
-		         the number of arguments, and also we might
-			 not have been able to handle functions with
-			 no arguments.  Possibly we can now remove
-			 these special cases. *)
-			  val tt' = map getty vl'
-			  val (vl'', cl'', tt'') =
-			      case tt'
-			       of nil =>
-				   let val x = mkv(LT.ltc_int)
+			  val (vl'', cl'') =
+			      case vl'
+			       of nil => let val x = LV.mkLvar()
 				   in  dropclicks(drop - 1);
 				       enterMISC0 x;
-				       ([x], [tagIntTy], [LT.ltc_int])
+				       ([x], [tagIntTy])
 				   end
-			        | [x] =>
-                                   if (isCont x)
-				   then let val x = mkv(LT.ltc_int)
-				         in  dropclicks(drop - 1);
-				             enterMISC0 x;
-				             (vl'@[x], cl'@[tagIntTy],
-                                              tt'@[LT.ltc_int])
-				        end
-                                   else (dropclicks(drop);
-				       (vl',cl',tt'))
- 			        | _ => (dropclicks(drop);
-				       (vl',cl',tt'))
+ 			        | _ => (dropclicks(drop); (vl',cl'))
 
-                          val (fk',lt) = mkfnLty(fk,cl'',tt'')
-		      in  newty(f,lt);
-			  ((fk',f,vl'',cl'',b),used,called,info)
+		      in
+			  ((fk,f,vl'',cl'',b),used,called,info)
 		      end
 		   | _ => (x,used,called,info)
 	    end

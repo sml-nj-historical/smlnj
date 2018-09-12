@@ -182,7 +182,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 
   (* primwrap: cty -> P.pure *)
     fun primwrap (NUMt{sz=31, tag=true}) = P.iwrap
-      | primwrap (NUMt{sz=32, tag=false}) = P.i32wrap
+      | primwrap (NUMt{sz=32, tag=false}) = P.i32wrap	(* 64BIT: FIXME *)
       | primwrap (NUMt _) = raise Fail "unsupported NUMt size" (* 64BIT: *)
       | primwrap (FLTt 64) = P.fwrap
       | primwrap (FLTt n) = raise Fail(concat["primwrap: FLTt ", Int.toString n, " is unsupported"]) (* REAL32: *)
