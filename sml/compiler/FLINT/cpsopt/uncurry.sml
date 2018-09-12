@@ -41,14 +41,12 @@ fun freein v =
    in g
   end
 
-fun etasplit {function=(fkind,fvar,fargs,ctyl,cexp),
-	      table=typtable, click} =
+fun etasplit {function=(fkind,fvar,fargs,ctyl,cexp), click} =
 let
 
 val debug = !Control.CG.debugcps (* false *)
 fun debugprint s = if debug then Control.Print.say s else ()
 fun debugflush() = if debug then Control.Print.flush() else ()
-val type_flag = (!Control.CG.checkcps1) andalso (!Control.CG.checkcps1)
 
 val defaultArrow = LT.ltc_parrow(LT.ltc_void,LT.ltc_void)
 
@@ -73,26 +71,7 @@ fun checklimit(cl) =
    in h(cl, 0, 0)
   end
 
-exception NEWETA
-fun getty v =
-  if type_flag
-  then (IntHashTable.lookup typtable v) handle _ =>
-                (Control.Print.say ("NEWETA: Can't find the variable "^
-                            (Int.toString v)^" in the typtable ***** \n");
-                 raise NEWETA)
-  else LT.ltc_void
-
-fun addty(f,t) = if type_flag then IntHashTable.insert typtable (f,t) else ()
-fun mkv(t) = let val v = LV.mkLvar()
-              in (addty(v,t); v)
-             end
-fun copyLvar v = let val x = LV.dupLvar(v)
-                  in (addty(x,getty v); x)
-                 end
-
-(* fun userfun(f) = case LT.out(getty(f)) of LT.ARROW _ => true
-                                | _ => false
- *)
+fun copyLvar v = LV.dupLvar v
 
 val rec reduce =
    fn RECORD(k,vl,w,e) => RECORD(k, vl, w, reduce e)
@@ -119,8 +98,7 @@ val rec reduce =
 			    and vl' = map copyLvar vl
 			    val k'= copyLvar k
 			    and g'= copyLvar g
-			    val newlt = extendLty(getty(g),(map getty vl))
-			    val f' = mkv(newlt)
+			    val f' = LV.mkLvar()
 			in click "u";
 			    (NO_INLINE_INTO,f,k'::vl',ct::cl,
 			     FIX([(gk,g',ul',cl',APP(VAR f',

@@ -1,7 +1,8 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* cps/etasplit.sml *)
-
-(*
+(* etasplit.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Perform the eta-split transformation on cps expressions.  The
  * purpose of the eta split transformation is to give two entry points
  * to functions which both escape and which are called at known
@@ -16,13 +17,15 @@
  * continuations that were created for reasons of space complexity (as
  * the join of two branches, for example).  I doubt there are many
  * continuations which both escape and have known calls. (Trevor Jim)
- *
  *)
 
-signature ETASPLIT =
-  sig val etasplit : {function: CPS.function,
-		      table: LtyDef.lty IntHashTable.hash_table,
-		      click: string -> unit} -> CPS.function
+signature ETASPLIT = sig
+
+    val etasplit : {
+	    function : CPS.function,
+	    click : string -> unit
+	  } -> CPS.function
+
   end (* signature ETASPLIT *)
 
 functor EtaSplit(MachSpec : MACH_SPEC) : ETASPLIT =
@@ -35,30 +38,16 @@ in
 fun sameName(x,VAR y) = LV.sameName(x,y)
   | sameName _ = ()
 
-fun etasplit{function=(fkind,fvar,fargs,ctyl,cexp),
-	     table=typtable,
-	     click} =
+fun etasplit {function=(fkind,fvar,fargs,ctyl,cexp), click} =
 let
 
 val debug = !Control.CG.debugcps (* false *)
 fun debugprint s = if debug then Control.Print.say s else ()
 fun debugflush() = if debug then Control.Print.flush() else ()
-val type_flag = (!Control.CG.checkcps1)
-
 
 exception SPLIT1
-fun getty v =
-  if type_flag
-  then (IntHashTable.lookup typtable v) handle _ =>
-                (Control.Print.say ("SPLIT1: Can't find the variable "^
-                            (Int.toString v)^" in the typtable ***** \n");
-                 raise SPLIT1)
-  else LtyExtern.ltc_void
 
-fun addty(f,t) = if type_flag then IntHashTable.insert typtable (f,t) else ()
-fun copyLvar v = let val x = LV.dupLvar(v)
-                  in (addty(x,getty v); x)
-                 end
+fun copyLvar v = LV.dupLvar(v)
 
 local exception SPLIT2
       val m : value IntHashTable.hash_table = IntHashTable.mkTable(32, SPLIT2)
