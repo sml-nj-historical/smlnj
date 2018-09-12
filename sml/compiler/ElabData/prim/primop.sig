@@ -15,12 +15,12 @@ of conversion operations.
 The five basic conversion operators are (in all cases, we assume
 that (n >= m):
 
-  TEST(n,m)	-- map an n-bit, 2's complement signed value to an 
-		   m-bit, 2's complement signed value; 
+  TEST(n,m)	-- map an n-bit, 2's complement signed value to an
+		   m-bit, 2's complement signed value;
 		   raise Overflow if the value is too large.
 
-  TESTU(n,m)    -- map an unsigned n-bit value to an m-bit 2's 
-	 	   complement value; raise Overflow if the value 
+  TESTU(n,m)    -- map an unsigned n-bit value to an m-bit 2's
+	 	   complement value; raise Overflow if the value
 		   is too large.
 
   EXTEND(m,n)	-- sign extend an m-bit value to a n-bit value
@@ -32,7 +32,7 @@ that (n >= m):
 TEST, TESTU, and TRUNC are used to go from large values to small
 ones, and EXTEND and COPY are used to go from small values to
 large. The operators EXTEND, TRUNC, and COPY are "pure," while TEST
-and TESTU may raise Overflow. 
+and TESTU may raise Overflow.
 
 Conversions where the sizes are the same can be simplified to copies:
 
@@ -43,66 +43,66 @@ Conversions where the sizes are the same can be simplified to copies:
 The translation of conversion operations in the Word32 and Word8
 structures (for example) is given by:
 
-  Module	function     =>	Implemented by	
+  Module	function     =>	Implemented by
   ----------------------------------------------------------
-  Word32	toLargeInt    => TESTU(32,32)		
+  Word32	toLargeInt    => TESTU(32,32)
 		toLargeIntX   => EXTEND(32,32)		= COPY(32,32)
-		fromLargeInt  => COPY(32,32)		
-		toInt	      => TESTU(32,31)		
-		toIntX	      => TEST(32,31)		
-		fromInt       => EXTEND(31,32)		
-		toLargeWord   => COPY(32,32)		
+		fromLargeInt  => COPY(32,32)
+		toInt	      => TESTU(32,31)
+		toIntX	      => TEST(32,31)
+		fromInt       => EXTEND(31,32)
+		toLargeWord   => COPY(32,32)
 		toLargeWordX  => EXTEND(32,32)		= COPY(32,32)
 		fromLargeWord => TRUNC(32,32)		= COPY(32,32)
 
-  Word8 	toLargeInt    => COPY(8,32)		
-		toLargeIntX   => EXTEND(8,32)		
-		fromLargeInt  => TRUNC(32,8)		
-		toInt	      => COPY(8,31)		
-		toIntX	      => EXTEND(8,31)		
-		fromInt       => TRUNC(31,8)		
-		toLargeWord   => COPY(8,32)		
-		toLargeWordX  => EXTEND(8,32)		
-		fromLargeWord => TRUNC(32,8)		
+  Word8 	toLargeInt    => COPY(8,32)
+		toLargeIntX   => EXTEND(8,32)
+		fromLargeInt  => TRUNC(32,8)
+		toInt	      => COPY(8,31)
+		toIntX	      => EXTEND(8,31)
+		fromInt       => TRUNC(31,8)
+		toLargeWord   => COPY(8,32)
+		toLargeWordX  => EXTEND(8,32)
+		fromLargeWord => TRUNC(32,8)
 
 
 Each operator composed with itself is itself, but with different parameters:
 
-  TEST(n,m) o TEST(p,n)		== TEST(p,m)			
-  TESTU(n,m) o TESTU(p,n)	== TESTU(p,m)			
-  EXTEND(n,m) o EXTEND(p,n)	== EXTEND(p,m)			
-  TRUNC(n,m) o TRUNC(p,n)	== TRUNC(p,m)			
-  COPY(n,m) o COPY(p,n)		== COPY(p,m)			
+  TEST(n,m) o TEST(p,n)		== TEST(p,m)
+  TESTU(n,m) o TESTU(p,n)	== TESTU(p,m)
+  EXTEND(n,m) o EXTEND(p,n)	== EXTEND(p,m)
+  TRUNC(n,m) o TRUNC(p,n)	== TRUNC(p,m)
+  COPY(n,m) o COPY(p,n)		== COPY(p,m)
 
 The composition of these operators can be described by a simple algebra.
 
-  EXTEND(n,m) o COPY(p,n)	== COPY(p,m)   if (n > p)	
-  				== EXTEND(p,m) if (n = p)	
-  COPY(n,m) o EXTEND(p,n)	== EXTEND(p,m) if (n = m)	
+  EXTEND(n,m) o COPY(p,n)	== COPY(p,m)   if (n > p)
+  				== EXTEND(p,m) if (n = p)
+  COPY(n,m) o EXTEND(p,n)	== EXTEND(p,m) if (n = m)
 
-  TRUNC(n,m) o COPY(p,n)	== COPY(p,m)   if (m >= p)	
-				== TRUNC(p,m)  if (m < p)	
+  TRUNC(n,m) o COPY(p,n)	== COPY(p,m)   if (m >= p)
+				== TRUNC(p,m)  if (m < p)
 
-  COPY(n,m) o TRUNC(p,n)	== TRUNC(p,m)  if (n = m)	
+  COPY(n,m) o TRUNC(p,n)	== TRUNC(p,m)  if (n = m)
 
-  TEST(n,m) o COPY(p,n)		== COPY(p,m)   if (m >= p)	
-				== TEST(p,m)   if (m < p)	
-	 
-  TESTU(n,m) o COPY(p,n)	== COPY(p,m)   if (m >= p)	
-				== TESTU(p,m)  if (m < p)	
+  TEST(n,m) o COPY(p,n)		== COPY(p,m)   if (m >= p)
+				== TEST(p,m)   if (m < p)
 
-  COPY(n,m) o TEST(p,n)		== TEST(p,m)   if (n = m)	
+  TESTU(n,m) o COPY(p,n)	== COPY(p,m)   if (m >= p)
+				== TESTU(p,m)  if (m < p)
 
-  COPY(n,m) o TESTU(p,n)	== TESTU(p,m)  if (n = m)	
+  COPY(n,m) o TEST(p,n)		== TEST(p,m)   if (n = m)
 
-  TRUNC(n,m) o EXTEND(p,n)	== EXTEND(p,m) if (m >= p) 	
-				== TRUNC(p,m)  if (m < p)	
+  COPY(n,m) o TESTU(p,n)	== TESTU(p,m)  if (n = m)
 
-  TEST(n,m) o EXTEND(p,n)	== EXTEND(p,m) if (m >= p)	
-				== TEST(p,m)   if (m < p)	
+  TRUNC(n,m) o EXTEND(p,n)	== EXTEND(p,m) if (m >= p)
+				== TRUNC(p,m)  if (m < p)
 
-  TESTU(n,m) o EXTEND(p,n)	== EXTEND(p,m) if (m >= p)	
-				== TESTU(p,m)  if (m < p)	
+  TEST(n,m) o EXTEND(p,n)	== EXTEND(p,m) if (m >= p)
+				== TEST(p,m)   if (m < p)
+
+  TESTU(n,m) o EXTEND(p,n)	== EXTEND(p,m) if (m >= p)
+				== TESTU(p,m)  if (m < p)
 
 For example, consider:
 	Word.toInt o Word.fromLargeWord o Word8.toLargeWord
@@ -121,16 +121,16 @@ gets translated to a MOVE. With a smart register allocator that MOVE
 can be eliminated.
 *********************************************************************)
 
-signature PRIMOP = 
+signature PRIMOP =
   sig
 
   (* numkind includes kind and number of bits *)
-    datatype numkind 
-      = INT of int 
-      | UINT of int 
+    datatype numkind
+      = INT of int
+      | UINT of int
       | FLOAT of int
 (* QUESTION: what about IntInf.int? *)
- 
+
     datatype arithop
       = ADD | SUB | MUL | NEG			(* int or float *)
       | FDIV | ABS | FSQRT | FSIN | FCOS | FTAN	(* floating point only *)
@@ -179,7 +179,7 @@ signature PRIMOP =
 	  }
       | NUMUPDATE of {				(* E: L?: store, etc. *)
 	    kind: numkind, checked: bool
-	  } 
+	  }
       | SUBSCRIPT                  		(* E: polymorphic array subscript *)
       | SUBSCRIPTV				(* E: poly vector subscript *)
       | INLSUBSCRIPT				(* E: L: poly array subscript *)
@@ -215,7 +215,7 @@ signature PRIMOP =
       | INLABS of numkind			(* E: L: abs *)
       | INLNOT					(* E: L: bool not operator *)
       | INLCOMPOSE				(* E: L: compose "op o"  operator *)
-      | INLBEFORE				(* E: L: "before" operator *) 
+      | INLBEFORE				(* E: L: "before" operator *)
       | INLIGNORE				(* E: L: "ignore" function *)
     (* primops to support new array representations *)
       | NEW_ARRAY0				(* E: allocate zero-length array header *)
@@ -242,7 +242,7 @@ signature PRIMOP =
 	  } option
    (* Allocate uninitialized storage on the heap.
     * The record is meant to hold short-lived C objects, i.e., they
-    * are not ML pointers.  The representation is 
+    * are not ML pointers.  The representation is
     * the same as RECORD with tag tag_raw32 or tag_fblock.
     *)
       | RAW_RECORD of { fblock: bool }  (* E: *)
@@ -282,7 +282,7 @@ signature PRIMOP =
     val ILE : primop
     val IGE : primop
     val UIEQL : primop  (* for UINT kind, may not matter *)
-   
+
     val mkIEQL : int -> primop   (* make equality primop for other sizes *)
     val mkUIEQL : int -> primop  (* and for unsigned (kind = UINT) *)
 

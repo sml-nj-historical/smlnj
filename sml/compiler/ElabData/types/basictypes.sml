@@ -85,8 +85,7 @@ structure BasicTypes : BASICTYPES =
 
   (*** primitive types ***)
 
-    fun mkPrimTyc (name, arity, eqprop) =
-	T.GENtyc{
+    fun mkPrimTyc (name, arity, eqprop) = T.GENtyc{
 	    stamp = Stamps.special name,
             path = IP.IPATH[Symbol.tycSymbol name],
 	    arity = arity,
@@ -95,10 +94,11 @@ structure BasicTypes : BASICTYPES =
 	    stub = NONE
 	  }
 
-    fun mkPrimTycTy args =
-	let val tyc = mkPrimTyc args
-        in (tyc, T.CONty (tyc, []))
-	end
+    fun mkPrimTycTy args = let
+	  val tyc = mkPrimTyc args
+          in
+	    (tyc, T.CONty (tyc, []))
+	  end
 
   (* integer/word types
    *
@@ -126,11 +126,11 @@ structure BasicTypes : BASICTYPES =
     val (intTycon, intTy) = mkPrimTycTy ("int", 0, T.YES)
 
     val (int32Tycon, int32Ty) = mkPrimTycTy ("int32", 0, T.YES)
-    val int64Tycon =
-	if Target.is64 then mkPrimTyc ("int64", 0, T.YES) (* int64Tycon is primitive *)
-	else mkAbstract64 "int64"  (* int64Tycon is abstract *)
+    val int64Tycon = if Target.is64
+	  then mkPrimTyc ("int64", 0, T.YES) (* int64Tycon is primitive *)
+	  else mkAbstract64 "int64"  (* int64Tycon is abstract *)
           (* we use pairs of word32 to represent 64-bit ints on 32-bit machines *)
-	    
+
     val int64Ty = T.CONty(int64Tycon, [])
 
     val (intinfTycon, intinfTy) = mkPrimTycTy ("intinf", 0, T.YES)
@@ -138,13 +138,12 @@ structure BasicTypes : BASICTYPES =
     val (wordTycon, wordTy) = mkPrimTycTy("word", 0, T.YES)
     val (word8Tycon, word8Ty) = mkPrimTycTy("word8", 0, T.YES)
 
-    val word64Tycon =
-	if Target.is64 then mkPrimTyc ("word64", 0, T.YES) (* word64Tycon is primitive *)
-	else mkAbstract64 "word64"  (* word64Tycon is abstract *)
+    val word64Tycon = if Target.is64
+	  then mkPrimTyc ("word64", 0, T.YES) (* word64Tycon is primitive *)
+	  else mkAbstract64 "word64"  (* word64Tycon is abstract *)
           (* we use pairs of word32 to represent 64-bit words on 32-bit machines *)
-	    
-    val word64Ty = T.CONty (word64Tycon, [])
 
+    val word64Ty = T.CONty (word64Tycon, [])
 
     val (realTycon, realTy) = mkPrimTycTy ("real", 0, T.NO)
 
