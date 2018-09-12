@@ -193,7 +193,6 @@ FLINT/cpsopt/cpsopt.sml
 FLINT/cpsopt/eta.sml
 FLINT/cpsopt/etasplit.sml
 FLINT/cpsopt/expand.sml
-FLINT/cpsopt/expandNEW.sml
 FLINT/cpsopt/flatten.sml
 FLINT/cpsopt/uncurry.sml
 FLINT/cpsopt/infcnv.sml
