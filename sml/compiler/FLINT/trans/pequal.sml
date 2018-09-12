@@ -13,7 +13,8 @@ sig
    *)
   val equal : {getStrEq : unit -> PLambda.lexp,
 	       getIntInfEq : unit -> PLambda.lexp,
-               getPolyEq : unit -> PLambda.lexp} * StaticEnv.staticEnv
+               getPolyEq : unit -> PLambda.lexp}
+	       * StaticEnv.staticEnv
                -> (Types.ty * Types.ty * toTcLt) -> PLambda.lexp
 
   val debugging : bool ref
@@ -34,7 +35,7 @@ local structure DA = Access
       structure PO = Primop
       structure PP = PrettyPrintNew
       open Types PLambda
-
+      (* mentions Target *)
 in
 
 val debugging = ref false
@@ -51,6 +52,8 @@ infix -->
  * from the LambdaVar module; I think it should be taken from the
  * "compInfo". Similarly, should we replace all mkLvar in the backend
  * with the mkv in "compInfo" ? (ZHONG)
+ * DBM: is it worth cleaning up, what harm might come from using a single
+ * global generator -- maybe resetting between compilations?
  *)
 val mkv = LambdaVar.mkLvar
 
@@ -158,7 +161,9 @@ fun equivType(ty,ty') =
 val boolty = LT.ltc_bool
 fun eqLty lt = LT.ltc_parrow(LT.ltc_tuple [lt, lt], boolty)
 val inteqty = eqLty (LT.ltc_int)
+val wordeqty = inteqty (* same as inteqty, no word version of ltc_num *)
 val int32eqty = eqLty (LT.ltc_num 32) (* 64BIT: FIXME *)
+val word32eqty = int32eqty (* same as int32eqty, no word version of ltc_num *)
 val booleqty = eqLty (LT.ltc_bool)
 val realeqty = eqLty (LT.ltc_real)
 
@@ -202,18 +207,54 @@ fun eqTy ty = eqLty(toLty ty)
 fun ptrEq(p, ty) = PRIM(p, eqTy ty, [])
 fun prim(p, lt) = PRIM(p, lt, [])
 
+(* could possibly replace nested conditions with assoc list search, but
+ * not much point.
+  [(BT.intTycon, prim(PO.IEQL, inteqty)),
+   (BT.wordTycon, prim(PO.IEQL, inteqty)),
+   (BT.word8Tycon, prim(PO.IEQL, inteqty)),
+   (BT.charTycon, prim(PO.IEQL, inteqty)),
+   (BT.int32Tycon, prim(PO.mkIEQL 32, int32eqty)), (* 64BIT: FIXME *)
+   (BT.word32Tycon, prim(PO.mkUIEQL 32, word32eqty)),
+   (BT.boolTycon, prim(PO.IEQL ,booleqty)),
+   (BT.realTycon, prim(PO.FEQLd, realeqty))]
+
+ -- these would still need to be done with conditionals
+   BT.stringTycon => getStrEq()
+   BT.intinfTycon => getIntInfEq()
+   BT.refTycon => ptrEq(PO.PTREQL, ty)
+*)
+
+(*
 fun atomeq (tyc, ty) =
-  if TU.equalTycon(tyc,BT.intTycon) then prim(PO.IEQL,inteqty)
-  else if TU.equalTycon(tyc,BT.int32Tycon) then prim(PO.IEQL,int32eqty) (* 64BIT: FIXME *)
-  else if TU.equalTycon(tyc,BT.wordTycon) then prim(PO.IEQL,inteqty)
-  else if TU.equalTycon(tyc,BT.word8Tycon) then prim(PO.IEQL,inteqty)
-  else if TU.equalTycon(tyc,BT.charTycon) then prim(PO.IEQL,inteqty)
-  else if TU.equalTycon(tyc,BT.word32Tycon) then prim(PO.IEQL,int32eqty)
-  else if TU.equalTycon(tyc,BT.boolTycon) then prim(PO.IEQL,booleqty)
-  else if TU.equalTycon(tyc,BT.realTycon) then prim(PO.FEQLd,realeqty)
-  else if TU.equalTycon(tyc,BT.stringTycon) then getStrEq()
-  else if TU.equalTycon(tyc,BT.intinfTycon) then getIntInfEq()
-  else if TU.equalTycon(tyc,BT.refTycon) then ptrEq(PO.PTREQL, ty)
+  if      TU.equalTycon(tyc, BT.intTycon)    then prim(PO.IEQL,inteqty)
+  else if TU.equalTycon(tyc, BT.wordTycon)   then prim(PO.IEQL,inteqty)
+  else if TU.equalTycon(tyc, BT.word8Tycon)  then prim(PO.IEQL,inteqty)
+  else if TU.equalTycon(tyc, BT.charTycon)   then prim(PO.IEQL,inteqty)
+  else if TU.equalTycon(tyc, BT.int32Tycon)  then prim(PO.IEQL,int32eqty) (* 64BIT: FIXME *)
+  else if TU.equalTycon(tyc, BT.word32Tycon) then prim(PO.IEQL,word32eqty)
+  else if TU.equalTycon(tyc, BT.boolTycon)   then prim(PO.IEQL,booleqty)
+  else if TU.equalTycon(tyc, BT.realTycon)   then prim(PO.FEQLd,realeqty)
+  else if TU.equalTycon(tyc, BT.stringTycon) then getStrEq()
+  else if TU.equalTycon(tyc, BT.intinfTycon) then getIntInfEq()
+  else if TU.equalTycon(tyc, BT.refTycon)    then ptrEq(PO.PTREQL, ty)
+*)
+
+fun atomeq (tyc, ty) =
+  if      TU.equalTycon(tyc, BT.intTycon)    then prim(PO.IEQL,inteqty)
+  else if TU.equalTycon(tyc, BT.wordTycon)   then prim(PO.IEQL,wordeqty)
+  else if TU.equalTycon(tyc, BT.word8Tycon)  then prim(PO.IEQL,wordeqty)
+  else if TU.equalTycon(tyc, BT.charTycon)   then prim(PO.IEQL,inteqty)
+  else if TU.equalTycon(tyc, BT.int32Tycon)  then (* fixing 64BIT *)
+          if Target.is64 then prim(PO.IEQL, int32eqty)
+          else prim(PO.mkIEQL 32, int32eqty)
+  else if TU.equalTycon(tyc, BT.word32Tycon) then
+          if Target.is64 then prim(PO.UIEQL, word32eqty)
+          else prim(PO.mkUIEQL 32, word32eqty)
+  else if TU.equalTycon(tyc, BT.boolTycon)   then prim(PO.IEQL,booleqty)
+  else if TU.equalTycon(tyc, BT.realTycon)   then prim(PO.FEQLd,realeqty)
+  else if TU.equalTycon(tyc, BT.stringTycon) then getStrEq()
+  else if TU.equalTycon(tyc, BT.intinfTycon) then getIntInfEq()
+  else if TU.equalTycon(tyc, BT.refTycon)    then ptrEq(PO.PTREQL, ty)
 (**********************
  * For arrays under the new array representation, we need to compare
  * the data pointers for equality.  polyequal does this comparison
@@ -222,6 +263,7 @@ fun atomeq (tyc, ty) =
   else if TU.equalTycon(tyc,BT.arrayTycon) then ptrEq(PO.PTREQL, ty)
   else if TU.equalTycon(tyc,BT.word8arrayTycon) then ptrEq(PO.PTREQL, ty)
   else if TU.equalTycon(tyc,BT.real64arrayTycon) then ptrEq(PO.PTREQL, ty)
+(* also still falling back on polyequal for int64 and word64 -- 64BIT fixme *)
 **********************)
   else raise Poly
 

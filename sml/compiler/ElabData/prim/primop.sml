@@ -42,10 +42,10 @@ struct
       | INLRSHIFT of numkind			(* E: right shift *)
       | INLRSHIFTL of numkind			(* E: right shift logical *)
       | CMP of {oper: cmpop, kind: numkind}	(* E: generic compare *)
-      | TESTU of int * int         		(* E: conversions to int, e.g. testu_31_31 *)
-      | TEST of int * int          		(* E: conversions to int, e.g. test_32_31_w *)
-      | TRUNC of int * int        		(* E: truncations to smaller int/word, e.g. trunc_32_31_i *)
-      | EXTEND of int * int        		(* E: extensions to int32, word32 *)
+      | TESTU of int * int         		(* E: word to int conversions, e.g. testu_31_31 *)
+      | TEST of int * int          		(* E: int to smaller int conversions, e.g. test_32_31 *)
+      | TRUNC of int * int        		(* E: int to smaller int/word truncation, e.g. trunc_32_31 *)
+      | EXTEND of int * int        		(* E: sign extensions to larger int/word *)
       | COPY of int * int          		(* E: conversions, e.g. copy_32_32_ii *)
       | TEST_INF of int            		(* E: intinf conversions, e.g. test_inf_31 *)
       | TRUNC_INF of int           		(* E: intinf truncations, e.g. trunc_inf_31 *)
@@ -151,19 +151,27 @@ struct
 	CCR64 |				(* passed as real64 *)
 	CCML				(* passed as Unsafe.Object.object *)
 
-  (** default integer arithmetic and comparison operators *)
-    val IADD = ARITH{oper=ADD, overflow=true, kind=INT 31}
-    val ISUB = ARITH{oper=SUB, overflow=true, kind=INT 31}
-    val IMUL = ARITH{oper=MUL, overflow=true, kind=INT 31}
-    val IDIV = ARITH{oper=QUOT, overflow=true, kind=INT 31}
-    val INEG = ARITH{oper=NEG, overflow=true, kind=INT 31}
+    val defaultIntKind = INT Target.defaultIntSz  (* 31 or 63, depending on Target.is64 *)
+    val defaultUIntKind = UINT Target.defaultIntSz  (* 31 or 63, depending on Target.is64 *)
 
-    val IEQL = CMP{oper=EQL, kind=INT 31}
-    val INEQ = CMP{oper=NEQ, kind=INT 31}
-    val IGT = CMP{oper=GT, kind=INT 31}
-    val ILT = CMP{oper=LT, kind=INT 31}
-    val IGE = CMP{oper=GTE, kind=INT 31}
-    val ILE = CMP{oper=LTE, kind=INT 31}
+  (** default integer arithmetic and comparison operators *)
+    val IADD = ARITH{oper=ADD, overflow=true, kind=defaultIntKind}
+    val ISUB = ARITH{oper=SUB, overflow=true, kind=defaultIntKind}
+    val IMUL = ARITH{oper=MUL, overflow=true, kind=defaultIntKind}
+    val IDIV = ARITH{oper=QUOT, overflow=true, kind=defaultIntKind}
+    val INEG = ARITH{oper=NEG, overflow=true, kind=defaultIntKind}
+
+    val IEQL = CMP{oper=EQL, kind=defaultIntKind}
+    val INEQ = CMP{oper=NEQ, kind=defaultIntKind}
+    val IGT  = CMP{oper=GT,  kind=defaultIntKind}
+    val ILT  = CMP{oper=LT,  kind=defaultIntKind}
+    val IGE  = CMP{oper=GTE, kind=defaultIntKind}
+    val ILE  = CMP{oper=LTE, kind=defaultIntKind}
+
+    val UIEQL = CMP{oper=EQL, kind=defaultUIntKind}
+
+    fun mkIEQL size = CMP{oper=EQL, kind=INT size}
+    fun mkUIEQL size = CMP{oper=EQL, kind=UINT size}
 
   (** default floating-point equality operator *)
     val FEQLd = CMP{oper=EQL, kind=FLOAT 64}

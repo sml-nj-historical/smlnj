@@ -237,8 +237,8 @@ fun hasRCC(cexp) = let
       end
 
 fun sizeOf (FLTt sz) = sz
-  | sizeOf (NUMt{sz, tag=true}) = Target.mlValueSz
-  | sizeOf (NUMt{sz, tag=false}) = sz
+  | sizeOf (NUMt{tag=false, sz}) = sz
+  | sizeOf (NUMt _) = Target.mlValueSz
   | sizeOf (PTRt _ | FUNt | CNTt) = Target.mlValueSz
 
 fun isFloat (FLTt _) = true

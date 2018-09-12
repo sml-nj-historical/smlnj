@@ -85,34 +85,17 @@ structure BasicTypes : BASICTYPES =
 
   (*** primitive types ***)
 
-    fun mkpt (sym, arity, eqprop) = T.GENtyc{
-	    stamp = Stamps.special sym,
-            path = IP.IPATH[Symbol.tycSymbol sym],
+    fun mkPrimTyc (name, arity, eqprop) = T.GENtyc{
+	    stamp = Stamps.special name,
+            path = IP.IPATH[Symbol.tycSymbol name],
 	    arity = arity,
             eq = ref eqprop,
 	    kind = T.PRIMITIVE,
 	    stub = NONE
 	  }
 
-    val word32Tycon = mkpt("word32", 0, T.YES)
-    val word32Ty = T.CONty(word32Tycon, nil)
-
-  (* used to represent Int64.int on 32-bit machines *)
-    val w32pairTycon = T.DEFtyc {
-	    stamp = Stamps.special "w32pair",
-	    tyfun = T.TYFUN { arity = 0, body = tupleTy [word32Ty, word32Ty] },
-	    path = IP.IPATH [Symbol.tycSymbol "w32pair"],
-	    strict = []
-	  }
-
-    fun mk64 sym = T.GENtyc {
-	    stamp = Stamps.special sym, arity = 0, eq = ref T.YES,
-	    path = IP.IPATH [Symbol.tycSymbol sym], stub = NONE,
-	    kind = T.ABSTRACT w32pairTycon
-	  }
-
-    fun pt2tct args = let
-	  val tyc = mkpt args
+    fun mkPrimTycTy args = let
+	  val tyc = mkPrimTyc args
           in
 	    (tyc, T.CONty (tyc, []))
 	  end
@@ -122,52 +105,72 @@ structure BasicTypes : BASICTYPES =
    * NOTE: if you add a new int or word type here, then you should update the `numInfo`
    * function in ElabData/types/typeutil.sml
    *)
-    val (intTycon, intTy) = pt2tct ("int", 0, T.YES)
-    val (int32Tycon, int32Ty) = pt2tct ("int32", 0, T.YES)
-    val (int64Tycon, int64Ty) = if Target.is64
-	  then pt2tct ("int64", 0, T.YES)
-	  else let
-	  (* we use pairs of ints to represent 64-bit ints on 32-bit machines *)
-	    val int64Tycon = mk64 "int64"
-	    in
-	      (int64Tycon, T.CONty (int64Tycon, []))
-	    end
 
-    val (intinfTycon, intinfTy) = pt2tct ("intinf", 0, T.YES)
+    val (word32Tycon, word32Ty) = mkPrimTycTy("word32", 0, T.YES)
 
-    val (wordTycon, wordTy) = pt2tct("word", 0, T.YES)
-    val (word8Tycon, word8Ty) = pt2tct("word8", 0, T.YES)
+  (* used to represent Int64.int on 32-bit machines *)
+    val w32pairTycon = T.DEFtyc {
+	    stamp = Stamps.special "w32pair",
+	    tyfun = T.TYFUN { arity = 0, body = tupleTy [word32Ty, word32Ty] },
+	    path = IP.IPATH [Symbol.tycSymbol "w32pair"],
+	    strict = []
+	  }
 
-    val word64Tycon = mk64 "word64"
+    fun mkAbstract64 name = T.GENtyc {
+	    stamp = Stamps.special name, arity = 0, eq = ref T.YES,
+	    path = IP.IPATH [Symbol.tycSymbol name], stub = NONE,
+	    kind = T.ABSTRACT w32pairTycon
+	  }
+
+  (* intTycon will be either int31 or int63 (tagged) depending on Target.is64 *)
+    val (intTycon, intTy) = mkPrimTycTy ("int", 0, T.YES)
+
+    val (int32Tycon, int32Ty) = mkPrimTycTy ("int32", 0, T.YES)
+    val int64Tycon = if Target.is64
+	  then mkPrimTyc ("int64", 0, T.YES) (* int64Tycon is primitive *)
+	  else mkAbstract64 "int64"  (* int64Tycon is abstract *)
+          (* we use pairs of word32 to represent 64-bit ints on 32-bit machines *)
+
+    val int64Ty = T.CONty(int64Tycon, [])
+
+    val (intinfTycon, intinfTy) = mkPrimTycTy ("intinf", 0, T.YES)
+
+    val (wordTycon, wordTy) = mkPrimTycTy("word", 0, T.YES)
+    val (word8Tycon, word8Ty) = mkPrimTycTy("word8", 0, T.YES)
+
+    val word64Tycon = if Target.is64
+	  then mkPrimTyc ("word64", 0, T.YES) (* word64Tycon is primitive *)
+	  else mkAbstract64 "word64"  (* word64Tycon is abstract *)
+          (* we use pairs of word32 to represent 64-bit words on 32-bit machines *)
+
     val word64Ty = T.CONty (word64Tycon, [])
 
+    val (realTycon, realTy) = mkPrimTycTy ("real", 0, T.NO)
 
-    val (realTycon, realTy) = pt2tct ("real", 0, T.NO)
+    val arrayTycon = mkPrimTyc ("array", 1, T.OBJ)
+    val vectorTycon = mkPrimTyc ("vector", 1, T.YES)
 
-    val arrayTycon = mkpt ("array", 1, T.OBJ)
-    val vectorTycon = mkpt ("vector", 1, T.YES)
+    val (stringTycon, stringTy) = mkPrimTycTy ("string", 0, T.YES)
 
-    val (stringTycon, stringTy) = pt2tct ("string", 0, T.YES)
+    val (charTycon, charTy) = mkPrimTycTy ("char", 0, T.YES)
 
-    val (charTycon, charTy) = pt2tct ("char", 0, T.YES)
+    val (exnTycon, exnTy) = mkPrimTycTy ("exn", 0, T.NO)
 
-    val (exnTycon, exnTy) = pt2tct ("exn", 0, T.NO)
+    val contTycon = mkPrimTyc("cont", 1, T.NO)
+    val ccontTycon = mkPrimTyc("control_cont", 1, T.NO)
 
-    val contTycon = mkpt("cont", 1, T.NO)
-    val ccontTycon = mkpt("control_cont", 1, T.NO)
+    val arrayTycon = mkPrimTyc ("array", 1, T.OBJ)
+    val vectorTycon = mkPrimTyc ("vector", 1, T.YES)
 
-    val arrayTycon = mkpt ("array", 1, T.OBJ)
-    val vectorTycon = mkpt ("vector", 1, T.YES)
+    val objectTycon = mkPrimTyc("object", 0, T.NO)
 
-    val objectTycon = mkpt("object", 0, T.NO)
+    val c_functionTycon = mkPrimTyc("c_function", 0, T.NO)
 
-    val c_functionTycon = mkpt("c_function", 0, T.NO)
+    val word8arrayTycon = mkPrimTyc("word8array", 0, T.OBJ)
 
-    val word8arrayTycon = mkpt("word8array", 0, T.OBJ)
+    val real64arrayTycon = mkPrimTyc("real64array", 0, T.OBJ)
 
-    val real64arrayTycon = mkpt("real64array", 0, T.OBJ)
-
-    val spin_lockTycon = mkpt("spin_lock", 0, T.NO)
+    val spin_lockTycon = mkPrimTyc("spin_lock", 0, T.NO)
 
   (*** predefined datatypes ***)
     val alpha = T.IBOUND 0

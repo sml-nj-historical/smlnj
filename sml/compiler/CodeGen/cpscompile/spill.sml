@@ -4,7 +4,7 @@
  *)
 
 signature SPILL = sig
-  val spill : CPS.function list -> CPS.function list 
+  val spill : CPS.function list -> CPS.function list
 end (* signature SPILL *)
 
 functor SpillFn (MachSpec : MACH_SPEC) : SPILL = struct
@@ -16,7 +16,7 @@ local
   val pr = Control.Print.say
   val maxgpfree = MachSpec.spillAreaSz div (2 * MachSpec.valueSize)
   val maxfpfree = MachSpec.spillAreaSz div (2 * MachSpec.realSize)
-  val spillname = Symbol.varSymbol "spillrec" 
+  val spillname = Symbol.varSymbol "spillrec"
   fun sortp x = ListMergeSort.sort (fn ((i:int,_),(j,_)) => i>j) x
   val app2 = ListPair.app
   val unboxedfloat = MachSpec.unboxedFloats
@@ -41,7 +41,7 @@ fun uniq l =
 
 fun merge(a,[]) = a
   | merge([],a) = a
-  | merge(l as (i:int)::a, m as j::b) = 
+  | merge(l as (i:int)::a, m as j::b) =
       if j<i then j::merge(l,b) else i::merge(a,if i<j then m else b)
 
 local fun loop (a::b::rest) = loop(merge(a,b)::loop rest)
@@ -75,7 +75,7 @@ infix 6 \/   infix 7 /\
 fun enterV(VAR v,l) = enter(v,l)
   | enterV(_,l) = l
 
-fun unzip l = 
+fun unzip l =
   let fun h((a,b)::l,r1,r2) = h(l,a::r1,b::r2)
         | h([],r1,r2) = (rev r1,rev r2)
    in h(l,[],[])
@@ -120,7 +120,7 @@ fun nextuse x =
        | (LOOKER(i,a,w,_,c)::r,next) => if xin a then level else f(r,c::next)
        | (ARITH(i,a,w,_,c)::r,next) => if xin a then level else f(r,c::next)
        | (PURE(i,a,w,_,c)::r,next) => if xin a then level else f(r,c::next)
-       | (BRANCH(i,a,c,e1,e2)::r,next) => 
+       | (BRANCH(i,a,c,e1,e2)::r,next) =>
 			   if xin a then level else f(r,e1::e2::next)
        | (APP(v,vl)::r,next) => if xin(v::vl) then level else f(r,next)
        | _ => error "next use in spill.sml"
@@ -136,15 +136,15 @@ fun sortdups(cexp,dups) =
 fun next_n_dups(0,cexp,dups) = []
   | next_n_dups(n,cexp,dups) =
       if (n >= length dups) then dups else cut(n,sortdups(cexp,dups))
-    
-fun clean l = 
+
+fun clean l =
   let fun vars(l, VAR x :: rest) = vars(enter(x,l), rest)
         | vars(l, _::rest) = vars(l,rest)
         | vars(l, nil) = l
    in vars([], l)
   end
 
-fun partition f l = 
+fun partition f l =
   foldr (fn (e,(a,b)) => if f e then (e::a,b) else (a,e::b)) ([], []) l
 
 
@@ -156,32 +156,32 @@ exception SpillCtyMap
 val ctymap : cty IntHashTable.hash_table = IntHashTable.mkTable(32,SpillCtyMap)
 fun clearCtyMap() = IntHashTable.clear ctymap
 fun getty v = getOpt (IntHashTable.find ctymap v, BOGt)
-val addty = IntHashTable.insert ctymap 
+val addty = IntHashTable.insert ctymap
 fun copyLvar v = let val p = (LV.dupLvar v, getty v) in addty p; p end
 fun floatP v = case (getty v) of FLTt => true | _ => false
 
 datatype spillkind = GPRSPILL | FPRSPILL
 type spillinfo = (lvar list * value) option
 
-fun spillit (fkind,func,vl,cl,body,skind) = let 
+fun spillit (fkind,func,vl,cl,body,skind) = let
 
-val (varsP, nvarP, varLen, rkind, sregN) = 
-  case skind 
+val (varsP, nvarP, varLen, rkind, sregN) =
+  case skind
    of FPRSPILL => (sublist floatP, not o floatP, maxfpfree, RK_FBLOCK, 0)
-    | GPRSPILL => 
-        (if unboxedfloat then 
+    | GPRSPILL =>
+        (if unboxedfloat then
               (sublist (not o floatP), floatP, maxgpfree, RK_SPILL, 1)
          else (fn x => x, fn _ => false, maxgpfree, RK_SPILL, 1))
 
 val _ = clearCtyMap()
 val _ = app2 addty (vl,cl)
-val freevars = 
+val freevars =
  let exception SpillFreemap
      val m = IntHashTable.mkTable(32, SpillFreemap)
 	     : lvar list IntHashTable.hash_table
      val _ = FreeMap.freemap (IntHashTable.insert m) body
-  in fn x => ((IntHashTable.lookup m x) handle SpillFreemap => 
-                    (pr "compiler bugs in spill.sml:  "; 
+  in fn x => ((IntHashTable.lookup m x) handle SpillFreemap =>
+                    (pr "compiler bugs in spill.sml:  ";
                      (pr o Int.toString) x; pr "  \n";
                      raise SpillFreemap))
  end
@@ -221,10 +221,10 @@ fun f(results : lvar list, uniques : lvar list, dups : (lvar*lvar) list,
       val uniques = uniques \/ results (* is this line necessary? *)
       val uniques_after = uniques /\ after
       val uniques_before = (uniques /\ before) \/ uniques_after
-      val spill_after = 
-        (case spill 
+      val spill_after =
+        (case spill
           of NONE => NONE
-           | SOME(contents,_) => 
+           | SOME(contents,_) =>
                (case (uniq contents) /\ after of [] => NONE
                                                | _ => spill))
 
@@ -238,13 +238,13 @@ fun f(results : lvar list, uniques : lvar list, dups : (lvar*lvar) list,
 
       fun getpath (VAR v) =
            if (member uniques_before v) orelse (nvarP v) then (VAR v, OFFp 0)
-           else let fun find(i,w::l,sv) = 
+           else let fun find(i,w::l,sv) =
                           if (v=w) then (sv, SELp(i,OFFp 0))
                           else find(i+1,l,sv)
                       | find _ = error "not found in spill 001"
 
                     fun try((w,x)::l) = if v=w then (VAR x, OFFp 0) else try l
-		      | try [] = (case spill 
+		      | try [] = (case spill
                                    of SOME(l,sv) => find(0,l,sv)
                                     | _ => error "not found in spill 002")
 
@@ -266,14 +266,14 @@ fun f(results : lvar list, uniques : lvar list, dups : (lvar*lvar) list,
 	end
 
       (* here args and res are not sifted yet *)
-      fun g(args,res,conts,temps,gen) = 
+      fun g(args,res,conts,temps,gen) =
         let val nargs = varsP (clean args)
             val nres = varsP (uniq res)
             val allargs = nargs \/ uniques_after
          in if ((length(allargs) + temps > maxfreeafter) orelse
-                (length nres + length uniques_after + temps > maxfreeafter)) 
+                (length nres + length uniques_after + temps > maxfreeafter))
 	    then makeSpillRec nargs
-	    else let val paths = 
+	    else let val paths =
                        map (fn x => (x, getpath (VAR x))) nargs
 		     fun fetchit (_,(_,OFFp 0)) = false | fetchit _ = true
 	          in case (sublist fetchit paths)
@@ -299,24 +299,24 @@ fun f(results : lvar list, uniques : lvar list, dups : (lvar*lvar) list,
    in case cexp
        of SWITCH(v,c,l) => g([v],[],l,0,fn([v],[],l)=>SWITCH(v,c,l))
         | RECORD(k,l,w,c) =>
-	    if (sregN + length uniques_after > maxfreeafter) 
+	    if (sregN + length uniques_after > maxfreeafter)
 	    then makeSpillRec(varsP(clean(map #1 l)))
 	    else let val paths = map (fn (v,p) =>
-					 let val (v',p') = getpath v 
+					 let val (v',p') = getpath v
  					  in (v', combinepaths(p',p))
 					 end) l
 	          in RECORD(k,paths,w,
                        f(varsP [w],uniques_after,dups,spill_after,c))
 		 end
-        | SELECT(i,v,w,t,c) => 
+        | SELECT(i,v,w,t,c) =>
             (addty(w,t); g([v],[w],[c],0,fn([v],[w],[c])=>SELECT(i,v,w,t,c)))
 	| OFFSET(i,v,w,c) => g([v],[w],[c],0,fn([v],[w],[c])=>OFFSET(i,v,w,c))
 	| SETTER(i,vl,c) => g(vl,[],[c],0,fn(vl,_,[c])=>SETTER(i,vl,c))
-	| LOOKER(i,vl,w,t,c) => 
+	| LOOKER(i,vl,w,t,c) =>
             (addty(w,t); g(vl,[w],[c],0, fn(vl,[w],[c])=>LOOKER(i,vl,w,t,c)))
-	| ARITH(i,vl,w,t,c) => 
+	| ARITH(i,vl,w,t,c) =>
             (addty(w,t); g(vl,[w],[c],0, fn(vl,[w],[c])=>ARITH(i,vl,w,t,c)))
-	| PURE(i,vl,w,t,c) => 
+	| PURE(i,vl,w,t,c) =>
             (addty(w,t); g(vl,[w],[c],0, fn(vl,[w],[c])=>PURE(i,vl,w,t,c)))
 	| RCC(p,vl,w,t,c) =>
 	    (addty(w,t); g(vl,[w],[c],0, fn(vl,[w],[c])=>RCC(p,vl,w,t,c)))
@@ -324,7 +324,7 @@ fun f(results : lvar list, uniques : lvar list, dups : (lvar*lvar) list,
             g(vl,[],[c1,c2],sregN, fn(vl,_,[c1,c2])=>BRANCH(i,vl,c,c1,c2))
         | BRANCH(i as P.strneq,vl,c,c1,c2) =>
             g(vl,[],[c1,c2],sregN, fn(vl,_,[c1,c2])=>BRANCH(i,vl,c,c1,c2))
-	| BRANCH(i,vl,c,c1,c2) => 
+	| BRANCH(i,vl,c,c1,c2) =>
 	    g(vl,[],[c1,c2],0, fn(vl,_,[c1,c2])=>BRANCH(i,vl,c,c1,c2))
 	| APP(f,vl) => g(f::vl,[],[],0,fn(f::vl,[],[])=>APP(f,vl))
         | _ => error "spill 2394892"
@@ -352,22 +352,22 @@ in
 
 fun check((_,f,args,cl,body),skind) =
   let val (varM, varP, varLen) =
-       (case skind 
+       (case skind
          of FPRSPILL => (fltM, fltP, maxfpfree)
           | GPRSPILL => if unboxedfloat then (fltM, not o fltP, maxgpfree)
                         else (dummyM, dummyP, maxgpfree))
       val _ = clearSet()
       val _ = app2 varM (args,cl)
 
-      fun sift(l,vl) = 
-        let fun h((VAR x)::r,vl) = 
+      fun sift(l,vl) =
+        let fun h((VAR x)::r,vl) =
                   if varP x then h(r,enter(x,vl)) else h(r,vl)
               | h(_::r,vl) = h(r,vl)
               | h([],vl) = vl
          in h(l,vl)
         end
 
-      fun verify (w,vl) = 
+      fun verify (w,vl) =
         let val nvl = rmv(w,vl)
          in if (length(nvl) >= varLen) then raise TooMany else nvl
         end
@@ -397,7 +397,7 @@ end (* local dec for the "check" function *)
  *     based on the lifetime of each variables; by doing this, we can avoid  *
  *     most of the big cluster of simultaneously live variables. --zsh)      *
  *****************************************************************************)
-fun improve cexp = 
+fun improve cexp =
   let exception Spillmap
       val m : (int ref*int*value) IntHashTable.hash_table =
 	  IntHashTable.mkTable(32,Spillmap)
@@ -429,7 +429,7 @@ fun improve cexp =
 			         | NONE => (v,p)
 
       val rec g =
-        fn SELECT(i,v,w,t,e) => 
+        fn SELECT(i,v,w,t,e) =>
              (case get(VAR w) of SOME _ => g e
 		               | NONE => SELECT(i,v,w,t,g e))
 	 | OFFSET(i,v,w,e) => OFFSET(i,v,w, g e)
@@ -448,26 +448,26 @@ fun improve cexp =
       val count = (pass1 cexp; IntHashTable.numItems m)
 
       val _ = if (!CGoptions.debugcps) then
-                (pr "count="; (pr o Int.toString) count; pr "\n") 
+                (pr "count="; (pr o Int.toString) count; pr "\n")
               else ()
    in if count>0 then SOME(g cexp) else NONE
-  end		
+  end
 
 (*****************************************************************************
  *                     THE EXPORTED "SPILL" FUNCTION                         *
  *****************************************************************************)
-fun spillone arg = 
+fun spillone arg =
   let val _ = (if (!CGoptions.printit)
                then (pr "^^^^^within the spill phase^^^^^^^^ \n";
                      PPCps.printcps0 arg;
                      pr "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ \n")
                else ())
 
-      fun spillgpr (arg as (fkind,func,vl,cl,body)) = 
+      fun spillgpr (arg as (fkind,func,vl,cl,body)) =
         if check(arg,GPRSPILL) then arg
         else (if (!CGoptions.printit)
               then (pr "^^^^ need go through more rounds ^^^^ \n")
-              else (); 
+              else ();
               case improve body
                of SOME body' => spillgpr(fkind,func,vl,cl,body')
   	        | NONE => spillit(fkind,func,vl,cl,body,GPRSPILL))
@@ -476,7 +476,7 @@ fun spillone arg =
         if check(arg,FPRSPILL) then spillgpr arg
         else (if (!CGoptions.printit)
               then (pr "^^^^ need go through more rounds ^^^^ \n")
-              else (); 
+              else ();
               case improve body
                of SOME body' => spillfpr(fkind,func,vl,cl,body')
                 | NONE => spillgpr(spillit(fkind,func,vl,cl,body,FPRSPILL)))
