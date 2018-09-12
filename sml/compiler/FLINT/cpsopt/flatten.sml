@@ -47,8 +47,7 @@ val debug = !Control.CG.debugcps (* false *)
 fun debugprint s = if debug then Control.Print.say(s) else ()
 fun debugflush() = if debug then Control.Print.flush() else ()
 
-val rep_flag = MachSpec.representations
-val type_flag = (!CG.checkcps1) andalso (!CG.checkcps2) andalso rep_flag
+val type_flag = (!CG.checkcps1) andalso (!CG.checkcps2)
 
 val selectLty =
   (fn (lt,i) => if type_flag then LT.lt_select(lt,i) else LT.ltc_void)

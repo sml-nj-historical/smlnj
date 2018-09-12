@@ -48,9 +48,7 @@ let
 val debug = !Control.CG.debugcps (* false *)
 fun debugprint s = if debug then Control.Print.say s else ()
 fun debugflush() = if debug then Control.Print.flush() else ()
-val rep_flag = MachSpec.representations
-val type_flag = (!Control.CG.checkcps1) andalso
-                (!Control.CG.checkcps1) andalso rep_flag
+val type_flag = (!Control.CG.checkcps1) andalso (!Control.CG.checkcps1)
 
 val defaultArrow = LT.ltc_parrow(LT.ltc_void,LT.ltc_void)
 

@@ -26,7 +26,6 @@ functor DefaultMachSpecFn (Sizes : sig
 
     val polling = false
     val unboxedFloats = true
-    val representations = true
     val newClosure = true
     val numArgRegs = 10
     val maxRepRegs = 10

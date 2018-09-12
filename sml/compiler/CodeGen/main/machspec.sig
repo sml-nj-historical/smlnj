@@ -23,7 +23,6 @@ signature MACH_SPEC =
   (* code generator flags *)
     val polling : bool
     val unboxedFloats : bool
-    val representations : bool
     val newClosure : bool
     val numRegs : int		(* the number of registers used by ML *)
     val numFloatRegs : int	(* the number of registers used by ML *)

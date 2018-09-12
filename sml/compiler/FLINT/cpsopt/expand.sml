@@ -66,9 +66,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		 | Const
 		 | Other
 
-   val rep_flag = MachSpec.representations
-   val type_flag = (!Control.CG.checkcps1) andalso
-                   (!Control.CG.checkcps1) andalso rep_flag
+   val type_flag = (!Control.CG.checkcps1) andalso (!Control.CG.checkcps1)
 
    local
      exception NEXPAND

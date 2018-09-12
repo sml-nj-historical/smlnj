@@ -5,7 +5,8 @@
  *
  * Expand out any remaining occurences of test_inf, trunc_inf, extend_inf,
  * and copy_inf.  These primops carry a second argument which is a
- * function that performs the operation for 32 bit precision.
+ * function that performs the operation for the target-machine's precision
+ * (i.e., 32 or 64 bits).
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)

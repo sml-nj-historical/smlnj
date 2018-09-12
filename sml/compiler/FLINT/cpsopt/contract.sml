@@ -200,9 +200,7 @@ val debug = !Control.CG.debugcps (* false *)
 fun debugprint s = if debug then Control.Print.say(s) else ()
 fun debugflush() = if debug then Control.Print.flush() else ()
 
-val rep_flag = MachSpec.representations
-val type_flag = (!CG.checkcps1) andalso (!CG.checkcps2) andalso rep_flag
-
+val type_flag = (!CG.checkcps1) andalso (!CG.checkcps2)
 
 (* It would be nice to get rid of this type stuff one day. *)
 local
@@ -408,8 +406,8 @@ let val rec g1 =
   | ARITH(i,vl,w,_,e) => (app use vl; enterMISC0 w; g1 e)
   | PURE(p as P.iwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
   | PURE(p as P.iunwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
-  | PURE(p as P.i32wrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
-  | PURE(p as P.i32unwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
+  | PURE(p as P.i32wrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)	(* 64BIT: FIXME *)
+  | PURE(p as P.i32unwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)	(* 64BIT: FIXME *)
   | PURE(p as P.fwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
   | PURE(p as P.funwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
   | PURE(i,vl,w,_,e) => (app use vl; enterMISC0 w; g1 e)

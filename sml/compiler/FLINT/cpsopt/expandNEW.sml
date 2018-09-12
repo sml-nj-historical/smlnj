@@ -14,7 +14,7 @@ in
 
  fun map1 f (a,b) = (f a, b)
 
- fun sum f = let fun h [] = 0 
+ fun sum f = let fun h [] = 0
 		   | h (a::r) = f a + h r
 	     in h
 	     end
@@ -29,8 +29,8 @@ in
      handle Overflow => if a>b then muldiv(a div 2,b,c div 2)
 			       else muldiv(a,b div 2,c div 2)
 
- fun sameName(x,VAR y) = LV.sameName(x,y) 
-   | sameName(x,LABEL y) = LV.sameName(x,y) 
+ fun sameName(x,VAR y) = LV.sameName(x,y)
+   | sameName(x,LABEL y) = LV.sameName(x,y)
    | sameName _ = ()
 
  datatype mode = ALL | NO_UNROLL | UNROLL of int | HEADERS
@@ -46,7 +46,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 			click z; clicked_any := true)
    val CGinvariant = !CG.invariant
    fun label v = if afterClosure then LABEL v else VAR v
-   datatype info = 
+   datatype info =
        Fun of {escape: int ref, (* how many non-call uses *)
 	       call: int ref,   (* how many calls to this func *)
 	       size: int ref,   (* size of function body *)
@@ -58,7 +58,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 	       unroll_call: int ref,  (* how many calls are from within
 				       this func's body *)
 	       level: int,      (* loop-nesting level of this function *)
-	       within: bool ref,(* are we currently doing pass1 within this 
+	       within: bool ref,(* are we currently doing pass1 within this
 				    function's body? *)
 	       within_sibling: bool ref
 	                        (* are we currently doing passw within the
@@ -74,13 +74,11 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		 | Const
 		 | Other
 
-   val rep_flag = MachSpec.representations
-   val type_flag = (!Control.CG.checkcps1) andalso
-                   (!Control.CG.checkcps1) andalso rep_flag
+   val type_flag = (!Control.CG.checkcps1) andalso (!Control.CG.checkcps1)
 
-   local   
+   local
      exception NEXPAND
-     fun getty v = 
+     fun getty v =
        if type_flag
        then (Intmap.map typtable v) handle _ =>
                   (Control.Print.say ("NEXPAND: Can't find the variable "^
@@ -94,7 +92,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
                     val _ = if type_flag then addty(v,t) else ()
                 in  v
                 end
- 
+
    fun copyLvar v = let val x = LV.dupLvar(v)
                         val _ = if type_flag then addty(x,getty v) else ()
                     in  x
@@ -107,7 +105,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
        val m : info Intmap.intmap = Intmap.new(128,Expand)
        val get' = Intmap.map m
  in    val note = Intmap.add m
-       fun get i = get' i handle Expand => Other 
+       fun get i = get' i handle Expand => Other
        fun discard_pass1_info() = Intmap.clear m
  end
    fun getval(VAR v) = get v
@@ -119,10 +117,10 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 			of Fun{call,within=ref false,
 			       within_sibling=ref false,...} => inc call
 			 | Fun{call,within=ref false,within_sibling=ref true,
-			       sibling_call,...} => (inc call; 
+			       sibling_call,...} => (inc call;
 						     inc sibling_call)
 			 | Fun{call,within=ref true,unroll_call,
-			       args=vl,invariant,...} => 
+			       args=vl,invariant,...} =>
 			     let fun g(VAR x :: args, x' :: vl, i::inv) =
 				       (i andalso x=x') :: g(args,vl,inv)
 				   | g( _ :: args, _ :: vl, i::inv) =
@@ -156,7 +154,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
    fun notearg v = (note (v,Arg{escape=ref 0,savings=ref 0, record=ref []}))
    fun noteother v = ()  (* note (v,Other) *)
    fun notereal v = noteother v  (* note (v,Real) *)
-   fun enter level (_,f,vl,_,e) = 
+   fun enter level (_,f,vl,_,e) =
               (note(f,Fun{escape=ref 0, call=ref 0, size=ref 0,
 			  args=vl, body=e, within=ref false,
 			  within_sibling=ref false,
@@ -181,7 +179,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 			of Arg{savings,...} => savings := k
 			 | Sel{savings} => savings := k
 			 | _ => ()
-   fun savesofar v = case getval v 
+   fun savesofar v = case getval v
 		      of Arg{savings,...} => !savings
 		       | Sel{savings} => !savings
 		       | _ => 0
@@ -194,7 +192,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 	     case get f of Fun{within_sibling=w,...} => w := false) fundefs))
 
    fun within f func arg =
-        case get f of Fun{within=w,...} => 
+        case get f of Fun{within=w,...} =>
 	    (w := true; func arg before (w := false))
 
    val rec prim = fn (level,vl,e) =>
@@ -225,7 +223,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 
  (*******************************************************************)
  (* pass1: gather info on code.                                     *)
- (*******************************************************************) 
+ (*******************************************************************)
   and pass1 : int -> cexp -> int= fn level =>
     fn RECORD(_,vl,w,e) =>
         let val len = length vl
@@ -235,11 +233,11 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 	end
      | SELECT (i,v,w,_,e) => (notesel(i,v,w); 1 + pass1 level e)
      | OFFSET (i,v,w,e) => (noteother w; 1 + pass1 level e)
-     | APP(f,vl) => (call(f,vl); 
-		     app escapeargs vl; 
+     | APP(f,vl) => (call(f,vl);
+		     app escapeargs vl;
 		     1 + ((length vl + 1) div 2))
-     | FIX(l, e) => 
-	  (app (enter level) l; 
+     | FIX(l, e) =>
+	  (app (enter level) l;
 	   within_sibling l
 	     (fn () =>
 	       (sum (fn (_,f,_,_,e) => setsize(f, within f (pass1 (level+1)) e)) l
@@ -277,7 +275,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
          primreal (level,args)
      | ARITH(args as (P.round _, _,_,_,_)) => primreal (level,args)
      | ARITH(_,vl,w,_,e) => (noteother w; prim(level,vl,e))
-     | PURE(P.pure_arith{kind=P.FLOAT 64,...},[v],w,_,e) => 
+     | PURE(P.pure_arith{kind=P.FLOAT 64,...},[v],w,_,e) =>
 	          (notereal w; incsave(v,1); 4+(pass1 level e))
      | PURE(P.real{tokind=P.FLOAT 64,...},vl,w,_,e) =>
 		  (notereal w; prim(level,vl,e))
@@ -289,7 +287,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
    (* If alpha=true, also rename all bindings.                          *)
    (*********************************************************************)
    fun substitute(args,wl,e,alpha) =
-    let 
+    let
 	exception Alpha
         val vm : value Intmap.intmap = Intmap.new(16, Alpha)
         fun look (v,default) = Intmap.map vm v handle Alpha => default
@@ -298,17 +296,17 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 	  | use(v0 as LABEL v) = look(v,v0)
 	  | use x = x
 	fun def v = if alpha
-	             then let val w = copyLvar v 
+	             then let val w = copyLvar v
 			  in  enter (v, VAR w); w
 			  end
-		     else v 
+		     else v
 	fun defl v = if alpha
-	             then let val w = copyLvar v 
+	             then let val w = copyLvar v
 			  in  enter (v, label w);
 			       w
 			  end
 		     else v
-	fun bind(a::args,w::wl) = 
+	fun bind(a::args,w::wl) =
 	       (sameName(w,a); enter (w,a); bind(args,wl))
 	  | bind _ = ()
 
@@ -317,7 +315,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 	| SELECT(i,v,w,t,ce) => SELECT(i, use v, def w, t, g ce)
 	| OFFSET(i,v,w,ce) => OFFSET(i, use v, def w, g ce)
 	| APP(v,vl) => APP(use v, map use vl)
-	| FIX(l,ce) => 
+	| FIX(l,ce) =>
 	  let (* Careful: order of evaluation is important here. *)
 	      fun h1(fk,f,vl,cl,e) = (fk,defl f,vl,cl,e)
 	      fun h2(fk,f',vl,cl,e) =
@@ -357,7 +355,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 					chasepath(chasepath(List.nth(vars,i)),p)
 				  | _ => raise Chase)
 			    | chasepath _ = raise Chase
-			  fun loop([],nvl,nal) = 
+			  fun loop([],nvl,nal) =
 			      (if ex>1 orelse esc>0
 			       then save
 			       else save+size+2,nvl,nal)
@@ -368,7 +366,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		      in  loop(rl,vl,al)
 			  handle Chase => (0,vl,al)
 			       | Subscript => (0,vl,al)
-		      end 
+		      end
 		(* | Real => (save,vl,al)*)
 		 | Const => (save,vl,al)
 		 | _ => (0,vl,al)
@@ -386,27 +384,27 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 	  end)
      | whatsave(acc,size,_,_) = acc
 
-   
+
     (*************************************************************
      * should_expand: should a function application be inlined?  *
      *************************************************************)
     fun should_expand(d,  (* path length from entry to current function *)
 		      u,  (* unroll level *)
-		      e as APP(v,vl), 
+		      e as APP(v,vl),
 		      Fun{escape,call,unroll_call,size=ref size,args,body,
 			  level,within=ref within,...}) =
     if !call + !escape = 1 then false else
       let val stupidloop =  (* prevent infinite loops  at compile time *)
-	    case (v,body) 
-	     of (VAR vv, APP(VAR v',_)) => vv=v' 
-	      | (LABEL vv, APP(LABEL v',_)) => vv=v' 
+	    case (v,body)
+	     of (VAR vv, APP(VAR v',_)) => vv=v'
+	      | (LABEL vv, APP(LABEL v',_)) => vv=v'
 	      | _ => false
 	val calls = case u of UNROLL _ => !unroll_call | _ => !call
 	val small_fun_size = case u of UNROLL _ => 0 | _ => 50
 	val savings = whatsave(0,size,vl,args)
-	val predicted = 
+	val predicted =
 	    let val real_increase = size-savings-(1+length vl)
-	    in  real_increase * calls - 
+	    in  real_increase * calls -
 		(* don't subtract off the original body if
 		   the original body is huge (because we might
 		   have guessed wrong and the consequences are
@@ -418,16 +416,16 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 
     in  if false andalso debug
 	    then (PPCps.prcps e;
-		  debugprint(Int.toString predicted); debugprint "   "; 
+		  debugprint(Int.toString predicted); debugprint "   ";
 		  debugprint(Int.toString bodysize); debugprint "\n")
 	else ();
 
        not stupidloop
        andalso case u
-	    of UNROLL lev => 
+	    of UNROLL lev =>
 		 (* Unroll if: the loop body doesn't make function
-		    calls orelse "unroll_recur" is turned on; andalso 
-		    we are within the definition of the function; 
+		    calls orelse "unroll_recur" is turned on; andalso
+		    we are within the definition of the function;
 		    andalso it looks like things won't grow too much.
 		  *)
 		   (!CG.unroll_recur orelse level >= lev)
@@ -435,15 +433,15 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 	     | NO_UNROLL =>
 		   !unroll_call = 0 andalso
 		   not within andalso
-		   (predicted <= bodysize  
+		   (predicted <= bodysize
 		     orelse (!escape=0 andalso calls = 1))
 	     | HEADERS => false  (* shouldn't get here *)
 	     | ALL =>
-		   (predicted <= bodysize  
+		   (predicted <= bodysize
 		     orelse (!escape=0 andalso calls = 1))
   end
 
-   datatype decision = YES of {formals: lvar list, body: cexp} 
+   datatype decision = YES of {formals: lvar list, body: cexp}
                      | NO of int  (* how many no's in a row *)
    (* There is really no point in making decisions a ref.  This should
       be changed one day. *)
@@ -466,14 +464,14 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
     of RECORD(k,vl,w,ce) => pass2(d+2+length vl,u,ce)
      | SELECT(i,v,w,t,ce) => pass2(d+1,u,ce)
      | OFFSET(i,v,w,ce) => pass2(d+1,u,ce)
-     | APP(v,vl) => 
+     | APP(v,vl) =>
 	 (case getval v
 	   of info as Fun{args,body,...} =>
 	       if should_expand(d,u,e,info)
 		   then decide_yes{formals=args,body=body}
 		    else decide_no()
 	    | _ => decide_no())
-     | FIX(l,ce) => 
+     | FIX(l,ce) =>
 	   let fun fundef (NO_INLINE_INTO,_,_,_,_) = ()
 		 | fundef (fk,f,vl,cl,e) =
 	       let val Fun{level,within,escape=ref escape,...} = get f
@@ -485,7 +483,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		     | conform([],[]) = true
 		     | conform _ = false
 
-	       in  within := true; 
+	       in  within := true;
 		   pass2(0,u',e)
 		   before within := false
 	       end
@@ -497,13 +495,13 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
      | ARITH(i,vl,w,t,e) => pass2(d+2,u,e)
      | PURE(i,vl,w,t,e) => pass2(d+2,u,e)
      | SETTER(i,vl,e) => pass2(d+2,u,e)
-     | BRANCH(i,vl,c,e1,e2) => (pass2(d+2,u,e1); 
+     | BRANCH(i,vl,c,e1,e2) => (pass2(d+2,u,e1);
 				pass2(d+2,u,e2))
 
 
 (* Do loop-header optimizations, elimination of invariant loop arguments,
     hoisting of invariant computations. *)
-    
+
 
   fun from_outside (_,f,_,_,_) =
       case get f of Fun{escape,call,unroll_call,sibling_call,...} =>
@@ -526,12 +524,12 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
        exception Gamma_Hoistmap
      (* For each level, tell what expressions are hoisted there *)
        val hoistmap : (cexp->cexp) Intmap.intmap = Intmap.new(16,Gamma_Hoistmap)
-       fun hoisted_here (lev) = Intmap.map hoistmap lev 
+       fun hoisted_here (lev) = Intmap.map hoistmap lev
 	                          handle Gamma_Hoistmap => (fn e=>e)
        fun any_hoisted_here (lev) = (Intmap.map hoistmap lev; true)
 	                          handle Gamma_Hoistmap => false
        fun reset_hoist(lev) = Intmap.rmv hoistmap lev
-       fun add_hoist(lev,f) = 
+       fun add_hoist(lev,f) =
 	   let val h = hoisted_here lev
 	    in Intmap.add hoistmap (lev, h  o  f)
 	   end
@@ -540,7 +538,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
    let fun def w = note_level(w,level)
        fun formaldef wl = app (fn w => note_level(w,level+1)) wl
        fun gamma e = gamma_lev(level,e)
-       fun tryhoist(vl,w,e,f) = 
+       fun tryhoist(vl,w,e,f) =
 	   let val minlev = foldr Int.min 1000000000 (map level_of vl)
             in if minlev < level
                 then (add_hoist(minlev, f);
@@ -549,9 +547,9 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		      gamma e)
                 else (def w; f(gamma e))
            end
-	   
+
    in case e
-    of RECORD(k,vl,w,ce) => tryhoist(map #1 vl, w, ce, 
+    of RECORD(k,vl,w,ce) => tryhoist(map #1 vl, w, ce,
 				     fn e => RECORD(k,vl, w, e))
      | SELECT(i,v,w,t,ce) => tryhoist([v],w,ce, fn e=>SELECT(i, v, w, t,e))
      | OFFSET(i,v,w,ce) => tryhoist([v],w,ce, fn e=>OFFSET(i, v, w, e))
@@ -564,7 +562,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
      | BRANCH(i,vl,c,e1,e2) => (def c; BRANCH(i, vl, c,gamma e1, gamma e2))
      | FIX(l,ce) =>
 	   let fun fundef (z as (NO_INLINE_INTO,_,_,_,_)) = z
-		 | fundef (fk,f,vl,cl,e) = 
+		 | fundef (fk,f,vl,cl,e) =
 	       let val Fun{escape=ref escape,call,unroll_call,
 			   invariant=ref inv,...} = get f
 
@@ -576,16 +574,16 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		  outside itself.  We do this by making a "header"
 		  and "pre-header".  Also, any argument passed around
 		  the loop but never used is hoisted out.  See also:
- 
+
 		   Loop Headers in Lambda-calculus or CPS. Andrew W. Appel.
 		   CS-TR-460-94, Princeton University, June 15, 1994. To appear
 	           in  _Lisp and Symbolic Computation_ 7, 337-343 (1994).
-		   ftp://ftp.cs.princeton.edu/reports/1994/460.ps.Z 
+		   ftp://ftp.cs.princeton.edu/reports/1994/460.ps.Z
 	       *)
 
 	       in  if escape = 0 andalso !unroll_call > 0
 		   then let val e' = gamma_lev(level+1,e)
-		         in if (!call - !unroll_call > 1 
+		         in if (!call - !unroll_call > 1
 				 orelse List.exists (fn t=>t) inv
 				 orelse any_hoisted_here(level))
 				then let val f'::vl' = map copyLvar (f::vl)
@@ -596,22 +594,22 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 					 val e'' =substitute(newformals,
 							     f :: drop(inv,vl),
 							     e',
-							     false) 
+							     false)
 					 val hoisted = hoisted_here level
 				     in  click "!"; debugprint(Int.toString f);
 					 reset_hoist level;
 					 (* app def (f'::vl'); Unnecessary *)
 					 enter 0 (fk,f',vl',cl,e'');
 					 (fk,f,vl,cl,
-					  hoisted(FIX([(fk,f',vl',cl,e'')], 
+					  hoisted(FIX([(fk,f',vl',cl,e'')],
 						      APP(label f', map VAR vl))))
 				     end
 				else (fk,f,vl,cl,e')
 		       end
 		   else (fk,f,vl,cl,gamma e)
-			
+
 	       end
-           in  
+           in
 	       case split from_outside l
                 of ([(fk,f,vl,cl,e)], others as _::_) =>
 		  (* for any FIX containing more than one function,
@@ -625,11 +623,11 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		      unroll_call := unr + sib;
 		      def f;
 		      click "`"; (* temporary: *) print "`";
-		      app (fn (_,ff,_,_,_) => 
+		      app (fn (_,ff,_,_,_) =>
 			   let val Fun{sibling_call,...} = get ff
 			   in sibling_call := 0  (* this is a conservative
 						   estimate, I hope. *)
-			   end) 
+			   end)
 		         others;
 		      gamma(FIX([(fk,f,vl,cl, FIX(others,e))], ce))
 		  end
@@ -648,7 +646,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
     fn RECORD(k,vl,w,ce) => RECORD(k,vl,w,beta ce)
      | SELECT(i,v,w,t,ce) => SELECT(i,v,w,t,beta ce)
      | OFFSET(i,v,w,ce) => OFFSET(i,v,w,beta ce)
-     | e as APP(v,vl) => 
+     | e as APP(v,vl) =>
 	   (case !decisions
 	     of YES{formals,body}::rest =>
 		 (click "^";
@@ -658,7 +656,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		  substitute(vl,formals,body,true))
               | NO 1::rest => (decisions := rest; e)
               | NO n :: rest => (decisions := NO(n-1)::rest; e))
-     | FIX(l,ce) => 
+     | FIX(l,ce) =>
 	   let fun fundef (z as (NO_INLINE_INTO,_,_,_,_)) = z
 		 | fundef (fk,f,vl,cl,e) = (fk,f,vl,cl,beta e)
 	   in  FIX(map fundef l, beta ce)
@@ -716,13 +714,13 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
       if unroll
 	 then let val _ = (debugprint(" (unroll)\n"); debugflush());
 		  val e' = pass2_beta(UNROLL 0,cexp)
-	      in  if !clicked_any 
+	      in  if !clicked_any
 		      then expand{function=(fkind,fvar,fargs,ctyl,e'),
 				  table=typtable,
 				  bodysize=bodysize,click=click,unroll=unroll,
 				  afterClosure=afterClosure,
 				  do_headers=do_headers}
-		  else ((*debugprint("\nExpand\n"); 
+		  else ((*debugprint("\nExpand\n");
 		         debugflush();
 			 (fkind,fvar,fargs,ctyl,pass2_beta(ALL,cexp)) *)
 			(fkind,fvar,fargs,ctyl,e'))
@@ -733,7 +731,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 	      in  if !clicked_any
 		  then expand{function=(fkind,fvar,fargs,ctyl,e'),
                               table=typtable,bodysize=bodysize,click=click,
-                              unroll=unroll,afterClosure=afterClosure, 
+                              unroll=unroll,afterClosure=afterClosure,
                               do_headers=false}
 		  else (debugprint(" (non-unroll 1)\n"); debugflush();
 			(fkind,fvar,fargs,ctyl,pass2_beta(NO_UNROLL,e')))
