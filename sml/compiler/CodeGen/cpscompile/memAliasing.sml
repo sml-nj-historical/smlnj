@@ -103,7 +103,7 @@ struct
          | sizeOf(C.PURE(P.fwrap,vs,x,cty,k),hp) = sizeOf(k,frecordSize(1,hp))
          | sizeOf(C.PURE(P.mkspecial,vs,x,cty,k),hp) = sizeOf(k, hp + 2*cellSz)
          | sizeOf(C.PURE(P.makeref,vs,x,cty,k),hp) = sizeOf(k, hp + 2*cellSz)
-         | sizeOf(C.PURE(P.i32wrap,vs,x,cty,k),hp) = sizeOf(k, hp + 2*cellSz)
+         | sizeOf(C.PURE(P.i32wrap,vs,x,cty,k),hp) = sizeOf(k, hp + 2*cellSz)	(* 64BIT: FIXME *)
          | sizeOf(C.PURE(P.newarray0,vs,x,cty,k),hp) = sizeOf(k,hp+array0Size)
          | sizeOf(C.PURE(p,vs,x,cty,k),hp) = sizeOf(k,hp)
          | sizeOf(C.ARITH(a,vs,x,cty,k),hp) = sizeOf(k,hp)
@@ -194,7 +194,7 @@ struct
 
            fun mkspecial(x,v,hp) = mkNormalRecord(x,[(v,off0)],hp)
            fun fwrap(x,v,hp) = mkFRecord(x,[(v,off0)],hp)
-           fun i32wrap(x,v,hp) = mkNormalRecord(x,[(v,off0)],hp)
+           fun i32wrap(x,v,hp) = mkNormalRecord(x,[(v,off0)],hp)	(* 64BIT: FIXME *)
            fun makeref(x,v,hp) = mkNormalRecord(x,[(v,off0)],hp)
            fun newarray0(x,hp) =
                bind(x,PT.mkRecord(NONE,[PT.mkRecord(NONE,[])]))
@@ -269,7 +269,7 @@ struct
                  (makeref(x,v,hp); infer(k,hp+8))
              | infer(C.PURE(P.fwrap,[v],x,cty,k),hp) =
                  (fwrap(x,v,hp); infer(k,frecordSize(1,hp)))
-             | infer(C.PURE(P.i32wrap,[v],x,cty,k),hp) =
+             | infer(C.PURE(P.i32wrap,[v],x,cty,k),hp) =	(* 64BIT: FIXME *)
                  (i32wrap(x,v,hp); infer(k,hp+8))
              | infer(C.PURE(P.getcon,[v],x,_,k), hp) =
                  (getcon(x, v); infer(k, hp))

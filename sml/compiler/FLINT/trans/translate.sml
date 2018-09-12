@@ -721,8 +721,8 @@ fun inlToInfPrec (opname: string, coerceFnName: string, primop, primoplt) =
     	val extra_arg_lt =
             if coerceFnName = "finToInf" then
               LT.ltc_arrow(LT.ffc_var(true,false),
-                           [lt_int32 ,LT.ltc_bool], [res_lt])
-            else LT.ltc_parrow(lt_int32, res_lt)
+                           [lt_int32 ,LT.ltc_bool], [res_lt])	(* 64BIT: FIXME *)
+            else LT.ltc_parrow(lt_int32, res_lt)		(* 64BIT: FIXME *)
         val new_arg_lt = LT.ltc_tuple [orig_arg_lt, extra_arg_lt]
         val new_lt = LT.ltc_parrow (new_arg_lt, res_lt )
         val x = mkv ()

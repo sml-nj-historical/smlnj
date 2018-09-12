@@ -205,7 +205,7 @@ fun cexptrans(ce) =
           else (addvl(w,vtrans u); cexptrans ce)
     | PURE(P.iwrap,[u],w,t,ce) => (addvl(w,vtrans u); cexptrans ce)
     | PURE(P.iunwrap,[u],w,t,ce) => (addvl(w,vtrans u); cexptrans ce)
-    | PURE(P.i32wrap,[u],w,t,ce) =>
+    | PURE(P.i32wrap,[u],w,t,ce) =>	(* 64BIT: FIXME *)
 	      (addty(w,t); PURE(P.i32wrap,[vtrans u],w,t,cexptrans ce))
     | PURE(P.i32unwrap,[u],w,t,ce) =>
 	      (addty(w,t); PURE(P.i32unwrap,[vtrans u],w,t,cexptrans ce))
