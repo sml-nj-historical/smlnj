@@ -153,7 +153,7 @@ signature CPS =
 
     datatype value
       = VAR of lvar
-      | LABEL of lvar
+      | LABEL of lvar			(* function labels after closure conversion *)
       | NUM of intty IntConst.t
       | REAL of int RealConst.t
       | STRING of string

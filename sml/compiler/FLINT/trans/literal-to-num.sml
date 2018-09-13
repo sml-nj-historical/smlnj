@@ -27,9 +27,11 @@ signature LITERAL_TO_NUM =
 structure LiteralToNum : LITERAL_TO_NUM =
   struct
 
+(* 64BIT: will go away once FLINT knows about 64-bit ints *)
     fun int64 i =
 	  (IntInf.andb(IntInf.~>>(i, 0w32), 0xffffffff), IntInf.andb(i, 0xffffffff))
 
+(* 64BIT: will go away once FLINT knows about 64-bit words *)
     fun word64 i = (IntInf.~>>(i, 0w32), IntInf.andb(i, 0xffffffff))
 
     fun isNegative (i : IntInf.int) = (i < 0)

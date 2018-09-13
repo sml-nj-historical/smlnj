@@ -252,6 +252,7 @@ val primops =
 
        (* primops to go between abstract and concrete representation of
 	* 64-bit ints and words *)
+(* 64BIT: these will go away once FLINT knows about 64-bit numbers *)
        ("w64p",          (P.CVT64)) :-:
        ("p64w",          (P.CVT64)) :-:
        ("i64p",          (P.CVT64)) :-:

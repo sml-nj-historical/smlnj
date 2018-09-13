@@ -258,7 +258,6 @@ FLINT/trans/matchcomp.sml
 FLINT/trans/mccommon.sml
 FLINT/trans/mcprint.sml
 FLINT/trans/pequal.sml
-FLINT/trans/primopmap.sml
 FLINT/trans/translate.sml
 FLINT/trans/transtypes.sml
 FLINT/trans/literal-to-num.sml    (* uses CoreIntInf functionality *)

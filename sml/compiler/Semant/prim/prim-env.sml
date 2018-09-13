@@ -53,18 +53,14 @@ structure PrimEnv : PRIM_ENV =
 	    ("ref", BT.refTycon),
 	    ("unit", BT.unitTycon),
 	    ("int", BT.intTycon),	(* architecture-dependent tagged int rep *)
-(* 64BIT: int31? *)
 	    ("int32", BT.int32Tycon),
-(* 64BIT: int63? *)
 	    ("int64", BT.int64Tycon),
 	    ("intinf", BT.intinfTycon),
 	    ("real", BT.realTycon),
 (* REAL32: real32 / real64 *)
 	    ("word", BT.wordTycon),	(* architecture-dependent tagged word rep *)
 	    ("word8", BT.word8Tycon),
-(* 64BIT: word31? *)
 	    ("word32", BT.word32Tycon),
-(* 64BIT: word63? *)
 	    ("word64", BT.word64Tycon),
 	    ("cont", BT.contTycon),
 	    ("control_cont", BT.ccontTycon),

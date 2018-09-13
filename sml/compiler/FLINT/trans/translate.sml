@@ -692,6 +692,7 @@ in
 			VAR x, elsebranch))))
 end
 
+(* FIXME: a better implementation would be to zero the sign bit! *)
 fun inlabs nk = let
     val { lt_arg, greater, zero, negate, ... } = inlops nk
     val x = mkv ()
@@ -1145,7 +1146,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimopId.Prim p, ... }, ts, d) =
                         map (toTyc d) intrinsicParams)
                end
              | _ => (** where do these intrinsicType originate?
-			A: PrimOpTypeMap *)
+			A: PrimopBindings *)
 		    transPrim(primop, (toLty d intrinsicType),
                               map (toTyc d) intrinsicParams)
       end
@@ -1516,7 +1517,7 @@ and mkExp (exp, d) =
 	  (* NOTE: 8-bit word is promoted to default tagged word representation *)
 	    else if TU.equalType (ty, BT.word8Ty) then WORD{ival = ival, ty = Tgt.defaultIntSz}
 	    else if TU.equalType (ty, BT.word32Ty) then WORD{ival = ival, ty = 32}
-	    else if TU.equalType (ty, BT.word64Ty) then let (* JHR makes this go away *)
+	    else if TU.equalType (ty, BT.word64Ty) then let (* 64BIT: JHR makes this go away *)
 		val (hi, lo) = LN.word64 ival
 		fun mkHalf n = WORD{ival = n, ty = 32}
 		in

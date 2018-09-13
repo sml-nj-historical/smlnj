@@ -110,9 +110,9 @@ structure PrimTyc :> PRIM_TYC =
 	    | PT_VOID =>   0
 	  (* end case *))
 
-    val numBaseCode = 17
 
   (** each primitive type constructor is equipped with a key *)
+    val numBaseCode = 17
     fun pt_toint ptyc = (case ptyc
 	   of PT_NUM n => numBaseCode + n
 	    | PT_REAL 32 => 0
