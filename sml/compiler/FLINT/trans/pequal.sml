@@ -221,9 +221,9 @@ fun numKind tyc =
 
 fun atomeq (tyc, ty) =
     case numKind tyc
-     of SOME(PO.INT sz) => prim(PO.mkIEQL sz, intEqTy(sz))
-      | SOME(PO.UINT sz) => prim(PO.mkUIEQL sz, uintEqTy(sz))
-      | NONE => 			    
+     of SOME(PO.INT sz) => prim(PO.mkIEQL sz, intEqTy sz)
+      | SOME(PO.UINT sz) => prim(PO.mkUIEQL sz, uintEqTy sz)
+      | NONE =>
 	if TU.equalTycon(tyc, BT.boolTycon)   then prim(PO.IEQL,booleqty)
 	else if TU.equalTycon(tyc, BT.realTycon)   then prim(PO.FEQLd,realeqty)
 	else if TU.equalTycon(tyc, BT.stringTycon) then getStrEq()
