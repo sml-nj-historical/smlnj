@@ -81,7 +81,7 @@ type genintinfswitch =
 type matchRepTy = ((path * pat) list * path list * lvar) list
 (* type of matchRep defined in doMatchCompile, previously also referred to as ruleDesc *)
 type matchRepsTy = (matchRepTy * (lvar * PLambda.lexp)) list
-							 
+
 (*
  * MAJOR CLEANUP REQUIRED ! The function mkv is currently directly taken
  * from the LambdaVar module; I think it should be taken from the
@@ -109,30 +109,31 @@ fun toDconLty toLty ty =
 fun isInt64 ty = TU.equalType(ty, BT.int64Ty)
 fun isWord64 ty = TU.equalType(ty, BT.word64Ty)
 
-fun numCon (v, ty, msg) =
-    let fun mkWORD sz = WORDpcon{ival = v, ty = sz}
-	fun mkINT sz = INTpcon{ival = v, ty = sz}
-     in
-	if TU.equalType(ty, BT.intTy) then
-	   mkINT Target.defaultIntSz
-	else if TU.equalType(ty, BT.int32Ty) then
-	   mkINT 32
-	else if TU.equalType(ty, BT.int64Ty) then
-	   mkINT 64
-	else if TU.equalType(ty, BT.intinfTy) then
-	   mkINT 0
-	else if TU.equalType(ty, BT.wordTy) then
-	   mkWORD Target.defaultIntSz
-	else if TU.equalType(ty, BT.word8Ty) then
-(* QUESTION: perhaps we should preserve the size, e.g. in the case of word8 
- * for better jump tables? *)
-	   mkWORD Target.defaultIntSz
-	else if TU.equalType(ty, BT.word32Ty) then
-	   mkWORD 32
-        else if TU.equalType(ty, BT.word64Ty) then
-           mkWORD 64
-	else bug msg
-    end
+fun numCon (v, ty, msg) = let
+      fun mkWORD sz = WORDpcon{ival = v, ty = sz}
+      fun mkINT sz = INTpcon{ival = v, ty = sz}
+      in
+	if TU.equalType(ty, BT.intTy)
+	  then mkINT Target.defaultIntSz
+	else if TU.equalType(ty, BT.int32Ty)
+	  then mkINT 32
+	else if TU.equalType(ty, BT.int64Ty)
+	  then mkINT 64
+	else if TU.equalType(ty, BT.intinfTy)
+	  then mkINT 0
+	else if TU.equalType(ty, BT.wordTy)
+	  then mkWORD Target.defaultIntSz
+	else if TU.equalType(ty, BT.word8Ty)
+(* QUESTION: perhaps we should preserve the size (e.g., in the case of
+ * word8) for better jump tables?
+ *)
+	  then mkWORD Target.defaultIntSz
+	else if TU.equalType(ty, BT.word32Ty)
+	  then mkWORD 32
+        else if TU.equalType(ty, BT.word64Ty)
+          then mkWORD 64
+	  else bug msg
+      end
 
 (* default integer pattern constant *)
 fun intCon n = INTpcon{ival = IntInf.fromInt n, ty = Target.defaultIntSz}
@@ -582,7 +583,7 @@ fun removePath (path, path1::rest) =
   | removePath (path, nil) = nil
 
 (* fireConstraint : path
- *                  * (path list * decision list) list  
+ *                  * (path list * decision list) list
  *                  * decision list                        -- ready list
  *                  * (path list * decision list) list     -- delayed list
  *                  -> decision list * (path list * decision list) list *)
@@ -776,7 +777,7 @@ fun complement(n, m, a::b) =
 type pathList = path list
 (* conjectured invariant: a pathList has no duplicate members *)
 (* question: does the order of paths in a path list matter? Apparently not. *)
-		     
+
 type pathSet = (int * pathList) list
 (* terminology: the int component of a pathSet member is called its index.
  * invariant?: index represents common "depth" of paths in pathList, or
@@ -787,7 +788,7 @@ type pathSet = (int * pathList) list
 
 (* dividePathList: (path -> bool) * pathList * pathList * pathList
  *                  -> pathList * pathList
- *   divide path list into a pair of a list of paths satisfying pred and 
+ *   divide path list into a pair of a list of paths satisfying pred and
  *   a list of paths not satisfying pred. *)
 fun dividePathList (pred, paths) =
     let fun divide(pred, nil, accyes, accno) = (accyes, accno)
@@ -859,7 +860,7 @@ fun intersectPathsets(pathset1, nil) = nil
       else
         intersectPathsets(pathset1, rest2)
 
-(* unitePathsets : pathSet * pathSet -> pathSet 
+(* unitePathsets : pathSet * pathSet -> pathSet
  *  merge two pathSets, consolidating elements with same index
  *  by taking union of corresponding pathLists *)
 fun unitePathsets(pathset1, nil) = pathset1
@@ -992,7 +993,7 @@ fun rhsbindings (n, matchRep) =
      end
 
 (* pass1cases : (pcon * dectree) list * pathSet * pathSet option * matchRepTy * path
- *              -> (pcon * dectree) list * pathSet *)           
+ *              -> (pcon * dectree) list * pathSet *)
 fun pass1cases ((pcon,subtree)::rest, envin, SOME envout, rhs, path) =
         let val (subtree', myEnvout) = pass1(subtree, envin, rhs)
             val (mustBindHere, otherBindings) =
@@ -1068,7 +1069,7 @@ and pass1(RHS n, envin, rhs) = (RHS n, rhsbindings(n, rhs))
   | pass1 _ = bug "pass1 - unexpected arg"
 
 
-(* generate : dectree * matchRepTy * lvar * (toTycTy * toLtyTy) * giisTy 
+(* generate : dectree * matchRepTy * lvar * (toTycTy * toLtyTy) * giisTy
  *            -> codeTy
  * Given a decision tree for a match, a matchRep list and the lvar
  * bound to the value to be matched, produce code for the match.
