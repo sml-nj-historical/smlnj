@@ -209,17 +209,6 @@ Semant/
       a larger invironment
       defs: Rehash (inline sig)
 
-  Semant/statenv/
-  construction of base static environment for environment bootstrap
-  and table mapping primop names to intrinsic primop types
-    prim.sml
-      define static env primEnv, containing primitive types (PrimTypes),
-      primops (InLine), and unrolled lists (UnrolledList)
-      defs: PRIM_ENV, PrimEnv: PRIM_ENV
-    primoptypemap.sml
-      defines mapping from primop names (strings) to their "intrinsic" types
-      defs: PRIMOP_TYPE_MAP, PrimOpTypeMap
-
   Semant/types/
   some types-related stuff
     cproto.sml
@@ -715,9 +704,8 @@ modules (signatures, structures, functors)
 
 primop
   PrimOp           (FLINT/kernel/primop.sml)
-  PrimOpMap	   (FLINT/trans/primopmap.sml)
+  PrimOpBindings   (Semant/prim/primop-bindings.sml)
   PrimOpId	   (ElabData/basics/primopid.sml)
-  PrimOpTypeMap	   (Semant/statenv/primoptypemap.sml)
   PrimEnv          (Semant/statenv/prim.sml)
 
 control
