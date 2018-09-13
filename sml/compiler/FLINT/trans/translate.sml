@@ -692,6 +692,7 @@ in
 			VAR x, elsebranch))))
 end
 
+(* FIXME: a better implementation would be to zero the sign bit! *)
 fun inlabs nk = let
     val { lt_arg, greater, zero, negate, ... } = inlops nk
     val x = mkv ()
