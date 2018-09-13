@@ -1146,7 +1146,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimopId.Prim p, ... }, ts, d) =
                         map (toTyc d) intrinsicParams)
                end
              | _ => (** where do these intrinsicType originate?
-			A: PrimOpTypeMap *)
+			A: PrimopBindings *)
 		    transPrim(primop, (toLty d intrinsicType),
                               map (toTyc d) intrinsicParams)
       end
