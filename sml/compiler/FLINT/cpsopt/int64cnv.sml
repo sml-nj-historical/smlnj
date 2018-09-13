@@ -174,11 +174,31 @@ structure Num64Cvt : sig
 	    pure (P.+, [t2, cb], fn t3 =>
 	    pure (P.+, [t3, da], fn diag4 =>
 	    pure (P.lshift, [diag1, num 16], fn t4 =>
-	    pure (P.+, [dd, t4], fn lo' =>
+	    pure (P.+, [dd, t4], fn lo' => let
+	      val diag1carry = LV.mkLvar()
+	      val locarry = LV.mkLvar()
+	    (* ((diag1 >> 0w16) + diag2 + (diag3 << 0w16) + locarry + diag1carry, lo) *)
+	      val finishExp =
+		    pure (P.rshift, [diag1, 16], fn t1 =>
+		    pure (P.+, [t1, diag2], fn t2 =>
+		    pure (P.lshift, [diag3, 16], fn t3 =>
+		    pure (P.+, [t2, t3], fn t4 =>
+		    pure (P.+, [t4, locarry], fn t5 =>
+		    pure (P.+, [t5, diag1carry], fn hi' =>
+		      to64 (hi', lo', k)))))))
+	    (* val locarry = if lo < diag0 then 0w1 else 0w0 *)
+	      val exp = join (locarry, raw32Ty, finishExp, fn locarry_k =>
+		    uIf (P.<, lo, diag0, locarry_k one, locarry_k zero))
+	    (* val diag1carry = if diag1 < cd then 0wx10000 else 0w0 *)
+	      val exp = join (diag1carry, raw32Ty, exp, fn diag1carry_k =>
+		    uIf (P.<, diag1, cd, diag1carry_k(num 0x10000), diag1carry_k zero))
+	      in
+		exp
+	      end)))))))))))))))))))))))))
 
-    fun w64Div ([n1, n2], res, cty, cexp) =
+    fun w64Div ([n1, n2], res, cty, cexp) = raise Fail "w64Div"
 
-    fun w64Mod ([n1, n2], res, cty, cexp) =
+    fun w64Mod ([n1, n2], res, cty, cexp) = raise Fail "w64Mod"
 
 (*
     fun add64 ((hi1, lo1), (hi2, lo2)) =
