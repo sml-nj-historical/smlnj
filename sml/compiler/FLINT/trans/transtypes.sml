@@ -161,28 +161,6 @@ and tycTyc(tc, d) =
               in tc
               end
 
-(*
-      fun dtsFam (_, {lambdatyc=ref (SOME (tc,od)), ...} : dtypeFamily) =
-            LT.tc_adj(tc, od, d) (* invariant: tc contains no free variables
-                                    so tc_adj should have no effects *)
-        | dtsFam (freetycs, {members, lambdatyc=x, ...}) =
-            let fun ttk (GENtyc { arity, ... }) = LT.tkc_int arity
-                  | ttk (DEFtyc{tyfun=TYFUN{arity=i, ...},...}) = LT.tkc_int i
-                  | ttk _ = bug "unexpected ttk in dtsFam"
-                val ks = map ttk freetycs
-                val (nd, hdr) =
-                  case ks of [] => (d, fn t => t)
-                           | _ => (DI.next d, fn t => LT.tcc_fn(ks, t))
-                val mbs = Vector.foldr (op ::) nil members
-                val mtcs = map (dtsTyc (DI.next nd)) mbs
-                val (fks, fts) = ListPair.unzip mtcs
-                val nft = case fts of [x] => x | _ => LT.tcc_seq fts
-                val tc = hdr(LT.tcc_fn(fks, nft))
-                val _ = (x := SOME(tc, d))
-             in tc
-            end
-*)
-
       and g (tycon as GENtyc { arity, kind, ... }) =
 	  (case kind
 	     of PRIMITIVE => LT.tcc_prim(PrimTyc.pt_fromtyc tycon)

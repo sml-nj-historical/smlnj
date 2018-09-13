@@ -39,7 +39,7 @@ local structure DA = Access
 in
 
 val debugging = ref false
-fun bug msg = ErrorMsg.impossible("Equal: "^msg)
+fun bug msg = ErrorMsg.impossible("PEqual: "^msg)
 val say = Control.Print.say
 
 type toTcLt = (ty -> LT.tyc) * (ty -> LT.lty)
@@ -155,15 +155,13 @@ fun equivType(ty,ty') =
   end
 
 (****************************************************************************
- *                   Commonly-used Lambda Types                             *
+ *                   Lambda Types for equality                              *
  ****************************************************************************)
 
 val boolty = LT.ltc_bool
 fun eqLty lt = LT.ltc_parrow(LT.ltc_tuple [lt, lt], boolty)
-val inteqty = eqLty (LT.ltc_int)
-val wordeqty = inteqty (* same as inteqty, no word version of ltc_num *)
-val int32eqty = eqLty (LT.ltc_num 32) (* 64BIT: FIXME *)
-val word32eqty = int32eqty (* same as int32eqty, no word version of ltc_num *)
+fun intEqTy sz = eqLty (LT.ltc_num sz)
+val uintEqTy = intEqTy  (* unsigned numbers same as signed in LT *)
 val booleqty = eqLty (LT.ltc_bool)
 val realeqty = eqLty (LT.ltc_real)
 
@@ -207,65 +205,41 @@ fun eqTy ty = eqLty(toLty ty)
 fun ptrEq(p, ty) = PRIM(p, eqTy ty, [])
 fun prim(p, lt) = PRIM(p, lt, [])
 
-(* could possibly replace nested conditions with assoc list search, but
- * not much point.
-  [(BT.intTycon, prim(PO.IEQL, inteqty)),
-   (BT.wordTycon, prim(PO.IEQL, inteqty)),
-   (BT.word8Tycon, prim(PO.IEQL, inteqty)),
-   (BT.charTycon, prim(PO.IEQL, inteqty)),
-   (BT.int32Tycon, prim(PO.mkIEQL 32, int32eqty)), (* 64BIT: FIXME *)
-   (BT.word32Tycon, prim(PO.mkUIEQL 32, word32eqty)),
-   (BT.boolTycon, prim(PO.IEQL ,booleqty)),
-   (BT.realTycon, prim(PO.FEQLd, realeqty))]
-
- -- these would still need to be done with conditionals
-   BT.stringTycon => getStrEq()
-   BT.intinfTycon => getIntInfEq()
-   BT.refTycon => ptrEq(PO.PTREQL, ty)
-*)
-
-(*
-fun atomeq (tyc, ty) =
-  if      TU.equalTycon(tyc, BT.intTycon)    then prim(PO.IEQL,inteqty)
-  else if TU.equalTycon(tyc, BT.wordTycon)   then prim(PO.IEQL,inteqty)
-  else if TU.equalTycon(tyc, BT.word8Tycon)  then prim(PO.IEQL,inteqty)
-  else if TU.equalTycon(tyc, BT.charTycon)   then prim(PO.IEQL,inteqty)
-  else if TU.equalTycon(tyc, BT.int32Tycon)  then prim(PO.IEQL,int32eqty) (* 64BIT: FIXME *)
-  else if TU.equalTycon(tyc, BT.word32Tycon) then prim(PO.IEQL,word32eqty)
-  else if TU.equalTycon(tyc, BT.boolTycon)   then prim(PO.IEQL,booleqty)
-  else if TU.equalTycon(tyc, BT.realTycon)   then prim(PO.FEQLd,realeqty)
-  else if TU.equalTycon(tyc, BT.stringTycon) then getStrEq()
-  else if TU.equalTycon(tyc, BT.intinfTycon) then getIntInfEq()
-  else if TU.equalTycon(tyc, BT.refTycon)    then ptrEq(PO.PTREQL, ty)
-*)
+val dSz = Target.defaultIntSz  (* 31 or 63 *)
+fun numKind tyc =
+    if      TU.equalTycon(tyc, BT.intTycon)    then SOME(PO.INT dSz)
+    else if TU.equalTycon(tyc, BT.wordTycon)   then SOME(PO.UINT dSz)
+    else if TU.equalTycon(tyc, BT.word8Tycon)  then SOME(PO.UINT dSz)  (* could be 8? *)
+    else if TU.equalTycon(tyc, BT.charTycon)   then SOME(PO.INT dSz)
+    else if TU.equalTycon(tyc, BT.int32Tycon)  then SOME(PO.INT 32)
+    else if TU.equalTycon(tyc, BT.word32Tycon) then SOME(PO.UINT 32)
+(*    else if TU.equalTycon(tyc, BT.int64Tycon)  then SOME(PO.INT 64)
+ *    else if TU.equalTycon(tyc, BT.word64Tycon) then SOME(PO.UINT 64)
+ *    -- 64BIT fixme: uncomment these lines when int64, word64 are passed through to CPS.
+ *)
+    else NONE
 
 fun atomeq (tyc, ty) =
-  if      TU.equalTycon(tyc, BT.intTycon)    then prim(PO.IEQL,inteqty)
-  else if TU.equalTycon(tyc, BT.wordTycon)   then prim(PO.IEQL,wordeqty)
-  else if TU.equalTycon(tyc, BT.word8Tycon)  then prim(PO.IEQL,wordeqty)
-  else if TU.equalTycon(tyc, BT.charTycon)   then prim(PO.IEQL,inteqty)
-  else if TU.equalTycon(tyc, BT.int32Tycon)  then (* fixing 64BIT *)
-          if Target.is64 then prim(PO.IEQL, int32eqty)
-          else prim(PO.mkIEQL 32, int32eqty)
-  else if TU.equalTycon(tyc, BT.word32Tycon) then
-          if Target.is64 then prim(PO.UIEQL, word32eqty)
-          else prim(PO.mkUIEQL 32, word32eqty)
-  else if TU.equalTycon(tyc, BT.boolTycon)   then prim(PO.IEQL,booleqty)
-  else if TU.equalTycon(tyc, BT.realTycon)   then prim(PO.FEQLd,realeqty)
-  else if TU.equalTycon(tyc, BT.stringTycon) then getStrEq()
-  else if TU.equalTycon(tyc, BT.intinfTycon) then getIntInfEq()
-  else if TU.equalTycon(tyc, BT.refTycon)    then ptrEq(PO.PTREQL, ty)
-(**********************
- * For arrays under the new array representation, we need to compare
- * the data pointers for equality.  polyequal does this comparison
- * correctly, so use it as the fallback. (JHR)
- *
-  else if TU.equalTycon(tyc,BT.arrayTycon) then ptrEq(PO.PTREQL, ty)
-  else if TU.equalTycon(tyc,BT.word8arrayTycon) then ptrEq(PO.PTREQL, ty)
-  else if TU.equalTycon(tyc,BT.real64arrayTycon) then ptrEq(PO.PTREQL, ty)
-(* also still falling back on polyequal for int64 and word64 -- 64BIT fixme *)
-**********************)
-  else raise Poly
+    case numKind tyc
+     of SOME(PO.INT sz) => prim(PO.mkIEQL sz, intEqTy(sz))
+      | SOME(PO.UINT sz) => prim(PO.mkUIEQL sz, uintEqTy(sz))
+      | NONE => 			    
+	if TU.equalTycon(tyc, BT.boolTycon)   then prim(PO.IEQL,booleqty)
+	else if TU.equalTycon(tyc, BT.realTycon)   then prim(PO.FEQLd,realeqty)
+	else if TU.equalTycon(tyc, BT.stringTycon) then getStrEq()
+	else if TU.equalTycon(tyc, BT.intinfTycon) then getIntInfEq()
+	else if TU.equalTycon(tyc, BT.refTycon)    then ptrEq(PO.PTREQL, ty)
+      (**********************
+       * For arrays under the new array representation, we need to compare
+       * the data pointers for equality.  polyequal does this comparison
+       * correctly, so use it as the fallback. (JHR)
+       *
+	else if TU.equalTycon(tyc,BT.arrayTycon) then ptrEq(PO.PTREQL, ty)
+	else if TU.equalTycon(tyc,BT.word8arrayTycon) then ptrEq(PO.PTREQL, ty)
+	else if TU.equalTycon(tyc,BT.real64arrayTycon) then ptrEq(PO.PTREQL, ty)
+	## also still falling back on polyequal for int64 and word64 -- 64BIT fixme ##
+      **********************)
+	else raise Poly
 
 fun test(ty, 0) = raise Poly
   | test(ty, depth) =
@@ -419,4 +393,4 @@ end handle Poly =>
 
 
 end (* toplevel local *)
-end (* structure Equal *)
+end (* structure PEqual *)

@@ -815,7 +815,7 @@ and tc_eqv (x, y) =
          (fn s => fn (t1,t2) =>
              (PU.pps s "t1:"; PP.newline s; PPLty.ppTyc 10 s t1; PP.newline s;
               PU.pps s "t2:"; PP.newline s; PPLty.ppTyc 10 s t2; PP.newline s;
-              PU.pps s"***************************************************";
+              PU.pps s "***************************************************";
               PP.newline s)), (t1,t2));
         false)
     end (* tc_eqv *)

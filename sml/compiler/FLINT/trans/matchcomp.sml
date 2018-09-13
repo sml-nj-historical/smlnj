@@ -109,26 +109,30 @@ fun toDconLty toLty ty =
 fun isInt64 ty = TU.equalType(ty, BT.int64Ty)
 fun isWord64 ty = TU.equalType(ty, BT.word64Ty)
 
-fun numCon (v, ty, msg) = let
-      fun mkWORD sz = WORDpcon{ival = v, ty = sz}
-      fun mkINT sz = INTpcon{ival = v, ty = sz}
-      in
-	if TU.equalType(ty, BT.intTy)
-	  then mkINT Target.defaultIntSz
-	else if TU.equalType(ty, BT.int32Ty)
-	  then mkINT 32
-	else if TU.equalType(ty, BT.intinfTy)
-	  then mkINT 0
-	else if TU.equalType(ty, BT.wordTy)
-	  then mkWORD Target.defaultIntSz
-	else if TU.equalType(ty, BT.word8Ty)
-(* QUESTION: perhaps we should preserve the size for better jump tables? *)
-	  then mkWORD Target.defaultIntSz
-	else if TU.equalType(ty, BT.word32Ty)
-	  then mkWORD 32
-(* 64BIT: add cases for int64Ty and word64Ty *)
-	  else bug msg
-      end
+fun numCon (v, ty, msg) =
+    let fun mkWORD sz = WORDpcon{ival = v, ty = sz}
+	fun mkINT sz = INTpcon{ival = v, ty = sz}
+     in
+	if TU.equalType(ty, BT.intTy) then
+	   mkINT Target.defaultIntSz
+	else if TU.equalType(ty, BT.int32Ty) then
+	   mkINT 32
+	else if TU.equalType(ty, BT.int64Ty) then
+	   mkINT 64
+	else if TU.equalType(ty, BT.intinfTy) then
+	   mkINT 0
+	else if TU.equalType(ty, BT.wordTy) then
+	   mkWORD Target.defaultIntSz
+	else if TU.equalType(ty, BT.word8Ty) then
+(* QUESTION: perhaps we should preserve the size, e.g. in the case of word8 
+ * for better jump tables? *)
+	   mkWORD Target.defaultIntSz
+	else if TU.equalType(ty, BT.word32Ty) then
+	   mkWORD 32
+        else if TU.equalType(ty, BT.word64Ty) then
+           mkWORD 64
+	else bug msg
+    end
 
 (* default integer pattern constant *)
 fun intCon n = INTpcon{ival = IntInf.fromInt n, ty = Target.defaultIntSz}

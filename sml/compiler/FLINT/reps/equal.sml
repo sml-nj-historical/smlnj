@@ -10,6 +10,7 @@ sig
   (*
    * Constructing generic equality functions; the current version will
    * use runtime polyequal function to deal with abstract types. (ZHONG)
+   * But abstract types are not equality types!? (DBM)
    *)
   val equal_branch : FLINT.primop * FLINT.value list * FLINT.lexp * FLINT.lexp
                      -> FLINT.lexp
@@ -43,15 +44,6 @@ val (trueDcon', falseDcon') =
    in (h BT.trueDcon, h BT.falseDcon)
   end
 
-val tcEqv = LT.tc_eqv
-
-
-fun boolLexp b =
-  let val v = mkv() and w = mkv()
-      val dc = if b then trueDcon' else falseDcon'
-   in RECORD(FU.rk_tuple, [], v, CON(dc, [], VAR v, w, RET[VAR w]))
-  end
-
 exception Poly
 
 (****************************************************************************
@@ -61,11 +53,9 @@ exception Poly
 (** assumptions: typed created here will be reprocessed in wrapping.sml *)
 fun eqLty lt  = LT.ltc_arrow(LT.ffc_rrflint, [lt, lt], [LT.ltc_bool])
 fun eqTy tc   = eqLty(LT.ltc_tyc tc)
-
-val inteqty   = eqLty (LT.ltc_int)
-val int32eqty = eqLty (LT.ltc_num 32)	(* 64BIT: FIXME *)
 val booleqty  = eqLty (LT.ltc_bool)
-val realeqty  = eqLty (LT.ltc_real)	(* REAL32: FIXME *)
+fun numeqty sz = eqLty (LT.ltc_num sz)	(* 64BIT: FIXME *)
+   (* do we need special case for sz = defaultIntSz to return ltc_int? *)
 
 (****************************************************************************
  *              equal --- the equality function generator                   *
@@ -82,63 +72,75 @@ fun branch (e, te, fe) =
 		   (DATAcon(falseDcon', [], mkv()), fe)], NONE))
     end
 
-fun equal (peqv, seqv) = let
+(* equal : lvar * lvar -> lexp
+ *  peqv is an lvar bound to the polyequal function, while seqv is an lvar bound to 
+ *  a string equality function. Gives up and invokes polyequal on tuples of length
+ *  greater than 10.  This is used only in the module Wrapping (FLINT/reps/wrapping.sml)
+ *  to replace a branch on POLYEQUAL with a branch on a more type-specific equality in
+ *  certain cases, such as numeric, string, boolean, and ref equality, and tuples of such. *)
+fun equal (peqv, seqv) =
+    let fun eq (tc: tyc, x: value, y: value, te: lexp, fe: lexp) =
+	    let fun eq_tuple (_: int, []: tyc list, te, fe) = te
+		  | eq_tuple (n, ty::tys, te, fe) =
+		      let val a = mkv()
+			  val b = mkv()
+		      in SELECT(x, n, a,
+				SELECT(y, n, b,
+				       eq(ty, VAR a, VAR b,
+					  eq_tuple(n + 1, tys, te, fe),
+					  fe)))
+		      end
 
-    fun eq (tc, x, y, 0, te, fe) = raise Poly
-      | eq (tc, x, y, d, te, fe) = let
+	     in if LT.tcp_tuple tc then
+		   if length(LT.tcd_tuple tc) > 10 then raise Poly
+		   else (case fe
+		           of (APP _ | RET _) =>
+			       eq_tuple(0, LT.tcd_tuple tc, te, fe)
+			    | _ => let val f = mkv()
+				   in FIX([(fkfun, f, [], fe)],
+					  eq_tuple(0, LT.tcd_tuple tc,
+						   te, APP(VAR f, [])))
+				   end)
+		else if LT.tcp_prim tc then
+		    let val prim = LT.tcd_prim tc
+		    in case PT.numSize prim  (* is it a PT_NUM? *)
+			of SOME sz =>
+			   BRANCH((NONE, PO.mkIEQL sz, numeqty sz, []), [x,y], te, fe)
+			 | NONE => 
+			   if PT.pt_eq(prim, PT.ptc_string) then
+			       branch(APP(VAR seqv, [x,y]), te, fe)
+			   else raise Poly
+		    end
+		else if LT.tc_eqv(tc,LT.tcc_bool) then
+		    BRANCH((NONE, PO.IEQL, booleqty, []), [x,y], te, fe)
+	        else if (LT.tcp_app tc) then
+	            let val (t, _) = LT.tcd_app tc
+		     in if LT.tcp_prim t then
+			    let val prim = LT.tcd_prim t
+			    in if PT.pt_eq(prim, PT.ptc_ref) then
+				   BRANCH((NONE, PO.PTREQL, eqTy tc, []), [x,y], te, fe)
+			       else raise Poly
+			    end
+			else raise Poly
+		    end
+		else raise Poly
+	    end
 
-	fun eq_tuple (_, _, [], te, fe) = te
-	  | eq_tuple (n, d, ty::tys, te, fe) =
-            let val a = mkv()
-		val b = mkv()
-            in SELECT(x, n, a,
-                      SELECT(y, n, b,
-                             eq(ty, VAR a, VAR b, d - 1,
-				eq_tuple(n + 1, d - 1, tys, te, fe),
-				fe)))
-            end
+    in (fn (args as (tc, x, y, te, fe))
+	         => eq args
+		    handle Poly =>
+		      let val f = mkv()
+		       in LET([f], TAPP(VAR peqv, [tc]),
+			      branch(APP(VAR f, [x,y]), te, fe))
+		      end)
+    end (* equal *)
 
-    in
-	if LT.tcp_tuple tc then (
-	    case fe of (APP _ | RET _) =>
-		       eq_tuple(0, d, LT.tcd_tuple tc, te, fe)
-		     | _ =>
-		       let val f = mkv()
-		       in FIX([(fkfun, f, [], fe)],
-			      eq_tuple(0, d, LT.tcd_tuple tc,
-				       te, APP(VAR f, [])))
-		       end)
-(* 64BIT: the next two cases could be merged into one that would be int-size indenpendent
- * using a lifted version of the PrimTyc.numSize function.
- *)
-	else if tcEqv(tc,LT.tcc_int) then
-	    BRANCH((NONE, PO.IEQL, inteqty, []), [x,y], te, fe)
-	else if tcEqv(tc,LT.tcc_num 32) then
-	    BRANCH((NONE, PO.IEQL, int32eqty, []), [x,y], te, fe)
-	else if tcEqv(tc,LT.tcc_bool) then
-	    BRANCH((NONE, PO.IEQL, booleqty, []), [x,y], te, fe)
-	else if tcEqv(tc,LT.tcc_string) then
-	    branch(APP(VAR seqv, [x,y]), te, fe)
-	else if (LT.tcp_app tc) andalso
-		let val (x, _) = LT.tcd_app tc
-		in ((LT.tcp_prim x) andalso (LT.tcd_prim x = PT.ptc_ref))
-		end then
-	    BRANCH((NONE, PO.PTREQL, eqTy tc, []), [x,y], te, fe)
-	else raise Poly
-    end
-
-in (fn (tc,x,y,d,te,fe) => eq (tc,x,y,d,te,fe)
-       handle Poly =>
-	      let val f = mkv()
-	      in LET([f], TAPP(VAR peqv, [tc]),
-		     branch(APP(VAR f, [x,y]), te, fe))
-	      end)
-end
-
-fun equal_branch ((d, p, lt, ts), vs, e1, e2) =
+fun equal_branch ((d, p, lt, ts): FLINT.primop,
+		  vs: FLINT.value list,
+		  e1: FLINT.lexp, e2: FLINT.lexp) : FLINT.lexp =
   (case (d, p, ts, vs)
     of (SOME{default=pv, table=[(_,sv)]}, PO.POLYEQL, [tc], [x, y]) =>
-          equal (pv, sv) (tc, x, y, 10, e1, e2)
+          equal (pv, sv) (tc, x, y, e1, e2)
      | _ => bug "unexpected case in equal_branch")
 
 end (* toplevel local *)
