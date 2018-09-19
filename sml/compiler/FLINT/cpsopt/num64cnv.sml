@@ -8,7 +8,7 @@
  * operations with 32-bit code.
  *)
 
-structure Num64Cvt : sig
+structure Num64Cnv : sig
 
   (* eliminate 64-bit literals and operations on a 32-bit machine; this function is
    * the identity on 64-bit machines.
@@ -547,4 +547,3 @@ structure Num64Cvt : sig
 	  end (* elim *)
 
   end
-
