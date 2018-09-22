@@ -105,9 +105,8 @@ struct
       structure C = Cells
       structure GC = SMLGCType)
 
-(* 64BIT: *)
-  val I31    = SMLGCType.TAGGED_INT
-  val I32    = SMLGCType.INT
+  val TAGINT = SMLGCType.TAGGED_INT
+  val INT    = SMLGCType.INT
 (* REAL32: *)
   val REAL64 = SMLGCType.REAL64  (* untagged floats *)
   val PTR    = SMLGCType.PTR     (* boxed objects *)
@@ -117,28 +116,28 @@ struct
 
   fun sameRegAs x y = CB.sameCell (x, y)
 
-  val ptr = #create An.MARK_REG(fn r => enterGC(r,PTR))
-  val i32 = #create An.MARK_REG(fn r => enterGC(r,I32))
-  val i31 = #create An.MARK_REG(fn r => enterGC(r,I31))
-  val flt = #create An.MARK_REG(fn r => enterGC(r,REAL64))
-(* 64BIT: FIXME *)
-  fun ctyToAnn (CPS.NUMt{sz=31, tag=true}) = i31
-    | ctyToAnn (CPS.NUMt{sz=32, tag=false}) = i32
-    | ctyToAnn (CPS.NUMt _) = raise Fail "unsupported NUMt size"
-    | ctyToAnn (CPS.FLTt 64) = flt
+  val annPTR = #create An.MARK_REG(fn r => enterGC(r,PTR))
+  val annINT = #create An.MARK_REG(fn r => enterGC(r,INT))
+  val annTAGINT = #create An.MARK_REG(fn r => enterGC(r,TAGINT))
+  val annREAL64 = #create An.MARK_REG(fn r => enterGC(r,REAL64))
+
+  fun ctyToAnn (CPS.NUMt{tag=true, ...}) = annTAGINT
+    | ctyToAnn (CPS.NUMt{tag=false, ...}) = annINT
+    | ctyToAnn (CPS.FLTt 64) = annREAL64
+(* REAL32: FIXME *)
     | ctyToAnn (CPS.FLTt n) = raise Fail(concat["ctyToAnn: FLTt ", Int.toString n, " is unsupported"])
-    | ctyToAnn _ = ptr
+    | ctyToAnn _ = annPTR
 
   (* Convert kind to gc type *)
-  fun kindToGCty(CPS.P.INT 31) = I31
-    | kindToGCty(CPS.P.UINT 31) = I31
-    | kindToGCty(_) = I32
+  fun kindToGCty (CPS.P.INT 31) = TAGINT
+    | kindToGCty (CPS.P.UINT 31) = TAGINT
+    | kindToGCty _ = INT
 
   (* convert CPS type to gc type *)
   fun ctyToGCty (CPS.FLTt 64) = REAL64
     | ctyToGCty (CPS.FLTt n) = raise Fail(concat["ctyToGCty: FLTt ", Int.toString n, " is unsupported"])
-    | ctyToGCty (CPS.NUMt{sz=31, tag=true}) = I31	(* 64BIT: FIXME *)
-    | ctyToGCty (CPS.NUMt{sz=32, tag=false}) = I32
+    | ctyToGCty (CPS.NUMt{sz=31, tag=true}) = TAGINT	(* 64BIT: FIXME *)
+    | ctyToGCty (CPS.NUMt{sz=32, tag=false}) = INT
     | ctyToGCty (CPS.NUMt _) = raise Fail "unsupported NUMt size"
     | ctyToGCty _ = PTR
 
@@ -267,9 +266,9 @@ struct
               in  (newReg, newRegWithCty, newRegWithKind, newFreg) end
            else (Cells.newReg, Cells.newReg, Cells.newReg, Cells.newFreg)
 
-      fun markPTR e = if gctypes then M.MARK(e,ptr) else e
-      fun markI32 e = if gctypes then M.MARK(e,i32) else e
-      fun markFLT e = if gctypes then M.FMARK(e,flt) else e
+      fun markPTR e = if gctypes then M.MARK(e, annPTR) else e
+      fun markINT e = if gctypes then M.MARK(e, annINT) else e
+      fun markREAL64 e = if gctypes then M.FMARK(e, annREAL64) else e
       fun markGC (e, cty) = if gctypes then M.MARK(e, ctyToAnn cty) else e
       fun markNothing e = e
 
@@ -282,8 +281,8 @@ struct
 	     of CPS.FLTt 64 => M.FPR(M.FREG(fty, newFreg REAL64))
 (* REAL32: FIXME *)
               | CPS.FLTt n => raise Fail(concat["known: FLTt ", Int.toString n, " is unsupported"])  (* REAL32: FIXME *)
-              | CPS.NUMt{sz=31, tag=true} => M.GPR(M.REG(ity, newReg I31))
-              | CPS.NUMt{sz=32, tag=false} => M.GPR(M.REG(ity, newReg I32))
+              | CPS.NUMt{sz=31, tag=true} => M.GPR(M.REG(ity, newReg TAGINT))
+              | CPS.NUMt{sz=32, tag=false} => M.GPR(M.REG(ity, newReg INT))
               | CPS.NUMt _ => raise Fail "unsupported NUMt size"  (* 64BIT: FIXME *)
               | _ => M.GPR(M.REG(pty,newReg PTR))
             (* end case *)) :: known rest
@@ -684,7 +683,7 @@ struct
 
               and fgetPath(mem, e, CPS.OFFp _) = error "allocFrecord.fgetPath"
                 | fgetPath(mem, e, CPS.SELp(n, CPS.OFFp 0)) =
-                     markFLT(M.FLOAD(fty, fea(e, n), pi(mem, n)))
+                     markREAL64(M.FLOAD(fty, fea(e, n), pi(mem, n)))
                 | fgetPath(mem, e, CPS.SELp(n, p)) =
                   let val mem = pi(mem, n)
                   in  fgetPath(mem, markPTR(M.LOAD(ity, indexEA(e, n), mem)),p)
@@ -1114,8 +1113,8 @@ raise ex)
 
           and defWithKind (kind, x, e, k, hp) = define(newRegWithKind kind, x, e, k, hp)
 
-          and defI31(x, e, k, hp) = def(I31, x, e, k, hp)
-          and defI32(x, e, k, hp) = def(I32, x, e, k, hp)
+          and defI31(x, e, k, hp) = def(TAGINT, x, e, k, hp)
+          and defI32(x, e, k, hp) = def(INT, x, e, k, hp)
           and defBoxed(x, e, k, hp) = def(PTR, x, e, k, hp)
 
           (*
@@ -1191,8 +1190,8 @@ raise ex)
 		  gen(k, hp)
 		end
 
-          and copyM(31, x, v, k, hp) = copy(I31, x, v, k, hp)
-            | copyM(_, x, v, k, hp)  = copy(I32, x, v, k, hp)
+          and copyM(31, x, v, k, hp) = copy(TAGINT, x, v, k, hp)
+            | copyM(_, x, v, k, hp)  = copy(INT, x, v, k, hp)
 
 	(* normal branches *)
           and branch (cv, cmp, [v, w], yes, no, hp) =
@@ -1222,8 +1221,8 @@ raise ex)
 	      (* round number of bytes up to ws bytes *)
 		val n = IntInf.fromInt(((IntInf.toInt n + ws - 1) div ws) * ws)
 		val false_lab = newLabel ()
-		val r1 = newReg I32
-		val r2 = newReg I32
+		val r1 = newReg INT
+		val r2 = newReg INT
 		fun cmpWord i =
                       M.CMP(ity, M.NE,
                             M.LOAD(ity, M.ADD(ity,M.REG(ity, r1),i), R.readonly),
@@ -1266,13 +1265,13 @@ raise ex)
 		      e, hp+ws+len*ws)
 		end
 
-	(* Allocate a record with I32 components *)
-	  and mkI32block (vl, w, e, hp) = let
+	(* Allocate a record with machine-int-sized components *)
+	  and mkIntBlock (vl, w, e, hp) = let
                 val len = length vl
 		val desc = D.makeDesc' (len, D.tag_raw32)
 		in
 		  treeifyAlloc(w,
-		    allocRecord(markI32, memDisambig w, LI desc, vl, hp),
+		    allocRecord(markINT, memDisambig w, LI desc, vl, hp),
 		      e, hp+ws+len*ws)
 		end
 
@@ -1447,7 +1446,7 @@ raise ex)
           and gen (RECORD(RK_FCONT, vl, w, e), hp) = mkFblock(vl, w, e, hp)
             | gen (RECORD(RK_FBLOCK, vl, w, e), hp) = mkFblock(vl, w, e, hp)
             | gen (RECORD(RK_VECTOR, vl, w, e), hp) = mkVector(vl, w, e, hp)
-            | gen (RECORD(RK_I32BLOCK, vl, w, e), hp) = mkI32block(vl, w, e, hp)
+            | gen (RECORD(RK_I32BLOCK, vl, w, e), hp) = mkIntBlock(vl, w, e, hp)
             | gen (RECORD(_, vl, w, e), hp) = mkRecord(vl, w, e, hp)
 
             (*** SELECT ***)
@@ -1470,7 +1469,7 @@ raise ex)
             | gen (SWITCH(v, _, l), hp) =
               let val lab = newLabel ()
                   val labs = map (fn _ => newLabel()) l
-                  val tmpR = newReg I32 val tmp = M.REG(ity,tmpR)
+                  val tmpR = newReg INT val tmp = M.REG(ity,tmpR)
               in  emit(M.MV(ity, tmpR, laddr(lab, 0)));
                   emit(M.JMP(M.ADD(addrTy, tmp, M.LOAD(pty, scaleWord(tmp, v),
                                                        R.readonly)), labs));
@@ -1585,7 +1584,7 @@ raise ex)
                 of (31,32) =>
 		     defI32(x, M.SRL(ity, regbind v, one), e, hp)
                  | (8,31) =>
-		     copy(I31, x, v, e, hp)
+		     copy(TAGINT, x, v, e, hp)
                  | (8,32) =>
 		     defI32(x, M.SRL(ity, regbind v, one), e, hp)
                  | (n,m) => if n = m then copyM(m, x, v, e, hp)
@@ -1674,11 +1673,11 @@ raise ex)
             | gen (PURE(P.funwrap,[u],w,_,e), hp) = fselect(0,u,w,e,hp)
             | gen (PURE(P.iwrap,[u],w,_,e), _) = error "iwrap not implemented"
             | gen (PURE(P.iunwrap,[u],w,_,e), _) = error "iunwrap not implemented"
-            | gen (PURE(P.i32wrap,[u],w,_,e), hp) = mkI32block([(u, offp0)], w, e, hp)	(* 64BIT: FIXME *)
+            | gen (PURE(P.i32wrap,[u],w,_,e), hp) = mkIntBlock([(u, offp0)], w, e, hp)	(* 64BIT: FIXME *)
             | gen (PURE(P.i32unwrap,[u],w,_,e), hp) =
                 select(0, u, w, NUMt{sz=32, tag=false}, e, hp)
             | gen (PURE(P.wrap,[u],w,_,e), hp) = copy(PTR, w, u, e, hp)
-            | gen (PURE(P.unwrap,[u],w,_,e), hp) = copy(I32, w, u, e, hp)
+            | gen (PURE(P.unwrap,[u],w,_,e), hp) = copy(INT, w, u, e, hp)
 
                 (* Note: the gc type is unsafe! XXX *)
             | gen (PURE(P.cast,[u],w,_,e), hp) = copy(PTR, w, u, e, hp)
@@ -1815,14 +1814,14 @@ raise ex)
                * on a variety of machines, e.g. mips and sparc (maybe others).
                *)
             | gen (ARITH(P.testu(32,32), [v], x, _, e), hp) =
-              let val xreg = newReg I32
+              let val xreg = newReg INT
                   val vreg = regbind v
               in  updtHeapPtr hp;
                   emit(M.MV(ity, xreg, M.ADDT(ity, vreg, signBit)));
                   defI32(x, vreg, e, 0)
               end
             | gen (ARITH(P.testu(31,31), [v], x, _, e), hp) =
-              let val xreg = newReg I31
+              let val xreg = newReg TAGINT
                   val vreg = regbind v
               in  updtHeapPtr hp;
                   emit(M.MV(ity,xreg,M.ADDT(ity, vreg, signBit)));
@@ -1830,7 +1829,7 @@ raise ex)
               end
             | gen (ARITH(P.testu(32,31), [v], x, _, e), hp) =
               let val vreg = regbind v
-                  val tmp = newReg I32
+                  val tmp = newReg INT
                   val tmpR = M.REG(ity,tmp)
                   val lab = newLabel ()
               in  emit(M.MV(ity, tmp, allOnes'));
@@ -2011,7 +2010,7 @@ raise ex)
 		    | ([M.GPR x1, M.GPR x2],
 		       [(w1, CPS.NUMt{sz=32, tag=false}), (w2, CPS.NUMt{sz=32, tag=false})]
 		      ) => let
-			val (r1, r2) = (newReg I32, newReg I32)
+			val (r1, r2) = (newReg INT, newReg INT)
 			in
 			  addRegBinding(w1, r1);
 			  addRegBinding(w2, r2);
@@ -2036,7 +2035,7 @@ raise ex)
 	    | gen (BRANCH(P.fcmp{oper=P.fsgn,size=64}, [v], p, d, e), hp) = let
 	        val trueLab = newLabel ()
 	        val r = fregbind v
-                val r' = newReg I32
+                val r' = newReg INT
                 val rReg = M.REG(ity, r')
               (* address of the word that contains the sign bit *)
                 val addr = if MachineSpec.bigEndian
