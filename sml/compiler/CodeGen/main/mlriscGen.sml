@@ -106,8 +106,8 @@ struct
       structure GC = SMLGCType)
 
 (* 64BIT: *)
-  val I31    = SMLGCType.I31     (* tagged integers *)
-  val I32    = SMLGCType.I32     (* untagged integers *)
+  val I31    = SMLGCType.TAGGED_INT
+  val I32    = SMLGCType.INT
 (* REAL32: *)
   val REAL64 = SMLGCType.REAL64  (* untagged floats *)
   val PTR    = SMLGCType.PTR     (* boxed objects *)
