@@ -1907,13 +1907,13 @@ raise ex)
                 rawload (kind, M.ADD(addrTy,regbind i, regbind j), x, e, hp)
 
             (*** SETTER ***)
-            | gen (SETTER(P.rawupdate(FLTt 64),[v,i,w],e),hp) =
-                (emit(M.FSTORE(fty,scale8(regbind' v, i), fregbind w,R.memory));
-                 gen(e, hp))
-            | gen (SETTER(P.rawupdate _,[v,i,w],e),hp) =
-(* 64BIT: Assumes 32-bit. Needs 64-bit support later! *)
-                (emit(M.STORE(ity,scaleWord(regbind' v, i), regbind' w,R.memory));
-                 gen(e, hp))
+            | gen (SETTER(P.rawupdate(FLTt 64),[v,i,w],e),hp) = (
+(* REAL32: FIXME *)
+                emit(M.FSTORE(fty, scale8(regbind' v, i), fregbind w,R.memory));
+                gen(e, hp))
+            | gen (SETTER(P.rawupdate _, [v,i,w], e), hp) = (
+                emit(M.STORE(ity, scaleWord(regbind' v, i), regbind' w, R.memory));
+                gen(e, hp))
 
             | gen (SETTER(P.assign, [a as VAR arr, v], e), hp) =
               let val ea = regbind a
