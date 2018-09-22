@@ -73,7 +73,7 @@ fun branch (e, te, fe) =
     end
 
 (* equal : lvar * lvar -> lexp
- *  peqv is an lvar bound to the polyequal function, while seqv is an lvar bound to 
+ *  peqv is an lvar bound to the polyequal function, while seqv is an lvar bound to
  *  a string equality function. Gives up and invokes polyequal on tuples of length
  *  greater than 10.  This is used only in the module Wrapping (FLINT/reps/wrapping.sml)
  *  to replace a branch on POLYEQUAL with a branch on a more type-specific equality in
@@ -106,7 +106,7 @@ fun equal (peqv, seqv) =
 		    in case PT.numSize prim  (* is it a PT_NUM? *)
 			of SOME sz =>
 			   BRANCH((NONE, PO.mkIEQL sz, numeqty sz, []), [x,y], te, fe)
-			 | NONE => 
+			 | NONE =>
 			   if PT.pt_eq(prim, PT.ptc_string) then
 			       branch(APP(VAR seqv, [x,y]), te, fe)
 			   else raise Poly
