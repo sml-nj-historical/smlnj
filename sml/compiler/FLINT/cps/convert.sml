@@ -186,12 +186,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
       | primwrap (NUMt _) = raise Fail "unsupported NUMt size" (* 64BIT: *)
       | primwrap (FLTt 64) = P.fwrap
       | primwrap (FLTt n) = raise Fail(concat["primwrap: FLTt ", Int.toString n, " is unsupported"]) (* REAL32: *)
-      | primwrap _ = P.wrap
-(*
-    fun primwrap(NUMP{sz, ...}) = P.iwrap sz
-      | primwrap(FLTt sz) = P.fwrap sz
-      | primwrap _ = P.wrap
-*)
+      | primwrap _ = P.box
 
   (* primunwrap: cty -> P.pure *)
     fun primunwrap (NUMt{sz=31, tag=true}) = P.iunwrap
@@ -199,7 +194,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
       | primunwrap (NUMt _) = raise Fail "unsupported NUMt size" (* 64BIT: *)
       | primunwrap (FLTt 64) = P.funwrap
       | primunwrap (FLTt n) = raise Fail(concat["primunwrap: FLTt ", Int.toString n, " is unsupported"]) (* REAL32: *)
-      | primunwrap _ = P.unwrap
+      | primunwrap _ = P.unbox
 
   (* arithop: AP.arithop -> P.arithop *)
     fun arithop AP.NEG = P.~
@@ -619,18 +614,18 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 		      val ety = LT.ltc_tuple[bty,bty,bty]
 		      val (xx,x0,x1,x2) = (mkv(),mkv(),mkv(),mkv())
 		      val (y,z,z') = (mkv(),mkv(),mkv())
-		   in PURE(P.unwrap,[lpvar x],xx,ctype(ety),
+		   in PURE(P.unbox,[lpvar x],xx,ctype(ety),
 			SELECT(0,VAR xx,x0,BOGt,
 			  SELECT(1,VAR xx,x1,BOGt,
 			    SELECT(2,VAR xx,x2,BOGt,
 			      RECORD(RK_RECORD,[(lpvar m, OFFp0),
 						(VAR x2, OFFp0)], z,
-				     PURE(P.wrap,[VAR z],z',BOGt,
+				     PURE(P.box,[VAR z],z',BOGt,
 				       RECORD(RK_RECORD,[(VAR x0,OFFp0),
 							 (VAR x1,OFFp0),
 							 (VAR z', OFFp0)],
 					      y,
-					  PURE(P.wrap,[VAR y],v,BOGt,
+					  PURE(P.box,[VAR y],v,BOGt,
 					       loop(e,c)))))))))
 		  end
 

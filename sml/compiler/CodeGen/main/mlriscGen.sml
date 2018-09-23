@@ -1675,8 +1675,8 @@ raise ex)
             | gen (PURE(P.i32wrap,[u],w,_,e), hp) = mkIntBlock([(u, offp0)], w, e, hp)	(* 64BIT: FIXME *)
             | gen (PURE(P.i32unwrap,[u],w,_,e), hp) =
                 select(0, u, w, NUMt{sz=32, tag=false}, e, hp)
-            | gen (PURE(P.wrap,[u],w,_,e), hp) = copy(PTR, w, u, e, hp)
-            | gen (PURE(P.unwrap,[u],w,_,e), hp) = copy(INT, w, u, e, hp)
+            | gen (PURE(P.box, [u], w, _, e), hp) = copy(PTR, w, u, e, hp)
+            | gen (PURE(P.unbox, [u], w, _, e), hp) = copy(INT, w, u, e, hp)
 
                 (* Note: the gc type is unsafe! XXX *)
             | gen (PURE(P.cast,[u],w,_,e), hp) = copy(PTR, w, u, e, hp)

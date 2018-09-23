@@ -183,15 +183,15 @@ fun cexptrans(ce) =
 
   (*** this special case is a temporary hack; ask ZHONG for details *)
 (*
-    | PURE(P.wrap,[u],w,t as PTRt(FPT _),ce) =>
-          (addty(w, t); PURE(P.wrap, [vtrans u], w, t, cexptrans ce))
-    | PURE(P.unwrap,[u],w,t as PTRt(FPT _),ce) =>
-          (addty(w, t); PURE(P.unwrap, [vtrans u], w, t, cexptrans ce))
+    | PURE(P.box,[u],w,t as PTRt(FPT _),ce) =>
+          (addty(w, t); PURE(P.box, [vtrans u], w, t, cexptrans ce))
+    | PURE(P.unbox,[u],w,t as PTRt(FPT _),ce) =>
+          (addty(w, t); PURE(P.unbox, [vtrans u], w, t, cexptrans ce))
 *)
 
-    | PURE(P.wrap,[u],w,t,ce) =>
+    | PURE(P.box,[u],w,t,ce) =>
           (addvl(w,vtrans u); cexptrans ce)
-    | PURE(P.unwrap,[u],w,t,ce) =>
+    | PURE(P.unbox,[u],w,t,ce) =>
           (case u of VAR z => addty(z,t)
                    | _ => ();
            addvl(w,vtrans u); cexptrans ce)

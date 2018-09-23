@@ -4,7 +4,8 @@
  * All rights reserved.
  *)
 
-structure CPS = struct
+structure CPS : CPS =
+  struct
 
 local structure PT = PrimTyc
       fun bug s = ErrorMsg.impossible ("CPS:" ^ s)
@@ -99,7 +100,13 @@ structure P = struct
       | copy_inf of int
       | real of {fromkind: numkind, tokind: numkind}
       | subscriptv
-      | gettag | mkspecial | wrap | unwrap | cast | getcon | getexn
+      | gettag | mkspecial | cast | getcon | getexn
+    (* tagging/boxing of numbers; numkind should be either `INT` or `FLOAT` *)
+(*
+      | wrap of numkind
+      | unwrap of numkind
+*)
+      | box | unbox
       | fwrap | funwrap
       | iwrap | iunwrap		(* fake wrapping of tagged integers *)
       | i32wrap | i32unwrap	(* 64BIT: FIXME *)
