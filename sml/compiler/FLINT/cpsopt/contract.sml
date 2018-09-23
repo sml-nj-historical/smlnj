@@ -174,17 +174,19 @@ fun equalUptoAlpha(ce1,ce2) =
   in  equ nil (ce1,ce2)
   end
 
-datatype info = FNinfo of {args: lvar list,
-	       	           body : cexp option ref,
-			   specialuse: int ref option ref,
-			   liveargs : bool list option ref
-			   }
-	      | RECinfo of record_kind * (value * accesspath) list
-	      | SELinfo of int * value * cty
-	      | OFFinfo of int * value
-              | WRPinfo of P.pure * value
-              | IFIDIOMinfo of {body : (lvar * cexp * cexp) option ref}
-	      | MISCinfo of cty
+datatype info
+  = FNinfo of {
+	args: lvar list,
+	body : cexp option ref,
+	specialuse: int ref option ref,
+	liveargs : bool list option ref
+      }
+  | RECinfo of record_kind * (value * accesspath) list
+  | SELinfo of int * value * cty
+  | OFFinfo of int * value
+  | WRPinfo of P.numkind * value				(* P.wrap of a value *)
+  | IFIDIOMinfo of {body : (lvar * cexp * cexp) option ref}
+  | MISCinfo of cty
 
 fun contract {function=(fkind,fvar,fargs,ctyl,cexp), click, last, size=cpssize} =
 (* NOTE: the "last" argument is currently ignored. *)
@@ -242,8 +244,7 @@ fun enterREC(w,kind,vl) = enter(w,{info=RECinfo(kind,vl), called=ref 0,used=ref 
 fun enterMISC (w,ct) = enter(w,{info=MISCinfo ct, called=ref 0, used=ref 0})
 val miscBOG = MISCinfo BOGt
 fun enterMISC0 w = enter(w,{info=miscBOG, called=ref 0, used=ref 0})
-fun enterWRP(w,p,u) =
-      enter(w,{info=WRPinfo(p,u), called=ref 0, used=ref 0})
+fun enterWRP (w, kind, u) = enter(w, {info=WRPinfo(kind, u), called=ref 0, used=ref 0})
 
 fun enterFN (_,f,vl,cl,cexp) =
       (enter(f,{called=ref 0,used=ref 0,
@@ -318,12 +319,7 @@ let val rec g1 =
   | SETTER(i,vl,e) => (app use vl; g1 e)
   | LOOKER(i,vl,w,_,e) => (app use vl; enterMISC0 w; g1 e)
   | ARITH(i,vl,w,_,e) => (app use vl; enterMISC0 w; g1 e)
-  | PURE(p as P.iwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
-  | PURE(p as P.iunwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
-  | PURE(p as P.i32wrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)	(* 64BIT: FIXME *)
-  | PURE(p as P.i32unwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)	(* 64BIT: FIXME *)
-  | PURE(p as P.fwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
-  | PURE(p as P.funwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
+  | PURE(P.wrap kind, [u], w, _, e) => (use u; enterWRP(w, kind, u); g1 e)
   | PURE(i,vl,w,_,e) => (app use vl; enterMISC0 w; g1 e)
   | RCC(k,l,p,vl,wtl,e) => (app use vl; app (enterMISC0 o #1) wtl; g1 e)
 in  g1
@@ -1082,30 +1078,18 @@ end
      | (P.real{fromkind=P.INT _,tokind=P.FLOAT sz}, [NUM{ival, ...}]) =>
 	(* NOTE: this conversion might lose precision *)
 	  REAL{rval = RealLit.fromInt ival, ty=sz}
-     | (P.funwrap,[x as VAR v]) =>
-          (case get(v) of {info=WRPinfo(P.fwrap,u),...} =>
-			    (click "U"; use_less x; u)
-                        | _ => raise ConstFold)
-     | (P.fwrap,[x as VAR v]) =>
-          (case get(v) of {info=WRPinfo(P.funwrap,u),...} =>
-			  (click "U"; use_less x; u)
-                        | _ => raise ConstFold)
-     | (P.iunwrap,[x as VAR v]) =>
-          (case get(v) of {info=WRPinfo(P.iwrap,u),...} =>
-			  (click "U"; use_less x; u)
-                        | _ => raise ConstFold)
-     | (P.iwrap,[x as VAR v]) =>
-          (case get(v) of {info=WRPinfo(P.iunwrap,u),...} =>
-			  (click "U"; use_less x; u)
-                        | _ => raise ConstFold)
-     | (P.i32unwrap,[x as VAR v]) =>
-          (case get(v) of {info=WRPinfo(P.i32wrap,u),...} =>
-			  (click "U"; use_less x; u)
-                        | _ => raise ConstFold)
-     | (P.i32wrap,[x as VAR v]) =>
-          (case get(v) of {info=WRPinfo(P.i32unwrap,u),...} =>
-			  (click "U"; use_less x; u)
-                        | _ => raise ConstFold)
+     | (P.unwrap(P.INT sz), [x as VAR v]) => (case get v
+	   of {info=WRPinfo(P.INT sz', u), ...} => if (sz = sz')
+		then (click "U"; use_less x; u)
+		else bug "wrap/unwrap float size conflict"
+	    | _ => raise ConstFold
+	  (* end case *))
+     | (P.unwrap(P.FLOAT sz), [x as VAR v]) => (case get v
+	   of {info=WRPinfo(P.FLOAT sz', u), ...} => if (sz = sz')
+		then (click "U"; use_less x; u)
+		else bug "wrap/unwrap int size conflict"
+	    | _ => raise ConstFold
+	  (* end case *))
      | _ => raise ConstFold
 
 in  debugprint "Contract: "; debugflush();

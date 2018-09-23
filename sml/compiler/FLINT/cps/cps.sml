@@ -101,15 +101,14 @@ structure P = struct
       | real of {fromkind: numkind, tokind: numkind}
       | subscriptv
       | gettag | mkspecial | cast | getcon | getexn
-    (* tagging/boxing of numbers; numkind should be either `INT` or `FLOAT` *)
-(*
-      | wrap of numkind
-      | unwrap of numkind
-*)
       | box | unbox
+    (* tagging/boxing of numbers; numkind should be either `INT` or `FLOAT` *)
+      | wrap of numkind | unwrap of numkind
+(*
       | fwrap | funwrap
       | iwrap | iunwrap		(* fake wrapping of tagged integers *)
       | i32wrap | i32unwrap	(* 64BIT: FIXME *)
+*)
       | getseqdata | recsubscript | raw64subscript | newarray0
       | rawrecord of record_kind option
          (* allocate uninitialized words from the heap *)

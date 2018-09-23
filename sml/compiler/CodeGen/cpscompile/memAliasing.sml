@@ -1,4 +1,8 @@
-(*
+(* memAliasing.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Perform memory aliasing analysis.
  *
  * The old memory disambiguation module discards aliasing information
@@ -12,7 +16,7 @@
  * Some target level issues
  * ------------------------
  * In the source level two CPS allocations cannot be aliased by definition.
- * However, when allocations are translated into target code, they become
+ * When allocations are translated into target code, howwever, they become
  * stores to fixed offsets from the heap pointer.  Two allocation stores
  * that may write to the same offset are aliased.  Allocation stores that are
  * in disjoint program paths may be assigned the same heap allocation offset.
@@ -55,7 +59,7 @@ struct
    val cellShift = (case cellSz of 4 => 0w2 | 8 => 0w3)
 
    (*
-    * The following functions advances the heap pointer.
+    * The following functions advance the heap pointer.
     * These functions are highly dependent on the runtime system and
     * how data structures are represented.
     * IMPORTANT: we are assuming that the new array representation is used.
@@ -72,6 +76,15 @@ struct
 	    8*n + hp
 	  end
    fun vectorSize(n,hp) = n * 4 + 16 + hp
+ (* storage needed to wrap an integer or float *)
+   fun wrapSize (P.FLOAT 64, hp) = frecordSize(1, hp)
+(* REAL32: FIXME *)
+     | wrapSize (P.INT sz, hp) =
+	 if (sz <= Target.defaultIntSz)
+	   then hp
+(* NOTE: we might want padding for 64-bit ints on 32-bit machines in the future *)
+	   else hp + cellSz * (1 + sz div Target.mlValueSz)
+     | wrapSize _ = error "wrapSize: bogus number kind"
 
    fun allocRecord(C.RK_FBLOCK,vs,hp) = frecordSize(length vs,hp)
      | allocRecord(C.RK_FCONT,vs,hp)  = frecordSize(length vs,hp)
@@ -88,8 +101,8 @@ struct
    (*
     * Analyze a set of CPS functions
     *)
-   fun analyze(cpsFunctions) =
-   let fun sizeOf(C.RECORD(rk,vs,x,k),hp) = sizeOf(k,allocRecord(rk,vs,hp))
+   fun analyze(cpsFunctions) = let
+       fun sizeOf(C.RECORD(rk,vs,x,k),hp) = sizeOf(k,allocRecord(rk,vs,hp))
          | sizeOf(C.SELECT(off,v,x,cty,k),hp) = sizeOf(k,hp)
          | sizeOf(C.OFFSET(off,v,x,k),hp) = sizeOf(k,hp)
          | sizeOf(C.APP(f,vs),hp) = hp
@@ -100,10 +113,9 @@ struct
          | sizeOf(C.SETTER(P.assign,vs,k),hp) = sizeOf(k,hp+storeListSize)
          | sizeOf(C.SETTER(P.update,vs,k),hp) = sizeOf(k,hp+storeListSize)
          | sizeOf(C.SETTER(_,vs,k),hp) = sizeOf(k,hp)
-         | sizeOf(C.PURE(P.fwrap,vs,x,cty,k),hp) = sizeOf(k,frecordSize(1,hp))
          | sizeOf(C.PURE(P.mkspecial,vs,x,cty,k),hp) = sizeOf(k, hp + 2*cellSz)
          | sizeOf(C.PURE(P.makeref,vs,x,cty,k),hp) = sizeOf(k, hp + 2*cellSz)
-         | sizeOf(C.PURE(P.i32wrap,vs,x,cty,k),hp) = sizeOf(k, hp + 2*cellSz)	(* 64BIT: FIXME *)
+         | sizeOf(C.PURE(P.wrap kind, _, _, _, k), hp) = sizeOf(k, wrapSize(kind, hp))
          | sizeOf(C.PURE(P.newarray0,vs,x,cty,k),hp) = sizeOf(k,hp+array0Size)
          | sizeOf(C.PURE(p,vs,x,cty,k),hp) = sizeOf(k,hp)
          | sizeOf(C.ARITH(a,vs,x,cty,k),hp) = sizeOf(k,hp)
@@ -193,8 +205,11 @@ struct
            fun arrayptr v = PT.pi(value v, 0)
 
            fun mkspecial(x,v,hp) = mkNormalRecord(x,[(v,off0)],hp)
-           fun fwrap(x,v,hp) = mkFRecord(x,[(v,off0)],hp)
-           fun i32wrap(x,v,hp) = mkNormalRecord(x,[(v,off0)],hp)	(* 64BIT: FIXME *)
+	   fun mkWrap (P.FLOAT 64, x, v, hp) = mkFRecord(x, [(v, off0)], hp)
+	     | mkWrap (P.INT sz, x, v, hp) = if (sz <= Target.defaultIntSz)
+		 then ()
+		 else mkNormalRecord(x, [(v, off0)], hp)
+	     | mkWrap _ = error "mkWrap: bogus number kind"
            fun makeref(x,v,hp) = mkNormalRecord(x,[(v,off0)],hp)
            fun newarray0(x,hp) =
                bind(x,PT.mkRecord(NONE,[PT.mkRecord(NONE,[])]))
@@ -267,10 +282,9 @@ struct
                  (mkspecial(x,v,hp); infer(k,hp+8))
              | infer(C.PURE(P.makeref,[v],x,cty,k),hp) =
                  (makeref(x,v,hp); infer(k,hp+8))
-             | infer(C.PURE(P.fwrap,[v],x,cty,k),hp) =
-                 (fwrap(x,v,hp); infer(k,frecordSize(1,hp)))
-             | infer(C.PURE(P.i32wrap,[v],x,cty,k),hp) =	(* 64BIT: FIXME *)
-                 (i32wrap(x,v,hp); infer(k,hp+8))
+	     | infer(C.PURE(P.wrap kind, [v], x, cty, k), hp) = (
+		 mkWrap(kind, x, v, hp);
+		 infer(k, wrapSize(kind, hp)))
              | infer(C.PURE(P.getcon,[v],x,_,k), hp) =
                  (getcon(x, v); infer(k, hp))
              | infer(C.PURE(P.getexn,[v],x,_,k), hp) =

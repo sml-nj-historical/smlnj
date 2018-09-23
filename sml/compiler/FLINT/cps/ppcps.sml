@@ -139,22 +139,18 @@ fun pureName P.length = "length"
   | pureName (P.extend_inf i) =  concat ["extend_", cvtParam i, "_inf"]
   | pureName (P.real{fromkind=P.FLOAT 64,tokind=P.INT 31}) = "real"
   | pureName (P.real{fromkind,tokind}) =
-    ("real" ^ numkindName fromkind ^ "_" ^ numkindName tokind)
+      concat ["real", numkindName fromkind, "_", numkindName tokind]
   | pureName P.subscriptv = "subscriptv"
   | pureName (P.pure_numsubscript{kind}) = ("numsubscriptv" ^ numkindName kind)
   | pureName P.gettag = "gettag"
   | pureName P.mkspecial = "mkspecial"
-  | pureName P.box = "box"
-  | pureName P.unbox = "unbox"
   | pureName P.cast = "cast"
   | pureName P.getcon = "getcon"
   | pureName P.getexn = "getexn"
-  | pureName P.fwrap = "fwrap"
-  | pureName P.funwrap = "funwrap"
-  | pureName P.iwrap = "iwrap"
-  | pureName P.iunwrap = "iunwrap"
-  | pureName P.i32wrap = "i32wrap"		(* 64BIT: FIXME *)
-  | pureName P.i32unwrap = "i32unwrap"		(* 64BIT: FIXME *)
+  | pureName P.box = "box"
+  | pureName P.unbox = "unbox"
+  | pureName (P.wrap kind) = "wrap_" ^ numkindName kind
+  | pureName (P.unwrap kind) = "unwrap_" ^ numkindName kind
   | pureName P.getseqdata = "getseqdata"
   | pureName P.recsubscript = "recsubscript"
   | pureName P.raw64subscript = "raw64subscript"

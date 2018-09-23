@@ -195,20 +195,22 @@ fun cexptrans(ce) =
           (case u of VAR z => addty(z,t)
                    | _ => ();
            addvl(w,vtrans u); cexptrans ce)
-    | PURE(P.fwrap,[u],w,t,ce) =>
+    | PURE(p as P.wrap(P.INT sz), [u], w, t, ce) =>
+	if (sz <= Target.defaultIntSz)
+	  then (addvl(w,vtrans u); cexptrans ce) (* remove wrapping of tagged ints *)
+	  else (addty(w,t); PURE(p, [vtrans u], w, t, cexptrans ce))
+    | PURE(p as P.unwrap(P.INT sz), [u], w, t, ce) =>
+	if (sz <= Target.defaultIntSz)
+	  then (addvl(w,vtrans u); cexptrans ce) (* remove unwrapping of tagged ints *)
+	  else (addty(w,t); PURE(p,[ vtrans u], w, t, cexptrans ce))
+    | PURE(p as P.wrap(P.FLOAT _), [u], w, t, ce) =>
 	if unboxedfloat
-          then (addty(w,t); PURE(P.fwrap,[vtrans u],w,t,cexptrans ce))
+          then (addty(w,t); PURE(p, [vtrans u], w, t, cexptrans ce))
           else (addvl(w,vtrans u); cexptrans ce)
-    | PURE(P.funwrap,[u],w,t,ce) =>
+    | PURE(p as P.unwrap(P.FLOAT _), [u], w, t, ce) =>
 	if unboxedfloat
-          then (addty(w,t); PURE(P.funwrap,[vtrans u],w,t,cexptrans ce))
+          then (addty(w,t); PURE(p, [vtrans u], w, t, cexptrans ce))
           else (addvl(w,vtrans u); cexptrans ce)
-    | PURE(P.iwrap,[u],w,t,ce) => (addvl(w,vtrans u); cexptrans ce)
-    | PURE(P.iunwrap,[u],w,t,ce) => (addvl(w,vtrans u); cexptrans ce)
-    | PURE(P.i32wrap,[u],w,t,ce) =>	(* 64BIT: FIXME *)
-	(addty(w,t); PURE(P.i32wrap,[vtrans u],w,t,cexptrans ce))
-    | PURE(P.i32unwrap,[u],w,t,ce) =>
-	(addty(w,t); PURE(P.i32unwrap,[vtrans u],w,t,cexptrans ce))
     | PURE(P.getcon,[u],w,t,ce) =>
 	(addty(w,t); select(0,vtrans u,w,t,cexptrans ce))
     | PURE(P.getexn,[u],w,t,ce) =>

@@ -1015,12 +1015,12 @@ struct
 		    add(x,t); init e)
                | ARITH(_,vl,x,t,e) => (addValues vl; add(x,t); init e)
                | RCC(_,_,_,vl,wl,e) => (addValues vl; app add wl; init e)
-               | PURE(p,vl,x,t,e) =>
-                    (case p of
-                       P.fwrap => hasFloats := true
-                     | _ => ();
-                     addValues vl; add(x,t); init e
-                    )
+               | PURE(p,vl,x,t,e) => (
+		   case p
+		    of P.wrap(P.FLOAT _) => hasFloats := true
+                     | _ => ()
+		   (* end case *);
+		   addValues vl; add(x,t); init e)
                | BRANCH(_,vl,_,e1,e2) => (addValues vl; init e1; init e2)
                | APP(v,vl) => (addValue v; addValues vl)
                | _ => error "genCPSFunction"
@@ -1668,15 +1668,28 @@ raise ex)
                   emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI'(hp+ws)), regbind' v, mem));
                   treeifyAlloc(x, hp+ws, e, hp+2*ws)
                 end
-            | gen (PURE(P.fwrap,[u],w,_,e), hp) = mkFblock([(u, offp0)],w,e,hp)
-            | gen (PURE(P.funwrap,[u],w,_,e), hp) = fselect(0,u,w,e,hp)
-            | gen (PURE(P.iwrap,[u],w,_,e), _) = error "iwrap not implemented"
-            | gen (PURE(P.iunwrap,[u],w,_,e), _) = error "iunwrap not implemented"
-            | gen (PURE(P.i32wrap,[u],w,_,e), hp) = mkIntBlock([(u, offp0)], w, e, hp)	(* 64BIT: FIXME *)
-            | gen (PURE(P.i32unwrap,[u],w,_,e), hp) =
-                select(0, u, w, NUMt{sz=32, tag=false}, e, hp)
             | gen (PURE(P.box, [u], w, _, e), hp) = copy(PTR, w, u, e, hp)
             | gen (PURE(P.unbox, [u], w, _, e), hp) = copy(INT, w, u, e, hp)
+	    | gen (PURE(P.wrap kind, [u], w, _, e), hp) = (case kind
+		 of P.FLOAT 64 => mkFblock([(u, offp0)],w,e,hp)
+(* REAL32: FIXME *)
+		  | P.INT sz => if (sz < ity)
+		        then error "wrap for tagged ints is not implemented"
+		      else if (sz = ity)
+		        then mkIntBlock([(u, offp0)], w, e, hp)
+			else error(concat["wrap(INT ", Int.toString sz, ") is not implemented"])
+		  | _ => error "wrap: bogus kind"
+		(* end case *))
+	    | gen (PURE(P.unwrap kind, [u], w, _, e), hp) = (case kind
+		 of P.FLOAT 64 => fselect(0,u,w,e,hp)
+(* REAL32: FIXME *)
+		  | P.INT sz => if (sz < ity)
+		        then error "unwrap for tagged ints is not implemented"
+		      else if (sz = ity)
+			then select(0, u, w, NUMt{sz=sz, tag=false}, e, hp)
+			else error(concat["unwrap(INT ", Int.toString sz, ") is not implemented"])
+		  | _ => error "unwrap: bogus kind"
+		(* end case *))
 
                 (* Note: the gc type is unsafe! XXX *)
             | gen (PURE(P.cast,[u],w,_,e), hp) = copy(PTR, w, u, e, hp)
