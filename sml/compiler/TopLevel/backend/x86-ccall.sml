@@ -4,6 +4,7 @@
  *)
 local
     (* turn on "fast-fp"... *)
+(* QUESTION: the "x86-fast-fp" control does not seem to exist!!! *)
     val _ = MLRiscControl.flag "x86-fast-fp" := true
     (* The following is a GROSS HACK!
      *
