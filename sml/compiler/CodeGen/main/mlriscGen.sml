@@ -417,19 +417,19 @@ struct
           datatype treeify = TREEIFY | TREEIFIED | COMPUTE | DEAD
           exception UseCntTbl
           val useCntTbl : treeify IntHashTable.hash_table =
-	      IntHashTable.mkTable(32, UseCntTbl)
+	        IntHashTable.mkTable(32, UseCntTbl)
           fun treeify i = getOpt (IntHashTable.find useCntTbl i, DEAD)
           val addCntTbl = IntHashTable.insert useCntTbl
           fun markAsTreeified r = addCntTbl(r, TREEIFIED)
+
           (*
            * Reset the bindings and use count tables. These tables
            * can be reset at the same time.
            *)
-          fun clearTables() =
-              (IntHashTable.clear gpRegTbl;
-               IntHashTable.clear fpRegTbl;
-               IntHashTable.clear useCntTbl
-              )
+          fun clearTables() = (
+		IntHashTable.clear gpRegTbl;
+		IntHashTable.clear fpRegTbl;
+		IntHashTable.clear useCntTbl)
 
           (*
            * memDisambiguation uses the new register counters,
@@ -441,8 +441,8 @@ struct
           (*
            * Points-to analysis projection.
            *)
-          fun pi(x as ref(PT.TOP _),_) = x
-            | pi(x,i) = PT.pi(x,i)
+          fun pi (x as ref(PT.TOP _), _) = x
+            | pi (x, i) = PT.pi(x, i)
 
           val memDisambigFlag = !CG.memDisambiguate
 
@@ -454,12 +454,10 @@ struct
                  )
               else R.memory
 
-          fun getRegionPi(e,i) =
-              if memDisambigFlag then
-                 (case e of
-                    CPS.VAR v => pi(memDisambig v,i)
-                  | _ => R.readonly
-                 )
+          fun getRegionPi (e, i) = if memDisambigFlag
+		then (case e
+                   of CPS.VAR v => pi(memDisambig v, i)
+                    | _ => R.readonly)
               else R.memory
 
           fun dataptrRegion v = getRegionPi(v, 0)
@@ -622,16 +620,16 @@ struct
 		    else advBy hp
 		end
 
-          fun testLimit hp =
-          let fun assignCC(M.CC(_, cc), v) = emit(M.CCMV(cc, v))
-                | assignCC _ = error "testLimit.assign"
-          in  updtHeapPtr(hp);
-              case C.exhausted
-              of NONE => ()
-               | SOME cc => assignCC(cc, gcTest)
-              (*esac*)
-          end
-
+          fun testLimit hp = let
+                fun assignCC(M.CC(_, cc), v) = emit(M.CCMV(cc, v))
+                  | assignCC _ = error "testLimit.assign"
+		in
+		  updtHeapPtr hp;
+		  case C.exhausted
+		   of NONE => ()
+		    | SOME cc => assignCC(cc, gcTest)
+		  (* end case *)
+		end
 
           (*
            * Function to allocate an integer record
@@ -642,30 +640,29 @@ struct
           fun indexEA(r, 0) = r
             | indexEA(r, n) = M.ADD(addrTy, r, LI'(n*ws))
 
-          fun allocRecord(markComp, mem, desc, fields, hp) =
-          let fun getField(v, e, CPS.OFFp 0) = e
-                | getField(v, e, CPS.OFFp n) = M.ADD(addrTy, e, LI'(ws*n))
-                | getField(v, e, p) = getPath(getRegion v, e, p)
-
-              and getPath(mem, e, CPS.OFFp n) = indexEA(e, n)
-                | getPath(mem, e, CPS.SELp(n, CPS.OFFp 0)) =
-                     markComp(M.LOAD(ity, indexEA(e, n), pi(mem, n)))
-                | getPath(mem, e, CPS.SELp(n, p)) =
-                  let val mem = pi(mem, n)
-                  in  getPath(mem, markPTR(M.LOAD(ity, indexEA(e, n), mem)), p)
-                  end
-
-              fun storeFields([], hp, elem) = hp
-                | storeFields((v, p)::fields, hp, elem) =
-                  (emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI' hp),
-                           getField(v, regbind' v, p), pi(mem, elem)));
-                   storeFields(fields, hp+ws, elem+1)
-                  )
-
-          in  emit(M.STORE(ity, ea(C.allocptr, hp), desc, pi(mem, ~1)));
-              storeFields(fields, hp+ws, 0);
-              hp+ws
-          end
+          fun allocRecord (markComp, mem, desc, fields, hp) = let
+		fun getField (v, e, CPS.OFFp 0) = e
+		  | getField (v, e, CPS.OFFp n) = M.ADD(addrTy, e, LI'(ws*n))
+		  | getField (v, e, p) = getPath(getRegion v, e, p)
+		and getPath (mem, e, CPS.OFFp n) = indexEA(e, n)
+		  | getPath (mem, e, CPS.SELp(n, CPS.OFFp 0)) =
+		      markComp(M.LOAD(ity, indexEA(e, n), pi(mem, n)))
+		  | getPath(mem, e, CPS.SELp(n, p)) = let
+		      val mem = pi(mem, n)
+		      in
+			getPath(mem, markPTR(M.LOAD(ity, indexEA(e, n), mem)), p)
+		      end
+		fun storeFields([], hp, elem) = hp
+		  | storeFields((v, p)::fields, hp, elem) = (
+		      emit(M.STORE(ity,
+				   M.ADD(addrTy, C.allocptr, LI' hp),
+				   getField (v, regbind' v, p), pi(mem, elem)));
+		      storeFields (fields, hp+ws, elem+1))
+	       in
+		 emit(M.STORE(ity, ea(C.allocptr, hp), desc, pi(mem, ~1)));
+		 storeFields(fields, hp+ws, 0);
+		 hp+ws
+	       end
 
           (*
            * Functions to allocate a floating point record

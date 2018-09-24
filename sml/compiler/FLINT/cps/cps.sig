@@ -199,7 +199,9 @@ signature CPS =
        *)
       | RCC of rcc_kind * string * CTypes.c_proto * value list *
 	       (lvar * cty) list * cexp
+
     and rcc_kind = FAST_RCC | REENTRANT_RCC
+
     withtype function = fun_kind * lvar * lvar list * cty list * cexp
 
     val combinepaths : accesspath * accesspath -> accesspath
