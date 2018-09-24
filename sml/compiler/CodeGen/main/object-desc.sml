@@ -5,8 +5,8 @@
  *
  * The encoding of object description headers.
  *
- * WARNING: this file must agree with the run-time system values and those
- * used in boot/core.sml and boot/Unsafe/object.sml.
+ * WARNING: this file must agree with the run-time system values and the
+ * values used in boot/core.sml and boot/Unsafe/object.sml.
  *)
 
 structure ObjectDesc :> OBJECT_DESC =
@@ -36,6 +36,7 @@ structure ObjectDesc :> OBJECT_DESC =
     val tag_arr_hdr	= mkTag 2
     val tag_arr_data	= mkTag 3
     val tag_ref		= tag_arr_data
+(* 64BIT: perhaps tag_raw32 should just map to tag_raw64 on 64-bit machines? *)
     val tag_raw32	= mkTag 4
     val tag_raw64	= mkTag 5
     val tag_special	= mkTag 6
@@ -51,6 +52,7 @@ structure ObjectDesc :> OBJECT_DESC =
     val seq_word16 : IntInf.int	= 2
     val seq_word31 : IntInf.int	= 3
     val seq_word32 : IntInf.int	= 4
+(* 64BIT: do we need seq_word64? *)
     val seq_real32 : IntInf.int	= 5
     val seq_real64 : IntInf.int	= 6
 
