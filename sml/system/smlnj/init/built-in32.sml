@@ -1,13 +1,13 @@
-(* built-in.sml
+(* built-in32.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
- * Interfaces to the compiler built-ins, infixes, etc.
+ * Interfaces to the compiler built-ins, infixes, etc. for 32-bit targets.
  *
+ * [dbm, 6/21/06] This module is compiled in the environment PrimEnv.primEnv.
+ * See init.cmi
  *)
-
-(* [dbm, 6/21/06] This module is compiled in the environment PrimEnv.primEnv.
-   See init.cmi *)
 
 structure PrimTypes = struct open PrimTypes end
    (* this silliness is to prevent elabstr.sml from sticking a NO_ACCESS
@@ -16,13 +16,13 @@ structure PrimTypes = struct open PrimTypes end
       How and why does this access value get propagated into the code? *)
 
 local
-    open PrimTypes
+  open PrimTypes
 in
 (* [dbm, 6/21/06] If this is elaborated in the primEnv environment, there is
 already an opened PrimType, so is the above code redundant? By experimentation,
 it appears that the "local open PrimTypes in ..." is not necessary. *)
 
-  structure Assembly = Core.Assembly
+structure Assembly = Core.Assembly
 
   (* The following code was used to create a type-safe version of the InLine
    * structure while preserving the inline property of the functions.
@@ -32,8 +32,8 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
    *   - confirming the type information
    * See compiler/Semant/statenv/prim.sml for the origin of the type info
    * in InLine.    (Blume, 1/2001) *)
-  structure InlineT =
-   struct
+structure InlineT =
+  struct
     type 'a control_cont = 'a control_cont
 
     val callcc		: ('a cont -> 'a) -> 'a = InLine.callcc
@@ -98,19 +98,18 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
 
     structure IntInf =
       struct
-(* 64BIT: missing 64-bit operations *)
-	val test_int31    : intinf -> int    = InLine.test_inf_31	(* 64BIT: FIXME *)
+	val test_int31    : intinf -> int    = InLine.test_inf_31
         val test_int32    : intinf -> int32  = InLine.test_inf_32
 	val trunc_word8   : intinf -> word8  = InLine.trunc_inf_8
-	val trunc_word31  : intinf -> word   = InLine.trunc_inf_31	(* 64BIT: FIXME *)
+	val trunc_word31  : intinf -> word   = InLine.trunc_inf_31
 	val trunc_word32  : intinf -> word32 = InLine.trunc_inf_32
 	val copy_word8    : word8 -> intinf  = InLine.copy_8_inf
-	val copy_int31    : int -> intinf    = InLine.copy_31_inf_i	(* 64BIT: FIXME *)
+	val copy_int31    : int -> intinf    = InLine.copy_31_inf_i
 	val copy_word31   : word -> intinf   = InLine.copy_31_inf_w
 	val copy_int32    : int32 -> intinf  = InLine.copy_32_inf_i
 	val copy_word32   : word32 -> intinf = InLine.copy_32_inf_w
 	val extend_word8  : word8 -> intinf  = InLine.extend_8_inf
-	val extend_int31  : int -> intinf    = InLine.extend_31_inf_i	(* 64BIT: FIXME *)
+	val extend_int31  : int -> intinf    = InLine.extend_31_inf_i
 	val extend_word31 : word -> intinf   = InLine.extend_31_inf_w
 	val extend_int32  : int32 -> intinf  = InLine.extend_32_inf_i
 	val extend_word32 : word32 -> intinf = InLine.extend_32_inf_w
@@ -431,10 +430,10 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
     structure Word8Vector :> sig
 	eqtype vector
         val create : int -> vector
-    end = struct
+      end = struct
         type vector = string
 	val create = Assembly.A.create_s
-    end
+      end
 
     (* now the real version with all values *)
     structure Word8Vector =
@@ -451,11 +450,11 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
 	eqtype array
         val newArray0 : unit -> array
 	val create : int -> array
-    end = struct
+      end = struct
         type array = Assembly.A.word8array
 	val newArray0 : unit -> array = InLine.newArray0
 	val create = Assembly.A.create_b
-    end
+      end
 
     structure CharArray =		(* full *)
       struct
