@@ -1,8 +1,7 @@
-
 (* substring.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 local
@@ -105,7 +104,7 @@ structure Substring :> SUBSTRING
 	in
 	  PreString.revConcat (length (0, [], ssl))
 	end
-	  
+
   (* concatenate a list of substrings, using the given string as the
    * separator *)
     fun concatWith _ [] = ""
@@ -176,7 +175,7 @@ structure Substring :> SUBSTRING
     val takel  = scanl (fn (s, i, n, k) => SS(s, i, k))
     val taker  = scanr (fn (s, i, n, k) => SS(s, i+k, n-k))
     end (* local *)
-	
+
     (* This is using the KMP matcher from PreString. *)
     fun position s = let
 	val stringsearch = PreString.kmp s
@@ -253,4 +252,3 @@ structure Substring :> SUBSTRING
 
   end
 end
-

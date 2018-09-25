@@ -1,13 +1,16 @@
-(*
+(* rawmem.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Raw memory access primops and raw C calls.
  * (This is for use by ml-nlffi.)
  *
- *   Copyright (c) 2001 by Lucent Technologies, Bell Labs
- *
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)
+
 structure RawMemInlineT =
-struct
+  struct
 
     val w8l  : word32 -> word32           = InLine.raww8l
     val i8l  : word32 -> int32            = InLine.rawi8l
@@ -49,4 +52,4 @@ struct
     val updf32 : 'a * word32 * real   -> unit = InLine.rawupdatef32
     val updf64 : 'a * word32 * real   -> unit = InLine.rawupdatef64
 
-end (* structure RawMemInlineT *)
+  end (* structure RawMemInlineT *)

@@ -1,14 +1,14 @@
 (* core.sml
  *
- * COPYRIGHT 1989 by AT&T Bell Laboratories 
+ * COPYRIGHT 1989 by AT&T Bell Laboratories
  *
- * Core assumes that the following bindings are already in the static 
- * environment: 
+ * Core assumes that the following bindings are already in the static
+ * environment:
  *
- *   1. Built-in structures, defined in PrimTypes (env/prim.sml): 
+ *   1. Built-in structures, defined in PrimTypes (env/prim.sml):
  *        PrimTypes InLine
- *   
- *   2. Built-in type constructors, defined in PrimTypes (env/prim.sml): 
+ *
+ *   2. Built-in type constructors, defined in PrimTypes (env/prim.sml):
  *        int string bool unit real list array ref exn
  *
  *   3. Built-in data constructors, also from PrimTypes (env/prim.sml):
@@ -16,37 +16,37 @@
  *
  *   4. Built-in primitive operators, defined in InLine (env/prim.sml).
  *      The InLine structure is not typed (all values have type alpha, this
- *      will change in the future though !). 
- *       
+ *      will change in the future though !).
+ *
  *   5. The Assembly structure: its static semantics is defined by elaborating
  *      the boot/dummy.sml file, and its dynamic semantics is directly coming
  *      the implementation module provided by the runtime system.
  *
- * In addition, all matches in this file should be exhaustive; the match and 
- * bind exceptions are not defined at this stage of bootup, so any uncaught 
- * match will cause an unpredictable error. 
+ * In addition, all matches in this file should be exhaustive; the match and
+ * bind exceptions are not defined at this stage of bootup, so any uncaught
+ * match will cause an unpredictable error.
  *
  *)
 
-structure Core = 
+structure Core =
   struct
-  (* 
-   * We build an Assembly structure from the implementation module provided 
-   * from the runtime systems. The coercions are implemented via InLine.cast, 
-   * a primitive operator hardwired inside the compiler. In the future, the 
+  (*
+   * We build an Assembly structure from the implementation module provided
+   * from the runtime systems. The coercions are implemented via InLine.cast,
+   * a primitive operator hardwired inside the compiler. In the future, the
    * linkage should be done safely without using cast (ZHONG).
    *
    * Note: in the future, the Assembly.A substructure will be replaced by
    * a dynamic run vector (JHR).
    *)
-    structure Assembly : ASSEMBLY = 
+    structure Assembly : ASSEMBLY =
       struct
 	open Assembly
 
-	val cast : 'a -> 'b = InLine.cast  
+	val cast : 'a -> 'b = InLine.cast
         datatype ('a, 'b) pair = PAIR of 'a * 'b
 
-        structure A = 
+        structure A =
           struct
 	    structure AA = Assembly.A
 
@@ -57,10 +57,10 @@ structure Core =
 
             val arrayP : (int, 'a) pair -> 'a array = cast AA.array
 	    val array : int * 'a -> 'a array = fn x => arrayP(PAIR x)
-                  
-            val bind_cfunP : (string, string) pair -> c_function = 
+
+            val bind_cfunP : (string, string) pair -> c_function =
                      cast AA.bind_cfun
-	    val bind_cfun : (string * string) -> c_function = 
+	    val bind_cfun : (string * string) -> c_function =
                      fn x => bind_cfunP (PAIR x)
 
             val callcP : (c_function, 'a) pair -> 'c = cast AA.callc
@@ -70,7 +70,7 @@ structure Core =
 	    val create_r : int -> real64array = cast AA.create_r
 	    val create_s : int -> string = cast AA.create_s
             val create_vP : (int, 'a list) pair -> 'a vector = cast AA.create_v
-	    val create_v : int * 'a list -> 'a vector = 
+	    val create_v : int * 'a list -> 'a vector =
                      fn x => create_vP(PAIR x)
 
 	    val floor : real -> int = cast AA.floor
@@ -80,7 +80,7 @@ structure Core =
 
 	    val try_lock : spin_lock -> bool = cast AA.try_lock
 	    val unlock : spin_lock -> unit = cast AA.unlock
-           
+
 	  end (* structure A *)
 
 	  val vector0 : 'a vector = cast vector0
@@ -99,7 +99,7 @@ structure Core =
 
     exception Range      	(* for word8array update *)
     exception Subscript  	(* for all bounds checking *)
-    exception Size 
+    exception Size
 
     local exception NoProfiler
     in val profile_register =
@@ -130,9 +130,9 @@ structure Core =
         (* the type annotation is just to work around an bug - sm *)
           val ltu : int * int -> bool = InLine.i31ltu
 
-    in 
+    in
 
-     (* limit of array, string, etc. element count is one greater than 
+     (* limit of array, string, etc. element count is one greater than
       * the maximum length field value (sign should be 0).
       *)
        val max_length =
@@ -143,26 +143,26 @@ structure Core =
 	       int ((0w1 << (0w31 - width_tags)) - 0w1)
 	   end
 
-       fun mkNormArray (n, init) = 
+       fun mkNormArray (n, init) =
              if ieql(n, 0) then InLine.newArray0()
-             else if ltu(max_length, n) then raise Size 
+             else if ltu(max_length, n) then raise Size
                   else Assembly.A.array (n, init)
 
        val mkrarray : int -> real array = InLine.cast Assembly.A.create_r
        fun mkRealArray (n : int, v : real) : real array =
              if ieql(n, 0) then InLine.newArray0()
-             else if ltu(max_length, n) then raise Size 
+             else if ltu(max_length, n) then raise Size
                   else let val x = mkrarray n
-                           fun init i = 
+                           fun init i =
                              if ieql(i,n) then x
-    			     else (InLine.f64Update(x,i,v); 
+    			     else (InLine.f64Update(x,i,v);
                                    init ((op +) (i, 1)))
                         in init 0
                        end
 
        val vector0 = Assembly.vector0  (* needed to compile ``#[]'' *)
 
-      
+
       (* LAZY: The following definitions are essentially stolen from
        *  SMLofNJ.Susp.  Unfortunately, they had to be copied here in
        *  order to implement lazyness (in particular, in order to be
@@ -266,6 +266,7 @@ structure Core =
 		      (* end case *))
 		  | 0x0a (* tag_arr_hdr *) => peql(getData a, getData b)
 		  | 0x0e (* tag_arr_data and tag_ref *) => false
+(* 64BIT: FIXME *)
 		  | 0x12 (* tag_raw32 *) => i32eq(cast a, cast b)
 		  | _ (* tagless pair *) => pairEq()
 		(* end case *)
