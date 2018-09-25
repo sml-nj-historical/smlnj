@@ -15,9 +15,6 @@ structure AMD64CpsRegs : CPSREGS =
     structure T = AMD64MLTree
     structure C = AMD64Cells
 
-    fun upto(from, to) = if from>to then [] else from::(upto (from+1,to))
-    infix upto 
-
     val GP = C.GPReg
     val FP = C.FPReg
 
@@ -54,17 +51,15 @@ structure AMD64CpsRegs : CPSREGS =
     fun gcLink   vfp	= regInMem(vfp, 32)
     fun varptr   vfp 	= regInMem(vfp, 56)
 
+    fun mkRegList (base, cnt) = List.tabulate(cnt, fn i => T.REG(64, GP(base+i)))
 
-    fun mkRegList(n, 0) = []
-      | mkRegList(n, cnt) = T.REG(64, GP n)::mkRegList(n+1, cnt-1)
-
-    (* miscregs = {rbx,rcx,rdx,r10,r11,...r15} *)
+  (* miscregs = {rbx,rcx,rdx,r10,r11,...r15} *)
     val miscregs = rbx::rcx::rdx::mkRegList(10, 6)
 
     val calleesave  = Array.fromList miscregs
     val exhausted   = NONE
 
-    val floatregs   = map (fn f => T.FREG(64,FP f)) (8 upto 31)
+    val floatregs   = List.tabulate(16, fn f => T.FREG(64,FP f))
     val savedfpregs = []
 
     local
@@ -72,9 +67,9 @@ structure AMD64CpsRegs : CPSREGS =
 	| unREG _ = raise Fail "amd64CpsRegs:unREG"
     in
 
-    val availR = map GP (10 upto 15) @ (map unREG [rbp, rsi, rbx, rcx, rdx, rax])
+    val availR = List.tabulate(6, fn i => GP(10+i)) @ (map unREG [rbp, rsi, rbx, rcx, rdx, rax])
     val dedicatedR = GP 8 :: GP 9 :: (map unREG [rdi, rsp, vfptr])
-    val availF = map FP (0 upto 15)
+    val availF = List.tabulate(16, FP)
     val dedicatedF = []
     val signedGCTest = false
 

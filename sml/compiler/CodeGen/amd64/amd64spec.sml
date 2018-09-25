@@ -19,7 +19,7 @@ structure AMD64Spec : MACH_SPEC =
     val spillAreaSz = 8192
     val initialSpillOffset = 512
     val numRegs = length AMD64CpsRegs.availR (* can be |AMD64CpsRegs.availR|= + |vregs|=0 *)
-    val numFloatRegs = 21   (* can be |8 upto 31| *)
+    val numFloatRegs = 16
     val numFloatCalleeSaves = 0
     val startgcOffset = 64
     val pseudoRegOffset = 136

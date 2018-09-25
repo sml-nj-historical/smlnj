@@ -69,9 +69,8 @@ Library
 
 	(* backends *)
 	structure Alpha32Backend
-(* under construction
-	structure AMD64Backend
-*)
+	structure AMD64StdCallBackend
+	structure AMD64CCallBackend
 	structure HppaBackend
 	structure PPCBackend
 	structure SparcBackend
@@ -80,9 +79,7 @@ Library
 
 	(* bootstrap (cross-)compilers *)
 	structure Alpha32UnixCMB
-(* under construction
 	structure AMD64UnixCMB
-*)
 	structure HppaUnixCMB
 	structure PPCMacOSCMB
 	structure PPCUnixCMB
@@ -95,9 +92,7 @@ is
 	$smlnj/compiler/ppc.cm
 	$smlnj/compiler/sparc.cm
 	$smlnj/compiler/x86.cm
-(* under construction
 	$smlnj/compiler/amd64.cm
-*)
 
 	$smlnj/cmb/alpha32-unix.cm
 	$smlnj/cmb/hppa-unix.cm
@@ -106,6 +101,4 @@ is
 	$smlnj/cmb/sparc-unix.cm
 	$smlnj/cmb/x86-unix.cm
 	$smlnj/cmb/x86-win32.cm
-(* under construction
 	$smlnj/cmb/amd64-unix.cm
-*)
