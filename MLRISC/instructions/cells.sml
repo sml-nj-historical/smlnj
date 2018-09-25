@@ -1,8 +1,8 @@
 (*
  * Description of cell and other updatable cells.
- * 
+ *
  * -- Allen.
- *) 
+ *)
 
 (*
  * This functor is applied to create the cells structure for an  architecture
@@ -12,10 +12,10 @@ functor Cells
     val firstPseudo   : int
     val cellKindDescs : (CellsBasis.cellkind * CellsBasis.cellkindDesc) list
     val cellSize      : int
-   ) : CELLS = 
+   ) : CELLS =
 struct
 
-   open CellsBasis 
+   open CellsBasis
 
    exception Cells = Cells
 
@@ -35,8 +35,8 @@ struct
                 in  if n <= 0 then ()
                     else let val a = Array.tabulate(n, fn nth =>
                                    let val reg = nth + low
-                                   in  CELL{id=reg, col=ref(MACHINE reg), 
-                                       an=ref [], desc=desc} 
+                                   in  CELL{id=reg, col=ref(MACHINE reg),
+                                       an=ref [], desc=desc}
                                    end)
                          in  physicalRegs := a
                          end
@@ -52,25 +52,26 @@ struct
 
    val cellkindDesc = desc
 
-   fun cellRange k = 
+   fun cellRange k =
    let val DESC{low,high,...} = desc k
    in  {low=low,high=high} end
 
-   fun Reg k =
-   let val desc as DESC{low,kind,physicalRegs,...} = desc k
-   in  fn nth => Array.sub(!physicalRegs,nth) handle _ => raise Cells
-   end
+   fun Reg k = let
+         val desc as DESC{low,kind,physicalRegs,...} = desc k
+         in
+	   fn nth => (Array.sub(!physicalRegs,nth) handle _ => raise Cells)
+         end
 
    fun Regs k =
    let val Reg = Reg k
        fun loop{from, to, step} =
            if from > to then []
            else Reg from :: loop{from=from+step, to=to, step=step}
-   in  loop end  
+   in  loop end
 
    fun Cell k =
    let val desc as DESC{low,kind,physicalRegs,...} = desc k
-   in  fn reg => 
+   in  fn reg =>
            Array.sub(!physicalRegs,reg - low)  handle _ => raise Cells
    end
 
@@ -78,65 +79,65 @@ struct
    val FPReg = Reg FP
 
    (* Counters *)
-   fun newCell k = 
+   fun newCell k =
        let val desc as DESC{counter,...} = desc k
-       in  fn _ => 
-           let val r = !name 
-           in  name := r + 1; 
+       in  fn _ =>
+           let val r = !name
+           in  name := r + 1;
                counter := !counter + 1;
                CELL{id=r, col=ref PSEUDO, an=ref [], desc=desc}
            end
        end
 
    local val desc as DESC{counter, ...} = desc GP
-   in fun newReg _ = 
-      let val r = !name 
-      in  name := r + 1; 
+   in fun newReg _ =
+      let val r = !name
+      in  name := r + 1;
           counter := !counter + 1;
           CELL{id=r, col=ref PSEUDO, an=ref [], desc=desc}
       end
    end
 
    local val desc as DESC{counter, ...} = desc FP
-   in fun newFreg _ = 
-      let val r = !name 
-      in  name := r + 1; 
+   in fun newFreg _ =
+      let val r = !name
+      in  name := r + 1;
           counter := !counter + 1;
           CELL{id=r, col=ref PSEUDO, an=ref [], desc=desc}
       end
    end
 
-   fun newDedicatedCell k = 
+   fun newDedicatedCell k =
        let val desc as DESC{dedicated,...} = desc k
-       in  fn _ => 
-           let val d = !dedicated 
-           in  dedicated := d + 1; 
-	       if d >= maxDedicatedCells then 
+       in  fn _ =>
+           let val d = !dedicated
+           in  dedicated := d + 1;
+	       if d >= maxDedicatedCells then
 		 error "too many dedicated cells"
 	       else
                CELL{id=firstPseudo+d, col=ref PSEUDO, an=ref [], desc=desc}
            end
        end
- 
+
    fun newVar (CELL{desc, an, ...}) =
    let val r = !name
-   in  name := r + 1; 
-       CELL{id=r, col=ref PSEUDO, an=ref(!an), desc=desc}    
+   in  name := r + 1;
+       CELL{id=r, col=ref PSEUDO, an=ref(!an), desc=desc}
    end
 
    fun cloneCell c =
    let val CELL{desc, an, col, ...} = chase c
        val r = !name
-   in  name := r + 1; 
-       CELL{id=r, col=ref(!col), an=ref(!an), desc=desc}    
+   in  name := r + 1;
+       CELL{id=r, col=ref(!col), an=ref(!an), desc=desc}
    end
- 
-   fun numCell k = let val DESC{counter, ...} = desc k 
+
+   fun numCell k = let val DESC{counter, ...} = desc k
                    in fn () => !counter end
 
    fun maxCell() = !name
 
-   fun reset() = 
+   fun reset() =
        (app (fn (_,DESC{counter, ...}) => counter := 0) cellKindDescs;
         name := firstName
        )
@@ -147,22 +148,22 @@ struct
    fun updateCellsByKind (k : cellkind) = CellSet.update (desc k)
    val getReg  = getCellsByKind GP
    val getFreg = getCellsByKind FP
-   val addReg  = CellSet.add 
-   val addFreg = CellSet.add 
-   val rmvReg  = CellSet.rmv 
+   val addReg  = CellSet.add
+   val addFreg = CellSet.add
+   val rmvReg  = CellSet.rmv
    val rmvFreg = CellSet.rmv
 
   (* Misc *)
-   fun zeroReg k = 
+   fun zeroReg k =
    let val desc as DESC{zeroReg, physicalRegs, low, ...} = desc k
-   in  case zeroReg of 
+   in  case zeroReg of
          NONE => NONE
-       | SOME r => SOME(Array.sub(!physicalRegs, r)) 
+       | SOME r => SOME(Array.sub(!physicalRegs, r))
    end
 
-   fun defaultValues k = 
+   fun defaultValues k =
    let val DESC{defaultValues, ...} = desc k
-   in  defaultValues end 
+   in  defaultValues end
 
   (* dummy values for now; these get redefined for each architecture *)
    val stackptrR = GPReg 0
