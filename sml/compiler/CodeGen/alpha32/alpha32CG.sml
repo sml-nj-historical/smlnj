@@ -1,7 +1,10 @@
-(*
- * Alpha32 specific backend
+(* alpha32CG.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
-structure Alpha32CG = 
+
+structure Alpha32CG =
   MachineGen
   ( structure I          = Alpha32Instr
     structure T          = Alpha32MLTree
@@ -14,7 +17,7 @@ structure Alpha32CG =
     structure InsnProps  = Alpha32Props
     structure Asm        = Alpha32AsmEmitter
     structure Shuffle    = Alpha32Shuffle
-   
+
     structure CCalls     = UnimplementedCCallsFn
 			       (structure T = Alpha32MLTree
 				val impossible = ErrorMsg.impossible)
@@ -27,7 +30,7 @@ structure Alpha32CG =
       fun omitframeptr _ = raise NotImplemented
     end
     structure CB = CellsBasis
-      
+
 
     structure MLTreeComp=
        Alpha(structure AlphaInstr = Alpha32Instr
@@ -57,11 +60,11 @@ structure Alpha32CG =
 		structure Props = Alpha32Props
                 structure Emitter = Alpha32MCEmitter)
 
-    structure RA = 
+    structure RA =
        RISC_RA
          (structure I         = Alpha32Instr
           structure CFG       = Alpha32CFG
-          structure InsnProps = InsnProps 
+          structure InsnProps = InsnProps
           structure Rewrite   = AlphaRewrite(Alpha32Instr)
 	  structure SpillInstr= AlphaSpillInstr(Alpha32Instr)
           structure Asm       = Alpha32AsmEmitter
@@ -84,27 +87,27 @@ structure Alpha32CG =
           fun pure _ = false
 
           (* make copies *)
-          structure Int = 
+          structure Int =
           struct
               val avail     = Alpha32CpsRegs.availR
               val dedicated = Alpha32CpsRegs.dedicatedR
 
 	      fun mkDisp loc = T.LI(T.I.fromInt (32, SpillTable.getRegLoc loc))
 
-              fun spillLoc{info, an, cell, id} = 
+              fun spillLoc{info, an, cell, id} =
 		  {opnd=I.Displace{base=sp, disp=mkDisp(RAGraph.FRAME id), mem=spill},
 		   kind=SPILL_LOC}
 
               val mode = RACore.NO_OPTIMIZATION
           end
- 
-          structure Float =   
+
+          structure Float =
           struct
               val avail     = Alpha32CpsRegs.availF
               val dedicated = Alpha32CpsRegs.dedicatedF
 
 	      fun mkDisp loc = T.LI(T.I.fromInt (32, SpillTable.getFregLoc loc))
-	      fun spillLoc(S, an, loc) = 
+	      fun spillLoc(S, an, loc) =
 		I.Displace{base=sp, disp=mkDisp(RAGraph.FRAME loc), mem=spill}
 
               val mode = RACore.NO_OPTIMIZATION
