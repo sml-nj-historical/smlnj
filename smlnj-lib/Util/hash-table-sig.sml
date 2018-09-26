@@ -1,13 +1,13 @@
 (* hash-table-sig.sml
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * The signature of the polymorphic hash table structure.
  *
  * AUTHOR:  John Reppy
- *	    AT&T Bell Laboratories
- *	    Murray Hill, NJ 07974
- *	    jhr@research.att.com
+ *	    University of Chicago
+ *	    https://cs.uchicago.edu/~jhr
  *)
 
 signature HASH_TABLE =

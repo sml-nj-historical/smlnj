@@ -1,13 +1,13 @@
-(* mono-hash2-table-fn.sml 
+(* hash2-table-fn.sml
  *
- * COPYRIGHT (c) 1996 by AT&T Research.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Hash tables that are keyed by two keys (in different domains).
  *
  * AUTHOR:  John Reppy
- *	    AT&T Bell Laboratories
- *	    Murray Hill, NJ 07974
- *	    jhr@research.att.com
+ *	    University of Chicago
+ *	    https://cs.uchicago.edu/~jhr
  *)
 
 functor Hash2TableFn (
@@ -145,7 +145,7 @@ functor Hash2TableFn (
 	  val hash = hashVal key
 	  val indx = index (hash, Array.length arr)
 	  fun look HTRep.NIL = false
-	    | look (HTRep.B(h, k, v, r)) = 
+	    | look (HTRep.B(h, k, v, r)) =
 		((hash = h) andalso sameKey(key, k)) orelse look r
 	  in
 	    look (Array.sub (arr, indx))

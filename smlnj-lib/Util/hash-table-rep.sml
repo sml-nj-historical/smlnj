@@ -1,16 +1,15 @@
 (* hash-table-rep.sml
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.
- * COPYRIGHT (c) 1996 AT&T Research.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * This is the internal representation of hash tables, along with some
  * utility functions.  It is used in both the polymorphic and functor
  * hash table implementations.
  *
  * AUTHOR:  John Reppy
- *	    AT&T Bell Laboratories
- *	    Murray Hill, NJ 07974
- *	    jhr@research.att.com
+ *	    University of Chicago
+ *	    https://cs.uchicago.edu/~jhr
  *)
 
 structure HashTableRep : sig
@@ -67,12 +66,28 @@ structure HashTableRep : sig
 
     fun index (i, sz) = Word.toIntX(Word.andb(i, Word.fromInt sz - 0w1))
 
-  (* find smallest power of 2 (<= 32) that is >= n *)
-    fun roundUp n = let
-	  fun f i = if (i >= n) then i else f(i * 2)
+  (* minimum and maximum hash table sizes.  We use powers of two for hash table
+   * sizes, since that give efficient indexing, and assume a minimum size of 32.
+   *)
+    val minSize = 32
+    val maxSize = let
+	  fun f i = let
+		  val i' = i+i
+		  in
+		    if i' < Array.maxLen then f i' else i
+		  end
 	  in
-	    f 32
+	    f 0x10000
 	  end
+
+  (* round up `n` to the next hash-table size *)
+    fun roundUp n = if (n >= maxSize)
+	  then maxSize
+	  else let
+	    fun f i = if (i >= n) then i else f(i + i)
+	    in
+	      f minSize
+	    end
 
   (* Create a new table; the int is a size hint and the exception
    * is to be raised by find.

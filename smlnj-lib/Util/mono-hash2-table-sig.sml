@@ -1,13 +1,13 @@
 (* mono-hash2-table-sig.sml
  *
- * COPYRIGHT (c) 1996 by AT&T Research.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Hash tables that are keyed by two keys (in different domains).
  *
  * AUTHOR:  John Reppy
- *	    AT&T Bell Laboratories
- *	    Murray Hill, NJ 07974
- *	    jhr@research.att.com
+ *	    University of Chicago
+ *	    https://cs.uchicago.edu/~jhr
  *)
 
 signature MONO_HASH2_TABLE =

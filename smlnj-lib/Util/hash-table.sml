@@ -1,13 +1,13 @@
 (* hash-table.sml
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Polymorphic hash tables.
  *
  * AUTHOR:  John Reppy
- *	    AT&T Bell Laboratories
- *	    Murray Hill, NJ 07974
- *	    jhr@research.att.com
+ *	    University of Chicago
+ *	    https://cs.uchicago.edu/~jhr
  *)
 
 structure HashTable : HASH_TABLE =
@@ -78,7 +78,7 @@ structure HashTable : HASH_TABLE =
 	  val hash = hash_fn key
 	  val indx = index (hash, Array.length arr)
 	  fun look HTRep.NIL = false
-	    | look (HTRep.B(h, k, v, r)) = 
+	    | look (HTRep.B(h, k, v, r)) =
 		((hash = h) andalso eq_pred(key, k)) orelse look r
 	  in
 	    look (Array.sub (arr, indx))
@@ -173,7 +173,7 @@ structure HashTable : HASH_TABLE =
    *)
     fun filteri pred (HT{table, n_items, ...}) =
 	  n_items := HTRep.filteri pred (! table)
-    fun filter pred (HT{table, n_items, ...}) = 
+    fun filter pred (HT{table, n_items, ...}) =
 	  n_items := HTRep.filter pred (! table)
 
   (* Create a copy of a hash table *)

@@ -1,14 +1,14 @@
 (* hash-table-fn.sml
  *
- * COPYRIGHT (c) 1992 by AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * A hash table functor.  It takes a key type with two operations: sameKey and
  * hashVal as arguments (see hash-key-sig.sml).
  *
  * AUTHOR:  John Reppy
- *	    AT&T Bell Laboratories
- *	    Murray Hill, NJ 07974
- *	    jhr@research.att.com
+ *	    University of Chicago
+ *	    https://cs.uchicago.edu/~jhr
  *)
 
 functor HashTableFn (Key : HASH_KEY) : MONO_HASH_TABLE =
@@ -71,7 +71,7 @@ functor HashTableFn (Key : HASH_KEY) : MONO_HASH_TABLE =
 	  val hash = hashVal key
 	  val indx = index (hash, Array.length arr)
 	  fun look HTRep.NIL = false
-	    | look (HTRep.B(h, k, v, r)) = 
+	    | look (HTRep.B(h, k, v, r)) =
 		((hash = h) andalso sameKey(key, k)) orelse look r
 	  in
 	    look (Array.sub (arr, indx))
@@ -161,7 +161,7 @@ functor HashTableFn (Key : HASH_KEY) : MONO_HASH_TABLE =
    *)
     fun filteri pred (HT{table, n_items, ...}) =
 	  n_items := HTRep.filteri pred (! table)
-    fun filter pred (HT{table, n_items, ...}) = 
+    fun filter pred (HT{table, n_items, ...}) =
 	  n_items := HTRep.filter pred (! table)
 
   (* Create a copy of a hash table *)

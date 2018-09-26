@@ -1,13 +1,13 @@
 (* word-hash-table.sml
  *
- * COPYRIGHT (c) 2000 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * A specialization of the hash table functor to word keys.
  *
  * AUTHOR:  John Reppy
- *	    Bell Labs
- *	    Murray Hill, NJ 07974
- *	    jhr@research.bell-labs.com
+ *	    University of Chicago
+ *	    https://cs.uchicago.edu/~jhr
  *)
 
 structure WordHashTable :> MONO_HASH_TABLE where type Key.hash_key = word =
@@ -76,7 +76,7 @@ structure WordHashTable :> MONO_HASH_TABLE where type Key.hash_key = word =
 	  val hash = hashVal key
 	  val indx = index (hash, Array.length arr)
 	  fun look HTRep.NIL = false
-	    | look (HTRep.B(h, k, v, r)) = 
+	    | look (HTRep.B(h, k, v, r)) =
 		((hash = h) andalso sameKey(key, k)) orelse look r
 	  in
 	    look (Array.sub (arr, indx))
@@ -166,7 +166,7 @@ structure WordHashTable :> MONO_HASH_TABLE where type Key.hash_key = word =
    *)
     fun filteri pred (HT{table, n_items, ...}) =
 	  n_items := HTRep.filteri pred (! table)
-    fun filter pred (HT{table, n_items, ...}) = 
+    fun filter pred (HT{table, n_items, ...}) =
 	  n_items := HTRep.filter pred (! table)
 
   (* Create a copy of a hash table *)

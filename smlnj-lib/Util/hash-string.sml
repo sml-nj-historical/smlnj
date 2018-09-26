@@ -1,6 +1,7 @@
 (* hash-string.sml
  *
- * COPYRIGHT (c) 1992 by AT&T Bell Laboratories
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
 
 structure HashString : sig

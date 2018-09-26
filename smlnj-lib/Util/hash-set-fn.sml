@@ -1,7 +1,11 @@
 (* hash-set-fn.sml
  *
- * COPYRIGHT (c) 2011 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
+ *
+ * AUTHOR:  John Reppy
+ *	    University of Chicago
+ *	    https://cs.uchicago.edu/~jhr
  *)
 
 signature HASH_SET =
@@ -53,7 +57,7 @@ signature HASH_SET =
 	(* Create a new set by applying a map function to the elements
 	 * of the set.
          *)
-     
+
     val app : (item -> unit) -> set -> unit
 	(* Apply a function to the entries of the set. *)
 
@@ -85,12 +89,28 @@ functor HashSetFn (Key : HASH_KEY) : HASH_SET =
 
     fun index (i, sz) = Word.toIntX(Word.andb(i, Word.fromInt sz - 0w1))
 
-  (* find smallest power of 2 (<= 32) that is >= n *)
-    fun roundUp n = let
-	  fun f i = if (i >= n) then i else f(i * 2)
+  (* minimum and maximum hash table sizes.  We use powers of two for hash table
+   * sizes, since that give efficient indexing, and assume a minimum size of 32.
+   *)
+    val minSize = 32
+    val maxSize = let
+	  fun f i = let
+		  val i' = i+i
+		  in
+		    if i' < Array.maxLen then f i' else i
+		  end
 	  in
-	    f 32
+	    f 0x10000
 	  end
+
+  (* round up `n` to the next hash-table size *)
+    fun roundUp n = if (n >= maxSize)
+	  then maxSize
+	  else let
+	    fun f i = if (i >= n) then i else f(i + i)
+	    in
+	      f minSize
+	    end
 
   (* Create a new table; the int is a size hint and the exception
    * is to be raised by find.
@@ -159,7 +179,7 @@ functor HashSetFn (Key : HASH_KEY) : HASH_SET =
 
   (* Create a singleton set *)
     fun mkSingleton item = let
-          val set = mkEmpty 32
+          val set = mkEmpty minSize
           in
             add (set, item);
             set
@@ -237,7 +257,7 @@ functor HashSetFn (Key : HASH_KEY) : HASH_SET =
                     else true
               in
                 lp 0
-              end                         
+              end
             else false
 
   (* Return the number of items in the table *)
@@ -265,7 +285,7 @@ functor HashSetFn (Key : HASH_KEY) : HASH_SET =
             Array.app mapf (!table);
             s
           end
-     
+
   (* Apply a function to the entries of the set. *)
     fun app f (SET{nItems, table}) = let
           fun appf NIL = ()
