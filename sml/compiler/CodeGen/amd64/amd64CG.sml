@@ -6,11 +6,6 @@
  * AMD64 specific backend.
  *)
 
-local
-    val fast_floating_point =
-	MLRiscControl.mkFlag ("amd64-fast-fp",
-			      "whether to use the fast-fp backend (amd64)")
-in
 functor AMD64CG (structure CCallParams: sig val frameAlign : int
 					    val returnSmallStructsInRegs : bool
 					end
@@ -31,8 +26,6 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
     structure InsnProps  = AMD64Props
     structure Asm        = AMD64AsmEmitter
     structure Shuffle    = AMD64Shuffle
-
-    val fast_floating_point = fast_floating_point
 
     structure CCalls     = AMD64SVID_CCalls (structure T = AMD64MLTree)
 
@@ -78,7 +71,6 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
                 structure T = AMD64MLTree
 		structure CFG = AMD64CFG
 		structure TS = AMD64MLTreeStream
-		val fast_fp = fast_floating_point
                )
 	   structure MLTreeStream = AMD64MLTreeStream
 
@@ -195,4 +187,3 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
       val floats16ByteAligned = floats16ByteAligned
     ) (* AMD64RA *)
   ) (* AMD64CG *)
-end
