@@ -82,36 +82,31 @@ functor AMD64Gen (
 	g(mlrisc, C.empty)
       end
 
-    (* conversions *)
-    val itow = Word.fromInt
-    val wtoi = Word.toInt
+  (* conversions to fixed-precision integers*)
     fun toInt32 i = T.I.toInt32(32, i)
     fun toInt64 i = T.I.toInt64(64, i)
-    val w32toi32 = Word32.toLargeIntX
-    val i32tow32 = Word32.fromLargeInt
-    (* One day, this is going to bite us when precision(LargeInt)>32 *)
-    fun wToInt32 w = Int32.fromLarge(Word32.toLargeIntX w)
 
-    fun fitsIn32Bits z = z < IntInf.<< (1, 0w31)
+(* QUESTION: what about negative numbers? *)
+    fun fitsIn32Bits (z : IntInf.int) = (z < 0x80000000)
 
     fun move64 (src, dst) = I.move {mvOp=I.MOVABSQ, src=src, dst=dst}
 
     (* analyze for power-of-two-ness *)
-   fun analyze i' = let
-       val i = toInt32 i'
-       in
-	  let val (isneg, a, w) =
-		  if i >= 0 then (false, i, T.I.toWord32 (32, i'))
-		  else (true, ~i, T.I.toWord32 (32, T.I.NEG (32,  i')))
-	      fun log2 (0w1, p) = p
-		| log2 (w, p) = log2 (W32.>> (w, 0w1), p + 1)
-	  in
-	      if w > 0w1 andalso W32.andb (w - 0w1, w) = 0w0 then
-		  (i, SOME (isneg, a,
-			    T.LI (T.I.fromInt32 (32, log2 (w, 0)))))
-	      else (i, NONE)
-	  end handle _ => (i, NONE)
-      end
+    fun analyze i' = let
+	val i = toInt32 i'
+	in
+	   let val (isneg, a, w) =
+		   if i >= 0 then (false, i, T.I.toWord32 (32, i'))
+		   else (true, ~i, T.I.toWord32 (32, T.I.NEG (32,  i')))
+	       fun log2 (0w1, p) = p
+		 | log2 (w, p) = log2 (W32.>> (w, 0w1), p + 1)
+	   in
+	       if w > 0w1 andalso W32.andb (w - 0w1, w) = 0w0 then
+		   (i, SOME (isneg, a,
+			     T.LI (T.I.fromInt32 (32, log2 (w, 0)))))
+	       else (i, NONE)
+	   end handle _ => (i, NONE)
+        end
 
     (* translate MLTREE condition codes to amd64 condition codes *)
     fun cond T.LT = I.LT | cond T.LTU = I.B

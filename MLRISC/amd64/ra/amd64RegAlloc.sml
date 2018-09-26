@@ -1,11 +1,14 @@
 (* amd64RegAlloc.sml
  *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Ties together the GP and FP register allocators.
  *)
 
 functor AMD64RegAlloc (
       structure I : AMD64INSTR
-      structure SpillHeur : RA_SPILL_HEURISTICS 
+      structure SpillHeur : RA_SPILL_HEURISTICS
       structure Props : AMD64INSN_PROPERTIES
           where I = I
       structure CFG : CONTROL_FLOW_GRAPH
@@ -17,12 +20,12 @@ functor AMD64RegAlloc (
           and   S.P = CFG.P
 
       type spill_info
-      datatype spill_operand_kind = SPILL_LOC 
+      datatype spill_operand_kind = SPILL_LOC
                                   | CONST_VAL
 
       val beforeRA : CFG.cfg -> spill_info
 
-      datatype ra_phase = SPILL_PROPAGATION 
+      datatype ra_phase = SPILL_PROPAGATION
                         | SPILL_COLORING
 
       structure Int : sig
@@ -32,7 +35,7 @@ functor AMD64RegAlloc (
                            an  :Annotations.annotations ref,
                            cell:CellsBasis.cell, (* spilled cell *)
                            id  :RAGraph.logical_spill_id
-                          } -> 
+                          } ->
                           {opnd: I.ea,
                            kind: spill_operand_kind
                           }
@@ -52,25 +55,25 @@ functor AMD64RegAlloc (
      (* guaranteeing that floats are stored at 16-byte aligned addresses reduces the number of instructions *)
       val floats16ByteAligned : bool
 
-    ) : CFG_OPTIMIZATION = 
+    ) : CFG_OPTIMIZATION =
   struct
-    
+
     datatype ra_phase = datatype ra_phase
 
     fun error msg = MLRiscErrorMsg.error ("AMD64RA", msg)
     fun inc c = c := !c + 1
-    
-    val intSpillCnt = 
+
+    val intSpillCnt =
         MLRiscControl.mkCounter ("ra-int-spills", "RA int spill count")
-    val intReloadCnt = 
+    val intReloadCnt =
         MLRiscControl.mkCounter ("ra-int-reloads", "RA int reload count")
-    val intRenameCnt = 
+    val intRenameCnt =
         MLRiscControl.mkCounter ("ra-int-renames", "RA int rename count")
-    val floatSpillCnt = 
+    val floatSpillCnt =
         MLRiscControl.mkCounter ("ra-float-spills", "RA float spill count")
-    val floatReloadCnt = 
+    val floatReloadCnt =
         MLRiscControl.mkCounter ("ra-float-reloads", "RA float reload count")
-    val floatRenameCnt = 
+    val floatRenameCnt =
         MLRiscControl.mkCounter ("ra-float-renames", "RA float rename count")
 
     structure CB = CellsBasis
@@ -79,22 +82,22 @@ functor AMD64RegAlloc (
     val firstSpill = ref true
     val firstFPSpill = ref true
 
-    fun spillInit (graph, CB.GP) = 
+    fun spillInit (graph, CB.GP) =
         if !firstSpill then (* only do this once! *)
             (Int.spillInit graph;
              firstSpill := false
             )
          else ()
-      | spillInit(graph, CB.FP) = 
+      | spillInit(graph, CB.FP) =
         if !firstFPSpill then
             (Float.spillInit graph;
              firstFPSpill := false
             )
         else ()
       | spillInit _ = error "spillInit"
-    
-    (* 
-     * Dead code elimination 
+
+    (*
+     * Dead code elimination
      *)
     exception AMD64DeadCode
     val affectedBlocks =
@@ -106,7 +109,7 @@ functor AMD64RegAlloc (
         val blocks = #nodes graph ()
         fun isDead r = Option.isSome (IntHashTable.find deadRegs (CB.cellId r))
         fun isAffected i = Option.getOpt (IntHashTable.find affectedBlocks i, false)
-        fun isDeadInstr(I.ANNOTATION{i, ...}) = isDeadInstr i 
+        fun isDeadInstr(I.ANNOTATION{i, ...}) = isDeadInstr i
           | isDeadInstr(I.INSTR(I.MOVE{dst=I.Direct (_,rd), ...})) = isDead rd
           | isDeadInstr(I.INSTR(I.FMOVE{dst=I.FDirect rd, ...})) = isDead rd
           | isDeadInstr(I.COPY{k=CB.GP, dst=[rd], ...}) = isDead rd
@@ -114,17 +117,17 @@ functor AMD64RegAlloc (
           | isDeadInstr _ = false
         fun scan [] = ()
           | scan((blknum, CFG.BLOCK{insns, ...})::rest) =
-            (if isAffected blknum then 
+            (if isAffected blknum then
                 ((* deadblocks := !deadblocks + 1; *)
                  insns := elim(!insns, [])
                 ) else ();
              scan rest)
        and elim([], code) = List.rev code
-         | elim(i::instrs, code) = 
-          if isDeadInstr i then 
+         | elim(i::instrs, code) =
+          if isDeadInstr i then
              ((* deadcode := !deadcode + 1; *) elim(instrs, code))
           else elim(instrs, i::code)
-    in 
+    in
       if (IntHashTable.numItems affectedBlocks > 0)
         then (
           scan blocks;
@@ -136,7 +139,7 @@ functor AMD64RegAlloc (
     structure CFG = CFG
 
     (* use the standard register allocator *)
-    structure RA = 
+    structure RA =
         RegisterAllocator
           (SpillHeur)
           (MemoryRA
@@ -150,7 +153,7 @@ functor AMD64RegAlloc (
                  )
                 (fun cellkind CB.GP = true
 		   | cellkind CB.FP = true
-		   | cellkind _ = false 
+		   | cellkind _ = false
                  val deadRegs = deadRegs
                  val affectedBlocks = affectedBlocks
                  val spillInit = spillInit
@@ -194,7 +197,7 @@ functor AMD64RegAlloc (
           set (dedicated, rs))
       val _ = set (dedicatedR, List.map CB.registerId Int.dedicated)
       val _ = set (dedicatedF, List.map CB.registerId Float.dedicated)
-      fun isDedicated dedicated r = 
+      fun isDedicated dedicated r =
           r < Array.length dedicated andalso Array.sub (dedicated, r)
     in
       val isDedicatedR = isDedicated dedicatedR
@@ -217,14 +220,14 @@ functor AMD64RegAlloc (
     fun resetRA() = (
         firstSpill := true;
         firstFPSpill := true;
-        IntHashTable.clear affectedBlocks; 
+        IntHashTable.clear affectedBlocks;
         IntHashTable.clear deadRegs;
         GPR.reset ();
         FPR.reset ())
 
-    fun getRegLoc(s, an, cell, RA.FRAME loc) = 
+    fun getRegLoc(s, an, cell, RA.FRAME loc) =
         Int.spillLoc {info=s, an=an, cell=cell, id=loc}
-      | getRegLoc(s, an, cell, RA.MEM_REG r) = 
+      | getRegLoc(s, an, cell, RA.MEM_REG r) =
         error "memory registers unsupported"
 
     fun spillR s {annotations=an, kill, reg, spillLoc, instr} = let
@@ -232,37 +235,37 @@ functor AMD64RegAlloc (
   	  | annotate(a::an, i) = annotate(an, I.ANNOTATION{a=a, i=i})
         (* preserve annotation on instruction *)
         fun spill(instrAn, I.ANNOTATION{a,i}) = spill(a::instrAn, i)
-          | spill(instrAn, I.KILL{regs, spilled}) = 
-	    {code=[annotate (instrAn, 
-		     I.KILL {regs=C.rmvReg (reg, regs), 
+          | spill(instrAn, I.KILL{regs, spilled}) =
+	    {code=[annotate (instrAn,
+		     I.KILL {regs=C.rmvReg (reg, regs),
 			     spilled=C.addReg (reg, spilled)})],
 	         proh = [], newReg=NONE}
 	    | spill(instrAn, I.LIVE _) = error "spill: LIVE"
 	    | spill(_, I.COPY _) = error "spill: COPY"
-	    | spill(instrAn, I.INSTR _) = (case getRegLoc (s, an, reg, spillLoc) 
-	      of {opnd=spillLoc, kind=SPILL_LOC} => 
+	    | spill(instrAn, I.INSTR _) = (case getRegLoc (s, an, reg, spillLoc)
+	      of {opnd=spillLoc, kind=SPILL_LOC} =>
 	            (inc intSpillCnt;
 		     spillInstr (annotate(instrAn, instr), reg, spillLoc))
 	       | _ => (* don't have to spill a constant *)
-	              {code=[], newReg=NONE, proh=[]} 
+	              {code=[], newReg=NONE, proh=[]}
 	      (* end case *))
-        in 
+        in
           spill([], instr)
         end (* spillR *)
 
-    fun spillReg s {src, reg, spillLoc, annotations=an} = let 
+    fun spillReg s {src, reg, spillLoc, annotations=an} = let
         val _ = inc intSpillCnt
         val {opnd=dstLoc, kind} = getRegLoc (s, an, reg, spillLoc)
         val srcLoc = I.Direct (64, src)
-        in  
-          if kind = CONST_VAL orelse Props.eqOpn (srcLoc, dstLoc) 
+        in
+          if kind = CONST_VAL orelse Props.eqOpn (srcLoc, dstLoc)
             then []
             else [I.move {mvOp=I.MOVQ, src=srcLoc, dst=dstLoc}]
         end (* spillReg *)
 
-    fun spillCopyTmp s {copy=I.COPY{k=CB.GP, src, dst,...}, 
-                        reg, spillLoc, annotations=an} = 
-        (case getRegLoc (s, an, reg, spillLoc) 
+    fun spillCopyTmp s {copy=I.COPY{k=CB.GP, src, dst,...},
+                        reg, spillLoc, annotations=an} =
+        (case getRegLoc (s, an, reg, spillLoc)
           of {opnd=tmp, kind=SPILL_LOC} => (
              inc intSpillCnt;
              copy{dst=dst, src=src, tmp=SOME tmp})
@@ -275,8 +278,8 @@ functor AMD64RegAlloc (
 
     fun reloadR s {annotations=an, reg, spillLoc, instr} = let
         fun reload (instrAn, I.ANNOTATION{a,i}) = reload (a::instrAn, i)
-	  | reload(instrAn, I.LIVE{regs, spilled}) = 
-	    {code=[I.LIVE{regs=C.rmvReg(reg, regs), 
+	  | reload(instrAn, I.LIVE{regs, spilled}) =
+	    {code=[I.LIVE{regs=C.rmvReg(reg, regs),
 	     spilled=C.addReg(reg, spilled)}],
 	    proh=[], newReg=NONE}
 	  | reload(_, I.KILL _) = error "reload: KILL"
@@ -285,7 +288,7 @@ functor AMD64RegAlloc (
   	    inc intReloadCnt;
 	    reloadInstr (annotate(instrAn, instr), reg,
 	           #opnd(getRegLoc(s,an,reg,spillLoc))))
-        in 
+        in
           reload([], instr)
         end (* reloadR *)
 
@@ -293,8 +296,8 @@ functor AMD64RegAlloc (
         val _ = inc intReloadCnt
         val srcLoc = #opnd (getRegLoc (s, an, reg, spillLoc))
         val dstLoc = I.Direct (64, dst)
-        in  
-          if Props.eqOpn(srcLoc,dstLoc) 
+        in
+          if Props.eqOpn(srcLoc,dstLoc)
             then []
             else [I.move{mvOp=I.MOVQ, src=srcLoc, dst=dstLoc}]
         end (* reloadReg *)
@@ -305,9 +308,9 @@ functor AMD64RegAlloc (
 
     fun copyInstrR ((rds as [d], rss as [s]), _) =
         if CB.sameColor(d,s) then [] else [copy {dst=rds, src=rss, tmp=NONE}]
-      | copyInstrR((rds, rss), I.COPY{k=CB.GP, tmp, ...}) = 
+      | copyInstrR((rds, rss), I.COPY{k=CB.GP, tmp, ...}) =
          [copy{dst=rds, src=rss, tmp=tmp}]
-      | copyInstrR(x, I.ANNOTATION{i, a}) = 
+      | copyInstrR(x, I.ANNOTATION{i, a}) =
           copyInstrR (x, i) (* XXX *)
       | copyInstrR _ = error "copyInstrR"
 
@@ -315,7 +318,7 @@ functor AMD64RegAlloc (
         fun f ([], m) = m
           | f (SPILL_PROPAGATION::ps, m) = f (ps, RA.SPILL_PROPAGATION+m)
           | f (SPILL_COLORING::ps, m) = f (ps, RA.SPILL_COLORING+m)
-        in  
+        in
           f (ps, RA.NO_OPTIMIZATION)
         end
 
@@ -342,9 +345,9 @@ functor AMD64RegAlloc (
     fun spillF s {annotations=an, kill, reg, spillLoc, instr} = let
         (* preserve annotation on instruction *)
         fun spill(instrAn, I.ANNOTATION{a, i}) = spill(a::instrAn, i)
-  	  | spill(instrAn, I.KILL{regs, spilled}) = 
-	    {code=[annotate (instrAn, 
-		 I.KILL {regs=C.rmvFreg(reg, regs), 
+  	  | spill(instrAn, I.KILL{regs, spilled}) =
+	    {code=[annotate (instrAn,
+		 I.KILL {regs=C.rmvFreg(reg, regs),
 			 spilled=C.addFreg(reg, spilled)})],
 	     proh = [], newReg=NONE}
 	  | spill(instrAn, I.LIVE _) = error "spillF: LIVE"
@@ -352,15 +355,15 @@ functor AMD64RegAlloc (
 	  | spill(instrAn, I.INSTR _) = (
 	    inc floatSpillCnt;
 	    spillFInstr (instr, reg, getFregLoc (s, an, spillLoc)))
-        in 
+        in
           spill([], instr)
         end (* spillF *)
 
     fun spillFreg s {src, reg, spillLoc, annotations=an} = (
         inc floatSpillCnt;
         let val dst = getFregLoc (s, an, spillLoc)
-        in 
-          if Props.eqOpn (I.Direct (64, src), dst) 
+        in
+          if Props.eqOpn (I.Direct (64, src), dst)
 	    then []
 	    else [I.fmove {fmvOp=I.MOVSD, src=I.FDirect src, dst=dst}]
 	end)
@@ -377,8 +380,8 @@ functor AMD64RegAlloc (
 
     fun reloadF s {annotations=an,reg,spillLoc,instr} = let
         fun reload (instrAn, I.ANNOTATION{a,i}) = reload(a::instrAn, i)
-	  | reload(instrAn, I.LIVE{regs, spilled}) = 
-	    {code=[I.LIVE{regs=C.rmvFreg(reg, regs), 
+	  | reload(instrAn, I.LIVE{regs, spilled}) =
+	    {code=[I.LIVE{regs=C.rmvFreg(reg, regs),
 	           spilled=C.addFreg(reg, spilled)}],
 	     proh=[], newReg=NONE}
 	  | reload(_, I.KILL _) = error "reloadF: KILL"
@@ -386,11 +389,11 @@ functor AMD64RegAlloc (
 	  | reload(instrAn, instr as I.INSTR _) = (
   	    inc floatReloadCnt;
 	    reloadFInstr (instr, reg, getFregLoc(s, an, spillLoc)))
-        in 
+        in
           reload([], instr)
         end (* reloadF *)
 
-    fun reloadFreg s {dst, reg, spillLoc, annotations=an} = 
+    fun reloadFreg s {dst, reg, spillLoc, annotations=an} =
         (inc floatReloadCnt;
 	 let val srcLoc = getFregLoc (s, an, spillLoc)
 	     val dstLoc = I.FDirect dst
@@ -402,9 +405,9 @@ functor AMD64RegAlloc (
 
     fun copyInstrF((rds as [_], rss as [_]), _) =
         fcopy{dst=rds, src=rss, tmp=NONE}
-      | copyInstrF((rds, rss), I.COPY{k=CB.FP, tmp, ...}) = 
+      | copyInstrF((rds, rss), I.COPY{k=CB.FP, tmp, ...}) =
         fcopy{dst=rds, src=rss, tmp=tmp}
-      | copyInstrF(x, I.ANNOTATION{i,a}) = 
+      | copyInstrF(x, I.ANNOTATION{i,a}) =
         I.ANNOTATION{i=copyInstrF (x, i), a=a}
       | copyInstrF _ = error "copyInstrF"
 
@@ -434,15 +437,15 @@ functor AMD64RegAlloc (
     fun run cfg = let
         val printCFG = if !amd64CfgDebugFlg
               then PrintFlowgraph.printCFG (!MLRiscControl.debug_stream)
-              else fn msg => fn _ => () 
+              else fn msg => fn _ => ()
 	val _ = printCFG "\t---Before register allocation---\n" cfg;
 	val s = beforeRA cfg
 	val _ = resetRA ()
 	val cfg' = RA.ra [raInt s, raFloat s] cfg
-        in          
+        in
           removeDeadCode cfg';
           printCFG "\t---After register allocation---\n" cfg';
           cfg'
         end (* run *)
-    
+
   end (* AMD64RegAlloc *)

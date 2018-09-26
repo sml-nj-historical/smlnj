@@ -1,5 +1,8 @@
 (* amd64-opcodes.sml
  *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * This functor converts from types of instructions, e.g. addition, and  their
  * bit widths to AMD64 instructions.
  *)
@@ -7,7 +10,7 @@
 functor AMD64Opcodes (structure I : AMD64INSTR) =
   struct
 
-    type opcodes = {INC : I.unaryOp, DEC : I.unaryOp, NOT : I.unaryOp, 
+    type opcodes = {INC : I.unaryOp, DEC : I.unaryOp, NOT : I.unaryOp,
                     NEG : I.unaryOp,
                     ADD : I.binaryOp, SUB : I.binaryOp, MUL : I.binaryOp,
                     IMUL : I.binaryOp,
@@ -82,19 +85,19 @@ functor AMD64Opcodes (structure I : AMD64INSTR) =
       | loadSXOp (32, 64) = I.MOVSLQ
       | loadSXOp (fTy, tTy) = raise Fail ("incompatible "^Int.toString fTy^" "^Int.toString tTy)
 
-    val fopcodes32 = {MOV=I.MOVSS, ADD=I.ADDSS, SUB=I.SUBSS, 
+    val fopcodes32 = {MOV=I.MOVSS, ADD=I.ADDSS, SUB=I.SUBSS,
 		      MUL=I.MULSS, DIV=I.DIVSS, UCOM=I.UCOMISS}
-    val fopcodes64 = {MOV=I.MOVSD, ADD=I.ADDSD, SUB=I.SUBSD, 
+    val fopcodes64 = {MOV=I.MOVSD, ADD=I.ADDSD, SUB=I.SUBSD,
                       MUL=I.MULSD, DIV=I.DIVSD, UCOM=I.UCOMISD}
 
-    fun fopC opc ty = let 
+    fun fopC opc ty = let
 	val opcodes = (case ty
 	    of 32 => fopcodes32
 	     | 64 => fopcodes64
 	     | _  => fopcodes64
 	    (* end case *))
-      in 
-	opc opcodes 
+      in
+	opc opcodes
       end (* fopC *)
 
     val fmovOp = fopC #MOV val faddOp = fopC #ADD val fsubOp = fopC #SUB
