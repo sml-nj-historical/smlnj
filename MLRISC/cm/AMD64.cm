@@ -1,4 +1,4 @@
-(* This file is created by makeallcm *)
+(* Note: this file was _not_ created by makeallcm! *)
 Library
 	signature AMD64SHUFFLE
 	signature AMD64CELLS
@@ -22,6 +22,7 @@ Library
 	functor AMD64Gen
 	functor AMD64Opcodes
 	functor AMD64RegAlloc
+	functor AMD64Rewrite
 	functor AMD64SpillInstr
 	functor AMD64Jumps
 is
@@ -31,7 +32,7 @@ is
 	$/Control.cm
 	$/Lib.cm
 	$/Graphs.cm
-	$/MLTREE.cm 
+	$/MLTREE.cm
 
 	../amd64/c-calls/amd64-svid.sml
 	../amd64/omit-frameptr/amd64omit-frameptr.sml
@@ -57,6 +58,7 @@ is
 
 	(* register allocation *)
 	../amd64/ra/amd64RegAlloc.sml
+	../amd64/ra/amd64Rewrite.sml
 	../amd64/ra/amd64SpillInstr.sml
 
 	(* backpatching *)
