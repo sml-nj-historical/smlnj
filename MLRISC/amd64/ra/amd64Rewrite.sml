@@ -28,21 +28,21 @@ functor AMD64Rewrite (Instr : AMD64INSTR) : sig
 	   of I.Direct(n, r) => if CB.sameColor(rs, r) then I.Direct(n, rd) else opnd
 	    | I.FDirect r => if CB.sameColor(rs, r) then I.FDirect rd else opnd
 	    | I.Displace{base, disp, mem} => if CB.sameColor(base,rs)
-		then I.Displace{base=rt, disp=disp, mem=mem}
+		then I.Displace{base=rd, disp=disp, mem=mem}
 		else opnd
 	    | I.Indexed{base=NONE, index, scale, disp, mem} => if CB.sameColor(rs, index)
 		then I.Indexed{base=NONE, index=rd, scale=scale, disp=disp, mem=mem}
 		else opnd
-	    | I.Indexed{base=SOME rb, index, scale, disp, mem} => let
-		val base' = if CB.sameColor(rs, rb) then SOME rt else base
-		val index' = if CB.sameColor(rs, index) then rt else index
+	    | I.Indexed{base as SOME rb, index, scale, disp, mem} => let
+		val base' = if CB.sameColor(rs, rb) then SOME rd else base
+		val index' = if CB.sameColor(rs, index) then rd else index
 		in
 		  I.Indexed{base=base', index=index', scale=scale, disp=disp, mem=mem}
 		end
 	    | _ => opnd
 	  (* end case *))
 
-    fun rewriteUse' (i, rs, rd) = let
+    fun rewriteUse' (instr, rs, rd) = let
 	  val operand = operand (rs, rd)
 	  in
 	    case instr
@@ -50,12 +50,12 @@ functor AMD64Rewrite (Instr : AMD64INSTR) : sig
 	      | I.JCC{cond, opnd} => I.JCC{cond=cond, opnd = operand opnd}
 	      | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => I.CALL{
 		    opnd=operand opnd, defs=defs, return=return,
-		    uses=CB.CellSet.map {from=rs,to=rt} uses, cutsTo=cutsTo,
+		    uses=CB.CellSet.map {from=rs,to=rd} uses, cutsTo=cutsTo,
 		    mem=mem, pops=pops
 		  }
 	      | I.CALLQ{opnd, defs, uses, return, cutsTo, mem, pops} => I.CALLQ{
 		    opnd=operand opnd, defs=defs, return=return,
-		    uses=CB.CellSet.map {from=rs,to=rt} uses, cutsTo=cutsTo,
+		    uses=CB.CellSet.map {from=rs,to=rd} uses, cutsTo=cutsTo,
 		    mem=mem, pops=pops
 		  }
 	      | I.MOVE{mvOp, src, dst as I.Direct _} => I.MOVE{mvOp=mvOp, src=operand src, dst=dst}
@@ -89,11 +89,11 @@ functor AMD64Rewrite (Instr : AMD64INSTR) : sig
 	      | I.PUSHW opnd => I.PUSHW(operand opnd)
 	      | I.PUSHB opnd => I.PUSHB(operand opnd)
 	      | I.POP opnd => I.POP(operand opnd)
-	      | I.FMOVE{fsize, src, dst} => I.FMOVE{fsize=fsize, src=operand src, dst=operand dst}
+	      | I.FMOVE{fmvOp, src, dst} => I.FMOVE{fmvOp=fmvOp, src=operand src, dst=operand dst}
 	      | I.FBINOP{binOp, dst, src} => I.FBINOP{binOp=binOp, src=operand src, dst=dst}
 	      | I.FCOM{comOp, src, dst} => I.FCOM{comOp=comOp, src=operand src, dst=dst}
-	      | I.FSQRTS{src, dst} => F.SQRTS{src=operand src, dst=operand dst}
-	      | I.FSQRTD{src, dst} => F.SQRTD{src=operand src, dst=operand dst}
+	      | I.FSQRTS{src, dst} => I.FSQRTS{src=operand src, dst=operand dst}
+	      | I.FSQRTD{src, dst} => I.FSQRTD{src=operand src, dst=operand dst}
 	      | I.XCHG{lock, sz, src, dst} =>
 		  I.XCHG{lock=lock, sz=sz, src=operand src, dst=operand dst}
 	      | I.CMPXCHG{lock, sz, src, dst} =>
@@ -104,27 +104,27 @@ functor AMD64Rewrite (Instr : AMD64INSTR) : sig
 	    (* end case *)
 	  end
 
-    fun rewriteDef' (instr, rs, rd) = let
+    fun rewriteDef' (instr, rs, rd)= let
 	  val operand = operand (rs, rd)
 	  in
 	    case instr
 	     of I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => I.CALL{
 		    opnd=opnd, cutsTo=cutsTo, pops=pops,
-		    return=CB.CellSet.map {from=rs,to=rt} return,
-		    defs=CB.CellSet.map {from=rs,to=rt} defs,
+		    return=CB.CellSet.map {from=rs,to=rd} return,
+		    defs=CB.CellSet.map {from=rs,to=rd} defs,
 		    uses=uses, mem=mem
 		  }
 	      | I.CALLQ{opnd, defs, uses, return, cutsTo, mem, pops} => I.CALLQ{
 		    opnd=opnd, cutsTo=cutsTo, pops=pops,
-		    return=CB.CellSet.map {from=rs,to=rt} return,
-		    defs=CB.CellSet.map {from=rs,to=rt} defs,
+		    return=CB.CellSet.map {from=rs,to=rd} return,
+		    defs=CB.CellSet.map {from=rs,to=rd} defs,
 		    uses=uses, mem=mem
 		  }
 	      | I.MOVE{mvOp, src, dst} => I.MOVE{mvOp=mvOp, src=src, dst=operand dst}
 	      | I.LEAL{r32, addr} =>
 		  if CB.sameColor(rs, r32) then I.LEAL{r32=rd, addr=addr} else instr
 	      | I.LEAQ{r64, addr} =>
-		  if CB.sameColor(rs, r64) then I.LEAL{r64=rd, addr=addr} else instr
+		  if CB.sameColor(rs, r64) then I.LEAQ{r64=rd, addr=addr} else instr
 	      | I.BINARY{binOp, src, dst} => I.BINARY{binOp=binOp, src=src, dst=operand dst}
 	      | I.SHIFT{shiftOp, src, dst, count} =>
 		  I.SHIFT{shiftOp=shiftOp, src=src, count=count, dst=operand dst}
@@ -163,14 +163,14 @@ functor AMD64Rewrite (Instr : AMD64INSTR) : sig
 	    case instr
 	     of I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => I.CALL{
 		    opnd=opnd, cutsTo=cutsTo, pops=pops,
-		    return=CB.CellSet.map {from=rs,to=rt} return,
-		    defs=CB.CellSet.map {from=rs,to=rt} defs,
+		    return=CB.CellSet.map {from=rs,to=rd} return,
+		    defs=CB.CellSet.map {from=rs,to=rd} defs,
 		    uses=uses, mem=mem
 		  }
 	      | I.CALLQ{opnd, defs, uses, return, cutsTo, mem, pops} => I.CALLQ{
 		    opnd=opnd, cutsTo=cutsTo, pops=pops,
-		    return=CB.CellSet.map {from=rs,to=rt} return,
-		    defs=CB.CellSet.map {from=rs,to=rt} defs,
+		    return=CB.CellSet.map {from=rs,to=rd} return,
+		    defs=CB.CellSet.map {from=rs,to=rd} defs,
 		    uses=uses, mem=mem
 		  }
 	      | I.FMOVE{fmvOp, dst, src} => I.FMOVE{fmvOp=fmvOp, dst=operand dst, src=src}
@@ -183,7 +183,7 @@ functor AMD64Rewrite (Instr : AMD64INSTR) : sig
 	  end
 
   (* lift rewrting of the `instr` type to work on the `instruction` type *)
-    fun rewrite (rwInstr, isRWUse) (instr, rs, rd) = let
+    fun rewrite (rwInstr, isRWUse) = let
 	  fun rewrite' (instr, rs, rd) = let
 		val replace = replace (rs, rd)
 		in
@@ -201,7 +201,7 @@ functor AMD64Rewrite (Instr : AMD64INSTR) : sig
 				| _ => a
 			      (* end case *)
 			}
-		    | I.INSTR i => I.INSTR(rwInstr i)
+		    | I.INSTR i => I.INSTR(rwInstr(i, rs, rd))
 		    | I.COPY{k, sz, dst, src, tmp} => let
 			val (dst', src') = if isRWUse
 			      then (dst, List.map replace src)
