@@ -1,3 +1,9 @@
+(* ppcRegAlloc.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
+
 functor PPCRegAlloc(structure I : INSTRUCTIONS where C = PPCCells
 		     structure P : INSN_PROPERTIES where I = I
 		     structure F : FLOWGRAPH where I = I and P = P
@@ -15,11 +21,11 @@ struct
   structure C=I.C
 
   (* liveness analysis for general purpose registers *)
-  structure RegLiveness = 
+  structure RegLiveness =
     Liveness(structure Flowgraph=F
 	     structure Instruction=I
 	     val defUse = P.defUse C.GP
-	     val regSet = C.getCell C.GP 
+	     val regSet = C.getCell C.GP
 	     val cellset = C.updateCell C.GP)
 
 
@@ -35,15 +41,15 @@ struct
 	   val firstPseudoR = 32
 	   val maxPseudoR = C.maxCell
 	   val numRegs = C.numCell C.GP
-	   val regSet = C.getCell C.GP 
+	   val regSet = C.getCell C.GP
 	end)
 
   (* liveness analysis for floating point registers *)
-  structure FregLiveness = 
+  structure FregLiveness =
     Liveness(structure Flowgraph=F
 	     structure Instruction=I
 	     val defUse = P.defUse C.FP
-	     val regSet = C.getCell C.FP 
+	     val regSet = C.getCell C.FP
 	     val cellset = C.updateCell C.FP)
 
   functor FloatRa =
@@ -56,9 +62,9 @@ struct
 
  	   val defUse = P.defUse C.FP
 	   val firstPseudoR = 64
-	   val maxPseudoR = C.maxCell 
+	   val maxPseudoR = C.maxCell
 	   val numRegs = C.numCell C.FP
-	   val regSet = C.getCell C.FP 
+	   val regSet = C.getCell C.FP
 	end)
 end
 
