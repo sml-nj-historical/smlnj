@@ -14,7 +14,7 @@
 #include "tags.h"
 #include "ml-request.h"
 #include "ml-limits.h"
-	
+
 #if defined(OPSYS_LINUX) && defined(__ELF__)
 /* needed to disable the execution bit on the stack pages */
 .section .note.GNU-stack,"",%progbits
@@ -43,7 +43,7 @@
  * EDI - free space pointer (ml_allocptr)
  * ESP - stack pointer
  * EIP - program counter (ml_pc)
- */   
+ */
 
 /* Registers (see x86/x86CpsRegs.sml): */
 #define temp		EAX
@@ -84,11 +84,11 @@
 
 #define ML_STATE_OFFSET 176
 #define mlstate_ptr	REGOFF(ML_STATE_OFFSET, ESP)
-#define freg8           184	     /* double word aligned */ 
+#define freg8           184	     /* double word aligned */
 #define	freg9           192
 #define freg31          368          /* 152 + (31-8)*8 */
 #define	fpTempMem	376	     /* freg31 + 8 */
-#define SpillAreaStart	512	     /* starting offset */	
+#define SpillAreaStart	512	     /* starting offset */
 #define ML_FRAME_SIZE	(8192)
 
 #define	via
@@ -99,14 +99,14 @@ request_w:		/* place to put the request code */
 	D_LONG 0
 	GLOBL CSYM(ML_X86Frame)
 LABEL(CSYM(ML_X86Frame)) /* ptr to the ml frame (gives C access to limitptr) */
-	D_LONG 0		
+	D_LONG 0
 
 
 #include "mlstate-offsets.h"	/** this file is generated **/
 
 
 /*
- * 386 function call conventions:  
+ * 386 function call conventions:
  *  [true for gcc and dynix3 cc; untested for others]
  *
  * 	Caller save registers: eax, ecx, edx
@@ -202,9 +202,9 @@ ML_CODE_HDR(return_a)
 	JMP(CSYM(set_request))
 
 /* Request a fault.  The floating point coprocessor must be reset
- * (thus trashing the FP registers) since we do not know whether a 
- * value has been pushed into the temporary "register".	 This is OK 
- * because no floating point registers will be live at the start of 
+ * (thus trashing the FP registers) since we do not know whether a
+ * value has been pushed into the temporary "register".	 This is OK
+ * because no floating point registers will be live at the start of
  * the exception handler.
  */
 ENTRY(request_fault)
@@ -254,14 +254,14 @@ ENTRY(set_request)
 
 	/* Save vregs before the stack frame is popped. */
 	MOVE(limitptr,temp2, REGOFF(LimitPtrOffMSP,temp))
-	MOVE(exncont, temp2, REGOFF(ExnPtrOffMSP,temp)) 
+	MOVE(exncont, temp2, REGOFF(ExnPtrOffMSP,temp))
 	MOVE(stdclos, temp2, REGOFF(StdClosOffMSP,temp))
 	MOVE(stdlink, temp2, REGOFF(LinkRegOffMSP,temp))
 	MOVE(pc, temp2, REGOFF(PCOffMSP,temp))
 	MOVE(storeptr,temp2, REGOFF(StorePtrOffMSP,temp))
 	MOVE(varptr,  temp2, REGOFF(VarPtrOffMSP,temp))
-#undef	temp2	
-	
+#undef	temp2
+
 	/* return val of function is request code */
 	MOV_L(request_w,creturn)
 
@@ -290,12 +290,12 @@ ENTRY(restoreregs)
 	 * starts out being at least word aligned. But who knows ...
 	 */
 	MOV_L(ESP,EBX)
-	OR_L(CONST(4), ESP)		
+	OR_L(CONST(4), ESP)
 	SUB_L(CONST(4), ESP)		/* stack grows from high to low */
 	SUB_L(CONST(ML_FRAME_SIZE), ESP)
 	MOV_L(EBX,espsave)
 #endif
-	
+
 #define temp2	EBX
       /* Initialize the ML stack frame. */
 	MOVE(REGOFF(ExnPtrOffMSP, temp),  temp2, exncont)
@@ -337,14 +337,14 @@ ENTRY(restoreregs)
 	/* handle signals */
 	MOV_L(REGOFF(SigsRecvOffVSP,vsp),tmpreg)
 	CMP_L(REGOFF(SigsHandledOffVSP,vsp),tmpreg)
-	
+
 #undef  tmpreg
 	JNE(pending)
 
 restore_and_jmp_ml:
 	POP_L(temp)			/* restore temp to msp */
 	POP_L(misc2)
-	
+
 jmp_ml:
 	CMP_L(limitptr, allocptr)
 	JMP(CODEPTR(REGOFF(PCOffMSP,temp)))	/* Jump to ML code. */
@@ -352,10 +352,10 @@ jmp_ml:
 
 pending:
 					/* Currently handling signal? */
-	CMP_L(CONST(0), REGOFF(InSigHandlerOffVSP,vsp))   
+	CMP_L(CONST(0), REGOFF(InSigHandlerOffVSP,vsp))
 	JNE(restore_and_jmp_ml)
 					/* handler trap is now pending */
-	movl	IMMED(1),HandlerPendingOffVSP(vsp) 
+	movl	IMMED(1),HandlerPendingOffVSP(vsp)
 
 	/* must restore here because limitptr is on stack */ /* XXX */
 	POP_L(temp)			/* restore temp to msp */
@@ -378,17 +378,17 @@ ML_CODE_HDR(array_a)
 
 #define temp1 misc0
 #define temp2 misc1
-	PUSH_L(misc0)			     /* save misc0 */ 
+	PUSH_L(misc0)			     /* save misc0 */
 	PUSH_L(misc1)			     /* save misc1 */
-	
+
 	MOV_L(temp, temp1)
 	SAL_L(CONST(TAG_SHIFTW),temp1)      /* build descriptor in temp1 */
 	OR_L(CONST(MAKE_TAG(DTAG_arr_data)),temp1)
 	MOV_L(temp1,REGIND(allocptr))	     /* store descriptor */
 	ADD_L(CONST(4),allocptr)	     /* allocptr++ */
 	MOV_L(allocptr, temp1)		     /* temp1 := array data ptr */
-	MOV_L(REGOFF(4,stdarg), temp2)	     /* temp2 := initial value */ 
-2:	
+	MOV_L(REGOFF(4,stdarg), temp2)	     /* temp2 := initial value */
+2:
 	MOV_L(temp2, REGIND(allocptr))     /* initialize array */
 	ADD_L(CONST(4), allocptr)
 	SUB_L(CONST(1), temp)
@@ -398,7 +398,7 @@ ML_CODE_HDR(array_a)
 	MOV_L(CONST(DESC_polyarr),REGIND(allocptr)) /* descriptor in temp */
 	ADD_L(CONST(4), allocptr)	     /* allocptr++ */
 	MOV_L(REGIND(stdarg), temp)	     /* temp := length */
-	MOV_L(allocptr, stdarg)   	     /* result = header addr */ 
+	MOV_L(allocptr, stdarg)   	     /* result = header addr */
 	MOV_L(temp1, REGIND(allocptr))	     /* store pointer to data */
 	MOV_L(temp, REGOFF(4,allocptr))	     /* store length */
 	ADD_L(CONST(8), allocptr)
@@ -412,7 +412,7 @@ ML_CODE_HDR(array_a)
 	MOV_L(CONST(REQ_ALLOC_ARRAY), request_w)
 	MOVE	(stdlink, temp, pc)
 	JMP(CSYM(set_request))
-	
+
 
 /* create_r : int -> realarray */
 ML_CODE_HDR(create_r_a)
@@ -500,7 +500,7 @@ ML_CODE_HDR(create_s_a)
 	CHECKLIMIT
 	MOV_L(stdarg,temp)
 	SAR_L(CONST(1),temp)		/* temp := length(untagged) */
-	ADD_L(CONST(4),temp)		
+	ADD_L(CONST(4),temp)
 	SAR_L(CONST(2),temp)		/* temp := length(words) */
 	CMP_L(CONST(SMALL_OBJ_SZW),temp)
 	JGE(2f)
@@ -526,8 +526,8 @@ ML_CODE_HDR(create_s_a)
 	MOV_L(temp1, REGIND(allocptr))/* header data field */
 	MOV_L(stdarg, REGOFF(4,allocptr))	/* header length field */
 	MOV_L(allocptr, stdarg)		/* stdarg := header object */
-	ADD_L(CONST(8), allocptr)		
-	
+	ADD_L(CONST(8), allocptr)
+
 	POP_L(misc0)			/* restore misc0 */
 #undef  temp1
 	CONTINUE
@@ -545,7 +545,7 @@ ML_CODE_HDR(create_v_a)
 	PUSH_L(misc0)
 	PUSH_L(misc1)
 #define	temp1	misc0
-#define temp2   misc1	
+#define temp2   misc1
 	MOV_L(REGIND(stdarg),temp)		/* temp := length(tagged) */
 	MOV_L(temp, temp1)
 	SAR_L(CONST(1),temp1)		/* temp1 := length(untagged) */
@@ -587,10 +587,10 @@ ML_CODE_HDR(create_v_a)
 	MOVE	(stdlink, temp, pc)
 	JMP(CSYM(set_request))
 #undef  temp1
-#undef  temp2	
-	
-/* try_lock: spin_lock -> bool. 
- * low-level test-and-set style primitive for mutual-exclusion among 
+#undef  temp2
+
+/* try_lock: spin_lock -> bool.
+ * low-level test-and-set style primitive for mutual-exclusion among
  * processors.	For now, we only provide a uni-processor trivial version.
  */
 ML_CODE_HDR(try_lock_a)
@@ -603,7 +603,7 @@ ML_CODE_HDR(try_lock_a)
 	CONTINUE
 #endif
 
-/* unlock : releases a spin lock 
+/* unlock : releases a spin lock
  */
 ML_CODE_HDR(unlock_a)
 #if (MAX_PROCS > 1)
@@ -621,13 +621,13 @@ ML_CODE_HDR(unlock_a)
 
 
 /* Temporary storage for the old and new floating point control
-   word.  We don't use the stack to for this, since doing so would 
+   word.  We don't use the stack to for this, since doing so would
    change the offsets of the pseudo-registers. */
 	DATA
 	ALIGN4
-old_controlwd:	
+old_controlwd:
 	.word	0
-new_controlwd:	
+new_controlwd:
 	.word	0
 	TEXT
 	ALIGN4
@@ -637,7 +637,7 @@ new_controlwd:
  * point control word is initialized (undefined fields are left
  * unchanged).	Rounding control is set to "nearest" (although floor_a
  * needs "toward negative infinity").  Precision control is set to
- * "double".  The precision, underflow, denormal 
+ * "double".  The precision, underflow, denormal
  * overflow, zero divide, and invalid operation exceptions
  * are masked.  Next, seven of the eight available entries on the
  * floating point register stack are claimed (see x86/x86.sml).
@@ -662,11 +662,11 @@ ENTRY(fegetround)
 	SAR_L(CONST(10),REGIND(ESP))/* rounding mode is at bit 10 and 11 */
 	AND_L(CONST(3), REGIND(ESP))/* mask two bits */
 	MOV_L(REGIND(ESP),EAX)	/* return rounding mode */
-	ADD_L(CONST(4), ESP)	/* deallocate space */	
+	ADD_L(CONST(4), ESP)	/* deallocate space */
 	RET
-  	
+
 ENTRY(fesetround)
-	SUB_L(CONST(4), ESP)	/* allocate temporary space */	
+	SUB_L(CONST(4), ESP)	/* allocate temporary space */
 	FSTCW(REGIND(ESP))	/* store fp control word */
 	AND_W(CONST(0xf3ff), REGIND(ESP))	/* Clear rounding field. */
 	MOV_L(REGOFF(8,ESP), EAX)	/* new rounding mode */
@@ -713,7 +713,7 @@ ML_CODE_HDR(logb_a)
 	ADD_L(CONST(1), temp)		/* tag bit */
 	MOV_L(temp, stdarg)
 	CONTINUE
-	
+
 
 /* scalb : (real * int) -> real
  * Scale the first argument by 2 raised to the second argument.	 Raise
@@ -736,7 +736,7 @@ ML_CODE_HDR(scalb_a)
 	ADD_L(CONST(4), allocptr)	/* Allocate word for tag. */
 	MOV_L(allocptr, stdarg)		/* Return a pointer to the float. */
 	ADD_L(CONST(8), allocptr)	/* Allocate room for float. */
-	FSTP_D(REGIND(ESP))			
+	FSTP_D(REGIND(ESP))
 	ADD_L(CONST(4), ESP)		/* Discard copy of scalar. */
 	CONTINUE
 

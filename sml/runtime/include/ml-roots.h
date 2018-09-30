@@ -6,7 +6,7 @@
  *
  * NROOTS gives the size of the variable-size portion (roots[]) of the
  * ML state vector.  Note that the name "roots" is slightly misleading;
- * while every entry in the vector must be saved over calls to C, not 
+ * while every entry in the vector must be saved over calls to C, not
  * every entry is a valid root on every entry to C.  The valididity of
  * most entries is indicated using the register map convention (via
  * ArgRegMap); these entries are valid (and live) iff the corresponding
@@ -57,7 +57,7 @@
 #   define VAR_INDX         5
 #   define BASE_INDX	    6
 #   define EXN_INDX	    7
- 
+
 #   define MISC0_INDX	    8
 #   define MISC1_INDX	    9
 #   define MISC2_INDX	    10
@@ -74,7 +74,7 @@
 #   define MISC13_INDX	    21
 #   define MISC14_INDX	    22
 #   define MISC15_INDX	    23
- 
+
 #elif defined (TARGET_M68)
 
 #   define NROOTS	    8		/* d7, a0-a4, d3, pc */
@@ -114,13 +114,13 @@
 #   define N_ARG_REGS       19
 #   define N_PSEUDO_REGS    2
 
-#   define LINK_INDX        0	
-#   define CLOSURE_INDX	    1	
-#   define ARG_INDX	    2	
-#   define CONT_INDX	    3	
-#   define EXN_INDX	    4	
-#   define VAR_INDX         5   
-#   define BASE_INDX	    6   
+#   define LINK_INDX        0
+#   define CLOSURE_INDX	    1
+#   define ARG_INDX	    2
+#   define CONT_INDX	    3
+#   define EXN_INDX	    4
+#   define VAR_INDX         5
+#   define BASE_INDX	    6
 #   define PC_INDX	    8
 
 #   define MISC0_INDX	    9	/* 24 */
@@ -178,7 +178,7 @@
 #   define ARG_INDX	    1		/* ebp	   */
 #   define CONT_INDX	    2		/* esi	   */
 #   define CLOSURE_INDX	    3		/* 16(esp) */
-#   define VAR_INDX	    4		/* 28(esp) */ 
+#   define VAR_INDX	    4		/* 28(esp) */
 #   define LINK_INDX	    5		/* 20(esp) */
 #   define PC_INDX	    6		/* eip	   */
 #   define MISC0_INDX	    7		/* ebx	   */
@@ -211,7 +211,7 @@
 #   define ARG_INDX	    1		/* ebp	   */
 #   define CONT_INDX	    2		/* esi	   */
 #   define CLOSURE_INDX	    3		/* 16(esp) */
-#   define VAR_INDX	    4		/* 28(esp) */ 
+#   define VAR_INDX	    4		/* 28(esp) */
 #   define LINK_INDX	    5		/* 20(esp) */
 #   define PC_INDX	    6		/* eip	   */
 #   define MISC0_INDX	    7		/* ebx	   */

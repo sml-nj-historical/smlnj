@@ -26,7 +26,7 @@
 #  define HI(name) ha16(name)
 #  define LO(name) lo16(name)
 
-#else 
+#else
 #  define HI(name) name@ha
 #  define LO(name) name@l
 
@@ -101,7 +101,7 @@
 #endif
 
 
-	
+
 /** register usage **/
 #define		sp		r1
 #define 	stackptr	sp
@@ -208,7 +208,7 @@
 #define CR0_GT 1
 #define CR0_EQ 2
 #define CR0_SO 3
-	
+
 #define CR0	cr0
 
 
@@ -239,14 +239,14 @@ T._PollFreq0:
 	.tc	H._PollFreq0[TC],CSYM(_PollFreq0)
 T._PollEvent0:
 	.tc	H._PollEvent0[TC],CSYM(_PollEvent0)
-T.saveregs:	
+T.saveregs:
 	.tc	H.saveregs[TC],CSYM(saveregs)
 T.cvti2d_CONST:
 	.tc	H.cvti2d_CONST[TC],cvti2d_CONST
 #endif
 	RO_DATA
 	ALIGN8
-cvti2d_CONST:	
+cvti2d_CONST:
 	DOUBLE(4503601774854144.0)
 
 	TEXT
@@ -287,7 +287,7 @@ ML_CODE_HDR(handle_a)
 	b	set_request
 
 
-		/* continuation for ML functions called from C */		
+		/* continuation for ML functions called from C */
 ML_CODE_HDR(return_a)
 	li	atmp4,REQ_RETURN
 	li	stdlink, ML_unit
@@ -305,17 +305,17 @@ ENTRY(request_fault)
 /* bind_cfun : (string * string) -> c_function
  */
 ML_CODE_HDR(bind_cfun_a)
-	CHECKLIMIT(bind_cfun_v_limit) 
+	CHECKLIMIT(bind_cfun_v_limit)
 	li	atmp4,REQ_BIND_CFUN
 	b	set_request
 
 ML_CODE_HDR(build_literals_a)
-	CHECKLIMIT(build_literals_v_limit) 
+	CHECKLIMIT(build_literals_v_limit)
 	li	atmp4,REQ_BUILD_LITERALS
 	b	set_request
 
 ML_CODE_HDR(callc_a)
-	CHECKLIMIT(callc_v_limit) 
+	CHECKLIMIT(callc_v_limit)
 	li	atmp4,REQ_CALLC
 	b	set_request
 
@@ -347,7 +347,7 @@ set_request:
 	addi	r3,atmp4,0			/* request as argument */
 
 restore_c_regs:
- 	lwz	r2, (argblock+4)(sp) 
+ 	lwz	r2, (argblock+4)(sp)
 	lwz	r13, (argblock+8)(sp)
 	lwz	r14, (argblock+12)(sp)
 	lwz	r15, (argblock+16)(sp)
@@ -371,7 +371,7 @@ restore_c_regs:
 	mtlr    r0
 	lwz	r0, (argblock+88)(sp)
 	mtcrf	0x80, r0
-	addi	sp,sp,framesize 
+	addi	sp,sp,framesize
 	blr
 
 
@@ -428,7 +428,7 @@ CENTRY(restoreregs)
 	stw	r0,  argblock+84(sp)
 	mfcr	r0
 	stw	r0,  argblock+88(sp)
-	
+
 	and	atmp1,r3,r3			/* atmp1 := MLState pointer */
 
 	lwz	allocptr,AllocPtrOffMSP(atmp1)
@@ -455,7 +455,7 @@ CENTRY(restoreregs)
 	bne	pending_sigs			  /* if not equal, then pending sigs */
 
 
-ENTRY(ml_go) 
+ENTRY(ml_go)
 	cmpl	CR0,allocptr,limitptr
 	mtfsfi  3,0			/* Ensure that no exceptions are set */
 	mtfsfi  2,0
@@ -466,7 +466,7 @@ ENTRY(ml_go)
 	blr				/* jump to ML code */
 
 pending_sigs:				/* there are pending signals */
-					/* check if currently handling a signal */	
+					/* check if currently handling a signal */
 	lwz	atmp1,InSigHandlerOffVSP(atmp2)
 	cmpi	CR0,atmp1,0
 	bf	CR0_EQ,CSYM(ml_go)
@@ -523,7 +523,7 @@ ML_CODE_HDR(create_b_a)
 
 	srawi	atmp2,stdarg,1		/* atmp2 = length (untagged int) */
 	addi	atmp2,atmp2,3		/* atmp2 = length in words */
-	srawi	atmp2,atmp2,2		
+	srawi	atmp2,atmp2,2
 	cmpi    CR0,atmp2,SMALL_OBJ_SZW /* is this a small object */
 	bf     CR0_LT,create_b_a_large
 
@@ -538,7 +538,7 @@ ML_CODE_HDR(create_b_a)
 
 	/* allocate the header object */
 	li	atmp1, DESC_word8arr	/* header descriptor */
-	stw	atmp1,0(allocptr)	
+	stw	atmp1,0(allocptr)
 	addi	allocptr, allocptr, 4	/* allocptr++ */
 	stw	atmp3,0(allocptr)	/* header data field */
 	stw	stdarg,4(allocptr)	/* header length field */
@@ -563,7 +563,7 @@ ML_CODE_HDR(create_s_a)
 	srawi	atmp2,atmp2,2		/* length in words (including desc) */
 	cmpi	CR0,atmp2,SMALL_OBJ_SZW /* is this a small object */
 	bf	CR0_LT,create_s_a_large
-	
+
 	slwi	atmp1,atmp2,TAG_SHIFTW	/* build descriptor in atmp3 */
 	ori	atmp1,atmp1,MAKE_TAG(DTAG_raw32)
 	stw	atmp1,0(allocptr)	/* store descriptor */
@@ -597,13 +597,13 @@ ML_CODE_HDR(create_r_a)
 	slwi	atmp2,atmp2,1		/* length in words */
 	cmpi	CR0,atmp2,SMALL_OBJ_SZW	/* is this a small object */
 	bf	CR0_LT,create_r_a_large
-	
+
 	/* allocate the data object */
 	slwi	atmp1, atmp2, TAG_SHIFTW /* descriptor in atmp1 */
 	ori	atmp1, atmp1, MAKE_TAG(DTAG_raw64)
 #ifdef ALIGN_REALDS
 	ori	allocptr,allocptr,4
-#endif	
+#endif
 	stw	atmp1,0(allocptr)	/* store the descriptor */
 	addi	allocptr, allocptr, 4	/* allocptr++ */
 	addi	atmp3, allocptr, 0	/* atmp3 = data object */
@@ -631,7 +631,7 @@ create_r_a_large:			/* offline allocation */
  */
 ML_CODE_HDR(create_v_a)
 	CHECKLIMIT(create_v_a_limit)
-	
+
 	lwz	atmp1,0(stdarg)		/* atmp1 = tagged length */
 	srawi	atmp2,atmp1,1		/* atmp2 = untagged length */
 	cmpi	CR0,atmp2,SMALL_OBJ_SZW /* is this a small object */
@@ -684,13 +684,13 @@ floor_CONST:
 	**	Do not test for overflow, it's the caller's
 	**	responsibility to be in range.
 	**
-	**	This code essentially loads 1.0*2^52 into 
-	**	register f3. A floating add will internally 
-	**	perform an exponent alignment, which will 
+	**	This code essentially loads 1.0*2^52 into
+	**	register f3. A floating add will internally
+	**	perform an exponent alignment, which will
 	**	bring the required bits into the mantissa.
 	*/
 ML_CODE_HDR(floor_a)
-	lfd	f1, 0(stdarg)		
+	lfd	f1, 0(stdarg)
 	/*
 	** Neat thing here is that this code works for
 	** both +ve and -ve floating point numbers.
@@ -712,7 +712,7 @@ ML_CODE_HDR(floor_a)
 	lwz	stdarg,FLOOR_OFFSET+4(sp)
 	add	stdarg,stdarg,stdarg
 	addi	stdarg,stdarg,1
-	
+
 	andi.	r0,r0, 0xf
 	mtfsf	0xff,f0
 	CONTINUE
@@ -741,7 +741,7 @@ ML_CODE_HDR(scalb_a)
 	lis	r0,0x7ff0		/* r0 := 0x7ff0,0000 */
 	and.	atmp3,atmp2,r0		/* atmp3 := atmp2 & 0x7ff00000 */
 	bt	CR0_EQ,scalb_all_done
-	
+
 	srawi	atmp3,atmp3,20		/* atmp3 := ieee(exp) */
 	add.	atmp1,atmp1,atmp3	/* scale exponent */
 	bt	CR0_LT,scalb_underflow
@@ -753,7 +753,7 @@ ML_CODE_HDR(scalb_a)
 	and	atmp2,atmp2,r0		/* atmp2 := high mantessa bits + sign */
 	slwi	atmp1,atmp1,20		/* atmp1 := new exponent */
 	or	atmp1,atmp1,atmp2	/* atmp1 := new MSB(x) */
-	lwz	atmp2, 4(stdarg)	
+	lwz	atmp2, 4(stdarg)
 
 scalb_write_out:
 	stw	atmp1, 4(allocptr)
@@ -798,9 +798,9 @@ CENTRY(set_fsr)
 	mtfsb0	26		/* disable underflow exception */
 	mtfsb0	28		/* disable inexact exception */
 	mtfsb0	30		/* round to nearest */
-	mtfsb0	31		
+	mtfsb0	31
 	blr			/* return */
-	
+
 /* saveFPRegs and restoreFPRegs are called from C only. */
 #define ctmp1 12
 #define ctmp2 11
