@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure Alpha32Spec : MACH_SPEC = 
+structure Alpha32Spec : MACH_SPEC =
   struct
 
     structure DMS = DefaultMachSpecFn (

@@ -22,4 +22,3 @@ fi
 exec $SML -DNO_PLUGINS '$smlnj/cmb.cm' <<XXXX
 CMB.make();
 XXXX
-

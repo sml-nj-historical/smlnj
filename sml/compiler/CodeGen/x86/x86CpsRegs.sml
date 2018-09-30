@@ -13,7 +13,7 @@ structure X86CpsRegs : CPSREGS =
     structure C = X86Cells
 
     fun upto(from, to) = if from>to then [] else from::(upto (from+1,to))
-    infix upto 
+    infix upto
 
     val GP = C.GPReg
     val FP = C.FPReg
@@ -30,7 +30,7 @@ structure X86CpsRegs : CPSREGS =
 
     fun regInMem(which, i) = let
       val fp = frameptr which
-    in T.LOAD(32, T.ADD(32, fp, T.LI(T.I.fromInt(32, i))), CPSRegions.memory) 
+    in T.LOAD(32, T.ADD(32, fp, T.LI(T.I.fromInt(32, i))), CPSRegions.memory)
     end
 
     val allocptr	= edi

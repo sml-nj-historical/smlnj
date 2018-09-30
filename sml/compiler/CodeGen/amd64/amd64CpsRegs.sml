@@ -35,7 +35,7 @@ structure AMD64CpsRegs : CPSREGS =
     fun regInMem (which, i) = let
           val fp = frameptr which
           in
-	    T.LOAD(64, T.ADD(64, fp, T.LI(T.I.fromInt(32, i))), CPSRegions.memory) 
+	    T.LOAD(64, T.ADD(64, fp, T.LI(T.I.fromInt(32, i))), CPSRegions.memory)
           end
 
     val allocptr	= rdi

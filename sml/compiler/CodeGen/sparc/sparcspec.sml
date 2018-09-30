@@ -15,8 +15,8 @@ structure SparcSpec : MACH_SPEC =
     open DMS
 
     val architecture	= "sparc"
-    val numRegs		= 18 
-    val numFloatCalleeSaves = 0 
+    val numRegs		= 18
+    val numFloatCalleeSaves = 0
     val numCalleeSaves = 3
     val numFloatRegs	= 16
     val bigEndian	= true

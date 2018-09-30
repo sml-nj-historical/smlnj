@@ -9,7 +9,7 @@ FLINT (base/compiler/FLINT/kernel/primop.sml).
 
 The table is derived primarily from the definition of the InLine
 structure that contains the "environmental" primops. This is defined
-in PrimEnv (Semant/statenv/prim.sml). The secondary bindings are 
+in PrimEnv (Semant/statenv/prim.sml). The secondary bindings are
 found in the following modules:
 
   InlineT       (system/smlnj/init/built-in.sml)
@@ -249,11 +249,11 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 
 55   test_32_31_w,  P.TEST(32,31),  	word32 -> int
 	 InlineT.Word32.test_int31 : 	word32 -> int
-	 InlineT.Word32.toIntX :	word32 -> int 
+	 InlineT.Word32.toIntX :	word32 -> int
 
 56   test_32_31_i,  P.TEST(32,31),  	int32 -> int
 	 InlineT.Int32.test_int31 :     int32 -> int
-	 InlineT.Int32.toInt :		int32 -> int 
+	 InlineT.Int32.toInt :		int32 -> int
 	 InlineT.Int31.fromLarge :	intinf -> int32
 
 57   testu_31_31,   P.TESTU(31,31),     word -> int
@@ -262,7 +262,7 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 
 58   testu_32_31,   P.TESTU(32,31),     word32 -> int
 	 InlineT.Word32.testu_int31 : 	word32 -> int
-	 InlineT.Word32.toInt :		word32 -> int 
+	 InlineT.Word32.toInt :		word32 -> int
 
 59   testu_32_32,   P.TESTU(32,32),   	word32 -> int32
 	 InlineT.Word32.testu_int32 : 	word32 -> int32
@@ -280,7 +280,7 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 
 63   copy_32_32_ww, P.COPY(32,32),   	word32 -> word32
 	 InlineT.Word32.copy_word32 : 	word32 -> word32
-	 InlineT.Word32.toLargeWord :	word32 -> word32 
+	 InlineT.Word32.toLargeWord :	word32 -> word32
 	 InlineT.Word32.toLargeWordX :	word32 -> word32
 	 InlineT.Word32.fromLargeWord :	word32 -> word32
 
@@ -319,18 +319,18 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 
 72   extend_31_32_ii, P.EXTEND(31,32), 	int -> int32
 	 InlineT.Int32.extend_int31 : 	int -> int32
-	 InlineT.Int32.fromInt :	int -> int32 
+	 InlineT.Int32.fromInt :	int -> int32
 
 73   extend_31_32_iw, P.EXTEND(31,32), 	int -> word32
 	 InlineT.Word32.extend_int31 : 	int -> word32
-	 InlineT.Word32.fromInt :	int -> word32 
+	 InlineT.Word32.fromInt :	int -> word32
 
 74   extend_31_32_wi, P.EXTEND(31,32), 	word -> int32
 	 InlineT.Int32.extend_word31 : 	word -> int32
 
 75   extend_31_32_ww, P.EXTEND(31,32), 	word -> word32
 	 InlineT.Word32.extend_word31 : word -> word32
-	 InlineT.Word31.toLargeWordX :	word -> word32 
+	 InlineT.Word31.toLargeWordX :	word -> word32
 
 76   extend_8_31,   P.EXTEND(8,31),   	word8 -> int
 	 InlineT.Int31.extend_word8 : 	word8 -> int
@@ -349,7 +349,7 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 
 80   trunc_32_31_w, P.TRUNC(32,31),   	word32 -> word
 	 InlineT.Word32.trunc_word31 :  word32 -> word
-	 InlineT.Word31.fromLargeWord :	word32 -> word 
+	 InlineT.Word31.fromLargeWord :	word32 -> word
 	 CoreIntInf.w32ToW31 : 		word32 -> word
 
 81   trunc_31_8,    P.TRUNC(31,8),   	int -> word8
@@ -370,28 +370,28 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 85   test_inf_32,     P.TEST_INF 32,    intinf -> int32
 	 InlineT.IntInf.test_int32 :	intinf -> int32
 	 InlineT.IntInf.fromLarge :	intinf -> int32
-	 InlineT.Int32.fromLarge :	intinf -> int32 
-	
+	 InlineT.Int32.fromLarge :	intinf -> int32
+
 86   test_inf_64,     P.TEST_INF 64,    intinf -> int64
 
 87   copy_8_inf,      P.COPY_INF 8,     word8 -> intinf
-	 InlineT.IntInf.copy_word8 : 	word8 -> intinf 
+	 InlineT.IntInf.copy_word8 : 	word8 -> intinf
 	 InlineT.Word8.toLargeInt :	word8 -> intinf
 
 88   copy_8_inf_w,    P.COPY_INF 8,     word8 -> intinf
-	
-89   copy_31_inf_w,   P.COPY_INF 31,    word -> intinf 
+
+89   copy_31_inf_w,   P.COPY_INF 31,    word -> intinf
 	InlineT.IntInf.copy_word31 : 	word -> intinf
-	InlineT.Word31.toLargeInt :	word -> intinf 
+	InlineT.Word31.toLargeInt :	word -> intinf
 
 90   copy_32_inf_w,   P.COPY_INF 32,    word32 -> intinf
 	InlineT.IntInf.copy_word32 :	word32 -> intinf
 	InlineT.Word32.toLargeInt :	word32 -> intinf
 
 91   copy_64_inf_w,   P.COPY_INF 64,    word64-> intinf
-92   copy_31_inf_i,   P.COPY_INF 31,    int -> intinf 
+92   copy_31_inf_i,   P.COPY_INF 31,    int -> intinf
 	InlineT.IntInf.copy_int31 : 	int -> intinf
- 	
+
 93   copy_32_inf_i,   P.COPY_INF 32,    int32 -> intinf
  	InlineT.IntInf.copy_int32 : 	int32 -> intinf
 
@@ -403,7 +403,7 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 96   extend_8_inf_w,  P.EXTEND_INF 8,   word8 -> intinf
 97   extend_31_inf_w, P.EXTEND_INF 31,  word  -> intinf
 	InlineT.IntInf.extend_word31 : 	word -> intinf
-	InlineT.Word31.toLargeIntX :	word -> intinf 
+	InlineT.Word31.toLargeIntX :	word -> intinf
 
 98   extend_32_inf_w, P.EXTEND_INF 32,  word32 -> intinf
 	InlineT.IntInf.extend_word32 : 	word32 -> intinf
@@ -413,7 +413,7 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 100  extend_31_inf_i, P.EXTEND_INF 31,  int -> intinf
 	InlineT.IntInf.extend_int31 : 	int -> intinf
 	InlineT.Int31.toLarge :		int -> intinf
-	
+
 101  extend_32_inf_i, P.EXTEND_INF 32,  int32 -> intinf
 	InlineT.IntInf.extend_int32 : 	int32 -> intinf
 	InlineT.Int32.toLarge :		int -> intinf
@@ -521,7 +521,7 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 
 135  i31rshift,	 bits31 P.RSHIFT,      	int * int -> int
 	InlineT.Int31.rshift :		int * int -> int
- 
+
 136  i31rshift_8,bits31 P.RSHIFT,      	word8word ->word8
 
 137  i31lt,	 int31cmp P.<,		int * int -> bool
@@ -663,7 +663,7 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 
 184  f64neg,	 purefloat64 P.~,      	 real -> real
 	InlineT.Real64.~ :		 real -> real
-	
+
 185  f64ge,	 float64cmp (P.>=),      real * real -> bool
 	InlineT.Real64.>= :		 real * real -> bool
 
@@ -687,7 +687,7 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 
 192  f64abs,	 purefloat64 P.ABS,      real -> real
 	InlineT.Real64.abs :		 real -> real
-	
+
 193  f64sin,	 purefloat64 P.FSIN,	 real -> real
 	MathInlineT.sine :		 real -> real  [x86 only]
 
@@ -706,7 +706,7 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 198  f64max,	 P.INLMAX (P.FLOAT 64),  real * real -> real
 	InlineT.Real64.max :		 real * real -> real
 
-(*** float64 array ***)	
+(*** float64 array ***)
 
 199  f64Sub,	   sub (P.FLOAT 64),	'a * int -> 'b
 	InlineT.Real64Array.sub :	Assembly.A.real64array * int -> real
@@ -721,7 +721,7 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 	InlineT.Real64Array.chkUpdate :	   Assembly.A.real64array * int * real -> unit
 
 (*** word8 primops ***)
-(** InlineT.Word8 uses InLine.w31???_8 primops instead of these variants *) 
+(** InlineT.Word8 uses InLine.w31???_8 primops instead of these variants *)
 
 203  w8orb,	 word31 P.ORB,      	 word8 * word8 -> word8
 204  w8xorb,	 word31 P.XORB,      	 word8 * word8 -> word8
@@ -1027,11 +1027,11 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
  * The 'a is to guarantee that the compiler will treat
  * the record as a ML object, in case it passes thru a gc boundary.
  * rawupdatexxx writes to the record.
- *) 
+ *)
 
 307  rawrecord,    P.RAW_RECORD{fblock = false},  int -> 'a
 	RawMemInlineT.rawrecord :	     	  int -> 'a
-	
+
 308  rawrecord64,  P.RAW_RECORD{fblock = true},	  int -> 'a
 	RawMemInlineT.rawrecord64 :	     	  int -> 'a
 
@@ -1084,7 +1084,7 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 	RawMemInlineT.updf64 :	     	     'a * word32 * real -> unit
 
 (* InlineT also defines some primops using Assembly such as
-   InlineT.Word8Vector.create = Assembly.A.create_s and 
+   InlineT.Word8Vector.create = Assembly.A.create_s and
    similar primops... but all these kinds of primops defs
    are signature matched to hide the Assembly module types.
- *) 
+ *)

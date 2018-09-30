@@ -4,19 +4,19 @@
 (* Copyright 2002 by Lucent Technologies *)
 (* int-sys.sml *)
 
-(* 
+(*
  * This is the interactive system;
  * At link-time (i.e., at bootstrap time) this code builds the boot
  * environments, sets default signal handlers, and then dumps a heap.
  * When the heap image restarts, the system goes interactive.
- * 
+ *
  * (We do not want to go interactive before dumping the heap because it
  * would mean that environments get loaded unnecessarily.)
  *
  * This code refers directly to structure Compiler, because by the time it
  * gets compiled, CM's conditional compilation facility has already
  * made sure that structure Compiler refers to the visible compiler
- * for the current architecture. 
+ * for the current architecture.
  *)
 structure InteractiveSystem : sig end = struct
 
@@ -39,11 +39,11 @@ structure InteractiveSystem : sig end = struct
 				    concat ["exception raised during init phase: ",
 					    General.exnMessage e, "\n"]);
 		     raise e)
-	
+
     (* establish default signal handlers *)
     fun handleINT _ = !Unsafe.topLevelCont
     fun handleTERM _ = OS.Process.exit OS.Process.failure
-    fun ifSignal (sigName, handler) = 
+    fun ifSignal (sigName, handler) =
 	(case Signals.fromString sigName of
 	     SOME s =>
 		 (Signals.overrideHandler (s, Signals.HANDLER handler); ())

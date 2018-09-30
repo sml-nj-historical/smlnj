@@ -6,7 +6,7 @@
  * CPS registers used on the DEC Alpha (32-bit mode)
  *)
 
-structure Alpha32CpsRegs : CPSREGS = 
+structure Alpha32CpsRegs : CPSREGS =
   struct
     structure T = Alpha32MLTree
     structure C = AlphaCells
@@ -18,7 +18,7 @@ structure Alpha32CpsRegs : CPSREGS =
     val FP = AlphaCells.FPReg
 
     fun REG r = T.REG(32, GP r)
-    fun FREG f = T.FREG(64, FP f) 
+    fun FREG f = T.FREG(64, FP f)
     val vfp		= AlphaCells.newReg()
     val vfptr		= T.REG(32, vfp)
     fun stdarg _	= REG(0)
@@ -30,8 +30,8 @@ structure Alpha32CpsRegs : CPSREGS =
     fun limitptr _	= REG(9)
     fun varptr _	= REG(10)
     val exhaustedR	= GP 11
-    val exhausted	= SOME(T.CC(T.GT,exhaustedR)) 
-    fun storeptr _	= REG(12) 
+    val exhausted	= SOME(T.CC(T.GT,exhaustedR))
+    fun storeptr _	= REG(12)
     fun exnptr _	= REG(14)
     fun gcLink _	= REG(26)
 
@@ -50,7 +50,7 @@ structure Alpha32CpsRegs : CPSREGS =
 	    | get _ = MLRiscErrorMsg.error ("Alpha32CpsRegs","availR:get")
 	  in
 	    map get ([
-		gcLink(false), T.REG(32, exhaustedR), 
+		gcLink(false), T.REG(32, exhaustedR),
 		stdlink(false), stdclos(false), stdarg(false), stdcont(false)
 	      ] @ miscregs)
 	  end

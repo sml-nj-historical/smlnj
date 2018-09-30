@@ -6,7 +6,7 @@
  * CPS registerS used on the Sparc (32-bit)
  *)
 
-structure SparcCpsRegs : CPSREGS = 
+structure SparcCpsRegs : CPSREGS =
 struct
     structure T = SparcMLTree
     structure C = SparcCells
@@ -14,10 +14,10 @@ struct
     val GP = C.GPReg
     val FP = C.FPReg
 
-    fun REG r = T.REG(32,GP r) 
+    fun REG r = T.REG(32,GP r)
     fun FREG f = T.FREG(64,FP f)
 
-    val returnPtr	= GP 15        
+    val returnPtr	= GP 15
 
     local
       val stdarg0	= REG(24) (* %i0 *)
@@ -29,7 +29,7 @@ struct
       val varptr0	= REG(29) (* %i5 *)
       val storeptr0	= REG(21)  (* %l5 *)
       val exnptr0	= REG(22)  (* %l6 *)
-      val gcLink0	= T.REG(32,returnPtr) 
+      val gcLink0	= T.REG(32,returnPtr)
       val frameptr0     = REG(30)
     in
       val vfp		= SparcCells.newReg()
@@ -43,7 +43,7 @@ struct
 
       fun limitptr _	= limitptr0
       fun varptr _	= varptr0
-      val exhausted	= SOME(T.CC(T.GTU,C.psr))  (* %psr *) 
+      val exhausted	= SOME(T.CC(T.GTU,C.psr))  (* %psr *)
       fun storeptr _	= storeptr0
       val allocptr	= REG(23)  (* %l7 *)
       fun exnptr _	= exnptr0
@@ -53,7 +53,7 @@ struct
       fun frameptr _    = frameptr0
 
       (* Warning %o2 is used as the asmTmp
-       *)    
+       *)
       val miscregs =
 	  map REG
 	      [2, 3,				(* %g2-%g3 *)

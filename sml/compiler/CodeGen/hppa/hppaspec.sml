@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure HppaSpec : MACH_SPEC = 
+structure HppaSpec : MACH_SPEC =
   struct
 
     structure DMS = DefaultMachSpecFn (

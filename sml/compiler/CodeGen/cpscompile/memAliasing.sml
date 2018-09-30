@@ -16,7 +16,7 @@
  * Some target level issues
  * ------------------------
  * In the source level two CPS allocations cannot be aliased by definition.
- * When allocations are translated into target code, howwever, they become
+ * When allocations are translated into target code, however, they become
  * stores to fixed offsets from the heap pointer.  Two allocation stores
  * that may write to the same offset are aliased.  Allocation stores that are
  * in disjoint program paths may be assigned the same heap allocation offset.

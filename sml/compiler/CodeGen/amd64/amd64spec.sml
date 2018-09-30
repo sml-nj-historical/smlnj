@@ -4,9 +4,9 @@
  * All rights reserved.
  *)
 
-structure AMD64Spec : MACH_SPEC = 
+structure AMD64Spec : MACH_SPEC =
   struct
- 
+
     structure DMS = DefaultMachSpecFn (
       struct
 	val wordByteWidth = 8

@@ -6,12 +6,12 @@
  * CPS registers used on the HPPA
  *)
 
-structure HppaCpsRegs : CPSREGS = 
+structure HppaCpsRegs : CPSREGS =
   struct
     structure T = HppaMLTree
     structure C = HppaCells
 
-  (* HPPA register conventions 
+  (* HPPA register conventions
      0     zero
      1	   caller-saves
      2     return-pointer and scratch
@@ -30,9 +30,9 @@ structure HppaCpsRegs : CPSREGS =
 
     val GP = HppaCells.GPReg
     val FP = HppaCells.FPReg
-    fun REG r = T.REG(32, GP r) 
+    fun REG r = T.REG(32, GP r)
     fun FREG f = T.FREG(64, FP f)
-  
+
     val vfp       = HppaCells.newReg()
     val vfptr     = T.REG(32, vfp)
 
@@ -50,13 +50,13 @@ structure HppaCpsRegs : CPSREGS =
     fun exnptr _		= REG(6)
 
     val returnPtr		= GP 31
-    fun gcLink _		= T.REG(32,returnPtr) 
+    fun gcLink _		= T.REG(32,returnPtr)
     val stackptr		= REG(30)
 
     fun frameptr _        	= stackptr
 
     val miscregs = map REG [1,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,2]
-    val calleesave = Array.fromList miscregs 
+    val calleesave = Array.fromList miscregs
 
   (* Note: We need at least one register for shuffling purposes. *)
     fun fromto(n, m) = if n>m then [] else n :: fromto(n+1, m)
