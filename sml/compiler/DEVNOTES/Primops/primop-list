@@ -461,27 +461,27 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 	InlineT.Int31.+ : 		int * int -> int
 	Core.iadd : 			int * int -> int
 
-112  i31add_8, 	 int31 P.+,      	word8 * word8 -> word8
+112  i31add_8, 	 int31 P.+,      	word8 * word8 -> word8		(* unused *)
 
 113  i31sub,	 int31 P.-,      	int * int -> int
 	InlineT.Int31.- : 		int * int -> int
 
-114  i31sub_8,	 int31 P.-,      	word8 * word8 -> word8
+114  i31sub_8,	 int31 P.-,      	word8 * word8 -> word8		(* unused *)
 
 115  i31mul,	 int31 P.*,      	int * int -> int
 	InlineT.Int31.* : 		int * int -> int
 
-116  i31mul_8,	 int31 P.*,      	word8 * word8 -> word8
+116  i31mul_8,	 int31 P.*,      	word8 * word8 -> word8		(* unused *)
 
 117  i31div,	 int31 P.DIV,      	int * int -> int
 	InlineT.Int31.div : 		int * int -> int
 
-118  i31div_8,	 int31 P.DIV,      	word8 * word8 -> word8
+118  i31div_8,	 int31 P.DIV,      	word8 * word8 -> word8		(* unused *)
 
 119  i31mod,     int31 P.MOD,      	int * int -> int
 	InlineT.Int31.mod : 		int * int -> int
 
-120  i31mod_8,   int31 P.MOD,           word8 * word8 -> word8
+120  i31mod_8,   int31 P.MOD,           word8 * word8 -> word8		(* unused *)
 
 121  i31quot,	 int31 P./,      	int * int -> int
 	InlineT.Int31.quot : 		int * int -> int
@@ -492,42 +492,42 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 123  i31orb,	 bits31 P.ORB,      	int * int -> int
 	InlineT.Int31.orb : 		int * int -> int
 
-124  i31orb_8,	 bits31 P.ORB,      	word8 * word8 -> word8
+124  i31orb_8,	 bits31 P.ORB,      	word8 * word8 -> word8		(* unused *)
 
 125  i31andb,	 bits31 P.ANDB,      	int * int -> int
 	InlineT.Int31.andb :		int * int -> int
 
-126  i31andb_8,	 bits31 P.ANDB,      	word8 * word8 -> word8
+126  i31andb_8,	 bits31 P.ANDB,      	word8 * word8 -> word8		(* unused *)
 
 127  i31xorb,	 bits31 P.XORB,      	int * int -> int
 	InlineT.Int31.xorb :		int * int -> int
 
-128  i31xorb_8,	 bits31 P.XORB,      	word8 * word8 -> word8
+128  i31xorb_8,	 bits31 P.XORB,      	word8 * word8 -> word8		(* unused *)
 
 129  i31notb,	 bits31 P.NOTB,      	int -> int
 	InlineT.Int31.notb :		int -> int
 
-130  i31notb_8,	 bits31 P.NOTB,      	word8 -> word8
+130  i31notb_8,	 bits31 P.NOTB,      	word8 -> word8			(* unused *)
 
 131  i31neg,	 int31 P.~,      	int -> int
 	InlineT.Int31.~ :		int -> int
 
-132  i31neg_8,	 int31 P.~,      	word8 -> word8
+132  i31neg_8,	 int31 P.~,      	word8 -> word8			(* unused *)
 
 133  i31lshift,	 bits31 P.LSHIFT,      	int * int -> int
 	InlineT.Int31.lshift :		int * int -> int
 
-134  i31lshift_8,bits31 P.LSHIFT,      	word8word ->word8
+134  i31lshift_8,bits31 P.LSHIFT,      	word8word ->word8		(* unused *)
 
 135  i31rshift,	 bits31 P.RSHIFT,      	int * int -> int
 	InlineT.Int31.rshift :		int * int -> int
 
-136  i31rshift_8,bits31 P.RSHIFT,      	word8word ->word8
+136  i31rshift_8,bits31 P.RSHIFT,      	word8word ->word8		(* unused *)
 
 137  i31lt,	 int31cmp P.<,		int * int -> bool
 	InlineT.Int31.< :		int * int -> bool
 
-138  i31lt_8,	 int31cmp P.<,		word8 * word8-> bool
+138  i31lt_8,	 int31cmp P.<,		word8 * word8-> bool		(* unused *)
 
 139  i31lt_c,	 int31cmp P.<,		char * char -> bool
 	InlineT.Char.<= :		(char * char) -> bool
@@ -535,7 +535,7 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 140  i31le,	 int31cmp P.<=,		int * int -> bool
 	InlineT.Int31.<= :		int * int -> bool
 
-141  i31le_8,	 int31cmp P.<=,		word8 * word8-> bool
+141  i31le_8,	 int31cmp P.<=,		word8 * word8-> bool		(* unused *)
 
 142  i31le_c,	 int31cmp P.<=,		char * char -> bool
 	InlineT.Char.<= :		(char * char) -> bool
@@ -543,14 +543,16 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 143  i31gt,	 int31cmp P.>,		int * int -> bool
 	InlineT.Int31.> :		int * int -> bool
 
-144  i31gt_8,	 int31cmp P.>,		word8 * word8-> bool
+144  i31gt_8,	 int31cmp P.>,		word8 * word8-> bool		(* unused *)
+
 145  i31gt_c,	 int31cmp P.>,		char * char-> bool
 	InlineT.Char.> :		(char * char) -> bool
 
 146  i31ge, 	 int31cmp P.>=,		int * int -> bool
 	InlineT.Int31.>= :		int * int -> bool
 
-147  i31ge_8, 	 int31cmp P.>=,		word8 * word8-> bool
+147  i31ge_8, 	 int31cmp P.>=,		word8 * word8-> bool		(* unused *)
+
 148  i31ge_c, 	 int31cmp P.>=,		char * char -> bool
 	InlineT.Char.>= :		(char * char) -> bool
 
@@ -569,11 +571,12 @@ structure P = PrimOp  (* defined in FLINT/kernel/primop.sml *)
 153  i31min,	 P.INLMIN (P.INT 31),  	int * int -> int
 	InlineT.Int31.min :		int * int -> int
 
-154  i31min_8,	 P.INLMIN (P.INT 31),  	word8 * word8 -> word8
+154  i31min_8,	 P.INLMIN (P.INT 31),  	word8 * word8 -> word8		(* unused *)
+
 155  i31max,	 P.INLMAX (P.INT 31),  	int * int -> int
 	InlineT.Int31.max :		int * int -> int
 
-156  i31max_8,	 P.INLMAX (P.INT 31),  	word8 * word8 -> word8
+156  i31max_8,	 P.INLMAX (P.INT 31),  	word8 * word8 -> word8		(* unused *)
 
 157  i31abs,	 P.INLABS (P.INT 31), 	int -> int
 	InlineT.Int31.abs :		int -> int
