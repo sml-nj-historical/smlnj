@@ -615,61 +615,40 @@ structure PrimopBindings : sig
 	  fun mk (name, ty, rator) = (i ^ name, ty, rator)
 	  fun mk2 (name, rator) = mk(name, ii_i, int rator)
 	  fun mk2_b (name, rator) = mk(name, ii_i, bits rator)
-	  fun mk2_8 (name, rator) = (concat[i, name, "_8"], w8w8_w8, int rator)
 	  fun mk1 (name, rator) = mk(name, i_i, int rator)
 	  fun mk1_b (name, rator) = mk(name, i_i, bits rator)
-	  fun mk1_8 (name, rator) = (concat[i, name, "_8"], w8_w8, int rator)
 	  fun mkcmp (name, rator) = mk(name, ii_b, intcmp rator)
-	  fun mkcmp_8 (name, rator) = (concat[i, name, "_8"], w8w8_b, intcmp rator)
 	  fun mkcmp_c (name, rator) = (concat[i, name, "_c"], cc_b, intcmp rator)
 	  in
 	    prims :-:
 	      mk2("add", P.ADD) :-:
-	      mk2_8("add", P.ADD) :-:				(* unused *)
 	      mk2("sub", P.SUB) :-:
-	      mk2_8("sub", P.SUB) :-:				(* unused *)
 	      mk2("mul", P.MUL) :-:
-	      mk2_8("mul", P.MUL) :-:				(* unused *)
 	      mk2("div", P.DIV) :-:
-	      mk2_8("div", P.DIV) :-:				(* unused *)
 	      mk2("mod", P.MOD) :-:
-	      mk2_8("mod", P.MOD) :-:				(* unused *)
 	      mk2("quot", P.QUOT) :-:
 	      mk2("rem", P.REM) :-:
 	      mk2_b("orb", P.ORB) :-:
-	      mk("orb_8", w8w8_w8, bits P.ORB) :-:		(* unused *)
 	      mk2_b("andb", P.ANDB) :-:
-	      mk("andb_8", w8w8_w8, bits P.ANDB) :-:		(* unused *)
 	      mk2_b("xorb", P.XORB) :-:
-	      mk("xorb_8", w8w8_w8, bits P.XORB) :-:		(* unused *)
 	      mk1_b("notb", P.NOTB) :-:
-	      mk("notb_8", w8_w8, bits P.NOTB) :-:		(* unused *)
 	      mk1("neg", P.NEG) :-:
-	      mk1_8("neg", P.NEG) :-:				(* unused *)
 	      mk2_b("lshift", P.LSHIFT) :-:
-	      mk("lshift_8", w8w_w8, bits P.LSHIFT) :-:		(* unused *)
 	      mk2_b("rshift", P.RSHIFT) :-:
-	      mk("rshift_8", w8w_w8, bits P.RSHIFT) :-:		(* unused *)
 	      mkcmp("lt", P.LT) :-:
-	      mkcmp_8("lt", P.LT) :-:				(* unused *)
 	      mkcmp_c("lt", P.LT) :-:
 	      mkcmp("le", P.LTE) :-:
-	      mkcmp_8("le", P.LTE) :-:				(* unused *)
 	      mkcmp_c("le", P.LTE) :-:
 	      mkcmp("gt", P.GT) :-:
-	      mkcmp_8("gt", P.GT) :-:				(* unused *)
 	      mkcmp_c("gt", P.GT) :-:
 	      mkcmp("ge", P.GTE) :-:
-	      mkcmp_8("ge", P.GTE) :-:				(* unused *)
 	      mkcmp_c("ge", P.GTE) :-:
 	      mk("ltu", ii_b, wordcmp P.LTU) :-:
 	      mk("geu", ii_b, wordcmp P.GEU) :-:
 	      mkcmp("eq", P.EQL) :-:
 	      mkcmp("ne", P.NEQ) :-:
 	      mk("min", ii_i, P.INLMIN (P.INT 31)) :-:
-	      mk("min_8", w8w8_w8, P.INLMIN (P.INT 31)) :-:	(* unused *)
 	      mk("max", ii_i, P.INLMAX (P.INT 31)) :-:
-	      mk("max_8", w8w8_w8, P.INLMAX (P.INT 31)) :-:	(* unused *)
 	      mk("abs", i_i, P.INLABS (P.INT 31))
 	  end
 
