@@ -1,6 +1,6 @@
 (* pervasive.sml
  *
- * COPYRIGHT (c) 2009 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * These are the pervasive bindings as defined by the SML'97
@@ -30,8 +30,9 @@ local
     structure W8 = InlineT.Word8
     structure W31 = InlineT.Word31
     structure W32 = InlineT.Word32
-    structure CW64 = CoreWord64
-    structure CI64 = CoreInt64
+    structure CW64 = CoreWord64		(* 64BIT: CoreWord64 will not be present on 64-bit targets *)
+    structure CI64 = CoreInt64		(* 64BIT: CoreInt64 will not be present on 64-bit targets *)
+(* REAL32: add R32 *)
     structure R64 = InlineT.Real64
     structure CV = InlineT.CharVector
     structure PV = InlineT.PolyVector

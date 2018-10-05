@@ -6,7 +6,7 @@
 
 functor PPCPseudoInstr
   (structure Instr : PPCINSTR
-     where Region = CPSRegions) : PPC_PSEUDO_INSTR = 
+     where Region = CPSRegions) : PPC_PSEUDO_INSTR =
 struct
   structure I = Instr
   structure C = Instr.C

@@ -1,16 +1,14 @@
-(* backend/amd64-stdcall.sml
+(* amd64-stdcall.sml
  *
- * (C) 2006 The Fellowship of SML/NJ
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *)
-local
-    (* turn on "fast-fp"... *)
-    val _ = MLRiscControl.flag "x86-fast-fp" := true
-in
-structure AMD64StdCallBackend =
-          BackendFn (structure M = AMD64MC (structure CCallParams = struct
-					      val frameAlign = 16 (* 4? *)
-					      val returnSmallStructsInRegs = false
-					    end
-                                          val abi_variant = NONE)
-		     val cproto_conv = "stdcall")
-end
+
+structure AMD64StdCallBackend = BackendFn (
+    structure M = AMD64MC (
+	structure CCallParams = struct
+	    val frameAlign = 16
+	    val returnSmallStructsInRegs = false
+	  end
+	val abi_variant = NONE)
+    val cproto_conv = "stdcall")

@@ -386,7 +386,6 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
     char            *atptr, *colonptr;
     char            *objname = fname;
 
-
     if ((atptr = strchr (fname, '@')) == NULL)
 	archiveOffset = 0;
     else {

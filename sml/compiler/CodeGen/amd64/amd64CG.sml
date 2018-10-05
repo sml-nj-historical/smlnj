@@ -3,14 +3,9 @@
  * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
- * AMD64 specific backend.  This one uses the new RA8 scheme.
+ * AMD64 specific backend.
  *)
 
-local
-    val fast_floating_point =
-	MLRiscControl.mkFlag ("amd64-fast-fp",
-			      "whether to use the fast-fp backend (amd64)")
-in
 functor AMD64CG (structure CCallParams: sig val frameAlign : int
 					    val returnSmallStructsInRegs : bool
 					end
@@ -32,22 +27,20 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
     structure Asm        = AMD64AsmEmitter
     structure Shuffle    = AMD64Shuffle
 
-    val fast_floating_point = fast_floating_point
-
     structure CCalls     = AMD64SVID_CCalls (structure T = AMD64MLTree)
 
     structure OmitFramePtr =
       AMD64OmitFramePointer(
-	structure I=AMD64Instr  
+	structure I=AMD64Instr
 	structure CFG=AMD64CFG)
 
-    val spill = CPSRegions.spill 
-    val stack = CPSRegions.stack 
+    val spill = CPSRegions.spill
+    val stack = CPSRegions.stack
 
     fun error msg = MLRiscErrorMsg.error("AMD64CG",msg)
 
     fun base() = (* XXXX *)
-      if !ClusterAnnotation.useVfp then AMD64CpsRegs.vfp else I.C.rsp 
+      if !ClusterAnnotation.useVfp then AMD64CpsRegs.vfp else I.C.rsp
 
     val floats16ByteAligned = false
 
@@ -56,17 +49,17 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
            structure I=AMD64Instr
 	   structure MLTreeUtils = MLTreeUtils
                (structure T = AMD64MLTree
-                fun hashSext  _ _ = 0w0 
+                fun hashSext  _ _ = 0w0
                 fun hashRext  _ _ = 0w0
-                fun hashFext  _ _ = 0w0 
+                fun hashFext  _ _ = 0w0
                 fun hashCCext _ _ = 0w0
-             
+
                 (* Equality extensions *)
                 fun eqSext  _ _ = false
                 fun eqRext  _ _ = false
                 fun eqFext  _ _ = false
                 fun eqCCext _ _ = false
-             
+
                 (* Pretty printing extensions *)
                 fun showSext  _ _ = ""
                 fun showRext  _ _ = ""
@@ -78,8 +71,7 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
                 structure T = AMD64MLTree
 		structure CFG = AMD64CFG
 		structure TS = AMD64MLTreeStream
-		val fast_fp = fast_floating_point
-               ) 
+               )
 	   structure MLTreeStream = AMD64MLTreeStream
 
            fun signBit ty = AMD64MLTree.LABEL(Label.label "signBit" ())
@@ -87,14 +79,14 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
 	   val floats16ByteAligned = floats16ByteAligned
           )
 
-    structure Jumps = 
+    structure Jumps =
        AMD64Jumps(structure Instr=AMD64Instr
                   structure AsmEmitter=AMD64AsmEmitter
-		  structure Eval=AMD64MLTreeEval 
+		  structure Eval=AMD64MLTreeEval
                   structure Shuffle=AMD64Shuffle
                   structure MCEmitter=AMD64MCEmitter)
-   
-    structure BackPatch = 
+
+    structure BackPatch =
        BackPatch(structure Jumps=Jumps
                  structure Emitter=AMD64MCEmitter
                  structure Props=InsnProps
@@ -102,7 +94,7 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
                  structure Asm=AMD64AsmEmitter
                  structure CodeString=CodeString)
 
-    structure RA = 
+    structure RA =
       AMD64RegAlloc
       (structure I         = AMD64Instr
        structure CB	   = CellsBasis
@@ -120,49 +112,49 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
        fun beforeRA _ = AMD64StackSpills.init()
 
        val toInt32 = Int32.fromInt
-       fun cacheOffset r = I.Immed(toInt32(AMD64Runtime.vregStart + 
+       fun cacheOffset r = I.Immed(toInt32(AMD64Runtime.vregStart +
                                 Word.toIntX(Word.<<(Word.fromInt(r-8),0w2))))
-       fun cacheFPOffset f = I.Immed(toInt32(AMD64Runtime.vFpStart + 
+       fun cacheFPOffset f = I.Immed(toInt32(AMD64Runtime.vFpStart +
                                 Word.toIntX(Word.<<(Word.fromInt(f-40),0w3))))
 
        datatype ra_phase = SPILL_PROPAGATION | SPILL_COLORING
        datatype spill_operand_kind = SPILL_LOC | CONST_VAL
 
-       structure Int =  
+       structure Int =
        struct
           val avail     = R.availR
           val dedicated = R.dedicatedR
           val phases    = [SPILL_PROPAGATION,SPILL_COLORING]
 
-          (* We try to make unused memregs available for spilling 
+          (* We try to make unused memregs available for spilling
            * This is necessary because of the stupid SML code generator
            * doesn't keep track of which are being used.
            *)
-          fun spillInit(RAGraph.GRAPH{nodes, ...}) = 
+          fun spillInit(RAGraph.GRAPH{nodes, ...}) =
           let val lookup = IntHashTable.lookup nodes
               fun find(r, free) =
                   if r >= 10 then (* note, %8 and %9 are reserved! *)
-                     let val free = 
+                     let val free =
                              case lookup r of
-                               RAGraph.NODE{uses=ref [], defs=ref [], ...} => 
+                               RAGraph.NODE{uses=ref [], defs=ref [], ...} =>
                                   cacheOffset r::free
                              | _ => free
                      in  find(r-1, free) end
-                  else 
+                  else
                      free
 (* FIXME: this code doesn't seem correct
               val free = find(31 (* AMD64Runtime.numVregs+8-1 *), [])
 *)
           in  (*AMD64StackSpills.setAvailableOffsets free*) ()
-          end 
- 
+          end
+
           val getRegLoc' = AMD64StackSpills.getRegLoc
- 
-          fun spillLoc{info, an, cell, id} = 
+
+          fun spillLoc{info, an, cell, id} =
               {opnd=I.Displace{base=base(), disp=getRegLoc' id, mem=spill},
                kind=SPILL_LOC
               }
- 
+
        end
 
        structure Float =
@@ -171,21 +163,21 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
           val dedicated = R.dedicatedF
           val phases    = [SPILL_PROPAGATION]
 
-          fun spillInit(RAGraph.GRAPH{nodes, ...}) = 
+          fun spillInit(RAGraph.GRAPH{nodes, ...}) =
               let val lookup = IntHashTable.lookup nodes
                  fun find(r, free) =
-                     if r >= 32+8 then 
-                        let val free = 
+                     if r >= 32+8 then
+                        let val free =
                                 case lookup r of
                                   RAGraph.NODE{uses=ref [], defs=ref [],...} =>
                                      cacheFPOffset r::free
                                 | _ => free
                         in  find(r-1, free) end
-                     else 
+                     else
                         free
                  val free = find(63, [])
               in AMD64StackSpills.setAvailableFPOffsets free
-              end 
+              end
 
           fun spillLoc(S, an, loc) =
             I.Displace{base=base(), disp=AMD64StackSpills.getFregLoc loc, mem=spill}
@@ -195,4 +187,3 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
       val floats16ByteAligned = floats16ByteAligned
     ) (* AMD64RA *)
   ) (* AMD64CG *)
-end

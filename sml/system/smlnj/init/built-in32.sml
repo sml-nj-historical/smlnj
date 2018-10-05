@@ -1,13 +1,13 @@
-(* built-in.sml
+(* built-in32.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
- * Interfaces to the compiler built-ins, infixes, etc.
+ * Interfaces to the compiler built-ins, infixes, etc. for 32-bit targets.
  *
+ * [dbm, 6/21/06] This module is compiled in the environment PrimEnv.primEnv.
+ * See init.cmi
  *)
-
-(* [dbm, 6/21/06] This module is compiled in the environment PrimEnv.primEnv.
-   See init.cmi *)
 
 structure PrimTypes = struct open PrimTypes end
    (* this silliness is to prevent elabstr.sml from sticking a NO_ACCESS
@@ -16,13 +16,13 @@ structure PrimTypes = struct open PrimTypes end
       How and why does this access value get propagated into the code? *)
 
 local
-    open PrimTypes
+  open PrimTypes
 in
 (* [dbm, 6/21/06] If this is elaborated in the primEnv environment, there is
 already an opened PrimType, so is the above code redundant? By experimentation,
 it appears that the "local open PrimTypes in ..." is not necessary. *)
 
-  structure Assembly = Core.Assembly
+structure Assembly = Core.Assembly
 
   (* The following code was used to create a type-safe version of the InLine
    * structure while preserving the inline property of the functions.
@@ -32,14 +32,14 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
    *   - confirming the type information
    * See compiler/Semant/statenv/prim.sml for the origin of the type info
    * in InLine.    (Blume, 1/2001) *)
-  structure InlineT =
-   struct
+structure InlineT =
+  struct
     type 'a control_cont = 'a control_cont
 
     val callcc		: ('a cont -> 'a) -> 'a = InLine.callcc
     val throw	 	: 'a cont -> 'a -> 'b = InLine.throw
     val capture		: ('a control_cont -> 'a) -> 'a = InLine.capture
-    val escape		: 'a control_cont -> 'a -> 'b = InLine.cthrow   
+    val escape		: 'a control_cont -> 'a -> 'b = InLine.cthrow
     val isolate         : ('a -> unit) -> 'a cont = InLine.isolate
     val !	 	: 'a ref -> 'a = InLine.!
     val op := 		: 'a ref * 'a -> unit = InLine.:=
@@ -54,8 +54,8 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
     val mkspecial	: int * 'a -> 'b = InLine.mkspecial
     val getspecial	: 'a -> int = InLine.getspecial
     val setspecial	: ('a * int) -> unit = InLine.setspecial
-    val getpseudo	: int -> 'a = InLine.getpseudo 
-    val setpseudo	: 'a * int -> unit = InLine.setpseudo 
+    val getpseudo	: int -> 'a = InLine.getpseudo
+    val setpseudo	: 'a * int -> unit = InLine.setpseudo
     val gethdlr 	: unit -> 'a cont = InLine.gethdlr
     val sethdlr 	: 'a cont -> unit = InLine.sethdlr
     val getvar		: unit -> 'a = InLine.getvar
@@ -64,8 +64,8 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
     val op before	: ('a * 'b) -> 'a = InLine.before
     val ignore          : 'a -> unit = InLine.ignore
     val gettag		: 'a -> int = InLine.gettag
-    val setmark 	: 'a -> unit = InLine.setmark 
-    val dispose 	: 'a -> unit = InLine.dispose 
+    val setmark 	: 'a -> unit = InLine.setmark
+    val dispose 	: 'a -> unit = InLine.dispose
     val inlnot		: bool -> bool = InLine.inlnot
     val recordSub	: ('a * int) -> 'b = InLine.recordSub
     val raw64Sub	: ('a * int) -> real = InLine.raw64Sub
@@ -92,8 +92,8 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
 
 	val from_int31 : int -> real      = InLine.real
 	val from_int32 : int32 -> real    = InLine.real32
-	
-	val signBit : real -> bool = InLine.f64sgn 
+
+	val signBit : real -> bool = InLine.f64sgn
       end
 
     structure IntInf =
@@ -195,13 +195,13 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
 	val fromLarge = IntInf.test_int32
 
         val op *    : int32 * int32 -> int32  = InLine.i32mul
-        val op quot : int32 * int32 -> int32  = InLine.i32quot  
-        val op rem  : int32 * int32 -> int32  = InLine.i32rem  
-        val op div  : int32 * int32 -> int32  = InLine.i32div  
-        val op mod  : int32 * int32 -> int32  = InLine.i32mod  
-        val op +    : int32 * int32 -> int32  = InLine.i32add  
+        val op quot : int32 * int32 -> int32  = InLine.i32quot
+        val op rem  : int32 * int32 -> int32  = InLine.i32rem
+        val op div  : int32 * int32 -> int32  = InLine.i32div
+        val op mod  : int32 * int32 -> int32  = InLine.i32mod
+        val op +    : int32 * int32 -> int32  = InLine.i32add
         val op -    : int32 * int32 -> int32  = InLine.i32sub
-        val ~       : int32 -> int32 = InLine.i32neg 
+        val ~       : int32 -> int32 = InLine.i32neg
         val andb    : int32 * int32 -> int32  = InLine.i32andb
         val orb     : int32 * int32 -> int32  = InLine.i32orb
         val xorb    : int32 * int32 -> int32  = InLine.i32xorb
@@ -294,7 +294,7 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
         val op <>   : int * int -> bool = InLine.i31ne
         val ltu     : int * int -> bool = InLine.i31ltu
         val geu     : int * int -> bool = InLine.i31geu
-  
+
         val min     : int * int -> int  = InLine.i31min
         val max     : int * int -> int  = InLine.i31max
         val abs     : int -> int = InLine.i31abs
@@ -320,7 +320,7 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
 	val toIntX        = Int31.extend_word8
 	val fromInt       = Int31.trunc_word8
 
-      (* temporary framework, because the actual word8 operators 
+      (* temporary framework, because the actual word8 operators
        * are not implemented*)
 	(* WARNING! some of the following operators
 	 *          don't get the high-order bits right *)
@@ -371,7 +371,7 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
     structure PolyArray =
       struct
  	val newArray0 : unit -> 'a array = InLine.newArray0
-        val array     : int * 'a -> 'a array = InLine.mkarray 
+        val array     : int * 'a -> 'a array = InLine.mkarray
         val length    : 'a array -> int = InLine.length
         val sub       : 'a array * int -> 'a = InLine.arrSub
         val chkSub    : 'a array * int -> 'a = InLine.arrChkSub
@@ -382,7 +382,7 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
 
     structure PolyVector =
       struct
-        val length    : 'a vector -> int = InLine.length 
+        val length    : 'a vector -> int = InLine.length
         val sub       : 'a vector * int -> 'a = InLine.vecSub
         val chkSub    : 'a vector * int -> 'a = InLine.vecChkSub
 	val getData   : 'a vector -> 'b = InLine.getSeqData
@@ -405,7 +405,7 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
    **)
     structure Real64Vector =
       struct
-        val length    : real vector -> int = InLine.length 
+        val length    : real vector -> int = InLine.length
         val sub       : real vector * int -> real = InLine.vecSub
         val chkSub    : real vector * int -> real = InLine.vecChkSub
 	val getData   : real vector -> 'b = InLine.getSeqData
@@ -430,10 +430,10 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
     structure Word8Vector :> sig
 	eqtype vector
         val create : int -> vector
-    end = struct
+      end = struct
         type vector = string
 	val create = Assembly.A.create_s
-    end
+      end
 
     (* now the real version with all values *)
     structure Word8Vector =
@@ -450,11 +450,11 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
 	eqtype array
         val newArray0 : unit -> array
 	val create : int -> array
-    end = struct
+      end = struct
         type array = Assembly.A.word8array
 	val newArray0 : unit -> array = InLine.newArray0
 	val create = Assembly.A.create_b
-    end
+      end
 
     structure CharArray =		(* full *)
       struct

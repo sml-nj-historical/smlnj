@@ -29,7 +29,7 @@
  * Current queries:
  *   "OS_NAME"
  *   "OS_VERSION"
- *   "HOST_ARCH"   
+ *   "HOST_ARCH"
  *   "TARGET_ARCH"
  *   "HAS_SOFT_POLL"
  *   "HAS_MP"

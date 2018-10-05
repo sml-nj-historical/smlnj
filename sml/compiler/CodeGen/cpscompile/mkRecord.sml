@@ -39,16 +39,16 @@ functor MkRecord (
     | pi(x,i) = R.PT.pi(x,i)
 
   fun record {desc, fields, mem, hp, emit, markPTR, markComp} = let
-    fun getfield(r, CPS.SELp(n, p), mem) = 
+    fun getfield(r, CPS.SELp(n, p), mem) =
         let val mem = pi(mem,n)
         in  getfield(markPTR(T.LOAD(ity, indexEA(r, n), mem)), p, mem) end
       | getfield(r, CPS.OFFp 0, _) = r
       | getfield(r, CPS.OFFp n, _) = T.ADD(addrTy, r, T.LI(n*wordSz))
 
     fun storeFields ([], _, _, _) = ()
-      | storeFields ((v, p)::rest, n, mem, i) = 
+      | storeFields ((v, p)::rest, n, mem, i) =
         let val elem = pi(mem, i)
-        in  emit(T.STORE(ity, T.ADD(addrTy, C.allocptr, T.LI n), 
+        in  emit(T.STORE(ity, T.ADD(addrTy, C.allocptr, T.LI n),
                  getfield(v, p, elem), elem));
 	    storeFields(rest, n + wordSz, mem, i+1)
         end
@@ -66,9 +66,9 @@ functor MkRecord (
 
 	  fun chase(r, CPS.SELp(n, CPS.OFFp 0), mem) =
 		markComp(T.FLOAD(fty, fea(r,n), pi(mem,n)))
-	    | chase(r, CPS.SELp(n,p), mem) =  
+	    | chase(r, CPS.SELp(n,p), mem) =
               let val mem = pi(mem,n)
-              in  chase(markPTR(T.LOAD(ity, indexEA(r, n), mem)), p, mem) 
+              in  chase(markPTR(T.LOAD(ity, indexEA(r, n), mem)), p, mem)
               end
 	in chase(r, path, mem)
 	end
@@ -84,6 +84,6 @@ functor MkRecord (
     emit(T.STORE(ity, ea(C.allocptr, hp), desc, pi(mem,~1)));
     fstoreFields(fields, hp+wordSz, mem, 0);
     hp + wordSz
-  end	
+  end
 end
 

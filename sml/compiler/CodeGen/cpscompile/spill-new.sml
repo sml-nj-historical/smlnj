@@ -247,13 +247,13 @@ struct
                 | _ => ()
               )
 
-      fun markPure(p,w) =
-          case p of
+      fun markPure (p, w) = (case p
             (* these pure operators actually allocate storage! *)
-            (P.fwrap | P.iwrap | P.i32wrap | P.newarray0 |		(* 64BIT: FIXME *)
-             P.makeref | P.mkspecial | P.rawrecord _
-            ) => markrec(w, 0)
-          | _ => ()
+	     of P.wrap(P.INT sz) => if (sz <= Target.defaultIntSz) then () else markrec(w, 0)
+	      | (P.wrap(P.FLOAT _) | P.newarray0 | P.makeref | P.mkspecial | P.rawrecord _) =>
+		  markrec(w, 0)
+              | _ => ()
+	    (* end case *))
 
       fun markfp e =
          case e of

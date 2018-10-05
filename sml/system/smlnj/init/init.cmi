@@ -145,7 +145,10 @@ bind-core (xCore) xcore = xcore.sml (core)
 
 # The rest of the DAG...
 # (Everybody implicitly depends on xcore to have access to _Core.)
-bind built-in = built-in.sml (core, primitive, xcore)
+ifdef SIZE_32 \
+	bind built-in = built-in32.sml (core, primitive, xcore)
+ifndef SIZE_32 \
+	bind built-in = built-in64.sml (core, primitive, xcore)
 ifdef ARCH_ALPHA \
 	bind math-inlT = math-built-in-none.sml (core, primitive, xcore)
 ifdef ARCH_PPC \

@@ -1,15 +1,19 @@
-(*
- * This is a generic functor that hooks everything together 
+(* machine-gen.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * This is a generic functor that hooks everything together
  * into an MLRISC backend.
  *)
 
 functor MachineGen
-  (structure MachSpec   : MACH_SPEC            (* machine specifications *) 
+  (structure MachSpec   : MACH_SPEC            (* machine specifications *)
    structure Ext        : SMLNJ_MLTREE_EXT
    structure InsnProps  : INSN_PROPERTIES      (* instruction properties *)
    structure CpsRegs    : CPSREGS              (* CPS registers *)
 		      where T.Region=CPSRegions
-		        and T.Constant=SMLNJConstant 
+		        and T.Constant=SMLNJConstant
 			and T.Extension=Ext
    structure ClientPseudoOps : SMLNJ_PSEUDO_OPS
    structure PseudoOps  : PSEUDO_OPS     (* pseudo ops *)
@@ -22,7 +26,7 @@ functor MachineGen
    structure Asm        : INSTRUCTION_EMITTER  (* assembly *)
 		      where S.P = PseudoOps
 			and I = MLTreeComp.I
-   structure Shuffle    : SHUFFLE              (* shuffling copies *) 
+   structure Shuffle    : SHUFFLE              (* shuffling copies *)
 		      where I = Asm.I
    structure BackPatch  : BBSCHED              (* machine code emitter *)
 		      where CFG = MLTreeComp.CFG
@@ -30,18 +34,18 @@ functor MachineGen
 		      where CFG = BackPatch.CFG
    structure CCalls     : C_CALLS	       (* native C call generator *)
 		      where T = CpsRegs.T
-   structure OmitFramePtr : OMIT_FRAME_POINTER 
+   structure OmitFramePtr : OMIT_FRAME_POINTER
 		      where CFG=RA.CFG
 
    val abi_variant : string option
   ) : MACHINE_GEN =
 struct
 
-   structure G		= Graph 
+   structure G		= Graph
    structure CFG        = BackPatch.CFG
    structure P          = InsnProps
    structure I          = CFG.I
-   structure Cells      = I.C 
+   structure Cells      = I.C
    structure T          = MLTreeComp.TS.T
    structure Stream     = MLTreeComp.TS
    structure Asm        = Asm
@@ -51,7 +55,7 @@ struct
    structure MLTreeComp = MLTreeComp
 
 
-   structure CFGViewer = 
+   structure CFGViewer =
      CFGViewer
        (structure CFG = CFG
 	structure GraphViewer = GraphViewer(AllDisplays)
@@ -60,32 +64,32 @@ struct
    (* expand copies into their primitive moves.
     * Copies are no longer treated as span dependent, which was a hack.
     *)
-   structure ExpandCpys = 
+   structure ExpandCpys =
       CFGExpandCopies
-	  (structure CFG = CFG   
+	  (structure CFG = CFG
 	   structure Shuffle = Shuffle)
 
-   structure LoopProbs = 
+   structure LoopProbs =
       EstimateLoopProbsFn(structure CFG=CFG)
 
-   structure ComputeFreqs = 
+   structure ComputeFreqs =
       ComputeFreqsFn(structure CFG=CFG)
 
-   structure BlockPlacement = 
+   structure BlockPlacement =
       BlockPlacement
-          (structure CFG = CFG 
+          (structure CFG = CFG
 	   structure Props = InsnProps)
 
-   structure CheckPlacement = 
+   structure CheckPlacement =
       CheckPlacementFn
-          (structure CFG = CFG 
+          (structure CFG = CFG
 	   structure InsnProps = InsnProps)
 
    (* After experimentation, some architecture specific control
     * may be needed for chainEscapes.
     *)
-   structure JumpChaining = 
-      JumpChainElimFn			     
+   structure JumpChaining =
+      JumpChainElimFn
 	  (structure CFG = CFG
 	   structure InsnProps = InsnProps
 	   val chainEscapes = ref false
@@ -102,7 +106,7 @@ struct
    (*
     * This module is used to check for gc bugs.
     * It is turned off by default.   You can turn it on
-    * with the flag "check-gc", and turn on verbose debugging 
+    * with the flag "check-gc", and turn on verbose debugging
     * with "debug-check-gc".
     *)
    structure CheckGC =
@@ -114,30 +118,30 @@ struct
            val gcParamRegs     = InvokeGC.gcParamRegs
           )
 
-   val graphical_view = 
+   val graphical_view =
       MLRiscControl.mkFlag
-         ("cfg-graphical-view", 
+         ("cfg-graphical-view",
 	  "graphical view of cfg after block placement")
-			
-   val graphical_view_size = 
+
+   val graphical_view_size =
       MLRiscControl.mkInt
-         ("cfg-graphical-view-size", 
+         ("cfg-graphical-view-size",
 	  "minimium threshold for size of graphical view")
-			
+
    fun omitFramePointer(cfg as G.GRAPH graph) = let
-     val CFG.INFO{annotations, ...} = #graph_info graph 
+     val CFG.INFO{annotations, ...} = #graph_info graph
    in
-     if #contains MLRiscAnnotations.USES_VIRTUAL_FRAME_POINTER (!annotations) then 
+     if #contains MLRiscAnnotations.USES_VIRTUAL_FRAME_POINTER (!annotations) then
      	(OmitFramePtr.omitframeptr
 	     {vfp=CpsRegs.vfp, cfg=cfg, idelta=SOME 0:Int32.int option};
 	 cfg)
      else cfg
-   end     
+   end
 
-   fun computeFreqs cfg = 
+   fun computeFreqs cfg =
      (LoopProbs.estimate cfg;   ComputeFreqs.compute cfg;   cfg)
 
-   type mlriscPhase = string * (CFG.cfg -> CFG.cfg) 
+   type mlriscPhase = string * (CFG.cfg -> CFG.cfg)
 
    fun phase x = Stats.doPhase (Stats.makePhase x)
    fun makePhase(name,f) = (name, phase name f)
@@ -145,16 +149,16 @@ struct
    val mc         = phase "MLRISC BackPatch.bbsched" BackPatch.bbsched
    val placement  = phase "MLRISC Block placement" BlockPlacement.blockPlacement
    val chainJumps = phase "MLRISC Jump chaining" JumpChaining.run
-   val finish     = phase "MLRISC BackPatch.finish" BackPatch.finish 
+   val finish     = phase "MLRISC BackPatch.finish" BackPatch.finish
    val compFreqs  = phase "MLRISC Compute frequencies" computeFreqs
    val ra         = phase "MLRISC ra" RA.run
    val omitfp     = phase "MLRISC omit frame pointer" omitFramePointer
    val expandCpys = phase "MLRISC expand copies" ExpandCpys.run
    val checkGC    = phase "MLRISC check GC" CheckGC.checkGC
-   
+
    val raPhase = ("ra",ra)
 
-   val optimizerHook = 
+   val optimizerHook =
      ref [("checkgc", checkGC),
           ("compFreqs", compFreqs),
 	  ("ra", ra),
@@ -169,19 +173,19 @@ struct
 
      fun dumpBlocks cfg = let
        val cbp as (cfg, blks) = chainJumps (placement cfg)
-       fun view () = 
-	   if !graphical_view andalso length blks >= !graphical_view_size 
-	   then CFGViewer.view cfg 
+       fun view () =
+	   if !graphical_view andalso length blks >= !graphical_view_size
+	   then CFGViewer.view cfg
 	   else ()
      in
 	CheckPlacement.check cbp;
-        view ();   
+        view ();
 	mc cbp
      end
-   in  
+   in
      dumpBlocks (runPhases(!optimizerHook,cluster))
    end
- 
+
    (* compilation of CPS to MLRISC *)
    structure MLTreeGen =
       MLRiscGen
@@ -202,15 +206,15 @@ struct
 	   structure Cells = Cells
            val compile = compile
           )
-	       
+
 
    val gen = phase "MLRISC MLTreeGen.codegen" MLTreeGen.codegen
 
-   fun codegen x = 
+   fun codegen x =
        (* initialize all hidden states first *)
        (Label.reset();
-        InvokeGC.init();   
-        BackPatch.cleanUp(); 
+        InvokeGC.init();
+        BackPatch.cleanUp();
         gen x
        )
 end

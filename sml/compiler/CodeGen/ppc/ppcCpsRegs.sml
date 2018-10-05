@@ -6,7 +6,7 @@
  * CPS registers used on the POWER PC (32-bit)
  *)
 
-structure PPCCpsRegs : CPSREGS = 
+structure PPCCpsRegs : CPSREGS =
   struct
     structure T = PPCMLTree
     structure C = PPCCells
@@ -17,17 +17,17 @@ structure PPCCpsRegs : CPSREGS =
     val FP = PPCCells.FPReg
     val CC = PPCCells.Reg CellsBasis.CC
 
-    fun REG r = T.REG(32, GP r) 
+    fun REG r = T.REG(32, GP r)
     fun FREG f = T.FREG(64, FP f)
 
     val exhaustedR = CC 0
-    val exhausted	= SOME(T.CC(T.GTU,exhaustedR)) 
-  
+    val exhausted	= SOME(T.CC(T.GTU,exhaustedR))
+
     val vfp		= PPCCells.newReg()
     val vfptr		= T.REG(32, vfp)
 
     val stackptr	= REG(1)
-    val allocptr	= REG(14) 
+    val allocptr	= REG(14)
     fun limitptr _ 	= REG(15)
     fun storeptr _	= REG(16)
     fun stdlink _	= REG(17)
@@ -37,11 +37,11 @@ structure PPCCpsRegs : CPSREGS =
     fun exnptr _	= REG(21)
     fun varptr _	= REG(22)
     fun baseptr _	= REG(23)
-    fun gcLink _	= T.REG(32,PPCCells.lr) 
+    fun gcLink _	= T.REG(32,PPCCells.lr)
 
     fun frameptr _      = stackptr
 
-    val miscregs =  map REG ([24,25,26,27,29,30,31] @ (3 upto 13)) 
+    val miscregs =  map REG ([24,25,26,27,29,30,31] @ (3 upto 13))
     val calleesave = Array.fromList(miscregs)
     val floatregs = map FREG (1 upto 31)
     val savedfpregs = []

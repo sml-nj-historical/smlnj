@@ -60,9 +60,16 @@ fun path escapes fl =
         | g(d, ARITH(_,_,_,_,e)) = g(d,e)
         | g(d, PURE(P.pure_arith{kind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)
         | g(d, PURE(P.real{tokind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)
-        | g(d, PURE(P.fwrap,_,_,_,e)) = g(d+4, e)
-        | g(d, PURE(P.iwrap,_,_,_,e)) = error "unexpected iwrap"
-        | g(d, PURE(P.i32wrap,_,_,_,e)) = g(d+2, e)	(* 64BIT: FIXME *)
+	| g(d, PURE(P.wrap(P.INT sz), _, _, _, e)) =
+	    if (sz = Target.mlValueSz)
+	      then g(d + 2, e)
+	    else if (sz <= Target.defaultIntSz)
+	      then error "unexpected tagged int wrap"
+	      else g(d + 2 + sz div Target.mlValueSz, e)  (* include word for alignment *)
+	| g(d, PURE(P.wrap(P.FLOAT sz), _, _, _, e)) =
+	    if (sz > Target.mlValueSz)
+	      then g(d+4, e) (* assume we need alignment word *)
+	      else g(d+2, e)
 	| g(d, PURE(P.newarray0,_,_,_,e)) = g(d+5, e)
 	| g(d, PURE(P.makeref, _, _, _, e)) = g(d+2, e)
 	| g(d, PURE(P.mkspecial, _, _, _, e)) = g(d+2, e)

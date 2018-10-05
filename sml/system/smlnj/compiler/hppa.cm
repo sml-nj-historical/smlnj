@@ -22,7 +22,7 @@ Library
 	signature DYNAMICENV
 	signature SYMENV
 	signature ENVIRONMENT
-	signature ENVREF	
+	signature ENVREF
 	signature MODULE_ID
 	signature PICKMOD
 	signature UNPICKMOD
@@ -59,7 +59,7 @@ Library
 	structure DynamicEnv
 	structure SymbolicEnv
 	structure Environment
-	structure EnvRef	
+	structure EnvRef
 	structure ModuleId
 	structure GenModIdMap
 	structure PickMod

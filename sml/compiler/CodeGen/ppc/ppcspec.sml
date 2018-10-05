@@ -4,9 +4,9 @@
  * All rights reserved.
  *)
 
-structure PPCSpec : MACH_SPEC = 
+structure PPCSpec : MACH_SPEC =
   struct
- 
+
     structure DMS = DefaultMachSpecFn (
       struct
 	val wordByteWidth = 4

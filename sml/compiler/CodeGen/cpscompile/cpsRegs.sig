@@ -21,7 +21,7 @@ signature CPSREGS =
    *
    * In principle a lot more of these should be functions over the boolean,
    * however, the x86 is the only one that implements registers in memory,
-   * so we will limit this to the set that it needs. 
+   * so we will limit this to the set that it needs.
    *)
     val frameptr	: bool -> T.rexp	(* frame pointer *)
     val limitptr	: bool -> T.rexp
@@ -34,7 +34,7 @@ signature CPSREGS =
     val baseptr		: bool -> T.rexp
     val storeptr 	: bool -> T.rexp
     val gcLink		: bool -> T.rexp
-  
+
     val calleesave	: T.rexp Array.array
     val exhausted 	: T.ccexp option
     val signedGCTest 	: bool

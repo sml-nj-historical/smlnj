@@ -1,6 +1,6 @@
 (* mlriscGen.sml
  *
- * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
  *
  * Translate CPS to MLRISC.
@@ -22,10 +22,8 @@ sig
      * "finish" before forcing it. *)
 end
 
-
-
-functor MLRiscGen
-   (structure MachineSpec: MACH_SPEC
+functor MLRiscGen (
+    structure MachineSpec: MACH_SPEC
     structure Ext        : SMLNJ_MLTREE_EXT
     structure C          : CPSREGS
 		 	   where T.Region = CPSRegions
@@ -101,13 +99,14 @@ struct
   (*
    * GC Safety
    *)
-  structure GCCells =           (* How to annotate GC information *)
-      GCCells(structure C = Cells
-              structure GC = SMLGCType)
 
-(* 64BIT: *)
-  val I31    = SMLGCType.I31     (* tagged integers *)
-  val I32    = SMLGCType.I32     (* untagged integers *)
+(* How to annotate GC information *)
+  structure GCCells = GCCells(
+      structure C = Cells
+      structure GC = SMLGCType)
+
+  val TAGINT = SMLGCType.TAGGED_INT
+  val INT    = SMLGCType.INT
 (* REAL32: *)
   val REAL64 = SMLGCType.REAL64  (* untagged floats *)
   val PTR    = SMLGCType.PTR     (* boxed objects *)
@@ -117,35 +116,31 @@ struct
 
   fun sameRegAs x y = CB.sameCell (x, y)
 
-  val ptr = #create An.MARK_REG(fn r => enterGC(r,PTR))
-  val i32 = #create An.MARK_REG(fn r => enterGC(r,I32))
-  val i31 = #create An.MARK_REG(fn r => enterGC(r,I31))
-  val flt = #create An.MARK_REG(fn r => enterGC(r,REAL64))
-(* 64BIT: FIXME *)
-  fun ctyToAnn (CPS.NUMt{sz=31, tag=true}) = i31
-    | ctyToAnn (CPS.NUMt{sz=32, tag=false}) = i32
-    | ctyToAnn (CPS.NUMt _) = raise Fail "unsupported NUMt size"
-    | ctyToAnn (CPS.FLTt 64) = flt
+  val annPTR = #create An.MARK_REG(fn r => enterGC(r,PTR))
+  val annINT = #create An.MARK_REG(fn r => enterGC(r,INT))
+  val annTAGINT = #create An.MARK_REG(fn r => enterGC(r,TAGINT))
+  val annREAL64 = #create An.MARK_REG(fn r => enterGC(r,REAL64))
+
+  fun ctyToAnn (CPS.NUMt{tag=true, ...}) = annTAGINT
+    | ctyToAnn (CPS.NUMt{tag=false, ...}) = annINT
+    | ctyToAnn (CPS.FLTt 64) = annREAL64
+(* REAL32: FIXME *)
     | ctyToAnn (CPS.FLTt n) = raise Fail(concat["ctyToAnn: FLTt ", Int.toString n, " is unsupported"])
-    | ctyToAnn _ = ptr
+    | ctyToAnn _ = annPTR
 
-  (*
-   * Convert kind to gc type
-   *)
-  fun kindToGCty(CPS.P.INT 31) = I31
-    | kindToGCty(CPS.P.UINT 31) = I31
-    | kindToGCty(_) = I32
+  (* Convert kind to gc type *)
+  fun kindToGCty (CPS.P.INT sz) = if (sz = Target.defaultIntSz) then TAGINT else INT
+    | kindToGCty (CPS.P.UINT sz) = if (sz = Target.defaultIntSz) then TAGINT else INT
+    | kindToGCty _ = error "kindToGCty: bogus kind"
 
+  (* convert CPS type to gc type *)
   fun ctyToGCty (CPS.FLTt 64) = REAL64
     | ctyToGCty (CPS.FLTt n) = raise Fail(concat["ctyToGCty: FLTt ", Int.toString n, " is unsupported"])
-    | ctyToGCty (CPS.NUMt{sz=31, tag=true}) = I31	(* 64BIT: FIXME *)
-    | ctyToGCty (CPS.NUMt{sz=32, tag=false}) = I32
-    | ctyToGCty (CPS.NUMt _) = raise Fail "unsupported NUMt size"
+    | ctyToGCty (CPS.NUMt{tag=true, ...}) = TAGINT
+    | ctyToGCty (CPS.NUMt{tag=false, ...}) = INT
     | ctyToGCty _ = PTR
 
-  (*
-   * Make a GC livein/liveout annotation
-   *)
+  (* Make a GC livein/liveout annotation *)
   fun gcAnnotation(an, args, ctys) =
   let fun collect(M.GPR(M.REG(_,r))::args,cty::ctys,gctys) =
             collect(args,ctys,(r,ctyToGCty cty)::gctys)
@@ -159,6 +154,7 @@ struct
   (*
    * These are the type widths of ML.  They are hardwired for now.
    *)
+(* QUESTION: do we care about the redundancy between Target.mlValueSz and MS.wordBitWidth? *)
   val pty = MS.wordBitWidth (* size of ML's pointer *)
   val ity = MS.wordBitWidth (* size of ML's integer *)
   val fty = 64 (* size of ML's real number *)
@@ -167,6 +163,9 @@ struct
   val zero = M.LI 0
   val one  = M.LI 1
   val two  = M.LI 2
+  val allOnes = M.LI(ConstArith.bNot(ity, 0))			(* machine word all 1s *)
+  val allOnes' = M.LI(ConstArith.bNot(Target.defaultIntSz, 0))	(* tagged int all 1s *)
+  val signBit = M.LI(IntInf.<<(1, Word.fromInt ity - 0w1))
   val mlZero = one (* tagged zero *)
   val offp0 = CPS.OFFp 0
   val LI = M.LI
@@ -175,13 +174,11 @@ struct
 
   val constBaseRegOffset = LI' MachineSpec.constBaseRegOffset
 
-(* CPS integer constants *)
+(* CPS tagged integer constants *)
   local
     val ty = {sz = Target.defaultIntSz, tag = true}
   in
-  fun cpsInt n = CPS.NUM{ival = n, ty = ty}
-  fun cpsInt' n = cpsInt(IntInf.fromInt n)
-  fun cpsInt32 n = CPS.NUM{ival = n, ty = {sz = 32, tag = false}} (* 64BIT: FIXME *)
+  fun cpsInt n = CPS.NUM{ival = IntInf.fromInt n, ty = ty}
   end (* local *)
 
   (*
@@ -193,12 +190,13 @@ struct
    * Dedicated registers.
    *)
   val dedicated' =
-    map (fn r => M.GPR(M.REG(ity,r))) C.dedicatedR @
-    map (fn f => M.FPR(M.FREG(fty,f))) C.dedicatedF
+	map (fn r => M.GPR(M.REG(ity,r))) C.dedicatedR @
+	map (fn f => M.FPR(M.FREG(fty,f))) C.dedicatedF
 
-  val dedicated =
-    case C.exhausted of NONE => dedicated'
-                      | SOME cc => M.CCR cc :: dedicated'
+  val dedicated = (case C.exhausted
+	 of NONE => dedicated'
+	  | SOME cc => M.CCR cc :: dedicated'
+	(* end case *))
 
   (*
    * This flag controls whether extra MLRISC optimizations should be
@@ -236,8 +234,7 @@ struct
   (*
    * The main codegen function.
    *)
-  fun codegen args =
-  let
+  fun codegen args = let
       val { funcs : CPS.function list,
 	    limits:CPS.lvar -> (int*int),
 	    err, source } =
@@ -268,10 +265,10 @@ struct
               in  (newReg, newRegWithCty, newRegWithKind, newFreg) end
            else (Cells.newReg, Cells.newReg, Cells.newReg, Cells.newFreg)
 
-      fun markPTR e = if gctypes then M.MARK(e,ptr) else e
-      fun markI32 e = if gctypes then M.MARK(e,i32) else e
-      fun markFLT e = if gctypes then M.FMARK(e,flt) else e
-      fun markGC(e,cty) = if gctypes then M.MARK(e,ctyToAnn cty) else e
+      fun markPTR e = if gctypes then M.MARK(e, annPTR) else e
+      fun markINT e = if gctypes then M.MARK(e, annINT) else e
+      fun markREAL64 e = if gctypes then M.FMARK(e, annREAL64) else e
+      fun markGC (e, cty) = if gctypes then M.MARK(e, ctyToAnn cty) else e
       fun markNothing e = e
 
       (*
@@ -280,11 +277,11 @@ struct
        *)
       fun known [] = []
         | known (cty::rest) = (case cty
-	     of CPS.FLTt 64 => M.FPR(M.FREG(fty,newFreg REAL64))
+	     of CPS.FLTt 64 => M.FPR(M.FREG(fty, newFreg REAL64))
+(* REAL32: FIXME *)
               | CPS.FLTt n => raise Fail(concat["known: FLTt ", Int.toString n, " is unsupported"])  (* REAL32: FIXME *)
-              | CPS.NUMt{sz=31, tag=true} => M.GPR(M.REG(ity,newReg I31))
-              | CPS.NUMt{sz=32, tag=false} => M.GPR(M.REG(ity,newReg I32))
-              | CPS.NUMt _ => raise Fail "unsupported NUMt size"  (* 64BIT: FIXME *)
+              | CPS.NUMt{tag=true, ...} => M.GPR(M.REG(ity, newReg TAGINT))
+              | CPS.NUMt{tag=false, ...} => M.GPR(M.REG(ity, newReg INT))
               | _ => M.GPR(M.REG(pty,newReg PTR))
             (* end case *)) :: known rest
 
@@ -420,19 +417,19 @@ struct
           datatype treeify = TREEIFY | TREEIFIED | COMPUTE | DEAD
           exception UseCntTbl
           val useCntTbl : treeify IntHashTable.hash_table =
-	      IntHashTable.mkTable(32, UseCntTbl)
+	        IntHashTable.mkTable(32, UseCntTbl)
           fun treeify i = getOpt (IntHashTable.find useCntTbl i, DEAD)
           val addCntTbl = IntHashTable.insert useCntTbl
           fun markAsTreeified r = addCntTbl(r, TREEIFIED)
+
           (*
            * Reset the bindings and use count tables. These tables
            * can be reset at the same time.
            *)
-          fun clearTables() =
-              (IntHashTable.clear gpRegTbl;
-               IntHashTable.clear fpRegTbl;
-               IntHashTable.clear useCntTbl
-              )
+          fun clearTables() = (
+		IntHashTable.clear gpRegTbl;
+		IntHashTable.clear fpRegTbl;
+		IntHashTable.clear useCntTbl)
 
           (*
            * memDisambiguation uses the new register counters,
@@ -444,8 +441,8 @@ struct
           (*
            * Points-to analysis projection.
            *)
-          fun pi(x as ref(PT.TOP _),_) = x
-            | pi(x,i) = PT.pi(x,i)
+          fun pi (x as ref(PT.TOP _), _) = x
+            | pi (x, i) = PT.pi(x, i)
 
           val memDisambigFlag = !CG.memDisambiguate
 
@@ -457,12 +454,10 @@ struct
                  )
               else R.memory
 
-          fun getRegionPi(e,i) =
-              if memDisambigFlag then
-                 (case e of
-                    CPS.VAR v => pi(memDisambig v,i)
-                  | _ => R.readonly
-                 )
+          fun getRegionPi (e, i) = if memDisambigFlag
+		then (case e
+                   of CPS.VAR v => pi(memDisambig v, i)
+                    | _ => R.readonly)
               else R.memory
 
           fun dataptrRegion v = getRegionPi(v, 0)
@@ -625,16 +620,16 @@ struct
 		    else advBy hp
 		end
 
-          fun testLimit hp =
-          let fun assignCC(M.CC(_, cc), v) = emit(M.CCMV(cc, v))
-                | assignCC _ = error "testLimit.assign"
-          in  updtHeapPtr(hp);
-              case C.exhausted
-              of NONE => ()
-               | SOME cc => assignCC(cc, gcTest)
-              (*esac*)
-          end
-
+          fun testLimit hp = let
+                fun assignCC(M.CC(_, cc), v) = emit(M.CCMV(cc, v))
+                  | assignCC _ = error "testLimit.assign"
+		in
+		  updtHeapPtr hp;
+		  case C.exhausted
+		   of NONE => ()
+		    | SOME cc => assignCC(cc, gcTest)
+		  (* end case *)
+		end
 
           (*
            * Function to allocate an integer record
@@ -645,35 +640,35 @@ struct
           fun indexEA(r, 0) = r
             | indexEA(r, n) = M.ADD(addrTy, r, LI'(n*ws))
 
-          fun allocRecord(markComp, mem, desc, fields, hp) =
-          let fun getField(v, e, CPS.OFFp 0) = e
-                | getField(v, e, CPS.OFFp n) = M.ADD(addrTy, e, LI'(ws*n))
-                | getField(v, e, p) = getPath(getRegion v, e, p)
-
-              and getPath(mem, e, CPS.OFFp n) = indexEA(e, n)
-                | getPath(mem, e, CPS.SELp(n, CPS.OFFp 0)) =
-                     markComp(M.LOAD(ity, indexEA(e, n), pi(mem, n)))
-                | getPath(mem, e, CPS.SELp(n, p)) =
-                  let val mem = pi(mem, n)
-                  in  getPath(mem, markPTR(M.LOAD(ity, indexEA(e, n), mem)), p)
-                  end
-
-              fun storeFields([], hp, elem) = hp
-                | storeFields((v, p)::fields, hp, elem) =
-                  (emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI' hp),
-                           getField(v, regbind' v, p), pi(mem, elem)));
-                   storeFields(fields, hp+ws, elem+1)
-                  )
-
-          in  emit(M.STORE(ity, ea(C.allocptr, hp), desc, pi(mem, ~1)));
-              storeFields(fields, hp+ws, 0);
-              hp+ws
-          end
+          fun allocRecord (markComp, mem, desc, fields, hp) = let
+		fun getField (v, e, CPS.OFFp 0) = e
+		  | getField (v, e, CPS.OFFp n) = M.ADD(addrTy, e, LI'(ws*n))
+		  | getField (v, e, p) = getPath(getRegion v, e, p)
+		and getPath (mem, e, CPS.OFFp n) = indexEA(e, n)
+		  | getPath (mem, e, CPS.SELp(n, CPS.OFFp 0)) =
+		      markComp(M.LOAD(ity, indexEA(e, n), pi(mem, n)))
+		  | getPath(mem, e, CPS.SELp(n, p)) = let
+		      val mem = pi(mem, n)
+		      in
+			getPath(mem, markPTR(M.LOAD(ity, indexEA(e, n), mem)), p)
+		      end
+		fun storeFields([], hp, elem) = hp
+		  | storeFields((v, p)::fields, hp, elem) = (
+		      emit(M.STORE(ity,
+				   M.ADD(addrTy, C.allocptr, LI' hp),
+				   getField (v, regbind' v, p), pi(mem, elem)));
+		      storeFields (fields, hp+ws, elem+1))
+	       in
+		 emit(M.STORE(ity, ea(C.allocptr, hp), desc, pi(mem, ~1)));
+		 storeFields(fields, hp+ws, 0);
+		 hp+ws
+	       end
 
           (*
            * Functions to allocate a floating point record
            *   x <- [descriptor ... fields]
            *)
+(* REAL32: FIXME *)
           fun allocFrecord(mem, desc, fields, hp) =
           let fun fea(r, 0) = r
                 | fea(r, n) = M.ADD(addrTy, r, LI'(n*8))
@@ -683,7 +678,7 @@ struct
 
               and fgetPath(mem, e, CPS.OFFp _) = error "allocFrecord.fgetPath"
                 | fgetPath(mem, e, CPS.SELp(n, CPS.OFFp 0)) =
-                     markFLT(M.FLOAD(fty, fea(e, n), pi(mem, n)))
+                     markREAL64(M.FLOAD(fty, fea(e, n), pi(mem, n)))
                 | fgetPath(mem, e, CPS.SELp(n, p)) =
                   let val mem = pi(mem, n)
                   in  fgetPath(mem, markPTR(M.LOAD(ity, indexEA(e, n), mem)),p)
@@ -749,19 +744,19 @@ struct
           (*
            * Tagged integer operators
            *)
-          fun int31add (addOp, CPS.NUM{ival=k, ...}, w) = addOp(ity, LI(k+k), regbind w)
-            | int31add (addOp, w, v as CPS.NUM _) = int31add(addOp, v, w)
-            | int31add (addOp, v, w) = addOp(ity,regbind v,stripTag(regbind w))
+          fun tagIntAdd (addOp, CPS.NUM{ival=k, ...}, w) = addOp(ity, LI(k+k), regbind w)
+            | tagIntAdd (addOp, w, v as CPS.NUM _) = tagIntAdd(addOp, v, w)
+            | tagIntAdd (addOp, v, w) = addOp(ity,regbind v,stripTag(regbind w))
 
-          fun int31sub (subOp, CPS.NUM{ival=k, ...}, w) = subOp(ity, LI(k+k+2), regbind w)
-            | int31sub (subOp, v, CPS.NUM{ival=k, ...}) = subOp(ity, regbind v, LI(k+k))
-            | int31sub (subOp, v, w) = addTag(subOp(ity, regbind v, regbind w))
+          fun tagIntSub (subOp, CPS.NUM{ival=k, ...}, w) = subOp(ity, LI(k+k+2), regbind w)
+            | tagIntSub (subOp, v, CPS.NUM{ival=k, ...}) = subOp(ity, regbind v, LI(k+k))
+            | tagIntSub (subOp, v, w) = addTag(subOp(ity, regbind v, regbind w))
 
-          fun int31xor (CPS.NUM{ival=k, ...}, w) = M.XORB(ity, LI(k+k), regbind w)
-            | int31xor (w, v as CPS.NUM _) = int31xor (v,w)
-            | int31xor (v, w) = addTag (M.XORB(ity, regbind v, regbind w))
+          fun tagIntXor (CPS.NUM{ival=k, ...}, w) = M.XORB(ity, LI(k+k), regbind w)
+            | tagIntXor (w, v as CPS.NUM _) = tagIntXor (v,w)
+            | tagIntXor (v, w) = addTag (M.XORB(ity, regbind v, regbind w))
 
-          fun int31mul (signed, mulOp, v, w) = let
+          fun tagIntMul (signed, mulOp, v, w) = let
 		fun f (CPS.NUM{ival=k, ...}, CPS.NUM{ival=j, ...}) = (LI(k+k), LI j)
 		  | f (CPS.NUM{ival=k, ...}, w) = (untag(signed,w), LI(k+k))
 		  | f (v, w as CPS.NUM _) = f(w, v)
@@ -771,7 +766,7 @@ struct
 		  addTag(mulOp(ity, v, w))
 		end
 
-          fun int31div (signed, drm, v, w) = let
+          fun tagIntDiv (signed, drm, v, w) = let
 		val (v, w) = (case (v, w)
 		       of (CPS.NUM{ival=k, ...}, CPS.NUM{ival=j, ...}) => (LI k, LI j)
 			| (CPS.NUM{ival=k, ...}, w) => (LI k, untag(signed, w))
@@ -786,7 +781,7 @@ struct
 		       if signed then M.DIVS (drm, ity, v, w) else M.DIVU (ity, v, w))
 		end
 
-	  fun int31rem (signed, drm, v, w) = let
+	  fun tagIntRem (signed, drm, v, w) = let
                 val (v, w) = (case (v, w)
 		       of (CPS.NUM{ival=k, ...}, CPS.NUM{ival=j, ...}) => (LI k, LI j)
 			| (CPS.NUM{ival=k, ...}, w) => (LI k, untag(signed, w))
@@ -798,17 +793,17 @@ struct
 		       if signed then M.REMS (drm, ity, v, w) else M.REMU (ity, v, w))
 		end
 
-          fun int31lshift (CPS.NUM{ival=k, ...}, w) =
-                addTag (M.SLL(ity, LI(k+k), untagUnsigned(w)))
-            | int31lshift (v, CPS.NUM{ival=k, ...}) =
+          fun tagIntLShift (CPS.NUM{ival=k, ...}, w) =
+                addTag (M.SLL(ity, LI(k+k), untagUnsigned w))
+            | tagIntLShift (v, CPS.NUM{ival=k, ...}) =
                 addTag(M.SLL(ity,stripTag(regbind v), LI k))
-            | int31lshift (v,w) =
-                addTag(M.SLL(ity,stripTag(regbind v), untagUnsigned(w)))
+            | tagIntLShift (v,w) =
+                addTag(M.SLL(ity,stripTag(regbind v), untagUnsigned w))
 
-          fun int31rshift (rshiftOp, v, CPS.NUM{ival=k, ...}) =
+          fun tagIntRShift (rshiftOp, v, CPS.NUM{ival=k, ...}) =
                 orTag(rshiftOp(ity, regbind v, LI k))
-            | int31rshift (rshiftOp, v, w) =
-                orTag(rshiftOp(ity, regbind v, untagUnsigned(w)))
+            | tagIntRShift (rshiftOp, v, w) =
+                orTag(rshiftOp(ity, regbind v, untagUnsigned w))
 
           fun getObjDescriptor v =
                 M.LOAD(ity, M.SUB(pty, regbind v, LI' ws), getRegionPi(v, ~1))
@@ -885,13 +880,11 @@ struct
 		  | _ => error "scaleWord"
 		(* end case *))
 
- 	  (* zero-extend and sign-extend *)
-	  fun ZX32 (sz, e) = M.ZX (32, sz, e)
-	      (* M.SRL (32, M.SLL (32, e, LI (32 - sz)), LI (32 - sz)) *)
-	  fun SX32 (sz, e) = M.SX (32, sz, e)
-	      (* M.SRA (32, M.SLL (32, e, LI (32 - sz)), LI (32 - sz)) *)
+	(* zero-extend and sign-extend to full machine-word width *)
+	  fun zeroExtend (sz, e) = M.ZX (ity, sz, e)
+	  fun signExtend (sz, e) = M.SX (ity, sz, e)
 
-          (* add to storelist, the address where a boxed update has occured *)
+	(* add to storelist, the address where a boxed update has occured *)
           fun recordStore (tmp, hp) = (
                 emit (M.STORE(pty, M.ADD(addrTy, C.allocptr, LI' hp), tmp, R.storelist));
                 emit (M.STORE(pty, M.ADD(addrTy, C.allocptr, LI'(hp+ws)),
@@ -1002,31 +995,29 @@ struct
                    )
                | SELECT(_,v,x,t,e) => (addValue v; add(x,t); init e)
                | OFFSET(_,v,x,e) => (addValue v; add(x,BOGt); init e)
-               | SWITCH(v,_,el) =>
-                   (needBasePtr := true; addValue v; app init el)
+               | SWITCH(v,_,el) => (needBasePtr := true; addValue v; app init el)
                | SETTER(_,vl,e) => (addValues vl; init e)
-               | LOOKER(looker,vl,x,t,e) =>
-                    (addValues vl;
-                    (* floating subscript cannot move past a floating update.
-                     * For now subscript operations cannot be treeified.
-                     * This is hacked by making it (falsely) used
-                     * more than once.
-                     *)
-                     case looker of
-                       (P.numsubscript{kind=P.FLOAT _} |
-                        P.rawload {kind=P.FLOAT _}) =>
-                       addCntTbl(x,COMPUTE)
-                     | _ => ();
-                     add(x,t); init e
-                    )
+               | LOOKER(looker,vl,x,t,e) => (
+		    addValues vl;
+		  (* floating subscript cannot move past a floating update.
+		   * For now subscript operations cannot be treeified.
+		   * This is hacked by making it (falsely) used
+		   * more than once.
+		   *)
+		    case looker
+		     of (P.numsubscript{kind=P.FLOAT _} | P.rawload {kind=P.FLOAT _}) =>
+			  addCntTbl(x,COMPUTE)
+                      | _ => ()
+		    (* end case *);
+		    add(x,t); init e)
                | ARITH(_,vl,x,t,e) => (addValues vl; add(x,t); init e)
                | RCC(_,_,_,vl,wl,e) => (addValues vl; app add wl; init e)
-               | PURE(p,vl,x,t,e) =>
-                    (case p of
-                       P.fwrap => hasFloats := true
-                     | _ => ();
-                     addValues vl; add(x,t); init e
-                    )
+               | PURE(p,vl,x,t,e) => (
+		   case p
+		    of P.wrap(P.FLOAT _) => hasFloats := true
+                     | _ => ()
+		   (* end case *);
+		   addValues vl; add(x,t); init e)
                | BRANCH(_,vl,_,e1,e2) => (addValues vl; init e1; init e2)
                | APP(v,vl) => (addValue v; addValues vl)
                | _ => error "genCPSFunction"
@@ -1089,7 +1080,7 @@ struct
               ;
 
               (* Align the allocation pointer if necessary *)
-              if !hasFloats
+              if !hasFloats andalso not Target.is64
 		then emit(M.MV(pty, allocptrR, M.ORB(pty, C.allocptr, LI' ws)))
                 else ();
 
@@ -1106,35 +1097,33 @@ raise ex)
           end
 
           (*
-           * Generate code for x := e; k
+           * Generate code for `x := e; k`, where `r` is the register to hold `x`.
            *)
-          and define(r, x, e, k, hp) =
-              (addRegBinding(x, r);
-               emit(M.MV(ity, r, e));
-               gen(k, hp)
-              )
+          and define (r, x, e, k, hp) = (
+                addRegBinding(x, r);
+                emit(M.MV(ity, r, e));
+                gen(k, hp))
 
-          and def(gc, x, e, k, hp) = define(newReg gc,x,e,k,hp)
+          and def (gc, x, e, k, hp) = define(newReg gc, x, e, k, hp)
 
-          and defWithCty(cty, x, e, k, hp) = define(newRegWithCty cty,x,e,k,hp)
+          and defWithKind (kind, x, e, k, hp) = define(newRegWithKind kind, x, e, k, hp)
 
-          and defWithKind(kind, x, e, k, hp) =
-               define(newRegWithKind kind,x,e,k,hp)
-
-          and defI31(x, e, k, hp) = def(I31, x, e, k, hp)
-          and defI32(x, e, k, hp) = def(I32, x, e, k, hp)
-          and defBoxed(x, e, k, hp) = def(PTR, x, e, k, hp)
+          and defTAGINT (x, e, k, hp) = def(TAGINT, x, e, k, hp)
+          and defINT (x, e, k, hp) = def(INT, x, e, k, hp)
+          and defBoxed (x, e, k, hp) = def(PTR, x, e, k, hp)
 
           (*
            * Generate code for x : cty := e; k
            *)
-          and treeifyDef(x, e, cty, k, hp) =
-              case treeify x of
-                COMPUTE => defWithCty(cty, x, e, k, hp)
-              | TREEIFY => (markAsTreeified x;
-                            addExpBinding(x, markGC(e, cty)); gen(k, hp))
-              | DEAD    => gen(k, hp)
-              | _       => error "treeifyDef"
+          and treeifyDef(x, e, cty, k, hp) = (case treeify x
+		 of COMPUTE => define(newRegWithCty cty, x, e, k, hp)
+		  | TREEIFY => (
+		      markAsTreeified x;
+		      addExpBinding(x, markGC(e, cty));
+		      gen(k, hp))
+		  | DEAD => gen(k, hp)
+		  | _ => error "treeifyDef"
+		(* end case *))
 
           (*
            * Generate code for
@@ -1183,88 +1172,84 @@ raise ex)
                  | _    => error "treeifyDefF64"
               (*esac*))
 
-          and nop(x, v, e, hp) = defI31(x, regbind v, e, hp)
+          and nop (x, v, e, hp) = defTAGINT(x, regbind v, e, hp)
 
-          and copy(gc, x, v, k, hp) =
-          let val dst = newReg gc
-          in  addRegBinding(x, dst);
-              case regbind v
-                of M.REG(_,src) => emit(M.COPY(ity, [dst], [src]))
-                 | e => emit(M.MV(ity, dst, e))
-              (*esac*);
-              gen(k, hp)
-          end
+          and copy (gc, x, v, k, hp) = let
+		val dst = newReg gc
+		in
+		  addRegBinding(x, dst);
+		  case regbind v
+		    of M.REG(_,src) => emit(M.COPY(ity, [dst], [src]))
+		     | e => emit(M.MV(ity, dst, e))
+		  (*esac*);
+		  gen(k, hp)
+		end
 
-          and copyM(31, x, v, k, hp) = copy(I31, x, v, k, hp)
-            | copyM(_, x, v, k, hp)  = copy(I32, x, v, k, hp)
+          and copyM (sz, x, v, k, hp) = if (sz <= Target.defaultIntSz)
+		then copy(TAGINT, x, v, k, hp)
+		else copy(INT, x, v, k, hp)
 
-              (* normal branches *)
+	(* normal branches *)
           and branch (cv, cmp, [v, w], yes, no, hp) =
               let val trueLab = newLabel ()
               in  (* is single assignment great or what! *)
 		  emit
 	              (branchWithProb
-			(M.BCC(M.CMP(32, cmp, regbind v, regbind w), trueLab),
+			(M.BCC(M.CMP(ity, cmp, regbind v, regbind w), trueLab),
 			 brProb cv));
 		      genCont(no, hp);
 		      genlab(trueLab, yes, hp)
               end
 	    | branch _ = error "branch"
 
-              (* branch if x is boxed *)
+	(* branch if x is boxed *)
           and branchOnBoxed(cv, x, yes, no, hp) =
               let val lab = newLabel()
-                  val cmp = M.CMP(32, M.NE, M.ANDB(ity, regbind x, one), zero)
+                  val cmp = M.CMP(ity, M.NE, M.ANDB(ity, regbind x, one), zero)
               in
 		  emit(branchWithProb(M.BCC(cmp, lab), brProb cv));
                   genCont(yes, hp);
                   genlab(lab, no, hp)
               end
 
-              (* branch if are identical strings v, w of length n *)
-          and branchStreq(n, v, w, yes, no, hp) =
-(* 64BIT: don't assume 4-byte words! *)
-              let val n' = ((n+3) div 4) * 4
-                  val false_lab = newLabel ()
-                  val r1 = newReg I32
-                  val r2 = newReg I32
-                  fun cmpWord(i) =
-                      M.CMP(32, M.NE,
-                            M.LOAD(ity,M.ADD(ity,M.REG(ity, r1),i),R.readonly),
-                            M.LOAD(ity,M.ADD(ity,M.REG(ity, r2),i),R.readonly))
-                  fun unroll i =
-                      if i=n' then ()
+	(* branch if are identical strings v, w of length n *)
+          and branchStreq (n, v, w, yes, no, hp) = let
+	      (* round number of bytes up to ws bytes *)
+		val n = IntInf.fromInt(((IntInf.toInt n + ws - 1) div ws) * ws)
+		val false_lab = newLabel ()
+		val r1 = newReg INT
+		val r2 = newReg INT
+		fun cmpWord i =
+                      M.CMP(ity, M.NE,
+                            M.LOAD(ity, M.ADD(ity,M.REG(ity, r1),i), R.readonly),
+                            M.LOAD(ity, M.ADD(ity,M.REG(ity, r2),i), R.readonly))
+		fun unroll i = if i=n
+		      then ()
                       else (emit(M.BCC(cmpWord(LI i), false_lab));
                             unroll (i+4))
-              in  emit(M.MV(ity, r1, M.LOAD(ity, regbind v, R.readonly)));
-                  emit(M.MV(ity, r2, M.LOAD(ity, regbind w, R.readonly)));
-                  unroll 0;
-                  genCont(yes, hp);
-                  genlab(false_lab, no, hp)
-              end
+		in  emit(M.MV(ity, r1, M.LOAD(ity, regbind v, R.readonly)));
+		    emit(M.MV(ity, r2, M.LOAD(ity, regbind w, R.readonly)));
+		    unroll 0;
+		    genCont(yes, hp);
+		    genlab(false_lab, no, hp)
+		end
 
-          and arith(gc, oper, v, w, x, e, hp) =
-               def(gc, x, oper(ity, regbind v, regbind w), e, hp)
+          and arithINT (oper, v, w, x, e, hp) =
+	        defINT(x, oper(ity, regbind v, regbind w), e, hp)
 
-          and arith32(oper, v, w, x, e, hp) =
-               arith(I32, oper, v, w, x, e, hp)
+          and shiftINT (oper, v, w, x, e, hp) =
+	        defINT(x, oper(ity, regbind v, untagUnsigned w), e, hp)
 
-          and logical(gc, oper, v, w, x, e, hp) =
-               def(gc, x, oper(ity, regbind v, untagUnsigned(w)), e, hp)
+          and genCont (e, hp) = let
+                val save = !advancedHP
+                in
+		  gen(e, hp);
+		  advancedHP := save
+		end
 
-          and logical31(oper, v, w, x, e, hp) =
-               logical(I31, oper, v, w, x, e, hp)
+          and genlab (lab, e, hp) = (defineLabel lab; gen(e, hp))
 
-          and logical32(oper, v, w, x, e, hp) =
-               logical(I32, oper, v, w, x, e, hp)
-
-          and genCont(e, hp) =
-              let val save = !advancedHP
-              in  gen(e, hp); advancedHP := save end
-
-          and genlab(lab, e, hp) = (defineLabel lab; gen(e, hp))
-
-          and genlabCont(lab, e, hp) = (defineLabel lab; genCont(e, hp))
+          and genlabCont (lab, e, hp) = (defineLabel lab; genCont(e, hp))
 
 	(* Allocate a normal record *)
           and mkRecord (vl, w, e, hp) = let
@@ -1276,13 +1261,13 @@ raise ex)
 		      e, hp+ws+len*ws)
 		end
 
-	(* Allocate a record with I32 components *)
-	  and mkI32block (vl, w, e, hp) = let
+	(* Allocate a record with machine-int-sized components *)
+	  and mkIntBlock (vl, w, e, hp) = let
                 val len = length vl
 		val desc = D.makeDesc' (len, D.tag_raw32)
 		in
 		  treeifyAlloc(w,
-		    allocRecord(markI32, memDisambig w, LI desc, vl, hp),
+		    allocRecord(markINT, memDisambig w, LI desc, vl, hp),
 		      e, hp+ws+len*ws)
 		end
 
@@ -1328,7 +1313,7 @@ raise ex)
 (* REAL32: FIXME *)
           and fselect (i, v, x, e, hp) =
                 treeifyDefF64(x,
-		  M.FLOAD(fty, scale8(regbind v, cpsInt' i), R.real),
+		  M.FLOAD(fty, scale8(regbind v, cpsInt i), R.real),
 		  e, hp)
 
           (*
@@ -1336,7 +1321,7 @@ raise ex)
            *)
           and select (i, v, x, t, e, hp) =
                 treeifyDef(x,
-                  M.LOAD(ity, scaleWord(regbind v, cpsInt' i), getRegionPi(v, i)),
+                  M.LOAD(ity, scaleWord(regbind v, cpsInt i), getRegionPi(v, i)),
 		  t, e, hp)
 
           (*
@@ -1353,7 +1338,7 @@ raise ex)
                     executed; its semantics is completely screwed up !
                   *)
               in  if isFlt t then fallocSp(x, e, hp)
-                  else defI32(x, LI k, e, hp)(* BOGUS *)
+                  else defINT(x, LI k, e, hp)(* BOGUS *)
               end
 
           (*
@@ -1416,36 +1401,37 @@ raise ex)
                    end
               (*esac*))
 
-	  and rawload ((P.INT 32 | P.UINT 32), i, x, e, hp) =
-	      defI32 (x, M.LOAD (32, i, R.memory), e, hp)
-	    | rawload ((P.INT 64 | P.UINT 64), i, x, e, hp) =
-	      defI32 (x, M.LOAD (64, i, R.memory), e, hp) (* XXX64 not yet *)
-	    | rawload (P.INT (sz as (8 | 16)), i, x, e, hp) =
-	      defI32 (x, SX32 (sz, M.LOAD (sz, i, R.memory)), e, hp)
-	    | rawload (P.UINT (sz as (8 | 16)), i, x, e, hp) =
-	      defI32 (x, ZX32 (sz, M.LOAD (sz, i, R.memory)), e, hp)
-	    | rawload ((P.UINT sz | P.INT sz), _, _, _, _) =
-	      error ("rawload: unsupported size: " ^ Int.toString sz)
-	    | rawload (P.FLOAT 64, i, x, e, hp) =
-	      treeifyDefF64 (x, M.FLOAD (64, i, R.memory), e, hp)
-	    | rawload (P.FLOAT 32, i, x, e, hp) =
-	      treeifyDefF64 (x, M.CVTF2F (64, 32, M.FLOAD (32, i, R.memory)),
-			     e, hp)
-	    | rawload (P.FLOAT sz, _, _, _, _) =
-	      error ("rawload: unsupported float size: " ^ Int.toString sz)
+	  and rawload (kind, i, x, e, hp) = (case kind
+		 of P.INT sz => if (sz = ity)
+		        then defINT (x, M.LOAD (ity, i, R.memory), e, hp)
+		      else if (sz < ity)
+			then defINT (x, signExtend (sz, M.LOAD (sz, i, R.memory)), e, hp)
+			else error ("rawload: unsupported INT " ^ Int.toString sz)
+		  | P.UINT sz => if (sz = ity)
+		        then defINT (x, M.LOAD (ity, i, R.memory), e, hp)
+		      else if (sz < ity)
+			then defINT (x, zeroExtend (sz, M.LOAD (sz, i, R.memory)), e, hp)
+			else error ("rawload: unsupported UINT " ^ Int.toString sz)
+		  | P.FLOAT 32 =>
+(* REAL32: FIXME *)
+		      treeifyDefF64 (x, M.CVTF2F (64, 32, M.FLOAD (32, i, R.memory)), e, hp)
+		  | P.FLOAT 64 => treeifyDefF64 (x, M.FLOAD (64, i, R.memory), e, hp)
+		  | P.FLOAT sz => error ("rawload: unsupported float size: " ^ Int.toString sz)
+		(* end case *))
 
-	  and rawstore ((P.UINT (sz as (8 | 16 | 32 | 64)) |
-			 P.INT (sz as (8 | 16 | 32 | 64))), i, x) =
-	      (* both address and value are 32-bit values; only sz bits
-	       * of the value are being stored *)
-	      emit (M.STORE (sz, i, regbind x, R.memory))
-	    | rawstore ((P.UINT sz | P.INT sz), _, _) =
-	      error ("rawstore: unsupported int size: " ^ Int.toString sz)
-	    | rawstore (P.FLOAT (sz as (32 | 64)) , i, x) =
-	      emit (M.FSTORE (sz, i, fregbind x, R.memory))
-	    | rawstore (P.FLOAT sz, _, _) =
-	      error ("rawstore: unsupported float size: " ^ Int.toString sz)
-
+	  and rawstore (kind, i, x) = (case kind
+		 of P.INT sz => if (sz <= ity)
+		    (* value is `ity` bits, but only `sz` bits are stored *)
+		      then emit (M.STORE (sz, i, regbind x, R.memory))
+		      else error ("rawstore: unsupported INT " ^ Int.toString sz)
+		  | P.UINT sz => if (sz <= ity)
+		    (* value is `ity` bits, but only `sz` bits are stored *)
+		      then emit (M.STORE (sz, i, regbind x, R.memory))
+		      else error ("rawstore: unsupported INT " ^ Int.toString sz)
+		  | P.FLOAT 32 => emit (M.FSTORE (32, i, fregbind x, R.memory))
+		  | P.FLOAT 64 => emit (M.FSTORE (64, i, fregbind x, R.memory))
+		  | P.FLOAT sz => error ("rawstore: unsupported float size: " ^ Int.toString sz)
+		(* end case *))
 
           (*
            * Generate code
@@ -1455,7 +1441,7 @@ raise ex)
           and gen (RECORD(RK_FCONT, vl, w, e), hp) = mkFblock(vl, w, e, hp)
             | gen (RECORD(RK_FBLOCK, vl, w, e), hp) = mkFblock(vl, w, e, hp)
             | gen (RECORD(RK_VECTOR, vl, w, e), hp) = mkVector(vl, w, e, hp)
-            | gen (RECORD(RK_I32BLOCK, vl, w, e), hp) = mkI32block(vl, w, e, hp)
+            | gen (RECORD(RK_I32BLOCK, vl, w, e), hp) = mkIntBlock(vl, w, e, hp)
             | gen (RECORD(_, vl, w, e), hp) = mkRecord(vl, w, e, hp)
 
             (*** SELECT ***)
@@ -1466,7 +1452,7 @@ raise ex)
 
             (*** OFFSET ***)
             | gen (OFFSET(i, v, x, e), hp) =
-		defBoxed(x, scaleWord(regbind v, cpsInt' i), e, hp)
+		defBoxed(x, scaleWord(regbind v, cpsInt i), e, hp)
 
             (*** APP ***)
             | gen (APP(NUM{ty={tag=true, ...}, ...}, args), hp) = updtHeapPtr hp
@@ -1478,7 +1464,7 @@ raise ex)
             | gen (SWITCH(v, _, l), hp) =
               let val lab = newLabel ()
                   val labs = map (fn _ => newLabel()) l
-                  val tmpR = newReg I32 val tmp = M.REG(ity,tmpR)
+                  val tmpR = newReg INT val tmp = M.REG(ity,tmpR)
               in  emit(M.MV(ity, tmpR, laddr(lab, 0)));
                   emit(M.JMP(M.ADD(addrTy, tmp, M.LOAD(pty, scaleWord(tmp, v),
                                                        R.readonly)), labs));
@@ -1523,137 +1509,117 @@ raise ex)
                 defWithKind(kind, x, M.ORB(ity, regbind v, regbind w), e, hp)
             | gen (PURE(P.pure_arith{oper=P.andb, kind}, [v,w], x, _, e), hp) =
                 defWithKind(kind, x, M.ANDB(ity, regbind v, regbind w), e, hp)
-            | gen (PURE(P.pure_arith{oper, kind}, [v,w], x, ty, e), hp) =
-              (case kind
-                of P.INT 31 => (case oper
-                     of P.xorb   => defI31(x, int31xor(v,w), e, hp)
-                      | P.lshift => defI31(x, int31lshift(v,w), e, hp)
-                      | P.rshift => defI31(x, int31rshift(M.SRA,v,w),e,hp)
-		      | P.+ => defI31(x, int31add(M.ADD, v, w), e, hp)
-		      | P.- => defI31(x, int31sub(M.SUB, v, w), e, hp)
-		      | P.* => defI31(x, int31mul(true, M.MULS, v, w), e, hp)
-                      | _ => error "gen:PURE INT 31"
-                    (*esac*))
-                 | P.INT 32  => (case oper
-                     of P.xorb  => arith32(M.XORB, v, w, x, e, hp)
-                      | P.lshift => logical32(M.SLL, v, w, x, e, hp)
-                      | P.rshift => logical32(M.SRA, v, w, x, e, hp)
-                      | _ => error "gen:PURE INT 32"
-                    (*esac*))
-                 | P.UINT 31 => (case oper
-                     of P.+    => defI31(x, int31add(M.ADD, v, w), e, hp)
-                      | P.-    => defI31(x, int31sub(M.SUB, v, w), e, hp)
-                      | P.*    => defI31(x, int31mul(false, M.MULU, v, w),
-					 e, hp)
-		      (* we now explicitly defend agains div by 0, so these
-		       * two can be treated as pure op: *)
-		      | P./ => defI31(x,int31div(false,M.DIV_TO_ZERO,v,w),
-				      e,hp)
-		      | P.rem => defI31(x,int31rem(false,M.DIV_TO_ZERO,v,w),
-					e,hp)
-(*
-                      | P./    => (* This is not really a pure
-                                     operation -- oh well *)
-                                 (updtHeapPtr hp;
-                                  defI31(x, int31div(false, M.DIV_TO_ZERO,
-						     v, w),
-					 e, 0))
-		      | P.rem => (* Neither is this -- oh well *)
-			         (updtHeapPtr hp;
-				  defI31(x, int31rem(false, M.DIV_TO_ZERO,
-						     v, w),
-					 e, 0))
-*)
-                      | P.xorb => defI31(x, int31xor(v, w), e, hp)
-                      | P.lshift  => defI31(x,int31lshift(v, w), e, hp)
-                      | P.rshift  => defI31(x,int31rshift(M.SRA,v, w),e,hp)
-                      | P.rshiftl => defI31(x,int31rshift(M.SRL,v, w),e,hp)
-                      | _ => error "gen:PURE UINT 31"
-                    (*esac*))
-                 | P.UINT 32 => (case oper
-                     of P.+     => arith32(M.ADD, v, w, x, e, hp)
-                      | P.-     => arith32(M.SUB, v, w, x, e, hp)
-                      | P.*     => arith32(M.MULU, v, w, x, e, hp)
-		      (* same here: the explicit test for 0 that is inserted
-		       * by translate lets us treat the following two as
-		       * pure: *)
-		      | P./     => arith32(M.DIVU, v, w, x, e, hp)
-		      | P.rem   => arith32(M.REMU, v, w, x, e, hp)
-(*
-                      | P./     => (updtHeapPtr hp;
-                                    arith32(M.DIVU, v, w, x, e, 0))
-		      | P.rem   => (updtHeapPtr hp;
-				    arith32(M.REMU, v, w, x, e, 0))
-*)
-                      | P.xorb  => arith32(M.XORB, v, w, x, e, hp)
-                      | P.lshift => logical32(M.SLL, v, w, x, e, hp)
-                      | P.rshift => logical32(M.SRA, v, w, x, e, hp)
-                      | P.rshiftl=> logical32(M.SRL, v, w, x, e, hp)
-                      | _ => error "gen:PURE UINT 32"
-                    (*esac*))
-		 | _ => error "unexpected numkind in pure binary arithop"
-              (*esac*))
-            | gen (PURE(P.pure_arith{oper=P.notb, kind}, [v], x, _, e), hp) =
-               (case kind
-                of (P.UINT 32 | P.INT 32) =>
-		     defI32(x, M.XORB(ity, regbind v, LI 0xFFFFFFFF), e, hp)
-                 | (P.UINT 31 | P.INT 31) =>
-		     defI31(x, M.SUB(ity, zero, regbind v), e, hp)
-		 | _ => error "unexpected numkind in pure notb arithop"
-              (*esac*))
-	    | gen (PURE(P.pure_arith{oper=P.~, kind}, [v], x, _, e), hp) =
-	        (case kind of
-		     (P.UINT 32 | P.INT 32) =>
-		       defI32 (x, M.SUB(ity, zero, regbind v), e, hp)
-		   | (P.UINT 31 | P.INT 31) =>
-		       defI31 (x, M.SUB (ity, two, regbind v), e, hp)
-		   | _ => error "unexpected numkind in pure ~ primop")
-            | gen (PURE(P.copy ft, [v], x, _, e), hp) =
-               (case ft
-                of (31,32) =>
-		     defI32(x, M.SRL(ity, regbind v, one), e, hp)
-                 | (8,31) =>
-		     copy(I31, x, v, e, hp)
-                 | (8,32) =>
-		     defI32(x, M.SRL(ity, regbind v, one), e, hp)
-                 | (n,m) => if n = m then copyM(m, x, v, e, hp)
-				       else error "gen:PURE:copy"
-               (*esac*))
+            | gen (PURE(P.pure_arith{oper, kind}, [v,w], x, ty, e), hp) = (case kind
+		 of P.INT sz => if (sz <= Target.defaultIntSz)
+		      then (case oper
+			 of P.xorb   => defTAGINT(x, tagIntXor(v,w), e, hp)
+			  | P.lshift => defTAGINT(x, tagIntLShift(v,w), e, hp)
+			  | P.rshift => defTAGINT(x, tagIntRShift(M.SRA,v,w),e,hp)
+			  | P.+ => defTAGINT(x, tagIntAdd(M.ADD, v, w), e, hp)
+			  | P.- => defTAGINT(x, tagIntSub(M.SUB, v, w), e, hp)
+			  | P.* => defTAGINT(x, tagIntMul(true, M.MULS, v, w), e, hp)
+			  | _ => error "gen: PURE INT TAGGED"
+			(* end case *))
+		      else (case oper
+			 of P.xorb  => arithINT(M.XORB, v, w, x, e, hp)
+			  | P.lshift => shiftINT(M.SLL, v, w, x, e, hp)
+			  | P.rshift => shiftINT(M.SRA, v, w, x, e, hp)
+			  | _ => error "gen: PURE INT"
+			(* end case *))
+                  | P.UINT sz => if (sz <= Target.defaultIntSz)
+		      then (case oper
+			 of P.+    => defTAGINT(x, tagIntAdd(M.ADD, v, w), e, hp)
+			  | P.-    => defTAGINT(x, tagIntSub(M.SUB, v, w), e, hp)
+			  | P.*    => defTAGINT(x, tagIntMul(false, M.MULU, v, w), e, hp)
+			(* we now explicitly defend agains div by 0 in translate, so these
+			 * two operations can be treated as pure op:
+			 *)
+			  | P./ => defTAGINT(x, tagIntDiv(false, M.DIV_TO_ZERO, v, w), e, hp)
+			  | P.rem => defTAGINT(x, tagIntRem(false, M.DIV_TO_ZERO, v, w), e, hp)
+			  | P.xorb => defTAGINT(x, tagIntXor(v, w), e, hp)
+			  | P.lshift  => defTAGINT(x, tagIntLShift(v, w), e, hp)
+			  | P.rshift  => defTAGINT(x, tagIntRShift(M.SRA, v, w), e, hp)
+			  | P.rshiftl => defTAGINT(x, tagIntRShift(M.SRL, v, w), e, hp)
+			  | _ => error "gen: PURE UINT TAGGED"
+			(* end case *))
+		      else (case oper
+			 of P.+     => arithINT(M.ADD, v, w, x, e, hp)
+			  | P.-     => arithINT(M.SUB, v, w, x, e, hp)
+			  | P.*     => arithINT(M.MULU, v, w, x, e, hp)
+			(* we now explicitly defend agains div by 0 in translate, so these
+			 * two operations can be treated as pure op:
+			 *)
+			  | P./     => arithINT(M.DIVU, v, w, x, e, hp)
+			  | P.rem   => arithINT(M.REMU, v, w, x, e, hp)
+			  | P.xorb  => arithINT(M.XORB, v, w, x, e, hp)
+			  | P.lshift => shiftINT(M.SLL, v, w, x, e, hp)
+			  | P.rshift => shiftINT(M.SRA, v, w, x, e, hp)
+			  | P.rshiftl=> shiftINT(M.SRL, v, w, x, e, hp)
+			  | _ => error "gen:PURE UINT 32"
+			(* end case *))
+                  | _ => error "unexpected numkind in pure binary arithop"
+		(* end case *))
+            | gen (PURE(P.pure_arith{oper=P.notb, kind}, [v], x, _, e), hp) = let
+		val sz = (case kind
+		       of P.UINT sz => sz
+			| P.INT sz => sz
+			| _ => error "unexpected numkind in pure notb arithop")
+		in
+		  if (sz <= Target.defaultIntSz)
+		    then defTAGINT(x, M.SUB(ity, zero, regbind v), e, hp)
+		    else defINT(x, M.XORB(ity, regbind v, allOnes), e, hp)
+		end
+	    | gen (PURE(P.pure_arith{oper=P.~, kind}, [v], x, _, e), hp) = let
+		val sz = (case kind
+		       of P.UINT sz => sz
+			| P.INT sz => sz
+			| _ => error "unexpected numkind in pure ~ arithop")
+		in
+		  if (sz <= Target.defaultIntSz)
+		    then defTAGINT (x, M.SUB (ity, two, regbind v), e, hp)
+		    else defINT (x, M.SUB(ity, zero, regbind v), e, hp)
+		end
+            | gen (PURE(P.copy(8, toSz), [v], x, _, e), hp) =
+		if (toSz <= Target.defaultIntSz)
+		  then copy (TAGINT, x, v, e, hp)
+		  else defINT (x, M.SRL(ity, regbind v, one), e, hp)
+            | gen (PURE(P.copy(fromSz, toSz), [v], x, _, e), hp) =
+		if (fromSz = toSz)
+		  then copyM(fromSz, x, v, e, hp)
+		else if (fromSz = Target.defaultIntSz) andalso (toSz = ity)
+		  then defINT (x, M.SRL(ity, regbind v, one), e, hp)
+		  else error "gen:PURE:copy"
 	    | gen (PURE(P.copy_inf _, _, _, _, _), hp) =
 	        error "gen:PURE:copy_inf"
-            | gen (PURE(P.extend ft, [v], x, _ ,e), hp) =
-              (case ft
-               of (8,31) =>
-                    defI31(x,
-                       M.SRA(ity, M.SLL(ity, regbind v, LI 23), LI 23),
-                          e, hp)
-                | (8,32) =>
-                    defI32(x,
-                       M.SRA(ity, M.SLL(ity, regbind v, LI 23), LI 24),
-                          e, hp)
-                | (31,32) =>
-		    defI32(x, M.SRA(ity, regbind v, one), e, hp)
-                | (n,m) => if n = m then copyM(m, x, v, e, hp)
-				      else error "gen:PURE:extend"
-                (*esac*))
+            | gen (PURE(P.extend(8, toSz), [v], x, _ ,e), hp) = let
+		val sa = IntInf.fromInt(Target.defaultIntSz - 8)
+		in
+		  if (toSz <= Target.defaultIntSz)
+		    then defTAGINT (x, M.SRA(ity, M.SLL(ity, regbind v, LI sa), LI sa), e, hp)
+		    else defINT (x, M.SRA(ity, M.SLL(ity, regbind v, LI sa), LI(sa+1)), e, hp)
+		end
+            | gen (PURE(P.extend(fromSz, toSz), [v], x, _ ,e), hp) =
+		if (fromSz = toSz)
+		  then copyM(fromSz, x, v, e, hp)
+		else if (fromSz = Target.defaultIntSz) andalso (toSz = ity)
+		  then defINT (x, M.SRA(ity, regbind v, one), e, hp)
+		  else error "gen:PURE:extend"
 	    | gen (PURE(P.extend_inf _, _, _, _, _), hp) =
 	        error "gen:PURE:extend_inf"
-            | gen (PURE(P.trunc ft, [v], x, _, e), hp) =
-              (case ft
-               of (32,31) =>
-                   defI31(x, M.ORB(ity, M.SLL(ity, regbind v, one), one), e, hp)
-                | (31,8) =>
-		    defI32(x, M.ANDB(ity, regbind v, LI 0x1ff), e, hp)
-                | (32,8) =>
-		    defI32(x, tagUnsigned(M.ANDB(ity, regbind v,
-                                          LI 0xff)), e, hp)
-                | (n,m) => if n = m then copyM(m, x, v, e, hp)
-				      else error "gen:PURE:trunc"
-               (*esac*))
+            | gen (PURE(P.trunc(fromSz, toSz), [v], x, _, e), hp) =
+		if (fromSz = toSz)
+		  then copyM(fromSz, x, v, e, hp)
+		else if (toSz = 8)
+		  then if (fromSz <= Target.defaultIntSz)
+		    then defTAGINT (x, M.ANDB(ity, regbind v, LI 0x1ff), e, hp) (* mask includes tag bit *)
+		    else defTAGINT (x, tagUnsigned(M.ANDB(ity, regbind v, LI 0xff)), e, hp)
+		else if (fromSz = ity) andalso (toSz = Target.defaultIntSz)
+		  then defTAGINT (x, M.ORB(ity, M.SLL(ity, regbind v, one), one), e, hp)
+		  else error "gen:PURE:trunc"
 	    | gen (PURE(P.trunc_inf _, _, _, _, _), hp) =
 	        error "gen:PURE:trunc_inf"
             | gen (PURE(P.objlength, [v], x, _, e), hp) =
-                defI31(x, orTag(getObjLength(v)), e, hp)
+                defTAGINT(x, orTag(getObjLength v), e, hp)
             | gen (PURE(P.length, [v], x, t, e), hp) = select(1, v, x, t, e, hp)
             | gen (PURE(P.subscriptv, [v, ix as NUM{ty={tag=true, ...}, ...}], x, t, e), hp) =
               let (* get data pointer *)
@@ -1674,41 +1640,53 @@ raise ex)
                   val mem  = dataptrRegion v
                   val a    = markPTR(M.LOAD(ity, regbind v, mem))
                   val mem' = arrayRegion mem
-              in defI31(x,tagUnsigned(M.LOAD(8,scale1(a, i), mem')), e, hp)
+              in defTAGINT(x,tagUnsigned(M.LOAD(8,scale1(a, i), mem')), e, hp)
               end
             | gen (PURE(P.gettag, [v], x, _, e), hp) =
-                defI31(x, tagUnsigned(M.ANDB(ity,
-                             getObjDescriptor(v), LI(D.powTagWidth-1))),
-                      e, hp)
-            | gen (PURE(P.mkspecial, [i, v], x, _, e), hp) =
-              let val desc = case i
-                  of NUM{ty={tag=true, ...}, ival} => LI(D.makeDesc(ival, D.tag_special))
-                   | _ => M.ORB(ity, M.SLL(ity, untagSigned i, LW' D.tagWidth),
-                                LI D.desc_special)
-              in  (* What gc types are the components? *)
-                  treeifyAlloc(x,
-                    allocRecord(markNothing, memDisambig x,
-                                desc, [(v, offp0)], hp),
-                    e, hp+8)
-              end
-            | gen (PURE(P.makeref, [v], x, _, e), hp) =
-              let val tag = LI D.desc_ref
-                  val mem = memDisambig x
-              in  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI' hp), tag, mem));
-                  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI'(hp+ws)),
-                               regbind' v, mem));
+                defTAGINT(x,
+		  tagUnsigned(M.ANDB(ity, getObjDescriptor v, LI(D.powTagWidth-1))),
+		  e, hp)
+            | gen (PURE(P.mkspecial, [i, v], x, _, e), hp) = let
+                val desc = (case i
+		       of NUM{ty={tag=true, ...}, ival} => LI(D.makeDesc(ival, D.tag_special))
+			| _ => M.ORB(ity, M.SLL(ity, untagSigned i, LW' D.tagWidth), LI D.desc_special)
+		      (* end case *))
+		in  (* What gc types are the components? *)
+		  treeifyAlloc(x,
+		      allocRecord(markNothing, memDisambig x,
+				  desc, [(v, offp0)], hp),
+		      e, hp+8)
+		end
+            | gen (PURE(P.makeref, [v], x, _, e), hp) = let
+		val tag = LI D.desc_ref
+		val mem = memDisambig x
+                in
+		  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI' hp), tag, mem));
+                  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI'(hp+ws)), regbind' v, mem));
                   treeifyAlloc(x, hp+ws, e, hp+2*ws)
-              end
-            | gen (PURE(P.fwrap,[u],w,_,e), hp) = mkFblock([(u, offp0)],w,e,hp)
-            | gen (PURE(P.funwrap,[u],w,_,e), hp) = fselect(0,u,w,e,hp)
-            | gen (PURE(P.iwrap,[u],w,_,e), _) = error "iwrap not implemented"
-            | gen (PURE(P.iunwrap,[u],w,_,e), _) = error "iunwrap not implemented"
-            | gen (PURE(P.i32wrap,[u],w,_,e), hp) = mkI32block([(u, offp0)], w, e, hp)	(* 64BIT: FIXME *)
-            | gen (PURE(P.i32unwrap,[u],w,_,e), hp) =
-                select(0, u, w, NUMt{sz=32, tag=false}, e, hp)
-
-            | gen (PURE(P.wrap,[u],w,_,e), hp) = copy(PTR, w, u, e, hp)
-            | gen (PURE(P.unwrap,[u],w,_,e), hp) = copy(I32, w, u, e, hp)
+                end
+            | gen (PURE(P.box, [u], w, _, e), hp) = copy(PTR, w, u, e, hp)
+            | gen (PURE(P.unbox, [u], w, _, e), hp) = copy(INT, w, u, e, hp)
+	    | gen (PURE(P.wrap kind, [u], w, _, e), hp) = (case kind
+		 of P.FLOAT 64 => mkFblock([(u, offp0)],w,e,hp)
+(* REAL32: FIXME *)
+		  | P.INT sz => if (sz < ity)
+		        then error "wrap for tagged ints is not implemented"
+		      else if (sz = ity)
+		        then mkIntBlock([(u, offp0)], w, e, hp)
+			else error(concat["wrap(INT ", Int.toString sz, ") is not implemented"])
+		  | _ => error "wrap: bogus kind"
+		(* end case *))
+	    | gen (PURE(P.unwrap kind, [u], w, _, e), hp) = (case kind
+		 of P.FLOAT 64 => fselect(0,u,w,e,hp)
+(* REAL32: FIXME *)
+		  | P.INT sz => if (sz < ity)
+		        then error "unwrap for tagged ints is not implemented"
+		      else if (sz = ity)
+			then select(0, u, w, NUMt{sz=sz, tag=false}, e, hp)
+			else error(concat["unwrap(INT ", Int.toString sz, ") is not implemented"])
+		  | _ => error "unwrap: bogus kind"
+		(* end case *))
 
                 (* Note: the gc type is unsafe! XXX *)
             | gen (PURE(P.cast,[u],w,_,e), hp) = copy(PTR, w, u, e, hp)
@@ -1718,11 +1696,12 @@ raise ex)
             | gen (PURE(P.getseqdata, [u], x, t, e), hp) = select(0,u,x,t,e,hp)
             | gen (PURE(P.recsubscript, [v, NUM{ty={tag=true, ...}, ival}], x, t, e), hp) =
                 select(IntInf.toInt ival, v, x, t, e, hp)
-            | gen (PURE(P.recsubscript, [v, w], x, _, e), hp) =
-                 (* no indirection! *)
-              let val mem = arrayRegion(getRegion v)
-              in  defI31(x, M.LOAD(ity, scaleWord(regbind v, w), mem), e, hp)
-              end
+            | gen (PURE(P.recsubscript, [v, w], x, _, e), hp) = let
+              (* no indirection! *)
+                val mem = arrayRegion(getRegion v)
+                in
+		  defTAGINT(x, M.LOAD(ity, scaleWord(regbind v, w), mem), e, hp)
+                end
             | gen (PURE(P.raw64subscript, [v, i], x, _, e), hp) =
               let val mem = arrayRegion(getRegion v)
               in  treeifyDefF64(x, M.FLOAD(fty,scale8(regbind v, i), mem),
@@ -1757,6 +1736,7 @@ raise ex)
 			| _ => (D.tag_record, false)
 		      (* end case *))
 	      (* len of record in 32-bit words *)
+(* 64BIT: FIXME *)
 		val len = if ws = 4 andalso fp then ival+ival else ival
 	      (* record descriptor *)
 		val desc = D.makeDesc(len, tag)
@@ -1775,139 +1755,153 @@ raise ex)
 		end
 
             (*** ARITH ***)
-            | gen (ARITH(P.arith{kind=P.INT 31, oper=P.~}, [v], x, _, e), hp) =
-                (updtHeapPtr hp;
-                 defI31(x, M.SUBT(ity, two, regbind v), e, 0)
-                )
-            | gen (ARITH(P.arith{kind=P.INT 31, oper}, [v, w], x, _, e), hp) =
-              (updtHeapPtr hp;
-               let val t =
-                   case oper
-                    of P.+ => int31add(M.ADDT, v, w)
-                     | P.- => int31sub(M.SUBT, v, w)
-                     | P.* => int31mul(true, M.MULT, v, w)
-                     | P./ => int31div(true, M.DIV_TO_ZERO, v, w)
-		     | P.div => int31div(true, M.DIV_TO_NEGINF, v, w)
-		     | P.rem => int31rem(true, M.DIV_TO_ZERO, v, w)
-		     | P.mod => int31rem(true, M.DIV_TO_NEGINF, v, w)
-		     | P.~ => error "gen: ~ INT 31"
-		     | P.abs => error "gen: abs INT 31"
-		     | P.fsqrt => error "gen: fsqrt INT 31"
-		     | P.fsin => error "gen: fsin INT 31"
-		     | P.fcos => error "gen: fcos INT 31"
-		     | P.ftan => error "gen: ftan INT 31"
-		     | P.lshift => error "gen: lshift INT 31"
-		     | P.rshift => error "gen: rshift INT 31"
-		     | P.rshiftl => error "gen: rshiftl INT 31"
-		     | P.andb => error "gen: andb INT 31"
-		     | P.orb => error "gen: orb INT 31"
-		     | P.xorb => error "gen: xorb INT 31"
-		     | P.notb => error "gen: notb INT 31"
-(*
-                     | _ => error "gen:ARITH INT 31"
-*)
-               in  defI31(x, t, e, 0) end
-              (*esac*))
-            | gen (ARITH(P.arith{kind=P.INT 32, oper}, [v,w], x, _, e), hp) =
-              (updtHeapPtr hp;
-               case oper
-                of P.+   => arith32(M.ADDT, v, w, x, e, 0)
-                 | P.-   => arith32(M.SUBT, v, w, x, e, 0)
-                 | P.*   => arith32(M.MULT, v, w, x, e, 0)
-                 | P./   => arith32(fn(ty,x,y)=>M.DIVT(M.DIV_TO_ZERO,ty,x,y),
-				    v, w, x, e, 0)
-		 | P.div => arith32(fn(ty,x,y)=>M.DIVT(M.DIV_TO_NEGINF,ty,x,y),
-				    v, w, x, e, 0)
-		 | P.rem => arith32(fn(ty,x,y)=>M.REMS(M.DIV_TO_ZERO,ty,x,y),
-				    v, w, x, e, 0)
-		 | P.mod => arith32(fn(ty,x,y)=>M.REMS(M.DIV_TO_NEGINF,ty,x,y),
-				    v, w, x, e, 0)
-                 | _ => error "P.arith{kind=INT 32, oper}, [v,w], ..."
-              (*esac*))
-            | gen (ARITH(P.arith{kind=P.INT 32, oper=P.~ }, [v], x, _, e), hp) =
-                (updtHeapPtr hp;
-                 defI32(x, M.SUBT(ity, zero, regbind v), e, 0))
+            | gen (ARITH(P.arith{kind=P.INT sz, oper=P.~}, [v], x, _, e), hp) = (
+		updtHeapPtr hp;
+		if (sz <= Target.defaultIntSz)
+		  then defTAGINT(x, M.SUBT(ity, two, regbind v), e, 0)
+		  else defINT(x, M.SUBT(ity, zero, regbind v), e, 0))
+            | gen (ARITH(P.arith{kind=P.INT sz, oper}, [v, w], x, _, e), hp) = (
+		updtHeapPtr hp;
+		if (sz <= Target.defaultIntSz)
+		  then (case oper
+		     of P.+ => defTAGINT(x, tagIntAdd(M.ADDT, v, w), e, 0)
+		      | P.- => defTAGINT(x, tagIntSub(M.SUBT, v, w), e, 0)
+		      | P.* => defTAGINT(x, tagIntMul(true, M.MULT, v, w), e, 0)
+		      | P./ => defTAGINT(x, tagIntDiv(true, M.DIV_TO_ZERO, v, w), e, 0)
+		      | P.div => defTAGINT(x, tagIntDiv(true, M.DIV_TO_NEGINF, v, w), e, 0)
+		      | P.rem => defTAGINT(x, tagIntRem(true, M.DIV_TO_ZERO, v, w), e, 0)
+		      | P.mod => defTAGINT(x, tagIntRem(true, M.DIV_TO_NEGINF, v, w), e, 0)
+		      | P.~ => error "gen: ~ INT TAG"
+		      | P.abs => error "gen: abs INT TAG"
+		      | P.fsqrt => error "gen: fsqrt INT TAG"
+		      | P.fsin => error "gen: fsin INT TAG"
+		      | P.fcos => error "gen: fcos INT TAG"
+		      | P.ftan => error "gen: ftan INT TAG"
+		      | P.lshift => error "gen: lshift INT TAG"
+		      | P.rshift => error "gen: rshift INT TAG"
+		      | P.rshiftl => error "gen: rshiftl INT TAG"
+		      | P.andb => error "gen: andb INT TAG"
+		      | P.orb => error "gen: orb INT TAG"
+		      | P.xorb => error "gen: xorb INT TAG"
+		      | P.notb => error "gen: notb INT TAG"
+		    (* end case *))
+		  else (case oper
+		     of P.+ => arithINT(M.ADDT, v, w, x, e, 0)
+		      | P.- => arithINT(M.SUBT, v, w, x, e, 0)
+		      | P.* => arithINT(M.MULT, v, w, x, e, 0)
+		      | P./ => arithINT(fn(ty,x,y)=>M.DIVT(M.DIV_TO_ZERO,ty,x,y),
+					 v, w, x, e, 0)
+		      | P.div => arithINT(fn(ty,x,y)=>M.DIVT(M.DIV_TO_NEGINF,ty,x,y),
+					 v, w, x, e, 0)
+		      | P.rem => arithINT(fn(ty,x,y)=>M.REMS(M.DIV_TO_ZERO,ty,x,y),
+					 v, w, x, e, 0)
+		      | P.mod => arithINT(fn(ty,x,y)=>M.REMS(M.DIV_TO_NEGINF,ty,x,y),
+					 v, w, x, e, 0)
+		      | P.~ => error "gen: ~ INT"
+		      | P.abs => error "gen: abs INT"
+		      | P.fsqrt => error "gen: fsqrt INT"
+		      | P.fsin => error "gen: fsin INT"
+		      | P.fcos => error "gen: fcos INT"
+		      | P.ftan => error "gen: ftan INT"
+		      | P.lshift => error "gen: lshift INT"
+		      | P.rshift => error "gen: rshift INT"
+		      | P.rshiftl => error "gen: rshiftl INT"
+		      | P.andb => error "gen: andb INT"
+		      | P.orb => error "gen: orb INT"
+		      | P.xorb => error "gen: xorb INT"
+		      | P.notb => error "gen: notb INT"
+		    (* end case *)))
 
+	    | gen (ARITH(P.testu(fromSz, toSz), [v], x, _, e), hp) =
               (* Note: for testu operations we use a somewhat arcane method
                * to generate traps on overflow conditions. A better approach
                * would be to generate a trap-if-negative instruction available
                * on a variety of machines, e.g. mips and sparc (maybe others).
                *)
-            | gen (ARITH(P.testu(32,32), [v], x, _, e), hp) =
-              let val xreg = newReg I32
-                  val vreg = regbind v
-              in  updtHeapPtr hp;
-                  emit(M.MV(ity, xreg, M.ADDT(ity, vreg, LI 0x80000000)));
-                  defI32(x, vreg, e, 0)
-              end
-            | gen (ARITH(P.testu(31,31), [v], x, _, e), hp) =
-              let val xreg = newReg I31
-                  val vreg = regbind v
-              in  updtHeapPtr hp;
-                  emit(M.MV(ity,xreg,M.ADDT(ity, vreg, LI 0x80000000)));
-                  defI31(x, vreg, e, 0)
-              end
-            | gen (ARITH(P.testu(32,31), [v], x, _, e), hp) =
-              let val vreg = regbind v
-                  val tmp = newReg I32
-                  val tmpR = M.REG(ity,tmp)
-                  val lab = newLabel ()
-              in  emit(M.MV(ity, tmp, LI 0x3fffffff));
-                  updtHeapPtr hp;
-                  emit
-		    (branchWithProb(M.BCC(M.CMP(32, M.LEU, vreg, tmpR),lab),
-				    SOME Probability.likely));
-                  emit(M.MV(ity, tmp, M.SLL(ity, tmpR, one)));
-                  emit(M.MV(ity, tmp, M.ADDT(ity, tmpR, tmpR)));
-                  defineLabel lab;
-                  defI31(x, tagUnsigned(vreg), e, 0)
-              end
-	    | gen (ARITH(P.testu _, _, _, _, _), hp) =
-	        error "gen:ARITH:testu with unexpected precisions (not implemented)"
-            | gen (ARITH(P.test(32,31), [v], x, _, e), hp) =
-               (updtHeapPtr hp; defI31(x, tagSigned(regbind v), e, 0))
-            | gen (ARITH(P.test(n, m), [v], x, _, e), hp) =
-               if n = m then copyM(m, x, v, e, hp) else error "gen:ARITH:test"
+		if (fromSz = toSz)
+		  then let
+		    val gc = if (fromSz < ity) then TAGINT else INT
+		    val xreg = newReg gc
+		    val vreg = regbind v
+		    in
+		      updtHeapPtr hp;
+		      emit(M.MV(ity, xreg, M.ADDT(ity, vreg, signBit)));
+		      def(gc, x, vreg, e, 0)
+		    end
+		else if (fromSz = ity) andalso (toSz = Target.defaultIntSz)
+		  then let
+		    val vreg = regbind v
+		    val tmp = newReg INT
+		    val tmpR = M.REG(ity, tmp)
+		    val lab = newLabel ()
+		    in
+		      emit(M.MV(ity, tmp, allOnes'));
+		      updtHeapPtr hp;
+		      emit(branchWithProb(
+			M.BCC(M.CMP(ity, M.LEU, vreg, tmpR),lab),
+			SOME Probability.likely));
+		      emit(M.MV(ity, tmp, M.SLL(ity, tmpR, one)));
+		      emit(M.MV(ity, tmp, M.ADDT(ity, tmpR, tmpR)));
+		      defineLabel lab;
+		      defTAGINT(x, tagUnsigned(vreg), e, 0)
+		    end
+	          else error "gen:ARITH:testu with unexpected precisions (not implemented)"
+
+	    | gen (ARITH(P.test(fromSz, toSz), [v], x, _, e), hp) =
+		if (fromSz = toSz)
+		  then copyM(fromSz, x, v, e, hp)
+		else if (fromSz = ity) andalso (toSz = Target.defaultIntSz)
+		  then (updtHeapPtr hp; defTAGINT(x, tagSigned(regbind v), e, 0))
+		  else error "gen:ARITH:test with unexpected precisions (not implemented)"
 	    | gen (ARITH(P.test_inf _, _, _, _, _), hp) =
 	        error "gen:ARITH:test_inf"
-            | gen (ARITH(P.arith{oper, kind=P.FLOAT 64}, [v,w], x, _, e), hp) =
-              let val v = fregbind v
-                  val w = fregbind w
-                  val t =
-                  case oper
-                    of P.+ => M.FADD(fty, v, w)
-                     | P.* => M.FMUL(fty, v, w)
-                     | P.- => M.FSUB(fty, v, w)
-                     | P./ => M.FDIV(fty, v, w)
-		     | _ => error "unexpected primop in binary float64"
-              in  treeifyDefF64(x, t, e, hp)
-              end
+
+            | gen (ARITH(P.arith{oper, kind=P.FLOAT sz}, [v,w], x, _, e), hp) = let
+                val v = fregbind v
+		val w = fregbind w
+		val t = (case oper
+		       of P.+ => M.FADD(sz, v, w)
+			| P.* => M.FMUL(sz, v, w)
+			| P.- => M.FSUB(sz, v, w)
+			| P./ => M.FDIV(sz, v, w)
+			| _ => error "unexpected primop in binary float64"
+		      (* end case *))
+		in
+(* REAL32: FIXME *)
+		  treeifyDefF64(x, t, e, hp)
+		end
+
             (*** LOOKER ***)
-            | gen (LOOKER(P.!, [v], x, _, e), hp) =
-              let val mem = arrayRegion(getRegion v)
-              in  defBoxed (x, M.LOAD(ity, regbind v, mem), e, hp)
-              end
-            | gen (LOOKER(P.subscript, [v,w], x, _, e), hp) =
-              let (* get data pointer *)
-                  val mem  = dataptrRegion v
-                  val a    = markPTR(M.LOAD(ity, regbind v, mem))
-                  val mem' = arrayRegion mem
-              in  defBoxed (x, M.LOAD(ity, scaleWord(a, w), mem'), e, hp)
-              end
-            | gen (LOOKER(P.numsubscript{kind=P.INT 8},[v,i],x,_,e), hp) =
-              let (* get data pointer *)
-                  val mem  = dataptrRegion v
-                  val a    = markPTR(M.LOAD(ity, regbind v, mem))
-                  val mem' = arrayRegion mem
-              in  defI31(x, tagUnsigned(M.LOAD(8,scale1(a, i), mem')), e, hp)
-              end
-            | gen (LOOKER(P.numsubscript{kind=P.FLOAT 64}, [v,i], x, _, e), hp)=
-              let (* get data pointer *)
-                  val mem  = dataptrRegion v
-                  val a    = markPTR(M.LOAD(ity, regbind v, mem))
-                  val mem' = arrayRegion mem
-              in  treeifyDefF64(x, M.FLOAD(fty,scale8(a, i), mem'), e, hp)
-              end
+            | gen (LOOKER(P.!, [v], x, _, e), hp) = let
+		val mem = arrayRegion(getRegion v)
+		in
+		  defBoxed (x, M.LOAD(ity, regbind v, mem), e, hp)
+		end
+            | gen (LOOKER(P.subscript, [v,w], x, _, e), hp) = let
+              (* get data pointer *)
+		val mem  = dataptrRegion v
+		val a    = markPTR(M.LOAD(ity, regbind v, mem))
+		val mem' = arrayRegion mem
+		in
+		  defBoxed (x, M.LOAD(ity, scaleWord(a, w), mem'), e, hp)
+		end
+            | gen (LOOKER(P.numsubscript{kind=P.INT 8}, [v, i], x, _, e), hp) = let
+              (* get data pointer *)
+		val mem  = dataptrRegion v
+		val a    = markPTR(M.LOAD(ity, regbind v, mem))
+		val mem' = arrayRegion mem
+		in
+		  defTAGINT(x, tagUnsigned(M.LOAD(8,scale1(a, i), mem')), e, hp)
+		end
+(* REAL32: FIXME *)
+            | gen (LOOKER(P.numsubscript{kind=P.FLOAT 64}, [v,i], x, _, e), hp) = let
+              (* get data pointer *)
+		val mem  = dataptrRegion v
+		val a    = markPTR(M.LOAD(ity, regbind v, mem))
+		val mem' = arrayRegion mem
+		in
+		  treeifyDefF64(x, M.FLOAD(fty,scale8(a, i), mem'), e, hp)
+		end
             | gen (LOOKER(P.gethdlr,[],x,_,e), hp) = defBoxed(x, C.exnptr(vfp), e, hp)
             | gen (LOOKER(P.getvar, [], x, _, e), hp) = defBoxed(x, C.varptr(vfp), e, hp)
             | gen (LOOKER(P.getspecial, [v], x, _, e), hp) = defBoxed(
@@ -1923,13 +1917,13 @@ raise ex)
                 rawload (kind, M.ADD(addrTy,regbind i, regbind j), x, e, hp)
 
             (*** SETTER ***)
-            | gen (SETTER(P.rawupdate(FLTt 64),[v,i,w],e),hp) =
-                (emit(M.FSTORE(fty,scale8(regbind' v, i), fregbind w,R.memory));
-                 gen(e, hp))
-            | gen (SETTER(P.rawupdate _,[v,i,w],e),hp) =
-(* 64BIT: Assumes 32-bit. Needs 64-bit support later! *)
-                (emit(M.STORE(ity,scaleWord(regbind' v, i), regbind' w,R.memory));
-                 gen(e, hp))
+            | gen (SETTER(P.rawupdate(FLTt 64),[v,i,w],e),hp) = (
+(* REAL32: FIXME *)
+                emit(M.FSTORE(fty, scale8(regbind' v, i), fregbind w,R.memory));
+                gen(e, hp))
+            | gen (SETTER(P.rawupdate _, [v,i,w], e), hp) = (
+                emit(M.STORE(ity, scaleWord(regbind' v, i), regbind' w, R.memory));
+                gen(e, hp))
 
             | gen (SETTER(P.assign, [a as VAR arr, v], e), hp) =
               let val ea = regbind a
@@ -1999,38 +1993,39 @@ raise ex)
             | gen (SETTER(P.acclink,_,e), hp) = gen(e, hp)
             | gen (SETTER(P.setmark,_,e), hp) = gen(e, hp)
             | gen (SETTER(P.free,[x],e), hp) = gen(e, hp)
-            | gen (SETTER(P.setpseudo,_,e), hp) =
-                (print "setpseudo not implemented\n"; gen(e, hp))
-            | gen (SETTER (P.rawstore { kind }, [i, x], e), hp) =
-                (rawstore (kind, regbind i, x); gen (e, hp))
-            | gen (SETTER (P.rawstore { kind }, [i, j, x], e), hp) =
-                (rawstore (kind, M.ADD(addrTy, regbind i, regbind j), x);
-                 gen (e, hp))
-	    | gen (RCC(arg as (_, _, _, _, wtl, e)), hp) =
-              let val {result, hp} =
-                      CPSCCalls.c_call
-                          {stream=stream, regbind=regbind,
-                           fregbind=fregbind, typmap=typmap, vfp=vfp, hp=hp}
-                          arg
-              in  case (result, wtl) of
-                    ([], [(w, _)]) => defI31 (w, mlZero, e, hp)
-		  | ([M.FPR x],[(w,CPS.FLTt 64)]) => treeifyDefF64 (w, x, e, hp) (* REAL32: *)
-                        (* more sanity checking here ? *)
-                  | ([M.GPR x],[(w, CPS.NUMt{sz=32, tag=false})]) => defI32 (w, x, e, hp) (* 64BIT: *)
-                  | ([M.GPR x],[(w, CPS.PTRt _)]) => defBoxed (w, x, e, hp)
-		  | ([M.GPR x1, M.GPR x2],
-		     [(w1, CPS.NUMt{sz=32, tag=false}), (w2, CPS.NUMt{sz=32, tag=false})]
-		    ) => let
-		      val (r1, r2) = (newReg I32, newReg I32)
-		      in
-			addRegBinding(w1, r1);
-			addRegBinding(w2, r2);
-			emit(M.MV(ity,r1,x1));
-			emit(M.MV(ity,r2,x2));
-			gen(e,hp)
-		      end
-		  | _ => error "RCC: bad results"
-	      end
+            | gen (SETTER(P.setpseudo,_,e), hp) = (print "setpseudo not implemented\n"; gen(e, hp))
+            | gen (SETTER (P.rawstore { kind }, [i, x], e), hp) = (
+                rawstore (kind, regbind i, x); gen (e, hp))
+            | gen (SETTER (P.rawstore { kind }, [i, j, x], e), hp) = (
+                rawstore (kind, M.ADD(addrTy, regbind i, regbind j), x);
+		gen (e, hp))
+	    | gen (RCC(arg as (_, _, _, _, wtl, e)), hp) = let
+                val {result, hp} = CPSCCalls.c_call {
+                	stream = stream, regbind = regbind,
+			fregbind = fregbind, typmap = typmap,
+			vfp = vfp, hp = hp
+		      } arg
+                in
+		  case (result, wtl)
+		   of ([], [(w, _)]) => defTAGINT (w, mlZero, e, hp) (* void result *)
+		    | ([M.FPR x],[(w,CPS.FLTt 64)]) => treeifyDefF64 (w, x, e, hp) (* REAL32: *)
+			  (* more sanity checking here ? *)
+		    | ([M.GPR x],[(w, CPS.NUMt{tag=false, ...})]) => defINT (w, x, e, hp)
+		    | ([M.GPR x],[(w, CPS.PTRt _)]) => defBoxed (w, x, e, hp)
+		    | ([M.GPR x1, M.GPR x2],
+		       [(w1, CPS.NUMt{tag=false, ...}), (w2, CPS.NUMt{tag=false, ...})]
+		      ) => let
+			val (r1, r2) = (newReg INT, newReg INT)
+			in
+			  addRegBinding(w1, r1);
+			  addRegBinding(w2, r2);
+			  emit(M.MV(ity,r1,x1));
+			  emit(M.MV(ity,r2,x2));
+			  gen(e,hp)
+			end
+		    | _ => error "RCC: bad results"
+		  (* end case *)
+                end
 
             (*** BRANCH  ***)
             | gen (BRANCH(P.cmp{oper, kind}, [NUM v, NUM k], _, e, d), hp) =
@@ -2045,7 +2040,7 @@ raise ex)
 	    | gen (BRANCH(P.fcmp{oper=P.fsgn,size=64}, [v], p, d, e), hp) = let
 	        val trueLab = newLabel ()
 	        val r = fregbind v
-                val r' = newReg I32
+                val r' = newReg INT
                 val rReg = M.REG(ity, r')
               (* address of the word that contains the sign bit *)
                 val addr = if MachineSpec.bigEndian

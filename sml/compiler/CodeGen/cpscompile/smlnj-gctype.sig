@@ -22,6 +22,7 @@ signature SMLGCTYPE =
       | TOP
 
     val ==       : gctype * gctype -> bool
+
     val join     : gctype * gctype -> gctype
     val meet     : gctype * gctype -> gctype
 
@@ -30,13 +31,13 @@ signature SMLGCTYPE =
     (*
      * Primitive types
      *)
-    val I31      : gctype  (* tagged integers *)	(* 64BIT: FIXME *)
-    val I32      : gctype  (* untagged integers *)	(* 64BIT: FIXME *)
+    val TAGGED_INT : gctype  (* default tagged integer *)
+    val INT        : gctype  (* machine integers *)
 
     val REAL64   : gctype  (* unboxed real *)
     val REAL32   : gctype  (* unused *)
-    val PTR      : gctype  (* tagged ML objects *)
-    val INT      : gctype  (* machine integers aka I32 *)
+    val PTR      : gctype  (* ML objects *)
+
     val ADD      : ty * gctype * gctype -> gctype
     val SUB      : ty * gctype * gctype -> gctype
 
@@ -46,4 +47,3 @@ signature SMLGCTYPE =
     val GC_TYPE : gctype Annotations.property
 
   end
-

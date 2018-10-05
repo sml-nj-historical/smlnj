@@ -19,7 +19,7 @@ is
 # if defined(ARCH_ALPHA)
 	$smlnj/cmb/alpha32-unix.cm
 	select-alpha32-unix.sml
-+# elif defined(ARCH_AMD64)
+# elif defined(ARCH_AMD64)
 	$smlnj/cmb/amd64-unix.cm
 	select-amd64-unix.sml
 # elif defined(ARCH_MIPS)

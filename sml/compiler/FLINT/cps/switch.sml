@@ -289,7 +289,7 @@ structure Switch : sig
 	  in
 	    case sign
 	     of A.CSIG(0, n) =>
-		  pure(CPS.P.unwrap, [arg], tagNumTy,
+		  pure(CPS.P.unbox, [arg], tagNumTy,
 		    fn x => taggedNumSwitch(x, tagWordKind, unboxed, default, SOME(n-1)))
 	      | A.CSIG(n, 0) =>
 		  pure(CPS.P.getcon, [arg], tagNumTy,
@@ -302,7 +302,7 @@ structure Switch : sig
 			(* end case *))
 		  val unboxedAct = (case unboxed
 			 of [] => default
-			  | _ => pure(CPS.P.unwrap, [arg], tagNumTy,
+			  | _ => pure(CPS.P.unbox, [arg], tagNumTy,
 			      fn x => taggedNumSwitch(x, tagWordKind, unboxed, default, SOME(nu-1)))
 			(* end case *))
 		  in
@@ -316,7 +316,7 @@ structure Switch : sig
 			(* end case *))
 		  val unboxedAct = (case unboxed
 			 of [] => default
-			  | _ => pure(CPS.P.unwrap, [arg], tagNumTy,
+			  | _ => pure(CPS.P.unbox, [arg], tagNumTy,
 			      fn x => taggedNumSwitch(x, tagWordKind, unboxed, default, SOME(nu-1)))
 			(* end case *))
 		  in

@@ -1,7 +1,11 @@
-(* (C) 1999 Lucent Technologies, Bell Laboratories *)
+(* pre-perv.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
 
-
-structure PrePervasive = struct
+structure PrePervasive =
+  struct
 
     exception Span
 
@@ -22,4 +26,5 @@ structure PrePervasive = struct
 
     val op = : ''a * ''a -> PrimTypes.bool = InlineT.=
     val op <> : ''a * ''a -> PrimTypes.bool = InlineT.<>
-end
+
+  end

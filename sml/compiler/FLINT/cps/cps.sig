@@ -100,10 +100,10 @@ signature CPS =
 	  | copy_inf of int
 	  | real of {fromkind: numkind, tokind: numkind}
 	  | subscriptv
-	  | gettag | mkspecial | wrap | unwrap | cast | getcon | getexn
-	  | fwrap | funwrap
-	  | iwrap | iunwrap		(* fake wrapping of tagged integers *)
-	  | i32wrap | i32unwrap		(* 64BIT: FIXME *)
+	  | gettag | mkspecial | cast | getcon | getexn
+	  | box | unbox
+	(* tagging/boxing of numbers; numkind should be either `INT` or `FLOAT` *)
+	  | wrap of numkind | unwrap of numkind
 	  | getseqdata | recsubscript | raw64subscript | newarray0
 	  | rawrecord of record_kind option
 	       (* allocate uninitialized words from the heap; optionally
@@ -199,7 +199,9 @@ signature CPS =
        *)
       | RCC of rcc_kind * string * CTypes.c_proto * value list *
 	       (lvar * cty) list * cexp
+
     and rcc_kind = FAST_RCC | REENTRANT_RCC
+
     withtype function = fun_kind * lvar * lvar list * cty list * cexp
 
     val combinepaths : accesspath * accesspath -> accesspath

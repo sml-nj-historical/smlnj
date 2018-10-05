@@ -15,14 +15,14 @@ val getSpecVar : Modules.spec -> EntPath.entVar option
 val strDefToStr : Modules.strDef * Modules.entityEnv -> Modules.Structure
 
 (*** getTyc, getStr and getFct are used in modules/sigmatch.sml only ***)
-val getTyc : Modules.elements * Modules.entityEnv * Symbol.symbol 
+val getTyc : Modules.elements * Modules.entityEnv * Symbol.symbol
                  -> Types.tycon * EntPath.entVar
 
 val getStr : Modules.elements * Modules.entityEnv
 	     * Symbol.symbol * Access.access * PrimopId.str_prim_info
              -> Modules.Structure * EntPath.entVar
 
-val getFct : Modules.elements * Modules.entityEnv 
+val getFct : Modules.elements * Modules.entityEnv
              * Symbol.symbol * Access.access * PrimopId.str_prim_info
              -> Modules.Functor * EntPath.entVar
 
@@ -34,10 +34,10 @@ val getTycs : Modules.Structure -> Types.tycon list
 val getStrSymbols : Modules.Structure -> Symbol.symbol list
 
 (*** these functions should be called in env/lookup.sml only ***)
-val getStrPath : Modules.Structure * SymPath.path * SymPath.path 
+val getStrPath : Modules.Structure * SymPath.path * SymPath.path
                  -> Modules.Structure
 
-val getStrDef : Modules.Structure * SymPath.path * SymPath.path 
+val getStrDef : Modules.Structure * SymPath.path * SymPath.path
                 -> Modules.strDef
 
 val getFctPath : Modules.Structure * SymPath.path * SymPath.path

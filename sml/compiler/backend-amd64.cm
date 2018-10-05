@@ -6,7 +6,7 @@
  * This is the AMD64-specific (aka x86-64) part (backend) of the compiler.
  *
  * The present file is a group which gets referred to by the actual library
- * file in system/smlnj/viscomp/x86.cm.
+ * file in system/smlnj/viscomp/amd64.cm.
  *)
 
 Group

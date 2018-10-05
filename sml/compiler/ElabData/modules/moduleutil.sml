@@ -79,13 +79,13 @@ fun getTyc (elements, entEnv, sym) =
 (*** The function getStr is used in modules/sigmatch.sml only ***)
 fun getStr (elements, entEnv, sym, dacc, prims) =
    case getSpec(elements, sym)
-    of STRspec{sign, slot, def, entVar} =>
-        (case EE.look(entEnv,entVar)
+    of STRspec{sign, slot, def, entVar} => (case EE.look(entEnv,entVar)
  	  of STRent entity =>
                (STR{sign = sign, rlzn = entity, access = A.selAcc(dacc,slot),
                     prim = POI.selStrPrimId(prims, slot)},
 		entVar)
-	   | _ => bug "getStr: bad entity")
+	   | _ => bug("getStr: bad entity for " ^ Symbol.symbolToString sym)
+	(* end case *))
      | _ => bug "getStr: wrong spec"
 
 (*** The function getFct is used in modules/sigmatch.sml only ***)

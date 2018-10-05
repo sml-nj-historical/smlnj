@@ -10,9 +10,6 @@
 Group
 	structure X86StdCallBackend
 	structure X86CCallBackend
-(*
-	structure X86IntelMacBackend
-*)
 
 	functor   X86CG
         structure X86CpsRegs
@@ -24,9 +21,6 @@ is
 
 TopLevel/backend/x86-stdcall.sml
 TopLevel/backend/x86-ccall.sml
-(*
-TopLevel/backend/x86-intelmac.sml
-*)
 
 CodeGen/x86/x86CG.sml
 CodeGen/x86/x86CpsRegs.sml

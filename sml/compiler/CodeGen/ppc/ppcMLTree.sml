@@ -16,7 +16,7 @@ structure PPCMLTreeEval = MLTreeEval(
     val eqFext = eq
     val eqCCext = eq
     val eqSext = eq)
-					    
+
 structure PPCMLTreeHash = MLTreeHash(
     structure T = PPCMLTree
     fun h _ _ = 0w0
@@ -32,7 +32,7 @@ structure PPCGasPseudoOps = PPCGasPseudoOps(
 structure PPCClientPseudoOps = SMLNJPseudoOps(structure Asm = PPCGasPseudoOps)
 
 structure PPCPseudoOps = PseudoOps(structure Client = PPCClientPseudoOps)
-	      
+
 structure PPCStream = InstructionStream(PPCPseudoOps)
 
 structure PPCMLTreeStream = MLTreeStream(
@@ -51,7 +51,7 @@ structure PPCShuffle = PPCShuffle(PPCInstr)
 
 structure PPCAsmEmitter = PPCAsmEmitter(
     structure Instr = PPCInstr
-    structure PseudoOps = PPCPseudoOps  
+    structure PseudoOps = PPCPseudoOps
     structure S = PPCStream
     structure MLTreeEval = PPCMLTreeEval
     structure Shuffle = PPCShuffle)
