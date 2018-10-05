@@ -1,11 +1,14 @@
-(*
+(* core-intinf.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Basic IntInf functionality for translating certain primops and
  * IntInf.int literals within the compiler.
  *
- *   (C) 2003 The SML/NJ Fellowship.
- *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
+
 structure CoreIntInf :> sig
 
     (* We use a 30-bit representation, stored in 31-bit words for digits.

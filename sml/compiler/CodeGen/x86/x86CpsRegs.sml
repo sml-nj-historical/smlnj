@@ -29,15 +29,15 @@ structure X86CpsRegs : CPSREGS =
     fun frameptr which = if which then vfptr else esp
 
     fun regInMem(which, i) = let
-      val fp = frameptr which
-    in T.LOAD(32, T.ADD(32, fp, T.LI(T.I.fromInt(32, i))), CPSRegions.memory)
-    end
+          val fp = frameptr which
+          in
+	    T.LOAD(32, T.ADD(32, fp, T.LI(T.I.fromInt(32, i))), CPSRegions.memory)
+	  end
 
     val allocptr	= edi
     val stackptr	= esp
     fun stdarg _	= ebp
     fun stdcont _	= esi
-
 
     fun limitptr vfp 	= regInMem(vfp, 12)
     fun baseptr  vfp	= regInMem(vfp, 4)

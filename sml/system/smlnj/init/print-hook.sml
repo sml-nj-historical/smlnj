@@ -15,6 +15,6 @@ structure PrintHook =
     in
     val prHook = PrimTypes.ref discard (* very crude *)
     fun print s = InlineT.! prHook s
-    end
+    end (* local *)
 
   end

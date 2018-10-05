@@ -30,7 +30,7 @@ structure RawMemInlineT =
     val f64s : word32 * real   -> unit    = InLine.rawf64s
     val rawccall : word32 * 'a * 'b -> 'c = InLine.rawccall
 
-    (* Allen Leung's additions... *)
+  (* Allen Leung's additions... *)
     val rawrecord : int -> 'a = InLine.rawrecord
     val rawrecord64 : int -> 'a = InLine.rawrecord64
 

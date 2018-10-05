@@ -1,14 +1,17 @@
 (* core-int64.sml
  *
- *   Basic (simulated) 64-bit integer support.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
- * Copyright (c) 2004 by The Fellowship of SML/NJ
+ * Basic (simulated) 64-bit integer support.
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
-structure CoreInt64 = struct
 
-  local
+structure CoreInt64 =
+  struct
+
+    local
       structure CII = CoreIntInf
 
       infix o       val op o = InLine.compose
@@ -81,7 +84,7 @@ structure CoreInt64 = struct
       val ge64 = not o lt64
 
       fun abs64 (hi, lo) = if isneg hi then neg64 (hi, lo) else (hi, lo)
-  in
+    in
       val extern = InLine.i64p
       val intern = InLine.p64i
 
@@ -96,5 +99,6 @@ structure CoreInt64 = struct
       val op > = lift2' gt64
       val >= = lift2' ge64
       val abs = lift1 abs64
+    end (* local *)
+
   end
-end

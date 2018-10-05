@@ -15,8 +15,11 @@ structure ExnInfoHook =
 		(exnName e,
 		 " (more info unavailable: ExnInfoHook not initialized)")
     in
+
     val exnMessageHook = PrimTypes.ref dummy
+
     fun exnMessage e = InlineT.! exnMessageHook e
-    end
+
+    end (* local *)
 
   end

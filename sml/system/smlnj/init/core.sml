@@ -1,6 +1,7 @@
 (* core.sml
  *
- * COPYRIGHT 1989 by AT&T Bell Laboratories
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Core assumes that the following bindings are already in the static
  * environment:

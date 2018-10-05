@@ -1,14 +1,17 @@
 (* core-word64.sml
  *
- *   Basic (simulated) 64-bit word support.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
- * Copyright (c) 2004 by The Fellowship of SML/NJ
+ * Basic (simulated) 64-bit word support.
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
-structure CoreWord64 = struct
 
-local
+structure CoreWord64 =
+  struct
+
+  local
     infix o val op o : ('b -> 'c) * ('a -> 'b) -> 'a -> 'c = InLine.compose
     val not : bool -> bool = InLine.inlnot
     infix 7 * val op * : word32 * word32 -> word32 = InLine.w32mul
@@ -80,7 +83,7 @@ local
     val gt64 = lt64 o swap
     val le64 = not o gt64
     val ge64 = not o lt64
-in
+  in
     val extern = w64p
     val intern = p64w
 
@@ -94,6 +97,6 @@ in
     val <= = lift2' le64
     val > = lift2' gt64
     val >= = lift2' ge64
-end (* local *)
+  end (* local *)
 
-end (* structure CoreWord64 *)
+  end (* structure CoreWord64 *)

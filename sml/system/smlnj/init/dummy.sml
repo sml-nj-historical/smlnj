@@ -1,19 +1,25 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* dummy.sml *)
+(* dummy.sml
+ *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
+ * Dummy implementation of the Assembly structure.  The actual implementation
+ * of Assembly.A is in assembly code.
+ *)
 
 structure Assembly :> ASSEMBLYBOXED =
   struct
     type object = object
     datatype 'a option = NONE | SOME of 'a
 
-   (* 
-    * Declarations whose right handside is a primOp do not 
+   (*
+    * Declarations whose right handside is a primOp do not
     * generate any code. This is a hack, and should be cleaned
     * in the future. (ZHONG)
     *)
-    val cast : 'a -> 'b = InLine.cast  
+    val cast : 'a -> 'b = InLine.cast
 
-    structure A = 
+    structure A =
       struct
 	type c_function = c_function
 	type word8array = word8array

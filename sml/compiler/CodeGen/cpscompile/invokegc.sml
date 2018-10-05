@@ -89,7 +89,7 @@ struct
     * The SML/NJ runtime system leaves around 4K of extra space
     * in the allocation space for safety.
     *)
-(* QUESTION: nshould this constant be 1024*wordSz? *)
+(* QUESTION: should this constant be 1024*wordSz? *)
    val skidPad = 4096
    val pty = MS.wordBitWidth
 
