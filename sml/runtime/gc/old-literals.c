@@ -2,7 +2,7 @@
  *
  * This is the version 1 literals builder.  We keep it around to ease
  * the transition to the new scheme, but it can be removed from the runtime
- * after 110.83 is released.
+ * after the compiler switches over to the new scheme.
  *
  * \author John Reppy
  */
@@ -83,14 +83,11 @@ PVT double GetDouble (Byte_t *p)
 /* OldLiterals:
  *
  * The Version 1 build literals function.  We assume that the header has already
- * been consumed in the version check (see build-literals.c).
- *
- * NOTE: we allocate all of the objects in the first generation, and allocate
- * the vector of literals in the allocation space.
+ * been consumed in the version check (see build-literals.c), which means that the
+ * `pc` argument should point to the first command.
  */
-ml_val_t BuildLiteralsV1 (ml_state_t *msp, Byte_t *lits, int len)
+ml_val_t BuildLiteralsV1 (ml_state_t *msp, Byte_t *lits, int pc, int len)
 {
-    int		pc = 0;
     ml_val_t	stk, res;
     Int32_t	i, j, n;
     Int32_t	availSpace, spaceReq;
@@ -111,21 +108,20 @@ ml_val_t BuildLiteralsV1 (ml_state_t *msp, Byte_t *lits, int len)
 	    InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));	\
 	    availSpace = ((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr) - CONS_SZB; \
 	}										\
-	else										\
-	    availSpace -= spaceReq;							\
     } while (0)
 
     stk = ML_nil;
-    availSpace = ((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr);
     while (TRUE) {
 	ASSERT(pc < len);
-	ASSERT(availSpace <= (Int32_t)((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr));
+      /* ensure that there is at least 1Kb of available space -- enough for fixed-size
+       * objects.
+       */
+        availSpace = ((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr);
 	if (availSpace < ONE_K) {
 	    if (NeedGC(msp, FREE_REQ_SZB))
 		InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));
 	    availSpace = ((size_t)msp->ml_limitPtr - (size_t)msp->ml_allocPtr);
 	}
-	availSpace -= CONS_SZB;	/* space for stack cons cell */
 	switch (lits[pc++]) {
 	  case I_INT:
 	    i = GET32(lits); pc += 4;
@@ -141,7 +137,6 @@ SayDebug("[%2d]: RAW32[%d]\n", pc-5, i);
 #endif
 	    INT32_ALLOC(msp, res, i);
 	    LIST_cons(msp, stk, res, stk);
-	    availSpace -= 2*WORD_SZB;
 	    break;
 	  case I_RAW32L:
 	    n = GET32(lits); pc += 4;
@@ -149,7 +144,7 @@ SayDebug("[%2d]: RAW32[%d]\n", pc-5, i);
 SayDebug("[%2d]: RAW32L(%d) [...]\n", pc-5, n);
 #endif
 	    ASSERT(n > 0);
-	    spaceReq = 4*(n+1);
+	    spaceReq = CONS_SZB + WORD_SZB + 4 * n;
 /* FIXME: for large objects, we should be allocating them in the 1st generation */
 	    GC_CHECK;
 	    ML_AllocWrite (msp, 0, MAKE_DESC(n, DTAG_raw32));
@@ -159,7 +154,6 @@ SayDebug("[%2d]: RAW32L(%d) [...]\n", pc-5, n);
 	    }
 	    res = ML_Alloc (msp, n);
 	    LIST_cons(msp, stk, res, stk);
-	    availSpace -= spaceReq;
 	    break;
 	  case I_RAW64:
 	    d = GetDouble(&(lits[pc]));  pc += 8;
@@ -168,7 +162,6 @@ SayDebug("[%2d]: RAW32L(%d) [...]\n", pc-5, n);
 SayDebug("[%2d]: RAW64[%f] @ %#x\n", pc-5, d, res);
 #endif
 	    LIST_cons(msp, stk, res, stk);
-	    availSpace -= 4+WORD_SZB;	/* extra 4 bytes for alignment padding  */
 	    break;
 	  case I_RAW64L:
 	    n = GET32(lits); pc += 4;
@@ -176,7 +169,8 @@ SayDebug("[%2d]: RAW64[%f] @ %#x\n", pc-5, d, res);
 SayDebug("[%2d]: RAW64L(%d) [...]\n", pc-5, n);
 #endif
 	    ASSERT(n > 0);
-	    spaceReq = 8*(n+1);
+	  /* space request includes extra padding word */
+	    spaceReq = CONS_SZB + 2 * WORD_SZB + 8 * n;
 /* FIXME: for large objects, we should be allocating them in the 1st generation */
 	    GC_CHECK;
 #ifdef ALIGN_REALDS
@@ -190,7 +184,6 @@ SayDebug("[%2d]: RAW64L(%d) [...]\n", pc-5, n);
 		PTR_MLtoC(double, res)[j] = GetDouble(&(lits[pc]));  pc += 8;
 	    }
 	    LIST_cons(msp, stk, res, stk);
-	    availSpace -= spaceReq;
 	    break;
 	  case I_STR:
 	    n = GET32(lits); pc += 4;
@@ -223,7 +216,6 @@ SayDebug(" @ %p (%d words)\n", (void *)res, j);
 	    SEQHDR_ALLOC(msp, res, DESC_string, res, n);
 	  /* push on stack */
 	    LIST_cons(msp, stk, res, stk);
-	    availSpace -= spaceReq;
 	    break;
 	  case I_LIT:
 	    n = GET32(lits); pc += 4;
@@ -267,7 +259,6 @@ SayDebug("]\n");
 SayDebug("...] @ %p\n", (void *)res);
 #endif
 	    LIST_cons(msp, stk, res, stk);
-	    availSpace -= spaceReq;
 	    break;
 	  case I_RECORD:
 	    n = GET32(lits); pc += 4;
@@ -282,11 +273,11 @@ SayDebug("]\n");
 		break;
 	    }
 	    else {
-		spaceReq = 4*(n+1);
+		spaceReq = WORD_SZB*(n+1);
 		GC_CHECK;
 		ML_AllocWrite(msp, 0, MAKE_DESC(n, DTAG_record));
 	    }
-	  /* top of stack is last element in record */
+	  /* top of stack is the last element in the record */
 	    for (j = n;  j > 0;  j--) {
 		ML_AllocWrite(msp, j, LIST_hd(stk));
 		stk = LIST_tl(stk);
@@ -296,7 +287,6 @@ SayDebug("]\n");
 SayDebug("...] @ %p\n", (void *)res);
 #endif
 	    LIST_cons(msp, stk, res, stk);
-	    availSpace -= spaceReq;
 	    break;
 	  case I_RETURN:
 	    ASSERT(pc == len);
@@ -310,5 +300,5 @@ SayDebug("[%2d]: RETURN(%p)\n", pc-5, (void *)LIST_hd(stk));
 	} /* switch */
     } /* while */
 
-} /* end of OldLiterals */
+} /* end of BuildLiteralsV1 */
 

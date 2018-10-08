@@ -429,7 +429,7 @@ STATIC_INLINE double GetR64Arg (Byte_t *code)
 #define FREE_REQ_SZB    64*ONE_K
 
 /* for backward compatibility */
-ml_val_t BuildLiteralsV1 (ml_state_t *msp, Byte_t *lits, int len);
+ml_val_t BuildLiteralsV1 (ml_state_t *msp, Byte_t *lits, int pc, int len);
 
 /* BuildLiterals:
  *
@@ -473,7 +473,7 @@ ml_val_t BuildLiterals (ml_state_t *msp, Byte_t *code, int len)
 #ifdef DEBUG_LITERALS
         SayDebug("BuildLiterals: VERSION 1\n", (void *)code, len);
 #endif
-	return BuildLiteralsV1 (msp, &(code[pc]), len-pc);
+	return BuildLiteralsV1 (msp, code, pc, len);
     }
     else if (magic != V2_MAGIC) {
 	Die("bogus literal magic number %#x", magic);
