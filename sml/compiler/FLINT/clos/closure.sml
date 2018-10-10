@@ -25,7 +25,6 @@ functor Closure(MachSpec : MACH_SPEC) : CLOSURE = struct
 
 local
   open CPS
-  structure AP = AllocProf
   structure SL = SortedList
   structure CGoptions = Control.CG
   structure SProf = StaticProf(MachSpec)
@@ -40,6 +39,9 @@ local
   val zip = ListPair.zip
   val pr = Control.Print.say
   fun inc (ri as ref i) = ri := i+1
+
+(* static profiling *)
+  fun profL n = if !CGoptions.staticprof andalso (n > 0) then SProf.incln n else ()
 
 (* tagged int value *)
 fun tagInt i = NUM{ival = IntInf.fromInt i, ty = {sz = Target.defaultIntSz, tag = true}}
@@ -779,15 +781,11 @@ and recordEl(rk, l, w, env) =
                  of Direct => (u,0,hdr,env)
                   | Path(np as (start,path,_)) =>
                      (let val n = lenp path
-                          val nhdr =
-                            if (!CGoptions.staticprof) then
-                              (SProf.incln (n); hdr o (fn ce =>
-                                SETTER(P.acclink,[tagInt n,VAR start],ce)))
-                            else hdr
+                          val () = profL n
                           val (u,env,nhdr) =
                             if (!CGoptions.sharepath)
-                            then pfollow(np, env, nhdr)
-                            else ((VAR start,path), env, nhdr)
+                            then pfollow(np, env, hdr)
+                            else ((VAR start,path), env, hdr)
                        in (u,n,nhdr,env)
                       end)
             in (m::l,cost::cl,nhdr,env)
@@ -796,8 +794,6 @@ and recordEl(rk, l, w, env) =
         | g(u,(l,cl,hdr,env)) = (u::l,0::cl,hdr,env)
 
       val (rl,cl,hdr,env) = foldr g (nil,nil,fn ce => ce,env) l
-      val hdr = if (!CGoptions.allocprof)
-                then hdr o (AP.profRecLinks cl) else hdr
       val nhdr = fn ce => hdr (RECORD(rk, rl, w, ce))
    in (nhdr, env)
   end
@@ -825,19 +821,12 @@ fun fixAccess(args,env) =
                    | Path (p as (_,path,_)) =>
                        let val (env,header) = follow (rootvar,t) (p,env,header)
                          val env = augment((rootvar,what),env)
-                         fun profL(n) =
-                           if not(!CGoptions.allocprof) then
-                                (if (n>0) andalso (!CGoptions.staticprof) then
-                                     ((SProf.incln (n);
-                                       fn ce => SETTER(P.acclink,
-                                                [tagInt n,VAR rootvar],ce)))
-                                 else (fn ce => ce))
-                           else AP.profLinks(n)
-                      in (env, header o profL(lenp path))
+			 val () = profL (lenp path)
+                      in (env, header)
                      end
            end
         | access(_,y) = y
-   in foldr access (env,fn x => x) args
+   in foldr access (env, fn x => x) args
   end
 
 (****************************************************************************
@@ -864,37 +853,13 @@ fun fixArgs(args,env) =
                            | Path (p as (_,path,_)) =>
                               let val (env,hdr) = follow (rootvar,t) (p,env,h)
                                   val env = augment((rootvar,what),env)
-                                  fun profL(n) =
-                                   if not(!CGoptions.allocprof) then
-                                     if (n>0) andalso (!CGoptions.staticprof)
-                                     then (SProf.incln (n);
-                                           fn ce => SETTER(P.acclink,
-                                                  [tagInt n,VAR rootvar],ce))
-                                     else (fn ce => ce)
-                                   else AP.profLinks(n)
-                               in (z::res,env,hdr o profL(lenp path))
+				  val () = profL (lenp path)
+                               in (z::res, env, hdr)
                               end)
            end
         | access(z,(res,env,h)) = (z::res,env,h)
    in foldr access ([],env,fn x => x) args
   end
-
-(****************************************************************************
- *                        CLOSURE DISPOSAL                                  *
- ****************************************************************************)
-
-(* dispose the set of dead continuation closures *)
-fun disposeFrames(env) =
-  if (MachSpec.quasiStack) then
-    (let val vl = deadFrames(env)
-         val (env,hdr) = fixAccess(map VAR vl,env)
-         fun g(v::r,h) = g(r,h o (fn ce => SETTER(P.free,[VAR v],ce)))
-           | g([],h) = if (!CGoptions.allocprof)
-                       then ((AP.profRefCell(length vl)) o hdr o h)
-                       else hdr o h
-      in (env,g(vl,hdr))
-     end)
-  else (env,fn ce => ce)
 
 (****************************************************************************
  *                       CLOSURE STRATEGIES                                 *
@@ -906,17 +871,9 @@ fun mkClosure(cname,contents,cr,rkind,fkind,env) =
               then SProf.incfk(fkind,length contents) else ()
       val l = map (fn v => (v, OFFp0)) contents
       val (hdr, env) = recordEl(rkind, l, cname, env)
-      val nhdr =
-        if (!CGoptions.allocprof) then
-             let val prof = case fkind of KNOWN => AP.profKClosure
-                                          | ESCAPE => AP.profClosure
-                                          | _ => AP.profCClosure
-              in (prof (length contents)) o hdr
-             end
-        else hdr
       val env = augment((cname, Closure cr), env)
-   in case fkind of (CONT|KNOWN_CONT) => (nhdr, env, [cname])
-                  | _ => (nhdr, env ,[])
+   in case fkind of (CONT|KNOWN_CONT) => (hdr, env, [cname])
+                  | _ => (hdr, env ,[])
   end
 
 (* build an unboxed closure, currently not disposable even if fkind=cont *)
@@ -1968,46 +1925,29 @@ and close(ce,env,sn,csg,csf,ret) =
             of Closure(CR(off,{functions,...})) =>
                 let val (env,h) = fixAccess([f],env)
                     val (nargs,env,nh) = fixArgs(args,env)
-                    val (env,dh) = disposeFrames(env)
                     val (_,label) = List.nth(functions,off)
                     val call = APP(LABEL label,LABEL label::f::nargs)
-                 in if not(!CGoptions.allocprof)
-                    then h(nh(dh(call)))
-                    else h(nh(dh(case args
-                                  of [_] => AP.profCntkCall call
-                                   | _ => AP.profStdkCall call)))
+                 in h(nh call)
                 end
              | Function{label,gpfree,fpfree,csdef} =>
                 let val free = map VAR (gpfree@fpfree)
                     val (nargs,env,h) = fixArgs(args@free,env)
-                    val (env,nh) = disposeFrames(env)
                     val call = APP(LABEL label,nargs)
-                 in if not(!CGoptions.allocprof)
-                    then h(nh(call))
-                    else (case csdef
-                           of NONE => h(nh(AP.profKnownCall call))
-                            | _ => h(nh(AP.profCSCntkCall call)))
+                 in h call
                 end
              | Callee(label,ncsg,ncsf) =>
                 let val nargs = ncsg@ncsf@args
                     val (env,h) = fixAccess(label::nargs,env)
-                    val (env,nh) = disposeFrames(env)
                     val call = APP(label,label::nargs)
-                 in if not(!CGoptions.allocprof)
-                    then h(nh(call))
-                    else (case label
-                           of LABEL _ => h(nh(AP.profCSCntkCall call))
-                            | _ => h(nh(AP.profCSCntCall call)))
+                 in h call
                 end
              | Value t =>
                 let val (env,h) = fixAccess([f],env)
                     val (nargs,env,nh) = fixArgs(args,env)
-                    val (env,dh) = disposeFrames(env)
                     val l = mkLvar()
                     val call = SELECT(0,f,l,t,
                                  (APP(VAR l,(VAR l)::f::nargs)))
-                 in if not(!CGoptions.allocprof) then h(nh(dh(call)))
-                    else h(nh(dh(AP.profStdCall call)))
+                 in h(nh call)
                 end
         end
     | SWITCH(v,c,l) =>
@@ -2022,8 +1962,7 @@ and close(ce,env,sn,csg,csf,ret) =
     | RECORD(k,l,v,c) =>
        let val (hdr, env) = recordEl(k, l, v, env)
            val nc = hdr (close(c,augValue(v,BOGt,env),sn,csg,csf,ret))
-        in if not(!CGoptions.allocprof) then nc
-           else AP.profRecord (length l) nc
+        in nc
        end
     | SELECT(i,v,w,t,c) =>
        let val (env,header) = fixAccess([v],env)

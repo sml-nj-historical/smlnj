@@ -1909,8 +1909,6 @@ raise ex)
 		orTag(M.SRA(ity, getObjDescriptor v, LW'(D.tagWidth-0w1))),
 		e,
 		hp)
-            | gen (LOOKER(P.getpseudo, [i], x, _, e), hp) =
-                (print "getpseudo not implemented\n"; nop(x, i, e, hp))
             | gen (LOOKER(P.rawload { kind }, [i], x, _, e), hp) =
                 rawload (kind, regbind i, x, e, hp)
             | gen (LOOKER(P.rawload { kind }, [i,j], x, _, e), hp) =
@@ -1990,10 +1988,6 @@ raise ex)
                 (emit(assign(C.exnptr(vfp), regbind x)); gen(e, hp))
             | gen (SETTER(P.setvar,[x],e), hp) =
                 (emit(assign(C.varptr(vfp), regbind x)); gen(e, hp))
-            | gen (SETTER(P.acclink,_,e), hp) = gen(e, hp)
-            | gen (SETTER(P.setmark,_,e), hp) = gen(e, hp)
-            | gen (SETTER(P.free,[x],e), hp) = gen(e, hp)
-            | gen (SETTER(P.setpseudo,_,e), hp) = (print "setpseudo not implemented\n"; gen(e, hp))
             | gen (SETTER (P.rawstore { kind }, [i, x], e), hp) = (
                 rawstore (kind, regbind i, x); gen (e, hp))
             | gen (SETTER (P.rawstore { kind }, [i, j, x], e), hp) = (

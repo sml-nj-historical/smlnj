@@ -50,9 +50,6 @@ signature UNSAFE =
     val getVar : unit -> 'a
     val setVar : 'a -> unit
 
-    val getPseudo : int -> 'a
-    val setPseudo : ('a * int) -> unit
-
     val blastRead : Word8Vector.vector -> 'a
     val blastWrite : 'a -> Word8Vector.vector
 

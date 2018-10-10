@@ -434,10 +434,10 @@ in
 	      | P.SETHDLR => %?20
 	      | P.GETVAR => %?21
 	      | P.SETVAR => %?22
-	      | P.GETPSEUDO => %?23
-	      | P.SETPSEUDO => %?24
-	      | P.SETMARK => %?25
-	      | P.DISPOSE => %?26
+	      (* drop | P.GETPSEUDO => %?23 *)
+	      (* drop | P.SETPSEUDO => %?24 *)
+	      (* drop | P.SETMARK => %?25 *)
+	      (* drop | P.DISPOSE => %?26 *)
 	      | P.MAKEREF => %?27
 	      | P.CALLCC => %?28
 	      | P.CAPTURE => %?29

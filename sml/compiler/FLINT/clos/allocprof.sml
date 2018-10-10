@@ -2,6 +2,10 @@
  *
  * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
+ *
+ * NOTE: because pseudo registers are no longer supported by the backend,
+ * this code won't work.  Therefore, I've removed it from the sources list
+ * and its uses in spill.sml and closure.sml.  [JHR; 2018-10-10]
  *)
 
 structure AllocProf =

@@ -263,7 +263,6 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	    | AP.DEREF =>     PKL(P.!)
 	    | AP.GETHDLR =>   PKL(P.gethdlr)
 	    | AP.GETVAR  =>   PKL(P.getvar)
-	    | AP.GETPSEUDO => PKL(P.getpseudo)
 	    | AP.GETSPECIAL =>PKL(P.getspecial)
 
 	    | AP.SETHDLR => PKS(P.sethdlr)
@@ -274,9 +273,6 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	    | AP.ASSIGN => PKS(P.assign)
 	    | AP.UNBOXEDASSIGN => PKS(P.unboxedassign)
 	    | AP.SETVAR => PKS(P.setvar)
-	    | AP.SETPSEUDO => PKS(P.setpseudo)
-	    | AP.SETMARK => PKS(P.setmark)
-	    | AP.DISPOSE => PKS(P.free)
 	    | AP.SETSPECIAL => PKS(P.setspecial)
 
 	    | AP.RAW_LOAD nk => PKL (P.rawload { kind = numkind nk })

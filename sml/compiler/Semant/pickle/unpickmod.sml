@@ -103,10 +103,10 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.SETHDLR, (* 20 *)
 	  P.GETVAR,
 	  P.SETVAR,
-	  P.GETPSEUDO,
-	  P.SETPSEUDO,
-	  P.SETMARK,
-	  P.DISPOSE,
+	  P.CAST, (* placeholder for P.GETPSEUDO!!! @ 23 *)
+	  P.CAST, (* placeholder for P.SETPSEUDO!!! @ 24 *)
+	  P.CAST, (* placeholder for P.SETMARK!!! @ 25 *)
+	  P.CAST, (* placeholder for P.DISPOSE!!! @ 26 *)
 	  P.MAKEREF,
 	  P.CALLCC,
 	  P.CAPTURE,

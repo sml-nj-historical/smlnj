@@ -25,7 +25,6 @@ sig
   val tailrecur : bool ref
   val recordopt : bool ref
   val tail : bool ref
-  val allocprof : bool ref
   val closureprint : bool ref
   val closureStrategy : int ref
   val lambdaopt : bool ref

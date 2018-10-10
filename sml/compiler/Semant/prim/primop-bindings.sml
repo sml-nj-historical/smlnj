@@ -281,16 +281,12 @@ structure PrimopBindings : sig
           (* runtime hooks *)
 	    ("getvar", p1(ar(u,v1)), P.GETVAR) :-:
 	    ("setvar", p1(ar(v1,u)), P.SETVAR) :-:
-	    ("setpseudo", p1(ar(tu[v1,i],u)), P.SETPSEUDO) :-:
-	    ("getpseudo", p1(ar(i,v1)), P.GETPSEUDO) :-:
 	    ("mkspecial", p2(ar(tu[i,v1],v2)), P.MKSPECIAL) :-:
 	    ("getspecial", p1(ar(v1,i)), P.GETSPECIAL) :-:
 	    ("setspecial", p1(ar(tu[v1,i],u)), P.SETSPECIAL) :-:
 	    ("gethdlr", p1(ar(u,cnt(v1))), P.GETHDLR) :-:
 	    ("sethdlr", p1(ar(cnt(v1),u)), P.SETHDLR) :-:
 	    ("gettag", p1(ar(v1,i)), P.GETTAG) :-:
-	    ("setmark", p1(ar(v1,u)), P.SETMARK) :-:
-	    ("dispose", p1(ar(v1,u)), P.DISPOSE) :-:
 	  (* *)
 	    ("compose", p3(ar(tu[ar(v2,v3),ar(v1,v2)],ar(v1,v3))), P.INLCOMPOSE) :-:
 	    ("before", p2(ar(tu[v1,v2],v1)), P.INLBEFORE) :-:

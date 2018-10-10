@@ -49,7 +49,6 @@ fun lookerName P.! = "!"
   | lookerName (P.numsubscript{kind}) = ("numsubscript" ^ numkindName kind)
   | lookerName P.getvar = "getvar"
   | lookerName P.getspecial = "getspecial"
-  | lookerName P.getpseudo = "getpseudo"
   | lookerName (P.rawload {kind}) = ("rawload" ^ numkindName kind)
 
 fun branchName P.boxed = "boxed"
@@ -95,11 +94,7 @@ fun setterName P.unboxedupdate = "unboxedupdate"
   | setterName P.assign = "assign"
   | setterName P.sethdlr = "sethdlr"
   | setterName P.setvar = "setvar"
-  | setterName P.free = "free"
   | setterName P.setspecial = "setspecial"
-  | setterName P.setpseudo = "setpseudo"
-  | setterName P.setmark = "setmark"
-  | setterName P.acclink = "acclink"
   | setterName (P.rawstore {kind}) = ("rawstore" ^ numkindName kind)
   | setterName (P.rawupdate cty) = ("rawupdate" ^ CPS.ctyToString cty)
 
@@ -155,21 +150,21 @@ fun pureName P.length = "length"
   | pureName P.recsubscript = "recsubscript"
   | pureName P.raw64subscript = "raw64subscript"
   | pureName P.newarray0 = "newarray0"
-  | pureName (P.rawrecord rk) =
-    "rawrecord_"^getOpt(Option.map rkstring rk, "notag")
+  | pureName (P.rawrecord rk) = "rawrecord_"^getOpt(Option.map rkstring rk, "notag")
 
 and rkstring rk = (case rk
-        of RK_VECTOR => "RK_VECTOR"
-         | RK_RECORD => "RK_RECORD"
-         | RK_SPILL => "RK_SPILL"
-         | RK_ESCAPE => "RK_ESCAPE"
-         | RK_EXN => "RK_EXN"
-         | RK_CONT => "RK_CONT"
-         | RK_FCONT => "RK_FCONT"
-         | RK_KNOWN => "RK_KNOWN"
-         | RK_BLOCK => "RK_BLOCK"
-         | RK_FBLOCK => "RK_FBLOCK"
-         | RK_I32BLOCK => "RK_I32BLOCK")
+       of RK_VECTOR => "RK_VECTOR"
+	| RK_RECORD => "RK_RECORD"
+	| RK_SPILL => "RK_SPILL"
+	| RK_ESCAPE => "RK_ESCAPE"
+	| RK_EXN => "RK_EXN"
+	| RK_CONT => "RK_CONT"
+	| RK_FCONT => "RK_FCONT"
+	| RK_KNOWN => "RK_KNOWN"
+	| RK_BLOCK => "RK_BLOCK"
+	| RK_FBLOCK => "RK_FBLOCK"
+	| RK_I32BLOCK => "RK_I32BLOCK"
+      (* end case *))
 
 fun show0 say =
   let fun sayc (#"\n") = say "\\n"

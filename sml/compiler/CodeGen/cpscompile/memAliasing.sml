@@ -333,13 +333,6 @@ struct
 	     | infer (C.SETTER (P.rawstore _, [a, x], k), hp) =
 	         (rawstore (a, x); infer (k, hp))
 
-                (* Apparently these are nops (see MLRiscGen.sml) *)
-             | infer(C.SETTER(P.acclink, _, k), hp) = infer(k, hp)
-             | infer(C.SETTER(P.setmark, _, k), hp) = infer(k, hp)
-             | infer(C.SETTER(P.free, [x], k), hp) = infer(k, hp)
-
-             | infer(C.SETTER(P.setpseudo, _, k), hp) =
-                 (print "setpseudo not implemented\n"; infer(k, hp))
              | infer(e, hp) =
                  (PPCps.prcps e; print "\n"; error "infer")
 

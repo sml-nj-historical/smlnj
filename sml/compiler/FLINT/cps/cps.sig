@@ -69,14 +69,13 @@ signature CPS =
 	  | unboxedupdate | update
 	  | unboxedassign | assign
 	  | sethdlr | setvar | setspecial
-	  | free | acclink | setpseudo | setmark
 	  | rawstore of {kind: numkind}
 	  | rawupdate of cty
 
       (* These fetch from the store, never have functions as arguments. *)
 	datatype looker
-	  = ! | subscript | numsubscript of {kind: numkind} | getspecial
-	  | gethdlr | getvar | getpseudo
+	  = ! | subscript | numsubscript of {kind: numkind}
+	  | getspecial | gethdlr | getvar
 	  | rawload of {kind: numkind}
 
       (* These might raise exceptions, never have functions as arguments.*)

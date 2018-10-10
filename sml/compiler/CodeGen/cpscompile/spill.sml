@@ -261,8 +261,7 @@ fun f(results : lvar list, uniques : lvar list, dups : (lvar*lvar) list,
             val _ = CGoptions.spillGen := !CGoptions.spillGen + 1;
             val header = fn ce => RECORD(rkind,spillrec,sv,ce)
             val nce = f([],[],dups',spinfo,cexp)
- 	 in header(if not(!CGoptions.allocprof) then nce
-                   else AllocProf.profSpill (length contents) nce)
+ 	 in header nce
 	end
 
       (* here args and res are not sifted yet *)

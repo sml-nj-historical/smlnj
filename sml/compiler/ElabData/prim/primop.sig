@@ -193,8 +193,6 @@ signature PRIMOP =
       | CAST					(* E: cast *)
       | GETHDLR | SETHDLR			(* E: get/set exn handler pointer *)
       | GETVAR | SETVAR				(* E: get/set var register *)
-      | GETPSEUDO | SETPSEUDO			(* E: get/set pseudo registers *)
-      | SETMARK | DISPOSE			(* E: capture/dispose frames *)
       | MAKEREF					(* E: allocate a ref cell *)
       | CALLCC | CAPTURE | THROW		(* E: continuation operations *)
       | ISOLATE					(* E: isolating a function *)

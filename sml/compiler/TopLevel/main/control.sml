@@ -103,7 +103,6 @@ struct
   val tailrecur = new (b, "tailrecur", "?", true)
   val recordopt = new (b, "recordopt", "?", true)
   val tail = new (b, "tail", "?", true)
-  val allocprof = new (b, "allocprof", "?", false)
   val closureprint = new (b, "closureprint", "?", false)
   val closureStrategy = new (i, "closure-strategy", "?", 0)
   val lambdaopt = new (b, "lambdaopt", "?", true)

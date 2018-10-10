@@ -174,7 +174,6 @@ Semant/prim/primop-bindings.sml
 Semant/prim/prim-env.sml
 
 (* The FLINT optimizer ("middle-end"). *)
-FLINT/clos/allocprof.sml
 FLINT/clos/cps-split.sml
 FLINT/clos/freemap.sml
 FLINT/clos/globalfix.sml
