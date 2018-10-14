@@ -2,10 +2,13 @@
  *
  * COPYRIGHT (c) 2017 The Fellowship of SML/NJ (http://www.smlnj.org)
  * All rights reserved.
+ *
+ * Representation of primitive operations in the front-end.  These are
+ * bound to visible identifiers in Semant/prim/primop-bindings.sml.
  *)
 
 structure Primop : PRIMOP =
-struct
+  struct
 
   (* numkind includes kind and number of bits *)
     datatype numkind
@@ -33,6 +36,8 @@ struct
    * as are the "checked=true" versions of NUMSUBSCRIPT and NUMUPDATE (L?:).
    * "Environmental" primops (occurring in the InLine structure) are indicated
    * by "E:" in the comment.
+   *
+   * See dev-notes/conversions.md for an explanation of the conversion operators.
    *)
     datatype primop
       = ARITH of {				(* E: arithmetic ops *)
