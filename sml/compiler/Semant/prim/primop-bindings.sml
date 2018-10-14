@@ -378,12 +378,12 @@ structure PrimopBindings : sig
 	  ("w8eq", w8w8_b, word8cmp P.EQL) :-:
 	  ("w8ne", w8w8_b, word8cmp P.NEQ) :-:
 	(* word8 array and vector *)
-	  ("w8Sub", numSubTy, sub (P.UINT 8)) :-:
-	  ("w8chkSub", numSubTy, chkSub (P.UINT 8)) :-:
-	  ("w8subv", numSubTy, subv (P.UINT 8)) :-:
-	  ("w8chkSubv", numSubTy, chkSubv (P.UINT 8)) :-:
-	  ("w8update", numUpdTy, update (P.UINT 8)) :-:
-	  ("w8chkUpdate", numUpdTy, chkUpdate (P.UINT 8)) :-:
+	  ("w8Sub", numSubTy, sub (P.UINT 8)) :-:		(* unused *)
+	  ("w8chkSub", numSubTy, chkSub (P.UINT 8)) :-:		(* unused *)
+	  ("w8subv", numSubTy, subv (P.UINT 8)) :-:		(* unused *)
+	  ("w8chkSubv", numSubTy, chkSubv (P.UINT 8)) :-:	(* unused *)
+	  ("w8update", numUpdTy, update (P.UINT 8)) :-:		(* unused *)
+	  ("w8chkUpdate", numUpdTy, chkUpdate (P.UINT 8)) :-:	(* unused *)
 	(* word32 primops *)
 	  ("w32mul", w32w32_w32, word32 P.MUL) :-:
 	  ("w32div", w32w32_w32, word32 P.QUOT) :-:
