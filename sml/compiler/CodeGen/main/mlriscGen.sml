@@ -1904,11 +1904,9 @@ raise ex)
 		end
             | gen (LOOKER(P.gethdlr,[],x,_,e), hp) = defBoxed(x, C.exnptr(vfp), e, hp)
             | gen (LOOKER(P.getvar, [], x, _, e), hp) = defBoxed(x, C.varptr(vfp), e, hp)
-            | gen (LOOKER(P.getspecial, [v], x, _, e), hp) = defBoxed(
-		x,
-		orTag(M.SRA(ity, getObjDescriptor v, LW'(D.tagWidth-0w1))),
-		e,
-		hp)
+            | gen (LOOKER(P.getspecial, [v], x, _, e), hp) =
+	      (* special tag is in length field; we assume it is unsigned *)
+                defTAGINT(x, orTag(getObjLength v), e, hp)
             | gen (LOOKER(P.rawload { kind }, [i], x, _, e), hp) =
                 rawload (kind, regbind i, x, e, hp)
             | gen (LOOKER(P.rawload { kind }, [i,j], x, _, e), hp) =
