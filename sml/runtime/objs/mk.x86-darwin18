@@ -22,7 +22,8 @@
 #
 #SDK =		-isysroot Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.7.sdk -mmacosx-version-min=10.7
 
-SDK =		-isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk -mmacosx-version-min=10.7
+DEVDIR =	$(shell xcode-select -p)
+SDK =		-isysroot $(DEVDIR)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk -mmacosx-version-min=10.7
 
 # the /usr/bin/as command does _not_ accept the -mmacosx-version-min
 # command-line option prior to MacOS X 10.10 (Yosimite)
