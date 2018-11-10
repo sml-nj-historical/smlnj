@@ -206,11 +206,11 @@ ml-antlr-grm-ext   lib 	 grm-ext.cm       grm-ext.cm       ml-lpt/ml-antlr/tool
 ml-lpt-lib 	   lib 	 ml-lpt-lib.cm ml-lpt-lib.cm ml-lpt/lib
 
 # ASDL generator and support library
-asdl               config asdl
-asdl               dprog  asdlgen - asdl/src/asdlgen
-asdl               lib    asdlgen-tool.cm asdlgen-tool.cm asdl/tool
-asdl               lib    asdl-ext.cm     asdl-ext.cm     asdl/tool
-asdl               lib    asdl-lib.cm     asdl-lib.cm     asdl/src/lib/sml
+#asdl               config asdl
+#asdl               dprog  asdlgen - asdl/src/asdlgen
+#asdl               lib    asdlgen-tool.cm asdlgen-tool.cm asdl/tool
+#asdl               lib    asdl-ext.cm     asdl-ext.cm     asdl/tool
+#asdl               lib    asdl-lib.cm     asdl-lib.cm     asdl/src/lib/sml
 
 # bottom-up rewrite code generator generator:
 ml-burg    	   prog

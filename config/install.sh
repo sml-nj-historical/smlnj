@@ -290,6 +290,7 @@ esac
 
 # OS-specific things for building the runtime system
 #
+RT_MAKEFILE=mk.$ARCH-$OPSYS
 case $OPSYS in
     darwin)
 	if [ "$ARCH" = "x86" ] ; then
@@ -300,6 +301,10 @@ case $OPSYS in
 	      10.7*) AS_ACCEPTS_SDK=no ;;
 	      10.8*) AS_ACCEPTS_SDK=no ;;
 	      10.9*) AS_ACCEPTS_SDK=no ;;
+	      10.14*) # Mojave needs a special makefile
+		AS_ACCEPTS_SDK=yes
+		RT_MAKEFILE=mk.x86-darwin18
+		;;
 	      *) AS_ACCEPTS_SDK=yes ;;
 	    esac
 	EXTRA_DEFS="AS_ACCEPTS_SDK=$AS_ACCEPTS_SDK"
@@ -355,7 +360,7 @@ else
     "$CONFIGDIR"/unpack "$ROOT" runtime
     cd "$BASEDIR"/runtime/objs
     echo $this: Compiling the run-time system.
-    $MAKE -f mk.$ARCH-$OPSYS $EXTRA_DEFS
+    $MAKE -f $RT_MAKEFILE $EXTRA_DEFS
     if [ -x run.$ARCH-$OPSYS ]; then
 	mv run.$ARCH-$OPSYS "$RUNDIR"
 	if [ -f runx.$ARCH-$OPSYS ]; then

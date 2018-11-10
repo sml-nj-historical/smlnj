@@ -2,6 +2,14 @@
 #
 # .arch-n-opsys  -- get architecture and system info
 #
+# Running `eval .arch-n-opsys` will define the following shell variables:
+#
+#	ARCH		-- one of ppc, sparc, or x86
+#	OPSYS		-- one of aix, cygwin, darwin, freebsd, linux, mklinux, netbsd,
+#			   sunos, solaris, win32
+#	HEAP_SUFFIX	-- usually $ARCH-$OPSYS, but in some cases the OPSYS is replaced
+#			   by $HEAP_OPSYS
+#
 
 export PATH
 PATH="/bin:/usr/bin"
@@ -146,9 +154,4 @@ else
   HEAP_SUFFIX="$ARCH-$HEAP_OPSYS"
 fi
 
-if [ "$ALT_OPSYS" = "" ]; then
 echo "ARCH=$ARCH; OPSYS=$OPSYS; HEAP_SUFFIX=$HEAP_SUFFIX"
-else
-echo "ARCH=$ARCH; OPSYS=$OPSYS; ALT_OPSYS=$ALT_OPSYS; HEAP_SUFFIX=$HEAP_SUFFIX"
-fi
-
