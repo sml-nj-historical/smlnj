@@ -55,6 +55,9 @@ case "$VERSION" in
 	15.*) SDK=MacOSX10.11.sdk ;;
 	16.*) SDK=MacOSX10.12.sdk ;;
 	17.*) SDK=MacOSX10.13.sdk ;;
+	# Note that for Mojave (macOS 10.14; Darwin 18.x), we use the High Sierra SDK, since
+	# building 32-bit apps is no longer supported.
+	18.*) SDK=MacOSX10.13.sdk ;;
 	*) SDK=none ;;
       esac
       if test x$SDK != xnone ; then
