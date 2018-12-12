@@ -1,32 +1,32 @@
 (* sources.cm
  *
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *
  * Sources file for Pretty printer device library.
  *)
+
 Group
 
-  structure TextIOPP
-  structure SimpleTextIODev
   structure ANSITermDev
   structure ANSITermPP
+  structure CharBufferPP
   structure HTMLDev
+  structure SimpleTextIODev
   structure StringToken
+  structure TextIOPP
 
 is
 
-#if defined(NEW_CM)
   $/basis.cm
   $/smlnj-lib.cm
   $/html-lib.cm
   ../src/sources.cm
-#else
-  ../../Util/smlnj-lib.cm
-  ../../HTML/html-lib.cm
-  ../src/sources.cm
-#endif
 
-  textio-pp.sml
   ansi-term-dev.sml
   ansi-term-pp.sml
+  char-buffer-pp.sml
+  html-dev.sml
   simple-textio-dev.sml
   string-token.sml
-  html-dev.sml
+  textio-pp.sml

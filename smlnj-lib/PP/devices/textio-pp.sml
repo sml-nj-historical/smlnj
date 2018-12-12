@@ -1,6 +1,7 @@
 (* textio-pp.sml
  *
- * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * A pretty printer with TextIO output; there are no styles and
  * tokens are atoms.

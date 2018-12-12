@@ -1,6 +1,7 @@
 (* string-token.sml
  *
- * COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * A trivial implementation of tokens as strings w/o style information.
  *)

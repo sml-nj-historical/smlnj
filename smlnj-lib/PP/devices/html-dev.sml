@@ -1,6 +1,7 @@
-(* html-device.sml
+(* html-dev.sml
  *
- * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * A pretty printing device that uses HTML markup to control layout.
  *)
@@ -120,7 +121,7 @@ structure HTMLDev : sig
       | popStyle (dev as DEV{emphStk as ref ((tl, sty) :: r), txt, ...}) = (
 	  txt := wrapStyle (sty, concatTxt dev, tl);
 	  emphStk := r)
- 
+
   (* the default style for the device (this is the current style,
    * if the style stack is empty).
    *)

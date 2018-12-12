@@ -1,6 +1,7 @@
 (* simple-textio-dev.sml
  *
- * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * A simple (no styles) pretty-printing device for output to TextIO outstreams.
  *)

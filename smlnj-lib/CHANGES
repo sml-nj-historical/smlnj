@@ -1,6 +1,10 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
+[2018-12-12]
+	Added CharBufferPP to pretty-printing library.  This module can be used
+	to generate strings from a pretty-printer.
+
 [2018-09-26]
 	Minor cleanup in the way that hash-table sizes are determined.  We now
  	place an upper bound on table size that is derived from Array.maxLen.

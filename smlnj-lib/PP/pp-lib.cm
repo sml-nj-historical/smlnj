@@ -1,6 +1,7 @@
-(* pp-lib.cm.cm
+(* pp-lib.cm
  *
- * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2018 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * The main sources file for the PP library.
  *)
@@ -19,6 +20,7 @@ Library
 (* devices *)
   structure TextIOPP
   structure SimpleTextIODev
+  structure CharBufferPP
   structure ANSITermDev
   structure ANSITermPP
   structure HTMLDev
