@@ -8,6 +8,7 @@ Library
 
   signature CSV
   structure ListCSV
+  functor CSVIOFn
 
 is
 
@@ -15,4 +16,5 @@ is
   $/smlnj-lib.cm
 
   csv-sig.sml
+  csv-io-fn.sml
   list-csv.sml

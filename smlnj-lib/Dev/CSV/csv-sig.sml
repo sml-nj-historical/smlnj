@@ -9,6 +9,7 @@
 signature CSV =
   sig
 
+  (* a sequence type representing a CSV row *)
     type 'a seq
 
   (* convert a CSV line to a sequence of its fields; returns NONE on error *)
