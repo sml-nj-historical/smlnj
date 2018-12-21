@@ -327,7 +327,7 @@ case $OPSYS in
 	  done
 	  if [ x"$SDK" = xnone ] ; then
 	    echo "$this: !!! SML/NJ requires support for 32-bit executables."
-	    echo "  Please see http://www.smlnj.org/dist/working/$VERSION/INSTALL for more details."
+	    echo "  Please see http://www.smlnj.org/dist/working/$VERSION/MACOSXINSTALL for more details."
 	    exit 1
 	  fi
 	  ;;
