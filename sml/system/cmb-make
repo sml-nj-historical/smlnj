@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# COPYRIGHT (c) 2012 The Fellowship of SML/NJ (http://www.smlnj.org)
+# All rights reserved.
+#
+# script to compile using the batch compiler
+# usage:
+#	cmb-make [ <sml-cmd> ]
+#
+# Do a batch compiler of the compiler; the optional <sml-cmd> argument specifes
+# the path to the SML compiler to use for the build.
+#
+
+set -x
+
+SML=sml
+
+if test $# -eq 1 ; then
+  SML=$1
+fi
+
+exec $SML -DNO_PLUGINS '$smlnj/cmb.cm' <<XXXX
+CMB.make();
+XXXX
