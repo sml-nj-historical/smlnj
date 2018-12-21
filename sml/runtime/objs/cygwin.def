@@ -139,7 +139,7 @@ EXPORTS
     SilentLoad @138 DATA
     StartGCTimer @139
     StopGCTimer @140
-    SwapBytes @141
+    SwapBytes32 @141
     SysErr_id0 @142 DATA
     SysErr_s @143 DATA
     SystemRunML @144
