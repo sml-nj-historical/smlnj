@@ -315,7 +315,7 @@ case $OPSYS in
 	  AS_ACCEPTS_SDK=yes
 	  RT_MAKEFILE=mk.x86-darwin18
 	  # location of Xcode SDKs
-	  SDK_DIR=`xcode-select -p`/Platforms/MacOSX.platform/Developer/SDKs/
+	  SDK_DIR=`xcode-select -p`/Platforms/MacOSX.platform/Developer/SDKs
 	  # look for an SDK that supports 32-bit builds (starting with 10.13 High Sierra
 	  # and going back to 10.10 Yosemite)
 	  #
