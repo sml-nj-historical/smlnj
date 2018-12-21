@@ -215,6 +215,7 @@ done
 #   BINDIR, and VERSION variables to use.
 #
 installdriver() {
+    echo "$this: installing $BINDIR/$2"
     dsrc=$1
     ddst=$2
 # We install the driver unconditionally. (It would be better to test
@@ -252,7 +253,7 @@ if [ "$?" != "0" ]; then
     case `uname -s` in
       CYGWIN*)
         echo "$this: !!! SML/NJ does not support 64-bit cygwin"
-        echo :$this: !!! Please use the 32-bit version"
+        echo "$this: !!! Please use the 32-bit version"
         ;;
       *)
         echo "$this: !!! Script $BINDIR/.arch-n-opsys fails on this machine."
@@ -300,58 +301,78 @@ esac
 #
 RT_MAKEFILE=mk.$ARCH-$OPSYS
 case $OPSYS in
-    darwin)
-	if [ "$ARCH" = "x86" ] ; then
-            # the /usr/bin/as command does _not_ accept the -mmacosx-version-min
-	    # command-line option prior to MacOS X 10.10 (Yosemite)
-	    case `sw_vers -productVersion` in
-	      10.6*) AS_ACCEPTS_SDK=no ;;
-	      10.7*) AS_ACCEPTS_SDK=no ;;
-	      10.8*) AS_ACCEPTS_SDK=no ;;
-	      10.9*) AS_ACCEPTS_SDK=no ;;
-	      10.14*) # Mojave needs a special makefile
-		AS_ACCEPTS_SDK=yes
-		RT_MAKEFILE=mk.x86-darwin18
-		;;
-	      *) AS_ACCEPTS_SDK=yes ;;
-	    esac
+  darwin)
+    SDK=none
+    if [ "$ARCH" = "x86" ] ; then
+      # the /usr/bin/as command does _not_ accept the -mmacosx-version-min
+      # command-line option prior to MacOS X 10.10 (Yosemite)
+      case `sw_vers -productVersion` in
+	10.6*) AS_ACCEPTS_SDK=no ;;
+	10.7*) AS_ACCEPTS_SDK=no ;;
+	10.8*) AS_ACCEPTS_SDK=no ;;
+	10.9*) AS_ACCEPTS_SDK=no ;;
+	10.14*) # Mojave needs a special makefile
+	  AS_ACCEPTS_SDK=yes
+	  RT_MAKEFILE=mk.x86-darwin18
+	  # location of Xcode SDKs
+	  SDK_DIR=`xcode-select -p`/Platforms/MacOSX.platform/Developer/SDKs/
+	  # look for an SDK that supports 32-bit builds (starting with 10.13 High Sierra
+	  # and going back to 10.10 Yosemite)
+	  #
+	  for SDK_VERS in 13 12 11 10 ; do
+	    if [ -d $SDK_DIR/MacOSX10.$SDK_VERS.sdk ] ; then
+	      SDK="$SDK_DIR/MacOSX10.$SDK_VERS.sdk"
+	      break
+	    fi
+	  done
+	  if [ x"$SDK" = xnone ] ; then
+	    echo "$this: !!! SML/NJ requires support for 32-bit executables."
+	    echo "  Please see http://www.smlnj.org/dist/working/$VERSION/INSTALL for more details."
+	    exit 1
+	  fi
+	  ;;
+	*) AS_ACCEPTS_SDK=yes ;;
+      esac
+      if [ x"$SDK" = xnone ] ; then
 	EXTRA_DEFS="AS_ACCEPTS_SDK=$AS_ACCEPTS_SDK"
-	fi
-	;;
-    linux)
-	EXTRA_DEFS=`"$CONFIGDIR/chk-global-names.sh"`
-	if [ "$?" != "0" ]; then
-	    complain "$this: !!! Problems checking for underscores in asm names."
-	fi
-	EXTRA_DEFS="XDEFS=$EXTRA_DEFS"
-	;;
-    solaris)
-	MAKE=/usr/ccs/bin/make
-	;;
-esac
-
-#
-# on 64-bit linux systems, we need to check to see if the 32-bit emulation
-# support is installed
-#
-if [ x"$ARCH" = "xx86" -a x"$OPSYS" = "xlinux" ] ; then
-  case `uname -m` in
-    x86_64)
-      tmpFile=smlnj-test$$
-      echo "int main () { return 0; }" >> /tmp/$tmpFile.c
-      gcc -m32 -o /tmp/$tmpFile /tmp/$tmpFile.c 2> /dev/null 1>> /dev/null
-      if [ "$?" != "0" ] ; then
-	rm -f /tmp/$tmpFile /tmp/$tmpFile.c
-        echo "$this: !!! SML/NJ requires support for 32-bit executables."
-        echo "  Please see http://www.smlnj.org/dist/working/$VERSION/INSTALL for more details."
-	exit 1
       else
-	rm -f /tmp/$tmpFile /tmp/$tmpFile.c
+	EXTRA_DEFS="AS_ACCEPTS_SDK=$AS_ACCEPTS_SDK SDK=$SDK"
       fi
+    fi
     ;;
-    *) ;;
-  esac
-fi
+  linux)
+    EXTRA_DEFS=`"$CONFIGDIR/chk-global-names.sh"`
+    if [ "$?" != "0" ]; then
+	complain "$this: !!! Problems checking for underscores in asm names."
+    fi
+    EXTRA_DEFS="XDEFS=$EXTRA_DEFS"
+    if [ "$ARCH" = "x86" ] ; then
+      #
+      # on 64-bit linux systems, we need to check to see if the 32-bit emulation
+      # support is installed
+      #
+      case `uname -m` in
+	x86_64)
+	  tmpFile=smlnj-test$$
+	  echo "int main () { return 0; }" >> /tmp/$tmpFile.c
+	  gcc -m32 -o /tmp/$tmpFile /tmp/$tmpFile.c 2> /dev/null 1>> /dev/null
+	  if [ "$?" != "0" ] ; then
+	    rm -f /tmp/$tmpFile /tmp/$tmpFile.c
+	    echo "$this: !!! SML/NJ requires support for 32-bit executables."
+	    echo "$this: !!! Please see http://www.smlnj.org/dist/working/$VERSION/INSTALL for more details."
+	    exit 1
+	  else
+	    rm -f /tmp/$tmpFile /tmp/$tmpFile.c
+	  fi
+	;;
+	*) ;;
+      esac
+    fi
+    ;;
+  solaris)
+    MAKE=/usr/ccs/bin/make
+    ;;
+esac
 
 #
 # the name of the bin files directory

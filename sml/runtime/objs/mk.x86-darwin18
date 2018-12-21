@@ -1,34 +1,25 @@
 # mk.x86-darwin
 #
-# COPYRIGHT (c) 2012 The SML/NJ Fellowship
+# COPYRIGHT (c) 2018 The SML/NJ Fellowship
 #
-# Makefile for MacOS X 10.6+ on Intel processors
+# Makefile for macOS 10.14 Mojave.  Note that we assume that the SDK
+# variable is set on the make command line.
 #
 
+# Normally, the SDK variable is set on the command line (by install.sh),
+# but if it is not, then we assume that the 10.13 SDK is in the usual place.
 #
-# The SDK variable is set to the SDK minimum Mac OS X version that you want
-# to support.  Note that since Lion, the 10.5 (and 10.6?) SDKs are not part
-# of the Xcode install.
-#
-# to support 10.5 and later you will need to have the 10.5 SDK in /Developer/SDKs/MacOSX10.5.sdk
-#
-#SDK =		-isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5
-#
-# to support 10.5 and later you will need to have the 10.6 SDK in /Developer/SDKs/MacOSX10.6.sdk;
-# this should work on Lion, if you had Xcode 4.2 installed.
-#SDK =		-isysroot /Developer/SDKs/MacOSX10.6.sdk -mmacosx-version-min=10.6
-#
-# On Mountain Lion, the earliest version is 10.7, which is to supported by the following line:
-#
-#SDK =		-isysroot Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.7.sdk -mmacosx-version-min=10.7
+ifeq ($(origin SDK), undefined)
+  DEVDIR =	$(shell xcode-select -p)
+  SDK = $(DEVDIR)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk
+endif
 
-DEVDIR =	$(shell xcode-select -p)
-SDK =		-isysroot $(DEVDIR)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk -mmacosx-version-min=10.7
+SYSROOT =	-isysroot $(SDK) -mmacosx-version-min=10.7
 
 # the /usr/bin/as command does _not_ accept the -mmacosx-version-min
 # command-line option prior to MacOS X 10.10 (Yosimite)
 ifeq ($(AS_ACCEPTS_SDK),yes)
-AS_SDK =	$(SDK)
+  AS_SDK =	$(SYSROOT)
 endif
 
 SHELL =		/bin/sh
@@ -36,7 +27,7 @@ SHELL =		/bin/sh
 MAKE =		make
 AS =		/usr/bin/as -arch i386 $(AS_SDK)
 CC =		cc -m32 -std=c99
-CFLAGS =	-g -O2 -D_DARWIN_C_SOURCE $(SDK)
+CFLAGS =	-g -O2 -D_DARWIN_C_SOURCE $(SYSROOT)
 CPP =           cc -x assembler-with-cpp -E -P -std=c99
 XOBJS =
 XLIBS =         ../c-libs/dl/libunix-dynload.a
