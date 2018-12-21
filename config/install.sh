@@ -249,8 +249,16 @@ installdriver _arch-n-opsys .arch-n-opsys
 #
 ARCH_N_OPSYS=`"$BINDIR"/.arch-n-opsys`
 if [ "$?" != "0" ]; then
-    echo "$this: !!! Script $BINDIR/.arch-n-opsys fails on this machine."
-    echo "$this: !!! You must patch this by hand and repeat the installation."
+    case `uname -s` in
+      CYGWIN*)
+        echo "$this: !!! SML/NJ does not support 64-bit cygwin"
+        echo :$this: !!! Please use the 32-bit version"
+        ;;
+      *)
+        echo "$this: !!! Script $BINDIR/.arch-n-opsys fails on this machine."
+        echo "$this: !!! You must patch this by hand and repeat the installation."
+        ;;
+    esac
     exit 2
 else
     vsay $this: Script $BINDIR/.arch-n-opsys reports $ARCH_N_OPSYS.

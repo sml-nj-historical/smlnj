@@ -142,6 +142,7 @@ case `uname -s` in
     fi
     case `uname -m` in
        *86) ARCH=x86;;
+       x86_64) exit 1;;
        *) exit 1;;
     esac
     ;;
