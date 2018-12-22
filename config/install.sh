@@ -311,24 +311,33 @@ case $OPSYS in
 	10.7*) AS_ACCEPTS_SDK=no ;;
 	10.8*) AS_ACCEPTS_SDK=no ;;
 	10.9*) AS_ACCEPTS_SDK=no ;;
-	10.14*) # Mojave needs a special makefile
+	10.14*)
 	  AS_ACCEPTS_SDK=yes
-	  RT_MAKEFILE=mk.x86-darwin18
-	  # location of Xcode SDKs
-	  SDK_DIR=`xcode-select -p`/Platforms/MacOSX.platform/Developer/SDKs
-	  # look for an SDK that supports 32-bit builds (starting with 10.13 High Sierra
-	  # and going back to 10.10 Yosemite)
-	  #
-	  for SDK_VERS in 13 12 11 10 ; do
-	    if [ -d $SDK_DIR/MacOSX10.$SDK_VERS.sdk ] ; then
-	      SDK="$SDK_DIR/MacOSX10.$SDK_VERS.sdk"
-	      break
+	  # Mojave needs a special makefile, but we need to be careful
+	  # about when we are running the postinstall script, so we check
+	  # for the nolib argument
+	  if [ x"$nolib" = xfalse ] ; then
+	    RT_MAKEFILE=mk.x86-darwin18
+	    # location of Xcode SDKs
+	    if [ ! -x /usr/bin/xcode-select ] ; then
+	      echo "$this: !!! /usr/bin/xcode-select is missing; please install Xcode"
+	      exit 1
 	    fi
-	  done
-	  if [ x"$SDK" = xnone ] ; then
-	    echo "$this: !!! SML/NJ requires support for 32-bit executables."
-	    echo "  Please see http://www.smlnj.org/dist/working/$VERSION/MACOSXINSTALL for more details."
-	    exit 1
+	    SDK_DIR=`xcode-select -p`/Platforms/MacOSX.platform/Developer/SDKs
+	    # look for an SDK that supports 32-bit builds (starting with 10.13 High Sierra
+	    # and going back to 10.10 Yosemite)
+	    #
+	    for SDK_VERS in 13 12 11 10 ; do
+	      if [ -d $SDK_DIR/MacOSX10.$SDK_VERS.sdk ] ; then
+		SDK="$SDK_DIR/MacOSX10.$SDK_VERS.sdk"
+		break
+	      fi
+	    done
+	    if [ x"$SDK" = xnone ] ; then
+	      echo "$this: !!! SML/NJ requires support for 32-bit executables."
+	      echo "  Please see http://www.smlnj.org/dist/working/$VERSION/MACOSXINSTALL for more details."
+	      exit 1
+	    fi
 	  fi
 	  ;;
 	*) AS_ACCEPTS_SDK=yes ;;
