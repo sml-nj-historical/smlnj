@@ -19,6 +19,7 @@ Library
 
 (* devices *)
   structure TextIOPP
+  structure TextPP
   structure SimpleTextIODev
   structure CharBufferPP
   structure ANSITermDev

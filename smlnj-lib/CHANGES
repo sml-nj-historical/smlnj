@@ -1,6 +1,15 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
+[2019-01-07]
+	Renamed the function `CharBufferPP.openOut` to `openBuf`, and added the
+	`TextPP` structure that supports pretty printing to either an output
+	stream (like `TextIOPP`) or a character buffer (like `CharBufferPP`)
+
+--------------------------------------------------------------------------------
+SML/NJ 110.84
+-------------------
+
 [2018-12-12]
 	Added CharBufferPP to pretty-printing library.  This module can be used
 	to generate strings from a pretty-printer.

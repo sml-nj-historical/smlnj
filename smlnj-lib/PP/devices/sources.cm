@@ -15,6 +15,7 @@ Group
   structure SimpleTextIODev
   structure StringToken
   structure TextIOPP
+  structure TextPP
 
 is
 
@@ -30,3 +31,5 @@ is
   simple-textio-dev.sml
   string-token.sml
   textio-pp.sml
+  text-pp.sml
+

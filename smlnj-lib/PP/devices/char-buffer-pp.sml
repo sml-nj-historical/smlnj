@@ -8,7 +8,7 @@
  * into a string as follows:
  *
  *	val buf = CharBuffer.new 1024
- *	val ppStrm = CharBufferPP.openOut {dst = buf, wid = 80}
+ *	val ppStrm = CharBufferPP.openBuf {dst = buf, wid = 80}
  *	.... pretty printing ....
  *	val result = CharBuffer.contents buf
  *)
@@ -18,7 +18,7 @@ structure CharBufferPP : sig
     include PP_STREAM
       where type token = string
 
-    val openOut : {dst : CharBuffer.buf, wid : int} -> stream
+    val openBuf : {dst : CharBuffer.buf, wid : int} -> stream
 
   end = struct
 
@@ -66,7 +66,7 @@ structure CharBufferPP : sig
 
     open PP
 
-    fun openOut arg = openStream(Device.openDev arg)
+    fun openBuf arg = openStream(Device.openDev arg)
 
   end;
 
