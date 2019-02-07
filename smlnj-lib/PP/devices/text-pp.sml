@@ -65,18 +65,18 @@ structure TextPP : sig
 
     open PP
 
-    fun openOutstream {dst, wid} = DEV{
+    fun openOutstream {dst, wid} = openStream(Device.DEV{
 	    add1 = fn c => TextIO.output1 (dst, c),
 	    addVec = fn c => TextIO.output (dst, c),
 	    flush = fn () => TextIO.flushOut dst,
 	    wid = wid
-	  }
+	  })
 
-    fun openBuffer {dst, wid} = DEV{
-	    add1 = fn c => CharBuffer.addVec (dst, c),
-	    addVec = fn c => CharBuffer.add1 (dst, c),
+    fun openBuffer {dst, wid} = openStream(Device.DEV{
+	    add1 =  fn c => CharBuffer.add1 (dst, c),
+	    addVec = fn c => CharBuffer.addVec (dst, c),
 	    flush = fn () => (),
 	    wid = wid
-	  }
+	  })
 
   end
