@@ -4,8 +4,8 @@
  *
  *)
 
-structure Alpha32MC = 
-  FLINTComp(
+structure Alpha32MC =
+  CPSCompFn(
     structure Gen=Alpha32CG
     fun collect epthunk = (Alpha32CG.finish ();
 			   CodeString.getCodeString(epthunk ())))

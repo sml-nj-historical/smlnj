@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure PPCMC = FLINTComp(
+structure PPCMC = CPSCompFn(
     structure Gen=PPCCG
     fun collect epthunk = (
 	  PPCCG.finish ();

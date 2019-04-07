@@ -1,9 +1,10 @@
 (* backend-fn.sml
- * 
+ *
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
-functor BackendFn (structure M : CODEGENERATOR
-		   val cproto_conv : string) : BACKEND = struct
+functor BackendFn (structure M : CODE_GENERATOR
+		   val cproto_conv : string) : BACKEND =
+  struct
     structure Interact =
     Interact
 	(EvalLoopF
@@ -24,7 +25,7 @@ functor BackendFn (structure M : CODEGENERATOR
 		           fun pickUnpick { context, env = newenv, guid } = let
 			       val _ = topCount := !topCount + 1
 			       val { newenv = newenv', hash,
-				     exportLvars, hasExports } = 
+				     exportLvars, hasExports } =
 				   PickMod.dontPickle { env = newenv,
 							count = !topCount }
 			   in
@@ -59,7 +60,7 @@ functor BackendFn (structure M : CODEGENERATOR
 		  fun pickUnpick { context, env = newenv, guid } = let
 		      val m = GenModIdMap.mkMap context
 		      fun up_context _ = (m, fn () => "batch context")
-		      val { hash, pickle, exportLvars, hasExports } = 
+		      val { hash, pickle, exportLvars, hasExports } =
 			  PickMod.pickleEnv (PickMod.INITIAL m) newenv
 		      val pid = Rehash.addGUID { hash = hash, guid = guid }
 		      val newenv' =

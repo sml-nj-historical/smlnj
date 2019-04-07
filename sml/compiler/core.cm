@@ -46,8 +46,9 @@ Group
 
 	functor MachineGen
 	functor SpillTable
-	functor FLINTComp
 	functor BackendFn
+        functor CPSCompFn
+	structure FLINTOpt
 
 	structure ClusterAnnotation
 
@@ -174,27 +175,6 @@ Semant/prim/primop-bindings.sml
 Semant/prim/prim-env.sml
 
 (* The FLINT optimizer ("middle-end"). *)
-FLINT/clos/cps-split.sml
-FLINT/clos/freemap.sml
-FLINT/clos/globalfix.sml
-FLINT/clos/closure.sml
-FLINT/clos/freeclose.sml
-FLINT/clos/staticprof.sml
-FLINT/clos/unrebind.sml
-FLINT/cps/convert.sml
-FLINT/cps/cps.sig
-FLINT/cps/cps.sml
-FLINT/cps/cpstrans.sml
-FLINT/cps/ppcps.sml
-FLINT/cps/switch.sml
-FLINT/cpsopt/contract.sml
-FLINT/cpsopt/cpsopt.sml
-FLINT/cpsopt/eta.sml
-FLINT/cpsopt/etasplit.sml
-FLINT/cpsopt/expand.sml
-FLINT/cpsopt/flatten.sml
-FLINT/cpsopt/uncurry.sml
-FLINT/cpsopt/infcnv.sml
 FLINT/flint/chkflint.sml
 FLINT/flint/flint.sig
 FLINT/flint/flint.sml
@@ -219,7 +199,7 @@ FLINT/kernel/ltykindchk.sml
 
 FLINT/kernel/pplty.sml
 
-FLINT/main/flintcomp.sml
+FLINT/main/flint-opt.sml
 FLINT/main/control.sig
 FLINT/main/control.sml
 FLINT/main/literals.sml
@@ -263,6 +243,29 @@ FLINT/trans/literal-to-num.sml    (* uses CoreIntInf functionality *)
 
 FLINT/lsplit/ls-inline.sml
 
+(* The CPS stages *)
+CPS/clos/cps-split.sml
+CPS/clos/freemap.sml
+CPS/clos/globalfix.sml
+CPS/clos/closure.sml
+CPS/clos/freeclose.sml
+CPS/clos/staticprof.sml
+CPS/clos/unrebind.sml
+CPS/cps/convert.sml
+CPS/cps/cps.sig
+CPS/cps/cps.sml
+CPS/cps/cpstrans.sml
+CPS/cps/ppcps.sml
+CPS/cps/switch.sml
+CPS/opt/contract.sml
+CPS/opt/cpsopt.sml
+CPS/opt/eta.sml
+CPS/opt/etasplit.sml
+CPS/opt/expand.sml
+CPS/opt/flatten.sml
+CPS/opt/uncurry.sml
+CPS/opt/infcnv.sml
+CPS/main/cps-comp.sml
 
 (* The code generator (MLRISC specialized for SML/NJ). *)
 CodeGen/cpscompile/argPassing.sig

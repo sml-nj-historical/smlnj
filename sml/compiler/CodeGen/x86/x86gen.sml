@@ -6,7 +6,7 @@ functor X86MC (structure CCallParams : sig val frameAlign : int
 					   val returnSmallStructsInRegs : bool
 				       end
                val abi_variant: string option) =
-  FLINTComp(
+  CPSCompFn(
     structure Gen=X86CG (structure CCallParams = CCallParams
                          val abi_variant = abi_variant)
     fun collect epthunk = (Gen.finish ();

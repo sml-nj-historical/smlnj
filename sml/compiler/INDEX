@@ -43,7 +43,7 @@ BrowseStatEnv
   ElabData/statenv/browse.sml
 CGCONTROL
   TopLevel/main/control.sig
-CODEGENERATOR
+CODE_GENERATOR
   TopLevel/main/code-generator.sig
 CODE_OBJ
   Execution/codeobj/code-obj.sig

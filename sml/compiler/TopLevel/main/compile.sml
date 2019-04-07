@@ -6,7 +6,7 @@
 
 functor CompileF (
 
-    structure M  : CODEGENERATOR
+    structure M  : CODE_GENERATOR
     structure CC : CCONFIG
     val cproto_conv : string
 
@@ -121,8 +121,13 @@ functor CompileF (
     fun codegen { flint, imports, symenv, splitting, compInfo } = let
 	(* hooks for cross-module inlining and specialization *)
 	  val (flint, revisedImports) = inline (flint, imports, symenv)
+	(* optimized FLINT code *)
+	  val (flint, inlineExp) = FLINTOpt.optimize (flint, compInfo, splitting)
 	(* from optimized FLINT code, generate the machine code.  *)
-	  val (csegs,inlineExp) = M.flintcomp(flint, compInfo, splitting)
+	  val csegs = M.compile {
+		  prog = flint,
+		  source = #sourceName compInfo
+		}
 	(* Obey the nosplit directive used during bootstrapping.  *)
 	(* val inlineExp = if isSome splitting then inlineExp else NONE *)
 	  val codeSz =

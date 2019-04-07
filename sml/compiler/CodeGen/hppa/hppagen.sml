@@ -4,8 +4,8 @@
  *
  *)
 
-structure HppaMC = 
-  FLINTComp(
+structure HppaMC =
+  CPSCompFn(
     structure Gen = HppaCG
     fun collect epthunk = (HppaCG.finish ();
 			   CodeString.getCodeString (epthunk ())))

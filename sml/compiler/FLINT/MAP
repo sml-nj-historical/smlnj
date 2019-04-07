@@ -119,7 +119,7 @@ trans/
   matchcomp.sml
     main match compiler
     defs: MATCH_COMP, MatchComp: MATCH_COMP
-    
+
   mccommon.sml
     match compiler support data structures
     defs: MCCommon
@@ -139,7 +139,7 @@ trans/
   translate.sml
     translate absyn to plambda lexp
     defs: TRANSLATE, Translate: TRANSLATE
-    
+
   literal-to-num.sml
     Conversions from integer/word literals (which are represented as
     arbitrary precision ints) to fixed size. a hack that should be
@@ -167,7 +167,7 @@ main/
     defs:
       functor FLINTComp
 	 (structure Gen: MACHINE_GEN
-	  val collect: (unit -> int) -> CodeObj.code_object) : CODEGENERATOR
+	  val collect: (unit -> int) -> CodeObj.code_object) : CODE_GENERATOR
     imports:
        (*ABCopt,*) ChkFlint, Closure, Control, Convert, CPStrans, CPSopt, Spill,
        CpsSplit, FLINT_Control, FContract, FixFix, FLINT, FSplit, GlobalFix,

@@ -12,11 +12,11 @@
 
 signature MLRISCGEN =
 sig
-  val codegen : { funcs: CPS.function list,
-		  limits:  CPS.lvar -> int * int,
-		  err: ErrorMsg.complainer,
-		  source: string }
-		-> (unit -> int)
+  val codegen : {
+	  funcs: CPS.function list,
+	  limits:  CPS.lvar -> int * int,
+	  source: string
+	} -> (unit -> int)
     (* The result is a thunk around the address of the resulting code
      * object's entry point.  The client must promise to first call
      * "finish" before forcing it. *)
@@ -237,7 +237,7 @@ struct
   fun codegen args = let
       val { funcs : CPS.function list,
 	    limits:CPS.lvar -> (int*int),
-	    err, source } =
+	    source } =
 	  args
       val maxAlloc = #1 o limits
       val splitEntry = !splitEntry
