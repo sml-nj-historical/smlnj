@@ -251,12 +251,12 @@ CPS/clos/closure.sml
 CPS/clos/freeclose.sml
 CPS/clos/staticprof.sml
 CPS/clos/unrebind.sml
-CPS/cps/convert.sml
+CPS/convert/convert.sml
+CPS/convert/cpstrans.sml
+CPS/convert/switch.sml
 CPS/cps/cps.sig
 CPS/cps/cps.sml
-CPS/cps/cpstrans.sml
 CPS/cps/ppcps.sml
-CPS/cps/switch.sml
 CPS/opt/contract.sml
 CPS/opt/cpsopt.sml
 CPS/opt/eta.sml
