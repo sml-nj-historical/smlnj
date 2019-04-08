@@ -134,9 +134,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 
   (* cmpop: {oper: AP.cmpop, kind: AP.numkind} -> P.branch *)
     fun cmpop stuff = (case stuff
-	   of {oper=AP.EQL,kind=AP.INT 31} => CU.ieql (* 64BIT: FIXME *)
-	    | {oper=AP.NEQ,kind=AP.INT 31} => CU.ineq (* 64BIT: FIXME *)
-	    | {oper,kind=AP.FLOAT size} => let
+	   of {oper,kind=AP.FLOAT size} => let
 		val rator = (case oper
 		      of AP.GT => P.fGT
 		       | AP.GTE  => P.fGE

@@ -9,41 +9,6 @@ structure CPSUtil : sig
   (* flip the meaning of a branch *)
     val opp : CPS.P.branch -> CPS.P.branch
 
-  (* arithmetic on default integers (i.e., Int.int) *)
-    val iadd : CPS.P.arith
-    val isub : CPS.P.arith
-    val imul : CPS.P.arith
-    val idiv : CPS.P.arith
-    val ineg : CPS.P.arith
-
-  (* arithmetic on default reals (i.e., Real.real) *)
-    val fadd : CPS.P.arith
-    val fsub : CPS.P.arith
-    val fmul : CPS.P.arith
-    val fdiv : CPS.P.arith
-    val fneg : CPS.P.arith
-
-  (* comparisons of default integers (i.e., Int.int) *)
-    val ieql : CPS.P.branch
-    val ineq : CPS.P.branch
-    val igt  : CPS.P.branch
-    val ige  : CPS.P.branch
-    val ile  : CPS.P.branch
-    val ilt  : CPS.P.branch
-(*      val iltu : CPS.P.branch
-*      val igeu : CPS.P.branch
-*)
-
-  (* comparisons of default reals (i.e., Real.real) *)
-    val feql : CPS.P.branch
-    val fneq : CPS.P.branch
-    val fgt  : CPS.P.branch
-    val fge  : CPS.P.branch
-    val fle  : CPS.P.branch
-    val flt  : CPS.P.branch
-
-    val arity : CPS.P.arithop -> int
-
     val combinepaths : CPS.accesspath * CPS.accesspath -> CPS.accesspath
     val lenp : CPS.accesspath -> int
     val ctyToString : CPS.cty -> string
@@ -98,35 +63,6 @@ structure CPSUtil : sig
       | opp (P.fcmp{oper, size}) = P.fcmp{oper=foper oper, size=size}
     end (* local *)
 
-    val iadd = P.arith{oper=P.ADD, kind=P.INT Target.defaultIntSz}
-    val isub = P.arith{oper=P.SUB, kind=P.INT Target.defaultIntSz}
-    val imul = P.arith{oper=P.MUL, kind=P.INT Target.defaultIntSz}
-    val idiv = P.arith{oper=P.DIV, kind=P.INT Target.defaultIntSz}
-    val ineg = P.arith{oper=P.NEG, kind=P.INT Target.defaultIntSz}
-
-    val fadd = P.arith{oper=P.ADD, kind=P.FLOAT Target.defaultRealSz}
-    val fsub = P.arith{oper=P.SUB, kind=P.FLOAT Target.defaultRealSz}
-    val fmul = P.arith{oper=P.MUL, kind=P.FLOAT Target.defaultRealSz}
-    val fdiv = P.arith{oper=P.DIV, kind=P.FLOAT Target.defaultRealSz}
-    val fneg = P.arith{oper=P.NEG, kind=P.FLOAT Target.defaultRealSz}
-
-    val ieql = P.cmp{oper=P.EQL, kind=P.INT Target.defaultIntSz}
-    val ineq = P.cmp{oper=P.NEQ, kind=P.INT Target.defaultIntSz}
-    val igt = P.cmp{oper=P.GT, kind=P.INT Target.defaultIntSz}
-    val ige = P.cmp{oper=P.GTE, kind=P.INT Target.defaultIntSz}
-    val ile = P.cmp{oper=P.LTE, kind=P.INT Target.defaultIntSz}
-    val ilt = P.cmp{oper=P.LT, kind=P.INT Target.defaultIntSz}
-
-    val feql = P.fcmp{oper=P.fEQ, size=Target.defaultRealSz}
-    val fneq = P.fcmp{oper=P.fLG, size=Target.defaultRealSz}
-    val fgt  = P.fcmp{oper=P.fGT, size=Target.defaultRealSz}
-    val fge  = P.fcmp{oper=P.fGE, size=Target.defaultRealSz}
-    val fle  = P.fcmp{oper=P.fLE, size=Target.defaultRealSz}
-    val flt  = P.fcmp{oper=P.fLT, size=Target.defaultRealSz}
-
-    fun arity P.NEG = 1
-      | arity _ = 2
-
     fun hasRCC cexp = (case cexp
 	   of CPS.RCC _ => true
 	    | CPS.RECORD(_, _, _, e) => hasRCC e
@@ -180,7 +116,7 @@ structure CPSUtil : sig
     fun lenp (CPS.OFFp _) = 0
       | lenp (CPS.SELp(_,p)) = 1 + lenp p
 
-    val BOGt = CPS.PTRt(CPS.VPT)  (* bogus pointer type whose length is unknown *)
+    val BOGt = CPS.PTRt CPS.VPT  (* bogus pointer type whose length is unknown *)
 
     local
       structure LT = LtyExtern
