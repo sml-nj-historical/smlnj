@@ -202,7 +202,6 @@ FLINT/kernel/pplty.sml
 FLINT/main/flint-opt.sml
 FLINT/main/control.sig
 FLINT/main/control.sml
-FLINT/main/literals.sml
 FLINT/opt/fixfix.sml
 FLINT/opt/collect.sml
 FLINT/opt/fcontract.sml
@@ -257,6 +256,7 @@ CPS/convert/switch.sml
 CPS/cps/cps.sig
 CPS/cps/cps.sml
 CPS/cps/ppcps.sml
+CPS/cps/cps-util.sml
 CPS/opt/contract.sml
 CPS/opt/cpsopt.sml
 CPS/opt/eta.sml
@@ -266,6 +266,7 @@ CPS/opt/flatten.sml
 CPS/opt/uncurry.sml
 CPS/opt/infcnv.sml
 CPS/main/cps-comp.sml
+CPS/main/literals.sml
 
 (* The code generator (MLRISC specialized for SML/NJ). *)
 CodeGen/cpscompile/argPassing.sig

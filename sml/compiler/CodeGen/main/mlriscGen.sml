@@ -321,7 +321,7 @@ struct
            else ();
            case fk
                of CPS.CONT => addTypBinding(f, CPS.CNTt)
-            | _ => addTypBinding(f, CPS.BOGt)
+            | _ => addTypBinding(f, CPSUtil.BOGt)
            (*esac*))
 
       val brProb = CpsBranchProb.branchProb funcs
@@ -367,7 +367,7 @@ struct
 	  local
 	    fun hasRCC([]) = false
 	      | hasRCC((_,_,_,_,cexp)::rest) =
-		CPS.hasRCC(cexp) orelse hasRCC(rest)
+		  CPSUtil.hasRCC(cexp) orelse hasRCC(rest)
           in
 	    val vfp = not MS.framePtrNeverVirtual andalso hasRCC(cluster)
 	    val _ = ClusterAnnotation.useVfp := vfp
@@ -481,7 +481,7 @@ struct
             | grabty (CPS.LABEL v) = typmap v
             | grabty (CPS.NUM{ty, ...}) = CPS.NUMt ty
             | grabty (CPS.VOID) = CPS.FLTt 64 (* why? *)
-            | grabty _ = CPS.BOGt
+            | grabty _ = CPSUtil.BOGt
 
           (*
            * The baseptr contains the start address of the entire
@@ -893,15 +893,15 @@ struct
 
           fun unsignedCmp oper =
               case oper
-                of P.>   => M.GTU | P.>=  => M.GEU
-                 | P.<   => M.LTU | P.<=  => M.LEU
-                 | P.eql => M.EQ  | P.neq => M.NE
+                of P.GT   => M.GTU | P.GTE  => M.GEU
+                 | P.LT   => M.LTU | P.LTE  => M.LEU
+                 | P.EQL => M.EQ  | P.NEQ => M.NE
 
           fun signedCmp oper =
               case oper
-                of P.>   => M.GT | P.>=  => M.GE
-                 | P.<   => M.LT | P.<=  => M.LE
-                 | P.neq => M.NE | P.eql => M.EQ
+                of P.GT   => M.GT | P.GTE  => M.GE
+                 | P.LT   => M.LT | P.LTE  => M.LE
+                 | P.NEQ => M.NE | P.EQL => M.EQ
 
           fun real64Cmp(oper, v, w) =
           let  val fcond =
@@ -929,16 +929,16 @@ struct
             open CPS
 	  (* evaluate a comparison of constants. *)
 	    fun evalCmp (nk, cmpOp, a, b) = (case (nk, cmpOp)
-		 of (P.UINT sz, P.>) => ConstArith.uLess(sz, b, a)
-		  | (P.INT _, P.>) => (a > b)
-		  | (P.UINT sz, P.>=) => ConstArith.uLessEq(sz, b, a)
-		  | (P.INT _, P.>=) => (a >= b)
-		  | (P.UINT sz, P.<) => ConstArith.uLess(sz, a, b)
-		  | (P.INT _, P.<) => (a < b)
-		  | (P.UINT sz, P.<=) => ConstArith.uLessEq(sz, a, b)
-		  | (P.INT _, P.<=) => (a <= b)
-		  | (_, P.eql) => (a = b)
-		  | (_, P.neq) => (a <> b)
+		 of (P.UINT sz, P.GT) => ConstArith.uLess(sz, b, a)
+		  | (P.INT _, P.GT) => (a > b)
+		  | (P.UINT sz, P.GTE) => ConstArith.uLessEq(sz, b, a)
+		  | (P.INT _, P.GTE) => (a >= b)
+		  | (P.UINT sz, P.LT) => ConstArith.uLess(sz, a, b)
+		  | (P.INT _, P.LT) => (a < b)
+		  | (P.UINT sz, P.LTE) => ConstArith.uLessEq(sz, a, b)
+		  | (P.INT _, P.LTE) => (a <= b)
+		  | (_, P.EQL) => (a = b)
+		  | (_, P.NEQ) => (a <> b)
 		  | _ => error "evalCmp: bogus numkind"
 		(* end case *))
           in
@@ -987,14 +987,11 @@ struct
 
               fun init e =
               case e
-              of RECORD(k,vl,x,e) =>
-                   (case k of
-                      (RK_FCONT | RK_FBLOCK) => hasFloats := true
-                    | _ => ();
-                    addRecValues vl; add(x,BOGt); init e
-                   )
+              of RECORD(k,vl,x,e) => (
+                  case k of (RK_FCONT | RK_FBLOCK) => hasFloats := true | _ => ();
+                  addRecValues vl; add(x, CPSUtil.BOGt); init e)
                | SELECT(_,v,x,t,e) => (addValue v; add(x,t); init e)
-               | OFFSET(_,v,x,e) => (addValue v; add(x,BOGt); init e)
+               | OFFSET(_,v,x,e) => (addValue v; add(x, CPSUtil.BOGt); init e)
                | SWITCH(v,_,el) => (needBasePtr := true; addValue v; app init el)
                | SETTER(_,vl,e) => (addValues vl; init e)
                | LOOKER(looker,vl,x,t,e) => (
@@ -1485,12 +1482,12 @@ raise ex)
                 val r = fregbind v
               in
 		case oper
-                of P.~ => treeifyDefF64(x, M.FNEG(fty,r), e, hp)
-                 | P.abs => treeifyDefF64(x, M.FABS(fty,r), e, hp)
-		 | P.fsqrt => treeifyDefF64(x, M.FSQRT(fty,r), e, hp)
-		 | P.fsin => computef64(x, M.FEXT(fty, E.FSINE r), e, hp)
-		 | P.fcos => computef64(x, M.FEXT(fty, E.FCOSINE r), e, hp)
-		 | P.ftan => computef64(x, M.FEXT(fty, E.FTANGENT r), e, hp)
+                of P.NEG => treeifyDefF64(x, M.FNEG(fty,r), e, hp)
+                 | P.ABS => treeifyDefF64(x, M.FABS(fty,r), e, hp)
+		 | P.FSQRT => treeifyDefF64(x, M.FSQRT(fty,r), e, hp)
+		 | P.FSIN => computef64(x, M.FEXT(fty, E.FSINE r), e, hp)
+		 | P.FCOS => computef64(x, M.FEXT(fty, E.FCOSINE r), e, hp)
+		 | P.FTAN => computef64(x, M.FEXT(fty, E.FTANGENT r), e, hp)
 		 | _ => error "unexpected primop in pure unary float64"
               end
             | gen (PURE(P.pure_arith{oper, kind=P.FLOAT 64}, [v,w], x, _, e), hp) =
@@ -1498,68 +1495,68 @@ raise ex)
                   val w = fregbind w
                   val t =
                   case oper
-                    of P.+ => M.FADD(fty, v, w)
-                     | P.* => M.FMUL(fty, v, w)
-                     | P.- => M.FSUB(fty, v, w)
-                     | P./ => M.FDIV(fty, v, w)
+                    of P.ADD => M.FADD(fty, v, w)
+                     | P.MUL => M.FMUL(fty, v, w)
+                     | P.SUB => M.FSUB(fty, v, w)
+                     | P.FDIV => M.FDIV(fty, v, w)
 		     | _ => error "unexpected primop in pure binary float64"
               in  treeifyDefF64(x, t, e, hp)
               end
-            | gen (PURE(P.pure_arith{oper=P.orb, kind}, [v,w], x, _, e), hp) =
+            | gen (PURE(P.pure_arith{oper=P.ORB, kind}, [v,w], x, _, e), hp) =
                 defWithKind(kind, x, M.ORB(ity, regbind v, regbind w), e, hp)
-            | gen (PURE(P.pure_arith{oper=P.andb, kind}, [v,w], x, _, e), hp) =
+            | gen (PURE(P.pure_arith{oper=P.ANDB, kind}, [v,w], x, _, e), hp) =
                 defWithKind(kind, x, M.ANDB(ity, regbind v, regbind w), e, hp)
             | gen (PURE(P.pure_arith{oper, kind}, [v,w], x, ty, e), hp) = (case kind
 		 of P.INT sz => if (sz <= Target.defaultIntSz)
 		      then (case oper
-			 of P.xorb   => defTAGINT(x, tagIntXor(v,w), e, hp)
-			  | P.lshift => defTAGINT(x, tagIntLShift(v,w), e, hp)
-			  | P.rshift => defTAGINT(x, tagIntRShift(M.SRA,v,w),e,hp)
-			  | P.+ => defTAGINT(x, tagIntAdd(M.ADD, v, w), e, hp)
-			  | P.- => defTAGINT(x, tagIntSub(M.SUB, v, w), e, hp)
-			  | P.* => defTAGINT(x, tagIntMul(true, M.MULS, v, w), e, hp)
+			 of P.XORB   => defTAGINT(x, tagIntXor(v,w), e, hp)
+			  | P.LSHIFT => defTAGINT(x, tagIntLShift(v,w), e, hp)
+			  | P.RSHIFT => defTAGINT(x, tagIntRShift(M.SRA,v,w),e,hp)
+			  | P.ADD => defTAGINT(x, tagIntAdd(M.ADD, v, w), e, hp)
+			  | P.SUB => defTAGINT(x, tagIntSub(M.SUB, v, w), e, hp)
+			  | P.MUL => defTAGINT(x, tagIntMul(true, M.MULS, v, w), e, hp)
 			  | _ => error "gen: PURE INT TAGGED"
 			(* end case *))
 		      else (case oper
-			 of P.xorb  => arithINT(M.XORB, v, w, x, e, hp)
-			  | P.lshift => shiftINT(M.SLL, v, w, x, e, hp)
-			  | P.rshift => shiftINT(M.SRA, v, w, x, e, hp)
+			 of P.XORB  => arithINT(M.XORB, v, w, x, e, hp)
+			  | P.LSHIFT => shiftINT(M.SLL, v, w, x, e, hp)
+			  | P.RSHIFT => shiftINT(M.SRA, v, w, x, e, hp)
 			  | _ => error "gen: PURE INT"
 			(* end case *))
                   | P.UINT sz => if (sz <= Target.defaultIntSz)
 		      then (case oper
-			 of P.+    => defTAGINT(x, tagIntAdd(M.ADD, v, w), e, hp)
-			  | P.-    => defTAGINT(x, tagIntSub(M.SUB, v, w), e, hp)
-			  | P.*    => defTAGINT(x, tagIntMul(false, M.MULU, v, w), e, hp)
+			 of P.ADD    => defTAGINT(x, tagIntAdd(M.ADD, v, w), e, hp)
+			  | P.SUB    => defTAGINT(x, tagIntSub(M.SUB, v, w), e, hp)
+			  | P.MUL    => defTAGINT(x, tagIntMul(false, M.MULU, v, w), e, hp)
 			(* we now explicitly defend agains div by 0 in translate, so these
 			 * two operations can be treated as pure op:
 			 *)
-			  | P./ => defTAGINT(x, tagIntDiv(false, M.DIV_TO_ZERO, v, w), e, hp)
-			  | P.rem => defTAGINT(x, tagIntRem(false, M.DIV_TO_ZERO, v, w), e, hp)
-			  | P.xorb => defTAGINT(x, tagIntXor(v, w), e, hp)
-			  | P.lshift  => defTAGINT(x, tagIntLShift(v, w), e, hp)
-			  | P.rshift  => defTAGINT(x, tagIntRShift(M.SRA, v, w), e, hp)
-			  | P.rshiftl => defTAGINT(x, tagIntRShift(M.SRL, v, w), e, hp)
+			  | P.QUOT => defTAGINT(x, tagIntDiv(false, M.DIV_TO_ZERO, v, w), e, hp)
+			  | P.REM => defTAGINT(x, tagIntRem(false, M.DIV_TO_ZERO, v, w), e, hp)
+			  | P.XORB => defTAGINT(x, tagIntXor(v, w), e, hp)
+			  | P.LSHIFT  => defTAGINT(x, tagIntLShift(v, w), e, hp)
+			  | P.RSHIFT  => defTAGINT(x, tagIntRShift(M.SRA, v, w), e, hp)
+			  | P.RSHIFTL => defTAGINT(x, tagIntRShift(M.SRL, v, w), e, hp)
 			  | _ => error "gen: PURE UINT TAGGED"
 			(* end case *))
 		      else (case oper
-			 of P.+     => arithINT(M.ADD, v, w, x, e, hp)
-			  | P.-     => arithINT(M.SUB, v, w, x, e, hp)
-			  | P.*     => arithINT(M.MULU, v, w, x, e, hp)
+			 of P.ADD     => arithINT(M.ADD, v, w, x, e, hp)
+			  | P.SUB     => arithINT(M.SUB, v, w, x, e, hp)
+			  | P.MUL     => arithINT(M.MULU, v, w, x, e, hp)
 			(* we now explicitly defend agains div by 0 in translate, so these
 			 * two operations can be treated as pure op:
 			 *)
-			  | P./     => arithINT(M.DIVU, v, w, x, e, hp)
-			  | P.rem   => arithINT(M.REMU, v, w, x, e, hp)
-			  | P.xorb  => arithINT(M.XORB, v, w, x, e, hp)
-			  | P.lshift => shiftINT(M.SLL, v, w, x, e, hp)
-			  | P.rshift => shiftINT(M.SRA, v, w, x, e, hp)
-			  | P.rshiftl=> shiftINT(M.SRL, v, w, x, e, hp)
+			  | P.QUOT     => arithINT(M.DIVU, v, w, x, e, hp)
+			  | P.REM   => arithINT(M.REMU, v, w, x, e, hp)
+			  | P.XORB  => arithINT(M.XORB, v, w, x, e, hp)
+			  | P.LSHIFT => shiftINT(M.SLL, v, w, x, e, hp)
+			  | P.RSHIFT => shiftINT(M.SRA, v, w, x, e, hp)
+			  | P.RSHIFTL=> shiftINT(M.SRL, v, w, x, e, hp)
 			  | _ => error "gen:PURE UINT 32"
 			(* end case *))
                   | _ => error "unexpected numkind in pure binary arithop"
 		(* end case *))
-            | gen (PURE(P.pure_arith{oper=P.notb, kind}, [v], x, _, e), hp) = let
+            | gen (PURE(P.pure_arith{oper=P.NOTB, kind}, [v], x, _, e), hp) = let
 		val sz = (case kind
 		       of P.UINT sz => sz
 			| P.INT sz => sz
@@ -1569,7 +1566,7 @@ raise ex)
 		    then defTAGINT(x, M.SUB(ity, zero, regbind v), e, hp)
 		    else defINT(x, M.XORB(ity, regbind v, allOnes), e, hp)
 		end
-	    | gen (PURE(P.pure_arith{oper=P.~, kind}, [v], x, _, e), hp) = let
+	    | gen (PURE(P.pure_arith{oper=P.NEG, kind}, [v], x, _, e), hp) = let
 		val sz = (case kind
 		       of P.UINT sz => sz
 			| P.INT sz => sz
@@ -1755,7 +1752,7 @@ raise ex)
 		end
 
             (*** ARITH ***)
-            | gen (ARITH(P.arith{kind=P.INT sz, oper=P.~}, [v], x, _, e), hp) = (
+            | gen (ARITH(P.arith{kind=P.INT sz, oper=P.NEG}, [v], x, _, e), hp) = (
 		updtHeapPtr hp;
 		if (sz <= Target.defaultIntSz)
 		  then defTAGINT(x, M.SUBT(ity, two, regbind v), e, 0)
@@ -1764,52 +1761,52 @@ raise ex)
 		updtHeapPtr hp;
 		if (sz <= Target.defaultIntSz)
 		  then (case oper
-		     of P.+ => defTAGINT(x, tagIntAdd(M.ADDT, v, w), e, 0)
-		      | P.- => defTAGINT(x, tagIntSub(M.SUBT, v, w), e, 0)
-		      | P.* => defTAGINT(x, tagIntMul(true, M.MULT, v, w), e, 0)
-		      | P./ => defTAGINT(x, tagIntDiv(true, M.DIV_TO_ZERO, v, w), e, 0)
-		      | P.div => defTAGINT(x, tagIntDiv(true, M.DIV_TO_NEGINF, v, w), e, 0)
-		      | P.rem => defTAGINT(x, tagIntRem(true, M.DIV_TO_ZERO, v, w), e, 0)
-		      | P.mod => defTAGINT(x, tagIntRem(true, M.DIV_TO_NEGINF, v, w), e, 0)
-		      | P.~ => error "gen: ~ INT TAG"
-		      | P.abs => error "gen: abs INT TAG"
-		      | P.fsqrt => error "gen: fsqrt INT TAG"
-		      | P.fsin => error "gen: fsin INT TAG"
-		      | P.fcos => error "gen: fcos INT TAG"
-		      | P.ftan => error "gen: ftan INT TAG"
-		      | P.lshift => error "gen: lshift INT TAG"
-		      | P.rshift => error "gen: rshift INT TAG"
-		      | P.rshiftl => error "gen: rshiftl INT TAG"
-		      | P.andb => error "gen: andb INT TAG"
-		      | P.orb => error "gen: orb INT TAG"
-		      | P.xorb => error "gen: xorb INT TAG"
-		      | P.notb => error "gen: notb INT TAG"
+		     of P.ADD => defTAGINT(x, tagIntAdd(M.ADDT, v, w), e, 0)
+		      | P.SUB => defTAGINT(x, tagIntSub(M.SUBT, v, w), e, 0)
+		      | P.MUL => defTAGINT(x, tagIntMul(true, M.MULT, v, w), e, 0)
+		      | P.QUOT => defTAGINT(x, tagIntDiv(true, M.DIV_TO_ZERO, v, w), e, 0)
+		      | P.DIV => defTAGINT(x, tagIntDiv(true, M.DIV_TO_NEGINF, v, w), e, 0)
+		      | P.REM => defTAGINT(x, tagIntRem(true, M.DIV_TO_ZERO, v, w), e, 0)
+		      | P.MOD => defTAGINT(x, tagIntRem(true, M.DIV_TO_NEGINF, v, w), e, 0)
+		      | P.NEG => error "gen: ~ INT TAG"
+		      | P.ABS => error "gen: abs INT TAG"
+		      | P.FSQRT => error "gen: fsqrt INT TAG"
+		      | P.FSIN => error "gen: fsin INT TAG"
+		      | P.FCOS => error "gen: fcos INT TAG"
+		      | P.FTAN => error "gen: ftan INT TAG"
+		      | P.LSHIFT => error "gen: lshift INT TAG"
+		      | P.RSHIFT => error "gen: rshift INT TAG"
+		      | P.RSHIFTL => error "gen: rshiftl INT TAG"
+		      | P.ANDB => error "gen: andb INT TAG"
+		      | P.ORB => error "gen: orb INT TAG"
+		      | P.XORB => error "gen: xorb INT TAG"
+		      | P.NOTB => error "gen: notb INT TAG"
 		    (* end case *))
 		  else (case oper
-		     of P.+ => arithINT(M.ADDT, v, w, x, e, 0)
-		      | P.- => arithINT(M.SUBT, v, w, x, e, 0)
-		      | P.* => arithINT(M.MULT, v, w, x, e, 0)
-		      | P./ => arithINT(fn(ty,x,y)=>M.DIVT(M.DIV_TO_ZERO,ty,x,y),
+		     of P.ADD => arithINT(M.ADDT, v, w, x, e, 0)
+		      | P.SUB => arithINT(M.SUBT, v, w, x, e, 0)
+		      | P.MUL => arithINT(M.MULT, v, w, x, e, 0)
+		      | P.QUOT => arithINT(fn(ty,x,y)=>M.DIVT(M.DIV_TO_ZERO,ty,x,y),
 					 v, w, x, e, 0)
-		      | P.div => arithINT(fn(ty,x,y)=>M.DIVT(M.DIV_TO_NEGINF,ty,x,y),
+		      | P.DIV => arithINT(fn(ty,x,y)=>M.DIVT(M.DIV_TO_NEGINF,ty,x,y),
 					 v, w, x, e, 0)
-		      | P.rem => arithINT(fn(ty,x,y)=>M.REMS(M.DIV_TO_ZERO,ty,x,y),
+		      | P.REM => arithINT(fn(ty,x,y)=>M.REMS(M.DIV_TO_ZERO,ty,x,y),
 					 v, w, x, e, 0)
-		      | P.mod => arithINT(fn(ty,x,y)=>M.REMS(M.DIV_TO_NEGINF,ty,x,y),
+		      | P.MOD => arithINT(fn(ty,x,y)=>M.REMS(M.DIV_TO_NEGINF,ty,x,y),
 					 v, w, x, e, 0)
-		      | P.~ => error "gen: ~ INT"
-		      | P.abs => error "gen: abs INT"
-		      | P.fsqrt => error "gen: fsqrt INT"
-		      | P.fsin => error "gen: fsin INT"
-		      | P.fcos => error "gen: fcos INT"
-		      | P.ftan => error "gen: ftan INT"
-		      | P.lshift => error "gen: lshift INT"
-		      | P.rshift => error "gen: rshift INT"
-		      | P.rshiftl => error "gen: rshiftl INT"
-		      | P.andb => error "gen: andb INT"
-		      | P.orb => error "gen: orb INT"
-		      | P.xorb => error "gen: xorb INT"
-		      | P.notb => error "gen: notb INT"
+		      | P.NEG => error "gen: ~ INT"
+		      | P.ABS => error "gen: abs INT"
+		      | P.FSQRT => error "gen: fsqrt INT"
+		      | P.FSIN => error "gen: fsin INT"
+		      | P.FCOS => error "gen: fcos INT"
+		      | P.FTAN => error "gen: ftan INT"
+		      | P.LSHIFT => error "gen: lshift INT"
+		      | P.RSHIFT => error "gen: rshift INT"
+		      | P.RSHIFTL => error "gen: rshiftl INT"
+		      | P.ANDB => error "gen: andb INT"
+		      | P.ORB => error "gen: orb INT"
+		      | P.XORB => error "gen: xorb INT"
+		      | P.NOTB => error "gen: notb INT"
 		    (* end case *)))
 
 	    | gen (ARITH(P.testu(fromSz, toSz), [v], x, _, e), hp) =
@@ -1860,10 +1857,10 @@ raise ex)
                 val v = fregbind v
 		val w = fregbind w
 		val t = (case oper
-		       of P.+ => M.FADD(sz, v, w)
-			| P.* => M.FMUL(sz, v, w)
-			| P.- => M.FSUB(sz, v, w)
-			| P./ => M.FDIV(sz, v, w)
+		       of P.ADD => M.FADD(sz, v, w)
+			| P.MUL => M.FMUL(sz, v, w)
+			| P.SUB => M.FSUB(sz, v, w)
+			| P.FDIV => M.FDIV(sz, v, w)
 			| _ => error "unexpected primop in binary float64"
 		      (* end case *))
 		in

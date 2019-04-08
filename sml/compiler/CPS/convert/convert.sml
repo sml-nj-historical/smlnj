@@ -29,6 +29,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
     structure F  = FLINT
     structure FU = FlintUtil
     structure M  = IntBinaryMap
+    structure CU = CPSUtil
 
     open CPS
 
@@ -88,8 +89,8 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 
     fun unwrapFlt (sz, u, x, ce) = PURE(P.unwrap(P.FLOAT sz),  [u], x, FLTt sz, ce)
     fun unwrapInt (sz, u, x, ce) = PURE(P.unwrap(P.INT sz), [u], x, boxIntTy sz, ce)
-    fun wrapFlt (sz, u, x, ce) = PURE(P.wrap(P.FLOAT sz), [u], x, BOGt, ce)
-    fun wrapInt (sz, u, x, ce) = PURE(P.wrap(P.INT sz), [u], x, BOGt, ce)
+    fun wrapFlt (sz, u, x, ce) = PURE(P.wrap(P.FLOAT sz), [u], x, CU.BOGt, ce)
+    fun wrapInt (sz, u, x, ce) = PURE(P.wrap(P.INT sz), [u], x, CU.BOGt, ce)
 
     fun all_float (FLTt _::r) = all_float r
       | all_float (_::r) = false
@@ -98,9 +99,9 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
     fun selectFL(i,u,x,ct,ce) = SELECT(i,u,x,ct,ce)
 
     fun selectNM(i,u,x,ct,ce) = (case ct
-	   of FLTt sz => mkfn(fn v => SELECT(i, u, v, BOGt, unwrapFlt(sz, VAR v, x, ce)))
+	   of FLTt sz => mkfn(fn v => SELECT(i, u, v, CU.BOGt, unwrapFlt(sz, VAR v, x, ce)))
 	    | NUMt{sz, tag=false} =>
-		mkfn(fn v => SELECT(i, u, v, BOGt, unwrapInt(sz, VAR v, x, ce)))
+		mkfn(fn v => SELECT(i, u, v, CU.BOGt, unwrapInt(sz, VAR v, x, ce)))
 	    | _ => SELECT(i, u, x, ct, ce)
 	  (* end case *))
 
@@ -133,8 +134,8 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 
   (* cmpop: {oper: AP.cmpop, kind: AP.numkind} -> P.branch *)
     fun cmpop stuff = (case stuff
-	   of {oper=AP.EQL,kind=AP.INT 31} => P.ieql
-	    | {oper=AP.NEQ,kind=AP.INT 31} => P.ineq
+	   of {oper=AP.EQL,kind=AP.INT 31} => CU.ieql (* 64BIT: FIXME *)
+	    | {oper=AP.NEQ,kind=AP.INT 31} => CU.ineq (* 64BIT: FIXME *)
 	    | {oper,kind=AP.FLOAT size} => let
 		val rator = (case oper
 		      of AP.GT => P.fGT
@@ -152,16 +153,16 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	    | {oper, kind} => let
 		fun check (_, AP.UINT _) = ()
 		  | check (oper, _) = bug ("check" ^ oper)
-		fun c AP.GT  = P.>
-		  | c AP.GTE = P.>=
-		  | c AP.LT  = P.<
-		  | c AP.LTE = P.<=
-		  | c AP.LEU = (check ("leu", kind); P.<= )
-		  | c AP.LTU = (check ("ltu", kind); P.< )
-		  | c AP.GEU = (check ("geu", kind); P.>= )
-		  | c AP.GTU = (check ("gtu", kind); P.> )
-		  | c AP.EQL = P.eql
-		  | c AP.NEQ = P.neq
+		fun c AP.GT  = P.GT
+		  | c AP.GTE = P.GTE
+		  | c AP.LT  = P.LT
+		  | c AP.LTE = P.LTE
+		  | c AP.LEU = (check ("leu", kind); P.LTE )
+		  | c AP.LTU = (check ("ltu", kind); P.LT )
+		  | c AP.GEU = (check ("geu", kind); P.GTE )
+		  | c AP.GTU = (check ("gtu", kind); P.GT )
+		  | c AP.EQL = P.EQL
+		  | c AP.NEQ = P.NEQ
 		  | c AP.FSGN = bug "cmpop:kind=AP.UINT"
 		in
 		  P.cmp{oper=c oper, kind=numkind kind}
@@ -189,27 +190,27 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
       | primunwrap _ = P.unbox
 
   (* arithop: AP.arithop -> P.arithop *)
-    fun arithop AP.NEG = P.~
-      | arithop AP.ABS = P.abs
-      | arithop AP.FSQRT = P.fsqrt
-      | arithop AP.FSIN = P.fsin
-      | arithop AP.FCOS = P.fcos
-      | arithop AP.FTAN = P.ftan
-      | arithop AP.NOTB = P.notb
-      | arithop AP.QUOT = P./
-      | arithop AP.REM = P.rem
-      | arithop AP.DIV = P.div
-      | arithop AP.MOD = P.mod
-      | arithop AP.ADD = P.+
-      | arithop AP.SUB = P.-
-      | arithop AP.MUL = P.*
-      | arithop AP.FDIV = P./
-      | arithop AP.LSHIFT = P.lshift
-      | arithop AP.RSHIFT = P.rshift
-      | arithop AP.RSHIFTL = P.rshiftl
-      | arithop AP.ANDB = P.andb
-      | arithop AP.ORB = P.orb
-      | arithop AP.XORB = P.xorb
+    fun arithop AP.NEG = P.NEG
+      | arithop AP.ABS = P.ABS
+      | arithop AP.FSQRT = P.FSQRT
+      | arithop AP.FSIN = P.FSIN
+      | arithop AP.FCOS = P.FCOS
+      | arithop AP.FTAN = P.FTAN
+      | arithop AP.NOTB = P.NOTB
+      | arithop AP.QUOT = P.QUOT
+      | arithop AP.REM = P.REM
+      | arithop AP.DIV = P.DIV
+      | arithop AP.MOD = P.MOD
+      | arithop AP.ADD = P.ADD
+      | arithop AP.SUB = P.SUB
+      | arithop AP.MUL = P.MUL
+      | arithop AP.FDIV = P.FDIV
+      | arithop AP.LSHIFT = P.LSHIFT
+      | arithop AP.RSHIFT = P.RSHIFT
+      | arithop AP.RSHIFTL = P.RSHIFTL
+      | arithop AP.ANDB = P.ANDB
+      | arithop AP.ORB = P.ORB
+      | arithop AP.XORB = P.XORB
 
   (* a temporary classifier of various kinds of CPS primops *)
     datatype pkind
@@ -310,26 +311,26 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
    ***************************************************************************)
     fun convert fdec =
      let val {getLty=getlty, cleanUp, ...} = Recover.recover (fdec, true)
-	 val ctypes = map ctype
+	 val ctypes = map CU.ctype
 	 fun res_ctys f =
 	   let val lt = getlty (F.VAR f)
 	    in if LT.ltp_fct lt then ctypes (#2(LT.ltd_fct lt))
 	       else if LT.ltp_arrow lt then ctypes (#3(LT.ltd_arrow lt))
-		    else [BOGt]
+		    else [CU.BOGt]
 	   end
-	 fun get_cty v = ctype (getlty v)
+	 fun get_cty v = CU.ctype (getlty v)
 	 fun is_float_record u =
 	   LT.ltw_tyc (getlty u,
-		       fn tc => LT.tcw_tuple (tc, fn l => all_float (map ctyc l),
+		       fn tc => LT.tcw_tuple (tc, fn l => all_float (map CU.ctyc l),
 					      fn _ => false),
 		       fn _ => false)
 
 	 val bogus_cont = mkv()
 	 fun bogus_header ce =
 	   let val bogus_knownf = mkv()
-	    in FIX([(KNOWN, bogus_knownf, [mkv()], [BOGt],
+	    in FIX([(KNOWN, bogus_knownf, [mkv()], [CU.BOGt],
 		   APP(VAR bogus_knownf, [STRING "bogus"]))],
-		   FIX([(CONT, bogus_cont, [mkv()], [BOGt],
+		   FIX([(CONT, bogus_cont, [mkv()], [CU.BOGt],
 			APP(VAR bogus_knownf, [STRING "bogus"]))], ce))
 	   end
 
@@ -417,7 +418,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 		(* lpfd : F.fundec -> function *)
 		let fun lpfd ((fk, f, vts, e) : F.fundec) =
 			let val k = mkv()
-			    val cl = CNTt::(map (ctype o #2) vts)
+			    val cl = CNTt::(map (CU.ctype o #2) vts)
 			    val kont = makmc (fn vs => APP(VAR k, vs), res_ctys f)
 			    val (vl,body) =
 				case fk
@@ -432,7 +433,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 				     val _ = newname(f', VAR f')
 				     val vl = k::(map (cplv o #1) vts)
 				     val vl' = map #1 vts
-				     val cl' = map (ctype o #2) vts
+				     val cl' = map (CU.ctype o #2) vts
 				 in
 				     (vl,
 				      FIX([(KNOWN_TAIL, f', vl', cl',
@@ -532,7 +533,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 			       rttys c)
 		      val body =
 			let val k = mkv() and v = mkv()
-			 in FIX([(ESCAPE, k, [mkv(), v], [CNTt, BOGt],
+			 in FIX([(ESCAPE, k, [mkv(), v], [CNTt, CU.BOGt],
 				  SETTER(P.sethdlr, [VAR h],
 					 APP(lpvar u, [F, VAR v])))],
 				SETTER(P.sethdlr, [VAR k], loop(e, kont)))
@@ -552,13 +553,13 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 			  of AP.CALLCC =>
 			      mkfn(fn h =>
 			       (fn e => SETTER(P.sethdlr, [VAR h], e),
-				fn e => LOOKER(P.gethdlr, [], h, BOGt, e)))
+				fn e => LOOKER(P.gethdlr, [], h, CU.BOGt, e)))
 			   | _ => (ident, ident))
 
 		      val (ccont_decs, ccont_var) =
 			let val k = mkv() (* captured continuation *)
 			    val x = mkv()
-			 in ([(ESCAPE, k, [mkv(), x], [CNTt, BOGt],
+			 in ([(ESCAPE, k, [mkv(), x], [CNTt, CU.BOGt],
 			       hdr1(APP(F, [VAR x])))], k)
 			end
 		   in FIX(kont_decs,
@@ -569,12 +570,12 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	      | F.PRIMOP((_,AP.ISOLATE,lt,ts), [f], v, e) =>
 		  let val (exndecs, exnvar) =
 			let val h = mkv() and z = mkv() and x = mkv()
-			 in ([(ESCAPE, h, [z, x], [CNTt, BOGt],
+			 in ([(ESCAPE, h, [z, x], [CNTt, CU.BOGt],
 			     APP(VAR bogus_cont, [VAR x]))], h)
 			end
 		      val newfdecs =
 			let val nf = v and z = mkv() and x = mkv()
-			 in [(ESCAPE, v, [z, x], [CNTt, BOGt],
+			 in [(ESCAPE, v, [z, x], [CNTt, CU.BOGt],
 			       SETTER(P.sethdlr, [VAR exnvar],
 				 APP(lpvar f, [VAR bogus_cont, VAR x])))]
 			end
@@ -589,11 +590,11 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 		  (newname(v, lpvar u); loop(e, c))
 
 	      | F.PRIMOP(po as (_,AP.WRAP,_,_), [u], v, e) =>
-		  let val ct = ctyc(FU.getWrapTyc po)
-		   in PURE(primwrap ct, [lpvar u], v, BOGt, loop(e, c))
+		  let val ct = CU.ctyc(FU.getWrapTyc po)
+		   in PURE(primwrap ct, [lpvar u], v, CU.BOGt, loop(e, c))
 		  end
 	      | F.PRIMOP(po as (_,AP.UNWRAP,_,_), [u], v, e) =>
-		  let val ct = ctyc(FU.getUnWrapTyc po)
+		  let val ct = CU.ctyc(FU.getUnWrapTyc po)
 		   in PURE(primunwrap ct, [lpvar u], v, ct, loop(e, c))
 		  end
 
@@ -602,18 +603,18 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 		      val ety = LT.ltc_tuple[bty,bty,bty]
 		      val (xx,x0,x1,x2) = (mkv(),mkv(),mkv(),mkv())
 		      val (y,z,z') = (mkv(),mkv(),mkv())
-		   in PURE(P.unbox,[lpvar x],xx,ctype(ety),
-			SELECT(0,VAR xx,x0,BOGt,
-			  SELECT(1,VAR xx,x1,BOGt,
-			    SELECT(2,VAR xx,x2,BOGt,
+		   in PURE(P.unbox, [lpvar x], xx, CU.ctype ety,
+			SELECT(0,VAR xx,x0,CU.BOGt,
+			  SELECT(1,VAR xx,x1,CU.BOGt,
+			    SELECT(2,VAR xx,x2,CU.BOGt,
 			      RECORD(RK_RECORD,[(lpvar m, OFFp0),
 						(VAR x2, OFFp0)], z,
-				     PURE(P.box,[VAR z],z',BOGt,
+				     PURE(P.box,[VAR z],z',CU.BOGt,
 				       RECORD(RK_RECORD,[(VAR x0,OFFp0),
 							 (VAR x1,OFFp0),
 							 (VAR z', OFFp0)],
 					      y,
-					  PURE(P.box,[VAR y],v,BOGt,
+					  PURE(P.box,[VAR y],v,CU.BOGt,
 					       loop(e,c)))))))))
 		  end
 
@@ -628,8 +629,8 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 		    val c_proto = cvtCProto c_proto
 		    fun cty AP.CCR64 = FLTt 64		(* REAL32: FIXME *)
 		      | cty AP.CCI32 = boxIntTy 32	(* 64BIT: FIXME *)
-		      | cty AP.CCML = BOGt
-		      | cty AP.CCI64 = BOGt	(* 64BIT: FIXME *)
+		      | cty AP.CCML = CU.BOGt
+		      | cty AP.CCI64 = CU.BOGt	(* 64BIT: FIXME *)
 		    val a' = lpvar a
 		    val rcckind = if reentrant then REENTRANT_RCC else FAST_RCC
 		    fun rcc args = let
@@ -655,7 +656,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 				val res_cty = cty rt
 			    in
 				RCC (rcckind, linkage, c_proto, al, [(v', res_cty)],
-				     PURE(primwrap res_cty, [VAR v'], v, BOGt,
+				     PURE(primwrap res_cty, [VAR v'], v, CU.BOGt,
 					  loop (e, c)))
 			    end
 		    end
@@ -691,7 +692,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	      | F.PRIMOP(po as (_,p,lt,ts), ul, v, e) =>
 		  let val ct =
 			case (#3(LT.ltd_arrow(LT.lt_pinst (lt, ts))))
-			 of [x] => ctype x
+			 of [x] => CU.ctype x
 			  | _ => bug "unexpected case in F.PRIMOP"
 		      val vl = lpvars ul
 		   in case map_primop p
@@ -718,7 +719,7 @@ functor Convert (MachSpec : MACH_SPEC) : CONVERT =
 	val body = loop' M.empty (be, kont)
 
 	val vl = k::(map #1 vts)
-	val cl = CNTt::(map (ctype o #2) vts)
+	val cl = CNTt::(map (CU.ctype o #2) vts)
      in (ESCAPE, f, vl, cl, bogus_header body) before cleanUp()
     end (* function convert *)
 

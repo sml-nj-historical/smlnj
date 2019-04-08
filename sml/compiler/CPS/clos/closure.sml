@@ -25,6 +25,7 @@ functor Closure(MachSpec : MACH_SPEC) : CLOSURE = struct
 
 local
   open CPS
+  structure U = CPSUtil
   structure SL = SortedList
   structure CGoptions = Control.CG
   structure SProf = StaticProf(MachSpec)
@@ -633,7 +634,7 @@ fun fillCSformals(gpbase,fpbase,env,ft) =
   let fun h(SOME v,(e,a,c)) = (augvar(v,e),v::a,(ft v)::c)
         | h(NONE,(e,a,c)) =
             let val v = mkLvar()
-             in (augValue(v,BOGt,e),v::a,BOGt::c)
+             in (augValue(v,U.BOGt,e),v::a,U.BOGt::c)
             end
 
       fun g(SOME v,(e,a,c)) = (augvar(v,e), v::a, (FLTt 64)::c) (* REAL64: FIXME *)
@@ -743,7 +744,7 @@ and pfollow (p, env, hdr) =
          end
      | (v, SELp(i,np), (w,cr)::z) =>
          let val env = augment((w,Closure cr),env)
-             val nhdr = fn ce => SELECT(i,VAR v,w,BOGt,ce)
+             val nhdr = fn ce => SELECT(i,VAR v,w,U.BOGt,ce)
           in pfollow((w,np,z), env, hdr o nhdr)
          end
      | _ => bug "pfollow on an inconsistent path")
@@ -761,7 +762,7 @@ and follow (rootvar, t) =
             (env, h o (fn ce => SELECT(i,VAR v,rootvar,t,ce)))
         | g ((v, SELp(i,p), (w,cr)::z), env, h) =
             let val env = augment((w,Closure cr), env)
-             in g((w,p,z), env, h o (fn ce => SELECT(i,VAR v,w,BOGt,ce)))
+             in g((w,p,z), env, h o (fn ce => SELECT(i,VAR v,w,U.BOGt,ce)))
             end
         | g _ = bug "follow on an inconsistent path"
    in g
@@ -780,7 +781,7 @@ and recordEl(rk, l, w, env) =
                val (m,cost,nhdr,env) = case whereIs(env,v)
                  of Direct => (u,0,hdr,env)
                   | Path(np as (start,path,_)) =>
-                     (let val n = lenp path
+                     (let val n = U.lenp path
                           val () = profL n
                           val (u,env,nhdr) =
                             if (!CGoptions.sharepath)
@@ -813,7 +814,7 @@ fun fixAccess(args,env) =
            let val what = whatIs(env,rootvar)
                val (env,t) = case what
                  of Value x => (env,x)
-                  | Closure cr => (saveFrames(rootvar,cr,env),BOGt)
+                  | Closure cr => (saveFrames(rootvar,cr,env),U.BOGt)
                   | _ => bug "Callee or Known in fixAccess closure"
 
             in case whereIs(env,rootvar)
@@ -821,7 +822,7 @@ fun fixAccess(args,env) =
                    | Path (p as (_,path,_)) =>
                        let val (env,header) = follow (rootvar,t) (p,env,header)
                          val env = augment((rootvar,what),env)
-			 val () = profL (lenp path)
+			 val () = profL (U.lenp path)
                       in (env, header)
                      end
            end
@@ -839,8 +840,8 @@ fun fixArgs(args,env) =
            let val what = whatIs(env,rootvar)
                val (env,t) = case what
                  of Value x => (env,x)
-                  | Closure cr => (saveFrames(rootvar,cr,env),BOGt)
-                  | _ => (env,BOGt)
+                  | Closure cr => (saveFrames(rootvar,cr,env),U.BOGt)
+                  | _ => (env,U.BOGt)
             in case what
                 of Function _ => bug "Known in fixArgs closure.sml"
                  | Callee(l,csg,csf) =>
@@ -853,7 +854,7 @@ fun fixArgs(args,env) =
                            | Path (p as (_,path,_)) =>
                               let val (env,hdr) = follow (rootvar,t) (p,env,h)
                                   val env = augment((rootvar,what),env)
-				  val () = profL (lenp path)
+				  val () = profL (U.lenp path)
                                in (z::res, env, hdr)
                               end)
            end
@@ -1215,7 +1216,7 @@ val (numCSgpregs,numCSfpregs) =
 val baseEnv = emptyEnv()
 
 (* Find out the CPS type of an arbitrary program variable *)
-fun get_cty v = (case whatIs(baseEnv,v) of Value t => t | _ => BOGt)
+fun get_cty v = (case whatIs(baseEnv,v) of Value t => t | _ => U.BOGt)
 
 (* check if a variable is a float number *)
 val isFlt = if unboxedfloat then
@@ -1252,7 +1253,7 @@ val adjustArgs =
         let fun g((a,t),(al,cl,cg,cf,rt,env)) =
               if (t = CNTt) then
                 (let val w = dupLvar a
-                     val (csg,clg) = extraLvar(numCSgpregs,BOGt)
+                     val (csg,clg) = extraLvar(numCSgpregs,U.BOGt)
                      val (csf,clf) = extraLvar(numCSfpregs,FLTt 64)  (* REAL32: FIXME *)
                      val csgv = map VAR csg
                      val csfv = map VAR csf
@@ -1823,7 +1824,7 @@ val escapeFrags : frags =
                   val env = augEscFun(myCname,i,cr,env)
                   val (nargs,ncl,ncsg,ncsf,nret,env) = adjustArgs(args,cl,env)
                   val nargs = mkLvar()::myCname::nargs
-                  val ncl = BOGt::BOGt::ncl
+                  val ncl = U.BOGt::U.BOGt::ncl
                   val sn = snum v
 (***>
                   val _ = COMMENT(fn () => (pr "\nEnvironment in escaping ";
@@ -1862,7 +1863,7 @@ val (nenv, calleeFrags : frags) =
                           (let val env = augCallee(v,LABEL l,ncsg,ncsf,env)
                                val (env,a,c) =
                                      fillCSformals(gpbase,fpbase,env,get_cty)
-                            in (CONT,env,(mkLvar())::(a@args),BOGt::(c@cl),
+                            in (CONT,env,(mkLvar())::(a@args),U.BOGt::(c@cl),
                                 ncsg,ncsf)
                            end)
                       | KNOWN_CONT =>
@@ -1920,7 +1921,7 @@ and close(ce,env,sn,csg,csf,ret) =
         in FIX(map closefix frags, hdr(close(b,nenv,sn,csg,csf,nret)))
        end
     | APP(f,args) =>
-       let val obj = (case f of VAR v => whatIs(env,v) | _ => Value BOGt)
+       let val obj = (case f of VAR v => whatIs(env,v) | _ => Value U.BOGt)
         in case obj
             of Closure(CR(off,{functions,...})) =>
                 let val (env,h) = fixAccess([f],env)
@@ -1956,12 +1957,12 @@ and close(ce,env,sn,csg,csf,ret) =
        end
     | RECORD(k as RK_FBLOCK,l,v,c) =>
        let val (env,header) = fixAccess(map #1 l,env)
-           val env = augValue(v,BOGt,env)
+           val env = augValue(v,U.BOGt,env)
         in header(RECORD(k,l,v,close(c,env,sn,csg,csf,ret)))
        end
     | RECORD(k,l,v,c) =>
        let val (hdr, env) = recordEl(k, l, v, env)
-           val nc = hdr (close(c,augValue(v,BOGt,env),sn,csg,csf,ret))
+           val nc = hdr (close(c,augValue(v,U.BOGt,env),sn,csg,csf,ret))
         in nc
        end
     | SELECT(i,v,w,t,c) =>
@@ -2010,9 +2011,9 @@ and close(ce,env,sn,csg,csf,ret) =
 val nfe =
   let val _ = if !CGoptions.staticprof then SProf.initfk() else ()
       val (nvl,ncl,csg,csf,ret,env) = adjustArgs(vl,cl,baseEnv)
-      val env = augValue(f,BOGt,env)
+      val env = augValue(f,U.BOGt,env)
       val nce = close(ce,env,snum f,csg,csf,ret)
-   in (fk,mkLvar(),mkLvar()::f::nvl,BOGt::BOGt::ncl,nce)
+   in (fk,mkLvar(),mkLvar()::f::nvl,U.BOGt::U.BOGt::ncl,nce)
   end
 
 (* temporary hack: measuring static allocation sizes of closures *)

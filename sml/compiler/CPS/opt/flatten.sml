@@ -194,7 +194,7 @@ val rec reduce =
 		  let fun g(i,args) =
 			  if i=cnt then loop(r,vl,args)
 			  else let val z = LV.mkLvar()
-			       in SELECT(i, v, z, BOGt, g(i+1,(VAR z)::args))
+			       in SELECT(i, v, z, CPSUtil.BOGt, g(i+1,(VAR z)::args))
 			       end
 		  in  g(0,args)
 		  end
@@ -206,7 +206,7 @@ val rec reduce =
    | APP(f,vl) => APP(f,vl)
    | FIX(l,e) =>
       let fun vars (0, l, l') = (l, l')
-	    | vars (i, l, l') = vars(i-1, LV.mkLvar()::l, BOGt::l')
+	    | vars (i, l, l') = vars(i-1, LV.mkLvar()::l, CPSUtil.BOGt::l')
 	  fun newargs(COUNT(j,_) :: r,v::vl,_::cl) =
 		let val (new,ncl) = vars(j, nil, nil)
 		    val (vl',cl',bt') = newargs(r,vl,cl)

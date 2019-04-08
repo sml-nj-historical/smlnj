@@ -119,10 +119,10 @@ structure Switch : sig
 	  val cases = numSort cases
 	(* equality test branch *)
 	  fun ifeq (i, tr, fl) =
-		CPS.BRANCH(CPS.P.cmp{oper=CPS.P.eql, kind=nk}, [arg, tagNum i], mkv(), tr, fl)
+		CPS.BRANCH(CPS.P.cmp{oper=CPS.P.EQL, kind=nk}, [arg, tagNum i], mkv(), tr, fl)
 	(* less-than test branch *)
 	  fun ifless (a, b, tr, fl) =
-		CPS.BRANCH(CPS.P.cmp{oper=CPS.P.<, kind=nk}, [a, b], mkv(), tr, fl)
+		CPS.BRANCH(CPS.P.cmp{oper=CPS.P.LT, kind=nk}, [a, b], mkv(), tr, fl)
 	(* map cases to CPS.SWITCH, where we know that lo0 <= arg <= hi0 *)
 	  fun switch' (lo0, hi0) = let
 	      (* group cases into dense chunks *)
@@ -140,7 +140,7 @@ structure Switch : sig
 			    then CPS.SWITCH(arg, mkv(), actions)
 			    else pure(
 			    (* NOTE: because lb <= arg, this subtraction cannot Overflow *)
-			      CPS.P.pure_arith{oper=CPS.P.-, kind=nk}, [arg, tagNum lb], tagNumTy,
+			      CPS.P.pure_arith{oper=CPS.P.SUB, kind=nk}, [arg, tagNum lb], tagNumTy,
 			      fn arg' => CPS.SWITCH(arg', mkv(), actions))
 		    (* add lower-bound check (if necessary) *)
 		      val exp = if (lo < lb)
@@ -216,15 +216,15 @@ structure Switch : sig
 			  split (m, [], cases)
 			end
 		  in
-		    branch(CPS.P.eql, i,
+		    branch(CPS.P.EQL, i,
 		      act,
-		      branch(CPS.P.<, i,
+		      branch(CPS.P.LT, i,
 			gen (m, cases1),
 			gen (n-m-1, cases2)))
 		  end
 		else let (* linear search *)
 		  fun genCase [] = default
-		    | genCase ((i, act)::r) = branch(CPS.P.eql, i, act, genCase r)
+		    | genCase ((i, act)::r) = branch(CPS.P.EQL, i, act, genCase r)
 		  in
 		    genCase cases
 		  end
@@ -355,7 +355,7 @@ structure Switch : sig
 		      CPS.BRANCH(CPS.P.pneq, [CPS.VAR x, rename p], mkv(), gen r, act)
 		  | gen _ = bug "exnSwitch"
 		in
-		  CPS.PURE(CPS.P.getexn, [arg], x, CPS.BOGt, gen cases)
+		  CPS.PURE(CPS.P.getexn, [arg], x, CPSUtil.BOGt, gen cases)
 		end
 	    | F.DATAcon _ => dataconSwitch(arg, sign, cases, default)
 	    | _ => bug "unexpected datacon in switch"

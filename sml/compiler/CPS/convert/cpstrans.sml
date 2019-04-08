@@ -33,10 +33,10 @@ functor CPStrans(MachSpec : MACH_SPEC) : sig
 	  val CT : cty IntHashTable.hash_table = IntHashTable.mkTable(32,CTYMAP)
 	  val addty = IntHashTable.insert CT
 	  val getty = IntHashTable.lookup CT
-	  fun grabty (VAR v) = ((getty v) handle _ => BOGt)
+	  fun grabty (VAR v) = ((getty v) handle _ => CPSUtil.BOGt)
 	    | grabty (NUM{ty, ...}) = NUMt ty
 	    | grabty (REAL{ty, ...}) = FLTt ty
-	    | grabty _ = BOGt
+	    | grabty _ = CPSUtil.BOGt
 
 	(**************************************************************************
 	 *          UTILITY FUNCTIONS THAT DO THE ARGUMENT SPILLING               *

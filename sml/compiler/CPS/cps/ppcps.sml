@@ -20,11 +20,12 @@ struct
 
 local open CPS
       structure LV = LambdaVar
+      structure U = CPSUtil
 in
 
 val say = Control.Print.say
 
-val sayt = say o CPS.ctyToString
+val sayt = say o U.ctyToString
 
 fun value2str (VAR v) = LV.lvarName v
   | value2str (LABEL v) = "(L)" ^ LV.lvarName v
@@ -56,12 +57,12 @@ fun branchName P.boxed = "boxed"
   | branchName (P.cmp{oper, kind}) =
     (numkindName kind ^
      (case oper
-      of P.>   => ">"
-       | P.<   => "<"
-       | P.>=  => ">="
-       | P.<=  => "<="
-       | P.eql => "="
-       | P.neq => "<>"
+      of P.GT   => ">"
+       | P.LT   => "<"
+       | P.GTE  => ">="
+       | P.LTE  => "<="
+       | P.EQL => "="
+       | P.NEQ => "<>"
       (*esac*)))
   | branchName(P.fcmp{oper, size}) =
     (numkindName (P.FLOAT size) ^
@@ -96,20 +97,22 @@ fun setterName P.unboxedupdate = "unboxedupdate"
   | setterName P.setvar = "setvar"
   | setterName P.setspecial = "setspecial"
   | setterName (P.rawstore {kind}) = ("rawstore" ^ numkindName kind)
-  | setterName (P.rawupdate cty) = ("rawupdate" ^ CPS.ctyToString cty)
+  | setterName (P.rawupdate cty) = ("rawupdate" ^ U.ctyToString cty)
 
 val cvtParam = Int.toString
 fun cvtParams(from, to) = concat [cvtParam from, "_", cvtParam to]
 
 fun arithName (P.arith{oper,kind}) =
-    ((case oper of  P.+ => "+" |  P.- => "-" |  P.* => "*"
-	          | P./ => "/" |  P.~ => "~" | P.abs => "abs"
-	          | P.fsqrt => "fsqrt"
-		  | P.fsin => "sin" | P.fcos => "cos" | P.ftan => "tan"
-		  | P.rshift => "rshift" | P.rshiftl => "rshiftl"
-	          | P.lshift => "lshift" | P.andb => "andb"
-		  | P.orb => "orb" | P.xorb => "xorb" | P.notb => "notb"
-		  | P.rem => "rem" | P.div => "div" | P.mod => "mod")
+    ((case oper of  P.ADD => "+" |  P.SUB => "-" |  P.MUL => "*"
+	          | P.DIV => "div" | P.MOD => "mod"
+		  | P.QUOT => "quot" | P.REM => "rem"
+		  | P.FDIV => "/"
+                  | P.NEG => "~" | P.ABS => "abs"
+	          | P.FSQRT => "fsqrt"
+		  | P.FSIN => "sin" | P.FCOS => "cos" | P.FTAN => "tan"
+		  | P.RSHIFT => "rshift" | P.RSHIFTL => "rshiftl"
+	          | P.LSHIFT => "lshift" | P.ANDB => "andb"
+		  | P.ORB => "orb" | P.XORB => "xorb" | P.NOTB => "notb")
      ^ numkindName kind)
   | arithName(P.test arg) = "test_" ^ cvtParams arg
   | arithName(P.testu arg) = "testu_" ^ cvtParams arg

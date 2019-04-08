@@ -101,10 +101,10 @@ fun minl l =
    in f(infinity,l)
   end
 
-fun bfirst (P.boxed | P.pneq | P.strneq | P.cmp{oper=P.neq,...}) = true
+fun bfirst (P.boxed | P.pneq | P.strneq | P.cmp{oper=P.NEQ,...}) = true
   | bfirst _ = false
 
-fun bsecond (P.unboxed | P.peql | P.streq | P.cmp{oper=P.eql,...}) = true
+fun bsecond (P.unboxed | P.peql | P.streq | P.cmp{oper=P.EQL,...}) = true
   | bsecond _ = false
 
 (** datatype used to represent the free variable information **)
@@ -676,7 +676,7 @@ and freevars(n,sn,ce) =
         in case (wl1,wl2)
             of (NONE,SOME _) =>
                  (let val free = addV(new,sn,overV(sn,free2,free1))
-                   in (BRANCH(P.opp p,vl,c,e2',e1'),free,wl,gsz2,fsz2)
+                   in (BRANCH(CPSUtil.opp p,vl,c,e2',e1'),free,wl,gsz2,fsz2)
                   end)
              | (SOME _,NONE) =>
                  (let val free = addV(new,sn,overV(sn,free1,free2))

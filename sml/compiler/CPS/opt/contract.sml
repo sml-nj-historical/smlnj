@@ -242,7 +242,7 @@ fun call_and_clobber(VAR v) =
 
 fun enterREC(w,kind,vl) = enter(w,{info=RECinfo(kind,vl), called=ref 0,used=ref 0})
 fun enterMISC (w,ct) = enter(w,{info=MISCinfo ct, called=ref 0, used=ref 0})
-val miscBOG = MISCinfo BOGt
+val miscBOG = MISCinfo CPSUtil.BOGt
 fun enterMISC0 w = enter(w,{info=miscBOG, called=ref 0, used=ref 0})
 fun enterWRP (w, kind, u) = enter(w, {info=WRPinfo(kind, u), called=ref 0, used=ref 0})
 
@@ -305,7 +305,7 @@ let val rec g1 =
   | BRANCH(i,vl,c,e1 as APP(VAR f1, [NUM{ival = 1, ...}]),
 		  e2 as APP(VAR f2, [NUM{ival = 0, ...}])) =>
        (case get f1
-	 of {info=FNinfo{body=ref(SOME(BRANCH(P.cmp{oper=P.neq,...},[NUM{ival = 0, ...}, VAR w2],_,_,_))),
+	 of {info=FNinfo{body=ref(SOME(BRANCH(P.cmp{oper=P.NEQ,...},[NUM{ival = 0, ...}, VAR w2],_,_,_))),
 			 args=[w1],specialuse,...},...} =>
               (* Handle IF IDIOM *)
     	      if f1=f2 andalso w1=w2
@@ -314,7 +314,7 @@ let val rec g1 =
 		   end
 	      else ()
 	  | _ => ();
-	app use vl; enterMISC(c,BOGt); g1 e1; g1 e2)
+	app use vl; enterMISC(c,CPSUtil.BOGt); g1 e1; g1 e2)
   | BRANCH(i,vl,c,e1,e2) => (app use vl; enterMISC0 c; g1 e1; g1 e2)
   | SETTER(i,vl,e) => (app use vl; g1 e)
   | LOOKER(i,vl,w,_,e) => (app use vl; enterMISC0 w; g1 e)
@@ -926,71 +926,71 @@ end
      | (P.boxed, [VAR v]) => (case get v
 	 of {info=RECinfo _, ...} => (click "p"; true)
 	  | _ => raise ConstFold)
-     | (P.cmp{oper=P.<, ...}, [VAR v, VAR w]) =>
+     | (P.cmp{oper=P.LT, ...}, [VAR v, VAR w]) =>
 	  if v=w then (click "v"; false) else raise ConstFold
-     | (P.cmp{oper=P.<=, ...}, [VAR v, VAR w]) =>
+     | (P.cmp{oper=P.LTE, ...}, [VAR v, VAR w]) =>
 	  if v=w then (click "v"; true) else raise ConstFold
-     | (P.cmp{oper=P.<, kind=P.INT _}, [NUM i, NUM j]) => (
+     | (P.cmp{oper=P.LT, kind=P.INT _}, [NUM i, NUM j]) => (
 	  click "w"; #ival i < #ival j)
-     | (P.cmp{oper=P.<, kind=P.UINT sz}, [NUM i, NUM j]) => (
+     | (P.cmp{oper=P.LT, kind=P.UINT sz}, [NUM i, NUM j]) => (
 	  click "w"; CA.uLess(sz, #ival i, #ival j))
-     | (P.cmp{oper=P.<=, kind=P.INT _}, [NUM i, NUM j]) => (
+     | (P.cmp{oper=P.LTE, kind=P.INT _}, [NUM i, NUM j]) => (
 	  click "w"; #ival i <= #ival j)
-     | (P.cmp{oper=P.<=, kind=P.UINT sz}, [NUM i, NUM j]) => (
+     | (P.cmp{oper=P.LTE, kind=P.UINT sz}, [NUM i, NUM j]) => (
 	  click "w"; CA.uLessEq(sz, #ival i, #ival j))
-     | (P.cmp{oper=P.>, kind}, [w,v]) =>
-	  branch(P.cmp{oper=P.<, kind=kind}, [v,w])
-     | (P.cmp{oper=P.>=, kind}, vl) =>
-	  not (branch(P.cmp{oper=P.<, kind=kind}, vl))
-     | (P.cmp{oper=P.eql, kind=P.FLOAT _}, _) => raise ConstFold (* in case of NaN's *)
-     | (P.cmp{oper=P.eql, ...}, [VAR v, VAR w]) =>
+     | (P.cmp{oper=P.GT, kind}, [w,v]) =>
+	  branch(P.cmp{oper=P.LT, kind=kind}, [v,w])
+     | (P.cmp{oper=P.GTE, kind}, vl) =>
+	  not (branch(P.cmp{oper=P.LT, kind=kind}, vl))
+     | (P.cmp{oper=P.EQL, kind=P.FLOAT _}, _) => raise ConstFold (* in case of NaN's *)
+     | (P.cmp{oper=P.EQL, ...}, [VAR v, VAR w]) =>
 	  if v=w then  (click "v"; true) else raise ConstFold
-     | (P.cmp{oper=P.eql, ...}, [NUM i, NUM j]) => (click "w"; #ival i = #ival j)
-     | (P.cmp{oper=P.neq, kind}, vl) =>
-	  not(branch(P.cmp{oper=P.eql, kind=kind}, vl))
+     | (P.cmp{oper=P.EQL, ...}, [NUM i, NUM j]) => (click "w"; #ival i = #ival j)
+     | (P.cmp{oper=P.NEQ, kind}, vl) =>
+	  not(branch(P.cmp{oper=P.EQL, kind=kind}, vl))
      | (P.peql, [NUM i, NUM j]) => (click "w"; #ival i = #ival j)
      | (P.pneq, vl) => not(branch(P.peql, vl))
      | _ => raise ConstFold
 
   and arith =
-    fn (P.arith{oper=P.*, ...}, [NUM{ival=1, ...}, v]) => (click "F"; v)
-     | (P.arith{oper=P.*, ...}, [v, NUM{ival=1, ...}]) => (click "G"; v)
-     | (P.arith{oper=P.*, ...}, [v as NUM{ival=0, ...}, _]) => (click "H"; v)
-     | (P.arith{oper=P.*, ...}, [_, v as NUM{ival=0, ...}]) => (click "I"; v)
-     | (P.arith{oper=P.*, kind=P.INT sz}, [NUM i, NUM j]) => let
+    fn (P.arith{oper=P.MUL, ...}, [NUM{ival=1, ...}, v]) => (click "F"; v)
+     | (P.arith{oper=P.MUL, ...}, [v, NUM{ival=1, ...}]) => (click "G"; v)
+     | (P.arith{oper=P.MUL, ...}, [v as NUM{ival=0, ...}, _]) => (click "H"; v)
+     | (P.arith{oper=P.MUL, ...}, [_, v as NUM{ival=0, ...}]) => (click "I"; v)
+     | (P.arith{oper=P.MUL, kind=P.INT sz}, [NUM i, NUM j]) => let
 	  val x = CA.sMul(sz, #ival i, #ival j)
 	  in
 	    click "J"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.arith{oper=P./, ...}, [v, NUM{ival=1, ...}]) => (click "K"; v)
-     | (P.arith{oper=P./, ...}, [_, NUM{ival=0, ...}]) => raise ConstFold
-     | (P.arith{oper=P./, kind=P.INT sz}, [NUM i, NUM j]) => let
+     | (P.arith{oper=P.QUOT, ...}, [v, NUM{ival=1, ...}]) => (click "K"; v)
+     | (P.arith{oper=P.QUOT, ...}, [_, NUM{ival=0, ...}]) => raise ConstFold
+     | (P.arith{oper=P.QUOT, kind=P.INT sz}, [NUM i, NUM j]) => let
 	  val x = CA.sQuot(sz, #ival i, #ival j)
 	  in
 	    click "L"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.arith{oper=P.div, ...}, [v, NUM{ival=1, ...}]) => (click "K"; v)
-     | (P.arith{oper=P.div, ...}, [_, NUM{ival=0, ...}]) => raise ConstFold
-     | (P.arith{oper=P.div, kind=P.INT sz}, [NUM i, NUM j]) => let
+     | (P.arith{oper=P.DIV, ...}, [v, NUM{ival=1, ...}]) => (click "K"; v)
+     | (P.arith{oper=P.DIV, ...}, [_, NUM{ival=0, ...}]) => raise ConstFold
+     | (P.arith{oper=P.DIV, kind=P.INT sz}, [NUM i, NUM j]) => let
 	  val x = CA.sDiv(sz, #ival i, #ival j)
 	  in
 	    click "L"; NUM{ival = x, ty = #ty i}
 	  end
      (* FIXME: should we do anything for mod or rem here? *)
-     | (P.arith{oper=P.+, ...}, [NUM{ival=0, ...}, v]) => (click "M"; v)
-     | (P.arith{oper=P.+, ...}, [v, NUM{ival=0, ...}]) => (click "N"; v)
-     | (P.arith{oper=P.+, kind=P.INT sz}, [NUM i, NUM j]) => let
+     | (P.arith{oper=P.ADD, ...}, [NUM{ival=0, ...}, v]) => (click "M"; v)
+     | (P.arith{oper=P.ADD, ...}, [v, NUM{ival=0, ...}]) => (click "N"; v)
+     | (P.arith{oper=P.ADD, kind=P.INT sz}, [NUM i, NUM j]) => let
 	  val x = CA.sAdd(sz, #ival i, #ival j)
 	  in
 	    click "O"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.arith{oper=P.-, ...}, [v, NUM{ival=0, ...}]) => (click "P"; v)
-     | (P.arith{oper=P.-, kind=P.INT sz}, [NUM i, NUM j]) => let
+     | (P.arith{oper=P.SUB, ...}, [v, NUM{ival=0, ...}]) => (click "P"; v)
+     | (P.arith{oper=P.SUB, kind=P.INT sz}, [NUM i, NUM j]) => let
 	  val x = CA.sSub(sz, #ival i, #ival j)
 	  in
 	    click "Q"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.arith{oper=P.~, kind=P.INT sz}, [NUM i]) => let
+     | (P.arith{oper=P.NEG, kind=P.INT sz}, [NUM i]) => let
 	  val x = CA.sNeg(sz, #ival i)
 	  in
 	    click "X"; NUM{ival = x, ty = #ty i}
@@ -999,77 +999,77 @@ end
 
 (* pure arithmetic operations; raises ConstFold when there is no reduction *)
   and pure =
-    fn (P.pure_arith{oper=P.*, ...}, [NUM{ival=1, ...}, v]) => (click "F"; v)
-     | (P.pure_arith{oper=P.*, ...}, [v, NUM{ival=1, ...}]) => (click "G"; v)
-     | (P.pure_arith{oper=P.*, ...}, [v as NUM{ival=0, ...}, _]) => (click "H"; v)
-     | (P.pure_arith{oper=P.*, ...}, [_, v as NUM{ival=0, ...}]) => (click "I"; v)
+    fn (P.pure_arith{oper=P.MUL, ...}, [NUM{ival=1, ...}, v]) => (click "F"; v)
+     | (P.pure_arith{oper=P.MUL, ...}, [v, NUM{ival=1, ...}]) => (click "G"; v)
+     | (P.pure_arith{oper=P.MUL, ...}, [v as NUM{ival=0, ...}, _]) => (click "H"; v)
+     | (P.pure_arith{oper=P.MUL, ...}, [_, v as NUM{ival=0, ...}]) => (click "I"; v)
 (* FIXME: 32-bit dependent code *)
-     | (P.pure_arith{oper=P.*, kind=P.UINT sz}, [NUM i, NUM j]) => let
+     | (P.pure_arith{oper=P.MUL, kind=P.UINT sz}, [NUM i, NUM j]) => let
           val x = CA.uMul(sz, #ival i, #ival j)
 	  in
 	    click "J"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.pure_arith{oper=P.+, ...}, [NUM{ival=0, ...}, v]) => (click "M"; v)
-     | (P.pure_arith{oper=P.+, ...}, [v, NUM{ival=0, ...}]) => (click "N"; v)
-     | (P.pure_arith{oper=P.+, kind=P.UINT sz}, [NUM i, NUM j]) => let
+     | (P.pure_arith{oper=P.ADD, ...}, [NUM{ival=0, ...}, v]) => (click "M"; v)
+     | (P.pure_arith{oper=P.ADD, ...}, [v, NUM{ival=0, ...}]) => (click "N"; v)
+     | (P.pure_arith{oper=P.ADD, kind=P.UINT sz}, [NUM i, NUM j]) => let
 	  val x = CA.uAdd(sz, #ival i, #ival j)
 	  in
 	    click "O"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.pure_arith{oper=P.-, ...}, [v, NUM{ival=0, ...}]) => (click "P"; v)
-     | (P.pure_arith{oper=P.-, kind=P.UINT sz}, [NUM i, NUM j]) => let
+     | (P.pure_arith{oper=P.SUB, ...}, [v, NUM{ival=0, ...}]) => (click "P"; v)
+     | (P.pure_arith{oper=P.SUB, kind=P.UINT sz}, [NUM i, NUM j]) => let
 	  val x = CA.uSub(sz, #ival i, #ival j)
 	  in
 	    click "Q"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.pure_arith{oper=P.rshift, ...}, [i as NUM{ival=0, ...}, _]) => (click "S"; i)
-     | (P.pure_arith{oper=P.rshift, ...}, [v, NUM{ival=0, ...}]) => (click "T"; v)
-     | (P.pure_arith{oper=P.rshift, kind}, [NUM i, NUM j]) => let
+     | (P.pure_arith{oper=P.RSHIFT, ...}, [i as NUM{ival=0, ...}, _]) => (click "S"; i)
+     | (P.pure_arith{oper=P.RSHIFT, ...}, [v, NUM{ival=0, ...}]) => (click "T"; v)
+     | (P.pure_arith{oper=P.RSHIFT, kind}, [NUM i, NUM j]) => let
 	  val x = CA.sShR(sizeOfKind kind, #ival i, #ival j)
 	  in
 	    click "R"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.pure_arith{oper=P.rshiftl, ...}, [i as NUM{ival=0, ...}, _]) => (click "S"; i)
-     | (P.pure_arith{oper=P.rshiftl, ...}, [v, NUM{ival=0, ...}]) => (click "T"; v)
-     | (P.pure_arith{oper=P.rshiftl, kind=P.UINT sz}, [NUM i, NUM j]) => let
+     | (P.pure_arith{oper=P.RSHIFTL, ...}, [i as NUM{ival=0, ...}, _]) => (click "S"; i)
+     | (P.pure_arith{oper=P.RSHIFTL, ...}, [v, NUM{ival=0, ...}]) => (click "T"; v)
+     | (P.pure_arith{oper=P.RSHIFTL, kind=P.UINT sz}, [NUM i, NUM j]) => let
 	  val x = CA.uShR(sz, #ival i, #ival j)
 	  in
 	    click "R"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.pure_arith{oper=P.lshift, ...}, [v as NUM{ival=0, ...}, _]) => (click "Z"; v)
-     | (P.pure_arith{oper=P.lshift, ...}, [v, NUM{ival=0, ...}]) => (click "1"; v)
-     | (P.pure_arith{oper=P.lshift, kind=P.INT sz}, [NUM i, NUM j]) => (let
+     | (P.pure_arith{oper=P.LSHIFT, ...}, [v as NUM{ival=0, ...}, _]) => (click "Z"; v)
+     | (P.pure_arith{oper=P.LSHIFT, ...}, [v, NUM{ival=0, ...}]) => (click "1"; v)
+     | (P.pure_arith{oper=P.LSHIFT, kind=P.INT sz}, [NUM i, NUM j]) => (let
 	  val x = CA.sShL(sz, #ival i, #ival j)
 	  in
 	    click "Y"; NUM{ival = x, ty = #ty i}
 	  end handle Overflow => raise ConstFold)
-     | (P.pure_arith{oper=P.lshift, kind=P.UINT sz}, [NUM i, NUM j]) => let
+     | (P.pure_arith{oper=P.LSHIFT, kind=P.UINT sz}, [NUM i, NUM j]) => let
 	  val x = CA.uShL(sz, #ival i, #ival j)
 	  in
 	    click "Y"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.pure_arith{oper=P.andb, ...}, [v as NUM{ival=0, ...}, _]) => (click "0"; v)
-     | (P.pure_arith{oper=P.andb, ...}, [_, v as NUM{ival=0, ...}]) => (click "T"; v)
-     | (P.pure_arith{oper=P.andb, kind}, [NUM i, NUM j]) => let
+     | (P.pure_arith{oper=P.ANDB, ...}, [v as NUM{ival=0, ...}, _]) => (click "0"; v)
+     | (P.pure_arith{oper=P.ANDB, ...}, [_, v as NUM{ival=0, ...}]) => (click "T"; v)
+     | (P.pure_arith{oper=P.ANDB, kind}, [NUM i, NUM j]) => let
 	  val x = CA.bAnd(sizeOfKind kind, #ival i, #ival j)
 	  in
 	    click "9"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.pure_arith{oper=P.orb, ...}, [NUM{ival=0, ...}, v]) => (click "3"; v)
-     | (P.pure_arith{oper=P.orb, ...}, [v, NUM{ival=0, ...}]) => (click "4"; v)
-     | (P.pure_arith{oper=P.orb, kind}, [NUM i, NUM j]) => let
+     | (P.pure_arith{oper=P.ORB, ...}, [NUM{ival=0, ...}, v]) => (click "3"; v)
+     | (P.pure_arith{oper=P.ORB, ...}, [v, NUM{ival=0, ...}]) => (click "4"; v)
+     | (P.pure_arith{oper=P.ORB, kind}, [NUM i, NUM j]) => let
 	  val x = CA.bOr(sizeOfKind kind, #ival i, #ival j)
 	  in
 	    click "2"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.pure_arith{oper=P.xorb, ...}, [NUM{ival=0, ...}, v]) => (click "6"; v)
-     | (P.pure_arith{oper=P.xorb, ...}, [v, NUM{ival=0, ...}]) => (click "7"; v)
-     | (P.pure_arith{oper=P.xorb, kind}, [NUM i, NUM j]) => let
+     | (P.pure_arith{oper=P.XORB, ...}, [NUM{ival=0, ...}, v]) => (click "6"; v)
+     | (P.pure_arith{oper=P.XORB, ...}, [v, NUM{ival=0, ...}]) => (click "7"; v)
+     | (P.pure_arith{oper=P.XORB, kind}, [NUM i, NUM j]) => let
 	  val x = CA.bXor(sizeOfKind kind, #ival i, #ival j)
 	  in
 	    click "5"; NUM{ival = x, ty = #ty i}
 	  end
-     | (P.pure_arith{oper=P.notb,kind}, [NUM i]) => let
+     | (P.pure_arith{oper=P.NOTB,kind}, [NUM i]) => let
 	  val x = CA.bNot(sizeOfKind kind, #ival i)
 	  in
 	    click "8"; NUM{ival = x, ty = #ty i}

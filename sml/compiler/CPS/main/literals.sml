@@ -272,7 +272,7 @@ structure Literals : LITERALS =
 			      k
 			    end)
 	        in
-		  (VAR v, fn ce => SELECT(n, srtval, v, BOGt, ce))
+		  (VAR v, fn ce => SELECT(n, srtval, v, CPSUtil.BOGt, ce))
 	        end
 	  fun appStr () = let
 		fun g (a::r, z) = g(r, (STRING a)::z)
@@ -422,13 +422,13 @@ structure Literals : LITERALS =
 						SELECT(0, VAR w, v, FLTt, ce)))) *)
 				      | (ZZ_STR s) => bug "ZZ_STR in mkhdr"
 					  (* (fn ce =>
-						SELECT(i, rval, v, BOGt, ce)) *)
+						SELECT(i, rval, v, CPSUtil.BOGt, ce)) *)
 				      | (ZZ_RCD (rk, vs)) =>
 					  let val n = length vs
 					      val t =
 						case rk
 						 of RK_FBLOCK => PTRt(FPT n)
-						  | RK_VECTOR => BOGt
+						  | RK_VECTOR => CPSUtil.BOGt
 						  | _ => PTRt(RPT n)
 					   in fn ce => SELECT(i, rval, v, t, ce)
 					  end)

@@ -37,12 +37,25 @@ signature CPS =
       (* numkind includes kind and size *)
         datatype numkind = INT of int | UINT of int | FLOAT of int
 
+(* FIXME: this type is not identical to Primop.arithop that is defined in
+ * ElabData/prim/primop.sml, so we should really just use it!
+ *)
+	datatype arithop
+	  = ADD | SUB | MUL | DIV | MOD | QUOT | REM | FDIV
+	  | LSHIFT | RSHIFT | RSHIFTL | ANDB | ORB | XORB
+	  | NEG | ABS | NOTB
+	  | FSQRT | FSIN | FCOS | FTAN
+(*
 	datatype arithop = + | - | * | / | ~ | abs
 			 | fsqrt | fsin | fcos | ftan
 			 | lshift | rshift | rshiftl | andb | orb | xorb | notb
 			 | rem | div | mod
+*)
 
+	datatype cmpop = GT | GTE | LT | LTE | EQL | NEQ
+(*
 	datatype cmpop = > | >= | < | <= | eql | neq
+*)
 
       (* fcmpop conforms to the IEEE std 754 predicates. *)
 	datatype fcmpop
@@ -109,43 +122,6 @@ signature CPS =
 		* initialize the tag.
 		*)
 
-	val opp : branch -> branch
-
-      (* arithmetic on default integers (i.e., Int.int) *)
-	val iadd : arith
-	val isub : arith
-	val imul : arith
-	val idiv : arith
-	val ineg : arith
-
-      (* arithmetic on default reals (i.e., Real.real) *)
-	val fadd : arith
-	val fsub : arith
-	val fmul : arith
-	val fdiv : arith
-	val fneg : arith
-
-      (* comparisons of default integers (i.e., Int.int) *)
-	val ieql : branch
-	val ineq : branch
-	val igt  : branch
-	val ige  : branch
-	val ile  : branch
-	val ilt  : branch
-(*      val iltu : branch
- *      val igeu : branch
- *)
-
-      (* comparisons of default reals (i.e., Real.real) *)
-	val feql : branch
-	val fneq : branch
-	val fgt  : branch
-	val fge  : branch
-	val fle  : branch
-	val flt  : branch
-
-	val arity : arithop -> int
-
       end (* P *)
 
     type lvar
@@ -202,18 +178,5 @@ signature CPS =
     and rcc_kind = FAST_RCC | REENTRANT_RCC
 
     withtype function = fun_kind * lvar * lvar list * cty list * cexp
-
-    val combinepaths : accesspath * accesspath -> accesspath
-    val lenp : accesspath -> int
-    val ctyToString : cty -> string
-    val hasRCC : cexp -> bool
-    val sizeOf : cty -> int   (* size of its representation in bits *)
-    val isFloat : cty -> bool (* is it a floating point type? *)
-    val isTagged : cty -> bool
-
-    val BOGt : cty
-
-    val ctyc  : LtyDef.tyc -> cty
-    val ctype : LtyDef.lty -> cty
 
   end (* signature CPS *)

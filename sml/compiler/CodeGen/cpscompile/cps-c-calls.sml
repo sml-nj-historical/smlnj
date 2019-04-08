@@ -210,9 +210,9 @@ functor CPSCCalls (
        fun partition([], tagged, untagged) = (tagged, untagged)
          | partition(v::vl, tagged, untagged) =
            let val t       = typmap v
-               val sz      = CPS.sizeOf t
-               val tag     = CPS.isTagged t
-               val isFloat = CPS.isFloat t
+               val sz      = CPSUtil.sizeOf t
+               val tag     = CPSUtil.isTagged t
+               val isFloat = CPSUtil.isFloat t
                val store   = store(v,sz,isFloat)
                val load    = reload(sz,isFloat)
            in  if tag then partition(vl, (store,load,sz)::tagged, untagged)

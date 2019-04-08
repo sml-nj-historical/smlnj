@@ -110,6 +110,7 @@ struct
 
   structure CPS = CPS
   structure P   = CPS.P
+  structure U   = CPSUtil
   structure LV  = LambdaVar
   structure H   = IntHashTable     (* For mapping from lvar *)
 
@@ -193,7 +194,7 @@ struct
   end
 
   fun rkToCty (CPS.RK_FCONT | CPS.RK_FBLOCK) = CPS.FLTt 64  (* REAL32: FIXME *)
-    | rkToCty _ = CPS.BOGt
+    | rkToCty _ = U.BOGt
 
   fun splittable CPS.RK_VECTOR = false (* not supported in backend (yet) *)
     | splittable _             = true
@@ -467,8 +468,8 @@ struct
                 CPS.APP(v,args)        => uses(v::args, n)
               | CPS.SWITCH(v,c,l)      => (use(v, n); gathers(l, b+1, n+1))
               | CPS.SELECT(_,v,w,t,e)  => f1(v, w, t, e)
-              | CPS.OFFSET(_,v,w,e)    => f1(v, w, CPS.BOGt, e)
-              | CPS.RECORD(_,l,w,e)    => fx(map #1 l, w, CPS.BOGt, e, b)
+              | CPS.OFFSET(_,v,w,e)    => f1(v, w, U.BOGt, e)
+              | CPS.RECORD(_,l,w,e)    => fx(map #1 l, w, U.BOGt, e, b)
               | CPS.SETTER(_,vl,e)     => f0(vl, e)
               | CPS.LOOKER(_,vl,w,t,e) => fx(vl, w, t, e, b)
               | CPS.ARITH(_,vl,w,t,e)  => fx(vl, w, t, e, b)
@@ -793,7 +794,7 @@ struct
       let val (spillRecLvar,_) = genSpillRec()
           val m = numSpills * itemSize
           val e = CPS.PURE(P.rawrecord NONE,[tagInt m],
-                           spillRecLvar,CPS.BOGt,e)
+                           spillRecLvar,U.BOGt,e)
       in  currentSpillRecord := NONE; (* clear *)
           e
       end
@@ -808,7 +809,7 @@ struct
         | proj(v, CPS.SELp(i,p), e) =
           let val v' = LV.mkLvar()
               val e  = e v'
-          in  CPS.SELECT(i, CPS.VAR v, v', CPS.BOGt, e)
+          in  CPS.SELECT(i, CPS.VAR v, v', U.BOGt, e)
           end
 	| proj _ = error "SpillFn: proj"
 
@@ -829,7 +830,7 @@ struct
           val p = P.rawupdate(rkToCty rk)
           fun init((i, c),e) = CPS.SETTER(p,[CPS.VAR record, tagInt i, c], e)
           val e = foldr init e consts
-          val e = CPS.PURE(P.rawrecord(SOME rk),[tagInt len],record,CPS.BOGt,e)
+          val e = CPS.PURE(P.rawrecord(SOME rk),[tagInt len],record,U.BOGt,e)
       in  e
       end
 

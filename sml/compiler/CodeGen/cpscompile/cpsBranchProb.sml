@@ -1,8 +1,9 @@
 (* cpsBranchProb.sml
  *
- * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ * COPYRIGHT (c) 2019 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
- * Implements the following Ball Larus heuristic estimates
+ * Implements the following Ball-Larus heuristic estimates
  * for branch prediction.
  *
  * PH (pointer heuristic)
@@ -22,12 +23,9 @@
 signature CPS_BRANCH_PROB = sig
     exception CpsProbTbl
 
-    val branchProb :
-      CPS.function list -> (CPS.lvar -> Probability.prob option)
+    val branchProb : CPS.function list -> (CPS.lvar -> Probability.prob option)
+
 end
-
-
-
 
 structure CpsBranchProb : CPS_BRANCH_PROB = struct
 
@@ -44,16 +42,16 @@ structure CpsBranchProb : CPS_BRANCH_PROB = struct
   *	continuation, or
   *     handler/handler-code-pointer
   *)
-  datatype info =
-       OBJLEN 				(* object length *)
+  datatype info
+     = OBJLEN 				(* object length *)
      | CONT 				(* continuation *)
      | HANDLER				(* exception handler *)
      | HDLR_CODEPTR			(* exception handler code pointer *)
 
 
  (* condensed CPS flow graph *)
-  datatype condensed =
-      BLOCK				(* ordinary code block *)
+  datatype condensed
+    = BLOCK				(* ordinary code block *)
     | RETURN				(* calls a continuation *)
     | ESCAPE				(* makes a function call  *)
     | GOTO				(* call to known function *)
@@ -167,22 +165,22 @@ structure CpsBranchProb : CPS_BRANCH_PROB = struct
 	      case (test, args)
 		of (P.cmp{oper, kind}, [v1, v2]) =>
 		   (case (oper, number v1, number v2)
-		     of (P.<, _, Zero) => SOME notOH
-		      | (P.<=, _, Zero) => SOME notOH
-		      | (P.eql, _, Num) => SOME notOH
+		     of (P.LT, _, Zero) => SOME notOH
+		      | (P.LTE, _, Zero) => SOME notOH
+		      | (P.EQL, _, Num) => SOME notOH
 
-		      | (P.<, Zero, _)  => SOME OH
-		      | (P.<=, Zero, _)  => SOME OH
-		      | (P.eql, Num, _)  => SOME notOH
+		      | (P.LT, Zero, _)  => SOME OH
+		      | (P.LTE, Zero, _)  => SOME OH
+		      | (P.EQL, Num, _)  => SOME notOH
 
 
-		      | (P.>, _, Zero)  => SOME OH
-		      | (P.>=, _, Zero) => SOME OH
-		      | (P.neq, _, Num) => SOME OH
+		      | (P.GT, _, Zero)  => SOME OH
+		      | (P.GTE, _, Zero) => SOME OH
+		      | (P.NEQ, _, Num) => SOME OH
 
-		      | (P.>, Zero, _)  =>  SOME notOH
-		      | (P.>=, Zero, _) => SOME notOH
-		      | (P.neq, Num, _) => SOME OH
+		      | (P.GT, Zero, _)  =>  SOME notOH
+		      | (P.GTE, Zero, _) => SOME notOH
+		      | (P.NEQ, Num, _) => SOME OH
 		      | _ => NONE
 		   (*esac*))
 
@@ -227,7 +225,7 @@ structure CpsBranchProb : CPS_BRANCH_PROB = struct
 
 	    fun boundsCheck() =
 	      (case (test, args)
-	       of (P.cmp{oper= P.<, kind=P.UINT 31}, [v1,CPS.VAR v2]) =>
+	       of (P.cmp{oper= P.LT, kind=P.UINT 31}, [v1,CPS.VAR v2]) =>
 		  (case findInfo v2
 		    of SOME OBJLEN => SOME likely
 		     | _ => NONE)
